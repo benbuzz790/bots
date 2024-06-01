@@ -24,9 +24,9 @@ class ConversationNode:
         self.replies = []
         self.parent = parent
         self._history = None
-
+    
     def add_reply(self, content: str, role: str = 'user'):
-        reply = ConversationNode(role, content, parent=self)
+        reply = self.__class__(role, content, parent=self)
         self.replies.append(reply)
         return reply
 
@@ -35,16 +35,18 @@ class ConversationNode:
         return conversation
 
     def root(self):
+        return self._root()[0]
+    
+    def depth(self):
+        return self._root()[1]
+
+    def _root(self):
         node = self
+        depth = 0
         while node.parent is not None:
             node = node.parent
-        return node
-
-    def first_reply(self):
-        return self.replies[0]
-
-    def last_reply(self):
-        return self.replies[-1]
+            depth = depth + 1
+        return node, depth
 
     def to_dict(self):
         node = self

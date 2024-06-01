@@ -60,6 +60,15 @@ class BaseBot(ABC):
         return reply
 
     def cvsn_respond(self, text=None, cvsn: CN.ConversationNode=None, role='user'):
+        # Default: if text to the conversation as a new node then, ...
+            # Add the bot's response to the conversation as a new node
+        # If only cvsn is provided,
+            # Add the bot's response to the conversation as a new node
+        # If only text is provided, 
+            # Create a new conversation node and then go to default case.
+        # If neither text nor cvsn is provided, raise an exception.
+        # Always return the response text and the last created conversation node.
+
         if cvsn is not None and text is not None:
             try:
                 cvsn = cvsn.add_reply(text, role)
