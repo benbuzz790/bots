@@ -48,10 +48,15 @@ class GuiConversationNode(ConversationNode):
     def display(self, selected_node=None, level=0):
         is_selected = self == selected_node
         self.set_background_color(is_selected)
-        self.label.pack(fill=tk.X, padx=(20*self.depth(), 0), pady=(0, 5))
-        self.label.update()
+        if not self.label.winfo_viewable():
+            self.label.pack(fill=tk.X, padx=(20*self.depth(), 0), pady=(0, 5))
         for reply in self.replies:
             reply.display(selected_node, level + 1)
+
+    def destroy(self):
+        self.label.destroy()
+        for reply in self.replies:
+            reply.destroy()
 
 class ConversationGUI:
     def __init__(self, first_msg_text, first_msg_role, bot: BaseBot):
@@ -142,8 +147,6 @@ class ConversationGUI:
         create_initial_node()  # Create the initial node after updating the window
 
     def display_conversation(self):
-        for widget in self.conversation_inner_frame.winfo_children():
-            widget.pack_forget()
         self.selected_node.root().display(self.selected_node)
         self.conversation_inner_frame.update_idletasks()
         self.conversation_canvas.config(scrollregion=self.conversation_canvas.bbox("all"))
@@ -172,10 +175,11 @@ class ConversationGUI:
 
     def generate_ai_response(self):
         if self.selected_node:
-            self.display_waiting_message()
+            waiting_node = self.display_waiting_message()
             role = "user" if self.selected_node.role == "assistant" else "assistant" #TODO 
             _, node = self.bot.cvsn_respond(None, self.selected_node, role)
             self.select_node(node)
+            waiting_node.destroy()
             self.display_conversation()
 
     def save_bot(self):
@@ -215,6 +219,7 @@ class ConversationGUI:
                                            conversation_canvas=self.conversation_canvas, bot=self.bot)
         waiting_node.display(level=self.selected_node.depth() + 1)
         self.conversation_inner_frame.update()
+        return waiting_node
 
     def on_canvas_configure(self, event):
         self.conversation_canvas.configure(scrollregion=self.conversation_canvas.bbox("all"))
