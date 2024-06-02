@@ -1,0 +1,1 @@
+{"bot_class": "GPTBot", "name": "bot", "model_engine": "gpt-3.5-turbo", "max_tokens": 4096, "temperature": 0.9, "role": "assistant", "role_description": "a friendly AI assistant", "conversation": [{"role": "assistant", "content": "Ready to chat."}, {"role": "user", "content": "hi"}, {"role": "assistant", "content": "Hello! How can I help you today?"}]}

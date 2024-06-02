@@ -11,11 +11,11 @@ class GuiConversationNode(ConversationNode):
         super().__init__(role, content, parent)
 
         if not isinstance(model_engine, Engines):
-            raise ValueError("model_engine must be an instance of Engines Enum")
+            raise ValueError(f"model_engine must be an instance of Engines Enum, but was {type(model_engine)}")
 
         self.engine = model_engine
         self.bot = Engines.get_bot_class(self.engine)(model_engine=self.engine)
-        # TODO use the type() function and **kwargs syntax to dynamically type the bot
+        # TODO use the type() function and **kwargs syntax to dynamically type the bot instead of this awkward construction
         
         name = self.bot.model_engine
         if role == "user":
@@ -218,12 +218,13 @@ class ConversationGUI:
     
     def clear_conversation(self):
         self.selected_node.root().destroy()
-        self.selected_node = GuiConversationNode("assistant", "Ready to chat.", 
-                                                model_engine=self.selected_engine,
-                                                parent=None,
-                                                conversation_frame=self.conversation_inner_frame,
-                                                conversation_canvas=self.conversation_canvas,
-                                                on_select=self.select_node)
+        self.selected_node = GuiConversationNode(
+                                "assistant", "Ready to chat.", 
+                                model_engine=self.selected_engine,
+                                parent=None,
+                                conversation_frame=self.conversation_inner_frame,
+                                conversation_canvas=self.conversation_canvas,
+                                on_select=self.select_node)
         self.display_conversation()
     
     def save_bot(self):
@@ -237,12 +238,16 @@ class ConversationGUI:
             file.write(data)
 
     def load_bot(self):
+        self.selected_node.root().destroy()
         filepath = filedialog.askopenfilename(filetypes=[("Bot Files", "*.bot"), ("Conversation Files", "*.csvn")])
         if filepath:
             file_extension = os.path.splitext(filepath)[1]
             if file_extension == ".bot":
-                bot = BaseBot.load(filepath)
-                self.selected_node.add_reply(bot.conversation.content, bot.conversation.role, bot)
+                bot = BaseBot.load(filepath)            
+                node = bot.conversation
+                if node is not None:
+                    node = node.root()
+                self.selected_node = self.convert_conversation_node(node)
                 self.display_conversation()
             elif file_extension == ".csvn":
                 with open(filepath, 'r') as file:
@@ -250,6 +255,27 @@ class ConversationGUI:
                 conversation_root = ConversationNode.from_json(tree_data)
                 self.selected_node.add_reply(conversation_root.content, conversation_root.role)
                 self.display_conversation()
+    
+    def convert_conversation_node(self, node):
+        if node is None:
+            return None    
+
+        gui_node = GuiConversationNode(
+            node.role,
+            node.content,
+            model_engine=self.selected_engine,
+            parent=None,
+            conversation_frame=self.conversation_inner_frame,
+            conversation_canvas=self.conversation_canvas,
+            on_select=self.select_node
+        )
+
+        for reply in node.replies:
+            gui_reply = self.convert_conversation_node(reply)
+            gui_reply.parent = gui_node
+            gui_node.replies.append(gui_reply)
+
+        return gui_node
 
     def on_mousewheel(self, event):
         if event.num == 4 or event.delta > 0:

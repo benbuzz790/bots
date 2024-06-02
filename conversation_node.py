@@ -1,5 +1,7 @@
 import json
 
+# TODO - Combine this file with bots.py
+
 class ConversationNode:
     """
     Represents a node in a conversation tree.
@@ -58,19 +60,29 @@ class ConversationNode:
 
     @classmethod
     def from_dict(cls, data):
-        if isinstance(data, list):
-            if len(data) > 0:
-                data = data[0]
+        if not isinstance(data, list):
+            raise ValueError("Conversation data must be a list")
+
+        if len(data) == 0:
+            raise ValueError("Empty conversation data")
+
+        root_node = None
+        current_node = None
+
+        for message_data in data:
+            role = message_data['role']
+            content = message_data['content']
+
+            if root_node is None:
+                root_node = cls(role, content)
+                current_node = root_node
             else:
-                raise ValueError("Empty conversation data")
-        role = data['role']
-        content = data['content']
-        node = cls(role, content)
-        for reply_data in data.get('replies', []):
-            reply_node = cls.from_dict(reply_data)
-            reply_node.parent = node
-            node.replies.append(reply_node)
-        return node
+                reply_node = cls(role, content)
+                reply_node.parent = current_node
+                current_node.replies.append(reply_node)
+                current_node = reply_node
+
+        return root_node
 
     def to_json(self):
         conversation_dict = self.to_dict()

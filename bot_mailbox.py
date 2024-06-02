@@ -4,6 +4,11 @@ from datetime import datetime
 import anthropic
 import os
 from abc import ABC, abstractmethod
+import conversation_node as CN
+
+# TODO - Add docstrings to all methods and classes
+# TODO - Add type hints to all methods and classes
+# TODO - Combine this file with bots.py
 
 class BaseMailbox(ABC):
     """
@@ -31,7 +36,7 @@ class BaseMailbox(ABC):
         formatted_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
         return formatted_datetime
 
-    def send_message(self, conversation, model, max_tokens, temperature, api_key):
+    def send_message(self, conversation: CN.ConversationNode, model, max_tokens, temperature, api_key):
         message = {
             'date': self.__formatted_datetime__(),
             'messages': conversation.to_dict(),

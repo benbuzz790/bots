@@ -7,10 +7,16 @@ import re
 import json
 import os
 
+# TODO - Add docstrings to all methods and classes
+# TODO - Add type hints to all methods and classes
+# TODO - Add system messages
+# TODO - Add multimedia support
+
 
 class Engines(Enum):
     """
     Enum class representing different AI model engines.
+    This class is essentially just to document what engines are supported.
 
     Attributes:
         - GPT4: String value for GPT-4 model.
@@ -215,14 +221,20 @@ class BaseBot(ABC):
 class GPTBot(BaseBot):
     """
     ChatGPT-based bot implementation.
-
     Methods:
         - __init__(api_key=None, model_engine=Engine.GPT4, max_tokens=4096, temperature=0.9, name="bot", role="assistant", role_description="a friendly AI assistant"): Initializes a GPTBot instance.
         - load(filepath) -> 'GPTBot': Loads a GPTBot instance from a file.
         - _send_message(cvsn): Sends a message to the bot's mailbox using the OpenAI API.
     """
 
-    def __init__(self, api_key=None, model_engine=Engines.GPT4, max_tokens=4096, temperature=0.9, name="bot", role="assistant", role_description="a friendly AI assistant"):
+    def __init__(self, 
+                 api_key=None, 
+                 model_engine=Engines.GPT4, 
+                 max_tokens=4096, temperature=0.9, 
+                 name="bot", 
+                 role="assistant", 
+                 role_description="a friendly AI assistant"):
+        
         super().__init__(api_key, model_engine.value, max_tokens, temperature, name, role, role_description)
         match model_engine:
             case Engines.GPT4 | Engines.GPT35 | Engines.GPT432k:
