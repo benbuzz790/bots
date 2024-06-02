@@ -8,7 +8,7 @@ import json
 import os
 
 
-class Engine(Enum):
+class Engines(Enum):
     """
     Enum class representing different AI model engines.
 
@@ -25,6 +25,23 @@ class Engine(Enum):
     GPT35 = "gpt-3.5-turbo"
     CLAUDE3OPUS = "claude-3-opus-20240229"
     CLAUDE3SONNET = "claude-3-sonnet-20240229"
+
+    def get_bot_class(model_engine: "Engines") -> type:
+        """
+        Returns the bot class based on the model engine.
+
+        Args:
+            - model_engine (Engine): The model engine to determine the bot class.
+
+        Returns:
+            - type: The bot class corresponding to the model engine.
+        """
+        if model_engine in [Engines.GPT4, Engines.GPT35, Engines.GPT432k]:
+            return GPTBot
+        elif model_engine in [Engines.CLAUDE3OPUS, Engines.CLAUDE3SONNET]:
+            return AnthropicBot
+        else:
+            raise ValueError(f"Unsupported model engine: {model_engine}")
 
 class BaseBot(ABC):
     """
@@ -45,7 +62,7 @@ class BaseBot(ABC):
         - _send_message(cvsn): Sends a message to the bot's mailbox (to be implemented by subclasses).
     """
         
-    def __init__(self, api_key, model_engine, max_tokens, temperature, name, role, role_description):
+    def __init__(self, api_key, model_engine: Engines, max_tokens, temperature, name, role, role_description):
         self.api_key = api_key
         self.name = name
         self.model_engine = model_engine
@@ -120,7 +137,7 @@ class BaseBot(ABC):
                 data = json.load(file)
             
             bot_class = globals()[data['bot_class']]
-            bot = bot_class(api_key=None, model_engine=Engine(data['model_engine']), max_tokens=data['max_tokens'],
+            bot = bot_class(api_key=None, model_engine=Engines(data['model_engine']), max_tokens=data['max_tokens'],
                             temperature=data['temperature'], name=data['name'], role=data['role'],
                             role_description=data['role_description'])
             
@@ -205,10 +222,10 @@ class GPTBot(BaseBot):
         - _send_message(cvsn): Sends a message to the bot's mailbox using the OpenAI API.
     """
 
-    def __init__(self, api_key=None, model_engine=Engine.GPT4, max_tokens=4096, temperature=0.9, name="bot", role="assistant", role_description="a friendly AI assistant"):
+    def __init__(self, api_key=None, model_engine=Engines.GPT4, max_tokens=4096, temperature=0.9, name="bot", role="assistant", role_description="a friendly AI assistant"):
         super().__init__(api_key, model_engine.value, max_tokens, temperature, name, role, role_description)
         match model_engine:
-            case Engine.GPT4 | Engine.GPT35 | Engine.GPT432k:
+            case Engines.GPT4 | Engines.GPT35 | Engines.GPT432k:
                 self.mailbox = MB.OpenAIMailbox(verbose=True)
             case _:
                 raise Exception(f'model_engine: {model_engine} not found')
@@ -229,10 +246,10 @@ class AnthropicBot(BaseBot):
         - load(filepath) -> 'AnthropicBot': Loads an AnthropicBot instance from a file.
         - _send_message(cvsn): Sends a message to the bot's mailbox using the Anthropic API.
     """
-    def __init__(self, api_key=None, model_engine=Engine.CLAUDE3OPUS, max_tokens=4096, temperature=0.9, name="bot", role="assistant", role_description="a friendly AI assistant"):
+    def __init__(self, api_key=None, model_engine=Engines.CLAUDE3OPUS, max_tokens=4096, temperature=0.9, name="bot", role="assistant", role_description="a friendly AI assistant"):
         super().__init__(api_key, model_engine.value, max_tokens, temperature, name, role, role_description)
         match model_engine:
-            case Engine.CLAUDE3OPUS | Engine.CLAUDE3SONNET:
+            case Engines.CLAUDE3OPUS | Engines.CLAUDE3SONNET:
                 self.mailbox = MB.AnthropicMailbox(verbose=True)
             case _:
                 raise Exception(f'model_engine: {model_engine} not found')

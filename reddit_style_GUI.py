@@ -1,20 +1,30 @@
 import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as ttk
-from bots import GPTBot, BaseBot, Engine
+from bots import BaseBot, Engines
 import os
 from tkinter import filedialog
 from conversation_node import ConversationNode
 
 class GuiConversationNode(ConversationNode):
-    def __init__(self, role: str, content: str, parent: 'GuiConversationNode' = None, bot: BaseBot = None, conversation_frame=None, conversation_canvas=None, on_select=None):
+    def __init__(self, role: str, content: str, model_engine: Engines, parent: 'GuiConversationNode' = None, conversation_frame=None, conversation_canvas=None, on_select=None):
         super().__init__(role, content, parent)
-        self.bot = bot
-        # TODO if role is assistant, and bot is none, create a new bot using the selected engine
+
+        if not isinstance(model_engine, Engines):
+            raise ValueError("model_engine must be an instance of Engines Enum")
+
+        self.engine = model_engine
+        self.bot = Engines.get_bot_class(self.engine)(model_engine=self.engine)
+        # TODO use the type() function and **kwargs syntax to dynamically type the bot
+        
+        name = self.bot.model_engine
+        if role == "user":
+            name = "You"
+
         self.conversation_frame = conversation_frame
         self.conversation_canvas = conversation_canvas
         self.on_select = on_select
-        self.message_text = f"{self.bot.model_engine.name if self.bot else role}: {self.content}"
+        self.message_text = f"{name}: {self.content}"
         print(f"Creating label for node with message: {self.message_text}")
         self.label = ttk.Label(self.conversation_frame, 
                                text=self.message_text, 
@@ -30,9 +40,16 @@ class GuiConversationNode(ConversationNode):
         else:
             self.label.config(background="")
 
-    def add_reply(self, content: str, role: str = 'user', bot: BaseBot = None):
-        reply = self.__class__(role, content, parent=self, conversation_frame=self.conversation_frame,
-                               conversation_canvas=self.conversation_canvas, bot=bot, on_select=self.on_select)
+    def add_reply(self, content: str, role: str, model_engine: Engines=None):
+        if model_engine is None:
+            model_engine = self.engine
+        print(model_engine)
+        # TODO the **kwargs thing
+        reply = self.__class__(role, content, parent=self,
+                               model_engine=model_engine, 
+                               conversation_frame=self.conversation_frame,
+                               conversation_canvas=self.conversation_canvas, 
+                               on_select=self.on_select)
         self.replies.append(reply)
         return reply
 
@@ -88,8 +105,26 @@ class ConversationGUI:
             self.conversation_inner_frame = ttk.Frame(self.conversation_canvas)
             self.conversation_canvas.create_window((0, 0), window=self.conversation_inner_frame, anchor=tk.NW)
 
+        def on_engine_change(_):
+            value = self.engine_dropdown.cget("text")
+            for engine in Engines:
+                if engine.value == value:
+                    self.selected_engine = engine
+                    break
+            else:
+                self.selected_engine = None
+            print(f"Selected engine: {self.selected_engine}")
+
+        def create_engine_dropdown():
+            self.selected_engine = Engines.GPT35            
+            default_engine = tk.StringVar(value = self.selected_engine.value)
+            self.engine_dropdown = ttk.OptionMenu(self.window, default_engine, Engines.GPT35.value, *[e.value for e in Engines], command=on_engine_change)
+            self.engine_dropdown.pack(side=tk.LEFT, padx=(0, 10))
+
         def create_initial_node():
-            self.selected_node = GuiConversationNode(first_msg_role, first_msg_text, parent=None,
+            self.selected_node = GuiConversationNode(first_msg_role, first_msg_text, 
+                                                     model_engine=self.selected_engine,
+                                                     parent=None,
                                                      conversation_frame=self.conversation_inner_frame,
                                                      conversation_canvas=self.conversation_canvas,
                                                      on_select=self.select_node)
@@ -106,11 +141,6 @@ class ConversationGUI:
         def create_reply_button():
             self.reply_button = ttk.Button(self.reply_frame, text="Reply", command=self.add_user_reply, style="success")
             self.reply_button.pack(side=tk.RIGHT)
-
-        def create_engine_dropdown():
-            self.engine_var = tk.StringVar(value=Engine.GPT35.name)
-            self.engine_dropdown = ttk.OptionMenu(self.window, self.engine_var, Engine.GPT35.name, *[e.name for e in Engine])
-            self.engine_dropdown.pack(side=tk.LEFT, padx=(0, 10))
 
         def create_auto_toggle():
             self.auto_var = tk.BooleanVar()
@@ -162,7 +192,7 @@ class ConversationGUI:
     def add_user_reply(self):
         reply_content = self.reply_entry.get()
         if reply_content.strip():
-            self.selected_node.add_reply(reply_content, role="user")
+            self.selected_node.add_reply(reply_content, role="user", model_engine=self.selected_engine)
             self.select_node(self.selected_node.replies[-1])
             self.reply_entry.delete(0, tk.END)
             self.display_conversation()
@@ -179,7 +209,8 @@ class ConversationGUI:
         if self.selected_node:
             waiting_node = self.display_waiting_message()
             role = "user" if self.selected_node.role == "assistant" else "assistant"
-            bot = GPTBot(api_key=os.getenv('OPENAI_API_KEY'), name=self.engine_var.get())
+            model_engine = self.selected_engine
+            bot = Engines.get_bot_class(model_engine)(model_engine=model_engine)
             _, node = bot.cvsn_respond(None, self.selected_node, role)
             self.select_node(node)
             waiting_node.destroy()
@@ -187,7 +218,9 @@ class ConversationGUI:
     
     def clear_conversation(self):
         self.selected_node.root().destroy()
-        self.selected_node = GuiConversationNode("assistant", "Ready to chat.", parent=None,
+        self.selected_node = GuiConversationNode("assistant", "Ready to chat.", 
+                                                model_engine=self.selected_engine,
+                                                parent=None,
                                                 conversation_frame=self.conversation_inner_frame,
                                                 conversation_canvas=self.conversation_canvas,
                                                 on_select=self.select_node)
@@ -225,7 +258,9 @@ class ConversationGUI:
             self.conversation_canvas.yview_scroll(1, "units")
 
     def display_waiting_message(self):
-        waiting_node = GuiConversationNode("assistant", "@.......", parent=self.selected_node,
+        waiting_node = GuiConversationNode(self.engine_dropdown.cget("text"), "...", 
+                                           model_engine=self.selected_engine,
+                                           parent=self.selected_node,
                                            conversation_frame=self.conversation_inner_frame,
                                            conversation_canvas=self.conversation_canvas,
                                            on_select=self.select_node)

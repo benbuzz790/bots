@@ -114,8 +114,19 @@ class AnthropicMailbox(BaseMailbox):
     
     def _send_message_implementation(self, conversation, model, max_tokens, temperature, api_key):
         client = anthropic.Anthropic(api_key=api_key)
+
+        # Anthropic API requires the first message to be from the user
+        # Maybe not the best way to do this, but it works
+        def fix_messages(csvn):
+            msg_dict = csvn.to_dict()
+            if msg_dict[0]['role'] == 'assistant':
+                if self.verbose:
+                    Warning("Anthropic requires first message  be from the user. Ignoring first message.")
+                msg_dict = msg_dict[1:]
+            return msg_dict
+
         return client.messages.create(
-            messages=conversation.to_dict(),
+            messages=fix_messages(conversation),
             max_tokens=max_tokens,
             temperature=temperature,
             model=model
