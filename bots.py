@@ -6,41 +6,23 @@ import datetime as DT
 import re
 import json
 import os
-
-# TODO - Add docstrings to all methods and classes
-# TODO - Add type hints to all methods and classes
-# TODO - Add system messages
-# TODO - Add multimedia support
+from typing import Optional, Union, Type, Dict, Any
 
 
 class Engines(Enum):
     """
     Enum class representing different AI model engines.
-    This class is essentially just to document what engines are supported.
-
-    Attributes:
-        - GPT4: String value for GPT-4 model.
-        - GPT432k: String value for GPT-4-32k model.
-        - GPT35: String value for GPT-3.5-turbo model.
-        - CLAUDE3OPUS: String value for Claude-3-Opus model.
-        - CLAUDE3SONNET: String value for Claude-3-Sonnet model.
     """
-    
     GPT4 = "gpt-4"
     GPT432k = "gpt-4-32k"
     GPT35 = "gpt-3.5-turbo"
     CLAUDE3OPUS = "claude-3-opus-20240229"
     CLAUDE3SONNET = "claude-3-sonnet-20240229"
 
-    def get_bot_class(model_engine: "Engines") -> type:
+    @staticmethod
+    def get_bot_class(model_engine: "Engines") -> Type["BaseBot"]:
         """
         Returns the bot class based on the model engine.
-
-        Args:
-            - model_engine (Engine): The model engine to determine the bot class.
-
-        Returns:
-            - type: The bot class corresponding to the model engine.
         """
         if model_engine in [Engines.GPT4, Engines.GPT35, Engines.GPT432k]:
             return GPTBot
@@ -49,26 +31,22 @@ class Engines(Enum):
         else:
             raise ValueError(f"Unsupported model engine: {model_engine}")
 
+
 class BaseBot(ABC):
     """
     Abstract base class for bot implementations.
-
-    Methods:
-        - respond(content, role='user') -> str: Generates a response based on the given content and role.
-        - cvsn_respond(text=None, cvsn=None, role='user'): Generates a response based on the conversation node and text.
-        - save_conversation_tree(conversation_root): Saves the conversation tree to a file.
-        - save_linear_conversation(linear_conversation): Saves the linear conversation to a file.
-        - load(filepath) -> 'BaseBot': Loads a bot instance or conversation from a file.
-        - save(filename=None): Saves the bot instance to a file.
-        - converse(): Starts an interactive conversation with the bot in the console.
-        - sys_say(string): Prints a message from the system. 
-        - say(string): Prints a message from the bot.
-
-    Abstract Methods:
-        - _send_message(cvsn): Sends a message to the bot's mailbox (to be implemented by subclasses).
     """
-        
-    def __init__(self, api_key, model_engine: Engines, max_tokens, temperature, name, role, role_description):
+
+    def __init__(
+        self,
+        api_key: Optional[str],
+        model_engine: Engines,
+        max_tokens: int,
+        temperature: float,
+        name: str,
+        role: str,
+        role_description: str,
+    ):
         self.api_key = api_key
         self.name = name
         self.model_engine = model_engine
@@ -76,22 +54,26 @@ class BaseBot(ABC):
         self.temperature = temperature
         self.role = role
         self.role_description = role_description
-        self.conversation: CN.ConversationNode = None
+        self.conversation: Optional[CN.ConversationNode] = None
 
-    def respond(self, content, role='user') -> str:
-        reply, self.conversation = self.cvsn_respond(text=content, cvsn=self.conversation, role=role)
+    def respond(self, content: str, role: str = "user") -> str:
+        """
+        Generates a response based on the given content and role.
+        """
+        reply, self.conversation = self.cvsn_respond(
+            text=content, cvsn=self.conversation, role=role
+        )
         return reply
 
-    def cvsn_respond(self, text=None, cvsn: CN.ConversationNode=None, role='user'):
-        # Default: if text to the conversation as a new node then, ...
-            # Add the bot's response to the conversation as a new node
-        # If only cvsn is provided,
-            # Add the bot's response to the conversation as a new node
-        # If only text is provided, 
-            # Create a new conversation node and then go to default case.
-        # If neither text nor cvsn is provided, raise an exception.
-        # Always return the response text and the last created conversation node.
-
+    def cvsn_respond(
+        self,
+        text: Optional[str] = None,
+        cvsn: Optional[CN.ConversationNode] = None,
+        role: str = "user",
+    ) -> Union[str, CN.ConversationNode]:
+        """
+        Generates a response based on the conversation node and text.
+        """
         if cvsn is not None and text is not None:
             try:
                 cvsn = cvsn.add_reply(text, role)
@@ -121,66 +103,90 @@ class BaseBot(ABC):
             raise Exception
 
     @abstractmethod
-    def _send_message(self, cvsn):
+    def _send_message(self, cvsn: CN.ConversationNode) -> tuple:
+        """
+        Sends a message to the bot's mailbox (to be implemented by subclasses).
+        """
         pass
 
-    def formatted_datetime(self):
+    def formatted_datetime(self) -> str:
+        """
+        Returns the current date and time in a formatted string.
+        """
         now = DT.datetime.now()
         return now.strftime("%Y.%m.%d-%H.%M.%S")
 
-    def save_conversation_tree(self, conversation_root):
+    def save_conversation_tree(self, conversation_root: CN.ConversationNode) -> None:
+        """
+        Saves the conversation tree to a file.
+        """
         filename = f"{self.name}@{self.formatted_datetime()}.cvsn"
         data = conversation_root.to_dict()
-        with open(filename, 'w') as file:
+        with open(filename, "w") as file:
             json.dump(data, file)
 
     @classmethod
-    def load(cls, filepath):
+    def load(cls, filepath: str) -> "BaseBot":
+        """
+        Loads a bot instance or conversation from a file.
+        """
         _, extension = os.path.splitext(filepath)
 
-        if extension == '.bot':
-            with open(filepath, 'r') as file:
+        if extension == ".bot":
+            with open(filepath, "r") as file:
                 data = json.load(file)
-            
-            bot_class = globals()[data['bot_class']]
-            bot = bot_class(api_key=None, model_engine=Engines(data['model_engine']), max_tokens=data['max_tokens'],
-                            temperature=data['temperature'], name=data['name'], role=data['role'],
-                            role_description=data['role_description'])
-            
-            if data['conversation']:
-                bot.conversation = CN.ConversationNode.from_dict(data['conversation'])
-            
+
+            bot_class = globals()[data["bot_class"]]
+            bot = bot_class(
+                api_key=None,
+                model_engine=Engines(data["model_engine"]),
+                max_tokens=data["max_tokens"],
+                temperature=data["temperature"],
+                name=data["name"],
+                role=data["role"],
+                role_description=data["role_description"],
+            )
+
+            if data["conversation"]:
+                bot.conversation = CN.ConversationNode.from_dict(data["conversation"])
+
             return bot
 
-        elif extension == '.cvsn':
-            with open(filepath, 'r') as file:
+        elif extension == ".cvsn":
+            with open(filepath, "r") as file:
                 conversation_data = json.load(file)
-            
+
             conversation_node = CN.ConversationNode.from_dict(conversation_data)
             return conversation_node
 
         else:
             raise ValueError(f"Unsupported file extension: {extension}")
 
-    def save(self, filename=None):
+    def save(self, filename: Optional[str] = None) -> None:
+        """
+        Saves the bot instance to a file.
+        """
         now = DT.datetime.now()
         formatted_datetime = now.strftime("%Y.%m.%d-%H.%M.%S")
         if filename is None:
             filename = f"{self.name}@{formatted_datetime}.bot"
         data = {
-            'bot_class': self.__class__.__name__,
-            'name': self.name,
-            'model_engine': self.model_engine,
-            'max_tokens': self.max_tokens,
-            'temperature': self.temperature,
-            'role': self.role,
-            'role_description': self.role_description,
-            'conversation': self.conversation.to_dict() if self.conversation else None
+            "bot_class": self.__class__.__name__,
+            "name": self.name,
+            "model_engine": self.model_engine.value,
+            "max_tokens": self.max_tokens,
+            "temperature": self.temperature,
+            "role": self.role,
+            "role_description": self.role_description,
+            "conversation": self.conversation.to_dict() if self.conversation else None,
         }
-        with open(filename, 'w') as file:
+        with open(filename, "w") as file:
             json.dump(data, file)
-    
-    def converse(self):
+
+    def converse(self) -> None:
+        """
+        Starts an interactive conversation with the bot in the console.
+        """
         self.sys_say("Begin Conversation")
 
         while True:
@@ -190,7 +196,9 @@ class BaseBot(ABC):
                     print("---")
                     self.sys_say("Debug:")
                     print("\n")
-                    self.sys_say(f'Name:{self.name}, Role:{self.role}, Description:{self.role_description}')
+                    self.sys_say(
+                        f"Name:{self.name}, Role:{self.role}, Description:{self.role_description}"
+                    )
                     print("\n")
                     print("\n")
                     print(self.conversation.root().to_string())
@@ -206,87 +214,110 @@ class BaseBot(ABC):
                     self = self.load(input("You: "))
                 case _:
                     if self.conversation is not None:
-                        self.conversation = self.conversation.add_reply(user_input, 'user')
+                        self.conversation = self.conversation.add_reply(user_input, "user")
                     else:
-                        self.conversation = CN.ConversationNode(role='user', content=user_input)
+                        self.conversation = CN.ConversationNode(role="user", content=user_input)
                     response, self.conversation = self.cvsn_respond(cvsn=self.conversation)
                     self.say(response)
 
-    def sys_say(self, string):
-        print(f'System: {string}')
+    def sys_say(self, string: str) -> None:
+        """
+        Prints a message from the system.
+        """
+        print(f"System: {string}")
 
-    def say(self, string):
-        print(f'{self.name}: {string}')
+    def say(self, string: str) -> None:
+        """
+        Prints a message from the bot.
+        """
+        print(f"{self.name}: {string}")
+
 
 class GPTBot(BaseBot):
     """
     ChatGPT-based bot implementation.
-    Methods:
-        - __init__(api_key=None, model_engine=Engine.GPT4, max_tokens=4096, temperature=0.9, name="bot", role="assistant", role_description="a friendly AI assistant"): Initializes a GPTBot instance.
-        - load(filepath) -> 'GPTBot': Loads a GPTBot instance from a file.
-        - _send_message(cvsn): Sends a message to the bot's mailbox using the OpenAI API.
     """
 
-    def __init__(self, 
-                 api_key=None, 
-                 model_engine=Engines.GPT4, 
-                 max_tokens=4096, temperature=0.9, 
-                 name="bot", 
-                 role="assistant", 
-                 role_description="a friendly AI assistant"):
-        
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model_engine: Engines = Engines.GPT4,
+        max_tokens: int = 4096,
+        temperature: float = 0.9,
+        name: str = "bot",
+        role: str = "assistant",
+        role_description: str = "a friendly AI assistant",
+    ):
         super().__init__(api_key, model_engine.value, max_tokens, temperature, name, role, role_description)
         match model_engine:
             case Engines.GPT4 | Engines.GPT35 | Engines.GPT432k:
                 self.mailbox = MB.OpenAIMailbox(verbose=True)
             case _:
-                raise Exception(f'model_engine: {model_engine} not found')
-    
+                raise Exception(f"model_engine: {model_engine} not found")
+
     @classmethod
-    def load(cls, filepath):
+    def load(cls, filepath: str) -> "GPTBot":
+        """
+        Loads a GPTBot instance from a file.
+        """
         return super().load(filepath)
-    
-    def _send_message(self, cvsn):
-        return self.mailbox.send_message(cvsn, self.model_engine, self.max_tokens, self.temperature, self.api_key)
+
+    def _send_message(
+        self, cvsn: CN.ConversationNode
+    ) -> tuple[str, str, Dict[str, Any]]:
+        """
+        Sends a message to the bot's mailbox using the OpenAI API.
+        """
+        return self.mailbox.send_message(
+            cvsn, self.model_engine, self.max_tokens, self.temperature, self.api_key
+        )
+
 
 class AnthropicBot(BaseBot):
     """
     Anthropic-based bot implementation.
-
-    Methods:
-        - __init__(api_key=None, model_engine=Engine.CLAUDE3OPUS, max_tokens=4096, temperature=0.9, name="bot", role="assistant", role_description="a friendly AI assistant"): Initializes an AnthropicBot instance.
-        - load(filepath) -> 'AnthropicBot': Loads an AnthropicBot instance from a file.
-        - _send_message(cvsn): Sends a message to the bot's mailbox using the Anthropic API.
     """
-    def __init__(self, api_key=None, model_engine=Engines.CLAUDE3OPUS, max_tokens=4096, temperature=0.9, name="bot", role="assistant", role_description="a friendly AI assistant"):
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model_engine: Engines = Engines.CLAUDE3OPUS,
+        max_tokens: int = 4096,
+        temperature: float = 0.9,
+        name: str = "bot",
+        role: str = "assistant",
+        role_description: str = "a friendly AI assistant",
+    ):
         super().__init__(api_key, model_engine.value, max_tokens, temperature, name, role, role_description)
         match model_engine:
             case Engines.CLAUDE3OPUS | Engines.CLAUDE3SONNET:
                 self.mailbox = MB.AnthropicMailbox(verbose=True)
             case _:
-                raise Exception(f'model_engine: {model_engine} not found')
-    
+                raise Exception(f"model_engine: {model_engine} not found")
+
     @classmethod
-    def load(cls, filepath):
+    def load(cls, filepath: str) -> "AnthropicBot":
+        """
+        Loads an AnthropicBot instance from a file.
+        """
         return super().load(filepath)
-    
-    def _send_message(self, cvsn):
-        return self.mailbox.send_message(cvsn, self.model_engine, self.max_tokens, self.temperature, self.api_key)
+
+    def _send_message(
+        self, cvsn: CN.ConversationNode
+    ) -> tuple[str, str, Dict[str, Any]]:
+        """
+        Sends a message to the bot's mailbox using the Anthropic API.
+        """
+        return self.mailbox.send_message(
+            cvsn, self.model_engine, self.max_tokens, self.temperature, self.api_key
+        )
 
 
-# Utility functions
-def remove_code_blocks(text):
+def remove_code_blocks(text: str) -> list[str]:
     """
-        Extracts the content inside a code block from the given text, 
-        considering an optional language identifier.
-
-        Args:
-        - text (str): Input text containing the code block.
-
-        Returns:
-        - str: Extracted code or an empty string if no code block is found.
+    Extracts the content inside code blocks from the given text.
     """
-    pattern = r'```(?:[a-zA-Z0-9_+-]+)?\s*([\s\S]*?)```'
+    pattern = r"```(?:[a-zA-Z0-9_+-]+)?\s*([\s\S]*?)```"
     code_blocks = []
     
     while True:
@@ -300,7 +331,6 @@ def remove_code_blocks(text):
     
     return code_blocks
 
-if __name__ == "__main__":
-    import os
-    GPTBot(os.getenv('OPENAI_API_KEY')).converse()
 
+if __name__ == "__main__":
+    GPTBot().converse()
