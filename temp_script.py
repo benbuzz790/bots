@@ -8,6 +8,6 @@ def git_commit(message):
     except subprocess.CalledProcessError as e:
         return f"Git commit failed: {e}"
 
-commit_message = "Update test_error_handling in test_bot_tools.py"
+commit_message = "Add comprehensive tests for edge cases and Unicode handling"
 result = git_commit(commit_message)
 print(result)
