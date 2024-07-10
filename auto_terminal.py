@@ -1,4 +1,3 @@
-import gitignore
 import bots
 import os
 from bots import Engines
