@@ -71,6 +71,7 @@ def main():
         if(turn=='assistant'):
             if auto > 1:
                 auto = auto - 1
+                output = f'Auto-mode enabled for {auto} more messages\n\n'
             else:
                 turn = 'user'
             response = B1.respond(msg)
@@ -120,7 +121,7 @@ def main():
                     pretty(f"File {filename} not found.", 'System')
                 turn = 'user'
             elif uinput.lower().startswith('/auto'):
-                auto = input("Number of automatic cycles:")
+                auto = int(input("Number of automatic cycles:"))
                 turn = 'user'
             else:   
                 msg = 'System:\n' + output + "\n---\n" + "\nBen's Reply:\n" + uinput 

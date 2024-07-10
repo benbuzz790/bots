@@ -6,6 +6,8 @@ def rewrite(file_path, content):
     print(f"File '{file_path}' has been rewritten with the provided content.")
 
 def insert_after(file_path, target_string, content_to_insert):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File '{file_path}' not found.")
     with open(file_path, 'r') as file:
         content = file.read()
 
@@ -19,8 +21,9 @@ def insert_after(file_path, target_string, content_to_insert):
         print(f"Content inserted after the first occurrence of '{target_string}' in the file.")
     else:
         print(f"Target string '{target_string}' not found in the file.")
-
 def paste_over(file_path, target_string, content_to_paste):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File '{file_path}' not found.")
     try:
         with open(file_path, 'r') as file:
             content = file.read()
@@ -34,7 +37,6 @@ def paste_over(file_path, target_string, content_to_paste):
                 print(f"Target string '{target_string}' not found in the file.")
     except FileNotFoundError:
         print(f"File '{file_path}' not found.")
-
 def find_function_definition(file_path, function_name):
     with open(file_path, 'r') as file:
         lines = file.readlines()

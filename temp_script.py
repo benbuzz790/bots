@@ -1,23 +1,13 @@
 import subprocess
 
-def run_git_command(command):
+def git_commit(message):
     try:
-        result = subprocess.run(["git"] + command, capture_output=True, text=True, check=True)
-        return result.stdout.strip()
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", message], check=True)
+        return "Git commit successful."
     except subprocess.CalledProcessError as e:
-        return f"Error: {e.stderr.strip()}"
+        return f"Git commit failed: {e}"
 
-# Stage all changes
-print(run_git_command(["add", "."]))
-
-# Create a temporary commit
-commit_message = "Temporary commit: Removed .gitignore and gitignore.py"
-print(run_git_command(["commit", "-m", commit_message]))
-
-# Show the latest commit
-print("\nLatest commit:")
-print(run_git_command(["log", "-1", "--oneline"]))
-
-# Show status to confirm everything is committed
-print("\nGit status:")
-print(run_git_command(["status"]))
+commit_message = "Fix error handling in bot_tools.py and update tests"
+result = git_commit(commit_message)
+print(result)
