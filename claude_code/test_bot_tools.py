@@ -89,6 +89,7 @@ class TestBotTools(unittest.TestCase):
         bot_tools.create_directory(new_dir)
         self.assertTrue(os.path.exists(new_dir))
     
+    
     def test_error_handling(self):
         """Test error handling for various functions."""
         non_existent_file = os.path.join(self.test_dir, 'non_existent.txt')
@@ -99,7 +100,11 @@ class TestBotTools(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             bot_tools.paste_over(non_existent_file, "target", "content")
         
+        # Test for a function that doesn't exist
         line_number, definition = bot_tools.find_function_definition(self.test_file, "non_existent_function")
+        self.assertIsNone(line_number)
+        self.assertIsNone(definition)
+    definition = bot_tools.find_function_definition(self.test_file, "non_existent_function")
         self.assertIsNone(line_number)
         self.assertIsNone(definition)
     
