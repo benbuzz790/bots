@@ -7,7 +7,6 @@ from tkinter import filedialog
 from conversation_node import ConversationNode
 from typing import Optional, Callable
 
-
 class GuiConversationNode(ConversationNode):
     """
     Represents a conversation node with GUI-specific attributes.
@@ -95,7 +94,6 @@ class GuiConversationNode(ConversationNode):
         self.label.destroy()
         for reply in self.replies:
             reply.destroy()
-
 
 class ConversationGUI:
     """
@@ -244,7 +242,6 @@ class ConversationGUI:
         name_event_pairs = [
             ("AI Response", self.generate_ai_response),
             ("Save Bot", self.save_bot),
-            ("Save Text", self.save_tree),
             ("Load", self.load_bot),
             ("Debug", self.debug_conversation_tree),
             ("Clear", self.clear_conversation),
@@ -329,15 +326,6 @@ class ConversationGUI:
         """
         self.selected_node.bot.conversation = self.selected_node
         self.selected_node.bot.save()
-
-    def save_tree(self) -> None:
-        """
-        Saves the conversation tree as a JSON file.
-        """
-        data = self.selected_node.to_json()
-        filename = f'{self.selected_node.bot.name}@{self.selected_node.bot.formatted_datetime()}.csvn'
-        with open(filename, 'w') as file:
-            file.write(data)
 
     def load_bot(self) -> None:
         """

@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 import conversation_node as CN
 from typing import Optional, Dict, Any
 
+#TODO fix logging
 
 class BaseMailbox(ABC):
     """
@@ -161,12 +162,20 @@ class AnthropicMailbox(BaseMailbox):
                 msg_dict = msg_dict[1:]
             return msg_dict
 
-        return client.messages.create(
-            messages=fix_messages(conversation),
-            max_tokens=max_tokens,
-            temperature=temperature,
-            model=model,
-        )
+        try:
+            response = client.messages.create(
+                messages=fix_messages(conversation),
+                max_tokens=max_tokens,
+                temperature=temperature,
+                model=model,
+            )
+        except Exception:
+            print('\n\n\n ---debug---\n')
+            print(conversation.to_dict())
+            print('\n---debug---\n\n\n')
+            raise Exception
+
+        return response
 
     def _process_response(self, response: Dict[str, Any]) -> tuple[str, str]:
         """

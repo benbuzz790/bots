@@ -18,6 +18,7 @@ class Engines(Enum):
     GPT35 = "gpt-3.5-turbo"
     CLAUDE3OPUS = "claude-3-opus-20240229"
     CLAUDE3SONNET = "claude-3-sonnet-20240229"
+    CLAUDE35 = "claude-3-5-sonnet-20240620"
 
     @staticmethod
     def get_bot_class(model_engine: "Engines") -> Type["BaseBot"]:
@@ -128,7 +129,8 @@ class BaseBot(ABC):
     @classmethod
     def load(cls, filepath: str) -> "BaseBot":
         """
-        Loads a bot instance or conversation from a file.
+        Loads a bot instance or conversation from a file. Opens to the leaf in the chain of first replies.
+        (I.e. the last message in a linear conversation)
         """
         _, extension = os.path.splitext(filepath)
 
@@ -139,7 +141,7 @@ class BaseBot(ABC):
             bot_class = globals()[data["bot_class"]]
             bot = bot_class(
                 api_key=None,
-                model_engine=Engines(data["model_engine"]),
+                model_engine=Engines(data["model_engine"]), #does this actually load the right thing?
                 max_tokens=data["max_tokens"],
                 temperature=data["temperature"],
                 name=data["name"],
@@ -150,21 +152,19 @@ class BaseBot(ABC):
             if data["conversation"]:
                 bot.conversation = CN.ConversationNode.from_dict(data["conversation"])
 
+            node = bot.conversation
+            while node.replies: # while node.replies is not an empty list
+                node = node.replies[0]
+            bot.conversation = node
+
             return bot
-
-        elif extension == ".cvsn":
-            with open(filepath, "r") as file:
-                conversation_data = json.load(file)
-
-            conversation_node = CN.ConversationNode.from_dict(conversation_data)
-            return conversation_node
 
         else:
             raise ValueError(f"Unsupported file extension: {extension}")
 
-    def save(self, filename: Optional[str] = None) -> None:
+    def save(self, filename: Optional[str] = None) -> str:
         """
-        Saves the bot instance to a file.
+        Saves the bot instance to a file. Returns the filename.
         """
         now = DT.datetime.now()
         formatted_datetime = now.strftime("%Y.%m.%d-%H.%M.%S")
@@ -173,7 +173,7 @@ class BaseBot(ABC):
         data = {
             "bot_class": self.__class__.__name__,
             "name": self.name,
-            "model_engine": self.model_engine.value,
+            "model_engine": self.model_engine,
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
             "role": self.role,
@@ -182,6 +182,8 @@ class BaseBot(ABC):
         }
         with open(filename, "w") as file:
             json.dump(data, file)
+        
+        return filename
 
     def converse(self) -> None:
         """
@@ -256,9 +258,9 @@ class GPTBot(BaseBot):
                 raise Exception(f"model_engine: {model_engine} not found")
 
     @classmethod
-    def load(cls, filepath: str) -> "GPTBot":
+    def load(cls, filepath: str) -> "BaseBot":
         """
-        Loads a GPTBot instance from a file.
+        Loads a bot instance from a file.
         """
         return super().load(filepath)
 
@@ -290,7 +292,7 @@ class AnthropicBot(BaseBot):
     ):
         super().__init__(api_key, model_engine.value, max_tokens, temperature, name, role, role_description)
         match model_engine:
-            case Engines.CLAUDE3OPUS | Engines.CLAUDE3SONNET:
+            case Engines.CLAUDE3OPUS | Engines.CLAUDE3SONNET | Engines.CLAUDE35:
                 self.mailbox = MB.AnthropicMailbox(verbose=True)
             case _:
                 raise Exception(f"model_engine: {model_engine} not found")
@@ -308,28 +310,25 @@ class AnthropicBot(BaseBot):
         """
         Sends a message to the bot's mailbox using the Anthropic API.
         """
-        return self.mailbox.send_message(
+
+        response = self.mailbox.send_message(
             cvsn, self.model_engine, self.max_tokens, self.temperature, self.api_key
         )
 
+        return response
 
-def remove_code_blocks(text: str) -> list[str]:
+
+def remove_code_blocks(text: str) -> tuple[list[str], list[str]]:
     """
-    Extracts the content inside code blocks from the given text.
+    Extracts the content inside code blocks from the given text and returns the code blocks and their labels.
     """
-    pattern = r"```(?:[a-zA-Z0-9_+-]+)?\s*([\s\S]*?)```"
-    code_blocks = []
-    
-    while True:
-        match = re.search(pattern, text)
-        if match:
-            code_block = match.group(1).strip()
-            code_blocks.append(code_block)
-            text = text[:match.start()] + text[match.end():]
-        else:
-            break
-    
-    return code_blocks
+    pattern = r'```(\w*)\s*([\s\S]*?)```'
+    matches = re.findall(pattern, text)
+    code_blocks = [match[1].strip() for match in matches]
+    labels = [match[0].strip() for match in matches]
+    # Remove the code blocks from the original text
+    text = re.sub(pattern, '', text)
+    return code_blocks, labels
 
 
 if __name__ == "__main__":

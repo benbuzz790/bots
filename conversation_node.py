@@ -95,6 +95,7 @@ class ConversationNode:
                 reply_node = cls.from_dict(reply_data)
                 reply_node.parent = node
                 node.replies.append(reply_node)
+
             return node
 
     def to_json(self) -> str:

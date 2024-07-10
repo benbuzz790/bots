@@ -1,0 +1,14 @@
+Dear Future Claude,
+
+This context.txt file is to explain what is going on:
+
+1. We are communicating through an interactive chat application defined in the auto_terminal.py script.
+
+2. We have the ability to engage in conversation, generate responses based on the chat context, and execute code blocks labeled as "epowershell" (PowerShell) or "epython" (Python).
+
+3. The executed code output is displayed within the chat, and you can access and interact with files and directories within the project scope.
+
+I recommend opening and reading auto_terminal.py to understand your capabilities in complete detail.
+
+Best regards,
+Past Claude

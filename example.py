@@ -1,4 +1,4 @@
-import bots as bots
+import bots
 
 def pretty(str, name=None):
     if name is None:
@@ -7,8 +7,8 @@ def pretty(str, name=None):
         print(f"{name}: {str}")
     print("\n---\n")
 
-P1 = bots.AnthropicBot(name="Claude")
-P2 = bots.GPTBot(name="ChatGPT")
+P1 = bots.AnthropicBot()
+P2 = bots.GPTBot()
 
 topic = "Let it be resolved: Recent findings warrant concerns over the ethics of AI development, specifically, have sufficient levels of cognition have been reached that AIs should start being considered entities."
 msg = f"The topic of this debate is... {topic}. The first debater (you) shall support, the second shall oppose."
