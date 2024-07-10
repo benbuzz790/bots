@@ -1,4 +1,4 @@
-
+# 100% LLM written. Claude 3.5
 import tkinter as tk
 from tkinter import ttk
 import random

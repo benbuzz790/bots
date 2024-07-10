@@ -100,12 +100,11 @@ def main():
                             
                     output = output + '\n---\n'
 
+        msg = 'System:\n' + output + "\n---\n"
         pretty(output, 'System')
         
         if(turn=='user'):
-            # get human response
             uinput = input("You: ")
-            
             if uinput.lower().startswith('/exit'):
                 exit()
             elif uinput.lower().startswith('/save'):
@@ -124,7 +123,7 @@ def main():
                 auto = int(input("Number of automatic cycles:"))
                 turn = 'user'
             else:   
-                msg = 'System:\n' + output + "\n---\n" + "\nBen's Reply:\n" + uinput 
+                msg = msg + "\nBen's Reply:\n" + uinput 
                 pretty('')
                 turn = 'assistant'
     

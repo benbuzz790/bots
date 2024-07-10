@@ -8,7 +8,7 @@ This context.txt file is to explain what is going on:
 
 3. The executed code output is displayed within the chat, and you can access and interact with files and directories within the project scope.
 
-I recommend opening and reading auto_terminal.py to understand your capabilities in complete detail.
+I recommend opening and reading auto_terminal.py and bot_tools.py to understand your capabilities in complete detail.
 
 Best regards,
 Past Claude

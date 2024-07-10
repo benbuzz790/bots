@@ -87,3 +87,19 @@ def create_directory(directory_path):
         print(f"Directory '{directory_path}' already exists.")
 
 # Add more tool functions as needed
+
+
+
+def delete_match(file_path, pattern):
+    try:
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+        
+        with open(file_path, 'w') as file:
+            for line in lines:
+                if pattern.lower() not in line.lower():
+                    file.write(line)
+        
+        print(f"Lines containing '{pattern}' (case-insensitive) have been deleted from '{file_path}'.")
+    except FileNotFoundError:
+        print(f"File '{file_path}' not found.")

@@ -1,3 +1,0 @@
-This is a test file.
-It has multiple lines.
-We will modify this file.
