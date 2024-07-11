@@ -1,4 +1,6 @@
+
 import os
+import re
 
 def rewrite(file_path, content):
     with open(file_path, 'w') as file:
@@ -13,7 +15,7 @@ def insert_after(file_path, target_string, content_to_insert):
 
     if target_string in content:
         target_index = content.find(target_string) + len(target_string)
-        updated_content = content[:target_index] + '\n' + content_to_insert + content[target_index:]
+        updated_content = content[:target_index] + content_to_insert + content[target_index:]
         
         with open(file_path, 'w') as file:
             file.write(updated_content)
@@ -21,74 +23,32 @@ def insert_after(file_path, target_string, content_to_insert):
         print(f"Content inserted after the first occurrence of '{target_string}' in the file.")
     else:
         print(f"Target string '{target_string}' not found in the file.")
-def paste_over(file_path, target_string, content_to_paste):
+
+def replace(file_path, target_string, new_string):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File '{file_path}' not found.")
-    try:
-        with open(file_path, 'r') as file:
-            content = file.read()
-            target_index = content.find(target_string)
-            if target_index != -1:
-                updated_content = content[:target_index] + content_to_paste + content[target_index + len(target_string):]
-                with open(file_path, 'w') as file:
-                    file.write(updated_content)
-                print(f"Content pasted over the first occurrence of '{target_string}' in the file.")
-            else:
-                print(f"Target string '{target_string}' not found in the file.")
-    except FileNotFoundError:
-        print(f"File '{file_path}' not found.")
-def find_function_definition(file_path, function_name):
     with open(file_path, 'r') as file:
-        lines = file.readlines()
-    
-    for i, line in enumerate(lines):
-        if line.startswith(f"def {function_name}("):
-            function_definition = line
-            j = i + 1
-            while j < len(lines) and (lines[j].startswith(' ') or lines[j].startswith('	')):
-                function_definition += lines[j]
-                j += 1
-            return i + 1, function_definition.strip()
-    
-    return None, None
+        content = file.read()
+        target_index = content.find(target_string)
+        if target_index != -1:
+            updated_content = content[:target_index] + new_string + content[target_index + len(target_string):]
+            with open(file_path, 'w') as file:
+                file.write(updated_content)
+            print(f"Content replaced '{target_string}' in the file.")
+        else:
+            print(f"Target string '{target_string}' not found in the file.")
 
-def replace_function_definition(file_path, function_name, new_function_definition):
-    line_number, existing_definition = find_function_definition(file_path, function_name)
-    if existing_definition:
-        with open(file_path, 'r') as file:
-            lines = file.readlines()
-        
-        lines[line_number - 1] = new_function_definition + '\n'
-        
-        with open(file_path, 'w') as file:
-            file.writelines(lines)
-        
-        print(f"Function definition for '{function_name}' replaced in the file.")
-    else:
-        print(f"Function '{function_name}' not found in the file.")
-
-def append_to_file(file_path, content_to_append):
+def append(file_path, content_to_append):
     with open(file_path, 'a') as file:
         file.write(content_to_append)
     print(f"Content appended to the file '{file_path}'.")
 
-def prepend_to_file(file_path, content_to_prepend):
+def prepend(file_path, content_to_prepend):
     with open(file_path, 'r+') as file:
         content = file.read()
         file.seek(0, 0)
         file.write(content_to_prepend + content)
     print(f"Content prepended to the file '{file_path}'.")
-
-def create_directory(directory_path):
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
-        print(f"Directory '{directory_path}' created.")
-    else:
-        print(f"Directory '{directory_path}' already exists.")
-
-# Add more tool functions as needed
-
-
 
 def delete_match(file_path, pattern):
     try:
@@ -103,3 +63,33 @@ def delete_match(file_path, pattern):
         print(f"Lines containing '{pattern}' (case-insensitive) have been deleted from '{file_path}'.")
     except FileNotFoundError:
         print(f"File '{file_path}' not found.")
+
+def overwrite_function(file_path, function_name, new_function_content):
+    with open(file_path, 'r') as file:
+        content = file.read()
+    
+    pattern = r'def\s+' + re.escape(function_name) + r'\s*\([^)]*\):.*?(?=\n(?=\S)|\Z)'
+    match = re.search(pattern, content, re.DOTALL)
+    
+    if match:
+        updated_content = content[:match.start()] + new_function_content.rstrip() + content[match.end():]
+        with open(file_path, 'w') as file:
+            file.write(updated_content)
+        print(f"Function '{function_name}' has been overwritten in '{file_path}'.")
+    else:
+        print(f"Function '{function_name}' not found in '{file_path}'.")
+
+def overwrite_class(file_path, class_name, new_class_content):
+    with open(file_path, 'r') as file:
+        content = file.read()
+    
+    pattern = r'class\s+' + re.escape(class_name) + r'\s*(?:\([^)]*\))?:.*?(?=\n(?=\S)|\Z)'
+    match = re.search(pattern, content, re.DOTALL)
+    
+    if match:
+        updated_content = content[:match.start()] + new_class_content.rstrip() + content[match.end():]
+        with open(file_path, 'w') as file:
+            file.write(updated_content)
+        print(f"Class '{class_name}' has been overwritten in '{file_path}'.")
+    else:
+        print(f"Class '{class_name}' not found in '{file_path}'.")

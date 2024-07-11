@@ -1,4 +1,3 @@
-
 import unittest
 import os
 import sys
@@ -46,7 +45,7 @@ class TestBotTools(unittest.TestCase):
     def test_paste_over(self, name, initial_content, target, paste_content, expected):
         """Test the paste_over function with various scenarios."""
         bot_tools.rewrite(self.test_file, initial_content)
-        bot_tools.paste_over(self.test_file, target, paste_content)
+        bot_tools.replace(self.test_file, target, paste_content)
         with open(self.test_file, 'r') as f:
             self.assertEqual(f.read(), expected)
     
@@ -71,7 +70,7 @@ class TestBotTools(unittest.TestCase):
         """Test the append_to_file function to ensure it correctly appends content."""
         initial_content = "Initial content\n"
         bot_tools.rewrite(self.test_file, initial_content)
-        bot_tools.append_to_file(self.test_file, "Appended content")
+        bot_tools.append(self.test_file, "Appended content")
         with open(self.test_file, 'r') as f:
             self.assertEqual(f.read(), initial_content + "Appended content")
     
@@ -79,7 +78,7 @@ class TestBotTools(unittest.TestCase):
         """Test the prepend_to_file function to ensure it correctly prepends content."""
         initial_content = "Initial content\n"
         bot_tools.rewrite(self.test_file, initial_content)
-        bot_tools.prepend_to_file(self.test_file, "Prepended content\n")
+        bot_tools.prepend(self.test_file, "Prepended content\n")
         with open(self.test_file, 'r') as f:
             self.assertEqual(f.read(), "Prepended content\n" + initial_content)
     
@@ -98,7 +97,7 @@ class TestBotTools(unittest.TestCase):
             bot_tools.insert_after(non_existent_file, "target", "content")
         
         with self.assertRaises(FileNotFoundError):
-            bot_tools.paste_over(non_existent_file, "target", "content")
+            bot_tools.replace(non_existent_file, "target", "content")
         
         # Test for a function that doesn't exist
         line_number, definition = bot_tools.find_function_definition(self.test_file, "non_existent_function")

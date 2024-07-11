@@ -34,6 +34,7 @@ class Engines(Enum):
 
 
 class BaseBot(ABC):
+
     """
     Abstract base class for bot implementations.
     """
@@ -56,6 +57,7 @@ class BaseBot(ABC):
         self.role = role
         self.role_description = role_description
         self.conversation: Optional[CN.ConversationNode] = None
+        self.system_message = ""
 
     def respond(self, content: str, role: str = "user") -> str:
         """
@@ -108,7 +110,16 @@ class BaseBot(ABC):
         """
         Sends a message to the bot's mailbox (to be implemented by subclasses).
         """
+        pass     
+    
+    @abstractmethod
+    def set_system_message(self, message: str) -> None:
+        """
+        Sets the system message for the bot.
+        """
         pass
+
+        self.system_message = message
 
     def formatted_datetime(self) -> str:
         """
@@ -236,6 +247,14 @@ class BaseBot(ABC):
 
 
 class GPTBot(BaseBot):
+
+    def set_system_message(self, message: str) -> None:
+        """
+        Sets the system message for the GPTBot.
+        """
+        self.system_message = message
+        # TODO: Implement GPT-specific system message handling
+
     """
     ChatGPT-based bot implementation.
     """
@@ -276,6 +295,14 @@ class GPTBot(BaseBot):
 
 
 class AnthropicBot(BaseBot):
+
+    def set_system_message(self, message: str) -> None:
+        """
+        Sets the system message for the AnthropicBot.
+        """
+        self.system_message = message
+        # TODO: Implement Anthropic-specific system message handling
+
     """
     Anthropic-based bot implementation.
     """
@@ -332,4 +359,5 @@ def remove_code_blocks(text: str) -> tuple[list[str], list[str]]:
 
 
 if __name__ == "__main__":
-    GPTBot().converse()
+    #GPTBot().converse()
+    AnthropicBot().converse()

@@ -1,3 +1,4 @@
+
 from openai import OpenAI
 import json
 from datetime import datetime
@@ -38,6 +39,7 @@ class BaseMailbox(ABC):
         max_tokens: int,
         temperature: float,
         api_key: str,
+        system_message: Optional[str] = None
     ) -> tuple[str, str, Dict[str, Any]]:
         """
         Sends a message to the mailbox.
@@ -54,7 +56,7 @@ class BaseMailbox(ABC):
 
         try:
             response = self._send_message_implementation(
-                conversation, model, max_tokens, temperature, api_key
+                conversation, model, max_tokens, temperature, api_key, system_message
             )
         except Exception as e:
             raise e
@@ -78,6 +80,7 @@ class BaseMailbox(ABC):
         max_tokens: int,
         temperature: float,
         api_key: str,
+        system_message: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Implementation of sending a message (to be implemented by subclasses).
@@ -110,13 +113,17 @@ class OpenAIMailbox(BaseMailbox):
         max_tokens: int,
         temperature: float,
         api_key: str,
+        system_message: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Sends a message using the OpenAI API.
         """
         client = OpenAI(api_key=api_key)
+        messages = conversation.to_dict()
+        if system_message:
+            messages.insert(0, {"role": "system", "content": system_message})
         return client.chat.completions.create(
-            messages=conversation.to_dict(),
+            messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
             model=model,
@@ -129,6 +136,8 @@ class OpenAIMailbox(BaseMailbox):
         response_text = response.choices[0].message.content
         response_role = response.choices[0].message.role
         return response_text, response_role
+
+
 
 class AnthropicMailbox(BaseMailbox):
     """
@@ -147,35 +156,45 @@ class AnthropicMailbox(BaseMailbox):
         max_tokens: int,
         temperature: float,
         api_key: str,
+        system_message: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Sends a message using the Anthropic API.
         """
         client = anthropic.Anthropic(api_key=api_key)
 
-        # Anthropic API requires the first message to be from the user
-        def fix_messages(csvn: CN.ConversationNode) -> list[dict[str, str]]:
-            msg_dict = csvn.to_dict()
-            if msg_dict[0]["role"] == "assistant":
-                if self.verbose:
-                    Warning("Anthropic requires first message be from the user. Ignoring first message.")
-                msg_dict = msg_dict[1:]
-            return msg_dict
+        messages = self._fix_messages(conversation)
 
         try:
-            response = client.messages.create(
-                messages=fix_messages(conversation),
+
+            if system_message:
+                response = client.messages.create(
+                model=model,
                 max_tokens=max_tokens,
                 temperature=temperature,
+                system=system_message,
+                messages=messages
+                )
+            else:
+                response = client.messages.create(
                 model=model,
-            )
-        except Exception:
+                max_tokens=max_tokens,
+                temperature=temperature,
+                messages=messages
+                )
+        except Exception as e:
             print('\n\n\n ---debug---\n')
-            print(conversation.to_dict())
+            print(f"System message: {system_message}")
+            print(f"Messages: {messages}")
             print('\n---debug---\n\n\n')
-            raise Exception
+            raise e
 
         return response
+
+    def _fix_messages(self, csvn: CN.ConversationNode) -> list[dict[str, str]]:
+        messages = csvn.to_dict()
+        # Remove any 'system' role messages as Anthropic handles them separately
+        return [msg for msg in messages if msg['role'] != 'system']
 
     def _process_response(self, response: Dict[str, Any]) -> tuple[str, str]:
         """
