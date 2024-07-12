@@ -32,7 +32,7 @@ class TestBaseBot(unittest.TestCase):
 
 class TestGPTBot(unittest.TestCase):
     def setUp(self):
-        self.bot = GPTBot(api_key=None, model_engine=Engines.GPT4, max_tokens=100, temperature=0.7, name="TestGPTBot")
+        self.bot = GPTBot(api_key=None, model_engine=Engines.GPT4, max_tokens=100, temperature=0.7, name="TestGPTBot", role="assistant", role_description="Test bot")
         self.bot.mailbox = MockMailbox()
 
     def test_send_message(self):
@@ -43,7 +43,7 @@ class TestGPTBot(unittest.TestCase):
 
 class TestAnthropicBot(unittest.TestCase):
     def setUp(self):
-        self.bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE35, max_tokens=100, temperature=0.7, name="TestAnthropicBot")
+        self.bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE3, max_tokens=100, temperature=0.7, name="TestAnthropicBot")
         self.bot.mailbox = MockMailbox()
 
     def test_send_message(self):
