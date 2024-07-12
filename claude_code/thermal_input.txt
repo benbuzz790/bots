@@ -1,0 +1,23 @@
+# Grid configuration
+nx = 50
+ny = 50
+dx = 0.1
+dy = 0.1
+
+# Material properties
+k = 1.0
+
+# Boundary conditions
+left_temp = 0
+right_temp = 100
+top_temp = 100
+bottom_temp = 0
+
+# Heat source
+heat_source_x = 25
+heat_source_y = 25
+heat_source_q = 1000
+
+# Solver settings
+max_iter = 10000
+tolerance = 1e-6

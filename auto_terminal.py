@@ -110,8 +110,8 @@ def pretty(string, name=None, width=100, indent=4):
 
 def main():
     B1 = bots.AnthropicBot(name='Claude', model_engine=Engines.CLAUDE35)
-    #B1 = B1.load("Claude@2024.07.10-13.54.12.bot")
-    #pretty(B1.conversation.to_string())
+    B1 = B1.load("Claude@2024.07.12-07.52.47.bot")
+    pretty(B1.conversation.to_string())
     turn = 'user'
     auto = 0
 
@@ -165,7 +165,7 @@ def main():
             elif uinput.lower().startswith('/load'):
                 filename = input("Filename:")
                 if os.path.exists(filename):
-                    B1 = bots.load(filename)
+                    B1 = B1.load(filename)
                     pretty(f"Conversation loaded from {filename}", 'System')
                 else:
                     pretty(f"File {filename} not found.", 'System')
