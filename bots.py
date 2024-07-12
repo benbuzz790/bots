@@ -65,7 +65,7 @@ class BaseBot(ABC):
         self.temperature = temperature
         self.role = role
         self.role_description = role_description
-        self.conversation: Optional[CN.ConversationNode] = None
+        self.conversation: Optional[CN.ConversationNode] = CN.EmptyConversationNode()
         self.system_message = ""
 
     def respond(self, content: str, role: str = "user") -> str:
@@ -126,8 +126,6 @@ class BaseBot(ABC):
         """
         Sets the system message for the bot.
         """
-        pass
-
         self.system_message = message
 
     def formatted_datetime(self) -> str:
