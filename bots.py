@@ -8,6 +8,16 @@ import json
 import os
 from typing import Optional, Union, Type, Dict, Any
 
+# TODO
+# Implement batch respond
+# - use botmailbox's batch send
+# - appends a user reply, batch sends, and adds all responses to node.replies
+# - should be implementable in BaseBot, not necessary in child classes
+
+# TODO
+# Write unit tests
+# - create test_bots.py
+# - create unittests for bots and their functions
 
 class Engines(Enum):
     """
@@ -31,7 +41,6 @@ class Engines(Enum):
             return AnthropicBot
         else:
             raise ValueError(f"Unsupported model engine: {model_engine}")
-
 
 class BaseBot(ABC):
 
@@ -128,15 +137,6 @@ class BaseBot(ABC):
         now = DT.datetime.now()
         return now.strftime("%Y.%m.%d-%H.%M.%S")
 
-    def save_conversation_tree(self, conversation_root: CN.ConversationNode) -> None:
-        """
-        Saves the conversation tree to a file.
-        """
-        filename = f"{self.name}@{self.formatted_datetime()}.cvsn"
-        data = conversation_root.to_dict()
-        with open(filename, "w") as file:
-            json.dump(data, file)
-
     @classmethod
     def load(cls, filepath: str) -> "BaseBot":
         """
@@ -161,7 +161,7 @@ class BaseBot(ABC):
             )
             if 'system_message' in data:
                 bot.set_system_message(data['system_message'])
-                
+
             bot.conversation = CN.ConversationNode.from_dict(data["conversation"])
             
             node = bot.conversation
@@ -247,7 +247,6 @@ class BaseBot(ABC):
         """
         print(f"{self.name}: {string}")
 
-
 class GPTBot(BaseBot):
 
     def set_system_message(self, message: str) -> None:
@@ -294,7 +293,6 @@ class GPTBot(BaseBot):
         return self.mailbox.send_message(
             cvsn, self.model_engine, self.max_tokens, self.temperature, self.api_key
         )
-
 
 class AnthropicBot(BaseBot):
 
