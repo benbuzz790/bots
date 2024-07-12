@@ -130,3 +130,46 @@ class ConversationNode:
         for reply in self.replies:
             result += reply.__to_string__(level + 1)
         return result
+
+class EmptyConversationNode(ConversationNode):
+    """
+    Represents an empty conversation node, implementing the Null Object pattern.
+    """
+
+    def __init__(self):
+        super().__init__("empty", "")
+
+    def add_reply(self, content: str, role: str = "user") -> "ConversationNode":
+        return ConversationNode(content=content, role=role)
+
+    def append(self, conversation: "ConversationNode") -> "ConversationNode":
+        return conversation
+
+    def root(self) -> "ConversationNode":
+        return self
+
+    def depth(self) -> int:
+        return 0
+
+    def _root(self) -> tuple["ConversationNode", int]:
+        return self, 0
+
+    def to_dict(self) -> list[Dict[str, str]]:
+        return []
+
+    @classmethod
+    def from_dict(cls, data: Union[Dict[str, Any], list[Dict[str, str]]]) -> "EmptyConversationNode":
+        return cls()
+
+    def to_json(self) -> str:
+        return "[]"
+
+    @classmethod
+    def from_json(cls, json_data: str) -> "EmptyConversationNode":
+        return cls()
+
+    def to_string(self) -> str:
+        return ""
+
+    def __to_string__(self, level: int = 0) -> str:
+        return ""

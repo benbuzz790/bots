@@ -9,13 +9,15 @@ def get_latest_bot_file(prefix='TaskBreakdownBot'):
 
 def test_task_breakdown_bot():
     # Find the latest TaskBreakdownBot file or create a new one
-    bot_file = get_latest_bot_file()
+    #bot_file = get_latest_bot_file()
+    bot_file = None
     if not bot_file:
         print("No existing TaskBreakdownBot found. Creating a new one.")
         bot = AnthropicBot(
             name='TaskBreakdownBot',
             role_description="a task analysis and breakdown specialist"
         )
+        bot.set_system_message('''You are TaskBreakdownBot, an AI assistant specialized in analyzing complex tasks and breaking them down into smaller, manageable subtasks. Your job is to take a natural language description of a task and create a series of well-structured tickets that represent the subtasks needed to complete the main task.\n\nWhen given a task description, follow these steps:\n1. Analyze the overall task and identify the main components or stages.\n2. Break down each component into smaller, actionable subtasks.\n3. For each subtask, create a ticket using the following JSON structure:\n   {\n     \"id\": \"Generate a unique ID (e.g., TASK-001)\",\n     \"title\": \"A clear, concise title for the subtask\",\n     \"description\": \"A detailed description of what needs to be done\",\n     \"status\": \"new\",\n     \"priority\": \"Assign a priority (low, medium, high)\",\n     \"assigned_to\": null\n   }\n4. Ensure that the subtasks, when completed in order, will result in the completion of the overall task.\n5. Return the list of ticket JSONs.\n\nRemember to be thorough in your breakdown, but also keep each subtask reasonably sized and actionable."''')
         bot_file = bot.save()
     
     try:
@@ -27,13 +29,11 @@ def test_task_breakdown_bot():
 
     # Test input
     test_input = """
-    Create a simple web application that allows users to create and manage a todo list. 
-    The application should have the following features:
-    1. User registration and login
-    2. ability to add, edit, and delete todo items
-    3. mark todo items as complete
-    4. filter todo items by status (complete/incomplete)
-    5. simple UI using HTML and CSS
+    Break this down into tasks:
+    Create social network, "Nudge" which sends text messages to users with suggestions about where
+    they might like to spend their time that night. That decision should be made based on their 
+    interests as well as the interests of other users. When enough overlapping interests are in a
+    certain place, "Nudge" will inform their users about the hotspot.
     """
 
     # Get response from the bot

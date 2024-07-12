@@ -159,9 +159,11 @@ class BaseBot(ABC):
                 role=data["role"],
                 role_description=data["role_description"],
             )
-
+            bot.set_system_message(data['system_message'])
             if data["conversation"]:
                 bot.conversation = CN.ConversationNode.from_dict(data["conversation"])
+            else:
+                bot.conversation = CN.EmptyConversationNode()
 
             node = bot.conversation
             while node.replies: # while node.replies is not an empty list
@@ -190,6 +192,7 @@ class BaseBot(ABC):
             "role": self.role,
             "role_description": self.role_description,
             "conversation": self.conversation.to_dict() if self.conversation else None,
+            "system_message": self.system_message
         }
         with open(filename, "w") as file:
             json.dump(data, file)
