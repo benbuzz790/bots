@@ -9,6 +9,10 @@ import conversation_node as CN
 from typing import Optional, Dict, Any
 
 #TODO fix logging
+# - log each ingoing and outgoing message in plain text in a comfortably human-readable way.
+
+#TODO implement dispatching / multi-threading
+# - do so with a "batch send" function for now
 
 class BaseMailbox(ABC):
     """

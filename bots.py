@@ -160,11 +160,7 @@ class BaseBot(ABC):
                 role_description=data["role_description"],
             )
             bot.set_system_message(data['system_message'])
-
-            if "conversation" in data:
-                bot.conversation = CN.ConversationNode.from_dict(data["conversation"])
-            else:
-                bot.conversation = CN.EmptyConversationNode()
+            bot.conversation = CN.ConversationNode.from_dict(data["conversation"])
             
             node = bot.conversation
             while node.replies: # while node.replies is not an empty list
@@ -314,7 +310,7 @@ class AnthropicBot(BaseBot):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_engine: Engines = Engines.CLAUDE3OPUS,
+        model_engine: Engines = Engines.CLAUDE35,
         max_tokens: int = 4096,
         temperature: float = 0.9,
         name: str = "bot",
