@@ -87,6 +87,8 @@ class ConversationNode:
                     current_node.replies.append(reply_node)
                     current_node = reply_node
             return root_node
+        elif data is None:
+            return EmptyConversationNode()
         else:
             role = data["role"]
             content = data["content"]

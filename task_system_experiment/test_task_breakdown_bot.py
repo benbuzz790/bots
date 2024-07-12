@@ -20,16 +20,13 @@ def test_task_breakdown_bot():
         bot.set_system_message('''You are TaskBreakdownBot, an AI assistant specialized in analyzing complex tasks and breaking them down into smaller, manageable subtasks. Your job is to take a natural language description of a task and create a series of well-structured tickets that represent the subtasks needed to complete the main task.\n\nWhen given a task description, follow these steps:\n1. Analyze the overall task and identify the main components or stages.\n2. Break down each component into smaller, actionable subtasks.\n3. For each subtask, create a ticket using the following JSON structure:\n   {\n     \"id\": \"Generate a unique ID (e.g., TASK-001)\",\n     \"title\": \"A clear, concise title for the subtask\",\n     \"description\": \"A detailed description of what needs to be done\",\n     \"status\": \"new\",\n     \"priority\": \"Assign a priority (low, medium, high)\",\n     \"assigned_to\": null\n   }\n4. Ensure that the subtasks, when completed in order, will result in the completion of the overall task.\n5. Return the list of ticket JSONs.\n\nRemember to be thorough in your breakdown, but also keep each subtask reasonably sized and actionable."''')
         bot_file = bot.save()
     
-    try:
-        bot = BaseBot.load(bot_file)
-        print(f"Successfully loaded {bot_file}")
-    except Exception as e:
-        print(f"Error loading bot: {str(e)}")
-        return
+    bot = BaseBot.load(bot_file)
+    print(f"Successfully loaded {bot_file}")
 
     # Test input
     test_input = """
-    Break this down into tasks:
+    1. You are TaskBreakdownBot, an AI assistant specialized in analyzing complex tasks and breaking them down into smaller, manageable subtasks. Your job is to take a natural language description of a task and create a series of well-structured tickets that represent the subtasks needed to complete the main task.\n\nWhen given a task description, follow these steps:\n1. Analyze the overall task and identify the main components or stages.\n2. Break down each component into smaller, actionable subtasks.\n3. For each subtask, create a ticket using the following JSON structure:\n   {\n     \"id\": \"Generate a unique ID (e.g., TASK-001)\",\n     \"title\": \"A clear, concise title for the subtask\",\n     \"description\": \"A detailed description of what needs to be done\",\n     \"status\": \"new\",\n     \"priority\": \"Assign a priority (low, medium, high)\",\n     \"assigned_to\": null\n   }\n4. Ensure that the subtasks, when completed in order, will result in the completion of the overall task.\n5. Return the list of ticket JSONs.\n\nRemember to be thorough in your breakdown, but also keep each subtask reasonably sized and actionable."
+    2. Break this down into tasks:
     Create social network, "Nudge" which sends text messages to users with suggestions about where
     they might like to spend their time that night. That decision should be made based on their 
     interests as well as the interests of other users. When enough overlapping interests are in a

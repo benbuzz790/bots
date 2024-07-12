@@ -160,11 +160,12 @@ class BaseBot(ABC):
                 role_description=data["role_description"],
             )
             bot.set_system_message(data['system_message'])
-            if data["conversation"]:
+
+            if "conversation" in data:
                 bot.conversation = CN.ConversationNode.from_dict(data["conversation"])
             else:
                 bot.conversation = CN.EmptyConversationNode()
-
+            
             node = bot.conversation
             while node.replies: # while node.replies is not an empty list
                 node = node.replies[0]
