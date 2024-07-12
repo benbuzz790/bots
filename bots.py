@@ -159,7 +159,9 @@ class BaseBot(ABC):
                 role=data["role"],
                 role_description=data["role_description"],
             )
-            bot.set_system_message(data['system_message'])
+            if 'system_message' in data:
+                bot.set_system_message(data['system_message'])
+                
             bot.conversation = CN.ConversationNode.from_dict(data["conversation"])
             
             node = bot.conversation
