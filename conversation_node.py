@@ -3,6 +3,12 @@ from typing import Optional, Dict, Any, Union
 
 
 class ConversationNode:
+    def copy(self):
+        """Create a deep copy of the ConversationNode."""
+        new_node = ConversationNode(self.role, self.content)
+        new_node.replies = [reply.copy() for reply in self.replies]
+        return new_node
+
     """
     Represents a node in a conversation tree.
     """
