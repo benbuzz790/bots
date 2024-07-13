@@ -1,12 +1,14 @@
+
 from abc import ABC, abstractmethod
 from enum import Enum
-import conversation_node as CN
-import bot_mailbox as MB
+from typing import Optional, Union, Type, Dict, Any
 import datetime as DT
-import re
 import json
 import os
-from typing import Optional, Union, Type, Dict, Any
+import re
+
+import conversation_node as CN
+import bot_mailbox as MB
 
 # TODO
 # Implement batch respond
@@ -20,9 +22,7 @@ from typing import Optional, Union, Type, Dict, Any
 # - create unittests for bots and their functions
 
 class Engines(Enum):
-    """
-    Enum class representing different AI model engines.
-    """
+    """Enum class representing different AI model engines."""
     GPT4 = "gpt-4"
     GPT432k = "gpt-4-32k"
     GPT35 = "gpt-3.5-turbo"
@@ -32,9 +32,7 @@ class Engines(Enum):
 
     @staticmethod
     def get_bot_class(model_engine: "Engines") -> Type["BaseBot"]:
-        """
-        Returns the bot class based on the model engine.
-        """
+        """Returns the bot class based on the model engine."""
         if model_engine in [Engines.GPT4, Engines.GPT35, Engines.GPT432k]:
             return GPTBot
         elif model_engine in [Engines.CLAUDE3OPUS, Engines.CLAUDE3SONNET]:
@@ -43,10 +41,7 @@ class Engines(Enum):
             raise ValueError(f"Unsupported model engine: {model_engine}")
 
 class BaseBot(ABC):
-
-    """
-    Abstract base class for bot implementations.
-    """
+    """Abstract base class for bot implementations."""
 
     def __init__(
         self,
@@ -69,9 +64,7 @@ class BaseBot(ABC):
         self.system_message = ""
 
     def respond(self, content: str, role: str = "user") -> str:
-        """
-        Generates a response based on the given content and role.
-        """
+        """Generates a response based on the given content and role."""
         reply, self.conversation = self.cvsn_respond(
             text=content, cvsn=self.conversation, role=role
         )
@@ -83,9 +76,7 @@ class BaseBot(ABC):
         cvsn: Optional[CN.ConversationNode] = None,
         role: str = "user",
     ) -> Union[str, CN.ConversationNode]:
-        """
-        Generates a response based on the conversation node and text.
-        """
+        """Generates a response based on the conversation node and text."""
         if cvsn is not None and text is not None:
             try:
                 cvsn = cvsn.add_reply(text, role)
@@ -112,34 +103,28 @@ class BaseBot(ABC):
             except Exception as e:
                 raise e
         else:
-            raise Exception
+            raise Exception("Invalid input: both text and cvsn are None")
 
     @abstractmethod
     def _send_message(self, cvsn: CN.ConversationNode) -> tuple:
-        """
-        Sends a message to the bot's mailbox (to be implemented by subclasses).
-        """
+        """Sends a message to the bot's mailbox (to be implemented by subclasses)."""
         pass     
     
     @abstractmethod
     def set_system_message(self, message: str) -> None:
-        """
-        Sets the system message for the bot.
-        """
+        """Sets the system message for the bot."""
         self.system_message = message
 
     def formatted_datetime(self) -> str:
-        """
-        Returns the current date and time in a formatted string.
-        """
+        """Returns the current date and time in a formatted string."""
         now = DT.datetime.now()
         return now.strftime("%Y.%m.%d-%H.%M.%S")
 
     @classmethod
     def load(cls, filepath: str) -> "BaseBot":
         """
-        Loads a bot instance or conversation from a file. Opens to the leaf in the chain of first replies.
-        (I.e. the last message in a linear conversation)
+        Loads a bot instance or conversation from a file. Opens to the leaf in
+        the chain of first replies. (I.e. the last message in a linear conversation)
         """
         _, extension = os.path.splitext(filepath)
 
@@ -150,7 +135,7 @@ class BaseBot(ABC):
             bot_class = globals()[data["bot_class"]]
             bot = bot_class(
                 api_key=None,
-                model_engine=Engines(data["model_engine"]), #does this actually load the right thing?
+                model_engine=Engines(data["model_engine"]),
                 max_tokens=data["max_tokens"],
                 temperature=data["temperature"],
                 name=data["name"],
@@ -163,7 +148,7 @@ class BaseBot(ABC):
             bot.conversation = CN.ConversationNode.from_dict(data["conversation"])
             
             node = bot.conversation
-            while node.replies: # while node.replies is not an empty list
+            while node.replies:  # while node.replies is not an empty list
                 node = node.replies[0]
             bot.conversation = node
 
@@ -173,9 +158,7 @@ class BaseBot(ABC):
             raise ValueError(f"Unsupported file extension: {extension}")
 
     def save(self, filename: Optional[str] = None) -> str:
-        """
-        Saves the bot instance to a file. Returns the filename.
-        """
+        """Saves the bot instance to a file. Returns the filename."""
         now = DT.datetime.now()
         formatted_datetime = now.strftime("%Y.%m.%d-%H.%M.%S")
         if filename is None:
@@ -197,9 +180,7 @@ class BaseBot(ABC):
         return filename
 
     def converse(self) -> None:
-        """
-        Starts an interactive conversation with the bot in the console.
-        """
+        """Starts an interactive conversation with the bot in the console."""
         self.sys_say("Begin Conversation")
 
         while True:
@@ -210,7 +191,8 @@ class BaseBot(ABC):
                     self.sys_say("Debug:")
                     print("\n")
                     self.sys_say(
-                        f"Name:{self.name}, Role:{self.role}, Description:{self.role_description}"
+                        f"Name:{self.name}, Role:{self.role}, "
+                        f"Description:{self.role_description}"
                     )
                     print("\n")
                     print("\n")
@@ -234,29 +216,14 @@ class BaseBot(ABC):
                     self.say(response)
 
     def sys_say(self, string: str) -> None:
-        """
-        Prints a message from the system.
-        """
+        """Prints a message from the system."""
         print(f"System: {string}")
 
     def say(self, string: str) -> None:
-        """
-        Prints a message from the bot.
-        """
+        """Prints a message from the bot."""
         print(f"{self.name}: {string}")
-
 class GPTBot(BaseBot):
-
-    def set_system_message(self, message: str) -> None:
-        """
-        Sets the system message for the GPTBot.
-        """
-        self.system_message = message
-        # TODO: Implement GPT-specific system message handling
-
-    """
-    ChatGPT-based bot implementation.
-    """
+    """ChatGPT-based bot implementation."""
 
     def __init__(
         self,
@@ -268,42 +235,34 @@ class GPTBot(BaseBot):
         role: str = "assistant",
         role_description: str = "a friendly AI assistant",
     ):
-        super().__init__(api_key, model_engine.value, max_tokens, temperature, name, role, role_description)
+        super().__init__(api_key, model_engine.value, max_tokens, temperature,
+                         name, role, role_description)
         match model_engine:
             case Engines.GPT4 | Engines.GPT35 | Engines.GPT432k:
                 self.mailbox = MB.OpenAIMailbox(verbose=True)
             case _:
                 raise Exception(f"model_engine: {model_engine} not found")
 
+    def set_system_message(self, message: str) -> None:
+        """Sets the system message for the GPTBot."""
+        self.system_message = message
+        # TODO: Implement GPT-specific system message handling
+
     @classmethod
     def load(cls, filepath: str) -> "BaseBot":
-        """
-        Loads a bot instance from a file.
-        """
+        """Loads a bot instance from a file."""
         return super().load(filepath)
 
     def _send_message(
         self, cvsn: CN.ConversationNode
     ) -> tuple[str, str, Dict[str, Any]]:
-        """
-        Sends a message to the bot's mailbox using the OpenAI API.
-        """
+        """Sends a message to the bot's mailbox using the OpenAI API."""
         return self.mailbox.send_message(
             cvsn, self.model_engine, self.max_tokens, self.temperature, self.api_key
         )
 
 class AnthropicBot(BaseBot):
-
-    def set_system_message(self, message: str) -> None:
-        """
-        Sets the system message for the AnthropicBot.
-        """
-        self.system_message = message
-        # TODO: Implement Anthropic-specific system message handling
-
-    """
-    Anthropic-based bot implementation.
-    """
+    """Anthropic-based bot implementation."""
 
     def __init__(
         self,
@@ -315,33 +274,31 @@ class AnthropicBot(BaseBot):
         role: str = "assistant",
         role_description: str = "a friendly AI assistant",
     ):
-        super().__init__(api_key, model_engine.value, max_tokens, temperature, name, role, role_description)
+        super().__init__(api_key, model_engine.value, max_tokens, temperature,
+                         name, role, role_description)
         match model_engine:
             case Engines.CLAUDE3OPUS | Engines.CLAUDE3SONNET | Engines.CLAUDE35:
                 self.mailbox = MB.AnthropicMailbox(verbose=True)
             case _:
                 raise Exception(f"model_engine: {model_engine} not found")
 
+    def set_system_message(self, message: str) -> None:
+        """Sets the system message for the AnthropicBot."""
+        self.system_message = message
+        # TODO: Implement Anthropic-specific system message handling
+
     @classmethod
     def load(cls, filepath: str) -> "AnthropicBot":
-        """
-        Loads an AnthropicBot instance from a file.
-        """
+        """Loads an AnthropicBot instance from a file."""
         return super().load(filepath)
 
     def _send_message(
         self, cvsn: CN.ConversationNode
     ) -> tuple[str, str, Dict[str, Any]]:
-        """
-        Sends a message to the bot's mailbox using the Anthropic API.
-        """
-
-        response = self.mailbox.send_message(
+        """Sends a message to the bot's mailbox using the Anthropic API."""
+        return self.mailbox.send_message(
             cvsn, self.model_engine, self.max_tokens, self.temperature, self.api_key
         )
-
-        return response
-
 
 def remove_code_blocks(text: str) -> tuple[list[str], list[str]]:
     """

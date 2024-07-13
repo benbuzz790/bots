@@ -20,7 +20,7 @@ class IndentVisitor(ast.NodeTransformer):
         else:
             node = self.generic_visit(node)
         if hasattr(node, 'body') and isinstance(node.body, list):
-            node.body = [ast.Expr(ast.Str(self.indent * self.level))] + node.body
+            node.body = [ast.Expr(ast.Constant(kind='str', value=self.indent * self.level))] + node.body
         return node
 
 def indent_code(code, indent='    '):
