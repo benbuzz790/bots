@@ -59,11 +59,16 @@ if __name__ == '__main__':
 
     # Create a temporary file in the current working directory
     temp_file_name = os.path.join(os.getcwd(), 'temp_script.py')
+    temp_file_copy = os.path.join(os.getcwd(), 'last_temp_script.py')
     
     with open(temp_file_name, 'w', encoding='utf-8') as temp_file:
         temp_file.write(code)
         temp_file.flush()
     
+    with open(temp_file_copy, 'w', encoding='utf-8') as temp_file:
+        temp_file.write(code)
+        temp_file.flush()
+
     try:
         # Execute the Python code in a separate process
         process = subprocess.Popen(['python', temp_file_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8')

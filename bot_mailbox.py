@@ -56,18 +56,19 @@ class BaseMailbox(ABC):
     def batch_send(self, conversations, model, max_tokens, temperature, api_key, system_message=None):
         threads = []
         results = [None] * len(conversations)
+        
         def send_thread(index, conv):
-            try:
-                result = self.send_message(conv, model, max_tokens, temperature, api_key, system_message)
-                results[index] = result
-            except Exception as e:
-                results[index] = e
+            result = self.send_message(conv, model, max_tokens, temperature, api_key, system_message)
+            results[index] = result
+        
         for i, conversation in enumerate(conversations):
             thread = threading.Thread(target=send_thread, args=(i, conversation))
             threads.append(thread)
             thread.start()
+        
         for thread in threads:
             thread.join()
+        
         return results
 
 class OpenAIMailbox(BaseMailbox):

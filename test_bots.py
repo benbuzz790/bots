@@ -3,11 +3,11 @@ from bots import BaseBot, GPTBot, AnthropicBot, Engines
 import conversation_node as CN
 
 class MockMailbox:
-    def send_message(self, cvsn, model_engine, max_tokens, temperature, api_key):
+    def send_message(self, cvsn, model_engine, max_tokens, temperature, api_key, system_message=None):
         return "Mock response", "assistant", {}
 
-    def batch_send(self, cvsn, model_engine, max_tokens, temperature, api_key, num_messages):
-        return ["Mock response"] * num_messages
+    def batch_send(self, conversations, model_engine, max_tokens, temperature, api_key, system_message=None):
+        return [("Mock response", "assistant", {}) for _ in conversations]
 
 class TestBaseBot(unittest.TestCase):
     def setUp(self):
@@ -19,9 +19,9 @@ class TestBaseBot(unittest.TestCase):
         self.assertEqual(response, "Mock response")
 
     def test_batch_respond(self):
-        messages = ["Hello", "How are you?"]
-        responses = self.bot.batch_respond(messages)
-        self.assertEqual(responses, ["Mock response", "Mock response"])
+        responses = self.bot.batch_respond("Hello", num_responses=3)
+        self.assertEqual(responses, ["Mock response", "Mock response", "Mock response"])
+        self.assertEqual(len(self.bot.conversation.replies), 3)
 
     def test_save_and_load(self):
         self.bot.conversation = CN.ConversationNode(role="user", content="Test message")
@@ -41,9 +41,14 @@ class TestGPTBot(unittest.TestCase):
         self.assertEqual(response, "Mock response")
         self.assertEqual(role, "assistant")
 
+    def test_batch_respond(self):
+        responses = self.bot.batch_respond("Hello", num_responses=3)
+        self.assertEqual(responses, ["Mock response", "Mock response", "Mock response"])
+        self.assertEqual(len(self.bot.conversation.replies), 3)
+
 class TestAnthropicBot(unittest.TestCase):
     def setUp(self):
-        self.bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE3, max_tokens=100, temperature=0.7, name="TestAnthropicBot")
+        self.bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE35, max_tokens=100, temperature=0.7, name="TestAnthropicBot")
         self.bot.mailbox = MockMailbox()
 
     def test_send_message(self):
@@ -51,6 +56,11 @@ class TestAnthropicBot(unittest.TestCase):
         response, role, _ = self.bot._send_message(cvsn)
         self.assertEqual(response, "Mock response")
         self.assertEqual(role, "assistant")
+
+    def test_batch_respond(self):
+        responses = self.bot.batch_respond("Hello", num_responses=3)
+        self.assertEqual(responses, ["Mock response", "Mock response", "Mock response"])
+        self.assertEqual(len(self.bot.conversation.replies), 3)
 
 if __name__ == '__main__':
     unittest.main()

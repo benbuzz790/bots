@@ -1,78 +1,40 @@
+import bot_tools
 
-import sys
-import traceback
+new_batch_respond = '''
+def batch_respond(self, content: str, num_responses: int = 3, role: str = "user") -> list[str]:
+    """Generates multiple responses based on the given content and role."""
 
-def main():
-    import bot_tools
-    new_function = """def execute_python_code(code, timeout=300):
-""\"Execute Python code with timeout and error handling.""\"
-wrapped_code = f""\"
-import sys
-import traceback
+    # Create a single conversation node with the user's input
+    updated_conversation = self.conversation.add_reply(content, role)
 
-def main():
-{code}
+    # Create multiple copies of the updated conversation for batch processing
+    conversations = [updated_conversation.copy() for _ in range(num_responses)]
 
-if __name__ == '__main__':
-    try:
-        main()
-    except Exception as error:
-        print(f"An error occurred: {{str(error)}}", file=sys.stderr)
-        print("Local variables at the time of the error:", file=sys.stderr)
-        tb = sys.exc_info()[2]
-        while tb:
-            frame = tb.tb_frame
-            tb = tb.tb_next
-            print(f"Frame {{frame.f_code.co_name}} in {{frame.f_code.co_filename}}:{{frame.f_lineno}}", file=sys.stderr)
-            local_vars = dict(frame.f_locals)
-            for key, value in local_vars.items():
-                if not key.startswith('__') and key not in ['sys', 'traceback', 'error', 'main', 'tb', 'frame']:
-                    print(f"    {{key}} = {{value}}", file=sys.stderr)
-        traceback.print_exc(file=sys.stderr)
-""\"
+    # Use botmailbox's batch_send method
+    results = self.mailbox.batch_send(
+        conversations,
+        self.model_engine,
+        self.max_tokens,
+        self.temperature,
+        self.api_key,
+        self.system_message
+    )
 
-    temp_file_name = os.path.join(os.getcwd(), 'temp_script.py')
-    temp_file_copy = os.path.join(os.getcwd(), 'last_temp_script.py')
-    
-    with open(temp_file_name, 'w', encoding='utf-8') as temp_file:
-        temp_file.write(wrapped_code)
-        temp_file.flush()
-    
-    with open(temp_file_copy, 'w', encoding='utf-8') as temp_file:
-        temp_file.write(wrapped_code)
-        temp_file.flush()
+    responses = []
+    for result in results:
+        response_text, response_role, _ = result
+        responses.append(response_text)
+        # Add each response as a reply to the original conversation
+        self.conversation = self.conversation.add_reply(response_text, response_role)
 
-    try:
-        process = subprocess.Popen(['python', temp_file_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8')
-        try:
-            stdout, stderr = process.communicate(timeout=timeout)
-            return stdout + stderr
-        except subprocess.TimeoutExpired:
-            process.terminate()
-            return f"Error: Code execution timed out after {timeout} seconds."
-    except Exception as e:
-        return f"Error: {str(e)}"
-    finally:
-        if os.path.exists(temp_file_name):
-            os.remove(temp_file_name)"""
-    bot_tools.overwrite_function('auto_terminal.py', 'execute_python_code',
-    new_function)
-    print('The execute_python_code function has been updated in auto_terminal.py')
+    return responses
 
+# TODO: Add unit tests for the batch_respond method in test_bots.py
+# - Test with different number of responses
+# - Verify that the conversation structure is correct after batch responses
+# - Check if the returned responses match the added replies
+'''
 
-if __name__ == '__main__':
-    try:
-        main()
-    except Exception as error:
-        print(f"An error occurred: {str(error)}", file=sys.stderr)
-        print("Local variables at the time of the error:", file=sys.stderr)
-        tb = sys.exc_info()[2]
-        while tb:
-            frame = tb.tb_frame
-            tb = tb.tb_next
-            print(f"Frame {frame.f_code.co_name} in {frame.f_code.co_filename}:{frame.f_lineno}", file=sys.stderr)
-            local_vars = dict(frame.f_locals)
-            for key, value in local_vars.items():
-                if not key.startswith('__') and key not in ['sys', 'traceback', 'error', 'main', 'tb', 'frame']:
-                    print(f"    {key} = {value}", file=sys.stderr)
-        traceback.print_exc(file=sys.stderr)
+bot_tools.replace('bots.py', 'def batch_respond(self, content: str, num_responses: int = 3, role: str = "user") -> list[str]:', new_batch_respond)
+
+print("batch_respond method has been updated in bots.py")
