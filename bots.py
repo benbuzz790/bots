@@ -99,11 +99,6 @@ class BaseBot(ABC):
 
         return responses
 
-    # TODO: Add unit tests for the batch_respond method in test_bots.py
-    # - Test with different number of responses
-    # - Verify that the conversation structure is correct after batch responses
-    # - Check if the returned responses match the added replies
-
     def cvsn_respond(
         self,
         text: Optional[str] = None,
