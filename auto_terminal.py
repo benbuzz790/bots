@@ -19,24 +19,30 @@ class IndentVisitor(ast.NodeTransformer):
             self.level -= 1
         else:
             node = self.generic_visit(node)
+        
         if hasattr(node, 'body') and isinstance(node.body, list):
-            node.body = [ast.Expr(ast.Constant(kind='str', value=self.indent * self.level))] + node.body
+            for item in node.body:
+                if hasattr(item, 'col_offset'):
+                    item.col_offset = len(self.indent) * self.level
         return node
+
+def custom_string_formatter(string, embedded=False, current_line=None, uni_lit=False):
+    return repr(string)
 
 def indent_code(code, indent='    '):
     tree = ast.parse(code)
     IndentVisitor(indent).visit(tree)
-    return astor.to_source(tree)
+    return astor.to_source(tree, indent_with=indent, pretty_string=custom_string_formatter).strip()
 
 def execute_python_code(code, timeout=300):
-    # Indent the code using AST
+    # Indent the original code
     indented_code = indent_code(code)
     # Wrap the indented code in a function
     wrapped_code = f"""
 import sys
 import traceback
 def main():
-{indented_code}
+{textwrap.indent(indented_code, '    ')}
 if __name__ == '__main__':
     try:
         main()
@@ -47,26 +53,26 @@ if __name__ == '__main__':
         while tb:
             frame = tb.tb_frame
             tb = tb.tb_next
-            print(f"Frame {{frame.f_code.co_name}} in
-{{frame.f_code.co_filename}}:{{frame.f_lineno}}", file=sys.stderr)
+            print(f"Frame {{frame.f_code.co_name}} in {{frame.f_code.co_filename}}:{{frame.f_lineno}}", file=sys.stderr)
             local_vars = dict(frame.f_locals)
             for key, value in local_vars.items():
-                if not key.startswith('__') and key not in ['sys', 'traceback', 'error_error',
-'main', 'tb', 'frame', 'Frame']:
+                if not key.startswith('__') and key not in ['sys', 'traceback', 'error_error', 'main', 'tb', 'frame', 'Frame']:
                     print(f"    {{key}} = {{value}}", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
 """
+    # Then, use AST to fix indentation of the entire wrapped code
+    indented_code = indent_code(wrapped_code)
 
-    # Create a temporary file in the current working directory
+    # The rest of the function remains the same...
     temp_file_name = os.path.join(os.getcwd(), 'temp_script.py')
     temp_file_copy = os.path.join(os.getcwd(), 'last_temp_script.py')
     
     with open(temp_file_name, 'w', encoding='utf-8') as temp_file:
-        temp_file.write(code)
+        temp_file.write(indented_code)
         temp_file.flush()
     
     with open(temp_file_copy, 'w', encoding='utf-8') as temp_file:
-        temp_file.write(code)
+        temp_file.write(indented_code)
         temp_file.flush()
 
     try:
