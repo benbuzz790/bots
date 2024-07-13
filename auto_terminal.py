@@ -110,7 +110,7 @@ def pretty(string, name=None, width=100, indent=4):
 
 def main():
     B1 = bots.AnthropicBot(name='Claude', model_engine=Engines.CLAUDE35)
-    B1 = B1.load("Claude@2024.07.12-10.23.14.bot")
+    B1 = B1.load("Claude@2024.07.12-07.52.47.bot")
     pretty(B1.conversation.to_string())
     turn = 'user'
     auto = 0
