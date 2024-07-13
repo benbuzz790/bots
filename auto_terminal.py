@@ -11,7 +11,7 @@ class IndentVisitor(ast.NodeTransformer):
     def __init__(self, indent='    '):
         self.indent = indent
         self.level = 0
-    
+
     def visit(self, node):
         if isinstance(node, (ast.FunctionDef, ast.ClassDef, ast.If, ast.For, ast.While, ast.With)):
             self.level += 1
@@ -23,7 +23,8 @@ class IndentVisitor(ast.NodeTransformer):
         if hasattr(node, 'body') and isinstance(node.body, list):
             for item in node.body:
                 if hasattr(item, 'col_offset'):
-                    item.col_offset = len(self.indent) * self.level
+                    if not (isinstance(item, ast.Expr) and isinstance(item.value, ast.Str)):
+                        item.col_offset = len(self.indent) * self.level
         return node
 
 def custom_string_formatter(string, embedded=False, current_line=None, uni_lit=False):
@@ -34,6 +35,37 @@ def indent_code(code, indent='    '):
     IndentVisitor(indent).visit(tree)
     return astor.to_source(tree, indent_with=indent, pretty_string=custom_string_formatter).strip()
 
+def remove_initial_tab(code):
+    lines = code.split('\n')
+    if all(line.startswith('\t') or line == '' for line in lines):
+        return '\n'.join(line[1:] if line else '' for line in lines)
+    return code
+
+def custom_indent(code, indent='    '):
+    lines = code.split('\n')
+    in_string = False
+    string_delimiter = None
+    indented_lines = []
+
+    for line in lines:
+        stripped = line.strip()
+        
+        # Check for the start or end of a multi-line string
+        if not in_string and (stripped.startswith('"""') or stripped.startswith("'''")):
+            in_string = True
+            string_delimiter = stripped[:3]
+        elif in_string and stripped.endswith(string_delimiter):
+            in_string = False
+            string_delimiter = None
+
+        # Apply indentation only if not in a multi-line string
+        if in_string:
+            indented_lines.append(line)
+        else:
+            indented_lines.append(indent + line if line.strip() else line)
+
+    return '\n'.join(indented_lines)
+
 def execute_python_code(code, timeout=300):
     # Indent the original code
     indented_code = indent_code(code)
@@ -42,7 +74,7 @@ def execute_python_code(code, timeout=300):
 import sys
 import traceback
 def main():
-{textwrap.indent(indented_code, '    ')}
+{custom_indent(indented_code)}
 if __name__ == '__main__':
     try:
         main()
