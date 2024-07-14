@@ -1,8 +1,0 @@
-{
-  "id": "unique_id",
-  "title": "Task title",
-  "description": "Detailed task description",
-  "status": "new",
-  "priority": "medium",
-  "assigned_to": null
-}
