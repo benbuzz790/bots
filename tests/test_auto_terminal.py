@@ -1,14 +1,12 @@
-
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import unittest
 from unittest.mock import patch, MagicMock
-import io
-import sys
-import os
 import ast
-import astor
-import textwrap
 import subprocess
-from auto_terminal import (
+import src.bots as bots
+from src.auto_terminal import (
     IndentVisitor, 
     indent_code, 
     execute_python_code, 
@@ -118,7 +116,7 @@ if __name__ == '__main__':
         self.assertIn("Error: Code execution timed out", result)
     
     @patch('builtins.input', side_effect=['/exit'])
-    @patch('bots.AnthropicBot')
+    @patch('src.bots.AnthropicBot')
     def test_main_exit(self, mock_bot, mock_input):
         mock_bot_instance = MagicMock()
         mock_bot.return_value = mock_bot_instance
@@ -128,7 +126,7 @@ if __name__ == '__main__':
             main()
 
     @patch('builtins.input', side_effect=['/save', '/exit'])
-    @patch('bots.AnthropicBot')
+    @patch('src.bots.AnthropicBot')
     def test_main_save(self, mock_bot, mock_input):
         mock_bot_instance = MagicMock()
         mock_bot.return_value = mock_bot_instance
@@ -141,7 +139,7 @@ if __name__ == '__main__':
         mock_bot_instance.save.assert_called_once()
 
     @patch('builtins.input', side_effect=['/load', 'test_load.bot', '/exit'])
-    @patch('bots.AnthropicBot')
+    @patch('src.bots.AnthropicBot')
     @patch('os.path.exists', return_value=True)
     def test_main_load(self, mock_exists, mock_bot, mock_input):
         mock_bot_instance = MagicMock()
@@ -154,7 +152,7 @@ if __name__ == '__main__':
         mock_bot_instance.load.assert_called_with('test_load.bot')
 
     @patch('builtins.input', side_effect=['/auto', '3', '', '/exit'])
-    @patch('bots.AnthropicBot')
+    @patch('src.bots.AnthropicBot')
     def test_main_auto(self, mock_bot, mock_input):
         mock_bot_instance = MagicMock()
         mock_bot.return_value = mock_bot_instance

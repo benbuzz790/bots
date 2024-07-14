@@ -1,10 +1,10 @@
 
-import importlib
-import bot_tools
-importlib.reload(bot_tools)
-import unittest
 import os
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import importlib
+from src import bot_tools
+import unittest
 import traceback
 
 #TODO update to use custom assert

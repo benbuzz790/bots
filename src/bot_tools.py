@@ -1,6 +1,5 @@
-
-import os
 import re
+import os
 
 def rewrite(file_path, content):
     """

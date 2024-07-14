@@ -1,4 +1,7 @@
-import bots
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import src.bots as bots
 
 def pretty(str, name=None):
     if name is None:

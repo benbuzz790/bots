@@ -1,6 +1,8 @@
-import bots
 import os
-from bots import Engines
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import src.bots as bots
 import textwrap
 import subprocess
 import os
@@ -96,8 +98,8 @@ if __name__ == '__main__':
     indented_code = indent_code(wrapped_code)
 
     # The rest of the function remains the same...
-    temp_file_name = os.path.join(os.getcwd(), 'temp_script.py')
-    temp_file_copy = os.path.join(os.getcwd(), 'last_temp_script.py')
+    temp_file_name = os.path.join(os.getcwd(), 'scripts/temp_script.py')
+    temp_file_copy = os.path.join(os.getcwd(), 'scripts/last_temp_script.py')
     
     with open(temp_file_name, 'w', encoding='utf-8') as temp_file:
         temp_file.write(indented_code)
@@ -152,7 +154,7 @@ def pretty(string, name=None, width=100, indent=4):
     print("\n---\n")
 
 def main():
-    B1 = bots.BaseBot.load("Codey@2024.07.13-20.24.24.bot")
+    B1 = bots.BaseBot.load(r"data\Codey@2024.07.14-16.25.27.bot")
     #B1 = bots.AnthropicBot(name='Codey')
     pretty(B1.conversation.to_string())
     turn = 'user'

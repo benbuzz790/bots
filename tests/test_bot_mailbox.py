@@ -1,8 +1,10 @@
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
-from bot_mailbox import BaseMailbox, OpenAIMailbox, AnthropicMailbox
-import conversation_node as CN
-import os
+from src.bot_mailbox import BaseMailbox, OpenAIMailbox, AnthropicMailbox
+import src.conversation_node as CN
 
 class ConcreteBaseMailbox(BaseMailbox):
     def _send_message_implementation(self, conversation, model, max_tokens, temperature, api_key, system_message=None):
@@ -18,12 +20,12 @@ class TestBaseMailbox(unittest.TestCase):
     def test_log_message(self):
         with patch('builtins.open', mock_open()) as mock_file:
             self.base_mailbox.log_message("Test message", "OUTGOING")
-            mock_file.assert_called_once_with('mailbox_log.txt', 'a', encoding='utf-8')
+            mock_file.assert_called_once_with('data/mailbox_log.txt', 'a', encoding='utf-8')
             mock_file().write.assert_called_once()
 
 class TestOpenAIMailbox(unittest.TestCase):
     def setUp(self):
-        self.patcher = patch('bot_mailbox.OpenAI')
+        self.patcher = patch('src.bot_mailbox.OpenAI')
         self.mock_openai = self.patcher.start()
         self.mock_client = MagicMock()
         self.mock_openai.return_value = self.mock_client

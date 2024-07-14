@@ -1,13 +1,16 @@
-import unittest
-import bots
-import subprocess
-import bot_tools
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import unittest
+from src import bots
+import subprocess
+from src import bot_tools
+
 import time
 class TestClaudeCapabilities(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.claude = bots.AnthropicBot.load("Claude@2024.07.12-07.52.47.bot")
+        cls.claude = bots.AnthropicBot.load("data\Codey@2024.07.14-16.25.27.bot")
         cls.test_dir = os.path.join(os.getcwd(), 'claude_test_environment')
         os.makedirs(cls.test_dir, exist_ok=True)
     
@@ -28,7 +31,7 @@ class TestClaudeCapabilities(unittest.TestCase):
         """
         response = self.claude.respond(prompt)
         required_elements = [
-            "import bot_tools",
+            "from bot_tools import *",
             "def detect_language(",
             "def fibonacci(",
             "def translate_to_cpp(",

@@ -1,8 +1,10 @@
-
 import unittest
 from unittest.mock import patch, MagicMock
 import requests
-from terminal_browser import TerminalBrowser
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.terminal_browser import TerminalBrowser
 
 class TestTerminalBrowser(unittest.TestCase):
     def setUp(self):
@@ -44,7 +46,7 @@ class TestTerminalBrowser(unittest.TestCase):
         result = self.browser.parse_page("Invalid HTML")
         self.assertEqual(result, "Invalid HTML")
 
-    @patch('terminal_browser.TerminalBrowser.fetch_page')
+    @patch('src.terminal_browser.TerminalBrowser.fetch_page')
     def test_go_back(self, mock_fetch):
         self.browser.history = ["https://example.com", "https://test.com"]
         mock_fetch.return_value = "Previous Page"
@@ -59,7 +61,7 @@ class TestTerminalBrowser(unittest.TestCase):
         result = self.browser.go_back()
         self.assertEqual(result, "No previous page in history.")
 
-    @patch('terminal_browser.TerminalBrowser.fetch_page')
+    @patch('src.terminal_browser.TerminalBrowser.fetch_page')
     def test_go_forward(self, mock_fetch):
         self.browser.history = ["https://example.com"]
         self.browser.forward_stack = ["https://test.com"]
@@ -105,7 +107,7 @@ if __name__ == '__main__':
         result = self.browser.add_bookmark("Test")
         self.assertEqual(result, "No page loaded to bookmark")
 
-    @patch('terminal_browser.TerminalBrowser.fetch_page')
+    @patch('src.terminal_browser.TerminalBrowser.fetch_page')
     def test_go_to_bookmark(self, mock_fetch):
         self.browser.bookmarks["Test"] = "https://test.com"
         mock_fetch.return_value = "Test Page"

@@ -1,7 +1,8 @@
-import re
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src import bots
 import subprocess
-import bots
-
 
 
 def remove_code_blocks(text):

@@ -1,6 +1,9 @@
 import unittest
-from bots import BaseBot, GPTBot, AnthropicBot, RolloverBot, Engines
-import conversation_node as CN
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.bots import BaseBot, GPTBot, AnthropicBot, RolloverBot, Engines
+import src.conversation_node as CN
 
 class MockMailbox:
     def send_message(self, cvsn, model_engine, max_tokens, temperature, api_key, system_message=None):
