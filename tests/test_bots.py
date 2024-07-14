@@ -17,6 +17,8 @@ class TestBaseBot(unittest.TestCase):
         self.bot = GPTBot(api_key=None, model_engine=Engines.GPT4, max_tokens=100, temperature=0.7, name="TestBot", role="assistant", role_description="Test bot")
         self.bot.mailbox = MockMailbox()
 
+    # Todo - teardown - remove all bots named TestBot@... from the local directory
+
     def test_respond(self):
         response = self.bot.respond("Hello")
         self.assertEqual(response, "Mock response")

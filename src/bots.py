@@ -143,7 +143,6 @@ class BaseBot(ABC):
         """Sends a message to the bot's mailbox (to be implemented by subclasses)."""
         pass     
     
-    @abstractmethod
     def set_system_message(self, message: str) -> None:
         """Sets the system message for the bot."""
         self.system_message = message
@@ -276,11 +275,6 @@ class GPTBot(BaseBot):
             case _:
                 raise Exception(f"model_engine: {model_engine} not found")
 
-    def set_system_message(self, message: str) -> None:
-        """Sets the system message for the GPTBot."""
-        self.system_message = message
-        # TODO: Implement GPT-specific system message handling
-
     @classmethod
     def load(cls, filepath: str) -> "BaseBot":
         """Loads a bot instance from a file."""
@@ -314,11 +308,6 @@ class AnthropicBot(BaseBot):
                 self.mailbox = MB.AnthropicMailbox(verbose=True)
             case _:
                 raise Exception(f"model_engine: {model_engine} not found")
-
-    def set_system_message(self, message: str) -> None:
-        """Sets the system message for the AnthropicBot."""
-        self.system_message = message
-        # TODO: Implement Anthropic-specific system message handling
 
     @classmethod
     def load(cls, filepath: str) -> "AnthropicBot":
@@ -373,7 +362,7 @@ def remove_code_blocks(text: str) -> tuple[list[str], list[str]]:
     """
     Extracts the content inside code blocks from the given text and returns the code blocks and their labels.
     """
-    pattern = r'```(\w*)\s*([\s\S]*?)```'
+    pattern = r'```(\w*)\s*([\s\S]*?)```(?=\s|$)'
     matches = re.findall(pattern, text)
     code_blocks = [match[1].strip() for match in matches]
     labels = [match[0].strip() for match in matches]
