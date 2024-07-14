@@ -3,8 +3,19 @@ import traceback
 
 
 def main():
-    while True:
-        pass
+    import subprocess
+    try:
+        result = subprocess.run(['python', 'test_bots.py'], capture_output=
+            True, text=True, timeout=60)
+        print('Test Results:')
+        print(result.stdout)
+        if result.stderr:
+            print('Errors:')
+            print(result.stderr)
+    except subprocess.TimeoutExpired:
+        print('Error: Test execution timed out.')
+    except Exception as e:
+        print(f'Error: {str(e)}')
 
 
 if __name__ == '__main__':

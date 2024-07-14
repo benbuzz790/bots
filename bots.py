@@ -329,6 +329,42 @@ class AnthropicBot(BaseBot):
             cvsn, self.model_engine, self.max_tokens, self.temperature, self.api_key
         )
 
+class RolloverBot(AnthropicBot):
+    def __init__(
+        self,
+        api_key: Optional[str],
+        model_engine: Engines,
+        max_tokens: int,
+        temperature: float,
+        name: str,
+        role: str,
+        role_description: str,
+        max_conversation_length: int = 10000,  # Add a new parameter for max conversation length
+    ):
+        super().__init__(api_key, model_engine, max_tokens, temperature, name, role, role_description)
+        self.max_conversation_length = max_conversation_length  # Store the max conversation length
+
+    def respond(self, content: str, role: str = "user") -> str:
+        """Generates a response based on the given content and role."""
+        reply, self.conversation = self.cvsn_respond(
+            text=content, cvsn=self.conversation, role=role
+        )
+        self.conversation = self._truncate_conversation(self.conversation)  # Truncate the conversation
+        return reply
+
+    def _truncate_conversation(self, conversation: CN.ConversationNode) -> CN.ConversationNode:
+        """Truncates the conversation by removing the earliest messages if it exceeds the max conversation length."""
+        conversation_length = len(conversation.to_string())
+
+        while conversation_length > self.max_conversation_length:
+            if len(conversation.replies) >= 2:
+                conversation.replies = conversation.replies[2:]  # Remove the first user-assistant pair
+                conversation_length = len(conversation.to_string())
+            else:
+                break  # If there are not enough replies to remove, exit the loop
+
+        return conversation
+
 def remove_code_blocks(text: str) -> tuple[list[str], list[str]]:
     """
     Extracts the content inside code blocks from the given text and returns the code blocks and their labels.

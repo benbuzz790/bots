@@ -152,8 +152,8 @@ def pretty(string, name=None, width=100, indent=4):
     print("\n---\n")
 
 def main():
-    B1 = bots.AnthropicBot(name='Claude', model_engine=Engines.CLAUDE35)
-    B1 = B1.load("Claude@2024.07.12-07.52.47.bot")
+    B1 = bots.BaseBot.load("Codey@2024.07.13-20.24.24.bot")
+    #B1 = bots.AnthropicBot(name='Codey')
     pretty(B1.conversation.to_string())
     turn = 'user'
     auto = 0

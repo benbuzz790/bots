@@ -1,5 +1,5 @@
 import unittest
-from bots import BaseBot, GPTBot, AnthropicBot, Engines
+from bots import BaseBot, GPTBot, AnthropicBot, RolloverBot, Engines
 import conversation_node as CN
 
 class MockMailbox:
@@ -61,6 +61,31 @@ class TestAnthropicBot(unittest.TestCase):
         responses = self.bot.batch_respond("Hello", num_responses=3)
         self.assertEqual(responses, ["Mock response", "Mock response", "Mock response"])
         self.assertEqual(len(self.bot.conversation.replies), 3)
+
+    def test_rollover_bot_truncate_conversation(self):
+        rollover_bot = RolloverBot(api_key=None, model_engine=Engines.CLAUDE35, max_tokens=100, temperature=0.7, name="TestRolloverBot", role="assistant", role_description="Test bot", max_conversation_length=100)
+        rollover_bot.mailbox = MockMailbox()
+
+        # Add some replies to the conversation
+        for i in range(10):
+            rollover_bot.conversation = rollover_bot.conversation.add_reply(f"User message {i}", "user")
+            rollover_bot.conversation = rollover_bot.conversation.add_reply(f"Assistant response {i}", "assistant")
+
+        # Check if the conversation is truncated correctly
+        truncated_conversation = rollover_bot._truncate_conversation(rollover_bot.conversation)
+        self.assertLessEqual(len(truncated_conversation.to_string()), rollover_bot.max_conversation_length)
+
+    def test_rollover_bot_respond(self):
+        rollover_bot = RolloverBot(api_key=None, model_engine=Engines.CLAUDE35, max_tokens=100, temperature=0.7, name="TestRolloverBot", role="assistant", role_description="Test bot", max_conversation_length=100)
+        rollover_bot.mailbox = MockMailbox()
+
+        # Add some replies to the conversation
+        for i in range(10):
+            rollover_bot.respond(f"User message {i}")
+
+        # Check if the conversation is truncated correctly after responding
+        self.assertLessEqual(len(rollover_bot.conversation.to_string()), rollover_bot.max_conversation_length)
+
 
 if __name__ == '__main__':
     unittest.main()
