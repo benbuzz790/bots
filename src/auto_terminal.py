@@ -75,11 +75,15 @@ def execute_python_code(code, timeout=300):
     wrapped_code = f"""
 import os
 import sys
+import traceback
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 def main():
 {custom_indent(indented_code)}
 if __name__ == '__main__':
     try:
+        import os
+        import sys
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         main()
     except Exception as error_error:
         print(f"An error occurred: {{str(error_error)}}", file=sys.stderr)
@@ -155,14 +159,14 @@ def pretty(string, name=None, width=100, indent=4):
     print("\n---\n")
 
 def main():
-    B1 = bots.BaseBot.load(r"data\Codey@2024.07.14-16.25.27.bot")
+    B1 = bots.BaseBot.load(r"data\Codey@2024.07.14-22.06.51.bot")
     #B1 = bots.AnthropicBot(name='Codey')
     pretty(B1.conversation.to_string())
     turn = 'user'
     auto = 0
 
     while(True):
-        initial_message = 'No code to execute'
+        initial_message = '.no code detected.'
         output = initial_message
     
         if(turn=='assistant'):
@@ -179,7 +183,7 @@ def main():
 
                     if label.lower() == "epowershell":
                         try:
-                            if output == initial_message: output = 'Executed Code Result:\n'
+                            if output == initial_message: output = '\n\nExecuted Code Result:\n\n'
                             result = subprocess.run(["powershell", "-Command", code], capture_output=True, text=True, timeout=30)
                             output += result.stdout + result.stderr
                         except subprocess.TimeoutExpired:
@@ -189,7 +193,7 @@ def main():
         
                     elif label.lower() == 'epython':
                         try:
-                            if output == initial_message: output = 'Executed Code Result:\n'
+                            if output == initial_message: output = '\n\nExecuted Code Result:\n\n'
                             result = execute_python_code(code)
                             output += result + '\n'
                         except Exception as e:

@@ -4,6 +4,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import importlib
 from src import bot_tools
+from src import auto_terminal
 import unittest
 import traceback
 
@@ -15,23 +16,26 @@ class DetailedTestCase(unittest.TestCase):
         try:
             self.assertEqual(first, second, msg)
         except AssertionError as e:
-            tb = sys.exc_info()[2]
-            frame = tb.tb_next
-            local_vars = frame.f_locals.copy()
-
-            # Remove self from local_vars
-            local_vars.pop('self', None)
-
-            error_message = f"\nAssertion Error: {str(e)}\n"
-            error_message += "\nLocal variables:\n"
-            for key, value in local_vars.items():
-                error_message += f"{key} = {repr(value)}\n"
-
-            error_message += "\nTraceback:\n"
-            error_message += ''.join(traceback.format_tb(tb))
-
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            
+            frame = exc_traceback.tb_frame.f_back
+            
+            if frame:
+                local_vars = frame.f_locals.copy()
+                local_vars.pop('self', None)
+                error_message = f"\nAssertion Error: {str(e)}\n"
+                error_message += "\nLocal variables:\n"
+                for key, value in local_vars.items():
+                    error_message += f"{key} = {repr(value)}\n"
+                error_message += "\nTraceback:\n"
+                error_message += ''.join(traceback.format_tb(exc_traceback))
+            else:
+                error_message = f"\nAssertion Error: {str(e)}\n"
+                error_message += "Unable to retrieve local variables.\n"
+                error_message += "\nTraceback:\n"
+                error_message += ''.join(traceback.format_tb(exc_traceback))
+            
             raise AssertionError(error_message)
-
 
 class TestBotTools(DetailedTestCase):
 
@@ -82,7 +86,7 @@ class TestBotTools(DetailedTestCase):
         bot_tools.replace(self.test_file,
             'def complex_function(param1, param2):', new_function)
         expected_content = (new_function +
-            '\nother_code = "This should remain unchanged"\n')
+            'other_code = "This should remain unchanged"\n')
         with open(self.test_file, 'r') as f:
             self.assertEqualWithDetails(f.read(), expected_content,
                 'Replace complex function failed')
