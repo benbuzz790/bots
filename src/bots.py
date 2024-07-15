@@ -18,12 +18,7 @@ import src.bot_mailbox as MB
 # - should be implementable in BaseBot, not necessary in child classes
 
 # TODO
-# Write unit tests
-# - create test_bots.py
-# - create unittests for bots and their functions
-
-# TODO
-# The args kwaargs incantation for dynamic typing
+# The args kwaargs incantation for dynamic typing, rather than the presently very awkward Enum static method
 
 class Engines(Enum):
     """Enum class representing different AI model engines."""

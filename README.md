@@ -22,7 +22,7 @@ llm-utilities/
 ├── data/
 │   ├── context.txt
 │   └── mailbox_log.txt
-│   └── \*.bot
+│   └── *.bot
 │   └── ...
 ├── docs/
 └── scripts/
@@ -41,7 +41,7 @@ Manages APIs.
 ### src/terminal_browser.py
 Provides rudimentary terminal-based browsing capabilities.
 ### src/conversation_node.py
-A linked-list based implementation of a conversation.
+A linked implementation of a conversation, notionally an M-Tree but potentially a directed graph, if you tried hard enough.
 ### src/reddit_style_GUI.py
 For viewing and experimenting with .bot files.
 ## Testing
