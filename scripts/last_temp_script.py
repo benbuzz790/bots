@@ -1,10 +1,21 @@
+import os
 import sys
-import traceback
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def main():
-    while True:
-        pass
+    import os
+
+    def list_directory(path='.', indent=''):
+        print(f'{indent}{os.path.basename(path)}/')
+        indent += '  '
+        for item in sorted(os.listdir(path)):
+            item_path = os.path.join(path, item)
+            if os.path.isdir(item_path):
+                list_directory(item_path, indent)
+            else:
+                print(f'{indent}{item}')
+    list_directory()
 
 
 if __name__ == '__main__':
