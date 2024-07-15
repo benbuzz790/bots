@@ -73,8 +73,9 @@ def execute_python_code(code, timeout=300):
     indented_code = indent_code(code)
     # Wrap the indented code in a function
     wrapped_code = f"""
+import os
 import sys
-import traceback
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 def main():
 {custom_indent(indented_code)}
 if __name__ == '__main__':
