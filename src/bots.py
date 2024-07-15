@@ -362,7 +362,7 @@ def remove_code_blocks(text: str) -> tuple[list[str], list[str]]:
     """
     Extracts the content inside code blocks from the given text and returns the code blocks and their labels.
     """
-    pattern = r'```(\w*)\s*([\s\S]*?)```(?=\s|$)'
+    pattern = r'```(\w*)\s*([\s\S]*?)```'
     matches = re.findall(pattern, text)
     code_blocks = [match[1].strip() for match in matches]
     labels = [match[0].strip() for match in matches]
