@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 def main():
     import src.bot_tools as bt
     file_path = (
-        'C:\\Users\\BENRIN~1\\AppData\\Local\\Temp\\tmp687bdgc6\\test_file.txt'
+        'C:\\Users\\BENRIN~1\\AppData\\Local\\Temp\\tmpbmfkztbb\\test_file.txt'
         )
     old_function = 'def old_function():'
     new_function = "def old_function():\n    print('This is the new function')"

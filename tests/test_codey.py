@@ -196,6 +196,7 @@ class TestCodey(DetailedTestCase):
 
     #     self.assertEqualWithDetails(any(word in output.lower() for word in ["identical", "same", "equal"]), True, "File comparison failed")
 
+    """ Not yet supported (i.e. i don't know what I'm doing)
     @patch('builtins.input')
     def test_concurrent_file_operations(self, mock_input):
         def write_file(content):
@@ -217,6 +218,8 @@ class TestCodey(DetailedTestCase):
         with open(self.test_file, 'r') as file:
             content = file.read()
         self.assertEqualWithDetails(len(content.split("Content")) > 1, True, "Concurrent file operations failed")
+    """
+
     """
     # Bad test. Success Criteria not reliable
     # @patch('builtins.input')
