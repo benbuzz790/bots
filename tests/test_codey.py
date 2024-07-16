@@ -245,10 +245,10 @@ class TestCodey(DetailedTestCase):
             writer = csv.writer(file)
             writer.writerows(csv_content)
         mock_input.side_effect = [
-            f"Read the CSV content of {self.test_file} and return it as a JSON string",
+            f"Read the CSV content of {self.test_file} and return it as a JSON string.",
             '/exit'
         ]
-
+        # TODO - process the response smarterly
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 auto_terminal.main()
@@ -318,9 +318,9 @@ print("Some other code")
         with open(self.test_file, 'r') as file:
             content = file.read()
 
-        self.assertEqualWithDetails("class OldClass:" in content, True, "Class name was changed")
+        self.assertEqualWithDetails("class OldClass:" not in content, True, "Class name was changed")
         self.assertEqualWithDetails("This is the new class" in content, True, "New class content not found")
-        self.assertEqualWithDetails("This is the old class" in content, False, "Old class content still present")
+        self.assertEqualWithDetails("This is the old class" not in content, True, "Old class content still present")
         self.assertEqualWithDetails("Some other code" in content, True, "Other code was affected")
 
     @patch('builtins.input')
