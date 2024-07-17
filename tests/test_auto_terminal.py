@@ -6,13 +6,9 @@ from unittest.mock import patch, MagicMock
 import ast
 import subprocess
 import src.bots as bots
-from src.auto_terminal import (
-    IndentVisitor, 
-    indent_code, 
-    execute_python_code, 
-    pretty, 
-    main
-)
+import src.auto_terminal as AT
+
+#TODO add tests for python timeout
 
 class TestAutoTerminal(unittest.TestCase):
     def test_indent_visitor(self):
@@ -30,7 +26,7 @@ def outer_function():
             break
     inner_function()
     """
-        indented = indent_code(code)
+        indented = AT.PythonExecutor().indent_code(code)
         
         # Test if the indented code compiles
         try:
@@ -49,7 +45,7 @@ def outer_function():
     
     def test_indent_code(self):
         code = "def test_func():\n    pass"
-        indented = indent_code(code)
+        indented = AT.PythonExecutor().indent_code(code)
         self.assertIn("def test_func():", indented)
         self.assertIn("    pass", indented)
 
@@ -97,7 +93,7 @@ if __name__ == '__main__':
     print("Squared positive numbers:", squared_positives)
     """
 
-        result = execute_python_code(complex_code)
+        result = AT.PythonExecutor().execute(complex_code)
         self.assertEqual(result, "Output from complex code")
 
         # Check if Popen was called with the right arguments
@@ -112,7 +108,7 @@ if __name__ == '__main__':
         mock_process.communicate.side_effect = subprocess.TimeoutExpired(cmd="test", timeout=300)
         mock_popen.return_value = mock_process
 
-        result = execute_python_code("while True: pass")
+        result = AT.PythonExecutor().execute(code="while True: pass")
         self.assertIn("Error: Code execution timed out", result)
     
     @patch('builtins.input', side_effect=['/exit'])
@@ -123,7 +119,7 @@ if __name__ == '__main__':
         mock_bot_instance.load.return_value = mock_bot_instance
 
         with self.assertRaises(SystemExit):
-            main()
+            AT.main()
 
     @patch('builtins.input', side_effect=['/save', '/exit'])
     @patch('src.bots.AnthropicBot')
@@ -134,7 +130,7 @@ if __name__ == '__main__':
         mock_bot_instance.save.return_value = "test_save.bot"
 
         with self.assertRaises(SystemExit):
-            main()
+            AT.main()
 
         mock_bot_instance.save.assert_called_once()
 
@@ -147,7 +143,7 @@ if __name__ == '__main__':
         mock_bot_instance.load.return_value = mock_bot_instance
 
         with self.assertRaises(SystemExit):
-            main()
+            AT.main()
 
         mock_bot_instance.load.assert_called_with('test_load.bot')
 
@@ -160,9 +156,70 @@ if __name__ == '__main__':
         mock_bot_instance.respond.return_value = "Auto response"
 
         with self.assertRaises(SystemExit):
-            main()
+            AT.main()
 
         self.assertEqual(mock_bot_instance.respond.call_count, 3)
+    def test_error_filter_file_writing(self):
+        code_blocks = [
+            "# test_file.py\nprint('Hello, world!')",
+            "def factorial(n):\n    return 1 if n <= 1 else n * factorial(n-1)"
+        ]
+        labels = ["epython", "epython"]
+        
+        py = AT.PythonExecutor()
+        corrected_blocks, corrected_labels = py.error_filter(code_blocks, labels)
+        
+        self.assertEqual(len(corrected_blocks), 2)
+        self.assertEqual(corrected_blocks[0], "print('Hello, world!')")
+        self.assertEqual(corrected_blocks[1], "def factorial(n):\n    return 1 if n <= 1 else n * factorial(n-1)")
+        self.assertEqual(corrected_labels, labels)
+
+    def test_error_filter_merge_blocks(self):
+        code_blocks = [
+            "import math",
+            "def circle_area(r):\n    return math.pi * r ** 2",
+            "print(circle_area(5))"
+        ]
+        labels = ["epython", "epython", "epython"]
+        
+        py = AT.PythonExecutor()
+        corrected_blocks, corrected_labels = py.error_filter(code_blocks, labels)
+        
+        self.assertEqual(len(corrected_blocks), 1)
+        self.assertEqual(corrected_blocks[0], "import math\ndef circle_area(r):\n    return math.pi * r ** 2\nprint(circle_area(5))")
+        self.assertEqual(corrected_labels, ["epython"])
+
+    def test_error_filter_no_changes(self):
+        code_blocks = [
+            "def greet(name):\n    print(f'Hello, {name}!')",
+            "greet('Alice')"
+        ]
+        labels = ["epython", "epython"]
+        
+        py = AT.PythonExecutor()
+        corrected_blocks, corrected_labels = py.error_filter(code_blocks, labels)
+        
+        self.assertEqual(corrected_blocks, code_blocks)
+        self.assertEqual(corrected_labels, labels)
+
+    def test_error_filter_mixed_scenarios(self):
+        code_blocks = [
+            "# test_file.py\nprint('File content')",
+            "import math",
+            "def circle_area(r):\n    return math.pi * r ** 2",
+            "print(circle_area(5))",
+            "def greet(name):\n    print(f'Hello, {name}!')\ngreet('Bob')"
+        ]
+        labels = ["epython", "epython", "epython", "epython", "epython"]
+        
+        py = AT.PythonExecutor()
+        corrected_blocks, corrected_labels = py.error_filter(code_blocks, labels)
+        
+        self.assertEqual(len(corrected_blocks), 3)
+        self.assertEqual(corrected_blocks[0], "print('File content')")
+        self.assertEqual(corrected_blocks[1], "import math\ndef circle_area(r):\n    return math.pi * r ** 2\nprint(circle_area(5))")
+        self.assertEqual(corrected_blocks[2], "def greet(name):\n    print(f'Hello, {name}!')\ngreet('Bob')")
+        self.assertEqual(corrected_labels, ["epython", "epython", "epython"])
 
 if __name__ == '__main__':
     unittest.main()

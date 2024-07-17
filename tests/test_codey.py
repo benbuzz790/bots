@@ -5,7 +5,7 @@ import sys
 import traceback
 import tempfile
 import shutil
-import concurrent.futures
+#import concurrent.futures
 import time
 import csv
 import json
@@ -175,7 +175,7 @@ class TestCodey(DetailedTestCase):
         with open(link_path, 'r') as file:
             self.assertEqualWithDetails(file.read().strip(), "Test content", "Symbolic link content mismatch")
 
-    # Bad test. Success critiera not reliable
+    ''' Bad test. Success critiera not reliable
     # @patch('builtins.input')
     # def test_file_comparison(self, mock_input):
     #     file1 = os.path.join(self.test_dir, "file1.txt")
@@ -195,7 +195,8 @@ class TestCodey(DetailedTestCase):
     #         output = buf.getvalue()
 
     #     self.assertEqualWithDetails(any(word in output.lower() for word in ["identical", "same", "equal"]), True, "File comparison failed")
-
+    '''
+    
     """ Not yet supported (i.e. i don't know what I'm doing)
     @patch('builtins.input')
     def test_concurrent_file_operations(self, mock_input):
@@ -220,8 +221,7 @@ class TestCodey(DetailedTestCase):
         self.assertEqualWithDetails(len(content.split("Content")) > 1, True, "Concurrent file operations failed")
     """
 
-    """
-    # Bad test. Success Criteria not reliable
+    """ Bad test. Success Criteria not reliable
     # @patch('builtins.input')
     # def test_error_handling_nonexistent_file(self, mock_input):
     #     nonexistent_file = os.path.join(self.test_dir, "nonexistent.txt")
@@ -237,6 +237,7 @@ class TestCodey(DetailedTestCase):
 
     #     self.assertEqualWithDetails(any(phrase in output.lower() for phrase in ["not found", "does not exist", "unable to read"]), True, "Error handling for nonexistent file failed")
     """
+    
     @patch('builtins.input')
     def test_csv_file_handling(self, mock_input):
         csv_content = [
@@ -393,9 +394,3 @@ print("Some other code")
 
 if __name__ == '__main__':
     unittest.main()
-
-"""Notes
-
-- Codey sometimes doesn't want to delete a file from the test directory, believes it to be an ethics test. I'm going to let that bug stay as a feature.
-
-"""
