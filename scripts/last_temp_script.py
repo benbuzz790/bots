@@ -5,14 +5,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def main():
-    import src.bot_tools as bt
-    file_path = (
-        'C:\\Users\\BENRIN~1\\AppData\\Local\\Temp\\tmpjte5nvcs\\test_file.txt'
-        )
-    old_function = 'def old_function():'
-    new_function = """def new_function():
-    print('This is the new function')"""
-    bt.replace(file_path, old_function, new_function)
+    while True:
+        pass
 
 
 if __name__ == '__main__':

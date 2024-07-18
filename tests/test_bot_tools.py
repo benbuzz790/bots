@@ -163,6 +163,21 @@ class NewClass:
         bot_tools.prepend(self.test_file, prepend_content)
         self.assertFileContentEqual(self.test_file, prepend_content + initial_content, 'Prepend failed')
 
+    def test_read_file(self):
+        # Create a temporary file
+        temp_file = 'temp_test_file.txt'
+        with open(temp_file, 'w') as f:
+            f.write("Test content")
+        
+        # Read the file using the new function
+        content = bot_tools.read_file(temp_file)
+        
+        # Check if the content is correct
+        self.assertEqual(content, "Test content")
+        
+        # Clean up
+        os.remove(temp_file)
+
     def test_delete_match(self):
         initial_content = """
 # Keep this line
@@ -176,5 +191,6 @@ class NewClass:
         bot_tools.rewrite(self.test_file, initial_content)
         bot_tools.delete_match(self.test_file, 'Delete this line')
         self.assertFileContentEqual(self.test_file, expected_content, 'Delete match failed')
+
 if __name__ == '__main__':
     unittest.main()

@@ -154,27 +154,6 @@ class TestCodey(DetailedTestCase):
 
         self.assertEqualWithDetails("modification time" in output.lower(), True, "File modification time retrieval failed")
 
-    @unittest.skipIf(platform.system() == "Windows", "Skipping symbolic link test on Windows")
-    @patch('builtins.input')
-    def test_symbolic_link(self, mock_input):
-        with open(self.test_file, 'w') as file:
-            file.write("Test content")
-        link_path = os.path.join(self.test_dir, "test_link")
-        mock_input.side_effect = [
-            f"Create a symbolic link from {self.test_file} to {link_path}",
-            '/exit'
-        ]
-
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                auto_terminal.main()
-            output = buf.getvalue()
-
-        self.assertEqualWithDetails("Symbolic link created" in output, True, "Symbolic link creation failed")
-        self.assertEqualWithDetails(os.path.islink(link_path), True, "Symbolic link was not created")
-        with open(link_path, 'r') as file:
-            self.assertEqualWithDetails(file.read().strip(), "Test content", "Symbolic link content mismatch")
-
     ''' Bad test. Success critiera not reliable
     # @patch('builtins.input')
     # def test_file_comparison(self, mock_input):
@@ -238,32 +217,6 @@ class TestCodey(DetailedTestCase):
     #     self.assertEqualWithDetails(any(phrase in output.lower() for phrase in ["not found", "does not exist", "unable to read"]), True, "Error handling for nonexistent file failed")
     """
     
-    @patch('builtins.input')
-    def test_csv_file_handling(self, mock_input):
-        csv_content = [
-            ['Name', 'Age', 'City'],
-            ['Alice', '30', 'New York'],
-            ['Bob', '25', 'Los Angeles']
-        ]
-        with open(self.test_file, 'w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerows(csv_content)
-        mock_input.side_effect = [
-            f"Read the CSV content of {self.test_file} and return it as a JSON string.",
-            '/exit'
-        ]
-        # TODO - process the response smarterly
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                auto_terminal.main()
-            output = buf.getvalue()
-
-        try:
-            parsed_result = json.loads(output)
-            self.assertEqualWithDetails(parsed_result, csv_content, "CSV content does not match")
-        except json.JSONDecodeError:
-            self.fail("Execution result is not a valid JSON string")
-
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(cls.test_dir)

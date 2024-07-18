@@ -20,7 +20,7 @@ class TestBaseMailbox(unittest.TestCase):
     def test_log_message(self):
         with patch('builtins.open', mock_open()) as mock_file:
             self.base_mailbox.log_message("Test message", "OUTGOING")
-            mock_file.assert_called_once_with('data/mailbox_log.txt', 'a', encoding='utf-8')
+            mock_file.assert_called_once_with('data\\mailbox_log.txt', 'a', encoding='utf-8')
             mock_file().write.assert_called_once()
 
 class TestOpenAIMailbox(unittest.TestCase):

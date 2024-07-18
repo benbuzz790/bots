@@ -5,7 +5,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import src.bots as bots
 import textwrap
 import subprocess
-import os
 import ast
 import astor
 
@@ -101,75 +100,78 @@ def pretty(string, name=None, width=100, indent=4):
     print('\n'.join(formatted_lines))
     print("\n---\n")
 
+def execute_code_blocks(response):
+    output = '\nCode Execution Result:\n'
+    code_blocks, labels = bots.remove_code_blocks(response)
+    if code_blocks:
+        for code, label in zip(code_blocks, labels):
+            if label.lower() == "epowershell":
+                try:
+                    result = subprocess.run(["powershell", "-Command", code], capture_output=True, text=True, timeout=30)
+                    output += result.stdout + result.stderr
+                except subprocess.TimeoutExpired:
+                    output += "Error: Command execution timed out after 30 seconds."
+                except Exception as e:
+                    output += f"Error: {str(e)}"
+            elif label.lower() == 'epython':
+                try:
+                    result = execute_python_code(code)
+                    output += result + '\n'
+                except Exception as e:
+                    output += f"Error: {str(e)}"
+            output = output + '\n---\n'
+    return output
+
+def handle_user_command(command, bot):
+    if command.lower().startswith('/exit'):
+        exit()
+    elif command.lower().startswith('/save'):
+        filename = bot.save()
+        return f"Conversation saved to {filename}"
+    elif command.lower().startswith('/load'):
+        filename = input("Filename:")
+        if os.path.exists(filename):
+            bot = bot.load(filename)
+            return f"Conversation loaded from {filename}"
+        else:
+            return f"File {filename} not found."
+    elif command.lower().startswith('/auto'):
+        auto = int(input("Number of automatic cycles:"))
+        return auto
+    return None
+
 def main():
-    B1 = bots.BaseBot.load(r"data\Codey@2024.07.17-19.20.05.bot")
-    #B1 = bots.AnthropicBot(name='Codey')
-    pretty(B1.conversation.to_string())
+    bot = bots.AnthropicBot.load(r'Codey@2024.07.18-10.50.51.bot')
+    pretty(bot.conversation.to_string())
     turn = 'user'
     auto = 0
+    output = ''  # Initialize output here
 
-    while(True):
-        initial_message = '.no code detected.'
-        output = initial_message
-    
-        if(turn=='assistant'):
+    while True:
+        if turn == 'assistant':
             if auto > 1:
                 auto = auto - 1
-                output = f'Auto-mode enabled for {auto} more messages\n\n'
+                output = f'{bot.name}, continue working autonomously for {auto} more prompts\n\n'
             else:
                 turn = 'user'
-            response = B1.respond(msg)
-            pretty(response, B1.name)
-            code_blocks, labels = bots.remove_code_blocks(response)
-            if code_blocks:
-                for code, label in zip(code_blocks, labels):
-
-                    if label.lower() == "epowershell":
-                        try:
-                            if output == initial_message: output = '\n\nExecuted Code Result:\n\n'
-                            result = subprocess.run(["powershell", "-Command", code], capture_output=True, text=True, timeout=30)
-                            output += result.stdout + result.stderr
-                        except subprocess.TimeoutExpired:
-                            output += "Error: Command execution timed out after 30 seconds."
-                        except Exception as e:
-                            output += f"Error: {str(e)}"
-        
-                    elif label.lower() == 'epython':
-                        try:
-                            if output == initial_message: output = '\n\nExecuted Code Result:\n\n'
-                            result = execute_python_code(code)
-                            output += result + '\n'
-                        except Exception as e:
-                            output += f"Error: {str(e)}"
-                            
-                    output = output + '\n---\n'
-
-        msg = 'System:\n' + output + "\n---\n"
-        pretty(output, 'System')
-        
-        if(turn=='user'):
+                response = bot.respond(msg)
+                pretty(response, bot.name)
+                output = execute_code_blocks(response)
+        else:
             uinput = input("You: ")
-            if uinput.lower().startswith('/exit'):
-                exit()
-            elif uinput.lower().startswith('/save'):
-                filename = B1.save()
-                pretty(f"Conversation saved to {filename}", 'System')
-                turn = 'user'
-            elif uinput.lower().startswith('/load'):
-                filename = input("Filename:")
-                if os.path.exists(filename):
-                    B1 = B1.load(filename)
-                    pretty(f"Conversation loaded from {filename}", 'System')
+            command_result = handle_user_command(uinput, bot)
+            if command_result is not None:
+                if isinstance(command_result, int):
+                    auto = command_result
                 else:
-                    pretty(f"File {filename} not found.", 'System')
+                    pretty(command_result, 'System')
                 turn = 'user'
-            elif uinput.lower().startswith('/auto'):
-                auto = int(input("Number of automatic cycles:"))
-                turn = 'user'
-            else:   
-                msg = msg + "\nBen's Reply:\n" + uinput 
-                pretty('')
-                turn = 'assistant'
-    
+                continue
+            msg = f"System:\n{output}\n---\n\nBen's Reply:\n{uinput}"
+            pretty('')
+            turn = 'assistant'
+
+        pretty(output, 'System')
+
 if __name__ == '__main__':
     main()

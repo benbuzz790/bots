@@ -418,6 +418,3 @@ class ConversationGUI:
 # if __name__ == "main":
 #     gui = ConversationGUI()
 #     gui.run()
-
-gui = ConversationGUI()
-gui.run()
