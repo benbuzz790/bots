@@ -154,9 +154,10 @@ def main():
                 output = f'{bot.name}, continue working autonomously for {auto} more prompts\n\n'
             else:
                 turn = 'user'
-                response = bot.respond(msg)
-                pretty(response, bot.name)
-                output = execute_code_blocks(response)
+            response = bot.respond(msg)
+            pretty(response, bot.name)
+            output = execute_code_blocks(response)
+            pretty(output, 'Executed Code Result')
         else:
             uinput = input("You: ")
             command_result = handle_user_command(uinput, bot)
@@ -170,8 +171,6 @@ def main():
             msg = f"System:\n{output}\n---\n\nBen's Reply:\n{uinput}"
             pretty('')
             turn = 'assistant'
-
-        pretty(output, 'System')
 
 if __name__ == '__main__':
     main()
