@@ -9,126 +9,69 @@ import os
 import ast
 import astor
 
-class IndentVisitor(ast.NodeTransformer):
-    def __init__(self, indent='    '):
-        self.indent = indent
-        self.level = 0
-
-    def visit(self, node):
-        if isinstance(node, (ast.FunctionDef, ast.ClassDef, ast.If, ast.For, ast.While, ast.With)):
-            self.level += 1
-            node = self.generic_visit(node)
-            self.level -= 1
-        else:
-            node = self.generic_visit(node)
-        
-        if hasattr(node, 'body') and isinstance(node.body, list):
-            for item in node.body:
-                if hasattr(item, 'col_offset'):
-                    if not (isinstance(item, ast.Expr) and isinstance(item.value, ast.Str)):
-                        item.col_offset = len(self.indent) * self.level
-        return node
-
-def custom_string_formatter(string, embedded=False, current_line=None, uni_lit=False):
-    return repr(string)
-
-def indent_code(code, indent='    '):
-    tree = ast.parse(code)
-    IndentVisitor(indent).visit(tree)
-    return astor.to_source(tree, indent_with=indent, pretty_string=custom_string_formatter).strip()
-
-def remove_initial_tab(code):
-    lines = code.split('\n')
-    if all(line.startswith('\t') or line == '' for line in lines):
-        return '\n'.join(line[1:] if line else '' for line in lines)
-    return code
-
-def custom_indent(code, indent='    '):
-    lines = code.split('\n')
-    in_string = False
-    string_delimiter = None
-    indented_lines = []
-
-    for line in lines:
-        stripped = line.strip()
-        
-        # Check for the start or end of a multi-line string
-        if not in_string and (stripped.startswith('"""') or stripped.startswith("'''")):
-            in_string = True
-            string_delimiter = stripped[:3]
-        elif in_string and stripped.endswith(string_delimiter):
-            in_string = False
-            string_delimiter = None
-
-        # Apply indentation only if not in a multi-line string
-        if in_string:
-            indented_lines.append(line)
-        else:
-            indented_lines.append(indent + line if line.strip() else line)
-
-    return '\n'.join(indented_lines)
-
-def execute_python_code(code, timeout=300):
-    # Indent the original code
-    indented_code = indent_code(code)
-    # Wrap the indented code in a function
-    wrapped_code = f"""
+def create_wrapper_ast():
+    wrapper_code = """
 import os
 import sys
 import traceback
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 def main():
-{custom_indent(indented_code)}
+    pass  # Placeholder for user code
+
 if __name__ == '__main__':
     try:
-        import os
-        import sys
-        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         main()
     except Exception as error_error:
-        print(f"An error occurred: {{str(error_error)}}", file=sys.stderr)
+        print(f"An error occurred: {str(error_error)}", file=sys.stderr)
         print("Local variables at the time of the error:", file=sys.stderr)
         tb = sys.exc_info()[2]
         while tb:
             frame = tb.tb_frame
             tb = tb.tb_next
-            print(f"Frame {{frame.f_code.co_name}} in {{frame.f_code.co_filename}}:{{frame.f_lineno}}", file=sys.stderr)
+            print(f"Frame {frame.f_code.co_name} in {frame.f_code.co_filename}:{frame.f_lineno}", file=sys.stderr)
             local_vars = dict(frame.f_locals)
             for key, value in local_vars.items():
-                if not key.startswith('__') and key not in ['sys', 'traceback', 'error_error', 'main', 'tb', 'frame', 'Frame']:
-                    print(f"    {{key}} = {{value}}", file=sys.stderr)
+                if not key.startswith('__') and key not in ['sys', 'traceback', 'error_error', 'main', 'tb', 'frame']:
+                    print(f"    {key} = {value}", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
-"""
-    # Then, use AST to fix indentation of the entire wrapped code
-    indented_code = indent_code(wrapped_code)
+    """
+    return ast.parse(wrapper_code)
 
-    # The rest of the function remains the same...
+def insert_code_into_wrapper(wrapper_ast, code_ast):
+    main_func = next(node for node in wrapper_ast.body if isinstance(node, ast.FunctionDef) and node.name == 'main')
+    main_func.body = code_ast.body
+    return wrapper_ast
+
+def execute_python_code(code, timeout=300):
+    # Parse the input code into an AST
+    code_ast = ast.parse(code)
+    wrapper_ast = create_wrapper_ast()
+    combined_ast = insert_code_into_wrapper(wrapper_ast, code_ast)
+    final_code = astor.to_source(combined_ast)
+
     temp_file_name = os.path.join(os.getcwd(), 'scripts/temp_script.py')
     temp_file_copy = os.path.join(os.getcwd(), 'scripts/last_temp_script.py')
     
     with open(temp_file_name, 'w', encoding='utf-8') as temp_file:
-        temp_file.write(indented_code)
+        temp_file.write(final_code)
         temp_file.flush()
     
     with open(temp_file_copy, 'w', encoding='utf-8') as temp_file:
-        temp_file.write(indented_code)
+        temp_file.write(final_code)
         temp_file.flush()
 
     try:
-        # Execute the Python code in a separate process
         process = subprocess.Popen(['python', temp_file_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8')
         try:
-            # Wait for the process to complete with a timeout
             stdout, stderr = process.communicate(timeout=timeout)
             return stdout + stderr
         except subprocess.TimeoutExpired:
-            # Terminate the process if it exceeds the timeout
             process.terminate()
             return f"Error: Code execution timed out after {timeout} seconds."
     except Exception as e:
         return f"Error: {str(e)}"
     finally:
-        # Clean up the temporary file
         if os.path.exists(temp_file_name):
             os.remove(temp_file_name)
 

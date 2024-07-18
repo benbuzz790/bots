@@ -7,52 +7,13 @@ import ast
 import subprocess
 import src.bots as bots
 from src.auto_terminal import (
-    IndentVisitor, 
-    indent_code, 
     execute_python_code, 
     pretty, 
     main
 )
 
 class TestAutoTerminal(unittest.TestCase):
-    def test_indent_visitor(self):
-        code = """
-def outer_function():
-    print('Outer function')
-    if True:
-        print('Inside if')
-        for i in range(3):
-            print(f'Loop {i}')
-    def inner_function():
-        print('Inner function')
-        while True:
-            print('Inside while')
-            break
-    inner_function()
-    """
-        indented = indent_code(code)
-        
-        # Test if the indented code compiles
-        try:
-            ast.parse(indented)
-        except SyntaxError as e:
-            self.fail(f"Indented code failed to compile: {e}")
-        
-        # Optionally, you can also compile the code to check for any errors
-        try:
-            compile(indented, '<string>', 'exec')
-        except Exception as e:
-            self.fail(f"Compiled code raised an exception: {e}")
-        
-        # If we've reached this point, the test passes
-        self.assertTrue(True)
     
-    def test_indent_code(self):
-        code = "def test_func():\n    pass"
-        indented = indent_code(code)
-        self.assertIn("def test_func():", indented)
-        self.assertIn("    pass", indented)
-
     @patch('subprocess.Popen')
     def test_execute_python_code_success(self, mock_popen):
         mock_process = MagicMock()
