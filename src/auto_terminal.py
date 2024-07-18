@@ -102,7 +102,7 @@ def pretty(string, name=None, width=100, indent=4):
     print("\n---\n")
 
 def main():
-    B1 = bots.BaseBot.load(r"data\Codey@2024.07.14-22.06.51.bot")
+    B1 = bots.BaseBot.load(r"data\Codey@2024.07.17-19.20.05.bot")
     #B1 = bots.AnthropicBot(name='Codey')
     pretty(B1.conversation.to_string())
     turn = 'user'
