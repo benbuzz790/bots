@@ -7,6 +7,7 @@ import textwrap
 import subprocess
 import ast
 import astor
+from datetime import datetime as datetime
 
 def create_wrapper_ast():
     wrapper_code = """
@@ -48,9 +49,10 @@ def execute_python_code(code, timeout=300):
     wrapper_ast = create_wrapper_ast()
     combined_ast = insert_code_into_wrapper(wrapper_ast, code_ast)
     final_code = astor.to_source(combined_ast)
-
+    now = datetime.now()
+    formatted_datetime = now.strftime("%Y.%m.%d-%H.%M.%S")
     temp_file_name = os.path.join(os.getcwd(), 'scripts/temp_script.py')
-    temp_file_copy = os.path.join(os.getcwd(), 'scripts/last_temp_script.py')
+    temp_file_copy = os.path.join(os.getcwd(), f'scripts/last_temp_script@{formatted_datetime}.py')
     
     with open(temp_file_name, 'w', encoding='utf-8') as temp_file:
         temp_file.write(final_code)
@@ -81,6 +83,9 @@ def pretty(string, name=None, width=100, indent=4):
     else:
         prefix = f"{name}: "
     
+    if not isinstance(string, str):
+        string = str(string)
+
     # Split the input string into lines
     lines = string.split('\n')
     
@@ -101,7 +106,7 @@ def pretty(string, name=None, width=100, indent=4):
     print("\n---\n")
 
 def execute_code_blocks(response):
-    output = '\nCode Execution Result:\n'
+    output = '\n\n'
     code_blocks, labels = bots.remove_code_blocks(response)
     if code_blocks:
         for code, label in zip(code_blocks, labels):
@@ -122,7 +127,7 @@ def execute_code_blocks(response):
             output = output + '\n---\n'
     return output
 
-def handle_user_command(command, bot):
+def handle_user_command(command, bot: bots.BaseBot):
     if command.lower().startswith('/exit'):
         exit()
     elif command.lower().startswith('/save'):
@@ -132,7 +137,7 @@ def handle_user_command(command, bot):
         filename = input("Filename:")
         if os.path.exists(filename):
             bot = bot.load(filename)
-            return f"Conversation loaded from {filename}"
+            return bot
         else:
             return f"File {filename} not found."
     elif command.lower().startswith('/auto'):
@@ -164,6 +169,8 @@ def main():
             if command_result is not None:
                 if isinstance(command_result, int):
                     auto = command_result
+                if isinstance(command_result, bots.BaseBot):
+                    bot = command_result
                 else:
                     pretty(command_result, 'System')
                 turn = 'user'

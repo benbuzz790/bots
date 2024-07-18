@@ -263,7 +263,7 @@ print("Some other code")
             file.write(initial_content)
 
         mock_input.side_effect = [
-            f"Replace the class 'OldClass' in {self.test_file} with a new class that has a method printing 'This is the new class'",
+            f"Replace the class 'OldClass' in {self.test_file} with 'NewClass' that has a method printing 'This is the new class'",
             '/exit'
         ]
 
@@ -275,7 +275,7 @@ print("Some other code")
         with open(self.test_file, 'r') as file:
             content = file.read()
 
-        self.assertEqualWithDetails("class OldClass:" not in content, True, "Class name was changed")
+        self.assertEqualWithDetails("class OldClass:" not in content, True, "OldClass still present")
         self.assertEqualWithDetails("This is the new class" in content, True, "New class content not found")
         self.assertEqualWithDetails("This is the old class" not in content, True, "Old class content still present")
         self.assertEqualWithDetails("Some other code" in content, True, "Other code was affected")

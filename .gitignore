@@ -15,3 +15,6 @@ env/
 # Miscellaneous
 *.log
 *.tmp
+
+# Custom Ignore
+scripts/last_temp_script@*.py

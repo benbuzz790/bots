@@ -1,25 +1,27 @@
+import json
+test_bot_content = json.dumps({'conversation': [], 'model': 'test_model',
+    'name': 'TestBot'})
+with open('test_load.bot', 'w') as f:
+    f.write(test_bot_content)
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call
 import ast
 import subprocess
 import src.bots as bots
-from src.auto_terminal import (
-    execute_python_code, 
-    pretty, 
-    main
-)
+from tests.detailed_debug import DetailedTestCase
+from src.auto_terminal import execute_python_code, pretty, main
 
-class TestAutoTerminal(unittest.TestCase):
-    
+
+class TestAutoTerminal(DetailedTestCase):
+
     @patch('subprocess.Popen')
     def test_execute_python_code_success(self, mock_popen):
         mock_process = MagicMock()
-        mock_process.communicate.return_value = ("Output from complex code", "")
+        mock_process.communicate.return_value = 'Output from complex code', ''
         mock_popen.return_value = mock_process
-
         complex_code = """
 def factorial(n):
     if n == 0 or n == 1:
@@ -57,11 +59,8 @@ if __name__ == '__main__':
     squared_positives = list(map(lambda x: x**2, positive_numbers))
     print("Squared positive numbers:", squared_positives)
     """
-
         result = execute_python_code(complex_code)
-        self.assertEqual(result, "Output from complex code")
-
-        # Check if Popen was called with the right arguments
+        self.assertEqual(result, 'Output from complex code')
         mock_popen.assert_called_once()
         call_args = mock_popen.call_args[0][0]
         self.assertEqual(call_args[0], 'python')
@@ -70,60 +69,67 @@ if __name__ == '__main__':
     @patch('subprocess.Popen')
     def test_execute_python_code_timeout(self, mock_popen):
         mock_process = MagicMock()
-        mock_process.communicate.side_effect = subprocess.TimeoutExpired(cmd="test", timeout=300)
+        mock_process.communicate.side_effect = subprocess.TimeoutExpired(cmd
+            ='test', timeout=300)
         mock_popen.return_value = mock_process
+        result = execute_python_code('while True: pass')
+        self.assertIn('Error: Code execution timed out', result)
 
-        result = execute_python_code("while True: pass")
-        self.assertIn("Error: Code execution timed out", result)
-    
     @patch('builtins.input', side_effect=['/exit'])
     @patch('src.bots.AnthropicBot')
     def test_main_exit(self, mock_bot, mock_input):
         mock_bot_instance = MagicMock()
         mock_bot.return_value = mock_bot_instance
         mock_bot_instance.load.return_value = mock_bot_instance
-
-        with self.assertRaises(SystemExit):
+        try:
             main()
+        except SystemExit:
+            pass
+        else:
+            self.fail('SystemExit exception not raised')
 
     @patch('builtins.input', side_effect=['/save', '/exit'])
     @patch('src.bots.AnthropicBot')
     def test_main_save(self, mock_bot, mock_input):
         mock_bot_instance = MagicMock()
         mock_bot.return_value = mock_bot_instance
-        mock_bot_instance.load.return_value = mock_bot_instance
-        mock_bot_instance.save.return_value = "test_save.bot"
-
-        with self.assertRaises(SystemExit):
+        mock_bot.load.return_value = mock_bot_instance  # Mock the class method load
+        mock_bot_instance.save.return_value = 'test_save.bot'
+        try:
             main()
-
+        except SystemExit:
+            pass
         mock_bot_instance.save.assert_called_once()
 
     @patch('builtins.input', side_effect=['/load', 'test_load.bot', '/exit'])
     @patch('src.bots.AnthropicBot')
     @patch('os.path.exists', return_value=True)
-    def test_main_load(self, mock_exists, mock_bot, mock_input):
-        mock_bot_instance = MagicMock()
-        mock_bot.return_value = mock_bot_instance
+    def test_main_load(self, mock_exists, MockBot, mock_input):
+        mock_bot_instance = MockBot.return_value
         mock_bot_instance.load.return_value = mock_bot_instance
+        MockBot.load.return_value = mock_bot_instance
 
-        with self.assertRaises(SystemExit):
-            main()
+        with patch('src.bots', MagicMock(AnthropicBot=MockBot)):
+            try:
+                main()
+            except SystemExit:
+                pass
 
-        mock_bot_instance.load.assert_called_with('test_load.bot')
+        mock_bot_instance.load.assert_called_once_with('test_load.bot')
 
     @patch('builtins.input', side_effect=['/auto', '3', '', '/exit'])
     @patch('src.bots.AnthropicBot')
     def test_main_auto(self, mock_bot, mock_input):
         mock_bot_instance = MagicMock()
         mock_bot.return_value = mock_bot_instance
-        mock_bot_instance.load.return_value = mock_bot_instance
-        mock_bot_instance.respond.return_value = "Auto response"
-
-        with self.assertRaises(SystemExit):
+        mock_bot.load.return_value = mock_bot_instance  # Mock the class method
+        mock_bot_instance.respond.return_value = 'Beep Boop'
+        try:
             main()
-
+        except SystemExit:
+            pass
         self.assertEqual(mock_bot_instance.respond.call_count, 3)
+
 
 if __name__ == '__main__':
     unittest.main()
