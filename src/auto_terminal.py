@@ -146,8 +146,10 @@ def handle_user_command(command, bot: bots.BaseBot):
     return None
 
 def main():
-    bot = bots.AnthropicBot.load(r'Codey@2024.07.18-10.50.51.bot')
-    pretty(bot.conversation.to_string())
+    bot_file = r'Codey@2024.07.18-10.50.51.bot'
+    bot = bots.AnthropicBot.load(bot_file)
+    pretty(bot.conversation.to_string(), "Previous Conversation")
+    pretty(f"{bot_file} loaded successfully\nName:{bot.name}\nEngine:{bot.model_engine}", "System")
     turn = 'user'
     auto = 0
     output = ''  # Initialize output here

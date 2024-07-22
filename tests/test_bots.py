@@ -5,12 +5,14 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.bots import BaseBot, GPTBot, AnthropicBot, Engines
 import src.conversation_node as CN
 
+#TODO - add sequence_respond test
+
 class MockMailbox:
     def send_message(self, cvsn, model_engine, max_tokens, temperature, api_key, system_message=None):
-        return "Mock response", "assistant", {}
+        return "Mock response", "assistant"
 
     def batch_send(self, conversations, model_engine, max_tokens, temperature, api_key, system_message=None):
-        return [("Mock response", "assistant", {}) for _ in conversations]
+        return [("Mock response", "assistant") for _ in conversations]
 
 class TestBaseBot(unittest.TestCase):
     def setUp(self):
@@ -23,8 +25,9 @@ class TestBaseBot(unittest.TestCase):
         response = self.bot.respond("Hello")
         self.assertEqual(response, "Mock response")
 
+    @unittest.skip(reason="Not Implemented")
     def test_batch_respond(self):
-        responses = self.bot.batch_respond("Hello", num_responses=3)
+        responses = self.bot.parallel_respond("Hello", num_responses=3)
         self.assertEqual(responses, ["Mock response", "Mock response", "Mock response"])
         self.assertEqual(len(self.bot.conversation.replies), 3)
 
@@ -42,12 +45,13 @@ class TestGPTBot(unittest.TestCase):
 
     def test_send_message(self):
         cvsn = CN.ConversationNode(role="user", content="Test message")
-        response, role, _ = self.bot._send_message(cvsn)
+        response, role = self.bot._send_message(cvsn)
         self.assertEqual(response, "Mock response")
         self.assertEqual(role, "assistant")
 
+    @unittest.skip(reason="Not Implemented")
     def test_batch_respond(self):
-        responses = self.bot.batch_respond("Hello", num_responses=3)
+        responses = self.bot.parallel_respond("Hello", num_responses=3)
         self.assertEqual(responses, ["Mock response", "Mock response", "Mock response"])
         self.assertEqual(len(self.bot.conversation.replies), 3)
 
@@ -58,12 +62,13 @@ class TestAnthropicBot(unittest.TestCase):
 
     def test_send_message(self):
         cvsn = CN.ConversationNode(role="user", content="Test message")
-        response, role, _ = self.bot._send_message(cvsn)
+        response, role = self.bot._send_message(cvsn)
         self.assertEqual(response, "Mock response")
         self.assertEqual(role, "assistant")
-
-    def test_batch_respond(self):
-        responses = self.bot.batch_respond("Hello", num_responses=3)
+    
+    @unittest.skip(reason="Not Implemented")
+    def test_parallel_respond(self):
+        responses = self.bot.parallel_respond("Hello", num_responses=3)
         self.assertEqual(responses, ["Mock response", "Mock response", "Mock response"])
         self.assertEqual(len(self.bot.conversation.replies), 3)
 

@@ -69,8 +69,16 @@ class BaseBot(ABC):
         )
         return reply
 
-    
-    def batch_respond(self, content: str, num_responses: int = 3, role: str = "user") -> list[str]:
+    def sequence_respond(self, content: list[str], role: str = "user") -> list[str]:
+        """Returns the bot's responses for the given sequence of prompts"""
+        reply = []
+        starting_node = self.conversation
+        for msg in content:
+            reply.append(self.respond(msg, role))
+
+        return reply, starting_node
+
+    def parallel_respond(self, content: str, num_responses: int = 3, role: str = "user") -> list[str]:
         """Generates multiple responses based on the given content and role."""
 
         # Create a single conversation node with the user's input
@@ -91,7 +99,7 @@ class BaseBot(ABC):
 
         responses = []
         for result in results:
-            response_text, response_role, _ = result
+            response_text, response_role = result
             responses.append(response_text)
             # Add each response as a reply to the original conversation
             self.conversation = self.conversation.add_reply(response_text, response_role)
@@ -108,14 +116,14 @@ class BaseBot(ABC):
         if cvsn is not None and text is not None:
             try:
                 cvsn = cvsn.add_reply(text, role)
-                response_text, response_role, _ = self._send_message(cvsn)
+                response_text, response_role = self._send_message(cvsn)
                 cvsn = cvsn.add_reply(response_text, response_role)
                 return response_text, cvsn
             except Exception as e:
                 raise e
         elif cvsn is not None:
             try:
-                response_text, response_role, _ = self._send_message(cvsn)
+                response_text, response_role, = self._send_message(cvsn)
                 cvsn = cvsn.add_reply(response_text, response_role)
                 return response_text, cvsn
             except Exception as e:
@@ -125,7 +133,7 @@ class BaseBot(ABC):
             return self.cvsn_respond(cvsn=c)
         elif text is None and cvsn is not None:
             try:
-                response_text, response_role, _ = self._send_message(cvsn)
+                response_text, response_role = self._send_message(cvsn)
                 cvsn = cvsn.add_reply(response_text, response_role)
                 return response_text, cvsn
             except Exception as e:
@@ -277,12 +285,11 @@ class GPTBot(BaseBot):
 
     def _send_message(
         self, cvsn: CN.ConversationNode
-    ) -> tuple[str, str, Dict[str, Any]]:
+    ) -> tuple[str, str]:
         """Sends a message to the bot's mailbox using the OpenAI API."""
         return self.mailbox.send_message(
             cvsn, self.model_engine, self.max_tokens, self.temperature, self.api_key
         )
-
 class AnthropicBot(BaseBot):
     """Anthropic-based bot implementation."""
 
@@ -308,10 +315,14 @@ class AnthropicBot(BaseBot):
     def load(cls, filepath: str) -> "AnthropicBot":
         """Loads an AnthropicBot instance from a file."""
         return super().load(filepath)
+    
+    def add_tools(self, filepath):
+        """Adds top level python functions from filepath to the bot"""
+        self.mailbox.add_tools_from_py(filepath)
 
     def _send_message(
         self, cvsn: CN.ConversationNode
-    ) -> tuple[str, str, Dict[str, Any]]:
+    ) -> tuple[str, str]:
         """Sends a message to the bot's mailbox using the Anthropic API."""
         return self.mailbox.send_message(
             cvsn, self.model_engine, self.max_tokens, self.temperature, self.api_key

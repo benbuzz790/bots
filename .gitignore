@@ -18,3 +18,5 @@ env/
 
 # Custom Ignore
 scripts/last_temp_script@*.py
+experiments/
+TestBot*.bot
