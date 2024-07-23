@@ -108,6 +108,7 @@ def pretty(string, name=None, width=100, indent=4):
 def execute_code_blocks(response):
     output = '\n\n'
     code_blocks, labels = bots.remove_code_blocks(response)
+
     if code_blocks:
         for code, label in zip(code_blocks, labels):
             if label.lower() == "epowershell":

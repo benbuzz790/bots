@@ -26,7 +26,7 @@ def replace_class(file_path, new_class_def):
     with open(file_path, 'r') as file:
         content = file.read()
 
-    new_class_node = ast.parse(new_class_def).body[0]
+    new_class_node = ast.parse(_remove_common_indent(new_class_def)).body[0]
     if not isinstance(new_class_node, ast.ClassDef):
         raise ValueError("Provided definition is not a class")
 
@@ -49,19 +49,26 @@ def replace_function(file_path, new_function_def):
     with open(file_path, 'r') as file:
         content = file.read()
 
-    new_func_node = ast.parse(new_function_def).body[0]
+    new_func_node: ast.FunctionDef = ast.parse(_remove_common_indent(new_function_def)).body[0]
     if not isinstance(new_func_node, ast.FunctionDef):
         raise ValueError("Provided definition is not a function")
 
     tree = ast.parse(content)
 
     class FunctionReplacer(ast.NodeTransformer):
+        def __init__(self):
+            self.success = False
         def visit_FunctionDef(self, node):
+            self.success = True
             if node.name == new_func_node.name:
                 return new_func_node
             return node
 
-    tree = FunctionReplacer().visit(tree)
+    transformer = FunctionReplacer()
+    tree = transformer.visit(tree)
+    if not transformer.success:
+        ValueError(f"Function'{new_func_node.name}' not found in the file:\n\n{content}\n\n.")
+
 
     updated_content = astor.to_source(tree)
     with open(file_path, 'w') as file:
@@ -75,20 +82,26 @@ def add_function_to_class(file_path, class_name, new_method_def):
     with open(file_path, 'r') as file:
         content = file.read()
 
-    new_method_node = ast.parse(new_method_def).body[0]
+    new_method_node = ast.parse(_remove_common_indent(new_method_def)).body[0]
     if not isinstance(new_method_node, ast.FunctionDef):
         raise ValueError("Provided definition is not a function")
 
     tree = ast.parse(content)
 
     class MethodAdder(ast.NodeTransformer):
+        def __init__(self):
+            self.success = False  
         def visit_ClassDef(self, node):
             if node.name == class_name:
-                node.body.append(new_method_node)  # Append the new method to the class
+                self.success = True
+                node.body.append(new_method_node)
                 return node
             return node
 
-    tree = MethodAdder().visit(tree)
+    transformer = MethodAdder()
+    tree = transformer.visit(tree)
+    if not transformer.success:
+        raise ValueError(f"Class '{class_name}' not found in the file:\n\n{content}\n\n.")
 
     updated_content = astor.to_source(tree)
     with open(file_path, 'w') as file:
@@ -102,7 +115,7 @@ def add_class_to_file(file_path, class_def):
     with open(file_path, 'r') as file:
         content = file.read()
 
-    new_class_node = ast.parse(class_def).body[0]
+    new_class_node = ast.parse(_remove_common_indent(class_def)).body[0]
     if not isinstance(new_class_node, ast.ClassDef):
         raise ValueError("Provided definition is not a class")
 
@@ -143,3 +156,18 @@ def delete_match(file_path, pattern):
 def read_file(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
         return file.read()
+    
+def _remove_common_indent(code):
+
+    # Replace leading groups of 4 spaces with tabs until no groups of 4 spaces
+    for line in code.strip():
+        while '    ' in line:  # Check if line contains four spaces anywhere
+            line = line.replace('    ', '\t')  # Replace all four spaces with a tab
+
+    # Remove a leading tab from each line, if present in each line
+    while all(line.startswith('\t') for line in code.strip()):
+        for line in code.strip():
+            line = line[1:]
+
+    return code
+
