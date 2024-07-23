@@ -2,6 +2,7 @@ import ast
 import astor
 import os
 import re
+import inspect
 
 def rewrite(file_path, content):
     with open(file_path, 'w') as file:
@@ -158,16 +159,5 @@ def read_file(file_path):
         return file.read()
     
 def _remove_common_indent(code):
-
-    # Replace leading groups of 4 spaces with tabs until no groups of 4 spaces
-    for line in code.strip():
-        while '    ' in line:  # Check if line contains four spaces anywhere
-            line = line.replace('    ', '\t')  # Replace all four spaces with a tab
-
-    # Remove a leading tab from each line, if present in each line
-    while all(line.startswith('\t') for line in code.strip()):
-        for line in code.strip():
-            line = line[1:]
-
-    return code
+    return inspect.cleandoc(code)
 
