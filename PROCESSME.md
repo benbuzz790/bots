@@ -10,8 +10,8 @@ This document outlines the tools available for bots to manipulate Python files p
 2. replace_string(file_path, old_string, new_string):
    Replaces the instances of a string in a file.
 
-3. replace_class(file_path, new_class_def):
-   Replaces an existing class definition.
+3. replace_class(file_path, new_class_def, old_class_name=None):
+   Replaces old_class_name with a new class definition. If old_class_name is None, tries to replace using new_class_def's name.
 
 4. replace_function(file_path, new_function_def):
    Replaces an existing function definition.
