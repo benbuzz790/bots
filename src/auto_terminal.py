@@ -149,12 +149,11 @@ def handle_user_command(command, bot: bots.BaseBot):
 def main():
     bot_file = r'Codey@2024.07.23-16.44.10.bot'
     bot = bots.AnthropicBot.load(bot_file)
-    #bot = bots.AnthropicBot(temperature=1)
     pretty(bot.conversation.to_string(), "Previous Conversation")
     pretty(f"{bot_file} loaded successfully\nName:{bot.name}\nEngine:{bot.model_engine}", "System")
     turn = 'user'
     auto = 0
-    output = ''  # Initialize output here
+    output = ''  
 
     while True:
         if turn == 'assistant':

@@ -2,12 +2,8 @@ import unittest
 import os
 import sys
 import traceback
-import tempfile
-import shutil
 import time
-import csv
-import json
-import platform
+import concurrent
 from unittest.mock import patch
 from io import StringIO
 from contextlib import redirect_stdout
@@ -138,28 +134,8 @@ class TestCodey(DetailedTestCase):
             output = buf.getvalue()
         self.assertEqualWithDetails('modification time' in output.lower(), 
             True, 'File modification time retrieval failed')
-    """ Bad test. Success critiera not reliable
-    # @patch('builtins.input')
-    # def test_file_comparison(self, mock_input):
-    #     file1 = os.path.join(self.test_dir, "file1.txt")
-    #     file2 = os.path.join(self.test_dir, "file2.txt")
-    #     with open(file1, 'w') as f:
-    #         f.write("Test content")
-    #     with open(file2, 'w') as f:
-    #         f.write("Test content")
-    #     mock_input.side_effect = [
-    #         f"Compare the contents of {file1} and {file2}",
-    #         '/exit'
-    #     ]
 
-    #     with StringIO() as buf, redirect_stdout(buf):
-    #         with self.assertRaises(SystemExit):
-    #             auto_terminal.main()
-    #         output = buf.getvalue()
-
-    #     self.assertEqualWithDetails(any(word in output.lower() for word in ["identical", "same", "equal"]), True, "File comparison failed")
-    """
-    """ Not yet supported (i.e. i don't know what I'm doing)
+    @unittest.skip(reason='Not Implemented')
     @patch('builtins.input')
     def test_concurrent_file_operations(self, mock_input):
         def write_file(content):
@@ -181,23 +157,6 @@ class TestCodey(DetailedTestCase):
         with open(self.test_file, 'r') as file:
             content = file.read()
         self.assertEqualWithDetails(len(content.split("Content")) > 1, True, "Concurrent file operations failed")
-    """
-    """ Bad test. Success Criteria not reliable
-    # @patch('builtins.input')
-    # def test_error_handling_nonexistent_file(self, mock_input):
-    #     nonexistent_file = os.path.join(self.test_dir, "nonexistent.txt")
-    #     mock_input.side_effect = [
-    #         f"Read the contents of {nonexistent_file}",
-    #         '/exit'
-    #     ]
-
-    #     with StringIO() as buf, redirect_stdout(buf):
-    #         with self.assertRaises(SystemExit):
-    #             auto_terminal.main()
-    #         output = buf.getvalue()
-
-    #     self.assertEqualWithDetails(any(phrase in output.lower() for phrase in ["not found", "does not exist", "unable to read"]), True, "Error handling for nonexistent file failed")
-    """
 
     @classmethod
     def tearDownClass(cls):
