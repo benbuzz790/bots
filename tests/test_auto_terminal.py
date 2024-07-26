@@ -1,8 +1,4 @@
 import json
-test_bot_content = json.dumps({'conversation': [], 'model': 'test_model',
-    'name': 'TestBot'})
-with open('test_load.bot', 'w') as f:
-    f.write(test_bot_content)
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -12,7 +8,8 @@ import ast
 import subprocess
 import src.bots as bots
 from tests.detailed_debug import DetailedTestCase
-from src.auto_terminal import execute_python_code, pretty, main
+from src.auto_terminal import main
+from src.bot_tools import execute_python_code
 
 
 class TestAutoTerminal(DetailedTestCase):
@@ -132,4 +129,8 @@ if __name__ == '__main__':
 
 
 if __name__ == '__main__':
+    test_bot_content = json.dumps({'conversation': [], 'model': 'test_model',
+    'name': 'TestBot'})
+    with open('test_load.bot', 'w') as f:
+        f.write(test_bot_content)
     unittest.main()

@@ -301,7 +301,7 @@ class ConversationGUI:
             role = "user" if self.selected_node.role == "assistant" else "assistant"
             model_engine = self.selected_engine
             bot = Engines.get_bot_class(model_engine)(model_engine=model_engine)
-            _, node = bot.cvsn_respond(None, self.selected_node, role)
+            _, node = bot._cvsn_respond(None, self.selected_node, role)
             self.select_node(node)
             waiting_node.destroy()
             self.display_conversation()

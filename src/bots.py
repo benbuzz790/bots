@@ -64,7 +64,7 @@ class BaseBot(ABC):
 
     def respond(self, content: str, role: str = "user") -> str:
         """Generates a response based on the given content and role."""
-        reply, self.conversation = self.cvsn_respond(
+        reply, self.conversation = self._cvsn_respond(
             text=content, cvsn=self.conversation, role=role
         )
         return reply
@@ -106,7 +106,7 @@ class BaseBot(ABC):
 
         return responses
 
-    def cvsn_respond(
+    def _cvsn_respond(
         self,
         text: Optional[str] = None,
         cvsn: Optional[CN.ConversationNode] = None,
@@ -130,7 +130,7 @@ class BaseBot(ABC):
                 raise e
         elif text is not None:
             c = CN.ConversationNode(role=role, content=text)
-            return self.cvsn_respond(cvsn=c)
+            return self._cvsn_respond(cvsn=c)
         elif text is None and cvsn is not None:
             try:
                 response_text, response_role = self._send_message(cvsn)
@@ -150,7 +150,7 @@ class BaseBot(ABC):
         """Sets the system message for the bot."""
         self.system_message = message
 
-    def formatted_datetime(self) -> str:
+    def _formatted_datetime(self) -> str:
         """Returns the current date and time in a formatted string."""
         now = DT.datetime.now()
         return now.strftime("%Y.%m.%d-%H.%M.%S")
@@ -161,6 +161,7 @@ class BaseBot(ABC):
         Loads a bot instance or conversation from a file. Opens to the leaf in
         the chain of first replies. (I.e. the last message in a linear conversation)
         """
+        # TODO add tool saving and loading
         _, extension = os.path.splitext(filepath)
 
         if extension == ".bot":
@@ -234,7 +235,7 @@ class BaseBot(ABC):
                     print(self.conversation.root().to_string())
                     print("\n")
                     print("---")
-                case "/break":
+                case "/exit":
                     self.sys_say("conversation ended")
                     break
                 case "/save":
@@ -247,7 +248,7 @@ class BaseBot(ABC):
                         self.conversation = self.conversation.add_reply(user_input, "user")
                     else:
                         self.conversation = CN.ConversationNode(role="user", content=user_input)
-                    response, self.conversation = self.cvsn_respond(cvsn=self.conversation)
+                    response, self.conversation = self._cvsn_respond(cvsn=self.conversation)
                     self.say(response)
 
     def sys_say(self, string: str) -> None:
@@ -290,6 +291,7 @@ class GPTBot(BaseBot):
         return self.mailbox.send_message(
             cvsn, self.model_engine, self.max_tokens, self.temperature, self.api_key
         )
+
 class AnthropicBot(BaseBot):
     """Anthropic-based bot implementation."""
 
@@ -310,14 +312,16 @@ class AnthropicBot(BaseBot):
                 self.mailbox = MB.AnthropicMailbox(verbose=True)
             case _:
                 raise Exception(f"model_engine: {model_engine} not found")
+        self.tool_path = None
 
     @classmethod
     def load(cls, filepath: str) -> "AnthropicBot":
         """Loads an AnthropicBot instance from a file."""
-        return super().load(filepath)
+        bot = super().load(filepath)
     
     def add_tools(self, filepath):
         """Adds top level python functions from filepath to the bot"""
+        self.tool_path = filepath
         self.mailbox.add_tools_from_py(filepath)
 
     def _send_message(
@@ -340,6 +344,8 @@ def remove_code_blocks(text: str) -> tuple[list[str], list[str]]:
     text = re.sub(pattern, '', text)
     return code_blocks, labels
 
+def load(filepath):
+    return BaseBot.load(filepath)
 
 if __name__ == "__main__":
     #GPTBot().converse()

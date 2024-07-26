@@ -18,5 +18,7 @@ env/
 
 # Custom Ignore
 scripts/last_temp_script@*.py
-experiments/
 TestBot*.bot
+data/mailbox_log.txt
+.gitignore
+.experiments
