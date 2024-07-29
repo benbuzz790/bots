@@ -1,9 +1,4 @@
-import ast
-import astor
-import os
-import re
-import inspect
-import ast
+import ast 
 import astor
 import os
 import re
@@ -99,7 +94,7 @@ def replace_class(file_path, new_class_def, old_class_name=None):
     tree = ClassReplacer().visit(tree)
     updated_content = astor.to_source(tree)
     try:
-        with open(file_path, 'r', encoding='utf-8') as file:
+        with open(file_path, 'w', encoding='utf-8') as file:
             file.write(updated_content)
     except Exception as e:
         return _process_error(e)
@@ -138,8 +133,8 @@ def replace_function(file_path, new_function_def):
             self.success = False
 
         def visit_FunctionDef(self, node):
-            self.success = True
             if node.name == new_func_node.name:
+                self.success = True
                 return new_func_node
             return node
     
@@ -150,7 +145,7 @@ def replace_function(file_path, new_function_def):
             f"Function'{new_func_node.name}' not found in the file:\n\n{content}\n\n."))
     try:
         updated_content = astor.to_source(tree)
-        with open(file_path, 'r', encoding='utf-8') as file:
+        with open(file_path, 'w', encoding='utf-8') as file:
             file.write(updated_content)
     except Exception as e:
         return _process_error(e)

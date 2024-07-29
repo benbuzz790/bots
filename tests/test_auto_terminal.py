@@ -4,9 +4,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import unittest
 from unittest.mock import patch, MagicMock, call
-import ast
 import subprocess
-import src.bots as bots
 from tests.detailed_debug import DetailedTestCase
 from src.auto_terminal import main
 from src.bot_tools import execute_python_code
@@ -73,7 +71,7 @@ if __name__ == '__main__':
         self.assertIn('Error: Code execution timed out', result)
 
     @patch('builtins.input', side_effect=['/exit'])
-    @patch('src.bots.AnthropicBot')
+    @patch('src.anthropic_bots.AnthropicBot')
     def test_main_exit(self, mock_bot, mock_input):
         mock_bot_instance = MagicMock()
         mock_bot.return_value = mock_bot_instance
@@ -86,7 +84,7 @@ if __name__ == '__main__':
             self.fail('SystemExit exception not raised')
 
     @patch('builtins.input', side_effect=['/save', '/exit'])
-    @patch('src.bots.AnthropicBot')
+    @patch('src.anthropic_bots.AnthropicBot')
     def test_main_save(self, mock_bot, mock_input):
         mock_bot_instance = MagicMock()
         mock_bot.return_value = mock_bot_instance
@@ -99,14 +97,14 @@ if __name__ == '__main__':
         mock_bot_instance.save.assert_called_once()
 
     @patch('builtins.input', side_effect=['/load', 'test_load.bot', '/exit'])
-    @patch('src.bots.AnthropicBot')
+    @patch('src.anthropic_bots.AnthropicBot')
     @patch('os.path.exists', return_value=True)
     def test_main_load(self, mock_exists, MockBot, mock_input):
         mock_bot_instance = MockBot.return_value
         mock_bot_instance.load.return_value = mock_bot_instance
         MockBot.load.return_value = mock_bot_instance
 
-        with patch('src.bots', MagicMock(AnthropicBot=MockBot)):
+        with patch('src.anthropic_bots', MagicMock(AnthropicBot=MockBot)):
             try:
                 main()
             except SystemExit:
@@ -115,7 +113,7 @@ if __name__ == '__main__':
         mock_bot_instance.load.assert_called_once_with('test_load.bot')
 
     @patch('builtins.input', side_effect=['/auto', '3', '', '/exit'])
-    @patch('src.bots.AnthropicBot')
+    @patch('src.anthropic_bots.AnthropicBot')
     def test_main_auto(self, mock_bot, mock_input):
         mock_bot_instance = MagicMock()
         mock_bot.return_value = mock_bot_instance

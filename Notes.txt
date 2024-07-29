@@ -1,10 +1,4 @@
-- Claude continues to forget that each code block is independent, and tries to use existing imports between code blocks.
-
-- Claude occasionally tries to write new files using this format:
-
-```epython
-# filename.py
-[code]
-```
-
-- Codey sometimes doesn't want to delete a file from the test directory, believes it to be an ethics test. I'm going to let that bug stay as a feature.
+- Refactor bot_mailbox, bots, and conversation node into base.py, openAI_bots.py, and anthropic_bots.py
+- use **args **kwargs incantation for dynamic typing to help out save / load on bots
+- make the tool handler a savable bot property
+- make an image handler

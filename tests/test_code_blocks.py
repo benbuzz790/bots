@@ -1,12 +1,12 @@
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src import bots
+from src import base
 import subprocess
 
 
 def remove_code_blocks(text):
-    return bots.remove_code_blocks(text)
+    return base.remove_code_blocks(text)
 
 def execute_code_blocks(code_blocks, labels):
     output = 'Executed Code Result:\n'
