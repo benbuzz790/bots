@@ -86,7 +86,7 @@ def handle_user_command(command: str, bot: bots.Bot) -> CommandResult:
 
 def main():
     bot_file = r'Codey@2024.07.23-16.44.10.bot'
-    codey = bots.AnthropicBot(name='Fresh')
+    codey = bots.AnthropicBot(name='Claude')
     codey.add_tools(r'src\bot_tools.py')
     pretty('Bot tools added', 'System')
     verbose = True

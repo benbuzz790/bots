@@ -19,7 +19,7 @@ class OpenAIMailbox(Mailbox):
             system_message: Optional[str] = None
             ) -> Dict[str, Any]:
         client = OpenAI(api_key=api_key)
-        messages = conversation.get_message_list()
+        messages = conversation.get_messages()
         if system_message:
             messages.insert(0, {"role": "system", "content": system_message})
         return client.chat.completions.create(
@@ -44,7 +44,7 @@ class OpenAIToolHandler(ToolHandler):
         # Implement OpenAI-specific tool schema generation
         pass
 
-    def handle_tool_use(self, response: Any) -> List[Dict[str, Any]]:
+    def generate_response_schema(self, response: Any) -> List[Dict[str, Any]]:
         # Implement OpenAI-specific tool use handling
         pass
 
@@ -72,7 +72,7 @@ class GPTBot(Bot):
             cvsn, self.model_engine.value, self.max_tokens, self.temperature, self.api_key, self.system_message
         )
         # Handle tool use if necessary
-        tool_results = self.tool_handler.handle_tool_use(metadata)
+        tool_results = self.tool_handler.generate_response_schema(metadata)
         if tool_results:
             for result in tool_results:
                 self.tool_handler.add_result(result)

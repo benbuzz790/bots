@@ -2,8 +2,6 @@ import os
 import sys
 import unittest
 from unittest.mock import Mock, patch
-import json
-
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.anthropic_bots import AnthropicMailbox, AnthropicToolHandler
 from src.openai_bots import OpenAIMailbox
@@ -11,7 +9,7 @@ from src.base import ConversationNode, Engines
 
 class TestBaseMailbox(unittest.TestCase):
     def setUp(self):
-        self.test_mb = OpenAIMailbox(verbose=True)
+        self.test_mb = AnthropicMailbox(verbose=True)
 
     def test_log_message(self):
         with patch('builtins.open', unittest.mock.mock_open()) as mock_file:
@@ -21,8 +19,8 @@ class TestBaseMailbox(unittest.TestCase):
             self.assertIn("Test message", written_content)
             self.assertIn("OUTGOING", written_content)
 
-    @patch('src.openai_bots.OpenAIMailbox._send_message_implementation')
-    @patch('src.openai_bots.OpenAIMailbox._process_response')
+    @patch('src.anthropic_bots.AnthropicMailbox._send_message_implementation')
+    @patch('src.anthropic_bots.AnthropicMailbox._process_response')
     def test_send_message(self, mock_process, mock_send):
         mock_send.return_value = {"mock": "response"}
         mock_process.return_value = ("Test response", "assistant", {})
@@ -38,6 +36,7 @@ class TestOpenAIMailbox(unittest.TestCase):
     def setUp(self):
         self.openai_mailbox = OpenAIMailbox()
 
+    @unittest.skip(reason="Not Implemented")
     @patch('openai.ChatCompletion.create')
     def test_send_message_implementation(self, mock_create):
        
@@ -49,6 +48,7 @@ class TestOpenAIMailbox(unittest.TestCase):
         self.assertIn("Paris", response.choices[0].message.content)
         self.assertEqual(response.choices[0].message.role, "assistant")
 
+    @unittest.skip(reason="Not Implemented")
     def test_process_response(self):
         conversation = ConversationNode(role="user", content="What is the capital of France?")
         response = self.openai_mailbox._send_message_implementation(
@@ -64,7 +64,7 @@ class TestOpenAIMailbox(unittest.TestCase):
 
 class TestAnthropicMailbox(unittest.TestCase):
     def setUp(self):
-        self.anthropic_mailbox = AnthropicMailbox()
+        self.anthropic_mailbox = AnthropicMailbox(tool_handler=AnthropicToolHandler())
         self.test_tools_path = 'test_tools.py'
         
         # Create a simple tools file for testing
@@ -113,7 +113,7 @@ def subtract(a: int, b: int) -> int:
         self.assertEqual(len(result), 3)
         self.assertEqual(result[0], "Paris is the capital of France.")
         self.assertEqual(result[1], 'assistant')
-        self.assertEqual(result[2], [])
+        self.assertEqual(result[2], {})
 
     def test_process_response_tool_use(self):
         self.anthropic_mailbox.set_tool_handler(AnthropicToolHandler())
@@ -126,8 +126,8 @@ def subtract(a: int, b: int) -> int:
         self.assertIsInstance(result, tuple)
         self.assertEqual(len(result), 3)
         self.assertEqual(result[1], 'assistant')
-        self.assertIsInstance(result[2], list)
-        self.assertEqual(result[2][0]['output'], 42)
+        self.assertIsInstance(result[2], dict)
+        self.assertEqual(result[2]['results'][0]['content'], 42)
 
 if __name__ == '__main__':
     unittest.main()

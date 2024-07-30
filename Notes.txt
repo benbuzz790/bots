@@ -1,4 +1,0 @@
-- Refactor bot_mailbox, bots, and conversation node into base.py, openAI_bots.py, and anthropic_bots.py
-- use **args **kwargs incantation for dynamic typing to help out save / load on bots
-- make the tool handler a savable bot property
-- make an image handler

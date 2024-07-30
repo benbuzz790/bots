@@ -4,7 +4,7 @@ import os
 import sys
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Optional, Union, Type, Dict, Any, List, Callable
+from typing import Optional, Union, Type, Dict, Any, List, Callable, Tuple
 import datetime as DT
 import json
 import re
@@ -15,7 +15,7 @@ import inspect
 import hashlib
 
 # Utility Functions
-def remove_code_blocks(text: str) -> tuple[List[str], List[str]]:
+def remove_code_blocks(text: str) -> Tuple[List[str], List[str]]:
     pattern = r'```(\w*)\s*([\s\S]*?)```'
     matches = re.findall(pattern, text)
     code_blocks = [match[1].strip() for match in matches]
@@ -59,16 +59,6 @@ class ConversationNode:
         self.content = content
         self.replies: List["ConversationNode"] = []
         self.parent: Optional["ConversationNode"] = None
-
-    def copy(self):
-        new_node = self.__class__(**self.attributes)
-        new_node.replies = [reply.copy() for reply in self.replies]
-        return new_node
-
-    def add_reply(self, **kwargs) -> "ConversationNode":
-        reply = self.__class__(**kwargs, parent=self)
-        self.replies.append(reply)
-        return reply
     
     @classmethod
     def create_empty(cls) -> 'ConversationNode':
@@ -88,21 +78,10 @@ class ConversationNode:
             self.replies.append(reply)
             return reply
     
-    def get_message_list(self) -> List[Dict[str, str]]:
-        """
-        Converts the conversation node and its replies to a list of dictionaries.
-        """
-        node = self
-        if node.is_empty():
-            return []
-        conversation_dict = [{"role": node.role, "content": node.content}]
-        if node.parent is not None:
-            parent_dict = node.parent.get_message_list()
-            conversation_dict = parent_dict + conversation_dict
-        return conversation_dict
-    
     def to_dict(self) -> Dict[str, Any]:
         result = {k: v for k, v in self.attributes.items() if k != 'parent'}
+        result['role'] = self.role
+        result['content'] = self.content
         if self.replies:
             result['replies'] = [reply.to_dict() for reply in self.replies]
         return result
@@ -116,263 +95,15 @@ class ConversationNode:
             node.replies.append(reply_node)
         return node
     
-    @classmethod
-    def create_empty(cls):
-        return cls(role="empty", content="")
-
-
-
-class Mailbox(ABC):
-    def __init__(self, verbose: bool = False):
-        self.verbose = verbose
-        self.log_file = r"data\mailbox_log.txt"
-
-    def log_message(self, message: str, direction: str) -> None:
-        timestamp = formatted_datetime()
-        log_entry = f"[{timestamp}] {direction.upper()}:\n{message}\n\n"
-        with open(self.log_file, 'a', encoding='utf-8') as file:
-            file.write(log_entry)
-
-    def send_message(self, 
-            conversation: ConversationNode, 
-            model: str, 
-            max_tokens: int, 
-            temperature: float, 
-            api_key: str, 
-            system_message: Optional[str] = None
-            ) -> tuple[str, str, Dict[str, Any]]:
-        self._log_outgoing(conversation, model, max_tokens, temperature)
-        try:
-            response = self._send_message_implementation(conversation, model, max_tokens, temperature, api_key, system_message)
-            processed_response = self._process_response(response)
-        except Exception as e:
-            raise e
-        self._log_incoming(processed_response)
-        return processed_response
-
-    @abstractmethod
-    def _send_message_implementation(self, 
-            conversation: ConversationNode, 
-            model: str, 
-            max_tokens: int, 
-            temperature: float, 
-            api_key: str, 
-            system_message: Optional[str] = None
-            ) -> Dict[str, Any]:
-        """
-        Implement the actual message sending logic for a specific AI service.
-
-        This method should handle the API call to the AI service and return the raw response.
-
-        Parameters:
-        - conversation (ConversationNode): The conversation history.
-        - model (str): The name or identifier of the AI model to use.
-        - max_tokens (int): The maximum number of tokens the AI should generate.
-        - temperature (float): The sampling temperature to use for generation.
-        - api_key (str): The API key for the AI service.
-        - system_message (Optional[str]): An optional system message to guide the AI's behavior.
-
-        Returns:
-        Dict[str, Any]: The raw response from the AI service.
-
-        Raises:
-        Exception: If there's an error in sending the message or receiving the response.
-        """
-        pass
-
-    @abstractmethod
-    def _process_response(self, response: Dict[str, Any]) -> tuple[str, str, Dict[str, Any]]:
-        """
-        Process the raw response from the AI service into a standardized format.
-
-        This method should extract the relevant information from the AI's response
-        and return it in a consistent format across different AI services.
-
-        Parameters:
-        - response (Dict[str, Any]): The raw response from the AI service.
-
-        Returns:
-        tuple[str, str, Dict[str, Any]]: A tuple containing:
-            - The response text (str)
-            - The role of the responder (str, e.g., "assistant")
-            - Additional metadata or parsed information (Dict[str, Any])
-
-        Note:
-        The exact structure of the returned tuple may vary depending on the specific 
-        requirements of your application, but it should be consistent across all 
-        implementations of this method.
-        """
-        pass
-
-    def _log_outgoing(self, conversation:ConversationNode, model, max_tokens, temperature):
-        log_message = {
-            "date": formatted_datetime(),
-            "messages": conversation.get_message_list(),
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "model": model,
-        }
-        self._log_message(json.dumps(log_message, indent=2), "OUTGOING")
-
-    def _log_incoming(self, processed_response):
-        log_message = {
-            "date": formatted_datetime(),
-            "response": processed_response,
-        }
-        self._log_message(json.dumps(log_message, indent=2), "INCOMING")
-
-    def _log_message(self, message: str, direction: str) -> None:
-        timestamp = formatted_datetime()
-        log_entry = f"[{timestamp}] {direction.upper()}:\n{message}\n\n"
-        with open(self.log_file, 'a', encoding='utf-8') as file:
-            file.write(log_entry)
-
-    def batch_send(self, conversations, model, max_tokens, temperature, api_key, system_message=None):
-        threads = []
-        results = [None] * len(conversations)
-        
-        def send_thread(index, conv):
-            result = self.send_message(conv, model, max_tokens, temperature, api_key, system_message)
-            results[index] = result
-        
-        for i, conversation in enumerate(conversations):
-            thread = threading.Thread(target=send_thread, args=(i, conversation))
-            threads.append(thread)
-            thread.start()
-        
-        for thread in threads:
-            thread.join()
-        
-        return results
-
-class Bot(ABC):
-    def __init__(
-        self,
-        api_key: Optional[str],
-        model_engine: Engines,
-        max_tokens: int,
-        temperature: float,
-        name: str,
-        role: str,
-        role_description: str,
-        conversation: Optional[ConversationNode] = ConversationNode.create_empty()
-    ):
-        self.api_key = api_key
-        self.name = name
-        self.model_engine = model_engine
-        self.max_tokens = max_tokens
-        self.temperature = temperature
-        self.role = role
-        self.role_description = role_description
-        self.conversation = conversation
-        self.system_message = ""
-        self.mailbox: Mailbox
-
-    def respond(self, content: str, role: str = "user") -> str:
-        reply, self.conversation = self._cvsn_respond(
-            text=content, cvsn=self.conversation, role=role
-        )
-        return reply
-
-    def _cvsn_respond(
-        self,
-        text: Optional[str] = None,
-        cvsn: Optional[ConversationNode] = None,
-        role: str = "user",
-    ) -> tuple[str, ConversationNode]:
-        if cvsn is None and text is None:
-            raise ValueError("Invalid input: both text and cvsn are None")
-
-        if cvsn is None:
-            cvsn = self.__class__(role=role, content=text)
-        elif text is not None:
-            cvsn = cvsn.add_reply(content=text, role=role)
-
-        try:
-            response_text, response_role, extra_data = self.mailbox.send_message(
-                cvsn,
-                self.model_engine.value, 
-                max_tokens=self.max_tokens, 
-                temperature=self.temperature,
-                api_key=self.api_key,
-                system_message=self.system_message or ''
-            )
-
-            cvsn = cvsn.add_reply(content=response_text, role=response_role, data=extra_data)
-
-            return response_text, cvsn
-
-        except Exception as e:
-            raise e
-
-    def _handle_extra_data(self, cvsn: ConversationNode, extra_data: Any) -> None:
-        """
-        Handle any extra data returned by the mailbox.
-        This method can be overridden by subclasses to handle specific data types.
-        """
-        pass
-
-    def set_system_message(self, message: str) -> None:
-        self.system_message = message
-
-    @classmethod
-    def load(cls, filepath: str) -> "Bot":
-        with open(filepath, "r") as file:
-            data = json.load(file)
-
-        bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
-        
-        # Get the constructor parameters
-        init_params = inspect.signature(bot_class.__init__).parameters
-        
-        # Filter the data to only include parameters accepted by the constructor
-        constructor_args = {k: v for k, v in data.items() if k in init_params}
-        
-        # Handle special cases
-        if 'tool_handler' in constructor_args:
-            constructor_args['tool_handler'] = bot_class.ToolHandlerClass.from_dict(constructor_args['tool_handler'])
-        
-        # Create the bot instance
-        bot = bot_class(**constructor_args)
-        
-        # Set additional attributes that are not part of the constructor
-        for key, value in data.items():
-            if key not in constructor_args and key != "conversation":
-                if key == 'tool_handler':
-                    setattr(bot, key, bot_class.ToolHandlerClass.from_dict(value))
-                else:
-                    setattr(bot, key, value)
-
-        # Handle conversation separately
-        if 'conversation' in data and data['conversation']:
-            bot.conversation = ConversationNode.from_dict(data["conversation"])
-        return bot
-
-    def save(self, filename: Optional[str] = None) -> str:
-        now = formatted_datetime()
-        if filename is None:
-            filename = f"{self.name}@{now}.bot"
-        
-        # Get all attributes of the bot
-        data = {key: value for key, value in self.__dict__.items() if not key.startswith('_')}
-        
-        # Handle special cases
-        data["bot_class"] = self.__class__.__name__
-        data["model_engine"] = self.model_engine.value
-        data["conversation"] = self.conversation.to_dict() if self.conversation else None
-        
-        if 'tool_handler' in data:
-            data['tool_handler'] = data['tool_handler'].to_dict()
-
-        # Handle non-serializable objects
-        for key, value in data.items():
-            if not isinstance(value, (str, int, float, bool, list, dict, type(None))):
-                data[key] = str(value)
-
-        with open(filename, "w") as file:
-            json.dump(data, file)
-        
-        return filename
+    def build_messages(self):
+        node = self
+        if node.is_empty():
+            return []
+        conversation_dict = [{"role": self.role, "content": node.content}]
+        if node.parent is not None:
+            parent_dict = node.build_messages(node.parent)
+            conversation_dict = parent_dict + conversation_dict
+        return conversation_dict
 
 class ToolHandler(ABC):
     def __init__(self):
@@ -380,23 +111,57 @@ class ToolHandler(ABC):
         self.function_map: Dict[str, Callable] = {}
         self.requests: List[Dict[str, Any]] = []
         self.results: List[Dict[str, Any]] = []
-        self.sent = False
 
     @abstractmethod
     def generate_tool_schema(self, func: Callable) -> Dict[str, Any]:
+        """
+            Generate tool schema from callable function
+            Return schema as dictionary
+        """
         pass
 
     @abstractmethod
-    def handle_tool_use(self, response: Any) -> List[Dict[str, Any]]:
-        """Add requests to self.requests, add results to self.results, use correct schema"""
+    def generate_request_schema(self, response: Any) -> List[Dict[str, Any]]:
+        """
+            Generate request schema from response
+            Return list of schemas (multiple requests may be in one message)
+        """
         pass
+
+    @abstractmethod
+    def tool_name_and_input(self, request_schema) -> Tuple[str, Dict[str,Any]]:
+        """ 
+            Extract tool name and input from request
+            Return (tool name, kwargs) 
+        """
+        pass
+
+    @abstractmethod
+    def generate_response_schema(self, request, tool_output_kwargs) -> Dict[str, Any]:
+        """
+            Generate response schema from request and tool output
+            Return schema
+        """
+        pass
+
+    def handle_response(self, response)->Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
+        """Runs tools and returns (request schema, result schema) from input response"""
+        self.clear()
+        requests = self.generate_request_schema(response)
+        if requests:
+            for request_schema in requests:
+                tool_name, input_kwargs = self.tool_name_and_input(request_schema)
+                output_kwargs = self.function_map[tool_name](**input_kwargs)
+                response_schema = self.generate_response_schema(request_schema, output_kwargs)
+                self.requests.append(requests)
+                self.results.append(response_schema)
+        return self.requests, self.results
 
     def add_tool(self, func: Callable) -> None:
         schema = self.generate_tool_schema(func)
         if schema:  # Only add the tool if a valid schema was generated
             self.tools.append(schema)
             self.function_map[func.__name__] = func
-        self.sent = False
 
     def add_tools_from_file(self, filepath: str) -> None:
         functions = self.extract_functions(filepath)
@@ -470,6 +235,7 @@ class ToolHandler(ABC):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            'class': self.__class__.__name__,
             'tools': self.tools,
             'function_map': {
                 k: {
@@ -481,7 +247,6 @@ class ToolHandler(ABC):
             },
             'requests': self.requests,
             'results': self.results,
-            'sent': self.sent
         }
 
     @classmethod
@@ -489,8 +254,9 @@ class ToolHandler(ABC):
         handler = cls()
         handler.tools = data['tools']
         handler.results = data['results']
+        handler.requests = data['requests']
         
-        for func_name, func_data in data['function_map'].items():
+        for _, func_data in data['function_map'].items():
             if os.path.exists(func_data['file_path']):
                 current_hash = handler._get_file_hash(func_data['file_path'])
                 if current_hash == func_data['file_hash']:
@@ -509,3 +275,265 @@ class ToolHandler(ABC):
         with open(file_path, 'rb') as f:
             return hashlib.md5(f.read()).hexdigest()
 
+class Mailbox(ABC):
+    def __init__(self):
+        self.log_file = r"data\mailbox_log.txt"
+    
+    def log_message(self, message: str, direction: str) -> None:
+        timestamp = formatted_datetime()
+        log_entry = f"[{timestamp}] {direction.upper()}:\n{message}\n\n"
+        with open(self.log_file, 'a', encoding='utf-8') as file:
+            file.write(log_entry)
+
+    def send_message(self, 
+            conversation: ConversationNode, 
+            model: str, 
+            max_tokens: int, 
+            temperature: float, 
+            api_key: str, 
+            system_message: Optional[str] = None
+            ) -> tuple[str, str, Dict[str, Any]]:
+        self._log_outgoing(conversation, model, max_tokens, temperature)
+        try:
+            response = self._send_message_implementation(conversation, model, max_tokens, temperature, api_key, system_message)
+            processed_response = self._process_response(response)
+        except Exception as e:
+            raise e
+        self._log_incoming(processed_response)
+        return processed_response
+
+    @abstractmethod
+    def _send_message_implementation(self, 
+            conversation: ConversationNode, 
+            model: str, 
+            max_tokens: int, 
+            temperature: float, 
+            api_key: str, 
+            system_message: Optional[str] = None
+            ) -> Dict[str, Any]:
+        """
+        Implement the actual message sending logic for a specific AI service.
+
+        This method should handle the API call to the AI service and return the raw response.
+
+        Parameters:
+        - conversation (ConversationNode): The conversation history.
+        - model (str): The name or identifier of the AI model to use.
+        - max_tokens (int): The maximum number of tokens the AI should generate.
+        - temperature (float): The sampling temperature to use for generation.
+        - api_key (str): The API key for the AI service.
+        - system_message (Optional[str]): An optional system message to guide the AI's behavior.
+
+        Returns:
+        Dict[str, Any]: The raw response from the AI service.
+
+        Raises:
+        Exception: If there's an error in sending the message or receiving the response.
+        """
+        pass
+
+    @abstractmethod
+    def _process_response(self, response: Dict[str, Any]) -> Tuple[str, str, Dict[str, Any]]:
+        """
+        Process the raw response from the AI service into a standardized format.
+
+        This method should extract the relevant information from the AI's response
+        and return it in a consistent format across different AI services.
+
+        Parameters:
+        - response (Dict[str, Any]): The raw response from the AI service.
+
+        Returns:
+        tuple[str, str, Dict[str, Any]]: A tuple containing:
+            - The response text (str)
+            - The role of the responder (str, e.g., "assistant")
+            - Additional metadata or parsed information (Dict[str, Any])
+                - This additional data will be passed to ConversationNode's kwargs argument directly
+                - By default, Conversation Node saves each kwarg as an attribute
+        
+        Note:
+        The exact structure of the returned tuple may vary depending on the specific 
+        requirements of your application, but it should be consistent across all 
+        implementations of this method.
+        """
+        pass
+
+    def _log_outgoing(self, conversation:ConversationNode, model, max_tokens, temperature):
+        log_message = {
+            "date": formatted_datetime(),
+            "messages": conversation.build_messages(),
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "model": model,
+        }
+        self._log_message(json.dumps(log_message, indent=2), "OUTGOING")
+
+    def _log_incoming(self, processed_response):
+        log_message = {
+            "date": formatted_datetime(),
+            "response": processed_response,
+        }
+        self._log_message(json.dumps(log_message, indent=2), "INCOMING")
+
+    def _log_message(self, message: str, direction: str) -> None:
+        timestamp = formatted_datetime()
+        log_entry = f"[{timestamp}] {direction.upper()}:\n{message}\n\n"
+        with open(self.log_file, 'a', encoding='utf-8') as file:
+            file.write(log_entry)
+
+    def batch_send(self, conversations, model, max_tokens, temperature, api_key, system_message=None):
+        threads = []
+        results = [None] * len(conversations)
+        
+        def send_thread(index, conv):
+            result = self.send_message(conv, model, max_tokens, temperature, api_key, system_message)
+            results[index] = result
+        
+        for i, conversation in enumerate(conversations):
+            thread = threading.Thread(target=send_thread, args=(i, conversation))
+            threads.append(thread)
+            thread.start()
+        
+        for thread in threads:
+            thread.join()
+        
+        return results
+
+class Bot(ABC):
+    def __init__(
+        self,
+        api_key: Optional[str],
+        model_engine: Engines,
+        max_tokens: int,
+        temperature: float,
+        name: str,
+        role: str,
+        role_description: str,
+        conversation: Optional[ConversationNode] = ConversationNode.create_empty(),
+        tool_handler: Optional[ToolHandler] = None,
+        mailbox: Optional[Mailbox] = None
+    ):
+        self.api_key = api_key
+        self.name = name
+        self.model_engine = model_engine
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+        self.role = role
+        self.role_description = role_description
+        self.conversation = conversation
+        self.system_message = ""
+        self.tool_handler = tool_handler
+        self.mailbox = mailbox
+
+    def respond(self, content: str, role: str = "user") -> str:
+        reply, self.conversation = self._cvsn_respond(
+            text=content, cvsn=self.conversation, role=role
+        )
+        return reply
+
+    def _cvsn_respond(
+        self,
+        text: Optional[str] = None,
+        cvsn: Optional[ConversationNode] = None,
+        role: str = "user",
+    ) -> Tuple[str, ConversationNode]:
+        if cvsn is None and text is None:
+            raise ValueError("Invalid input: both text and cvsn are None")
+
+        if cvsn is None:
+            cvsn = self.__class__(role=role, content=text)
+        elif text is not None:
+            cvsn = cvsn.add_reply(content=text, role=role)
+
+        try:
+            response_text, response_role, extra_data = self.mailbox.send_message(
+                cvsn,
+                self.model_engine.value, 
+                max_tokens=self.max_tokens, 
+                temperature=self.temperature,
+                api_key=self.api_key,
+                system_message=self.system_message or ''
+            )
+
+            cvsn = cvsn.add_reply(content=response_text, role=response_role, **extra_data)
+
+            return response_text, cvsn
+
+        except Exception as e:
+            raise e
+
+    def add_tools(self, filepath):
+        self.tool_path = filepath
+        self.tool_handler.add_tools_from_file(filepath)
+        self.mailbox.set_tool_handler(self.tool_handler)
+
+    def set_system_message(self, message: str) -> None:
+        self.system_message = message
+
+    @classmethod
+    def load(cls, filepath: str, api_key=None) -> "Bot":
+        
+        with open(filepath, "r") as file:
+            data = json.load(file)
+
+        bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
+        
+        # Get the constructor parameters
+        init_params = inspect.signature(bot_class.__init__).parameters
+        
+        # Filter the data to only include parameters accepted by the constructor
+        constructor_args = {k: v for k, v in data.items() if k in init_params}
+        
+        # TODO - fix this
+            # Need to save tool_handler class to it's dict, then load from that class
+        
+        # Handle special cases
+        if 'tool_handler' in constructor_args:
+            tool_handler_class = constructor_args['tool_handler']['class']
+            constructor_args['tool_handler'] = tool_handler_class.from_dict(constructor_args['tool_handler'])
+        
+        # Create the bot instance
+        bot = bot_class(**constructor_args)
+        bot.api_key = api_key if api_key is not None else None
+
+        # Set additional attributes that are not part of the constructor
+        for key, value in data.items():
+            if key not in constructor_args and key != "conversation":
+                setattr(bot, key, value)
+
+        # Handle conversation separately
+        if 'conversation' in data and data['conversation']:
+            bot.conversation = ConversationNode.from_dict(data["conversation"])
+        return bot
+
+    def save(self, filename: Optional[str] = None) -> str:
+        now = formatted_datetime()
+        if filename is None:
+            filename = f"{self.name}@{now}.bot"
+        
+        # Get all attributes of the bot
+        data = {key: value for key, value in self.__dict__.items() if not key.startswith('_')}
+
+        # Remove stored API Key
+        data.pop('api_key')
+
+        # Remove mailbox
+        data.pop('mailbox')
+        
+        # Handle special cases
+        data["bot_class"] = self.__class__.__name__
+        data["model_engine"] = self.model_engine.value
+        data["conversation"] = self.conversation.to_dict()
+        
+        if 'tool_handler' in data:
+            data['tool_handler'] = data['tool_handler'].to_dict()
+
+        # Handle non-serializable objects
+        for key, value in data.items():
+            if not isinstance(value, (str, int, float, bool, list, dict, type(None))):
+                data[key] = str(value)
+
+        with open(filename, "w") as file:
+            json.dump(data, file)
+        
+        return filename
