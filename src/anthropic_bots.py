@@ -187,7 +187,7 @@ class AnthropicBot(Bot):
         api_key: Optional[str] = None,
         model_engine: Engines = Engines.CLAUDE35,
         max_tokens: int = 4096,
-        temperature: float = 0.9,
+        temperature: float = 0.3,
         name: str = "Claude",
         role: str = "assistant",
         role_description: str = "a friendly AI assistant",

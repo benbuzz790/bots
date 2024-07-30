@@ -8,6 +8,7 @@ from datetime import datetime as datetime
 import src.base as base
 from dataclasses import dataclass
 from typing import Optional
+import json
 
 
 def pretty(string, name=None, width=100, indent=4):
@@ -88,6 +89,7 @@ def main():
     codey = bots.AnthropicBot(name='Fresh')
     codey.add_tools(r'src\bot_tools.py')
     pretty('Bot tools added', 'System')
+    verbose = True
     
     turn = 'user'
     auto = 0
@@ -105,8 +107,10 @@ def main():
             tool_use_results = codey.tool_handler.get_results()
 
             pretty(response, codey.name)
-            pretty(f'Tool Requests\n\n{tool_use_requests}', "System")
-            pretty(f'Tool Results\n\n{tool_use_results}', "System")       
+
+            if verbose:
+                pretty(f'Tool Requests\n\n{json.dumps(tool_use_requests, indent=1)}', "System")
+                pretty(f'Tool Results\n\n{json.dumps(tool_use_results, indent=1)}', "System")       
         
         else:  # user turn
             uinput = input("You: ")
@@ -123,7 +127,7 @@ def main():
                 turn = 'assistant'
             else:
                 turn = 'assistant'
-
+            
             if turn == 'assistant':
                 pretty('')  # separator
                 msg = uinput

@@ -56,7 +56,7 @@ class GPTBot(Bot):
         api_key: Optional[str] = None,
         model_engine: Engines = Engines.GPT4,
         max_tokens: int = 4096,
-        temperature: float = 0.9,
+        temperature: float = 0.3,
         name: str = "bot",
         role: str = "assistant",
         role_description: str = "a friendly AI assistant",
