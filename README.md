@@ -328,7 +328,7 @@ Here are some common issues and their solutions:
    - Check that the API key is valid and has the necessary permissions.
 
 2. **Rate Limiting**:
-   - If you're encountering rate limit errors, try reducing the `LLM_UTILITIES_RATE_LIMIT` or implement exponential backoff in your code.
+   - TBD
 
 3. **Model Availability**:
    - Ensure you're using a model that's available in your account. Some models may require special access.
