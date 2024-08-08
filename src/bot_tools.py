@@ -56,7 +56,7 @@ def replace_string(file_path, old_string, new_string):
 
     return f"Replaced all instances of '{old_string}' with '{new_string}' in '{file_path}'."
 
-def _replace_class(file_path, new_class_def, old_class_name=None):
+def replace_class(file_path, new_class_def, old_class_name=None):
     """
     Replaces a class definition in a file with a new class definition.
 
@@ -80,7 +80,11 @@ def _replace_class(file_path, new_class_def, old_class_name=None):
     new_class_node = ast.parse(_remove_common_indent(new_class_def)).body[0]
     if not isinstance(new_class_node, ast.ClassDef):
         return _process_error(ValueError('Provided definition is not a class'))
-    tree = ast.parse(content)
+    
+    try:
+        tree = ast.parse(content)
+    except Exception as e:
+        return _process_error(e)
 
     class ClassReplacer(ast.NodeTransformer):
         def visit_ClassDef(self, node):
@@ -422,6 +426,7 @@ def execute_powershell(code):
     return output
 
 def _remove_common_indent(code):
+    return code
     return inspect.cleandoc(code)
 
 def _process_error(error):

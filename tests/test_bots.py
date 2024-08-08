@@ -2,7 +2,7 @@ import unittest
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.base import Bot as BaseBot, Engines
+from src.base import Bot, Engines
 from src.anthropic_bots import AnthropicBot
 from src.openai_bots import GPTBot 
 from src.base import ConversationNode as CNode
@@ -30,11 +30,12 @@ class TestBaseBot(unittest.TestCase):
         self.assertEqual(len(self.bot.conversation.replies), 3)
 
     def test_save_and_load(self):
-        self.bot.conversation.add_reply(role="user", content="Test message")
+        self.bot.respond("Please respond with exactly and only ~")
+        self.bot.respond("Once more please")
         filename = self.bot.save()
-        loaded_bot = BaseBot.load(filename)
+        loaded_bot = Bot.load(filename)
         self.assertEqual(loaded_bot.name, self.bot.name)
-        self.assertEqual(loaded_bot.conversation.content, self.bot.conversation.content)
+        self.assertEqual(loaded_bot.conversation.to_dict(), self.bot.conversation.to_dict(), msg=f"Expected:{self.bot.conversation.content}\n\nActual:{loaded_bot.conversation.content}")
 
 class TestGPTBot(unittest.TestCase):
     def setUp(self):

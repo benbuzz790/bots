@@ -192,5 +192,123 @@ class NewClass:
         bot_tools.delete_match(self.test_file, 'Delete this line')
         self.assertFileContentEqual(self.test_file, expected_content, 'Delete match failed')
 
+    def test_replace_class_with_comments(self):
+        initial_content = """
+# This is a comment before the class
+class OldClass:
+    # This is a comment inside the class
+    def method(self):
+        # This is a comment inside a method
+        pass
+# This is a comment after the class
+"""
+        new_class = """
+class OldClass:
+    # This is a new comment
+    def new_method(self):
+        print("New method")
+"""
+        expected_content = """
+# This is a comment before the class
+class OldClass:
+    # This is a new comment
+    def new_method(self):
+        print("New method")
+# This is a comment after the class
+"""
+        bot_tools.rewrite(self.test_file, initial_content)
+        bot_tools.replace_class(self.test_file, new_class)
+        self.assertFileContentEqual(self.test_file, expected_content, 'Replace class with comments failed')
+
+    def test_replace_class_preserve_whitespace(self):
+        initial_content = """
+
+class OldClass:
+
+    def method(self):
+        pass
+
+
+# Some space after
+"""
+        new_class = """
+class OldClass:
+    def new_method(self):
+        print("New method")
+"""
+        expected_content = """
+
+class OldClass:
+    def new_method(self):
+        print("New method")
+
+
+# Some space after
+"""
+        bot_tools.rewrite(self.test_file, initial_content)
+        bot_tools.replace_class(self.test_file, new_class)
+        self.assertFileContentEqual(self.test_file, expected_content, 'Replace class preserve whitespace failed')
+
+    def test_replace_class_complex(self):
+        initial_content = """
+import some_module
+
+@some_decorator
+class ComplexClass(BaseClass1, BaseClass2):
+    class_var = "some value"
+
+    def __init__(self, arg1, arg2):
+        super().__init__()
+        self.arg1 = arg1
+        self.arg2 = arg2
+
+    @property
+    def some_property(self):
+        return self.arg1 + self.arg2
+
+    @staticmethod
+    def static_method():
+        return "static result"
+
+    class NestedClass:
+        def nested_method(self):
+            pass
+
+def some_function():
+    pass
+"""
+        new_class = """
+@new_decorator
+class ComplexClass(NewBase):
+    new_class_var = "new value"
+
+    def __init__(self, new_arg):
+        super().__init__()
+        self.new_arg = new_arg
+
+    def new_method(self):
+        return self.new_arg * 2
+"""
+        expected_content = """
+import some_module
+
+@new_decorator
+class ComplexClass(NewBase):
+    new_class_var = "new value"
+
+    def __init__(self, new_arg):
+        super().__init__()
+        self.new_arg = new_arg
+
+    def new_method(self):
+        return self.new_arg * 2
+
+def some_function():
+    pass
+"""
+        bot_tools.rewrite(self.test_file, initial_content)
+        bot_tools.replace_class(self.test_file, new_class)
+        self.assertFileContentEqual(self.test_file, expected_content, 'Replace complex class failed')
+
 if __name__ == '__main__':
     unittest.main()

@@ -11,7 +11,6 @@ class AnthropicNode(ConversationNode):
     def __init__(self, **kwargs):
         super().__init__(role=kwargs.pop('role'), content=kwargs.pop('content'))
         for item in kwargs.items():
-            print(item)
             self.content += item
 
 class AnthropicToolHandler(ToolHandler):
@@ -88,9 +87,14 @@ class AnthropicMailbox(Mailbox):
         # are present when build_messages() is called. 
 
         if self.tool_handler.requests:
-            conversation.parent.content.append(self.tool_handler.requests)
+            if isinstance(conversation.parent.content, str):
+                conversation.parent.content = [{'type': 'text', 'text': conversation.parent.content}]
+            conversation.parent.content.extend(self.tool_handler.requests)
+        
         if self.tool_handler.results:
-            conversation.content.append(self.tool_handler.results)
+            if isinstance(conversation.content, str):
+                conversation.content = [{'type': 'text', 'text': conversation.content}]
+            conversation.content = self.tool_handler.results + conversation.content
         self.tool_handler.clear()       
 
         # Send tools, if they exist

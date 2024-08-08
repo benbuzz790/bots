@@ -38,7 +38,15 @@ class Engines(Enum):
     CLAUDE3OPUS = "claude-3-opus-20240229"
     CLAUDE3SONNET = "claude-3-sonnet-20240229"
     CLAUDE35 = "claude-3-5-sonnet-20240620"
-
+    
+    @staticmethod
+    def get(name):
+        """Retrieve an Engines enum member by its value."""
+        for engine in Engines:
+            if engine.value == name:
+                return engine
+        return None
+    
     @staticmethod
     def get_bot_class(model_engine: "Engines") -> Type["Bot"]:
         """Returns the bot class based on the model engine. Bit of a kluge for now"""
@@ -52,40 +60,61 @@ class Engines(Enum):
             raise ValueError(f"Unsupported model engine: {model_engine}")
 
 class ConversationNode:
-          
     def __init__(self, content, role, **kwargs):
         self.attributes = kwargs
         self.role = role
         self.content = content
-        self.replies: List["ConversationNode"] = []
-        self.parent: Optional["ConversationNode"] = None
+        self.replies = []
+        self.parent = None
     
-    @classmethod
-    def create_empty(cls) -> 'ConversationNode':
-        return cls(role="empty", content="")
+    @staticmethod
+    def create_empty():
+        return ConversationNode(role="empty", content="")
 
-    def is_empty(self) -> bool:
+    def is_empty(self):
         return self.role == "empty" and self.content == ""
 
-    def add_reply(self, **kwargs) -> 'ConversationNode':
+    def add_reply(self, **kwargs):
         if self.is_empty():
-            # If this node is empty, update it instead of adding a reply
             self.__init__(**kwargs)
             return self
         else:
-            reply = self.__class__(**kwargs)
+            reply = ConversationNode(**kwargs)
             reply.parent = self
             self.replies.append(reply)
             return reply
     
-    def to_dict(self) -> Dict[str, Any]:
+    def find_root(self):
+        """ Navigate to the root of the conversation tree. """
+        current = self
+        while current.parent is not None:
+            current = current.parent
+        return current
+    
+    def to_dict(self):
+        """ Convert the conversation tree starting from the root to a dictionary. """
+        root = self.find_root()
+        return root._to_dict_recursive()
+
+    def _to_dict_recursive(self):
+        """ Recursively convert this node and its replies to a dictionary. """
         result = {k: v for k, v in self.attributes.items() if k != 'parent'}
         result['role'] = self.role
         result['content'] = self.content
         if self.replies:
-            result['replies'] = [reply.to_dict() for reply in self.replies]
+            result['replies'] = [reply._to_dict_recursive() for reply in self.replies]
         return result
     
+    def build_messages(self):
+        node = self
+        if node.is_empty():
+            return []
+        conversation_dict = []
+        while node:
+            conversation_dict = [{"role": node.role, "content": node.content}] + conversation_dict
+            node = node.parent
+        return conversation_dict
+   
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConversationNode":
         node = cls(**{k: v for k, v in data.items() if k != 'replies'})
@@ -94,16 +123,8 @@ class ConversationNode:
             reply_node.parent = node
             node.replies.append(reply_node)
         return node
-    
-    def build_messages(self):
-        node = self
-        if node.is_empty():
-            return []
-        conversation_dict = [{"role": self.role, "content": node.content}]
-        if node.parent is not None:
-            parent_dict = node.build_messages(node.parent)
-            conversation_dict = parent_dict + conversation_dict
-        return conversation_dict
+
+
 
 class ToolHandler(ABC):
     def __init__(self):
@@ -153,7 +174,7 @@ class ToolHandler(ABC):
                 tool_name, input_kwargs = self.tool_name_and_input(request_schema)
                 output_kwargs = self.function_map[tool_name](**input_kwargs)
                 response_schema = self.generate_response_schema(request_schema, output_kwargs)
-                self.requests.append(requests)
+                self.requests.append(request_schema)
                 self.results.append(response_schema)
         return self.requests, self.results
 
@@ -210,7 +231,7 @@ class ToolHandler(ABC):
 
     def get_tools_json(self) -> str:
         """Return a JSON string representation of all tools."""
-        return json.dumps(self.tools, indent=2)
+        return json.dumps(self.tools, indent=1)
 
     def clear(self) -> None:
         """Clear the stored results and requests."""
@@ -366,14 +387,14 @@ class Mailbox(ABC):
             "temperature": temperature,
             "model": model,
         }
-        self._log_message(json.dumps(log_message, indent=2), "OUTGOING")
+        self._log_message(json.dumps(log_message, indent=1), "OUTGOING")
 
     def _log_incoming(self, processed_response):
         log_message = {
             "date": formatted_datetime(),
             "response": processed_response,
         }
-        self._log_message(json.dumps(log_message, indent=2), "INCOMING")
+        self._log_message(json.dumps(log_message, indent=1), "INCOMING")
 
     def _log_message(self, message: str, direction: str) -> None:
         timestamp = formatted_datetime()
@@ -424,6 +445,10 @@ class Bot(ABC):
         self.system_message = ""
         self.tool_handler = tool_handler
         self.mailbox = mailbox
+
+        # hotfix for a bug with loading
+        if isinstance(self.model_engine, str):
+            self.model_engine = Engines.get(self.model_engine)
 
     def respond(self, content: str, role: str = "user") -> str:
         reply, self.conversation = self._cvsn_respond(
@@ -534,6 +559,15 @@ class Bot(ABC):
                 data[key] = str(value)
 
         with open(filename, "w") as file:
-            json.dump(data, file)
+            json.dump(data, file, indent=1)
         
         return filename
+
+    def chat(self):
+        uinput = ''
+        while(uinput != '/exit'):
+            print('\n\n')
+            uinput = input("You: ")
+            if uinput is not None:
+                print('\n\n')
+                print(f'{self.name}: {self.respond(uinput)}')
