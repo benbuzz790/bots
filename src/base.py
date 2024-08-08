@@ -487,6 +487,9 @@ class Bot(ABC):
         except Exception as e:
             raise e
 
+    def add_tool(self, func: Callable):
+        self.tool_handler.add_tool(func)
+
     def add_tools(self, filepath):
         self.tool_path = filepath
         self.tool_handler.add_tools_from_file(filepath)
@@ -568,6 +571,6 @@ class Bot(ABC):
         while(uinput != '/exit'):
             print('\n\n')
             uinput = input("You: ")
-            if uinput is not None:
+            if uinput is not None and uinput !='/exit':
                 print('\n\n')
                 print(f'{self.name}: {self.respond(uinput)}')
