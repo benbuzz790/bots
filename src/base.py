@@ -124,8 +124,6 @@ class ConversationNode:
             node.replies.append(reply_node)
         return node
 
-
-
 class ToolHandler(ABC):
     def __init__(self):
         self.tools: List[Dict[str, Any]] = []
@@ -494,6 +492,9 @@ class Bot(ABC):
         self.tool_path = filepath
         self.tool_handler.add_tools_from_file(filepath)
         self.mailbox.set_tool_handler(self.tool_handler)
+
+    def _respond_auto(self, content:str, role: str)-> str:
+        """Automatically sends tool use results and requests another response"""
 
     def set_system_message(self, message: str) -> None:
         self.system_message = message

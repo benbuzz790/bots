@@ -346,7 +346,16 @@ def read_file(file_path):
         return file.read()
 
 def execute_python_code(code, timeout=300):
-    
+    """
+    Executes python code in a safe environment.
+
+    Parameters:
+    - code (str): Syntactically correcy python code.
+
+    Returns:
+    - stdout (str): Standard output from running the code
+    - error (str): A description of the error if the code ran incorrectly
+    """
     
     # Parse the input code into an AST    
     def create_wrapper_ast():
@@ -413,6 +422,8 @@ if __name__ == '__main__':
     finally:
         if os.path.exists(temp_file_name):
             os.remove(temp_file_name)
+        return stdout
+
 
 def execute_powershell(code):
     output = ''
