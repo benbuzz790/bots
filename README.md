@@ -27,6 +27,7 @@ LLM Utilities is a Python library designed to simplify interactions with various
 - **Engine Abstraction**: Use the `Engines` enum to easily switch between different LLM models and providers.
 - **Serialization and Deserialization**: Save and load bot states, including conversation history and tool configurations.
 - **Asynchronous Batch Processing (TBD)**: Send multiple messages concurrently using the batch sending feature.
+- **Automated README Updates**: Utilize the `prep_repo.py` script to automatically update the README.md file based on recent changes in Python files.
 
 ## Installation
 
@@ -194,6 +195,13 @@ The `Engines` enum represents different LLM models and providers. It offers:
 - Easy switching between models
 - Mapping of model names to appropriate bot classes
 - Utility methods for retrieving engine information
+
+### 6. prep_repo.py
+The `prep_repo.py` script is a utility for automatically updating the README.md file based on recent changes in Python files. Key features include:
+- Detecting modified Python files in the project directory
+- Updating the README.md file to incorporate changes from modified files
+- Using an AnthropicBot to generate updated content for the README
+- Maintaining the overall structure and existing information in the README
 
 ## API Reference
 

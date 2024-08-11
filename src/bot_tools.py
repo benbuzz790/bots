@@ -208,6 +208,52 @@ def add_function_to_class(file_path, class_name, new_method_def):
         return _process_error(e)
     return f"Method '{new_method_node.name}' has been added to class '{class_name}' in '{file_path}'."
 
+def add_function_to_file(file_path: str, new_function_def: str) -> str:
+    """
+    Adds a new function definition to an existing Python file.
+
+    This function is used when you want to add a completely new function to a Python file 
+    without modifying existing content. It appends the new function definition to the end 
+    of the file.
+
+    Parameters:
+    - file_path (str): The path to the file where the new function will be added.
+    - new_function_def (str): The new function definition as a string.
+
+    Returns:
+    - str: A confirmation message or an error message.
+
+    The function will return a FileNotFoundError if the specified file does not exist.
+    It will return a ValueError if the provided new_function_def is not a valid function 
+    definition. After adding the function, it rewrites the file and returns a confirmation 
+    message.
+
+    Note: This function modifies the abstract syntax tree of the file, which may affect 
+    formatting. The new function is added at the end of the file, which may not be ideal if 
+    specific import orders or file structures are required.
+    """
+    if not os.path.exists(file_path):
+        return _process_error(FileNotFoundError(f"File '{file_path}' not found."))
+
+    with open(file_path, 'r', encoding='utf-8') as file:
+        content = file.read()
+
+    new_func_node = ast.parse(_remove_common_indent(new_function_def)).body[0]
+    if not isinstance(new_func_node, ast.FunctionDef):
+        return _process_error(ValueError('Provided definition is not a function'))
+
+    tree = ast.parse(content)
+    tree.body.append(new_func_node)
+
+    try:
+        updated_content = astor.to_source(tree)
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write(updated_content)
+    except Exception as e:
+        return _process_error(e)
+
+    return f"Function '{new_func_node.name}' has been added to '{file_path}'."
+
 def add_class_to_file(file_path, class_def):
     """
     Adds a new class definition to an existing Python file.
@@ -444,3 +490,73 @@ def _process_error(error):
     error_message = f"tool failed: {str(error)}\n"
     error_message += f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}"
     return error_message
+
+def get_py_interface(file_path: str) -> str:
+    """
+    Outputs a string showing all of the class and function definitions including docstrings,
+    but does not output the code.
+
+    Parameters:
+    - file_path (str): The path to the Python file to analyze.
+
+    Returns:
+    - str: A string containing all class and function definitions with their docstrings.
+    """
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+        
+        tree = ast.parse(content)
+        interface = []
+
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+                definition = f"{'class' if isinstance(node, ast.ClassDef) else 'def'} {node.name}"
+                if isinstance(node, ast.FunctionDef):
+                    args = [arg.arg for arg in node.args.args]
+                    definition += f"({', '.join(args)})"
+                interface.append(definition)
+                
+                docstring = ast.get_docstring(node)
+                if docstring:
+                    interface.append(f"    \"\"\"{docstring}\"\"\"")
+                interface.append("")  # Add a blank line for readability
+
+        return "\n".join(interface)
+    except Exception as e:
+        return _process_error(e)
+
+def dispatch(prompt: str, bot=None) -> bool:
+    """
+    Dispatches an optionally input bot with the tools defined in src/bot_tools.py with the input prompt.
+
+    Parameters:
+    - prompt (str): The input prompt to be processed by the bot.
+    - bot (optional): The bot instance to use. If None, a new bot will be created.
+
+    Returns:
+    - bool: True if the dispatch was successful, False otherwise.
+    """
+    try:
+        from src.base import Bot, Engines
+        from src.openai_bots import GPTBot
+
+        if bot is None:
+            bot = GPTBot(api_key=os.environ.get('OPENAI_API_KEY'),
+                         model_engine=Engines.GPT4,
+                         max_tokens=1000,
+                         temperature=0.7,
+                         name="DispatchBot",
+                         role="assistant",
+                         role_description="A helpful AI assistant.")
+
+        # Add tools from src/bot_tools.py
+        bot.add_tools('src/bot_tools.py')
+
+        # Process the prompt
+        response = bot.respond(prompt)
+        print(f"Bot response: {response}")
+        return True
+    except Exception as e:
+        print(_process_error(e))
+        return False

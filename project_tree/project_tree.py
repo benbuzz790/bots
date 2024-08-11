@@ -460,7 +460,7 @@ class PythonFileNode(ProjectNode):
         self._ast = None
         self.interface = interface
         
-        self.bot = initialize_bot(self.bot_path, 4096, Path("project_tree\py_bot_tools.py"))
+        self.bot = initialize_bot(self.bot_path, 4096, Path(r"project_tree\py_bot_tools.py"))
 
         self.info_file_path = self.file_path.with_suffix('.txt')
         write_file(self.info_file_path, 
@@ -490,7 +490,7 @@ class PythonFileNode(ProjectNode):
         """Generate content for the Python file."""
         context = self._gather_context()
         prompt = PromptLib.file_gen_prompt(self.file_path, context, self.interface)
-        response = self.bot.respond(prompt)
+        response = self.bot.respond(prompt,tool_auto=True)
         result = self.write_code(response)
         counter = 0
         retry_limit = 3
@@ -559,11 +559,12 @@ class OtherFileNode(ProjectNode):
     """Represents another file type in the project structure."""
 
     def __init__(self, name: str, file_path: Path, requirements: str, goals: str, parent: ProjectNode):
-        super().__init__(name, requirements, goals, parent, 'other')
+        super().__init__(name, requirements, goals, parent)  # Remove 'other' from here
+        self.file_type = 'other'  # Set file_type as a separate attribute
         self.file_path = file_path
 
     def _expand(self):
-        return []
+        return []  # Other file types don't have children
 
     def to_string(self) -> str:
         return f'Other File: ({self.file_path})'
@@ -647,22 +648,29 @@ class ImportDependencyGraph:
                 self.graph[node] = self._get_dependencies(node)
 
     def _traverse_tree(self, node):
-        yield node
-        for child in node.children:
-            yield from self._traverse_tree(child)
+        if isinstance(node, ProjectNode):
+            yield node
+            for child in node.children:
+                yield from self._traverse_tree(child)
+        else:
+            print(f"Warning: Import Visitor encountered non-ProjectNode object during traversal: {node}")
+
 
     def _get_dependencies(self, node: PythonFileNode):
         dependencies = []
-        with open(node.file_path, 'r', encoding='utf-8') as file:
-            tree = ast.parse(file.read())
-            for stmt in ast.walk(tree):
-                if isinstance(stmt, ast.Import):
-                    for alias in stmt.names:
-                        dependencies.append(alias.name)
-                elif isinstance(stmt, ast.ImportFrom):
-                    dependencies.append(stmt.module)
-        return dependencies
-
+        try:
+            with open(node.file_path, 'r', encoding='utf-8') as file:
+                tree = ast.parse(file.read())
+                for stmt in ast.walk(tree):
+                    if isinstance(stmt, ast.Import):
+                        for alias in stmt.names:
+                            dependencies.append(alias.name)
+                    elif isinstance(stmt, ast.ImportFrom):
+                        dependencies.append(stmt.module)
+            return dependencies
+        except FileNotFoundError as error:
+            return [f'File{node.file_path} does not exist']
+        
     def get_dependents(self, node: PythonFileNode):
         return [n for n, deps in self.graph.items() if node.name in deps]
 
@@ -837,6 +845,8 @@ class TestVisitor:
         for node in self._traverse_tree(self.root):
             if isinstance(node, PythonFileNode):
                 self._run_tests(node)
+            elif not isinstance(node, ProjectNode):
+                raise ValueError(f"Encountered unexpected node type during visitation: {type(node)}\n\n{node}")
         
         while self.error_queue:
             node, error_info = self.error_queue.popleft()
@@ -852,9 +862,12 @@ class TestVisitor:
             self._handle_unresolved_errors()
 
     def _traverse_tree(self, node):
-        yield node
-        for child in node.children:
-            yield from self._traverse_tree(child)
+        if isinstance(node, ProjectNode):
+            yield node
+            for child in node.children:
+                yield from self._traverse_tree(child)
+        else:
+            print(f"Warning: Test Visitor encountered non-ProjectNode object during traversal: {node}")
 
     def _run_tests(self, node: PythonFileNode):
         file_path = node.file_path
@@ -1025,12 +1038,18 @@ class ErrorHandler:
 
     def _format_error_info(self, error_info):
         formatted = ""
-        for test, info in error_info.items():
-            formatted += f"Test: {test}\n"
-            formatted += f"Type: {info['type']}\n"
-            formatted += f"Message: {info['message']}\n"
-            formatted += f"Traceback:\n{info['traceback']}\n\n"
-        return formatted
+        if not isinstance(error_info, dict):
+            raise SyntaxError(f"error_info was a not a dict, but dict was expected. error_info:{error_info}")
+        else:
+            try:
+                for test, info in error_info.items():
+                    formatted += f"Test: {test}\n"
+                    formatted += f"Type: {info['type']}\n"
+                    formatted += f"Message: {info['message']}\n"
+                    formatted += f"Traceback:\n{info['traceback']}\n\n"
+                return formatted
+            except TypeError as error:
+                print("\n\n"+error_info+"\n\n")
 
     def _is_responsible(self, response):
         return "yes" in response.lower()
@@ -1074,11 +1093,13 @@ class PromptLib:
         project_goals = "Create a small python project to demonstrate your capabilities"
         project_requirements = """
         1. Keep the project SMALL. Proof-of-concept level. Ensure all modules have this requirement.
-        2. No more than 2 requirements can be placed on any directory.
-        3. No more than 3 top level directories.
+        2. No more than 5 requirements can be placed on any directory.
+        3. Exactly three top level directories.
         4. The subject of the test project - make a connect four game in python.
-        5. Testing: All python files will contain their own unittests. The /tests folder will contain only tests that combine the functionality of one or more files.
-        6. Requirements vs. Goals: All requirements should be testable. Goals do not have to be testable, but should memorialize the purpose of the requirements.
+        5. Testing: All python files will contain their own unittests. There will be no /tests folder - rather, tests that rely on more than one module should be built into the directory where those modules are used in conjunction.
+        6. The game should have a testable GUI. When testing the GUI, ensure that no user interaction is required. All GUI elements that require dismissal should have <1 second timeouts during testing, for instance, rather than requiring someone to click.
+        7. No pop-ups.
+        8. Requirements vs. Goals: All requirements should be testable. Goals do not have to be testable, but should memorialize the purpose of the requirements.
         """
         return project_name, project_requirements, project_goals
     
@@ -1154,7 +1175,7 @@ class PromptLib:
 
         Write concise, well-structured Python code that implements the interface and addresses the goals and requirements. 
         Ensure that all elements specified in your interface are included in your implementation. Do not use functions that do not appear in the global interface registry.
-        Reply with a single python code block.
+        Reply with a single python code block. Code will be extracted from that block.
         
         Include unittests for the interface functions and any other functions you've written. When run, the file should run the unittests.
         """
