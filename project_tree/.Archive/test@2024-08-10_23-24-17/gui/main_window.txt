@@ -1,0 +1,61 @@
+File Name: C:\Users\Ben Rinauto\Documents\Code\llm-utilities-git\llm-utilities\.experiments\test@2024-08-10_23-24-17\gui\main_window.py
+
+Requirements:
+1. Implement a MainWindow class using a lightweight GUI framework (e.g., Tkinter)
+2. Create methods to initialize and update the game board display
+3. Implement functions to display and update player information and game status
+4. Develop methods to handle user interactions and trigger appropriate game logic
+5. Create a method to reset the game state and GUI elements
+6. Implement a game loop that updates the GUI based on the current game state
+7. Ensure all GUI updates are thread-safe and non-blocking
+8. Implement programmatic methods to simulate user actions for testing purposes
+9. Include timeout mechanisms (<1 second) for any elements requiring dismissal during testing
+10. Integrate with the Game class from the src directory to manage game state
+11. Implement comprehensive unit tests for all GUI components and interactions
+12. Ensure no pop-up windows are used for any functionality
+13. Implement error handling and display for invalid moves or unexpected states
+14. Optimize performance to maintain responsiveness during gameplay and testing
+
+Goals:
+The main_window.py file serves as the central component of the Connect Four game's graphical user interface. Its primary purposes are:
+1. Create and manage the main game window
+2. Integrate and coordinate all GUI elements (board, menu, player info)
+3. Handle the overall game flow and state management
+4. Provide a seamless interface between the GUI and the core game logic
+5. Ensure testability of all GUI components without user interaction
+
+Interface:
+from typing import Tuple
+from src.game import Game
+
+class MainWindow:
+    def __init__(self, game: Game):
+        pass
+
+    def run(self) -> None:
+        pass
+
+    def update_display(self) -> None:
+        pass
+
+    def reset_game(self) -> None:
+        pass
+
+    def handle_move(self, column: int) -> None:
+        pass
+
+    def get_game_state(self) -> Tuple[str, str, bool]:
+        pass
+
+    def simulate_move(self, column: int) -> None:
+        pass
+
+    def simulate_reset(self) -> None:
+        pass
+
+def create_main_window(game: Game) -> MainWindow:
+    pass
+
+def run_gui_game() -> None:
+    pass
+

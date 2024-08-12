@@ -1,0 +1,55 @@
+File Name: C:\Users\Ben Rinauto\Documents\Code\llm-utilities-git\llm-utilities\.experiments\test@2024-08-10_21-52-34\src\game.py
+
+Requirements:
+1. Implement a main game loop that alternates between players' turns until a win or draw occurs.
+2. Include functions to check for win conditions (four in a row horizontally, vertically, or diagonally) and draw conditions (full board).
+3. Integrate with the 'board.py' module to manage and update the game state.
+4. Utilize the 'player.py' module to handle player moves and turn management.
+5. Implement error handling for invalid moves or unexpected game states.
+6. Include unit tests within the file to cover all key game logic and edge cases.
+7. Keep the implementation simple and focused on core Connect Four gameplay, adhering to the proof-of-concept level requirement.
+8. Ensure the module can be run independently for testing purposes, without requiring GUI interaction.
+9. Provide clear, modular function definitions to allow for easy testing and potential future expansion.
+
+Goals:
+The 'game.py' file serves as the central module for the Connect Four game, orchestrating the main game loop and core logic. It aims to:
+1. Provide the primary entry point for the game's execution.
+2. Manage the overall flow of the game, including turn-taking and win condition checks.
+3. Integrate the board and player modules to create a cohesive game experience.
+4. Implement the core rules and mechanics of Connect Four.
+5. Facilitate easy testing and potential future expansion of game features.
+
+Interface:
+from typing import Tuple
+
+class ConnectFourGame:
+    def __init__(self):
+        pass
+
+    def start_game(self) -> None:
+        pass
+
+    def make_move(self, column: int) -> bool:
+        pass
+
+    def check_win(self) -> bool:
+        pass
+
+    def check_draw(self) -> bool:
+        pass
+
+    def get_current_player(self) -> int:
+        pass
+
+    def get_board_state(self) -> Tuple[Tuple[int, ...], ...]:
+        pass
+
+    def reset_game(self) -> None:
+        pass
+
+def run_game() -> None:
+    pass
+
+if __name__ == "__main__":
+    run_game()
+

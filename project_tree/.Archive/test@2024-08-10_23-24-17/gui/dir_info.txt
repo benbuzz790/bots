@@ -1,0 +1,31 @@
+Directory Name: C:\Users\Ben Rinauto\Documents\Code\llm-utilities-git\llm-utilities\.experiments\test@2024-08-10_23-24-17\gui
+
+Requirements:
+1. Implement a 'main_window.py' module:
+   - Create the main game window using a lightweight GUI framework (e.g., Tkinter)
+   - Display the game board, player information, and game status
+   - Include methods for updating the GUI based on game state changes
+   - Implement self-contained unit tests for all GUI components
+
+2. Develop a 'board_widget.py' module:
+   - Create a visual representation of the Connect Four board
+   - Handle user input for piece placement
+   - Provide visual feedback for valid/invalid moves and win conditions
+   - Include unit tests that simulate user actions without requiring interaction
+
+3. Create a 'menu.py' module:
+   - Implement game controls (start, reset, quit) within the main window
+   - Avoid using pop-ups for any functionality
+   - Include unit tests for menu interactions
+
+4. Ensure all GUI elements are testable without user interaction:
+   - Implement programmatic methods to simulate clicks and inputs
+   - Use timeouts (<1 second) for any elements requiring dismissal during testing
+
+5. Integrate with the 'src' directory:
+   - Use game logic from 'src' to update GUI state
+   - Implement tests to verify correct integration with game logic
+
+Goals:
+The 'gui' directory aims to provide a simple, intuitive, and testable graphical user interface for the Connect Four game. It should integrate seamlessly with the core game logic from the 'src' directory while offering a visually appealing and interactive experience for players.
+

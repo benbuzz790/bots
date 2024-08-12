@@ -1,0 +1,39 @@
+{
+ "name": "TestBot",
+ "model_engine": "claude-3-5-sonnet-20240620",
+ "max_tokens": 100,
+ "temperature": 0.7,
+ "role": "assistant",
+ "role_description": "Test bot",
+ "conversation": {
+  "role": "user",
+  "content": "Please respond with exactly and only ~",
+  "replies": [
+   {
+    "role": "assistant",
+    "content": "~",
+    "replies": [
+     {
+      "role": "user",
+      "content": "Once more please",
+      "replies": [
+       {
+        "role": "assistant",
+        "content": "~"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "system_message": "",
+ "tool_handler": {
+  "class": "AnthropicToolHandler",
+  "tools": [],
+  "function_map": {},
+  "requests": [],
+  "results": []
+ },
+ "bot_class": "AnthropicBot"
+}

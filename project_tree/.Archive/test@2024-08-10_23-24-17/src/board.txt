@@ -1,0 +1,62 @@
+File Name: C:\Users\Ben Rinauto\Documents\Code\llm-utilities-git\llm-utilities\.experiments\test@2024-08-10_23-24-17\src\board.py
+
+Requirements:
+1. Implement a Board class to represent the Connect Four game board.
+2. Define the board dimensions (typically 7 columns x 6 rows) as constants.
+3. Provide methods for placing pieces in columns and handling piece "falling" logic.
+4. Implement methods to check if a move is valid (column not full).
+5. Create functions to query the state of specific board positions.
+6. Develop a method to check for winning conditions (4 in a row horizontally, vertically, or diagonally).
+7. Implement a board reset functionality for starting new games.
+8. Create a string representation of the board for console visualization.
+9. Ensure all public methods have clear, descriptive docstrings.
+10. Implement error handling for invalid moves or out-of-bounds access.
+11. Create unit tests for all public methods of the Board class.
+12. Keep the total lines of code under 200, focusing on essential functionality.
+13. Use efficient data structures (e.g., 2D list or numpy array) for board representation.
+14. Implement a method to get the current state of the entire board.
+15. Ensure thread-safety for potential future multi-threaded use.
+
+Goals:
+The 'board.py' file is responsible for implementing the Connect Four game board. Its primary purpose is to provide a robust and efficient representation of the game state, including the positions of all pieces on the board. This module should offer methods for manipulating the board state, querying its current status, and visualizing the board for console-based testing and debugging. It serves as a crucial component that the main game logic will rely on for managing the game's progress.
+
+Interface:
+from typing import List, Tuple
+
+BOARD_COLUMNS = 7
+BOARD_ROWS = 6
+
+class Board:
+    def __init__(self):
+        pass
+
+    def place_piece(self, column: int, player: int) -> bool:
+        pass
+
+    def is_valid_move(self, column: int) -> bool:
+        pass
+
+    def get_cell(self, row: int, column: int) -> int:
+        pass
+
+    def check_win(self, player: int) -> bool:
+        pass
+
+    def reset(self) -> None:
+        pass
+
+    def __str__(self) -> str:
+        pass
+
+    def get_board_state(self) -> List[List[int]]:
+        pass
+
+    def is_full(self) -> bool:
+        pass
+
+    def get_valid_moves(self) -> List[int]:
+        pass
+
+def create_board() -> Board:
+    pass
+

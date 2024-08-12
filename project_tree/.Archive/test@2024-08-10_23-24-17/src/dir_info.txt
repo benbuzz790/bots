@@ -1,0 +1,31 @@
+Directory Name: C:\Users\Ben Rinauto\Documents\Code\llm-utilities-git\llm-utilities\.experiments\test@2024-08-10_23-24-17\src
+
+Requirements:
+1. Implement a 'game.py' module with:
+   - Connect Four game logic (board representation, move validation, win checking)
+   - Player turn management
+   - Game state tracking
+   - Self-contained unit tests for all public methods
+
+2. Create a 'board.py' module containing:
+   - Board class with methods for piece placement and state queries
+   - Board visualization for console-based testing
+   - Unit tests covering all board operations
+
+3. Develop a 'player.py' module including:
+   - Player class with basic attributes (e.g., name, piece color)
+   - Simple AI player implementation for single-player mode
+   - Unit tests for player functionality
+
+4. Implement an 'utils.py' module with:
+   - Utility functions for input validation and error handling
+   - Any shared constants or enums
+   - Unit tests for all utility functions
+
+5. Ensure all modules adhere to the project's size constraints:
+   - Keep each module under 200 lines of code
+   - Prioritize essential functionality over advanced features
+
+Goals:
+The 'src' directory aims to contain the core game logic and functionality for the Connect Four game. It should provide a small, efficient, and easily testable implementation of the game mechanics, serving as the backbone for the GUI and overall project structure.
+

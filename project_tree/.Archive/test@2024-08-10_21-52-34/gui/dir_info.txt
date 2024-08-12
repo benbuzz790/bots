@@ -1,0 +1,12 @@
+Directory Name: C:\Users\Ben Rinauto\Documents\Code\llm-utilities-git\llm-utilities\.experiments\test@2024-08-10_21-52-34\gui
+
+Requirements:
+1. Implement a main GUI window using a lightweight Python GUI framework.
+2. Create a visual representation of the Connect Four game board with clickable columns.
+3. Develop a game status display showing current player turn and game outcome.
+4. Implement automated GUI testing with <1 second timeouts for all interactive elements.
+5. Ensure no pop-ups are used in the GUI implementation.
+
+Goals:
+The 'gui' directory aims to create a simple, intuitive, and visually appealing graphical user interface for the Connect Four game. It serves as the bridge between the core game logic and the user, providing an interactive and engaging way to play the game. The GUI should be easily testable and maintain the project's small, proof-of-concept nature.
+

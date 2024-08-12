@@ -1,0 +1,49 @@
+File Name: C:\Users\Ben Rinauto\Documents\Code\llm-utilities-git\llm-utilities\.experiments\test@2024-08-10_21-52-34\gui\main_window.py
+
+Requirements:
+1. Implement a main application window using a lightweight Python GUI framework (e.g., tkinter or PyQt).
+2. Create a layout that incorporates the game board, status display, and any necessary control buttons (e.g., reset game).
+3. Handle user interactions, such as column selection for piece placement, and communicate these actions to the game logic.
+4. Update the GUI in response to game state changes, including board updates and player turns.
+5. Implement a method to reset the game and refresh the GUI accordingly.
+6. Ensure all GUI elements are accessible for automated testing without requiring user interaction.
+7. Implement error handling for invalid user inputs or unexpected game states.
+8. Include unit tests within the file to verify the functionality of the main window and its components.
+9. Avoid using pop-ups for any notifications or interactions.
+10. Ensure that all interactive elements have timeouts of less than 1 second during testing.
+
+Goals:
+The main_window.py file serves as the entry point for the Connect Four game's graphical user interface. Its primary purpose is to create and manage the main application window, orchestrate the interaction between different GUI components, and handle the overall flow of the game. This file aims to provide a clean, user-friendly interface that integrates seamlessly with the game logic while maintaining simplicity and testability.
+
+Interface:
+from typing import Callable
+
+class MainWindow:
+    def __init__(self, game_logic: 'ConnectFourGame'):
+        pass
+
+    def run(self) -> None:
+        pass
+
+    def update_board(self, board_state: tuple[tuple[int, ...], ...]) -> None:
+        pass
+
+    def update_status(self, current_player: int, game_over: bool, winner: int | None) -> None:
+        pass
+
+    def reset_game(self) -> None:
+        pass
+
+    def set_column_click_handler(self, handler: Callable[[int], None]) -> None:
+        pass
+
+    def set_reset_click_handler(self, handler: Callable[[], None]) -> None:
+        pass
+
+def create_main_window(game_logic: 'ConnectFourGame') -> MainWindow:
+    pass
+
+if __name__ == "__main__":
+    def run_gui() -> None:
+        pass
+

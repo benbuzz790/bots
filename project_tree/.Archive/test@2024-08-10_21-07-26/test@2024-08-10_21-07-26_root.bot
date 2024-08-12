@@ -1,0 +1,111 @@
+{
+ "name": "Claude",
+ "model_engine": "claude-3-5-sonnet-20240620",
+ "max_tokens": 1024,
+ "temperature": 0.3,
+ "role": "assistant",
+ "role_description": "a friendly AI assistant",
+ "conversation": {
+  "role": "user",
+  "content": "\n        Based on the following context for the project 'test@2024-08-10_21-07-26',\n        generate a list of top-level directories that should be created for this project.\n        Consider common project structures and the specific goals and requirements of this project.\n        Respond with only the subdirectories, one per line, prefixed with a hyphen.\n\n        Here is the context:\n        File: C:\\Users\\Ben Rinauto\\Documents\\Code\\llm-utilities-git\\llm-utilities\\.experiments\\test@2024-08-10_21-07-26\nLocal requirements: \n        1. Keep the project SMALL. Proof-of-concept level. Ensure all modules have this requirement.\n        2. No more than 5 requirements can be placed on any directory.\n        3. Exactly three top level directories.\n        4. The subject of the test project - make a connect four game in python.\n        5. Testing: All python files will contain their own unittests. There will be no /tests folder - rather, tests that rely on more than one module should be built into the directory where those modules are used in conjunction.\n        6. The game should have a testable GUI. When testing the GUI, ensure that no user interaction is required. All GUI elements that require dismissal should have <1 second timeouts during testing, for instance, rather than requiring someone to click.\n        7. No pop-ups.\n        8. Requirements vs. Goals: All requirements should be testable. Goals do not have to be testable, but should memorialize the purpose of the requirements.\n        \nLocal goals: Create a small python project to demonstrate your capabilities\n\nProject Interfaces:\n\n        ",
+  "replies": [
+   {
+    "role": "assistant",
+    "content": "- src\n- gui\n- resources",
+    "replies": [
+     {
+      "role": "user",
+      "content": "\n        For the directory 'C:\\Users\\Ben Rinauto\\Documents\\Code\\llm-utilities-git\\llm-utilities\\.experiments\\test@2024-08-10_21-07-26\\src' in the project 'test@2024-08-10_21-07-26', provide:\n        1. High level goals and purpose for the directory in a code block labeled 'goals'\n        2. A preliminary set of requirements for the directory in a code block labeled 'requirements'\n        Be specific and thorough with requirements, but also be very concise.\n        You have approximately 300 words before you're cut off.\n        Write your response as a set of code blocks labeled ```requirements and ```goals\n        ",
+      "replies": [
+       {
+        "role": "assistant",
+        "content": "```goals\nThe 'src' directory serves as the core of the Connect Four game implementation. It contains the main game logic, data structures, and utility functions necessary for the game's functionality. This directory aims to provide a clean, modular, and easily testable codebase for the Connect Four game, separate from the GUI implementation.\n```\n\n```requirements\n1. Implement a 'game.py' file containing the main Connect Four game logic.\n2. Create a 'board.py' file to represent the game board and its operations.\n3. Develop a 'player.py' file to manage player turns and actions.\n4. Include unit tests within each Python file to ensure code functionality.\n5. Ensure all modules adhere to the project's size constraint (small, proof-of-concept level).\n```",
+        "replies": [
+         {
+          "role": "user",
+          "content": "\n        For the directory 'C:\\Users\\Ben Rinauto\\Documents\\Code\\llm-utilities-git\\llm-utilities\\.experiments\\test@2024-08-10_21-07-26\\gui' in the project 'test@2024-08-10_21-07-26', provide:\n        1. High level goals and purpose for the directory in a code block labeled 'goals'\n        2. A preliminary set of requirements for the directory in a code block labeled 'requirements'\n        Be specific and thorough with requirements, but also be very concise.\n        You have approximately 300 words before you're cut off.\n        Write your response as a set of code blocks labeled ```requirements and ```goals\n        ",
+          "replies": [
+           {
+            "role": "assistant",
+            "content": "```goals\nThe 'gui' directory is responsible for creating and managing the graphical user interface of the Connect Four game. It aims to provide a visually appealing and interactive game experience while ensuring testability without user interaction. The GUI should be simple yet functional, adhering to the project's small, proof-of-concept nature.\n```\n\n```requirements\n1. Implement a main GUI file (e.g., 'main_window.py') using a Python GUI library (e.g., Tkinter or PyQt).\n2. Create a game board visualization that accurately represents the game state.\n3. Implement clickable areas for player moves, translating GUI interactions to game logic.\n4. Develop a status display for showing game information (current player, winner, etc.).\n5. Ensure all GUI elements are testable without user interaction, using timeouts <1 second for dismissible elements during testing.\n```",
+            "replies": [
+             {
+              "role": "user",
+              "content": "\n        For the directory 'C:\\Users\\Ben Rinauto\\Documents\\Code\\llm-utilities-git\\llm-utilities\\.experiments\\test@2024-08-10_21-07-26\\resources' in the project 'test@2024-08-10_21-07-26', provide:\n        1. High level goals and purpose for the directory in a code block labeled 'goals'\n        2. A preliminary set of requirements for the directory in a code block labeled 'requirements'\n        Be specific and thorough with requirements, but also be very concise.\n        You have approximately 300 words before you're cut off.\n        Write your response as a set of code blocks labeled ```requirements and ```goals\n        ",
+              "replies": [
+               {
+                "role": "assistant",
+                "content": "```goals\nThe 'resources' directory serves as a centralized location for storing non-code assets essential to the Connect Four game. This includes graphical elements, configuration files, and any other static resources required for the game's functionality and appearance. The goal is to keep these assets organized and easily accessible to both the core game logic and GUI components.\n```\n\n```requirements\n1. Include basic image files for game pieces (e.g., red and yellow circles) in a common format like PNG.\n2. Provide a simple configuration file (e.g., 'config.json' or 'settings.ini') for game parameters such as board size and colors.\n3. Add a basic sound effect file for piece placement, if audio feedback is desired.\n4. Ensure all resource files are small in size, adhering to the project's proof-of-concept nature.\n5. Include a README.md file listing all resources and their purposes for easy reference.\n```",
+                "replies": [
+                 {
+                  "role": "user",
+                  "content": "\n        Based on the following context for the project 'test@2024-08-10_21-07-26',\n        generate a list of top-level directories that should be created for this project.\n        Consider common project structures and the specific goals and requirements of this project.\n        Respond with only the subdirectories, one per line, prefixed with a hyphen.\n\n        Here is the context:\n        File: C:\\Users\\Ben Rinauto\\Documents\\Code\\llm-utilities-git\\llm-utilities\\.experiments\\test@2024-08-10_21-07-26\nLocal requirements: \n        1. Keep the project SMALL. Proof-of-concept level. Ensure all modules have this requirement.\n        2. No more than 5 requirements can be placed on any directory.\n        3. Exactly three top level directories.\n        4. The subject of the test project - make a connect four game in python.\n        5. Testing: All python files will contain their own unittests. There will be no /tests folder - rather, tests that rely on more than one module should be built into the directory where those modules are used in conjunction.\n        6. The game should have a testable GUI. When testing the GUI, ensure that no user interaction is required. All GUI elements that require dismissal should have <1 second timeouts during testing, for instance, rather than requiring someone to click.\n        7. No pop-ups.\n        8. Requirements vs. Goals: All requirements should be testable. Goals do not have to be testable, but should memorialize the purpose of the requirements.\n        \nLocal goals: Create a small python project to demonstrate your capabilities\n\nProject Interfaces:\n\n        ",
+                  "replies": [
+                   {
+                    "role": "assistant",
+                    "content": "- src\n- gui\n- resources",
+                    "replies": [
+                     {
+                      "role": "user",
+                      "content": "\n        For the directory 'C:\\Users\\Ben Rinauto\\Documents\\Code\\llm-utilities-git\\llm-utilities\\.experiments\\test@2024-08-10_21-07-26\\src' in the project 'test@2024-08-10_21-07-26', provide:\n        1. High level goals and purpose for the directory in a code block labeled 'goals'\n        2. A preliminary set of requirements for the directory in a code block labeled 'requirements'\n        Be specific and thorough with requirements, but also be very concise.\n        You have approximately 300 words before you're cut off.\n        Write your response as a set of code blocks labeled ```requirements and ```goals\n        ",
+                      "replies": [
+                       {
+                        "role": "assistant",
+                        "content": "```goals\nThe 'src' directory serves as the core of the Connect Four game implementation. It contains the essential game logic, data structures, and utility functions necessary for the game's functionality. This directory aims to provide a clean, modular, and easily testable codebase for the Connect Four game, separate from the GUI implementation, while maintaining a small, proof-of-concept level project structure.\n```\n\n```requirements\n1. Implement a 'game.py' file containing the main Connect Four game logic, including game state management and win condition checks.\n2. Create a 'board.py' file to represent the game board, its operations, and piece placement logic.\n3. Develop a 'player.py' file to manage player turns, moves, and basic AI for a computer opponent if applicable.\n4. Include unit tests within each Python file to ensure code functionality and correctness.\n5. Ensure all modules adhere to the project's size constraint (small, proof-of-concept level) and do not exceed 100 lines of code each.\n```",
+                        "replies": [
+                         {
+                          "role": "user",
+                          "content": "\n        For the directory 'C:\\Users\\Ben Rinauto\\Documents\\Code\\llm-utilities-git\\llm-utilities\\.experiments\\test@2024-08-10_21-07-26\\gui' in the project 'test@2024-08-10_21-07-26', provide:\n        1. High level goals and purpose for the directory in a code block labeled 'goals'\n        2. A preliminary set of requirements for the directory in a code block labeled 'requirements'\n        Be specific and thorough with requirements, but also be very concise.\n        You have approximately 300 words before you're cut off.\n        Write your response as a set of code blocks labeled ```requirements and ```goals\n        ",
+                          "replies": [
+                           {
+                            "role": "assistant",
+                            "content": "```goals\nThe 'gui' directory is responsible for creating and managing the graphical user interface of the Connect Four game. It aims to provide a simple yet functional visual representation of the game, ensuring a smooth user experience while maintaining testability without user interaction. The GUI should be lightweight and adhere to the project's small, proof-of-concept nature.\n```\n\n```requirements\n1. Implement a main GUI file (e.g., 'main_window.py') using a lightweight Python GUI library (e.g., Tkinter).\n2. Create a game board visualization that accurately represents the current game state, updating in real-time.\n3. Implement clickable areas for player moves, translating GUI interactions to game logic calls.\n4. Develop a status display for showing game information (current player, winner) without using pop-ups.\n5. Ensure all GUI elements are testable without user interaction, using timeouts <1 second for any elements requiring dismissal during testing.\n```",
+                            "replies": [
+                             {
+                              "role": "user",
+                              "content": "\n        For the directory 'C:\\Users\\Ben Rinauto\\Documents\\Code\\llm-utilities-git\\llm-utilities\\.experiments\\test@2024-08-10_21-07-26\\resources' in the project 'test@2024-08-10_21-07-26', provide:\n        1. High level goals and purpose for the directory in a code block labeled 'goals'\n        2. A preliminary set of requirements for the directory in a code block labeled 'requirements'\n        Be specific and thorough with requirements, but also be very concise.\n        You have approximately 300 words before you're cut off.\n        Write your response as a set of code blocks labeled ```requirements and ```goals\n        ",
+                              "replies": [
+                               {
+                                "role": "assistant",
+                                "content": "```goals\nThe 'resources' directory serves as a centralized location for storing non-code assets essential to the Connect Four game. This includes minimal graphical elements and configuration files required for the game's functionality and appearance. The goal is to keep these assets organized and easily accessible to both the core game logic and GUI components while maintaining the project's small, proof-of-concept nature.\n```\n\n```requirements\n1. Include basic image files for game pieces (e.g., red and yellow circles) in PNG format, each no larger than 5KB.\n2. Provide a simple configuration file (e.g., 'config.json') for game parameters such as board size and colors, limited to essential settings only.\n3. Create a 'README.md' file listing all resources and their purposes for easy reference, not exceeding 50 lines.\n4. Ensure the total size of all resources combined does not exceed 100KB.\n5. Limit the number of files in this directory to no more than 10, including the README.md.\n```"
+                               }
+                              ]
+                             }
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "system_message": "",
+ "tool_handler": {
+  "class": "AnthropicToolHandler",
+  "tools": [],
+  "function_map": {},
+  "requests": [],
+  "results": []
+ },
+ "bot_class": "AnthropicBot"
+}
