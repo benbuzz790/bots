@@ -351,7 +351,8 @@ class Mailbox(ABC):
             - The response text (str)
             - The role of the responder (str, e.g., "assistant")
             - Additional metadata or parsed information (Dict[str, Any])
-                - This additional data will be passed to ConversationNode's kwargs argument directly
+                - This additional data will be passed to ConversationNode's kwargs 
+                argument directly
                 - By default, Conversation Node saves each kwarg as an attribute
         
         Note:

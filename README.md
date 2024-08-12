@@ -27,6 +27,9 @@ LLM Utilities is a Python library designed to simplify interactions with various
 - **Engine Abstraction**: Use the `Engines` enum to easily switch between different LLM models and providers.
 - **Serialization and Deserialization**: Save and load bot states, including conversation history and tool configurations.
 - **Asynchronous Batch Processing (TBD)**: Send multiple messages concurrently using the batch sending feature.
+- **Automatic Terminal**: Utilize `auto_terminal.py` to run an LLM session in your terminal, where the llm has tools to read and modify python code
+- **Lazy Decorator**: Utilize the "@lazy()" decorator from `lazy.py` to tag functions as LLM responsibilities, and have them lazily generated and run the first time they are called.
+- **Project Trees**: use `project_tree.py` to automatically generate project skeletons, including requirements, goals, and interfaces for each level of the project; then, automatically generate the files which are required. This is in active development and usually the final code requires a lot of debugging, although the requirements and goals seem reasonable.
 - **Automated README Updates**: Utilize the `prep_repo.py` script to automatically update the README.md file based on recent changes in Python files.
 - **Automated Code Formatting**: Use the `prep_repo.py` script to ensure consistent formatting, type hints, and PEP8 compliance across Python files in the project.
 
@@ -42,8 +45,8 @@ Alternatively, you can clone the repository and install it manually:
 
 ```bash
 git clone https://github.com/benbuzz790/llm-utilities.git
-cd llm-utilities
-pip install -e .
+~~cd llm-utilities~~
+~~pip install -e .~~ (TBD)
 ```
 
 ## ~~Requirements~~ (Out of date)
@@ -54,7 +57,7 @@ LLM Utilities requires Python 3.7 or later. The following dependencies are requi
 - `anthropic`: For interacting with Anthropic's Claude models
 - `requests`: For making HTTP requests
 
-You can't install all required dependencies using:
+You can't install all required dependencies using (TBD):
 
 ```bash
 pip install -r requirements.txt
@@ -149,12 +152,13 @@ bot = GPTBot(api_key="your_openai_api_key_here", model_engine=Engines.GPT4)
 bot.respond("Hello, how are you?")
 bot.respond("Tell me a joke.")
 
-# Save the bot state
-save_path = bot.save("my_bot_state.json")
-print(f"Bot state saved to {save_path}")
+# Save the bot state (api keys are not saved)
+save_path = bot.save("my_bot")
+print(f"Bot state saved to {save_path}") # my_bot.bot 
 
 # Load the bot state later
-loaded_bot = base.load("my_bot_state.json", api_key="your_openai_api_key_here")
+# If api_key is blank, environment variables are attempted.
+loaded_bot = base.load("my_bot_state", api_key="your_openai_api_key_here")
 
 # Continue the conversation
 response = loaded_bot.respond("Explain the joke you just told.")
@@ -191,20 +195,21 @@ The `ToolHandler` class manages custom functions that can be called by the LLM. 
 - Logging of incoming and outgoing messages
 - Batch sending capabilities for concurrent processing
 
-### 5. Engines
-The `Engines` enum represents different LLM models and providers. It offers:
-- Easy switching between models
-- Mapping of model names to appropriate bot classes
-- Utility methods for retrieving engine information
+### 5. Auto Terminal
+`auto_terminal.py` is a file which starts a chat session with an LLM in which: 
+- A bot has access to their computer. 
+- It can read and write files, modify python code, and even execute powershell. 
+- Use wisely! There are no safety checks in place except those applied to the external LLM (Claude 3.5 Sonnet)
 
-### 6. prep_repo.py
-The `prep_repo.py` script is a utility for automatically updating the README.md file and formatting Python files in the project. Key features include:
-- Detecting modified Python files in the project directory
-- Updating the README.md file to incorporate changes from modified files
-- Using an AnthropicBot to generate updated content for the README
-- Maintaining the overall structure and existing information in the README
-- Ensuring all Python files have type hints, PEP8 formatting, and consistent line width (maximum 100 characters)
-- Automated formatting of Python files without changing their functionality or import structure
+### 6. Lazy Decorator
+`lazy.py` is a file which defines a python function decorator. When applied to a function
+- The function is filled in by an LLM (Claude 3.5 Sonnet),
+- The source code is overwritten,
+- The function is run as though it were part of the source code for the remainder of the session.
+- Additionally, the code is generated lazily -- functions that are not called during runtime are not created.
+
+### 7. Project Tree
+The `project tree` directory is currently under development. The goal is to produce scalable, reliable python products autonomously. Initial project goals and requirements are broken down into modules, and further broken down to the file level. Code in python leaf nodes are generated based on the chain of context from the project root to the python file leaf.
 
 ## API Reference
 
@@ -296,7 +301,7 @@ The `Mailbox` class is an abstract base class for handling message sending and r
   - Sends a message to the LLM and returns the processed response.
 
 - `batch_send(conversations, model, max_tokens, temperature, api_key, system_message) -> List[Tuple[str, str, Dict[str, Any]]]`
-  - Sends multiple messages concurrently and returns their responses.
+  - Sends multiple messages concurrently and returns their responses. (Not implemented!)
 
 ### Engines
 
@@ -310,6 +315,7 @@ The `Engines` enum represents different LLM models and providers.
 - `CLAUDE3OPUS`
 - `CLAUDE3SONNET`
 - `CLAUDE35`
+- More can be added upon request
 
 #### Methods:
 
@@ -339,7 +345,7 @@ Here are some common issues and their solutions:
    - Check that the API key is valid and has the necessary permissions.
 
 2. **Rate Limiting**:
-   - TBD
+   - Rate limiting options are not yet implemented. Please integrate externally.
 
 3. **Model Availability**:
    - Ensure you're using a model that's available in your account. Some models may require special access.
@@ -352,7 +358,7 @@ Here are some common issues and their solutions:
 
 If you encounter any other issues, please check the [GitHub Issues](https://github.com/benbuzz790/llm-utilities/issues) page or open a new issue if your problem isn't already reported.
 
-## ~~Contributing~~ (TBD)
+## Contributing
 
 We welcome contributions to LLM Utilities! Here are some ways you can contribute:
 
@@ -370,9 +376,11 @@ To contribute code:
 
 Please adhere to the existing code style and include appropriate tests for new features.
 
+I am still learning git and github, so I may not respond immediately or even in a reasonable amount of time, but I'll try.
+
 ## License
 
-LLM Utilities is released under the MIT License. See the [LICENSE](LICENSE) file for details.
+LLM Utilities is released under the MIT License. See the [LICENSE](LICENSE) file for details (TBD).
 
 ## Additional Resources
 
