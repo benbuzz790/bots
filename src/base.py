@@ -426,11 +426,11 @@ class Bot(ABC):
         If tool_auto is True, loops until the bot does not use a tool
         """
         if tool_auto:
-            reply, self.conversation = self._respond_auto(content, 
-            self.conversation, role)
+            reply, self.conversation = self._respond_auto(content, self.
+                conversation, role)
         else:
-            reply, self.conversation = self._cvsn_respond(text=content, cvsn=
-            self.conversation, role=role)
+            reply, self.conversation = self._cvsn_respond(text=content,
+                cvsn=self.conversation, role=role)
         return reply
 
     def _cvsn_respond(self, text: Optional[str]=None, cvsn: Optional[
@@ -461,16 +461,17 @@ class Bot(ABC):
         self.tool_handler.add_tools_from_file(filepath)
         self.mailbox.set_tool_handler(self.tool_handler)
 
-    def _respond_auto(self, content: str, conversation: ConversationNode, role: str) ->str:
+    def _respond_auto(self, content: str, conversation: ConversationNode,
+        role: str) ->str:
         """Automatically handles tool use and responses for Anthropic models"""
         response, csvn = self._cvsn_respond(content, conversation, role)
         total_reply = response
         while True:
             extra_data = getattr(self.conversation, 'attributes', {})
             if extra_data.get('requests'):
-                follow_up = "(tool results provided automatically)"
+                follow_up = '(tool results provided automatically)'
                 response, csvn = self._cvsn_respond(follow_up, csvn, role)
-                total_reply += "\n\n ...working... \n\n" + response
+                total_reply += '\n\n ...working... \n\n' + response
             else:
                 break
         return total_reply, csvn
