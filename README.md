@@ -22,7 +22,7 @@ LLM Utilities is a Python library designed to simplify interactions with various
 - **Multi-Provider Support**: Seamlessly work with different LLM providers, including OpenAI and Anthropic, using a consistent interface.
 - **Extensible Bot Classes**: Easily create and customize bots for different LLM engines with the flexible `Bot` base class.
 - **Advanced Conversation Management**: Utilize the `ConversationNode` class to create and navigate tree-like conversation structures.
-- **Tool Integration**: Add custom functions as tools to your bots using the `ToolHandler` class, allowing for dynamic function calling within conversations.
+- **Tool Integration**: Add custom functions as tools to your bots using the `ToolHandler` class, allowing for dynamic function calling within conversations. Simply define a python function, and run bot.add_tool(function:Callable). You can add an entire file of top level functions with add_tools(filename:str)
 - **Flexible Mailbox System**: Manage message sending and receiving with the `Mailbox` class, which includes logging capabilities for debugging and analysis.
 - **Engine Abstraction**: Use the `Engines` enum to easily switch between different LLM models and providers.
 - **Serialization and Deserialization**: Save and load bot states, including conversation history and tool configurations.
