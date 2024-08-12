@@ -207,18 +207,20 @@ The `ToolHandler` class manages custom functions that can be called by the LLM. 
 - **Lazy Generation**: Functions are only generated when first called, optimizing resource usage.
 - **Source Code Modification**: The generated function overwrites the original placeholder in the source file.
 - **Seamless Execution**: Once generated, the function behaves as if it were part of the original source code.
+- **Customizable Instructions**: The decorator supports a prompt which it adds to internal instructions.
 - **Customizable Context Levels**: The decorator supports various context settings to provide appropriate information to the LLM:
   - `None`: Only the function signature is provided.
   - `"low"`: Includes the class context if the function is a method.
   - `"medium"`: Provides the entire file content.
   - `"high"`: Includes the file content and interfaces of files in the same folder.
   - `"very high"`: Provides all files in the same folder.
+- **No Prompt or Context Required**: If you need a simple function and create a good name and type hints, you can run "@lazy()" with no imputs  
 
 Usage example:
 ```python
 from src.lazy import lazy
 
-@lazy(context="medium")
+@lazy(prompt="Make it **very** complex", context="medium")
 def complex_algorithm(input_data):
     """
     Implement a complex algorithm based on the input data.
