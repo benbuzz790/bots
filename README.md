@@ -22,13 +22,13 @@ LLM Utilities is a Python library designed to simplify interactions with various
 - **Multi-Provider Support**: Seamlessly work with different LLM providers, including OpenAI and Anthropic, using a consistent interface.
 - **Extensible Bot Classes**: Easily create and customize bots for different LLM engines with the flexible `Bot` base class.
 - **Advanced Conversation Management**: Utilize the `ConversationNode` class to create and navigate tree-like conversation structures.
-- **Tool Integration**: Add custom functions as tools to your bots using the `ToolHandler` class, allowing for dynamic function calling within conversations.
+- **Tool Integration**: Add custom functions as tools to your bots using the `ToolHandler` class, allowing for dynamic function calling within conversations. Simply define a python function, and run bot.add_tool(function:Callable). You can add an entire file of top level functions with add_tools(filename:str)
 - **Flexible Mailbox System**: Manage message sending and receiving with the `Mailbox` class, which includes logging capabilities for debugging and analysis.
 - **Engine Abstraction**: Use the `Engines` enum to easily switch between different LLM models and providers.
 - **Serialization and Deserialization**: Save and load bot states, including conversation history and tool configurations.
 - **Asynchronous Batch Processing (TBD)**: Send multiple messages concurrently using the batch sending feature.
 - **Automatic Terminal**: Utilize `auto_terminal.py` to run an LLM session in your terminal, where the llm has tools to read and modify python code
-- **Lazy Decorator**: Utilize the "@lazy()" decorator from `lazy.py` to tag functions as LLM responsibilities, and have them lazily generated and run the first time they are called.
+- **Lazy Decorator**: Utilize the "@lazy()" decorator from `lazy.py` to tag functions as LLM responsibilities, and have them lazily generated and run the first time they are called. [Demo](https://drive.google.com/file/d/1UMDceuhx4KPnoQZblyXqNvfMiMO5aXXq/view?usp=drivesdk)
 - **Project Trees**: use `project_tree.py` to automatically generate project skeletons, including requirements, goals, and interfaces for each level of the project; then, automatically generate the files which are required. This is in active development and usually the final code requires a lot of debugging, although the requirements and goals seem reasonable.
 - **Automated README Updates**: Utilize the `prep_repo.py` script to automatically update the README.md file based on recent changes in Python files.
 - **Automated Code Formatting**: Use the `prep_repo.py` script to ensure consistent formatting, type hints, and PEP8 compliance across Python files in the project.
