@@ -28,7 +28,7 @@ LLM Utilities is a Python library designed to simplify interactions with various
 - **Serialization and Deserialization**: Save and load bot states, including conversation history and tool configurations.
 - **Asynchronous Batch Processing (TBD)**: Send multiple messages concurrently using the batch sending feature.
 - **Automatic Terminal**: Utilize `auto_terminal.py` to run an LLM session in your terminal, where the llm has tools to read and modify python code
-- **Lazy Decorator**: Utilize the "@lazy()" decorator from `lazy.py` to tag functions as LLM responsibilities, and have them lazily generated and run the first time they are called.
+- **Lazy Decorator**: Utilize the "@lazy()" decorator from `lazy.py` to tag functions as LLM responsibilities, and have them lazily generated and run the first time they are called. [Demo](https://drive.google.com/file/d/1UMDceuhx4KPnoQZblyXqNvfMiMO5aXXq/view?usp=drivesdk)
 - **Project Trees**: use `project_tree.py` to automatically generate project skeletons, including requirements, goals, and interfaces for each level of the project; then, automatically generate the files which are required. This is in active development and usually the final code requires a lot of debugging, although the requirements and goals seem reasonable.
 - **Automated README Updates**: Utilize the `prep_repo.py` script to automatically update the README.md file based on recent changes in Python files.
 - **Automated Code Formatting**: Use the `prep_repo.py` script to ensure consistent formatting, type hints, and PEP8 compliance across Python files in the project.
