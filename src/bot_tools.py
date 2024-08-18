@@ -1,4 +1,4 @@
-import ast 
+import ast
 import astor
 import os
 import re
@@ -6,6 +6,7 @@ import inspect
 import traceback
 import datetime as DT
 import subprocess
+
 
 def rewrite(file_path, content):
     """
@@ -20,12 +21,16 @@ def rewrite(file_path, content):
 
     The function will return either 'success' or an error message string.
     """
+    if not os.access(file_path, os.W_OK):
+        return _process_error(PermissionError(
+            f"No write permission for file '{file_path}'."))
     try:
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(content)
         return f'Rewrote {file_path} successfully'
     except Exception as error:
         return _process_error(error)
+
 
 def replace_string(file_path, old_string, new_string):
     """
@@ -44,7 +49,8 @@ def replace_string(file_path, old_string, new_string):
     Returns a confirmation message or an error message
     """
     if not os.path.exists(file_path):
-        return _process_error(FileNotFoundError(f"File '{file_path}' not found."))
+        return _process_error(FileNotFoundError(
+            f"File '{file_path}' not found."))
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
@@ -53,8 +59,10 @@ def replace_string(file_path, old_string, new_string):
             file.write(updated_content)
     except Exception as e:
         return _process_error(e)
+    return (
+        f"Replaced all instances of '{old_string}' with '{new_string}' in '{file_path}'."
+        )
 
-    return f"Replaced all instances of '{old_string}' with '{new_string}' in '{file_path}'."
 
 def replace_class(file_path, new_class_def, old_class_name=None):
     """
@@ -77,16 +85,24 @@ def replace_class(file_path, new_class_def, old_class_name=None):
     """
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
-    new_class_node = ast.parse(_remove_common_indent(new_class_def)).body[0]
-    if not isinstance(new_class_node, ast.ClassDef):
-        return _process_error(ValueError('Provided definition is not a class'))
-    
+    try:
+        new_class_node = ast.parse(_remove_common_indent(new_class_def)).body[0
+            ]
+        if not isinstance(new_class_node, ast.ClassDef):
+            return _process_error(ValueError(
+                'Provided definition is not a class'))
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error in new class definition: {str(e)}'))
     try:
         tree = ast.parse(content)
     except Exception as e:
-        return _process_error(e)
+        return _process_error(ValueError(
+            f'Error parsing the file {file_path}: {str(e)}'))
+
 
     class ClassReplacer(ast.NodeTransformer):
+
         def visit_ClassDef(self, node):
             if old_class_name:
                 if node.name == old_class_name:
@@ -94,20 +110,26 @@ def replace_class(file_path, new_class_def, old_class_name=None):
             elif node.name == new_class_node.name:
                 return new_class_node
             return node
-
     tree = ClassReplacer().visit(tree)
     updated_content = astor.to_source(tree)
+    if not os.access(file_path, os.W_OK):
+        return _process_error(PermissionError(
+            f"No write permission for file '{file_path}'."))
     try:
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(updated_content)
     except Exception as e:
         return _process_error(e)
-    replaced_class_name = (old_class_name if old_class_name else new_class_node.name)
-    return f"Class '{replaced_class_name}' has been replaced with '{new_class_node.name}' in '{file_path}'."
+    replaced_class_name = (old_class_name if old_class_name else
+        new_class_node.name)
+    return (
+        f"Class '{replaced_class_name}' has been replaced with '{new_class_node.name}' in '{file_path}'."
+        )
+
 
 def replace_function(file_path, new_function_def):
     """
-    Replaces a function definition in a file with a new function definition.
+    Replaces a function definition in a file with a allnew function definition.
 
     This function is used when you need to update or modify an entire function within a Python file.
     It replaces the function that matches the name of the new function definition.
@@ -125,10 +147,20 @@ def replace_function(file_path, new_function_def):
     """
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
-    new_func_node: ast.FunctionDef = ast.parse(_remove_common_indent(new_function_def)).body[0]
-    if not isinstance(new_func_node, ast.FunctionDef):
-        return _process_error(ValueError('Provided definition is not a function'))
-    tree = ast.parse(content)
+    try:
+        new_func_node = ast.parse(_remove_common_indent(new_function_def)
+            ).body[0]
+        if not isinstance(new_func_node, ast.FunctionDef):
+            return _process_error(ValueError(
+                'Provided definition is not a function'))
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error in new function definition: {str(e)}'))
+    try:
+        tree = ast.parse(content)
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error parsing the file {file_path}: {str(e)}'))
 
 
     class FunctionReplacer(ast.NodeTransformer):
@@ -141,19 +173,23 @@ def replace_function(file_path, new_function_def):
                 self.success = True
                 return new_func_node
             return node
-    
     transformer = FunctionReplacer()
     tree = transformer.visit(tree)
     if not transformer.success:
         return _process_error(ValueError(
-            f"Function'{new_func_node.name}' not found in the file:\n\n{content}\n\n."))
+            f"Function '{new_func_node.name}' not found in the file."))
+    if not os.access(file_path, os.W_OK):
+        return _process_error(PermissionError(
+            f"No write permission for file '{file_path}'."))
     try:
         updated_content = astor.to_source(tree)
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(updated_content)
     except Exception as e:
         return _process_error(e)
-    return f"Function '{new_func_node.name}' has been replaced in '{file_path}'."
+    return (
+        f"Function '{new_func_node.name}' has been replaced in '{file_path}'.")
+
 
 def add_function_to_class(file_path, class_name, new_method_def):
     """
@@ -175,13 +211,25 @@ def add_function_to_class(file_path, class_name, new_method_def):
     It adds the new method at the end of the class body.
     """
     if not os.path.exists(file_path):
-        return _process_error(FileNotFoundError(f"File '{file_path}' not found."))
+        return _process_error(FileNotFoundError(
+            f"File '{file_path}' not found."))
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
-    new_method_node = ast.parse(_remove_common_indent(new_method_def)).body[0]
-    if not isinstance(new_method_node, ast.FunctionDef):
-        return _process_error(ValueError('Provided definition is not a function'))
-    tree = ast.parse(content)
+    try:
+        new_method_node = ast.parse(_remove_common_indent(new_method_def)
+            ).body[0]
+        if not isinstance(new_method_node, ast.FunctionDef):
+            return _process_error(ValueError(
+                'Provided definition is not a function'))
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error in new method definition: {str(e)}'))
+    try:
+        tree = ast.parse(content)
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error parsing the file {file_path}: {str(e)}'))
+
 
     class MethodAdder(ast.NodeTransformer):
 
@@ -194,21 +242,26 @@ def add_function_to_class(file_path, class_name, new_method_def):
                 node.body.append(new_method_node)
                 return node
             return node
-    
     transformer = MethodAdder()
     tree = transformer.visit(tree)
     if not transformer.success:
         return _process_error(ValueError(
-            f"Class '{class_name}' not found in the file:\n\n{content}\n\n."))
+            f"Class '{class_name}' not found in the file."))
+    if not os.access(file_path, os.W_OK):
+        return _process_error(PermissionError(
+            f"No write permission for file '{file_path}'."))
     try:
         updated_content = astor.to_source(tree)
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(updated_content)
     except Exception as e:
         return _process_error(e)
-    return f"Method '{new_method_node.name}' has been added to class '{class_name}' in '{file_path}'."
+    return (
+        f"Method '{new_method_node.name}' has been added to class '{class_name}' in '{file_path}'."
+        )
 
-def add_function_to_file(file_path: str, new_function_def: str) -> str:
+
+def add_function_to_file(file_path: str, new_function_def: str) ->str:
     """
     Adds a new function definition to an existing Python file.
 
@@ -233,26 +286,36 @@ def add_function_to_file(file_path: str, new_function_def: str) -> str:
     specific import orders or file structures are required.
     """
     if not os.path.exists(file_path):
-        return _process_error(FileNotFoundError(f"File '{file_path}' not found."))
-
+        return _process_error(FileNotFoundError(
+            f"File '{file_path}' not found."))
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
-
-    new_func_node = ast.parse(_remove_common_indent(new_function_def)).body[0]
-    if not isinstance(new_func_node, ast.FunctionDef):
-        return _process_error(ValueError('Provided definition is not a function'))
-
-    tree = ast.parse(content)
+    try:
+        new_func_node = ast.parse(_remove_common_indent(new_function_def)
+            ).body[0]
+        if not isinstance(new_func_node, ast.FunctionDef):
+            return _process_error(ValueError(
+                'Provided definition is not a function'))
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error in new function definition: {str(e)}'))
+    try:
+        tree = ast.parse(content)
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error parsing the file {file_path}: {str(e)}'))
     tree.body.append(new_func_node)
-
+    if not os.access(file_path, os.W_OK):
+        return _process_error(PermissionError(
+            f"No write permission for file '{file_path}'."))
     try:
         updated_content = astor.to_source(tree)
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(updated_content)
     except Exception as e:
         return _process_error(e)
-
     return f"Function '{new_func_node.name}' has been added to '{file_path}'."
+
 
 def add_class_to_file(file_path, class_def):
     """
@@ -273,14 +336,27 @@ def add_class_to_file(file_path, class_def):
     The new class is added at the end of the file, which may not be ideal if specific import orders or file structures are required.
     """
     if not os.path.exists(file_path):
-        return _process_error(FileNotFoundError(f"File '{file_path}' not found."))
+        return _process_error(FileNotFoundError(
+            f"File '{file_path}' not found."))
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
-    new_class_node = ast.parse(_remove_common_indent(class_def)).body[0]
-    if not isinstance(new_class_node, ast.ClassDef):
-        return _process_error(ValueError('Provided definition is not a class'))
-    tree = ast.parse(content)
+    try:
+        new_class_node = ast.parse(_remove_common_indent(class_def)).body[0]
+        if not isinstance(new_class_node, ast.ClassDef):
+            return _process_error(ValueError(
+                'Provided definition is not a class'))
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error in new class definition: {str(e)}'))
+    try:
+        tree = ast.parse(content)
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error parsing the file {file_path}: {str(e)}'))
     tree.body.append(new_class_node)
+    if not os.access(file_path, os.W_OK):
+        return _process_error(PermissionError(
+            f"No write permission for file '{file_path}'."))
     try:
         updated_content = astor.to_source(tree)
         with open(file_path, 'w', encoding='utf-8') as file:
@@ -288,6 +364,7 @@ def add_class_to_file(file_path, class_def):
     except Exception as e:
         return _process_error(e)
     return f"Class '{new_class_node.name}' has been added to '{file_path}'."
+
 
 def append(file_path, content_to_append):
     """
@@ -306,12 +383,16 @@ def append(file_path, content_to_append):
     Note: This function does not add any newline characters automatically. If you want the appended content to start on a new line,
     make sure to include a newline character at the beginning of content_to_append if necessary.
     """
+    if not os.access(file_path, os.W_OK):
+        return _process_error(PermissionError(
+            f"No write permission for file '{file_path}'."))
     try:
         with open(file_path, 'a', encoding='utf-8') as file:
             file.write(content_to_append)
     except Exception as e:
         return _process_error(e)
     return f"Content appended to the file '{file_path}'."
+
 
 def prepend(file_path, content_to_prepend):
     """
@@ -331,6 +412,9 @@ def prepend(file_path, content_to_prepend):
     Note: This function does not add any newline characters automatically. If you want the original content to start on a new line after the prepended content, make sure to include a newline character at the end of content_to_prepend if necessary.
     This operation rewrites the entire files.
     """
+    if not os.access(file_path, os.W_OK):
+        return _process_error(PermissionError(
+            f"No write permission for file '{file_path}'."))
     try:
         with open(file_path, 'r+', encoding='utf-8') as file:
             content = file.read()
@@ -339,6 +423,7 @@ def prepend(file_path, content_to_prepend):
     except Exception as e:
         return _process_error(e)
     return f"Content prepended to the file '{file_path}'."
+
 
 def delete_match(file_path, pattern):
     """
@@ -366,9 +451,12 @@ def delete_match(file_path, pattern):
             for line in lines:
                 if pattern.lower() not in line.lower():
                     file.write(line)
-            return f"Lines containing '{pattern}' (case-insensitive) have been deleted from '{file_path}'."
+            return (
+                f"Lines containing '{pattern}' (case-insensitive) have been deleted from '{file_path}'."
+                )
     except Exception as e:
         return _process_error(e)
+
 
 def read_file(file_path):
     """
@@ -388,8 +476,12 @@ def read_file(file_path):
     It assumes the file is text-based and uses UTF-8 encoding. If the file uses a different encoding, you may need to modify the function.
     If the file doesn't exist or can't be read, this function will raise an exception (like FileNotFoundError).
     """
-    with open(file_path, 'r', encoding='utf-8') as file:
-        return file.read()
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return file.read()
+    except Exception as e:
+        return _process_error(e)
+
 
 def execute_python_code(code, timeout=300):
     """
@@ -402,8 +494,7 @@ def execute_python_code(code, timeout=300):
     - stdout (str): Standard output from running the code
     - error (str): A description of the error if the code ran incorrectly
     """
-    
-    # Parse the input code into an AST    
+
     def create_wrapper_ast():
         wrapper_code = """
 import os
@@ -434,35 +525,35 @@ if __name__ == '__main__':
         return ast.parse(wrapper_code)
 
     def insert_code_into_wrapper(wrapper_ast, code_ast):
-        main_func = next(node for node in wrapper_ast.body if isinstance(node, ast.FunctionDef) and node.name == 'main')
+        main_func = next(node for node in wrapper_ast.body if isinstance(
+            node, ast.FunctionDef) and node.name == 'main')
         main_func.body = code_ast.body
         return wrapper_ast
-    
     code_ast = ast.parse(code)
     wrapper_ast = create_wrapper_ast()
     combined_ast = insert_code_into_wrapper(wrapper_ast, code_ast)
     final_code = astor.to_source(combined_ast)
     now = DT.datetime.now()
-    formatted_datetime = now.strftime("%Y.%m.%d-%H.%M.%S")
+    formatted_datetime = now.strftime('%Y.%m.%d-%H.%M.%S')
     temp_file_name = os.path.join(os.getcwd(), 'scripts/temp_script.py')
-    temp_file_copy = os.path.join(os.getcwd(), f'scripts/last_temp_script@{formatted_datetime}.py')
-    
+    temp_file_copy = os.path.join(os.getcwd(),
+        f'scripts/last_temp_script@{formatted_datetime}.py')
     with open(temp_file_name, 'w', encoding='utf-8') as temp_file:
         temp_file.write(final_code)
         temp_file.flush()
-    
     with open(temp_file_copy, 'w', encoding='utf-8') as temp_file:
         temp_file.write(final_code)
         temp_file.flush()
-
     try:
-        process = subprocess.Popen(['python', temp_file_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8')
+        process = subprocess.Popen(['python', temp_file_name], stdout=
+            subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding=
+            'utf-8')
         try:
             stdout, stderr = process.communicate(timeout=300)
             return stdout + stderr
         except subprocess.TimeoutExpired:
             process.terminate()
-            return f"Error: Code execution timed out after {300} seconds."
+            return f'Error: Code execution timed out after {300} seconds.'
     except Exception as e:
         return _process_error(e)
     finally:
@@ -474,24 +565,29 @@ if __name__ == '__main__':
 def execute_powershell(code):
     output = ''
     try:
-        result = subprocess.run(["powershell", "-Command", code], capture_output=True, text=True, timeout=300)
+        result = subprocess.run(['powershell', '-Command', code],
+            capture_output=True, text=True, timeout=300)
         output += result.stdout + result.stderr
     except subprocess.TimeoutExpired:
-        output += "Error: Command execution timed out after 30 seconds."
+        output += 'Error: Command execution timed out after 30 seconds.'
     except Exception as e:
         output += _process_error(e)
     return output
+
 
 def _remove_common_indent(code):
     return code
     return inspect.cleandoc(code)
 
+
 def _process_error(error):
-    error_message = f"tool failed: {str(error)}\n"
-    error_message += f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}"
+    error_message = f'tool failed: {str(error)}\n'
+    error_message += (
+        f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
     return error_message
 
-def get_py_interface(file_path: str) -> str:
+
+def get_py_interface(file_path: str) ->str:
     """
     Outputs a string showing all of the class and function definitions including docstrings,
     but does not output the code.
@@ -505,28 +601,27 @@ def get_py_interface(file_path: str) -> str:
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
-        
         tree = ast.parse(content)
         interface = []
-
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
-                definition = f"{'class' if isinstance(node, ast.ClassDef) else 'def'} {node.name}"
+                definition = (
+                    f"{'class' if isinstance(node, ast.ClassDef) else 'def'} {node.name}"
+                    )
                 if isinstance(node, ast.FunctionDef):
                     args = [arg.arg for arg in node.args.args]
                     definition += f"({', '.join(args)})"
                 interface.append(definition)
-                
                 docstring = ast.get_docstring(node)
                 if docstring:
-                    interface.append(f"    \"\"\"{docstring}\"\"\"")
-                interface.append("")  # Add a blank line for readability
-
-        return "\n".join(interface)
+                    interface.append(f'    """{docstring}"""')
+                interface.append('')
+        return '\n'.join(interface)
     except Exception as e:
         return _process_error(e)
 
-def dispatch(prompt: str, bot=None) -> bool:
+
+def dispatch(prompt: str, bot=None) ->bool:
     """
     Dispatches an optionally input bot with the tools defined in src/bot_tools.py with the input prompt.
 
@@ -540,22 +635,14 @@ def dispatch(prompt: str, bot=None) -> bool:
     try:
         from src.base import Bot, Engines
         from src.openai_bots import GPTBot
-
         if bot is None:
             bot = GPTBot(api_key=os.environ.get('OPENAI_API_KEY'),
-                         model_engine=Engines.GPT4,
-                         max_tokens=1000,
-                         temperature=0.7,
-                         name="DispatchBot",
-                         role="assistant",
-                         role_description="A helpful AI assistant.")
-
-        # Add tools from src/bot_tools.py
+                model_engine=Engines.GPT4, max_tokens=1000, temperature=0.7,
+                name='DispatchBot', role='assistant', role_description=
+                'A helpful AI assistant.')
         bot.add_tools('src/bot_tools.py')
-
-        # Process the prompt
         response = bot.respond(prompt)
-        print(f"Bot response: {response}")
+        print(f'Bot response: {response}')
         return True
     except Exception as e:
         print(_process_error(e))
