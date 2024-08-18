@@ -45,7 +45,8 @@ def lazy(prompt: Optional[str]=None, bot: Optional[Bot]=None, context:
                     single code block. Include all import statements inside the 
                     function definition. Remove the lazy decorator. Respond only
                     with the function definition, including any new decorators and
-                    docstring. Include 'gen by @lazy' in the docstring'''
+                    docstring. Include 'gen by @lazy' in the docstring. Use PEP8 
+                    convention with type hints for all variables.'''
                     )
                 complete_prompt: str = f"""{instructions}
 

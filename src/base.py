@@ -433,6 +433,12 @@ class Bot(ABC):
                 cvsn=self.conversation, role=role)
         return reply
 
+    def branch(self, prompts: list[str], role: str='user', tool_auto=False)->tuple[list[str], list[ConversationNode]]:
+        replies: list[str] = []
+        for prompt in prompts:
+            replies[-1] = self.respond(prompt, role, tool_auto)
+        return replies, self.conversation.replies
+
     def _cvsn_respond(self, text: Optional[str]=None, cvsn: Optional[
         ConversationNode]=None, role: str='user') ->Tuple[str, ConversationNode
         ]:
@@ -464,17 +470,17 @@ class Bot(ABC):
     def _respond_auto(self, content: str, conversation: ConversationNode,
         role: str) ->str:
         """Automatically handles tool use and responses for Anthropic models"""
-        response, csvn = self._cvsn_respond(content, conversation, role)
+        response = self.respond(content, role, tool_auto=False)
         total_reply = response
         while True:
             extra_data = getattr(self.conversation, 'attributes', {})
             if extra_data.get('requests'):
                 follow_up = '(tool results provided automatically)'
-                response, csvn = self._cvsn_respond(follow_up, csvn, role)
+                response = self.respond(follow_up, role)
                 total_reply += '\n\n ...working... \n\n' + response
             else:
                 break
-        return total_reply, csvn
+        return total_reply, self.conversation
 
     def set_system_message(self, message: str) ->None:
         self.system_message = message

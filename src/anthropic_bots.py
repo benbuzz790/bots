@@ -6,6 +6,7 @@ from typing import Optional, Dict, Any, List, Callable, Tuple
 import anthropic
 import os
 import inspect
+import random, time
 
 
 class AnthropicNode(ConversationNode):
@@ -73,6 +74,8 @@ class AnthropicMailbox(Mailbox):
     def __init__(self, verbose: bool = False, tool_handler: Optional[AnthropicToolHandler] = None):
         super().__init__()
         self.tool_handler: Optional[AnthropicToolHandler] = tool_handler
+        self.last_message = None
+        self.client = None
 
     def set_tool_handler(self, tool_handler: AnthropicToolHandler) -> None:
         self.tool_handler = tool_handler
@@ -86,7 +89,7 @@ class AnthropicMailbox(Mailbox):
                 api_key = os.getenv("ANTHROPIC_API_KEY")
             except:
                 raise ValueError("Anthropic API key not found. Set up 'ANTHROPIC_API_KEY' environment variable.")
-        client: anthropic.Anthropic = anthropic.Anthropic(api_key=api_key)
+        self.client: anthropic.Anthropic = anthropic.Anthropic(api_key=api_key)
 
         # Anthropic expects tool requests and results in the messages block,
         # so they need to be added to the conversation nodes, so that they
@@ -126,17 +129,67 @@ class AnthropicMailbox(Mailbox):
         if tools:
             create_dict["tools"] = tools
 
-        try:
-            response: Dict[str, Any] = client.messages.create(**create_dict)
-        except Exception as e:
-            print('\n\n\n ---debug---\n')
-            print(create_dict)
-            print('\n---debug---\n\n\n')
-            raise e
-        return response
+
+        self.last_message = create_dict
+
+        max_retries = 5
+        base_delay = 1
+        for attempt in range(max_retries):
+            try:
+                response: Dict[str, Any] = self.client.messages.create(**create_dict)
+                return response
+            except anthropic.InternalServerError as e:
+                if attempt == max_retries - 1:
+                    print('\n\n\n ---debug---\n')
+                    print(create_dict)
+                    print('\n---debug---\n\n\n')
+                    raise e
+                delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                print(f"Attempt {attempt + 1} failed. Retrying in {delay:.2f} seconds...")
+                time.sleep(delay)
+        
+        # If we've exhausted all retries
+        raise Exception("Max retries reached. Unable to send message.")
+
+    def merge_content(self, existing_content, new_content):
+        if isinstance(existing_content, str) and isinstance(new_content, str):
+            return (existing_content + new_content).strip()
+        elif isinstance(existing_content, str) and isinstance(new_content, list):
+            if new_content and new_content[0]['type'] == 'text':
+                return [{'type': 'text', 'text': (existing_content + new_content[0]['text']).strip()}] + new_content[1:]
+            else:
+                return [{'type': 'text', 'text': existing_content.strip()}] + new_content
+        elif isinstance(existing_content, list) and isinstance(new_content, list):
+            return new_content  # new_content contains all of old_content
+        elif isinstance(existing_content, list) and isinstance(new_content, str):
+            if existing_content and existing_content[-1]['type'] == 'text':
+                existing_content[-1]['text'] = (existing_content[-1]['text'] + new_content).strip()
+            else:
+                existing_content.append({'type': 'text', 'text': new_content.strip()})
+            return existing_content
+        else:
+            raise ValueError("Unexpected content types")
+    
 
     def _process_response(self, response: Dict[str, Any]) -> Tuple[str, str, Dict[str, Any]]:
         tool_results: List[Dict[str, Any]] = []
+        new_message = self.last_message.copy()
+
+        while True:
+            if new_message["messages"][-1]["role"] == "assistant":
+                new_message["messages"][-1]["content"] = self.merge_content(
+                    new_message["messages"][-1]["content"],
+                    response.content
+                )
+            else:
+                assistant_message = {"role": "assistant", "content": response.content}
+                new_message["messages"].append(assistant_message)
+
+            if response.stop_reason != 'max_tokens':
+                break
+
+            response = self.client.messages.create(**new_message)
+
         if response.stop_reason == 'tool_use':
             tool_requests, tool_results = self.tool_handler.handle_response(response)
             extra_data: Dict[str, Any] = {"requests": tool_requests, "results": tool_results}
@@ -145,9 +198,14 @@ class AnthropicMailbox(Mailbox):
 
         response_role: str = response.role
         response_text: str = ""
-        for block in response.content:
-            if block.type == 'text':
-                response_text += block.text
+        
+        final_content = new_message["messages"][-1]["content"]
+        if isinstance(final_content, str):
+            response_text = final_content
+        elif isinstance(final_content, list):
+            for block in final_content:
+                if block.type == 'text':
+                    response_text += block.text
 
         return response_text, response_role, extra_data
 
