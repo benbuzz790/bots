@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
         self.create_shortcuts()
 
         # Set initial font
-        self.base_font = QFont("Courier", 10)
+        self.base_font = QFont("Courier", 16)
         self.base_font.setStyleHint(QFont.Monospace)
         self.apply_font()
 

@@ -18,23 +18,24 @@ class ConversationTreeWidget(QWidget):
         self.layout.addWidget(self.splitter)
 
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Role", "Content"])
+        self.tree.setHeaderLabels(["Role", "Preview"])
         self.splitter.addWidget(self.tree)
 
         details_widget = QWidget()
         details_layout = QVBoxLayout(details_widget)
-        self.details_label = QLabel("Message Details:")
+        self.details_label = QLabel("Message:")
         details_layout.addWidget(self.details_label)
         self.details_text = QTextEdit()
         self.details_text.setReadOnly(True)
         
         # Set monospaced font
         self.font = QFont("Courier")
+        self.font.setPointSize(16)
         self.font.setStyleHint(QFont.Monospace)
         self.details_text.setFont(self.font)
         
         # Preserve whitespace
-        self.details_text.setLineWrapMode(QTextEdit.NoWrap)
+        #self.details_text.setLineWrapMode(QTextEdit.NoWrap)
         
         details_layout.addWidget(self.details_text)
         self.splitter.addWidget(details_widget)
@@ -57,10 +58,25 @@ class ConversationTreeWidget(QWidget):
         item.setText(0, node.role)
         
         content = get_brief_content(node.content)
-        item.setText(1, content[:50] + "..." if len(content) > 50 else content)
+        
+        # Remove leading whitespace and newlines
+        content = content.lstrip()
+        
+        # Find the first newline after any initial whitespace
+        newline_index = content.find('\n')
+        
+        if newline_index == -1:
+            # No newlines, show up to 100 characters
+            display_content = content[:100] + "..." if len(content) > 100 else content
+        else:
+            # Show text up to the first newline
+            display_content = content[:newline_index]
+        
+        item.setText(1, display_content)
         item.setData(0, Qt.UserRole, node)
 
         font = QFont()
+        font.setPointSize(16)
         font.setBold(True)
         item.setFont(0, font)
 
