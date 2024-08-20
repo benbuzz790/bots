@@ -132,20 +132,20 @@ class AnthropicMailbox(Mailbox):
 
         self.last_message = create_dict
 
-        max_retries = 5
+        max_retries = 25
         base_delay = 1
         for attempt in range(max_retries):
             try:
                 response: Dict[str, Any] = self.client.messages.create(**create_dict)
                 return response
-            except anthropic.InternalServerError as e:
+            except (anthropic.InternalServerError, anthropic.RateLimitError) as e:
                 if attempt == max_retries - 1:
                     print('\n\n\n ---debug---\n')
                     print(create_dict)
                     print('\n---debug---\n\n\n')
                     raise e
                 delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
-                print(f"Attempt {attempt + 1} failed. Retrying in {delay:.2f} seconds...")
+                print(f"Attempt {attempt + 1} failed with {e.__class__.__name__}. Retrying in {delay:.2f} seconds...")
                 time.sleep(delay)
         
         # If we've exhausted all retries
