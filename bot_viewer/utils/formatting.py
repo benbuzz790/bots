@@ -1,5 +1,4 @@
 import json
-import re
 
 def format_content(content, indent=0):
     if isinstance(content, list):
@@ -13,14 +12,15 @@ def format_content(content, indent=0):
             formatted.append(f"{' ' * (indent + 2)}{json.dumps(key)}: {format_content(value, indent + 2)}")
         return '{\n' + ',\n'.join(formatted) + '\n' + ' ' * indent + '}'
     elif isinstance(content, str):
-        # Handle escaped newlines
-        lines = re.split(r'(?<!\\)\\n', content)  # Split on non-escaped \n
+        # Manually replace escaped newlines with actual newlines
+        content = content.replace('\\n', '\n')
+        lines = content.split('\n')
         if len(lines) > 1:
-            formatted = [(' ' * (indent + 2) + line.strip()) for line in lines]
+            formatted = [(' ' * (indent + 2) + line) for line in lines]
             return '\n'.join(formatted)
         else:
-            # If there are no newlines, just return the JSON-encoded string
-            return json.dumps(content)
+            # If there are no newlines, just return the string with indentation
+            return ' ' * (indent + 2) + content
     else:
         return json.dumps(content)
 

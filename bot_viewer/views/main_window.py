@@ -104,7 +104,7 @@ class MainWindow(QMainWindow):
 
     def toggle_word_wrap(self):
         wrap_mode = Qt.TextWordWrap if self.toggle_wrap_action.isChecked() else Qt.TextElideRight
-        self.conversation_tree.details_text.setWordWrapMode(wrap_mode)
+        self.conversation_tree.msg_text.setWordWrapMode(wrap_mode)
         self.bot_info_panel.info_text.setWordWrapMode(wrap_mode)
 
     def change_font_size(self, delta):
@@ -117,14 +117,14 @@ class MainWindow(QMainWindow):
     def apply_font(self):
         # Apply font to conversation tree
         self.conversation_tree.tree.setFont(self.base_font)
-        self.conversation_tree.details_text.setFont(self.base_font)
+        self.conversation_tree.msg_text.setFont(self.base_font)
         
         # Apply font to bot info panel
         self.bot_info_panel.info_text.setFont(self.base_font)
         
         # Force update
         self.conversation_tree.tree.update()
-        self.conversation_tree.details_text.update()
+        self.conversation_tree.msg_text.update()
         self.bot_info_panel.info_text.update()
 
     def open_bot_file(self):

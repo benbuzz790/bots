@@ -21,24 +21,24 @@ class ConversationTreeWidget(QWidget):
         self.tree.setHeaderLabels(["Role", "Preview"])
         self.splitter.addWidget(self.tree)
 
-        details_widget = QWidget()
-        details_layout = QVBoxLayout(details_widget)
-        self.details_label = QLabel("Message:")
-        details_layout.addWidget(self.details_label)
-        self.details_text = QTextEdit()
-        self.details_text.setReadOnly(True)
+        msg_widget = QWidget()
+        msg_layout = QVBoxLayout(msg_widget)
+        self.msg_label = QLabel("Message:")
+        msg_layout.addWidget(self.msg_label)
+        self.msg_text = QTextEdit()
+        self.msg_text.setReadOnly(True)
         
         # Set monospaced font
         self.font = QFont("Courier")
         self.font.setPointSize(16)
         self.font.setStyleHint(QFont.Monospace)
-        self.details_text.setFont(self.font)
+        self.msg_text.setFont(self.font)
         
         # Preserve whitespace
         #self.details_text.setLineWrapMode(QTextEdit.NoWrap)
         
-        details_layout.addWidget(self.details_text)
-        self.splitter.addWidget(details_widget)
+        msg_layout.addWidget(self.msg_text)
+        self.splitter.addWidget(msg_widget)
 
         self.tree.itemClicked.connect(self.show_details)
 
@@ -92,7 +92,7 @@ class ConversationTreeWidget(QWidget):
         details += "\n\nAttributes:\n"
         for key, value in node.attributes.items():
             details += f"{key}:\n{format_content(value, 2)}\n"
-        self.details_text.setPlainText(details)
+        self.msg_text.setPlainText(details)
 
     def expand_all(self):
         self.tree.expandAll()
@@ -112,7 +112,7 @@ class ConversationTreeWidget(QWidget):
         details_size = self.font.pointSize() + delta
         if details_size > 0:
             self.font.setPointSize(details_size)
-            self.details_text.setFont(self.font)
+            self.msg_text.setFont(self.font)
 
         # Update the current item to refresh the details pane
         current_item = self.tree.currentItem()
