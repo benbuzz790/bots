@@ -12,18 +12,14 @@ def rewrite(file_path, content):
     """
     Completely rewrites the content of a file with new content.
 
-    This function should be used when you want to replace the entire contents of a file with new content.
-    It will overwrite any existing content in the file.
+    Use when you want to replace the entire contents of a file.
 
     Parameters:
     - file_path (str): The path to the file that will be rewritten.
     - content (str): The new content that will be written to the file.
 
-    The function will return either 'success' or an error message string.
+    Returns 'success' or an error message string.
     """
-    if not os.access(file_path, os.W_OK):
-        return _process_error(PermissionError(
-            f"No write permission for file '{file_path}'."))
     try:
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(content)
@@ -36,17 +32,14 @@ def replace_string(file_path, old_string, new_string):
     """
     Replaces all occurrences of a specified string with a new string in a file.
 
-    Use this function when you need to find and replace a specific string throughout an entire file.
-    It performs a case-sensitive search and replacement.
+    Use when you need to find and replace a specific string throughout an entire file.
 
     Parameters:
     - file_path (str): The path to the file where the replacements will be made.
     - old_string (str): The string to be replaced.
     - new_string (str): The string that will replace the old string.
 
-    The function will return a FileNotFoundError if the specified file does not exist.
-    It uses regular expressions for the replacement, so special characters in the old_string will be escaped.
-    Returns a confirmation message or an error message
+    Returns a confirmation message or an error message.
     """
     if not os.path.exists(file_path):
         return _process_error(FileNotFoundError(
@@ -68,25 +61,19 @@ def replace_class(file_path, new_class_def, old_class_name=None):
     """
     Replaces a class definition in a file with a new class definition.
 
-    This function is useful when you need to update or modify an entire class definition within a Python file.
-    It can either replace a class with a matching name or a specified old class name.
+    Use when you need to update or modify an entire class definition within a Python file.
 
     Parameters:
     - file_path (str): The path to the file containing the class to be replaced.
     - new_class_def (str): The new class definition as a string.
-    - old_class_name (str, optional): The name of the class to be replaced. If not provided, the function will
-      replace the class that matches the name in the new class definition.
+    - old_class_name (str, optional): The name of the class to be replaced.
 
-    The function parses the file and the new class definition using the ast module.
-    After replacing the class, it rewrites the file and returns a confirmation message.
-    The function will return either the confirmation message or an error message.
-
-    Note: This function modifies the abstract syntax tree of the file, which may affect formatting.
+    Returns a confirmation message or an error message.
     """
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
     try:
-        new_class_node = ast.parse(_remove_common_indent(new_class_def)).body[0
+        new_class_node = ast.parse(_clean(new_class_def)).body[0
             ]
         if not isinstance(new_class_node, ast.ClassDef):
             return _process_error(ValueError(
@@ -112,9 +99,7 @@ def replace_class(file_path, new_class_def, old_class_name=None):
             return node
     tree = ClassReplacer().visit(tree)
     updated_content = astor.to_source(tree)
-    if not os.access(file_path, os.W_OK):
-        return _process_error(PermissionError(
-            f"No write permission for file '{file_path}'."))
+
     try:
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(updated_content)
@@ -129,26 +114,20 @@ def replace_class(file_path, new_class_def, old_class_name=None):
 
 def replace_function(file_path, new_function_def):
     """
-    Replaces a function definition in a file with a allnew function definition.
+    Replaces a function definition in a file with a new function definition.
 
-    This function is used when you need to update or modify an entire function within a Python file.
-    It replaces the function that matches the name of the new function definition.
+    Use when you need to update or modify an entire function within a Python file.
 
     Parameters:
     - file_path (str): The path to the file containing the function to be replaced.
     - new_function_def (str): The new function definition as a string.
 
-    The function parses the file and the new function definition using the ast module.
-    It will raise a ValueError if the provided new_function_def is not a valid function definition or if the function to be replaced is not found in the file.
-    After replacing the function, it rewrites the file and prints a confirmation message.
-
-    Note: This function modifies the abstract syntax tree of the file, which may affect formatting.
-    It only replaces the first occurrence of a function with the matching name.
+    Returns a confirmation message or an error message.
     """
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
     try:
-        new_func_node = ast.parse(_remove_common_indent(new_function_def)
+        new_func_node = ast.parse(_clean(new_function_def)
             ).body[0]
         if not isinstance(new_func_node, ast.FunctionDef):
             return _process_error(ValueError(
@@ -178,9 +157,6 @@ def replace_function(file_path, new_function_def):
     if not transformer.success:
         return _process_error(ValueError(
             f"Function '{new_func_node.name}' not found in the file."))
-    if not os.access(file_path, os.W_OK):
-        return _process_error(PermissionError(
-            f"No write permission for file '{file_path}'."))
     try:
         updated_content = astor.to_source(tree)
         with open(file_path, 'w', encoding='utf-8') as file:
@@ -195,20 +171,14 @@ def add_function_to_class(file_path, class_name, new_method_def):
     """
     Adds a new method (function) to an existing class in a Python file.
 
-    This function is useful when you need to extend a class by adding a new method without modifying the existing methods.
-    It locates the specified class and appends the new method to its body.
+    Use when you need to extend a class by adding a new method without modifying existing methods.
 
     Parameters:
     - file_path (str): The path to the file containing the class to be modified.
     - class_name (str): The name of the class to which the new method will be added.
     - new_method_def (str): The new method definition as a string.
 
-    The function will return a FileNotFoundError if the specified file does not exist.
-    It will return a ValueError if the provided new_method_def is not a valid function definition or if the specified class is not found in the file.
-    After adding the method, it rewrites the file and returns a confirmation message.
-
-    Note: This function modifies the abstract syntax tree of the file, which may affect formatting.
-    It adds the new method at the end of the class body.
+    Returns a confirmation message or an error message.
     """
     if not os.path.exists(file_path):
         return _process_error(FileNotFoundError(
@@ -216,7 +186,7 @@ def add_function_to_class(file_path, class_name, new_method_def):
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
     try:
-        new_method_node = ast.parse(_remove_common_indent(new_method_def)
+        new_method_node = ast.parse(_clean(new_method_def)
             ).body[0]
         if not isinstance(new_method_node, ast.FunctionDef):
             return _process_error(ValueError(
@@ -247,9 +217,6 @@ def add_function_to_class(file_path, class_name, new_method_def):
     if not transformer.success:
         return _process_error(ValueError(
             f"Class '{class_name}' not found in the file."))
-    if not os.access(file_path, os.W_OK):
-        return _process_error(PermissionError(
-            f"No write permission for file '{file_path}'."))
     try:
         updated_content = astor.to_source(tree)
         with open(file_path, 'w', encoding='utf-8') as file:
@@ -261,29 +228,17 @@ def add_function_to_class(file_path, class_name, new_method_def):
         )
 
 
-def add_function_to_file(file_path: str, new_function_def: str) ->str:
+def add_function_to_file(file_path: str, new_function_def: str) -> str:
     """
     Adds a new function definition to an existing Python file.
 
-    This function is used when you want to add a completely new function to a Python file 
-    without modifying existing content. It appends the new function definition to the end 
-    of the file.
+    Use when you want to add a completely new function to a Python file without modifying existing content.
 
     Parameters:
     - file_path (str): The path to the file where the new function will be added.
     - new_function_def (str): The new function definition as a string.
 
-    Returns:
-    - str: A confirmation message or an error message.
-
-    The function will return a FileNotFoundError if the specified file does not exist.
-    It will return a ValueError if the provided new_function_def is not a valid function 
-    definition. After adding the function, it rewrites the file and returns a confirmation 
-    message.
-
-    Note: This function modifies the abstract syntax tree of the file, which may affect 
-    formatting. The new function is added at the end of the file, which may not be ideal if 
-    specific import orders or file structures are required.
+    Returns a confirmation message or an error message.
     """
     if not os.path.exists(file_path):
         return _process_error(FileNotFoundError(
@@ -291,7 +246,7 @@ def add_function_to_file(file_path: str, new_function_def: str) ->str:
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
     try:
-        new_func_node = ast.parse(_remove_common_indent(new_function_def)
+        new_func_node = ast.parse(_clean(new_function_def)
             ).body[0]
         if not isinstance(new_func_node, ast.FunctionDef):
             return _process_error(ValueError(
@@ -305,9 +260,6 @@ def add_function_to_file(file_path: str, new_function_def: str) ->str:
         return _process_error(ValueError(
             f'Error parsing the file {file_path}: {str(e)}'))
     tree.body.append(new_func_node)
-    if not os.access(file_path, os.W_OK):
-        return _process_error(PermissionError(
-            f"No write permission for file '{file_path}'."))
     try:
         updated_content = astor.to_source(tree)
         with open(file_path, 'w', encoding='utf-8') as file:
@@ -321,19 +273,13 @@ def add_class_to_file(file_path, class_def):
     """
     Adds a new class definition to an existing Python file.
 
-    This function is used when you want to add a completely new class to a Python file without modifying existing content.
-    It appends the new class definition to the end of the file.
+    Use when you want to add a completely new class to a Python file without modifying existing content.
 
     Parameters:
     - file_path (str): The path to the file where the new class will be added.
     - class_def (str): The new class definition as a string.
 
-    The function will return a FileNotFoundError if the specified file does not exist.
-    It will return a ValueError if the provided class_def is not a valid class definition.
-    After adding the class, it rewrites the file and returns a confirmation message.
-
-    Note: This function modifies the abstract syntax tree of the file, which may affect formatting.
-    The new class is added at the end of the file, which may not be ideal if specific import orders or file structures are required.
+    Returns a confirmation message or an error message.
     """
     if not os.path.exists(file_path):
         return _process_error(FileNotFoundError(
@@ -341,7 +287,7 @@ def add_class_to_file(file_path, class_def):
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
     try:
-        new_class_node = ast.parse(_remove_common_indent(class_def)).body[0]
+        new_class_node = ast.parse(_clean(class_def)).body[0]
         if not isinstance(new_class_node, ast.ClassDef):
             return _process_error(ValueError(
                 'Provided definition is not a class'))
@@ -354,9 +300,6 @@ def add_class_to_file(file_path, class_def):
         return _process_error(ValueError(
             f'Error parsing the file {file_path}: {str(e)}'))
     tree.body.append(new_class_node)
-    if not os.access(file_path, os.W_OK):
-        return _process_error(PermissionError(
-            f"No write permission for file '{file_path}'."))
     try:
         updated_content = astor.to_source(tree)
         with open(file_path, 'w', encoding='utf-8') as file:
@@ -370,22 +313,14 @@ def append(file_path, content_to_append):
     """
     Appends content to the end of a file.
 
-    This function is useful when you want to add new content to a file without modifying its existing content.
-    The new content is added at the very end of the file.
+    Use when you want to add new content to a file without modifying its existing content.
 
     Parameters:
     - file_path (str): The path to the file where content will be appended.
     - content_to_append (str): The content to be added to the end of the file.
 
-    The function opens the file in append mode, which automatically positions the file pointer at the end of the file.
-    After appending the content, it returns a confirmation message or an error message.
-
-    Note: This function does not add any newline characters automatically. If you want the appended content to start on a new line,
-    make sure to include a newline character at the beginning of content_to_append if necessary.
+    Returns a confirmation message or an error message.
     """
-    if not os.access(file_path, os.W_OK):
-        return _process_error(PermissionError(
-            f"No write permission for file '{file_path}'."))
     try:
         with open(file_path, 'a', encoding='utf-8') as file:
             file.write(content_to_append)
@@ -398,23 +333,14 @@ def prepend(file_path, content_to_prepend):
     """
     Prepends content to the beginning of a file.
 
-    This function is used when you need to add new content to the start of a file, before any existing content.
-    It reads the entire file, then rewrites it with the new content at the beginning.
+    Use when you need to add new content to the start of a file, before any existing content.
 
     Parameters:
     - file_path (str): The path to the file where content will be prepended.
     - content_to_prepend (str): The content to be added to the beginning of the file.
 
-    The function opens the file in read and write mode ('r+'), reads all existing content, 
-    moves the file pointer to the beginning, and then writes the new content followed by the existing content.
-    After prepending the content, it returns either a confirmation message or an error message.
-
-    Note: This function does not add any newline characters automatically. If you want the original content to start on a new line after the prepended content, make sure to include a newline character at the end of content_to_prepend if necessary.
-    This operation rewrites the entire files.
+    Returns a confirmation message or an error message.
     """
-    if not os.access(file_path, os.W_OK):
-        return _process_error(PermissionError(
-            f"No write permission for file '{file_path}'."))
     try:
         with open(file_path, 'r+', encoding='utf-8') as file:
             content = file.read()
@@ -424,25 +350,17 @@ def prepend(file_path, content_to_prepend):
         return _process_error(e)
     return f"Content prepended to the file '{file_path}'."
 
-
 def delete_match(file_path, pattern):
     """
     Deletes all lines in a file that contain a specified pattern (case-insensitive).
 
-    This function is useful for removing specific content from a file based on a search pattern.
-    It performs a case-insensitive search and removes entire lines that contain the pattern.
-    You should use this to delete file content line by line.
+    Use to remove specific content from a file based on a search pattern.
 
     Parameters:
     - file_path (str): The path to the file from which lines will be deleted.
-    - pattern (str): The pattern to search for in each line. Lines containing this pattern will be removed.
+    - pattern (str): The pattern to search for in each line.
 
-    The function reads the file line by line, keeping only the lines that do not contain the pattern (case-insensitive).
-    After processing, it rewrites the file with the remaining lines and returns a confirmation message.
-
-    If the file is not found, it returns an error message.
-
-    Note: This function removes entire lines that contain the pattern, not just the pattern itself.
+    Returns a confirmation message or an error message.
     """
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -462,19 +380,12 @@ def read_file(file_path):
     """
     Reads and returns the entire content of a file as a string.
 
-    This function is used when you need to retrieve the complete content of a file for further processing or analysis.
+    Use when you need to retrieve the complete content of a file for further processing or analysis.
 
     Parameters:
     - file_path (str): The path to the file to be read.
 
-    Returns:
-    - str: The entire content of the file as a string.
-
-    The function opens the file in read mode with UTF-8 encoding, reads all the content, and returns it as a string.
-    It uses a context manager ('with' statement) to ensure the file is properly closed after reading.
-
-    It assumes the file is text-based and uses UTF-8 encoding. If the file uses a different encoding, you may need to modify the function.
-    If the file doesn't exist or can't be read, this function will raise an exception (like FileNotFoundError).
+    Returns the file content as a string or an error message.
     """
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -487,12 +398,13 @@ def execute_python_code(code, timeout=300):
     """
     Executes python code in a safe environment.
 
-    Parameters:
-    - code (str): Syntactically correcy python code.
+    Use when you need to run Python code dynamically and capture its output.
 
-    Returns:
-    - stdout (str): Standard output from running the code
-    - error (str): A description of the error if the code ran incorrectly
+    Parameters:
+    - code (str): Syntactically correct python code.
+    - timeout (int): Maximum execution time in seconds.
+
+    Returns stdout or an error message.
     """
 
     def create_wrapper_ast():
@@ -563,6 +475,16 @@ if __name__ == '__main__':
 
 
 def execute_powershell(code):
+    """
+    Executes PowerShell code.
+
+    Use when you need to run PowerShell commands and capture their output.
+
+    Parameters:
+    - code (str): PowerShell code to execute.
+
+    Returns command output or an error message.
+    """
     output = ''
     try:
         result = subprocess.run(['powershell', '-Command', code],
@@ -575,28 +497,16 @@ def execute_powershell(code):
     return output
 
 
-def _remove_common_indent(code):
-    return code
-    return inspect.cleandoc(code)
-
-
-def _process_error(error):
-    error_message = f'tool failed: {str(error)}\n'
-    error_message += (
-        f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
-    return error_message
-
-
-def get_py_interface(file_path: str) ->str:
+def get_py_interface(file_path: str) -> str:
     """
-    Outputs a string showing all of the class and function definitions including docstrings,
-    but does not output the code.
+    Outputs a string showing all class and function definitions including docstrings.
+
+    Use when you need to analyze the structure of a Python file without seeing the implementation details.
 
     Parameters:
     - file_path (str): The path to the Python file to analyze.
 
-    Returns:
-    - str: A string containing all class and function definitions with their docstrings.
+    Returns a string containing all class and function definitions with their docstrings.
     """
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -621,16 +531,17 @@ def get_py_interface(file_path: str) ->str:
         return _process_error(e)
 
 
-def dispatch(prompt: str, bot=None) ->bool:
+def dispatch(prompt: str, bot=None) -> bool:
     """
-    Dispatches an optionally input bot with the tools defined in src/bot_tools.py with the input prompt.
+    Dispatches a bot with the tools defined in src/bot_tools.py with the input prompt.
+
+    Use when you need to process a prompt using a bot with predefined tools.
 
     Parameters:
     - prompt (str): The input prompt to be processed by the bot.
     - bot (optional): The bot instance to use. If None, a new bot will be created.
 
-    Returns:
-    - bool: True if the dispatch was successful, False otherwise.
+    Returns True if the dispatch was successful, False otherwise.
     """
     try:
         from src.base import Bot, Engines
@@ -647,3 +558,15 @@ def dispatch(prompt: str, bot=None) ->bool:
     except Exception as e:
         print(_process_error(e))
         return False
+
+
+def _clean(code):
+    return code
+    return inspect.cleandoc(code)
+
+
+def _process_error(error):
+    error_message = f'tool failed: {str(error)}\n'
+    error_message += (
+        f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
+    return error_message
