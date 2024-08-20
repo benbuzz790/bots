@@ -68,8 +68,8 @@ class ConversationNode:
         self.attributes = kwargs
         self.role = role
         self.content = content
-        self.replies = []
-        self.parent = None
+        self.replies: list[ConversationNode] = []
+        self.parent: ConversationNode = None
 
     @staticmethod
     def create_empty():
@@ -413,7 +413,7 @@ class Bot(ABC):
         self.temperature = temperature
         self.role = role
         self.role_description = role_description
-        self.conversation = conversation
+        self.conversation: ConversationNode = conversation
         self.system_message = ''
         self.tool_handler = tool_handler
         self.mailbox = mailbox
