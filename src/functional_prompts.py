@@ -50,7 +50,6 @@ def branch(bot: Bot, prompts: List[Prompt]) ->List[ResponseNode]:
     bot.conversation = original_conversation
     return branches
 
-
 def recombine(bot: Bot, response_nodes: List[ResponseNode],
     recombinator_function: RecombinatorFunction) ->ResponseNode:
     """
@@ -69,7 +68,6 @@ def recombine(bot: Bot, response_nodes: List[ResponseNode],
     bot.conversation = recombined_node
     return recombined_response, recombined_node
 
-
 def tree_of_thought(bot: Bot, prompts: List[Prompt], recombinator_function:
     RecombinatorFunction) ->ResponseNode:
     """
@@ -86,7 +84,6 @@ def tree_of_thought(bot: Bot, prompts: List[Prompt], recombinator_function:
     branches = branch(bot, prompts)
     final_response = recombine(bot, branches, recombinator_function)
     return final_response
-
 
 def prompt_while(bot: Bot, prompt: Prompt, stop_condition: StopCondition
     ) ->List[ResponseNode]:
@@ -109,7 +106,6 @@ def prompt_while(bot: Bot, prompt: Prompt, stop_condition: StopCondition
         if stop_condition(response_node):
             break
     return responses
-
 
 def prompt_for(bot: Bot, items: List[Any], dynamic_prompt: DynamicPrompt,
     branch: bool=False) ->List[ResponseNode]:
@@ -136,28 +132,32 @@ def prompt_for(bot: Bot, items: List[Any], dynamic_prompt: DynamicPrompt,
             responses.append((response, bot.conversation))
         return responses
 
-def sequential_process(bot: Bot, initial_prompt: Prompt, list_length: int
-    ) ->List[ResponseNode]:
+def sequential_process(instruct_bot: Bot, initial_prompt: Prompt, 
+                       list_length: int, executor_bot: Bot = None,
+                       ) ->List[ResponseNode]:
     """
     Implements a sequential process that generates a list, elaborates on each item, and then executes each elaboration.
 
     Args:
-    bot (Bot): The bot to use for the responses.
+    instruct_bot (Bot): The bot to use to create the instructions list.
+    executor_bot (Bot): The bot to use to execute the instructions.
     initial_prompt (Prompt): The initial prompt requesting a list of a specific length with numbered items.
     list_length (int): The expected length of the list.
 
     Returns:
     List[ResponseNode]: A list of tuples, each containing a response string and its corresponding ConversationNode.
     """
-    bot.respond(initial_prompt)
-    branch_point = bot.conversation
+    instruct_bot.respond(initial_prompt)
+    branch_point = instruct_bot.conversation
     index = range(list_length)
     elaboration_prompts = []
     for i in index:
         elaboration_prompts.append(f'For top level item {i} in the list you just provided,
         give brief details and requirements in the form of an instruction.')
-    elaborations = branch(bot, [elaboration_prompts])
-    execution_prompts = [f"Thanks, let's handle this step by step. Do just the following: {elab[0]}" for elab in elaborations]
-    bot.conversation = branch_point
-    final_responses = chain(bot, execution_prompts)
+    elaborations = branch(instruct_bot, [elaboration_prompts])
+    if executor_bot is None:
+        instruct_bot.conversation = branch_point
+        executor_bot = instruct_bot
+    execution_prompts = [f"Please do the following task: \n\n {elab[0]}" for elab in elaborations]
+    final_responses = chain(executor_bot, execution_prompts)
     return final_responses
