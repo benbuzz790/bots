@@ -102,9 +102,9 @@ def main() -> None:
     while True:
         if turn == 'assistant':
             if auto > 0:
-                auto -= 1
                 msg: str = f'please continue working autonomously for {auto} more prompts\n\n'
                 pretty(msg, "You")
+                auto -= 1
             else:
                 turn = 'user'
             response: str = codey.respond(msg)
