@@ -27,7 +27,6 @@ def rewrite(file_path, content):
     except Exception as error:
         return _process_error(error)
 
-
 def replace_string(file_path, old_string, new_string):
     """
     Replaces all occurrences of a specified string with a new string in a file.
@@ -55,7 +54,6 @@ def replace_string(file_path, old_string, new_string):
     return (
         f"Replaced all instances of '{old_string}' with '{new_string}' in '{file_path}'."
         )
-
 
 def replace_class(file_path, new_class_def, old_class_name=None):
     """
@@ -111,7 +109,6 @@ def replace_class(file_path, new_class_def, old_class_name=None):
         f"Class '{replaced_class_name}' has been replaced with '{new_class_node.name}' in '{file_path}'."
         )
 
-
 def replace_function(file_path, new_function_def):
     """
     Replaces a function definition in a file with a new function definition.
@@ -165,7 +162,6 @@ def replace_function(file_path, new_function_def):
         return _process_error(e)
     return (
         f"Function '{new_func_node.name}' has been replaced in '{file_path}'.")
-
 
 def add_function_to_class(file_path, class_name, new_method_def):
     """
@@ -227,7 +223,6 @@ def add_function_to_class(file_path, class_name, new_method_def):
         f"Method '{new_method_node.name}' has been added to class '{class_name}' in '{file_path}'."
         )
 
-
 def add_function_to_file(file_path: str, new_function_def: str) -> str:
     """
     Adds a new function definition to an existing Python file.
@@ -268,7 +263,6 @@ def add_function_to_file(file_path: str, new_function_def: str) -> str:
         return _process_error(e)
     return f"Function '{new_func_node.name}' has been added to '{file_path}'."
 
-
 def add_class_to_file(file_path, class_def):
     """
     Adds a new class definition to an existing Python file.
@@ -308,7 +302,6 @@ def add_class_to_file(file_path, class_def):
         return _process_error(e)
     return f"Class '{new_class_node.name}' has been added to '{file_path}'."
 
-
 def append(file_path, content_to_append):
     """
     Appends content to the end of a file.
@@ -327,7 +320,6 @@ def append(file_path, content_to_append):
     except Exception as e:
         return _process_error(e)
     return f"Content appended to the file '{file_path}'."
-
 
 def prepend(file_path, content_to_prepend):
     """
@@ -375,7 +367,6 @@ def delete_match(file_path, pattern):
     except Exception as e:
         return _process_error(e)
 
-
 def read_file(file_path):
     """
     Reads and returns the entire content of a file as a string.
@@ -392,7 +383,6 @@ def read_file(file_path):
             return file.read()
     except Exception as e:
         return _process_error(e)
-
 
 def execute_python_code(code, timeout=300):
     """
@@ -441,10 +431,14 @@ if __name__ == '__main__':
             node, ast.FunctionDef) and node.name == 'main')
         main_func.body = code_ast.body
         return wrapper_ast
-    code_ast = ast.parse(code)
-    wrapper_ast = create_wrapper_ast()
-    combined_ast = insert_code_into_wrapper(wrapper_ast, code_ast)
-    final_code = astor.to_source(combined_ast)
+    
+    try:
+        code_ast = ast.parse(code)    
+        wrapper_ast = create_wrapper_ast()
+        combined_ast = insert_code_into_wrapper(wrapper_ast, code_ast)
+        final_code = astor.to_source(combined_ast)
+    except Exception as e:
+        return _process_error(e)
     now = DT.datetime.now()
     formatted_datetime = now.strftime('%Y.%m.%d-%H.%M.%S')
     temp_file_name = os.path.join(os.getcwd(), 'scripts/temp_script.py')
@@ -465,14 +459,12 @@ if __name__ == '__main__':
             return stdout + stderr
         except subprocess.TimeoutExpired:
             process.terminate()
-            return f'Error: Code execution timed out after {300} seconds.'
+            return _process_error(f'Error: Code execution timed out after {300} seconds.')
     except Exception as e:
         return _process_error(e)
     finally:
         if os.path.exists(temp_file_name):
             os.remove(temp_file_name)
-        return stdout
-
 
 def execute_powershell(code):
     """
@@ -495,7 +487,6 @@ def execute_powershell(code):
     except Exception as e:
         output += _process_error(e)
     return output
-
 
 def get_py_interface(file_path: str) -> str:
     """
@@ -530,8 +521,7 @@ def get_py_interface(file_path: str) -> str:
     except Exception as e:
         return _process_error(e)
 
-
-def dispatch(prompt: str, bot=None) -> bool:
+def _dispatch(prompt: str, bot=None) -> bool:
     """
     Dispatches a bot with the tools defined in src/bot_tools.py with the input prompt.
 
@@ -559,11 +549,9 @@ def dispatch(prompt: str, bot=None) -> bool:
         print(_process_error(e))
         return False
 
-
 def _clean(code):
     return code
     return inspect.cleandoc(code)
-
 
 def _process_error(error):
     error_message = f'tool failed: {str(error)}\n'

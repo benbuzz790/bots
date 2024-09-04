@@ -1,14 +1,32 @@
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import src.anthropic_bots as bots
-import src.bot_tools as bot_tools
+import src.anthropic_bots as anthropic_bots
+import src.base as bots
 import textwrap
 from datetime import datetime as datetime
-import src.base as base
-from dataclasses import dataclass
-from typing import Optional, List, Tuple
+from typing import Optional, List
 import json
+from tkinter import filedialog
+
+help_msg = """
+This program is an interactive terminal that uses the Anthropic's Claude Sonnet 3.5.
+It allows you to chat with the LLM, save and load bot states, and execute various commands.
+The bot has the ability to read and write files and can execute powershell and python code directly.
+The bot also has tools to help edit python files in a token-efficient way.
+
+Available commands:
+/help: Show this help message
+/verbose: Show tool requests and results (default on)
+/quiet: Hide tool requests and results
+/save: Save the current bot state
+/load: Load a previously saved bot state
+/auto: Prompt the bot to work autonomously for a preset number of prompts
+/exit: Exit the program
+
+Type your messages normally to chat with the AI assistant.
+"""
+
 
 
 def pretty(string: str, name: Optional[str] = None, width: int = 100, indent: int = 4) -> None:
@@ -39,70 +57,20 @@ def pretty(string: str, name: Optional[str] = None, width: int = 100, indent: in
     print('\n'.join(formatted_lines))
     print("\n---\n")
 
-
-def execute_code_blocks(response: str) -> str:
-    output: str = '\n\n'
-    code_blocks: List[str]
-    labels: List[str]
-    code_blocks, labels = bots.remove_code_blocks(response)
-    if code_blocks:
-        for code, label in zip(code_blocks, labels):
-            if label.lower() == "epowershell":
-                output += bot_tools.execute_powershell(code)
-                output += '\n---\n'
-            elif label.lower() == 'epython':
-                output += bot_tools.execute_python_code(code)
-                output += '\n---\n'
-    return output
-
-
-@dataclass
-class CommandResult:
-    message: Optional[str] = None
-    auto_cycles: int = 0
-    should_exit: bool = False
-    new_bot: Optional[bots.Bot] = None
-
-
-def handle_user_command(command: str, bot: bots.Bot) -> CommandResult:
-    match command.lower().split(maxsplit=1):
-        case ["/exit", *_]:
-            return CommandResult(should_exit=True)
-        
-        case ["/save", *_]:
-            filename: str = bot.save()
-            return CommandResult(message=f"Conversation saved to {filename}")
-        
-        case ["/load", *args]:
-            filename: str = args[0] if args else input("Filename: ")
-            if os.path.exists(filename):
-                new_bot: bots.Bot = bot.load(filename)
-                return CommandResult(message="Bot loaded successfully", new_bot=new_bot)
-            else:
-                return CommandResult(message=f"File {filename} not found.")
-        
-        case ["/auto", *args]:
-            cycles: int = int(args[0] if args else input("Number of automatic cycles: "))
-            return CommandResult(auto_cycles=cycles)
-        
-        case _:
-            return CommandResult()
-
-
 def main() -> None:
     bot_file: str = r'Codey@2024.07.23-16.44.10.bot'
-    codey: bots.AnthropicBot = bots.AnthropicBot(name='Claude')
+    codey = anthropic_bots.AnthropicBot(name='Auto_Terminal')
     codey.add_tools(r'src\bot_tools.py')
-    pretty('Bot tools added', 'System')
-    verbose: bool = True
+    pretty('Bot initialized', 'System')
     
+    verbose: bool = True
     turn: str = 'user'
     auto: int = 0
 
     while True:
         if turn == 'assistant':
             if auto > 0:
-                msg: str = f'please continue working autonomously for {auto} more prompts\n\n'
+                msg: str = f'Work autonomously for {auto} more prompts'
                 pretty(msg, "You")
                 auto -= 1
             else:
@@ -119,20 +87,40 @@ def main() -> None:
         
         else:  # user turn
             uinput: str = input("You: ")
-            result: CommandResult = handle_user_command(uinput, codey)
             
-            if result.should_exit:
-                exit(0)
-            if result.message:
-                pretty(result.message, 'System')
-            if result.new_bot:
-                codey = result.new_bot
-            if result.auto_cycles > 0:
-                auto = result.auto_cycles
-                turn = 'assistant'
-            else:
-                turn = 'assistant'
-            
+            match uinput:
+                case "/exit":
+                    pretty('')  # separator
+                    pretty("exiting...", "System")
+                    exit(0)
+                case "/auto":
+                    auto = input("Automatic prompt limit:")
+                    pretty(f"Starting automatic work for {auto} prompts", "System")
+                    turn = 'assistant'
+                case "/load": 
+                    filename = filedialog.askopenfilename(filetypes=[("Bot files", "*.bot"), ("All files", "*.*")])
+                    try:
+                        codey = bots.load(filename)
+                    except:
+                        pretty(f"Error loading {filename}", "System")
+                case "/save": 
+                    name = input("Filename (leave blank for automatic filename):")
+                    if name:
+                        codey.save(f'{name}.bot')
+                    else:
+                        codey.save()
+                    pass
+                case "/quiet":
+                    verbose = False
+                case "/verbose":
+                    verbose = True
+                case "/help":
+                    pretty('')  # separator
+                    pretty(help_msg, "System")
+                case _: 
+                    msg: str = uinput
+                    turn = 'assistant'
+
             if turn == 'assistant':
                 pretty('')  # separator
                 msg: str = uinput
