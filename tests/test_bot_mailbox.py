@@ -3,8 +3,8 @@ import sys
 import unittest
 from unittest.mock import Mock, patch
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.anthropic_bots import AnthropicMailbox, AnthropicToolHandler
-from src.openai_bots import OpenAIMailbox
+from src.anthropic_bots import AnthropicMailbox, AnthropicToolHandler, AnthropicBot
+from src.openai_bots import OpenAIMailbox, GPTBot
 from src.base import ConversationNode, Engines
 
 class TestBaseMailbox(unittest.TestCase):
@@ -26,7 +26,9 @@ class TestBaseMailbox(unittest.TestCase):
         mock_process.return_value = ("Test response", "assistant", {})
         
         conversation = ConversationNode(role="user", content="Test message")
-        result = self.test_mb.send_message(conversation, "gpt-3.5-turbo", 100, 0.7, os.getenv("OPENAI_API_KEY"))
+        bot = GPTBot()
+        bot.conversation = conversation
+        result = self.test_mb.send_message(bot)
         
         self.assertEqual(result, ("Test response", "assistant", {}))
         mock_send.assert_called_once()
@@ -36,7 +38,6 @@ class TestOpenAIMailbox(unittest.TestCase):
     def setUp(self):
         self.openai_mailbox = OpenAIMailbox()
 
-    @unittest.skip(reason="Not Implemented")
     @patch('openai.ChatCompletion.create')
     def test_send_message_implementation(self, mock_create):
        
@@ -48,7 +49,6 @@ class TestOpenAIMailbox(unittest.TestCase):
         self.assertIn("Paris", response.choices[0].message.content)
         self.assertEqual(response.choices[0].message.role, "assistant")
 
-    @unittest.skip(reason="Not Implemented")
     def test_process_response(self):
         conversation = ConversationNode(role="user", content="What is the capital of France?")
         response = self.openai_mailbox._send_message_implementation(
@@ -103,11 +103,10 @@ def subtract(a: int, b: int) -> int:
         self.assertEqual(response.role, "assistant")
 
     def test_process_response_regular(self):
-        mock_response = Mock(
-            content=[Mock(type='text', text="Paris is the capital of France.")],
-            role="assistant"
-        )
-        result = self.anthropic_mailbox._process_response(mock_response)
+
+        bot = AnthropicBot()
+        response_raw = bot.mailbox.send_message_implementation("What is the capical of france?")
+        result = self.anthropic_mailbox._process_response(response_raw, bot)
         
         self.assertIsInstance(result, tuple)
         self.assertEqual(len(result), 3)

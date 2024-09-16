@@ -1,12 +1,12 @@
 # anthropic_bot.py
 
 from src.base import Bot, Mailbox, ConversationNode, Engines, ToolHandler
-import src.base as base
 from typing import Optional, Dict, Any, List, Callable, Tuple
 import anthropic
 import os
 import inspect
-import random, time
+import random
+import time
 
 
 class AnthropicNode(ConversationNode):
@@ -59,8 +59,11 @@ class AnthropicToolHandler(ToolHandler):
         tool_input: Dict[str, Any] = request_schema['input']
         return tool_name, tool_input
 
-    def generate_response_schema(self, request: Dict[str, Any],
-                                 tool_output_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_response_schema(
+        self,
+        request: Dict[str, Any],
+        tool_output_kwargs: Dict[str, Any]
+    ) -> Dict[str, Any]:
         response: Dict[str, Any] = {
             "type": "tool_result",
             "tool_use_id": request.get("id", "unknown id"),
@@ -71,50 +74,42 @@ class AnthropicToolHandler(ToolHandler):
 
 
 class AnthropicMailbox(Mailbox):
-    def __init__(self, verbose: bool = False, tool_handler: Optional[AnthropicToolHandler] = None):
+    def __init__(self, verbose: bool = False):
         super().__init__()
-        self.tool_handler: Optional[AnthropicToolHandler] = tool_handler
-        self.last_message = None
-        self.client = None
+        self.last_message: Optional[Dict[str, Any]] = None
+        self.client: Optional[anthropic.Anthropic] = None
 
-    def set_tool_handler(self, tool_handler: AnthropicToolHandler) -> None:
-        self.tool_handler = tool_handler
-
-    def _send_message_implementation(self, conversation: AnthropicNode, model: str, max_tokens: int,
-                                     temperature: float, api_key: Optional[str] = None,
-                                     system_message: Optional[str] = None) -> Dict[str, Any]:
-
+    def _send_message_implementation(self, bot: 'AnthropicBot') -> Dict[str, Any]:
+        api_key: Optional[str] = bot.api_key
         if not api_key:
             try:
                 api_key = os.getenv("ANTHROPIC_API_KEY")
             except:
                 raise ValueError("Anthropic API key not found. Set up 'ANTHROPIC_API_KEY' environment variable.")
-        self.client: anthropic.Anthropic = anthropic.Anthropic(api_key=api_key)
+        self.client = anthropic.Anthropic(api_key=api_key)
 
-        # Anthropic expects tool requests and results in the messages block,
-        # so they need to be added to the conversation nodes, so that they
-        # are present when build_messages() is called.
-
-        if self.tool_handler and self.tool_handler.requests:
+        conversation: AnthropicNode = bot.conversation
+        if bot.tool_handler and bot.tool_handler.requests:
             if isinstance(conversation.parent.content, str):
                 conversation.parent.content = [{'type': 'text', 'text': conversation.parent.content}]
-            conversation.parent.content.extend(self.tool_handler.requests)
+            conversation.parent.content.extend(bot.tool_handler.requests)
 
-        if self.tool_handler and self.tool_handler.results:
+        if bot.tool_handler and bot.tool_handler.results:
             if isinstance(conversation.content, str):
                 conversation.content = [{'type': 'text', 'text': conversation.content}]
-            conversation.content = self.tool_handler.results + conversation.content
-        if self.tool_handler:
-            self.tool_handler.clear()
+            conversation.content = bot.tool_handler.results + conversation.content
+        if bot.tool_handler:
+            bot.tool_handler.clear()
 
-        # Send tools, if they exist
         tools: Optional[List[Dict[str, Any]]] = None
-        if self.tool_handler and self.tool_handler.tools:
-            tools = self.tool_handler.tools
+        if bot.tool_handler and bot.tool_handler.tools:
+            tools = bot.tool_handler.tools
 
         messages: List[Dict[str, Any]] = conversation.build_messages()
 
-        # Prepare dict for create method. Model params do not go in the messages block
+        model: Engines = bot.model_engine
+        max_tokens: int = bot.max_tokens
+        temperature: float = bot.temperature
         create_dict: Dict[str, Any] = {
             "model": model,
             "max_tokens": max_tokens,
@@ -122,18 +117,17 @@ class AnthropicMailbox(Mailbox):
             "messages": messages,
         }
 
-        # System message and tools do not go in the messages block either
+        system_message: Optional[str] = bot.system_message
         if system_message:
             create_dict["system"] = system_message
 
         if tools:
             create_dict["tools"] = tools
 
-
         self.last_message = create_dict
 
-        max_retries = 25
-        base_delay = 1
+        max_retries: int = 25
+        base_delay: float = 1
         for attempt in range(max_retries):
             try:
                 response: Dict[str, Any] = self.client.messages.create(**create_dict)
@@ -144,19 +138,20 @@ class AnthropicMailbox(Mailbox):
                     print(create_dict)
                     print('\n---debug---\n\n\n')
                     raise e
-                delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
-                print(f"Attempt {attempt + 1} failed with {e.__class__.__name__}. Retrying in {delay:.2f} seconds...")
+                delay: float = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                print(f"Attempt {attempt + 1} failed with {e.__class__.__name__}. "
+                      f"Retrying in {delay:.2f} seconds...")
                 time.sleep(delay)
-        
-        # If we've exhausted all retries
+
         raise Exception("Max retries reached. Unable to send message.")
 
-    def merge_content(self, existing_content, new_content):
+    def merge_content(self, existing_content: Any, new_content: Any) -> Any:
         if isinstance(existing_content, str) and isinstance(new_content, str):
             return (existing_content + new_content).strip()
         elif isinstance(existing_content, str) and isinstance(new_content, list):
             if new_content and new_content[0]['type'] == 'text':
-                return [{'type': 'text', 'text': (existing_content + new_content[0]['text']).strip()}] + new_content[1:]
+                return ([{'type': 'text', 'text': (existing_content + new_content[0]['text']).strip()}] +
+                        new_content[1:])
             else:
                 return [{'type': 'text', 'text': existing_content.strip()}] + new_content
         elif isinstance(existing_content, list) and isinstance(new_content, list):
@@ -169,11 +164,14 @@ class AnthropicMailbox(Mailbox):
             return existing_content
         else:
             raise ValueError("Unexpected content types")
-    
 
-    def _process_response(self, response: Dict[str, Any]) -> Tuple[str, str, Dict[str, Any]]:
+    def _process_response(
+        self,
+        response: Dict[str, Any],
+        bot: Optional['AnthropicBot'] = None
+    ) -> Tuple[str, str, Dict[str, Any]]:
         tool_results: List[Dict[str, Any]] = []
-        new_message = self.last_message.copy()
+        new_message: Dict[str, Any] = self.last_message.copy()
 
         while True:
             if new_message["messages"][-1]["role"] == "assistant":
@@ -182,7 +180,7 @@ class AnthropicMailbox(Mailbox):
                     response.content
                 )
             else:
-                assistant_message = {"role": "assistant", "content": response.content}
+                assistant_message: Dict[str, Any] = {"role": "assistant", "content": response.content}
                 new_message["messages"].append(assistant_message)
 
             if response.stop_reason != 'max_tokens':
@@ -191,15 +189,15 @@ class AnthropicMailbox(Mailbox):
             response = self.client.messages.create(**new_message)
 
         if response.stop_reason == 'tool_use':
-            tool_requests, tool_results = self.tool_handler.handle_response(response)
+            tool_requests, tool_results = bot.tool_handler.handle_response(response)
             extra_data: Dict[str, Any] = {"requests": tool_requests, "results": tool_results}
         else:
             extra_data = {}
 
         response_role: str = response.role
         response_text: str = ""
-        
-        final_content = new_message["messages"][-1]["content"]
+
+        final_content: Any = new_message["messages"][-1]["content"]
         if isinstance(final_content, str):
             response_text = final_content
         elif isinstance(final_content, list):
@@ -212,25 +210,25 @@ class AnthropicMailbox(Mailbox):
 
 class AnthropicBot(Bot):
     def __init__(
-            self,
-            api_key: Optional[str] = None,
-            model_engine: Engines = Engines.CLAUDE35,
-            max_tokens: int = 4096,
-            temperature: float = 0.3,
-            name: str = "Claude",
-            role: str = "assistant",
-            role_description: str = "a friendly AI assistant",
+        self,
+        api_key: Optional[str] = None,
+        model_engine: Engines = Engines.CLAUDE35,
+        max_tokens: int = 4096,
+        temperature: float = 0.3,
+        name: str = "Claude",
+        role: str = "assistant",
+        role_description: str = "a friendly AI assistant",
     ) -> None:
 
-        super().__init__(api_key,
-                         model_engine,
-                         max_tokens,
-                         temperature,
-                         name,
-                         role,
-                         role_description,
-                         conversation=AnthropicNode.create_empty(),
-                         tool_handler=AnthropicToolHandler(),
-                         mailbox=AnthropicMailbox())
-
-        self.mailbox.tool_handler = self.tool_handler
+        super().__init__(
+            api_key,
+            model_engine,
+            max_tokens,
+            temperature,
+            name,
+            role,
+            role_description,
+            conversation=AnthropicNode.create_empty(AnthropicNode),
+            tool_handler=AnthropicToolHandler(),
+            mailbox=AnthropicMailbox()
+        )

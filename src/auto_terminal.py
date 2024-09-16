@@ -3,17 +3,18 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import src.anthropic_bots as anthropic_bots
 import src.base as bots
+import src.openai_bots as openai_bots
 import textwrap
 from datetime import datetime as datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import json
 from tkinter import filedialog
 
-help_msg = """
-This program is an interactive terminal that uses the Anthropic's Claude Sonnet 3.5.
+help_msg: str = """
+This program is an interactive terminal that uses Anthropic's Claude Sonnet 3.5.
 It allows you to chat with the LLM, save and load bot states, and execute various commands.
 The bot has the ability to read and write files and can execute powershell and python code directly.
-The bot also has tools to help edit python files in a token-efficient way.
+The bot also has tools to help edit python files in an accurate and token-efficient way.
 
 Available commands:
 /help: Show this help message
@@ -26,7 +27,6 @@ Available commands:
 
 Type your messages normally to chat with the AI assistant.
 """
-
 
 
 def pretty(string: str, name: Optional[str] = None, width: int = 100, indent: int = 4) -> None:
@@ -57,9 +57,11 @@ def pretty(string: str, name: Optional[str] = None, width: int = 100, indent: in
     print('\n'.join(formatted_lines))
     print("\n---\n")
 
+
 def main() -> None:
     bot_file: str = r'Codey@2024.07.23-16.44.10.bot'
-    codey = anthropic_bots.AnthropicBot(name='Auto_Terminal')
+    codey: anthropic_bots.AnthropicBot = anthropic_bots.AnthropicBot(name='Claude')
+    #codey: openai_bots.GPTBot = openai_bots.GPTBot(name='ChatGPT')
     codey.add_tools(r'src\bot_tools.py')
     pretty('Bot initialized', 'System')
     
@@ -71,13 +73,13 @@ def main() -> None:
         if turn == 'assistant':
             if auto > 0:
                 msg: str = f'Work autonomously for {auto} more prompts'
-                pretty(msg, "You")
+                pretty(msg, 'You')
                 auto -= 1
             else:
                 turn = 'user'
             response: str = codey.respond(msg)
-            tool_use_requests: List[dict] = codey.tool_handler.get_requests()
-            tool_use_results: List[dict] = codey.tool_handler.get_results()
+            tool_use_requests: List[Dict[str, Any]] = codey.tool_handler.get_requests()
+            tool_use_results: List[Dict[str, Any]] = codey.tool_handler.get_results()
 
             pretty(response, codey.name)
 
@@ -94,17 +96,19 @@ def main() -> None:
                     pretty("exiting...", "System")
                     exit(0)
                 case "/auto":
-                    auto = input("Automatic prompt limit:")
+                    auto = int(input("Automatic prompt limit:"))
                     pretty(f"Starting automatic work for {auto} prompts", "System")
                     turn = 'assistant'
                 case "/load": 
-                    filename = filedialog.askopenfilename(filetypes=[("Bot files", "*.bot"), ("All files", "*.*")])
+                    filename: str = filedialog.askopenfilename(
+                        filetypes=[("Bot files", "*.bot"),
+                                   ("All files", "*.*")])
                     try:
                         codey = bots.load(filename)
                     except:
                         pretty(f"Error loading {filename}", "System")
                 case "/save": 
-                    name = input("Filename (leave blank for automatic filename):")
+                    name: str = input("Filename (leave blank for automatic filename):")
                     if name:
                         codey.save(f'{name}.bot')
                     else:
@@ -126,5 +130,16 @@ def main() -> None:
                 msg: str = uinput
 
 
-if __name__ == '__main__':
+# import sys
+# import traceback
+
+# def debug_on_error(type: Any, value: Any, tb: Any) -> None:
+#     traceback.print_exception(type, value, tb)
+#     print("\n--- Entering post-mortem debugging ---")
+#     import pdb
+#     pdb.post_mortem(tb)
+
+
+if __name__ == "__main__":
+    #sys.excepthook = debug_on_error
     main()

@@ -35,7 +35,7 @@ class TestBaseBot(unittest.TestCase):
         filename = self.bot.save()
         loaded_bot = Bot.load(filename)
         self.assertEqual(loaded_bot.name, self.bot.name)
-        self.assertEqual(loaded_bot.conversation.to_dict(), self.bot.conversation.to_dict(), msg=f"Expected:{self.bot.conversation.content}\n\nActual:{loaded_bot.conversation.content}")
+        self.assertEqual(loaded_bot.conversation.root_dict(), self.bot.conversation.root_dict(), msg=f"Expected:{self.bot.conversation.content}\n\nActual:{loaded_bot.conversation.content}")
 
 class TestGPTBot(unittest.TestCase):
     def setUp(self):

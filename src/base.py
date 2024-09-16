@@ -12,6 +12,7 @@ import threading
 import inspect
 import hashlib
 
+# TODO be consistent about what _function_name() means (the underscore)
 
 def remove_code_blocks(text: str) ->Tuple[List[str], List[str]]:
     pattern = '```(\\w*)\\s*([\\s\\S]*?)```'
@@ -31,10 +32,10 @@ def formatted_datetime() ->str:
     return now.strftime('%Y-%m-%d_%H-%M-%S')
 
 
-class Engines(Enum):
+class Engines(str, Enum):
     """Enum class representing different AI model engines."""
     GPT4 = 'gpt-4'
-    GPT432k = 'gpt-4-32k'
+    GPT4Turbo = 'gpt-4-turbo'
     GPT35 = 'gpt-3.5-turbo'
     CLAUDE3OPUS = 'claude-3-opus-20240229'
     CLAUDE3SONNET = 'claude-3-sonnet-20240229'
@@ -49,13 +50,12 @@ class Engines(Enum):
         return None
 
     @staticmethod
-    def get_bot_class(model_engine: 'Engines') ->Type['Bot']:
-        """Returns the bot class based on the model engine. Bit of a kluge for now"""
-        if model_engine in [Engines.GPT4, Engines.GPT35, Engines.GPT432k]:
+    def get_bot_class(model_engine: 'Engines') -> Type['Bot']:
+        """Returns the bot class based on the model engine."""
+        if model_engine in [Engines.GPT4, Engines.GPT35, Engines.GPT4Turbo]:
             from src.openai_bots import GPTBot
             return GPTBot
-        elif model_engine in [Engines.CLAUDE3OPUS, Engines.CLAUDE3SONNET,
-            Engines.CLAUDE35]:
+        elif model_engine in [Engines.CLAUDE3OPUS, Engines.CLAUDE3SONNET, Engines.CLAUDE35]:
             from src.anthropic_bots import AnthropicBot
             return AnthropicBot
         else:
@@ -65,14 +65,17 @@ class Engines(Enum):
 class ConversationNode:
 
     def __init__(self, content, role, **kwargs):
-        self.attributes = kwargs
+        for key, value in kwargs.items():
+            setattr(self, key, value)
         self.role = role
         self.content = content
         self.replies: list[ConversationNode] = []
         self.parent: ConversationNode = None
 
     @staticmethod
-    def create_empty():
+    def create_empty(cls=None):
+        if cls:
+            return cls(role="empty", content='')
         return ConversationNode(role='empty', content='')
 
     def is_empty(self):
@@ -83,7 +86,7 @@ class ConversationNode:
             self.__init__(**kwargs)
             return self
         else:
-            reply = ConversationNode(**kwargs)
+            reply = type(self)(**kwargs)
             reply.parent = self
             self.replies.append(reply)
             return reply
@@ -95,29 +98,37 @@ class ConversationNode:
             current = current.parent
         return current
 
-    def to_dict(self):
+    def root_dict(self):
         """ Convert the conversation tree starting from the root to a dictionary. """
         root = self.find_root()
         return root._to_dict_recursive()
-
+    
     def _to_dict_recursive(self):
         """ Recursively convert this node and its replies to a dictionary. """
-        result = {k: v for k, v in self.attributes.items() if k != 'parent'}
-        result['role'] = self.role
-        result['content'] = self.content
+        # Gather all relevant attributes except 'parent'
+        result = self._to_dict_self()
         if self.replies:
-            result['replies'] = [reply._to_dict_recursive() for reply in
-                self.replies]
+            result['replies'] = [reply._to_dict_recursive() for reply in self.replies]
         return result
 
+    def _to_dict_self(self):
+        """ Convert this node to a dictionary, omitting replies, parent, callables, and private attributes."""
+        # Exclude callables, double underscore attributes, and specific attributes that could lead to recursive structures
+        return {
+            k: getattr(self, k) for k in dir(self)
+            if not k.startswith('_') and
+               k not in {'parent', 'replies'} and
+               not callable(getattr(self, k))
+        }
+    
     def build_messages(self):
         node = self
         if node.is_empty():
             return []
         conversation_dict = []
         while node:
-            conversation_dict = [{'role': node.role, 'content': node.content}
-                ] + conversation_dict
+            entry = {'role': node.role, 'content': node.content}
+            conversation_dict = [entry] + conversation_dict
             node = node.parent
         return conversation_dict
 
@@ -129,6 +140,20 @@ class ConversationNode:
             reply_node.parent = node
             node.replies.append(reply_node)
         return node
+    
+    def node_count(self) -> int:
+        """ Recursively count the total number of nodes in the conversation, starting from the root. """
+        # First, navigate to the root of the conversation tree
+        root = self.find_root()
+    
+        # Now count all nodes starting from the root
+        def count_recursive(current_node):
+            count = 1  # Count the current node
+            for reply in current_node.replies:
+                count += count_recursive(reply)  # Recursively count all replies
+            return count
+    
+        return count_recursive(root)
 
 
 class ToolHandler(ABC):
@@ -179,8 +204,7 @@ class ToolHandler(ABC):
         requests = self.generate_request_schema(response)
         if requests:
             for request_schema in requests:
-                tool_name, input_kwargs = self.tool_name_and_input(
-                    request_schema)
+                tool_name, input_kwargs = self.tool_name_and_input(request_schema)
                 output_kwargs = self.function_map[tool_name](**input_kwargs)
                 response_schema = self.generate_response_schema(request_schema,
                     output_kwargs)
@@ -296,38 +320,32 @@ class Mailbox(ABC):
         with open(self.log_file, 'a', encoding='utf-8') as file:
             file.write(log_entry)
 
-    def send_message(self, conversation: ConversationNode, model: str,
-        max_tokens: int, temperature: float, api_key: str, system_message:
-        Optional[str]=None) ->tuple[str, str, Dict[str, Any]]:
-        self._log_outgoing(conversation, model, max_tokens, temperature)
+    def send_message(self, bot: 'Bot') -> tuple[str, str, Dict[str, Any]]:
+        model = bot.model_engine
+        max_tokens = bot.max_tokens
+        temperature = bot.temperature
+        self._log_outgoing(bot.conversation, model.value, max_tokens, temperature)
         try:
-            response = self._send_message_implementation(conversation,
-                model, max_tokens, temperature, api_key, system_message)
-            processed_response = self._process_response(response)
+            response = self._send_message_implementation(bot)
+            processed_response = self._process_response(response, bot)
         except Exception as e:
             raise e
         self._log_incoming(processed_response)
         return processed_response
 
     @abstractmethod
-    def _send_message_implementation(self, conversation: ConversationNode,
-        model: str, max_tokens: int, temperature: float, api_key: str,
-        system_message: Optional[str]=None) ->Dict[str, Any]:
+    def _send_message_implementation(self, bot: 'Bot') ->Dict[str, Any]:
         """
         Implement the actual message sending logic for a specific AI service.
 
         This method should handle the API call to the AI service and return the raw response.
+        It *may* also handle any tool results, depending on the api.
 
         Parameters:
-        - conversation (ConversationNode): The conversation history.
-        - model (str): The name or identifier of the AI model to use.
-        - max_tokens (int): The maximum number of tokens the AI should generate.
-        - temperature (float): The sampling temperature to use for generation.
-        - api_key (str): The API key for the AI service.
-        - system_message (Optional[str]): An optional system message to guide the AI's behavior.
+        - bot: a reference to a "Bot" or subclass
 
         Returns:
-        Dict[str, Any]: The raw response from the AI service.
+        Dict[str, Any]: The raw response from the AI service as a Dict
 
         Raises:
         Exception: If there's an error in sending the message or receiving the response.
@@ -335,8 +353,8 @@ class Mailbox(ABC):
         pass
 
     @abstractmethod
-    def _process_response(self, response: Dict[str, Any]) ->Tuple[str, str,
-        Dict[str, Any]]:
+    def _process_response(self, response: Dict[str, Any], bot: 'Bot' = None
+        ) -> Tuple[str, str, Dict[str, Any]]:
         """
         Process the raw response from the AI service into a standardized format.
 
@@ -345,6 +363,9 @@ class Mailbox(ABC):
 
         Parameters:
         - response (Dict[str, Any]): The raw response from the AI service.
+        - bot (Bot): A Bot object. This is required in the case that, in processing
+            a response, a new message must be sent (such as in the case of openai 
+            tool processing)
 
         Returns:
         tuple[str, str, Dict[str, Any]]: A tuple containing:
@@ -362,7 +383,7 @@ class Mailbox(ABC):
         """
         pass
 
-    def _log_outgoing(self, conversation: ConversationNode, model,
+    def _log_outgoing(self, conversation: ConversationNode, model: Engines,
         max_tokens, temperature):
         log_message = {'date': formatted_datetime(), 'messages':
             conversation.build_messages(), 'max_tokens': max_tokens,
@@ -382,12 +403,12 @@ class Mailbox(ABC):
 
     def batch_send(self, conversations, model, max_tokens, temperature,
         api_key, system_message=None):
+        raise NotImplemented
         threads = []
         results = [None] * len(conversations)
 
         def send_thread(index, conv):
-            result = self.send_message(conv, model, max_tokens, temperature,
-                api_key, system_message)
+            result = self.send_message(self)
             results[index] = result
         for i, conversation in enumerate(conversations):
             thread = threading.Thread(target=send_thread, args=(i,
@@ -426,38 +447,29 @@ class Bot(ABC):
         If tool_auto is True, loops until the bot does not use a tool
         """
         if tool_auto:
-            reply, self.conversation = self._respond_auto(content, self.
-                conversation, role)
+            reply, self.conversation = self._respond_auto(content, self.conversation, role)
         else:
-            reply, self.conversation = self._cvsn_respond(text=content,
-                cvsn=self.conversation, role=role)
+            reply, self.conversation = self._cvsn_respond(text=content,role=role)
         return reply
 
-    def branch(self, prompts: list[str], role: str='user', tool_auto=False)->tuple[list[str], list[ConversationNode]]:
-        replies: list[str] = []
-        for prompt in prompts:
-            replies[-1] = self.respond(prompt, role, tool_auto)
-        return replies, self.conversation.replies
+    def _cvsn_respond(self, text: Optional[str]=None, role: str='user') -> Tuple[str, ConversationNode]:    
 
-    def _cvsn_respond(self, text: Optional[str]=None, cvsn: Optional[
-        ConversationNode]=None, role: str='user') ->Tuple[str, ConversationNode
-        ]:
-        if cvsn is None and text is None:
-            raise ValueError('Invalid input: both text and cvsn are None')
-        if cvsn is None:
-            cvsn = self.__class__(role=role, content=text)
-        elif text is not None:
-            cvsn = cvsn.add_reply(content=text, role=role)
+        if self.conversation is None and text is None:
+            # ya f'ed up!
+            raise ValueError('Invalid: both text and conversation are None')
+
+        # Handle new conversation items
+        if text is not None:
+            self.conversation = self.conversation.add_reply(content=text, role=role)
+
+        # Now that the conversation is settled, send the message
         try:
-            response_text, response_role, extra_data = (self.mailbox.
-                send_message(cvsn, self.model_engine.value, max_tokens=self
-                .max_tokens, temperature=self.temperature, api_key=self.
-                api_key, system_message=self.system_message or ''))
-            cvsn = cvsn.add_reply(content=response_text, role=response_role,
-                **extra_data)
-            return response_text, cvsn
+            response_text, response_role, extra_data = self.mailbox.send_message(self)
+            self.conversation = self.conversation.add_reply(content=response_text, role=response_role, **extra_data)
+            return response_text, self.conversation
         except Exception as e:
             raise e
+
 
     def add_tool(self, func: Callable):
         self.tool_handler.add_tool(func)
@@ -465,19 +477,24 @@ class Bot(ABC):
     def add_tools(self, filepath):
         self.tool_path = filepath
         self.tool_handler.add_tools_from_file(filepath)
-        self.mailbox.set_tool_handler(self.tool_handler)
 
     def _respond_auto(self, content: str, conversation: ConversationNode,
         role: str) ->str:
         """Automatically handles tool use and responses for Anthropic models"""
         response = self.respond(content, role, tool_auto=False)
         total_reply = response
-        while True:
+        max_tool_prompts = 8
+        tool_prompt_counter = 1
+        while tool_prompt_counter < max_tool_prompts:
             extra_data = getattr(self.conversation, 'attributes', {})
+            print('\n\n'+response)
+            print('\n\n'+str(extra_data))
+            print(f'\n\n{max_tool_prompts-tool_prompt_counter} toolings remaining')
             if extra_data.get('requests'):
-                follow_up = '(tool results provided automatically)'
+                follow_up = f'(auto for {max_tool_prompts-tool_prompt_counter} more tool calls max)'
                 response = self.respond(follow_up, role)
                 total_reply += '\n\n ...working... \n\n' + response
+                tool_prompt_counter += 1
             else:
                 break
         return total_reply, self.conversation
@@ -515,8 +532,8 @@ class Bot(ABC):
         data.pop('mailbox')
         data['bot_class'] = self.__class__.__name__
         data['model_engine'] = self.model_engine.value
-        data['conversation'] = self.conversation.to_dict()
-        if 'tool_handler' in data:
+        data['conversation'] = self.conversation.root_dict()
+        if 'tool_handler' in data and data:
             data['tool_handler'] = data['tool_handler'].to_dict()
         for key, value in data.items():
             if not isinstance(value, (str, int, float, bool, list, dict,
@@ -527,6 +544,7 @@ class Bot(ABC):
         return filename
 
     def chat(self):
+        print('\n\nSystem: Chat started. Type "/exit" to exit.')
         uinput = ''
         while uinput != '/exit':
             print('\n\n')

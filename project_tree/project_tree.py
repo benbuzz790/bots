@@ -8,7 +8,7 @@ from collections import deque
 from abc import ABC, abstractmethod
 from pathlib import Path
 import json
-import src.anthropic_bots as bots
+import src.anthropic_bots as anthropic_bots
 import src.base
 from difflib import get_close_matches
 import importlib
@@ -71,10 +71,10 @@ def initialize_bot(bot_file_path: Path, max_tokens: int = 1024, tool_file: Path 
         if bot_file_path.exists() and bot_file_path.stat().st_size > 0:
             bot = src.base.load(bot_file_path)
         else:
-            bot = bots.AnthropicBot(max_tokens=max_tokens)
+            bot = anthropic_bots.AnthropicBot(max_tokens=max_tokens)
     except json.JSONDecodeError:
         logger.warning(f"Invalid JSON in bot file: {bot_file_path}. Creating a new bot.")
-        bot = bots.AnthropicBot(max_tokens=max_tokens)
+        bot = anthropic_bots.AnthropicBot(max_tokens=max_tokens)
     if tool_file: bot.add_tools(tool_file)
     return bot
 
@@ -614,7 +614,7 @@ class ImportSuggester:
 
     def __init__(self, root: ProjectRoot):
         self.root = root
-        self.bot = bots.AnthropicBot()
+        self.bot = anthropic_bots.AnthropicBot()
         self.all_modules = self._get_all_modules()
 
     def _get_all_modules(self):

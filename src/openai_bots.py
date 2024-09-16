@@ -1,91 +1,177 @@
 from src.base import Bot, Mailbox, ConversationNode, Engines, ToolHandler
-from typing import Optional, Dict, Any, List, Tuple, Callable
+from typing import Optional, Dict, Any, Tuple, Callable, List
+import inspect
 from openai import OpenAI
+from openai.types.chat.chat_completion_message import ChatCompletionMessage
 import os
+import json
 
+class OpenAINode(ConversationNode):
+    def __init__(self, **kwargs: Any) -> None:
+        role = kwargs.pop('role')
+        content = kwargs.pop('content')
+        super().__init__(role=role, content=content, **kwargs)
 
-class OpenAIMailbox(Mailbox):
-    def __init__(self, api_key: Optional[str] = None, verbose: bool = False) -> None:
-        super().__init__(verbose)
-        self.api_key: Optional[str] = api_key or os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
-            raise ValueError("OpenAI API key not provided.")
+    def build_messages(self):
+        node = self
+        if node.is_empty():
+            return []
+        conversation_dict = []
+        while node:
 
-    def _send_message_implementation(
-        self,
-        conversation: ConversationNode,
-        model: str,
-        max_tokens: int,
-        temperature: float,
-        api_key: str,
-        system_message: Optional[str] = None
-    ) -> Dict[str, Any]:
-        client: OpenAI = OpenAI(api_key=api_key)
-        messages: List[Dict[str, str]] = conversation.get_messages()
-        if system_message:
-            messages.insert(0, {"role": "system", "content": system_message})
-        return client.chat.completions.create(
-            messages=messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            model=model,
-        )
+            if hasattr(node, 'tool_calls'):
+                entry = node._to_dict_self()
+            elif node.role == 'tool':
+                entry = {'role': node.role, 'content': node.content, 'tool_call_id': node.tool_call_id}
+            else:
+                entry = {'role': node.role, 'content': node.content}
+            
+            conversation_dict = [entry] + conversation_dict
+            node = node.parent
 
-    def _process_response(self, response: Dict[str, Any]) -> Tuple[str, str, Dict[str, Any]]:
-        response_text: str = response.choices[0].message.content
-        response_role: str = response.choices[0].message.role
-        metadata: Dict[str, Any] = {
-            "finish_reason": response.choices[0].finish_reason,
-            "model": response.model,
-            "usage": response.usage.to_dict() if response.usage else None,
-        }
-        return response_text, response_role, metadata
+        return conversation_dict
 
 
 class OpenAIToolHandler(ToolHandler):
-    def generate_tool_schema(self, func: Callable) -> Dict[str, Any]:
-        # Implement OpenAI-specific tool schema generation
-        pass
 
-    def generate_response_schema(self, response: Any) -> List[Dict[str, Any]]:
-        # Implement OpenAI-specific tool use handling
-        pass
+    def generate_tool_schema(self, func: Callable) -> Dict[str, Any]:
+        """Generate OpenAI-compatible function definitions."""
+        schema = {
+            'type': 'function',
+            'function': {
+                'name': func.__name__,
+                'description': func.__doc__ or 'No description provided.',
+                'parameters': {'type': 'object', 'properties': {}, 'required': []}
+            }
+        }
+        sig = inspect.signature(func)
+        for param_name, param in sig.parameters.items():
+            schema['function']['parameters']['properties'][param_name] = {
+                'type': 'string',
+                'description': f'Parameter: {param_name}'
+            }
+            if param.default == inspect.Parameter.empty:
+                schema['function']['parameters']['required'].append(param_name)
+        return schema
+
+    def generate_request_schema(self, response: Any) -> List[Dict[str, Any]]:
+        """Extract tool calls from OpenAI responses."""
+        if hasattr(response.choices[0].message, 'tool_calls'):
+            return [response.choices[0].message.model_dump()]
+        else:
+            return []
+
+    def tool_name_and_input(self, request_schema: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
+        """Parse OpenAI's function call format."""
+        # Precondition - the request schema has a tool call
+        request = {}
+        if 'tool_calls' in request_schema:
+            tool_call = request_schema['tool_calls'][0]
+            request = {
+                'id': tool_call['id'],
+                'type': tool_call['type'],
+                'name': tool_call['function']['name'],
+                'arguments': json.loads(tool_call['function']['arguments'])
+            }
+            self.add_request(request)
+        return request['name'], request['arguments']
+
+    def generate_response_schema(self, request: Dict[str, Any], tool_output_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """Format tool results for OpenAI."""
+        return {
+            'role': 'tool',
+            'content': json.dumps(tool_output_kwargs),
+            'tool_call_id': request['tool_calls'][0]['id']
+        }
+
+
+class OpenAIMailbox(Mailbox):
+
+    def __init__(self, api_key: Optional[str] = None):
+        super().__init__()
+        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
+        if not self.api_key:
+            raise ValueError('OpenAI API key not provided.')
+        self.client = OpenAI(api_key=self.api_key)
+
+    def _send_message_implementation(self, bot) -> Dict[str, Any]:
+
+        system_message = bot.system_message
+        messages = bot.conversation.build_messages()
+        # Add a system message if one is provided
+        if system_message:
+            messages.insert(0, {'role': 'system', 'content': system_message})
+
+        # Include tools if available
+        tools = bot.tool_handler.tools if bot.tool_handler else None
+
+        # Send the message to the OpenAI API
+        model = bot.model_engine
+        max_tokens = bot.max_tokens
+        temperature = bot.temperature
+
+        if tools:
+            response = self.client.chat.completions.create(
+                model=model, messages=messages, max_tokens=max_tokens,
+                temperature=temperature, tools=tools, tool_choice='auto')
+        else:
+            response = self.client.chat.completions.create(
+                model=model, messages=messages, max_tokens=max_tokens,
+                temperature=temperature)
+        return response
+
+    def _process_response(self, response: Dict[str, Any], bot: Bot
+        ) -> Tuple[str, str, Dict[str, Any]]:
+        """Process the raw response and handle tool calls until no more are left."""
+        
+        message: ChatCompletionMessage = response.choices[0].message
+
+        # If there are no tool calls, return the role and content
+        if not message.tool_calls:
+            response_text = message.content
+            response_role = message.role
+            extra_data = {}
+            return response_text, response_role, extra_data
+
+        # Otherwise, process the tool call
+        if message.tool_calls:
+            
+            requests, results = bot.tool_handler.handle_response(response)           
+            bot.conversation = bot.conversation.add_reply(**requests[1]) #TODO why the heck does requests look like this?
+            for result in results:
+                bot.conversation = bot.conversation.add_reply(**result)
+            
+            # Send results back to bot
+            response = bot.mailbox._send_message_implementation(bot)
+            
+            # Use final message for text
+            message = response.choices[0].message
+            response_text = message.content
+            response_role = message.role
+            extra_data = {}
+            return response_text, response_role, extra_data
 
 
 class GPTBot(Bot):
-    ToolHandlerClass = OpenAIToolHandler
 
-    def __init__(
-        self,
-        api_key: Optional[str] = None,
-        model_engine: Engines = Engines.GPT4,
-        max_tokens: int = 4096,
-        temperature: float = 0.3,
-        name: str = "bot",
-        role: str = "assistant",
-        role_description: str = "a friendly AI assistant",
-        tool_handler: Optional[OpenAIToolHandler] = None,
-    ) -> None:
-        super().__init__(api_key, model_engine, max_tokens, temperature, name, role, role_description)
-        self.mailbox: OpenAIMailbox = OpenAIMailbox(api_key=api_key, verbose=True)
-        self.tool_handler: OpenAIToolHandler = tool_handler or OpenAIToolHandler()
-
-    def _send_message(self, cvsn: ConversationNode) -> Tuple[str, str]:
-        response_text, response_role, metadata = self.mailbox.send_message(
-            cvsn,
-            self.model_engine.value,
-            self.max_tokens,
-            self.temperature,
-            self.api_key,
-            self.system_message
-        )
-        # Handle tool use if necessary
-        tool_results: List[Dict[str, Any]] = self.tool_handler.generate_response_schema(metadata)
-        if tool_results:
-            for result in tool_results:
-                self.tool_handler.add_result(result)
-        return response_text, response_role  # , tool_results
-
-    @classmethod
-    def load(cls, filepath: str) -> "GPTBot":
-        return super().load(filepath)
+    def __init__(self, 
+                 api_key: Optional[str] = None, 
+                 model_engine: Engines = Engines.GPT4,
+                 max_tokens: int = 4096, 
+                 temperature: float = 0.3, 
+                 name: str = 'bot',
+                 role: str = 'assistant', 
+                 role_description: str = 'a friendly AI assistant',
+                 ):
+        
+        super().__init__(api_key=api_key, 
+                         model_engine=model_engine, 
+                         max_tokens=max_tokens, 
+                         temperature=temperature, 
+                         name=name, 
+                         role=role, 
+                         role_description=role_description,
+                         tool_handler = OpenAIToolHandler(),
+                         conversation = OpenAINode.create_empty(OpenAINode),
+                         mailbox = OpenAIMailbox()
+                         )
