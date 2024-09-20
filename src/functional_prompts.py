@@ -1,6 +1,7 @@
 from typing import List, Callable, Any, Tuple, Union
 from src.base import Bot
 from src.base import ConversationNode
+
 """Custom typing for clarity (hopefully)"""
 Prompt = str
 Response = str
@@ -11,9 +12,9 @@ DynamicPrompt = Callable[[Any], Prompt]
 RecombinatorFunction = Callable[[List[Response], List[ResponseNode]], Tuple
     [Response, ResponseNode]]
 
-
-def chain(bot: Bot, prompts: List[Prompt]) ->Tuple[List[Response], List[
-    ResponseNode]]:
+def chain(bot: Bot, 
+          prompts: List[Prompt]
+         ) ->Tuple[List[Response], List[ResponseNode]]:
     """
     Implements a chain of thought by sending a series of prompts to the bot.
 
@@ -27,14 +28,15 @@ def chain(bot: Bot, prompts: List[Prompt]) ->Tuple[List[Response], List[
     responses = []
     nodes = []
     for prompt in prompts:
-        response = bot.respond(prompt, tool_auto=True)
+        response = bot.respond(prompt, auto=True)
         responses.append(response)
         nodes.append(bot.conversation)
     return responses, nodes
 
 
-def branch(bot: Bot, prompts: List[Prompt]) ->Tuple[List[Response], List[
-    ResponseNode]]:
+def branch(bot: Bot, 
+           prompts: List[Prompt]
+          ) -> Tuple[List[Response], List[ResponseNode]]:
     """
     Creates multiple conversation branches from the current node.
 
@@ -50,16 +52,18 @@ def branch(bot: Bot, prompts: List[Prompt]) ->Tuple[List[Response], List[
     nodes = []
     for prompt in prompts:
         bot.conversation = original_conversation
-        response = bot.respond(prompt, tool_auto=True)
+        response = bot.respond(prompt, auto=True)
         responses.append(response)
         nodes.append(bot.conversation)
     bot.conversation = original_conversation
     return responses, nodes
 
 
-def recombine(bot: Bot, responses: List[Response], nodes: List[ResponseNode
-    ], recombinator_function: RecombinatorFunction) ->Tuple[Response,
-    ResponseNode]:
+def recombine(bot: Bot, 
+              responses: List[Response], 
+              nodes: List[ResponseNode], 
+              recombinator_function: RecombinatorFunction
+              ) ->Tuple[Response, ResponseNode]:
     """
     Recombines multiple conversation branches using a provided function.
 
@@ -72,24 +76,29 @@ def recombine(bot: Bot, responses: List[Response], nodes: List[ResponseNode
     Returns:
     Tuple[Response, ResponseNode]: A tuple containing the recombined response string and its corresponding ConversationNode.
     """
-    recombined_response, recombined_node = recombinator_function(responses,
-        nodes)
-    bot.conversation = recombined_node
-    return recombined_response, recombined_node
+    response, node = recombinator_function(responses, nodes)
+    bot.conversation = node
+    return response, node
 
 
-def tree_of_thought(bot: Bot, prompts: List[Prompt], recombinator_function:
-    RecombinatorFunction) ->Tuple[Response, ResponseNode]:
+def tree_of_thought(bot: Bot, 
+                    prompts: List[Prompt], 
+                    recombinator_function:RecombinatorFunction
+                    ) ->Tuple[Response, ResponseNode]:
     """
-    Implements a tree of thought approach by branching into multiple conversation paths and then recombining the results.
+    Implements a tree of thought approach by branching into multiple 
+    conversation paths and then recombining the results.
 
     Args:
     bot (Bot): The bot to use for the responses.
     prompts (List[Prompt]): A list of prompts to create branches with.
-    recombinator_function (RecombinatorFunction): A function that takes a list of Responses and a list of ResponseNodes and returns a single Response and ResponseNode.
+    recombinator_function (RecombinatorFunction): A function that takes 
+        a list of Responses and a list of ResponseNodes and returns a 
+        single Response and ResponseNode.
 
     Returns:
-    Tuple[Response, ResponseNode]: A tuple containing the final recombined response string and its corresponding ConversationNode.
+    Tuple[Response, ResponseNode]: A tuple containing the final recombined 
+        response string and its corresponding ConversationNode.
     """
     responses, nodes = branch(bot, prompts)
     final_response = recombine(bot, responses, nodes, recombinator_function)
@@ -112,7 +121,7 @@ def prompt_while(bot: Bot, prompt: Prompt, stop_condition: StopCondition
     responses = []
     nodes = []
     while True:
-        response = bot.respond(prompt, tool_auto=True)
+        response = bot.respond(prompt, auto=True)
         responses.append(response)
         nodes.append(bot.conversation)
         if stop_condition(response):
@@ -142,51 +151,69 @@ def prompt_for(bot: Bot, items: List[Any], dynamic_prompt: DynamicPrompt,
         responses = []
         nodes = []
         for prompt in prompts:
-            response = bot.respond(prompt, tool_auto=True)
+            response = bot.respond(prompt, auto=True)
             responses.append(response)
             nodes.append(bot.conversation)
         return responses, nodes
 
 
-def sequential_process(instruct_bot: Bot, initial_prompt: Prompt,
-    list_length: int, executor_bot: Bot=None) ->Tuple[List[Response], List[
-    ResponseNode]]:
+def sequential_process( bot: Bot, 
+                        task: Prompt,
+                        list_length: int, 
+                        ) ->Tuple[Response, ResponseNode]:
     """
-    Implements a sequential process that generates a list, elaborates on each item, and then executes each elaboration.
+    Generates a list of subtasks based on the task, elaborates on each subtask, and then executes each elaboration.
+    Similar to chain of thought, but more token efficient in theory.
 
     Args:
-    instruct_bot (Bot): The bot to use to create the instructions list.
-    executor_bot (Bot): The bot to use to execute the instructions.
-    initial_prompt (Prompt): The initial prompt requesting a list of a specific length with numbered items.
+    bot (Bot): The bot to use to create the instructions list and execute instructions.
+    task (Prompt): The initial prompt requesting a task to be completed.
     list_length (int): The expected length of the list.
 
     Returns:
-    Tuple[List[Response], List[ResponseNode]]: A tuple containing a list of response strings and a list of corresponding ConversationNodes.
+    Tuple[List[Response], List[ResponseNode]]: A tuple containing the final response and node of the final execution prompt
     """
-    instruct_bot.respond(initial_prompt)
-    branch_point = instruct_bot.conversation
-    index = range(list_length)
-    elaboration_prompts = []
-    for i in index:
-        elaboration_prompts.append(
-            f'For top level item {i + 1} in the list you just provided,            give brief details and requirements in the form of instructions. Please reply with            only the instructions and say nothing else.'
-            )
-    elaborations, _ = branch(instruct_bot, elaboration_prompts)
-    if executor_bot is None:
-        instruct_bot.conversation = branch_point
-        executor_bot = instruct_bot
-    execution_prompts = [
-        f"""Please do the following step per these detailed instructions        (Don't move on to the next steps -- I'll give detailed instructions for them         soon.): 
 
- {elab}"""
-         for elab in elaborations]
-    final_responses, final_nodes = chain(executor_bot, execution_prompts)
-    return final_responses, final_nodes
+    list_prompt = f"""Hello LLM assistant! You're being used in an automated 
+        system to complete a multi-step task. Please start by making a list of 
+        steps to required to complete the task. The list should be {list_length}
+        steps long. Do not start working yet, just break down the task. 
+        The task is as follows:\n\n{task}"""
+
+    bot.respond(list_prompt)
+
+    elaboration_prompts = [f"""For top level item {i + 1} in the list you just 
+        provided, give brief details and requirements in the form of instructions. 
+        Please reply with only the instructions as though you are telling someone 
+        to do the task and say nothing else. Mention specific tools (among those 
+        available to you) in the instructions.""" for i in range(list_length)
+    ]
+
+    branch_node = bot.conversation
+    elaborations, _ = branch(bot, elaboration_prompts)
+
+    execution_prompts = [ f"""Please do the following subtask per these 
+        detailed instructions. A few notes: 1. the previous tasks have been completed
+        in a different conversation branch. 2. the next tasks will be completed in
+        another branch, so please do not move forward past these instructions: 
+        \n\n{elab}""" for elab in elaborations
+    ]
+
+    for eprompt in execution_prompts:
+        bot.conversation = branch_node
+        bot.respond(eprompt)
+        p = "Continue to work autonomously until you complete the subtask. When you're done, say 'DONE'"
+        stop_condition = lambda x: "DONE" in x
+        r, rnode = prompt_while(bot, p, stop_condition)
+
+    return r, rnode
 
 
-def retry_until(bot: Bot, prompt: Union[Prompt, Callable[[], Prompt]],
-    condition: Callable[[Response], bool], max_attempts: int=8) ->Tuple[
-    Response, ResponseNode]:
+def retry_until(bot: Bot, 
+                dynamic_prompt: Union[Prompt, Callable[[], Prompt]],
+                condition: Callable[[Response], bool], 
+                max_attempts: int=8
+                ) ->Tuple[Response, ResponseNode]:
     """
     Repeatedly branches and retries a prompt until a condition is met or max attempts are reached.
 
@@ -203,8 +230,8 @@ def retry_until(bot: Bot, prompt: Union[Prompt, Callable[[], Prompt]],
     original_conversation = bot.conversation
     for _ in range(max_attempts):
         bot.conversation = original_conversation
-        current_prompt = prompt() if callable(prompt) else prompt
-        response = bot.respond(current_prompt, tool_auto=True)
+        current_prompt = dynamic_prompt()
+        response = bot.respond(current_prompt, auto=True)
         if condition(response):
             return response, bot.conversation
     return response, bot.conversation

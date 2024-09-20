@@ -1,0 +1,27 @@
+{
+ "name": "Claude",
+ "model_engine": "claude-3-5-sonnet-20240620",
+ "max_tokens": 4096,
+ "temperature": 0.3,
+ "role": "assistant",
+ "role_description": "a friendly AI assistant",
+ "conversation": {
+  "content": "My name is Alice and I love chess.",
+  "role": "user",
+  "replies": [
+   {
+    "content": "Hello Alice! It's great to meet you. I'm glad to hear that you love chess. Chess is a fascinating game that combines strategy, tactics, and critical thinking. It's been enjoyed by people for centuries and continues to be popular worldwide. \n\nSince you love chess, may I ask:\n1. How long have you been playing chess?\n2. Do you have a favorite chess opening or strategy?\n3. Do you play chess casually, or do you participate in tournaments?\n\nIf you'd like to discuss chess further or have any questions about the game, I'd be happy to chat more about it!",
+    "role": "assistant"
+   }
+  ]
+ },
+ "system_message": "",
+ "tool_handler": {
+  "class": "AnthropicToolHandler",
+  "tools": [],
+  "function_map": {},
+  "requests": [],
+  "results": []
+ },
+ "bot_class": "AnthropicBot"
+}

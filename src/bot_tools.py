@@ -68,9 +68,10 @@ def replace_class(file_path, new_class_def, old_class_name=None):
 
     Returns a confirmation message or an error message.
     """
-    with open(file_path, 'r', encoding='utf-8') as file:
-        content = file.read()
+
     try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
         new_class_node = ast.parse(_clean(new_class_def)).body[0
             ]
         if not isinstance(new_class_node, ast.ClassDef):
@@ -121,9 +122,9 @@ def replace_function(file_path, new_function_def):
 
     Returns a confirmation message or an error message.
     """
-    with open(file_path, 'r', encoding='utf-8') as file:
-        content = file.read()
     try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
         new_func_node = ast.parse(_clean(new_function_def)
             ).body[0]
         if not isinstance(new_func_node, ast.FunctionDef):
@@ -176,12 +177,9 @@ def add_function_to_class(file_path, class_name, new_method_def):
 
     Returns a confirmation message or an error message.
     """
-    if not os.path.exists(file_path):
-        return _process_error(FileNotFoundError(
-            f"File '{file_path}' not found."))
-    with open(file_path, 'r', encoding='utf-8') as file:
-        content = file.read()
     try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
         new_method_node = ast.parse(_clean(new_method_def)
             ).body[0]
         if not isinstance(new_method_node, ast.FunctionDef):
@@ -235,12 +233,10 @@ def add_function_to_file(file_path: str, new_function_def: str) -> str:
 
     Returns a confirmation message or an error message.
     """
-    if not os.path.exists(file_path):
-        return _process_error(FileNotFoundError(
-            f"File '{file_path}' not found."))
-    with open(file_path, 'r', encoding='utf-8') as file:
-        content = file.read()
+
     try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
         new_func_node = ast.parse(_clean(new_function_def)
             ).body[0]
         if not isinstance(new_func_node, ast.FunctionDef):
@@ -275,12 +271,10 @@ def add_class_to_file(file_path, class_def):
 
     Returns a confirmation message or an error message.
     """
-    if not os.path.exists(file_path):
-        return _process_error(FileNotFoundError(
-            f"File '{file_path}' not found."))
-    with open(file_path, 'r', encoding='utf-8') as file:
-        content = file.read()
+
     try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
         new_class_node = ast.parse(_clean(class_def)).body[0]
         if not isinstance(new_class_node, ast.ClassDef):
             return _process_error(ValueError(
@@ -554,7 +548,7 @@ def _clean(code):
     return inspect.cleandoc(code)
 
 def _process_error(error):
-    error_message = f'tool failed: {str(error)}\n'
+    error_message = f'Tool Failed: {str(error)}\n'
     error_message += (
         f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
     return error_message

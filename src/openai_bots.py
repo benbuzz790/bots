@@ -63,17 +63,26 @@ class OpenAIToolHandler(ToolHandler):
 
     def tool_name_and_input(self, request_schema: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
         """Parse OpenAI's function call format."""
-        # Precondition - the request schema has a tool call
+        # Precondition - the request schema has a tool call that is not None
+        
+        if not request_schema:
+            return None, None
+        
+        if not 'tool_calls' in request_schema:
+            return None, None
+        
+        if request_schema['tool_calls'] is None:
+            return None, None
+        
         request = {}
-        if 'tool_calls' in request_schema:
-            tool_call = request_schema['tool_calls'][0]
-            request = {
-                'id': tool_call['id'],
-                'type': tool_call['type'],
-                'name': tool_call['function']['name'],
-                'arguments': json.loads(tool_call['function']['arguments'])
-            }
-            self.add_request(request)
+        tool_call = request_schema['tool_calls'][0]
+        request = {
+            'id': tool_call['id'],
+            'type': tool_call['type'],
+            'name': tool_call['function']['name'],
+            'arguments': json.loads(tool_call['function']['arguments'])
+        }
+        self.add_request(request)
         return request['name'], request['arguments']
 
     def generate_response_schema(self, request: Dict[str, Any], tool_output_kwargs: Dict[str, Any]) -> Dict[str, Any]:
@@ -94,7 +103,7 @@ class OpenAIMailbox(Mailbox):
             raise ValueError('OpenAI API key not provided.')
         self.client = OpenAI(api_key=self.api_key)
 
-    def _send_message_implementation(self, bot) -> Dict[str, Any]:
+    def send_message(self, bot) -> Dict[str, Any]:
 
         system_message = bot.system_message
         messages = bot.conversation.build_messages()
@@ -120,7 +129,7 @@ class OpenAIMailbox(Mailbox):
                 temperature=temperature)
         return response
 
-    def _process_response(self, response: Dict[str, Any], bot: Bot
+    def process_response(self, response: Dict[str, Any], bot: Bot
         ) -> Tuple[str, str, Dict[str, Any]]:
         """Process the raw response and handle tool calls until no more are left."""
         
@@ -142,7 +151,7 @@ class OpenAIMailbox(Mailbox):
                 bot.conversation = bot.conversation.add_reply(**result)
             
             # Send results back to bot
-            response = bot.mailbox._send_message_implementation(bot)
+            response = bot.mailbox.send_message(bot)
             
             # Use final message for text
             message = response.choices[0].message

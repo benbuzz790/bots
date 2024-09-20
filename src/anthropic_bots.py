@@ -72,14 +72,16 @@ class AnthropicToolHandler(ToolHandler):
 
         return response
 
-
 class AnthropicMailbox(Mailbox):
     def __init__(self, verbose: bool = False):
         super().__init__()
         self.last_message: Optional[Dict[str, Any]] = None
         self.client: Optional[anthropic.Anthropic] = None
 
-    def _send_message_implementation(self, bot: 'AnthropicBot') -> Dict[str, Any]:
+    def send_message(self, bot: 'AnthropicBot') -> Dict[str, Any]:
+        """Sends a bot message using the Anthropic API"""
+
+        # Check API Key
         api_key: Optional[str] = bot.api_key
         if not api_key:
             try:
@@ -88,6 +90,7 @@ class AnthropicMailbox(Mailbox):
                 raise ValueError("Anthropic API key not found. Set up 'ANTHROPIC_API_KEY' environment variable.")
         self.client = anthropic.Anthropic(api_key=api_key)
 
+        # Update conversation based on tool calls and results
         conversation: AnthropicNode = bot.conversation
         if bot.tool_handler and bot.tool_handler.requests:
             if isinstance(conversation.parent.content, str):
@@ -98,15 +101,20 @@ class AnthropicMailbox(Mailbox):
             if isinstance(conversation.content, str):
                 conversation.content = [{'type': 'text', 'text': conversation.content}]
             conversation.content = bot.tool_handler.results + conversation.content
+        
+        # Clear old tool calls and results
         if bot.tool_handler:
             bot.tool_handler.clear()
 
+        # Build tools block
         tools: Optional[List[Dict[str, Any]]] = None
         if bot.tool_handler and bot.tool_handler.tools:
             tools = bot.tool_handler.tools
 
+        # Build messages block
         messages: List[Dict[str, Any]] = conversation.build_messages()
 
+        # Build API package
         model: Engines = bot.model_engine
         max_tokens: int = bot.max_tokens
         temperature: float = bot.temperature
@@ -117,15 +125,14 @@ class AnthropicMailbox(Mailbox):
             "messages": messages,
         }
 
+        # Add optional blocks
         system_message: Optional[str] = bot.system_message
         if system_message:
             create_dict["system"] = system_message
-
         if tools:
             create_dict["tools"] = tools
 
-        self.last_message = create_dict
-
+        # Send message, automatically handling rate limits and server errors
         max_retries: int = 25
         base_delay: float = 1
         for attempt in range(max_retries):
@@ -148,14 +155,17 @@ class AnthropicMailbox(Mailbox):
     def merge_content(self, existing_content: Any, new_content: Any) -> Any:
         if isinstance(existing_content, str) and isinstance(new_content, str):
             return (existing_content + new_content).strip()
+        
         elif isinstance(existing_content, str) and isinstance(new_content, list):
             if new_content and new_content[0]['type'] == 'text':
                 return ([{'type': 'text', 'text': (existing_content + new_content[0]['text']).strip()}] +
                         new_content[1:])
             else:
                 return [{'type': 'text', 'text': existing_content.strip()}] + new_content
+        
         elif isinstance(existing_content, list) and isinstance(new_content, list):
             return new_content  # new_content contains all of old_content
+        
         elif isinstance(existing_content, list) and isinstance(new_content, str):
             if existing_content and existing_content[-1]['type'] == 'text':
                 existing_content[-1]['text'] = (existing_content[-1]['text'] + new_content).strip()
@@ -165,46 +175,33 @@ class AnthropicMailbox(Mailbox):
         else:
             raise ValueError("Unexpected content types")
 
-    def _process_response(
-        self,
-        response: Dict[str, Any],
-        bot: Optional['AnthropicBot'] = None
-    ) -> Tuple[str, str, Dict[str, Any]]:
-        tool_results: List[Dict[str, Any]] = []
-        new_message: Dict[str, Any] = self.last_message.copy()
 
-        while True:
-            if new_message["messages"][-1]["role"] == "assistant":
-                new_message["messages"][-1]["content"] = self.merge_content(
-                    new_message["messages"][-1]["content"],
-                    response.content
-                )
-            else:
-                assistant_message: Dict[str, Any] = {"role": "assistant", "content": response.content}
-                new_message["messages"].append(assistant_message)
+    def process_response(self,
+                        response: Dict[str, Any],
+                        bot: Optional['AnthropicBot'] = None
+                        ) -> Tuple[str, str, Dict[str, Any]]:
+        
+        # If the stop reason was max tokens, request continuation
+        # Continuation is not allowed with tool calls
 
-            if response.stop_reason != 'max_tokens':
-                break
+        def should_continue(response):
+            return response.stop_reason == 'max_tokens' and not 'tool_calls' in response
 
-            response = self.client.messages.create(**new_message)
+        message = bot.conversation.build_messages()
+        while should_continue(response):
+            message.append({'role': response.role, 'content':response.content[0].text})
+            response = self.client.messages.create(**message)
+            
+        response_role: str = response.role
+        response_text: str = response.content[0].text
 
-        if response.stop_reason == 'tool_use':
-            tool_requests, tool_results = bot.tool_handler.handle_response(response)
-            extra_data: Dict[str, Any] = {"requests": tool_requests, "results": tool_results}
+        # Incorporate tool use via extra_data
+        if response.stop_reason == 'tool_calls':
+            requests = bot.tool_handler.get_requests()
+            results = bot.tool_handler.get_results()
+            extra_data: Dict[str, Any] = {"requests": requests, "results": results}
         else:
             extra_data = {}
-
-        response_role: str = response.role
-        response_text: str = ""
-
-        final_content: Any = new_message["messages"][-1]["content"]
-        if isinstance(final_content, str):
-            response_text = final_content
-        elif isinstance(final_content, list):
-            for block in final_content:
-                if block.type == 'text':
-                    response_text += block.text
-
         return response_text, response_role, extra_data
 
 

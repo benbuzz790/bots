@@ -91,6 +91,13 @@ class ConversationNode:
             self.replies.append(reply)
             return reply
 
+    def add_child(self, node: 'ConversationNode'):
+        if self.is_empty():
+            raise NotImplementedError("Cannot add a child node to an empty node")
+        else:
+            node.parent = self
+            self.replies.append(node)
+
     def find_root(self):
         """ Navigate to the root of the conversation tree. """
         current = self
@@ -112,8 +119,12 @@ class ConversationNode:
         return result
 
     def _to_dict_self(self):
-        """ Convert this node to a dictionary, omitting replies, parent, callables, and private attributes."""
-        # Exclude callables, double underscore attributes, and specific attributes that could lead to recursive structures
+        """
+            Convert this node to a dictionary, omitting replies, parent, callables,
+            and private attributes.
+        """
+        # Exclude callables, double underscore attributes, 
+        # and specific attributes that could lead to recursive structures
         return {
             k: getattr(self, k) for k in dir(self)
             if not k.startswith('_') and
@@ -142,7 +153,10 @@ class ConversationNode:
         return node
     
     def node_count(self) -> int:
-        """ Recursively count the total number of nodes in the conversation, starting from the root. """
+        """
+            Recursively count the total number of nodes in the conversation, 
+            starting from the root. 
+        """
         # First, navigate to the root of the conversation tree
         root = self.find_root()
     
@@ -170,6 +184,7 @@ class ToolHandler(ABC):
             Generate tool schema from callable function
             Return schema as dictionary
         """
+        raise NotImplemented("You must implement this method in a subclass")
         pass
 
     @abstractmethod
@@ -178,6 +193,7 @@ class ToolHandler(ABC):
             Generate request schema from response
             Return list of schemas (multiple requests may be in one message)
         """
+        raise NotImplemented("You must implement this method in a subclass")
         pass
 
     @abstractmethod
@@ -186,6 +202,7 @@ class ToolHandler(ABC):
             Extract tool name and input from request
             Return (tool name, kwargs) 
         """
+        raise NotImplemented("You must implement this method in a subclass")
         pass
 
     @abstractmethod
@@ -195,21 +212,32 @@ class ToolHandler(ABC):
             Generate response schema from request and tool output
             Return schema
         """
+        raise NotImplemented("You must implement this method in a subclass")
         pass
 
-    def handle_response(self, response) ->Tuple[List[Dict[str, str]], List[
-        Dict[str, str]]]:
-        """Runs tools and returns (request schema, result schema) from input response"""
+    def handle_response(self, response) ->Tuple[List[Dict[str, str]], 
+                                                List[Dict[str, str]]]:
+        """
+            Arguments:
+                response: the raw response from the llm service
+            Returns:
+                (list[request_schema], list[result_schema]) 
+            Side effects:
+                - Clears old self.requests and self.results
+                - Sets new self.requests and self.results.            
+                - Executes tools and produces any tool use side effects.
+        """
         self.clear()
         requests = self.generate_request_schema(response)
         if requests:
             for request_schema in requests:
                 tool_name, input_kwargs = self.tool_name_and_input(request_schema)
-                output_kwargs = self.function_map[tool_name](**input_kwargs)
-                response_schema = self.generate_response_schema(request_schema,
-                    output_kwargs)
-                self.requests.append(request_schema)
-                self.results.append(response_schema)
+                if tool_name is not None:
+                    output_kwargs = self.function_map[tool_name](**input_kwargs)
+                    response_schema = self.generate_response_schema(request_schema,
+                        output_kwargs)
+                    self.requests.append(request_schema)
+                    self.results.append(response_schema)
         return self.requests, self.results
 
     def add_tool(self, func: Callable) ->None:
@@ -320,21 +348,8 @@ class Mailbox(ABC):
         with open(self.log_file, 'a', encoding='utf-8') as file:
             file.write(log_entry)
 
-    def send_message(self, bot: 'Bot') -> tuple[str, str, Dict[str, Any]]:
-        model = bot.model_engine
-        max_tokens = bot.max_tokens
-        temperature = bot.temperature
-        self._log_outgoing(bot.conversation, model.value, max_tokens, temperature)
-        try:
-            response = self._send_message_implementation(bot)
-            processed_response = self._process_response(response, bot)
-        except Exception as e:
-            raise e
-        self._log_incoming(processed_response)
-        return processed_response
-
     @abstractmethod
-    def _send_message_implementation(self, bot: 'Bot') ->Dict[str, Any]:
+    def send_message(self, bot: 'Bot') ->Dict[str, Any]:
         """
         Implement the actual message sending logic for a specific AI service.
 
@@ -350,16 +365,22 @@ class Mailbox(ABC):
         Raises:
         Exception: If there's an error in sending the message or receiving the response.
         """
+        raise NotImplemented("You must implement this method in a subclass")
         pass
 
     @abstractmethod
-    def _process_response(self, response: Dict[str, Any], bot: 'Bot' = None
-        ) -> Tuple[str, str, Dict[str, Any]]:
+    def process_response(self, 
+                         response: Dict[str, Any], 
+                         bot: 'Bot' = None
+                        ) -> Tuple[str, str, Dict[str, Any]]:
         """
         Process the raw response from the AI service into a standardized format.
 
         This method should extract the relevant information from the AI's response
         and return it in a consistent format across different AI services.
+
+        Note that if tool_handler has been implemented, handle_response has already
+        been called and requests and results can be accessed through bot.tool_handler.
 
         Parameters:
         - response (Dict[str, Any]): The raw response from the AI service.
@@ -375,12 +396,8 @@ class Mailbox(ABC):
                 - This additional data will be passed to ConversationNode's kwargs 
                 argument directly
                 - By default, Conversation Node saves each kwarg as an attribute
-        
-        Note:
-        The exact structure of the returned tuple may vary depending on the specific 
-        requirements of your application, but it should be consistent across all 
-        implementations of this method.
         """
+        raise NotImplemented("You must implement this method in a subclass")
         pass
 
     def _log_outgoing(self, conversation: ConversationNode, model: Engines,
@@ -441,35 +458,33 @@ class Bot(ABC):
         if isinstance(self.model_engine, str):
             self.model_engine = Engines.get(self.model_engine)
 
-    def respond(self, content: str, role: str='user', tool_auto=False) ->str:
+    def respond(self, prompt: str, role: str='user') ->str:
         """
-        Sends 'content' to the Bot and returns the text response
-        If tool_auto is True, loops until the bot does not use a tool
+            Sends 'prompt' to the Bot and returns the text response
         """
-        if tool_auto:
-            reply, self.conversation = self._respond_auto(content, self.conversation, role)
-        else:
-            reply, self.conversation = self._cvsn_respond(text=content,role=role)
+        self.conversation = self.conversation.add_reply(content=prompt, role=role)
+        reply, _ = self._cvsn_respond()
         return reply
 
-    def _cvsn_respond(self, text: Optional[str]=None, role: str='user') -> Tuple[str, ConversationNode]:    
-
-        if self.conversation is None and text is None:
-            # ya f'ed up!
-            raise ValueError('Invalid: both text and conversation are None')
-
-        # Handle new conversation items
-        if text is not None:
-            self.conversation = self.conversation.add_reply(content=text, role=role)
-
-        # Now that the conversation is settled, send the message
+    def _cvsn_respond(self) -> Tuple[str, ConversationNode]:
+        """
+        1) Requests a response based on the current conversation using send_message
+        2) Handles tool use with tool_handler.handle_results
+        3) Processes the response using process_response
+        4) Creates a new conversation node from the response and adds it to 
+        the conversation history
+        5) Returns the text of the response and the new conversation node
+        """
         try:
-            response_text, response_role, extra_data = self.mailbox.send_message(self)
-            self.conversation = self.conversation.add_reply(content=response_text, role=response_role, **extra_data)
-            return response_text, self.conversation
+            response = self.mailbox.send_message(self)
+            self.tool_handler.handle_response(response)
+            text, role, data = self.mailbox.process_response(response, self)
+            node = self.conversation.add_reply(content=text, role=role, **data)
+            self.conversation = node
+            return text, node
         except Exception as e:
+            # Maybe one day I'll implement error handling... one day...
             raise e
-
 
     def add_tool(self, func: Callable):
         self.tool_handler.add_tool(func)
@@ -477,27 +492,6 @@ class Bot(ABC):
     def add_tools(self, filepath):
         self.tool_path = filepath
         self.tool_handler.add_tools_from_file(filepath)
-
-    def _respond_auto(self, content: str, conversation: ConversationNode,
-        role: str) ->str:
-        """Automatically handles tool use and responses for Anthropic models"""
-        response = self.respond(content, role, tool_auto=False)
-        total_reply = response
-        max_tool_prompts = 8
-        tool_prompt_counter = 1
-        while tool_prompt_counter < max_tool_prompts:
-            extra_data = getattr(self.conversation, 'attributes', {})
-            print('\n\n'+response)
-            print('\n\n'+str(extra_data))
-            print(f'\n\n{max_tool_prompts-tool_prompt_counter} toolings remaining')
-            if extra_data.get('requests'):
-                follow_up = f'(auto for {max_tool_prompts-tool_prompt_counter} more tool calls max)'
-                response = self.respond(follow_up, role)
-                total_reply += '\n\n ...working... \n\n' + response
-                tool_prompt_counter += 1
-            else:
-                break
-        return total_reply, self.conversation
 
     def set_system_message(self, message: str) ->None:
         self.system_message = message

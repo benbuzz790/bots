@@ -490,7 +490,7 @@ class PythonFileNode(ProjectNode):
         """Generate content for the Python file."""
         context = self._gather_context()
         prompt = PromptLib.file_gen_prompt(self.file_path, context, self.interface)
-        response = self.bot.respond(prompt,tool_auto=True)
+        response = self.bot.respond(prompt,auto=True)
         result = self.write_code(response)
         counter = 0
         retry_limit = 3

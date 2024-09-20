@@ -1,0 +1,110 @@
+{
+ "name": "TestBot",
+ "model_engine": "gpt-4-turbo",
+ "max_tokens": 1000,
+ "temperature": 0.7,
+ "role": "assistant",
+ "role_description": "a friendly AI assistant",
+ "conversation": {
+  "content": "Please display the contents of the file test_file.txt",
+  "role": "user",
+  "replies": [
+   {
+    "content": null,
+    "function_call": null,
+    "refusal": null,
+    "role": "assistant",
+    "tool_calls": [
+     {
+      "id": "call_RIIlmt1MOUVYkyh1sp2ISUp7",
+      "function": {
+       "arguments": "{\"file_path\":\"test_file.txt\"}",
+       "name": "read_file"
+      },
+      "type": "function"
+     }
+    ],
+    "replies": [
+     {
+      "content": "\"This is a test file content.\"",
+      "role": "tool",
+      "tool_call_id": "call_RIIlmt1MOUVYkyh1sp2ISUp7",
+      "replies": [
+       {
+        "content": "The contents of the file `test_file.txt` are:\n\n```\nThis is a test file content.\n```",
+        "role": "assistant"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "system_message": "",
+ "tool_handler": {
+  "class": "OpenAIToolHandler",
+  "tools": [
+   {
+    "type": "function",
+    "function": {
+     "name": "read_file",
+     "description": "\n    Reads and returns the entire content of a file as a string.\n\n    Use when you need to retrieve the complete content of a file for further processing or analysis.\n\n    Parameters:\n    - file_path (str): The path to the file to be read.\n\n    Returns the file content as a string or an error message.\n    ",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "file_path": {
+        "type": "string",
+        "description": "Parameter: file_path"
+       }
+      },
+      "required": [
+       "file_path"
+      ]
+     }
+    }
+   }
+  ],
+  "function_map": {
+   "read_file": {
+    "name": "read_file",
+    "code": "def read_file(file_path):\n    \"\"\"\n    Reads and returns the entire content of a file as a string.\n\n    Use when you need to retrieve the complete content of a file for further processing or analysis.\n\n    Parameters:\n    - file_path (str): The path to the file to be read.\n\n    Returns the file content as a string or an error message.\n    \"\"\"\n    try:\n        with open(file_path, 'r', encoding='utf-8') as file:\n            return file.read()\n    except Exception as e:\n        return _process_error(e)\n",
+    "file_path": "C:\\Users\\Ben Rinauto\\Documents\\Code\\llm-utilities-git\\llm-utilities\\src\\bot_tools.py",
+    "file_hash": "013a593c4f74b60f832e19a64e49506b"
+   }
+  },
+  "requests": [
+   {
+    "id": "call_RIIlmt1MOUVYkyh1sp2ISUp7",
+    "type": "function",
+    "name": "read_file",
+    "arguments": {
+     "file_path": "test_file.txt"
+    }
+   },
+   {
+    "content": null,
+    "role": "assistant",
+    "function_call": null,
+    "tool_calls": [
+     {
+      "id": "call_RIIlmt1MOUVYkyh1sp2ISUp7",
+      "function": {
+       "arguments": "{\"file_path\":\"test_file.txt\"}",
+       "name": "read_file"
+      },
+      "type": "function"
+     }
+    ],
+    "refusal": null
+   }
+  ],
+  "results": [
+   {
+    "role": "tool",
+    "content": "\"This is a test file content.\"",
+    "tool_call_id": "call_RIIlmt1MOUVYkyh1sp2ISUp7"
+   }
+  ]
+ },
+ "bot_class": "GPTBot"
+}
