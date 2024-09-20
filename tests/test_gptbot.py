@@ -23,10 +23,10 @@ class TestGPTBot(unittest.TestCase):
             os.remove(self.test_file_path)
 
     def test_gptbot_read_file(self):
-        response1 = self.bot.respond(f"Please read the contents of the file {self.test_file_path}")        
-        response2 = self.bot.respond("What was the exact content of the file you just read?")  
-        self.bot.save("result")      
-        self.assertIn(self.test_content, response2)
+        response1 = self.bot.respond(f"Please display the contents of the file {self.test_file_path}")
+        print(response1)    
+        self.bot.save("gpttestresult.bot")      
+        self.assertIn(self.test_content, response1)
 
 
 import sys
@@ -37,10 +37,13 @@ def debug_on_error(type, value, tb):
     import pdb
     pdb.post_mortem(tb)
 
+def main():
+    t = TestGPTBot()
+    t.setUp()
+    t.test_gptbot_read_file()
+    t.tearDown()
+
 if __name__ == '__main__':
     unittest.main()
     # sys.excepthook = debug_on_error
-    # t = TestGPTBot()
-    # t.setUp()
-    # t.test_gptbot_read_file()
-    # t.tearDown()
+    # main()

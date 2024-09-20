@@ -7,7 +7,6 @@ from src.anthropic_bots import AnthropicBot
 from src.openai_bots import GPTBot 
 from src.base import ConversationNode as CNode
 
-#TODO - add sequence_respond test
 #TODO - fill in a pile of GPT and Anthropic tests
 
 
