@@ -50,6 +50,11 @@ pip install git+https://github.com/benbuzz790/bots.git
 ```
 
 ## Quick Start
+Set up your api key environment variables
+[OpenAI](https://platform.openai.com/docs/quickstart)
+[Anthropic](https://docs.anthropic.com/en/docs/initial-setup#set-your-api-key)
+
+You'll need one of these two to use bots, and for now you'll need an Anthropic key for auto_terminal.
 
 ```python
 from bots import AnthropicBot
@@ -68,6 +73,67 @@ bot.respond("Please write Conway's game of life in a new file conway.py")
 ```cmd
 :: Start an autonomous coding session
 >>> python -m bots.auto_terminal.auto_terminal
+System: Bot initialized
+
+---  
+     
+You: /help
+
+---
+
+System:
+    This program is an interactive terminal that uses Anthropic's Claude Sonnet 3.5.
+    It allows you to chat with the LLM, save and load bot states, and execute various commands.
+    The bot has the ability to read and write files and can execute powershell and python code 
+    directly.
+    The bot also has tools to help edit python files in an accurate and token-efficient way.
+    Available commands:
+    /help: Show this help message
+    /verbose: Show tool requests and results (default on)
+    /quiet: Hide tool requests and results
+    /save: Save the current bot
+    /load: Load a previously saved bot
+    /auto: Prompt the bot to work autonomously for a preset number of prompts
+    /exit: Exit the program
+    Type your messages normally to chat with the AI assistant.
+
+---
+
+
+You: please write conway's game of life into a GUI and execute it. no need to save
+
+---
+
+Claude: Let's create a GUI version of Conway's Game of Life using
+    Python's tkinter library. Here's the code:
+
+---
+
+System: Tool Requests
+    [
+     {
+      "type": "tool_use",
+      "id": "toolu_0139UTzShnVnXTen2pT1y8Su",
+      "name": "execute_python_code",
+      "input": {
+       "code": <removed for brevity>
+      }
+     }
+    ]
+
+---
+
+System: Tool Results
+    [
+     {
+      "type": "tool_result",
+      "tool_use_id": "toolu_0139UTzShnVnXTen2pT1y8Su",
+      "content": ""
+     }
+    ]
+
+---
+
 ```
 
 ## Advanced Usage

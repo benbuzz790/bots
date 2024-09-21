@@ -24,3 +24,5 @@ env/
 *.swp
 .pytest_cache/
 *.bot
+project_structure.txt
+scripts/*
