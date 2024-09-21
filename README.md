@@ -2,7 +2,7 @@
 
 ## Overview
 
-bots (n): instruct-tuned Language Models, with the ability to use tools, encapsulated with model parameters, metadata, and conversation history.
+**bots** (bɒts), ***n.pl.*** : Language Models which are instruct-tuned, have the ability to use tools, and are encapsulated with model parameters, metadata, and conversation history.
 
 The Bots library provides a structured interface for working with such agents, aiming to make LLM tools more convenient and accessible for developers and researchers.
 
@@ -10,7 +10,7 @@ The Bots library provides a structured interface for working with such agents, a
 
 The core of the Bots library is built on a robust foundation:
 
-- Robust tool handling capabilities - any python function, file, or module can be given to a bot as a tool
+- Tool handling capabilities - any python function, file, or module can be given to a bot as a tool
 - Key interfaces: `bot.chat()`, `bot.add_tools()`, `bot.respond()`, `bot.save()`, and `bot.load()`
 - Tree-based conversation history management:
   - Implements a linked m-tree structure for conversation histories
@@ -46,7 +46,7 @@ The core of the Bots library is built on a robust foundation:
 ## Installation
 
 ```bash
-pip install git+https://github.com/your-repo/bots.git
+pip install git+https://github.com/benbuzz790/bots.git
 ```
 
 ## Quick Start
