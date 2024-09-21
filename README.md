@@ -20,29 +20,27 @@ The core of the Bots library is built on a robust foundation:
 
 ## Features built with bots
 
-1. **Auto Terminal (bots.auto_terminal.auto_terminal)**
+1. **Auto Terminal (bots.auto_terminal.start)**
    - Command-line interface for autonomous coding (similar to Cursor or Claude-Dev, but in a terminal)
-   - Enables bots to work on complex programming tasks with little to no intervention
-   - Supports loading and saving bot states for long-running projects
-   - Offers verbose and quiet modes for monitoring bot activities
+   - Enables bots to work on complex programming tasks
+   - Automatic mode
 
 2. **Python Tools (bots.tools.python_tools)**
-   - Comprehensive toolkit enabling bots to perform file and code operations autonomously
+   - Tested toolkit which enables bots to perform file and code operations reliably
    - Functions for reading, writing, and modifying Python files
    - Code execution capabilities for both Python and PowerShell
-   - Specialized functions for adding, replacing, or modifying classes and functions in existing Python files
    - Empowers bots to engage in complex coding tasks and project modifications
 
 3. **Lazy Decorator (bots.lazy.lazy)**
    - Decorator for runtime code generation via LLM calls
    - Automatically replaces placeholder functions with LLM-generated implementations
    - Supports various levels of context awareness for accurate code generation
-   - Integrates with existing codebases for dynamic functionality expansion
 
 4. **Functional Prompts (bots.functional_prompts)**
    - Advanced prompting techniques for complex, multi-step tasks
    - Supports sequential processing and branching with multiple bots
-   - Enables the creation of sophisticated workflows for content generation and problem-solving
+   - Enables the creation of sophisticated workflows
+
 ## Installation
 
 ```bash
@@ -50,8 +48,10 @@ pip install git+https://github.com/benbuzz790/bots.git
 ```
 
 ## Quick Start
-Set up your api key environment variables
+Set up your api key environment variables:
+
 [OpenAI](https://platform.openai.com/docs/quickstart)
+
 [Anthropic](https://docs.anthropic.com/en/docs/initial-setup#set-your-api-key)
 
 You'll need one of these two to use bots, and for now you'll need an Anthropic key for auto_terminal.
@@ -100,7 +100,9 @@ System:
 ---
 
 
-You: please write conway's game of life into a GUI and execute it. no need to save
+You: please write conway's game of life into a GUI and execute it. 
+   make the pixels toggleable and give it a pause button. no need to save
+   the file.
 
 ---
 
@@ -162,7 +164,7 @@ def main():
     bot = bots.AnthropicBot(name="letter_writer")
 
     # First prompt
-    p1 = "Please help me write an invitaion to a birthday party"
+    p1 = "Please help me write an invitation to a birthday party"
 
     # Define different styles for the letter
     styles = ["formal", "casual", "humorous"]
