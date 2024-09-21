@@ -1,11 +1,7 @@
-import unittest
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.base import Bot, Engines
-from src.anthropic_bots import AnthropicBot
-from src.openai_bots import GPTBot 
-from src.base import ConversationNode as CNode
+﻿import unittest
+from bots import AnthropicBot
+from bots import ChatGPT_Bot
+from bots.foundation.base import Bot, Engines
 
 #TODO - fill in a pile of GPT and Anthropic tests
 
@@ -38,7 +34,7 @@ class TestBaseBot(unittest.TestCase):
 
 class TestGPTBot(unittest.TestCase):
     def setUp(self):
-        self.bot = GPTBot(api_key=None, model_engine=Engines.GPT4, max_tokens=100, temperature=0.7, name="TestGPTBot", role="assistant", role_description="Test bot")
+        self.bot = ChatGPT_Bot(api_key=None, model_engine=Engines.GPT4, max_tokens=100, temperature=0.7, name="TestGPTBot", role="assistant", role_description="Test bot")
 
     @unittest.skip(reason="Not Implemented")
     def test_batch_respond(self):
@@ -58,3 +54,5 @@ class TestAnthropicBot(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+

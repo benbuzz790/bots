@@ -1,20 +1,14 @@
-import unittest
-import sys
-import os
+﻿import unittest
 import threading
 import queue
-
-# Add the parent directory to the Python path to import the bot modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.anthropic_bots import AnthropicBot
-from src.openai_bots import GPTBot
+from bots import AnthropicBot
+from bots import ChatGPT_Bot
 
 @unittest.skip("Not Implemented")
 class TestBotConcurrency(unittest.TestCase):
     def setUp(self):
         self.anthropic_bot = AnthropicBot()
-        self.gpt_bot = GPTBot()
+        self.gpt_bot = ChatGPT_Bot()
 
     def test_parallel_conversations(self):
         def conversation(bot, q):
@@ -103,3 +97,4 @@ class TestBotConcurrency(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

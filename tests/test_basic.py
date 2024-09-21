@@ -1,13 +1,7 @@
-import unittest
-import os
-import sys
-
-# Add the parent directory to the Python path to import the bot modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.anthropic_bots import AnthropicBot
-from src.openai_bots import GPTBot
-from src.base import Engines
+﻿import unittest
+from bots import AnthropicBot
+from bots import ChatGPT_Bot
+from bots.foundation.base import Engines
 
 class TestAnthropicBot(unittest.TestCase):
     def setUp(self):
@@ -49,17 +43,17 @@ class TestAnthropicBot(unittest.TestCase):
 
 class TestGPTBot(unittest.TestCase):
     def setUp(self):
-        self.bot = GPTBot()
+        self.bot = ChatGPT_Bot()
 
     def test_initialization(self):
-        self.assertIsInstance(self.bot, GPTBot)
+        self.assertIsInstance(self.bot, ChatGPT_Bot)
         self.assertEqual(self.bot.model_engine, Engines.GPT4)
         self.assertEqual(self.bot.max_tokens, 4096)
         self.assertEqual(self.bot.temperature, 0.3)
         self.assertEqual(self.bot.name, "bot")
 
     def test_custom_initialization(self):
-        custom_bot = GPTBot(
+        custom_bot = ChatGPT_Bot(
             model_engine=Engines.GPT35,
             max_tokens=2000,
             temperature=0.5,
@@ -87,3 +81,4 @@ class TestGPTBot(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

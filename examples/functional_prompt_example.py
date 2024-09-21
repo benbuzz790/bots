@@ -1,9 +1,10 @@
-import sys
+﻿import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import src.anthropic_bots as ab
-import src.functional_prompts as fp
+
+import bots
+import bots.functional_prompts as fp
+import bots.tools.python_tools as py_tools
 
 def main():
     n_steps = 4
@@ -26,10 +27,10 @@ def main():
         6) Have shaded graphics to simulate 3 dimensionality
         7) Save to connect_four_gui.py"""
     
-    bot = ab.AnthropicBot(name="logic")
-    bot2 = ab.AnthropicBot(name="gui")
-    bot.add_tools(r'src/bot_tools.py')
-    bot2.add_tools(r'src/bot_tools.py')
+    bot = bots.AnthropicBot(name="logic")
+    bot2 = bots.AnthropicBot(name="gui")
+    bot.add_tools(py_tools)
+    bot2.add_tools(py_tools)
 
     fp.sequential_process(bot, p1, n_steps)
     fp.sequential_process(bot2, p2, 2*n_steps)
@@ -49,3 +50,5 @@ def debug_on_error(type, value, tb):
 if __name__ == "__main__":
     sys.excepthook = debug_on_error
     main()
+
+

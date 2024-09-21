@@ -1,4 +1,4 @@
-import re
+﻿import re
 import string
 import random
 from typing import List, Tuple
@@ -76,3 +76,4 @@ def assert_response_quality(response: str, min_length: int = 50, max_length: int
     assert not response.isspace(), "Response should not be empty or only whitespace"
 
 # You can add more utility functions here as needed for your tests
+

@@ -1,14 +1,14 @@
-import unittest
+﻿import unittest
 import os
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.openai_bots import GPTBot
-from src.base import Engines
-from src.bot_tools import read_file
+
+from bots import ChatGPT_Bot
+from bots.foundation.base import Engines
+from bots.tools.python_tools import read_file
 
 class TestGPTBot(unittest.TestCase):
     def setUp(self):
-        self.bot = GPTBot(model_engine=Engines.GPT4Turbo, max_tokens=1000, temperature=0.7, name='TestBot')
+        self.bot = ChatGPT_Bot(model_engine=Engines.GPT4Turbo, max_tokens=1000, temperature=0.7, name='TestBot')
         self.bot.add_tool(read_file)
         
         # Create a test file
@@ -28,7 +28,6 @@ class TestGPTBot(unittest.TestCase):
         self.bot.save("gpttestresult.bot")      
         self.assertIn(self.test_content, response1)
 
-
 import sys
 import traceback
 def debug_on_error(type, value, tb):
@@ -47,3 +46,4 @@ if __name__ == '__main__':
     unittest.main()
     # sys.excepthook = debug_on_error
     # main()
+

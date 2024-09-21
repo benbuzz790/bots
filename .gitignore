@@ -1,26 +1,26 @@
-
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
-*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.egg-info/
+.eggs/
 
-# Virtual environment
+# Virtual environments
 venv/
 env/
+.env/
 
 # IDEs
 .vscode/
 .idea/
 
 # Miscellaneous
+.DS_Store
 *.log
-*.tmp
-
-# Custom Ignore
-scripts/last_temp_script@*.py
-/data/mailbox_log.txt
-/.gitignore
-.experiments
-Notes.txt
-setup_bot_viewer.ps1
-.gitignore
+*.swp
+.pytest_cache/
+*.bot

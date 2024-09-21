@@ -1,18 +1,19 @@
-import unittest
+﻿import unittest
 import time
 import sys
 import os
 
 # Add the parent directory to the Python path to import the bot modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.anthropic_bots import AnthropicBot
-from src.openai_bots import GPTBot
 
+from bots import AnthropicBot
+from bots import ChatGPT_Bot
+
+@unittest.skip("Takes too long, not relevant yet")
 class TestBotPerformance(unittest.TestCase):
     def setUp(self):
         self.anthropic_bot = AnthropicBot()
-        self.gpt_bot = GPTBot()
+        self.gpt_bot = ChatGPT_Bot()
 
     def test_response_time(self):
         prompt = "Explain the theory of relativity in one sentence."
@@ -79,3 +80,4 @@ class TestBotPerformance(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

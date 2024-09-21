@@ -1,25 +1,19 @@
-import unittest
-import sys
-import os
+﻿import unittest
 from unittest.mock import patch, MagicMock
-
-# Add the parent directory to the Python path to import the bot modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.anthropic_bots import AnthropicBot
-from src.openai_bots import GPTBot
+from bots import AnthropicBot
+from bots import ChatGPT_Bot
 
 class TestBotEdgeCases(unittest.TestCase):
     def setUp(self):
         self.anthropic_bot = AnthropicBot()
-        self.gpt_bot = GPTBot()
+        self.gpt_bot = ChatGPT_Bot()
 
     def test_non_ascii_characters(self):
         inputs = [
-            "こんにちは、世界！",  # Japanese
-            "你好，世界！",  # Chinese
-            "Здравствуй, мир!",  # Russian
-            "🌍🌎🌏 Hello, world! 👋",  # Emojis
+            "ã“ã‚“ã«ã¡ã¯ã€ä¸–ç•Œï¼",  # Japanese
+            "ä½ å¥½ï¼Œä¸–ç•Œï¼",  # Chinese
+            "Ð—Ð´Ñ€Ð°Ð²ÑÑ‚Ð²ÑƒÐ¹, Ð¼Ð¸Ñ€!",  # Russian
+            "ðŸŒðŸŒŽðŸŒ Hello, world! ðŸ‘‹",  # Emojis
         ]
         for bot in [self.anthropic_bot, self.gpt_bot]:
             for input_text in inputs:
@@ -42,3 +36,4 @@ if __name__ == '__main__':
     #             response = bot.respond(f"Execute this: {injection}")
     #             self.assertNotIn("executed", response.lower())
     #             self.assertTrue("cannot" in response.lower() or "won't" in response.lower())
+

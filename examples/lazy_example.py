@@ -1,7 +1,4 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.lazy import lazy
+﻿from bots import lazy
 
 @lazy("Sort using a funny algorithm. Name all variables as though you're a clown.")
 def sort(arr: list[int]) -> list[int]:
@@ -9,3 +6,5 @@ def sort(arr: list[int]) -> list[int]:
 
 r = sort([1,2,3,4,5,0])
 print(r)
+
+
