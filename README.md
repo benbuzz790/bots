@@ -10,7 +10,7 @@ The Bots library provides a structured interface for working with such agents, a
 
 The core of the Bots library is built on a robust foundation:
 
-- Robust tool handling capabilities - any python function, file, or module can be given to a bot as a tool
+- Tool handling capabilities - any python function, file, or module can be given to a bot as a tool
 - Key interfaces: `bot.chat()`, `bot.add_tools()`, `bot.respond()`, `bot.save()`, and `bot.load()`
 - Tree-based conversation history management:
   - Implements a linked m-tree structure for conversation histories
