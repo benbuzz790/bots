@@ -28,7 +28,7 @@ def chain(bot: Bot,
     responses = []
     nodes = []
     for prompt in prompts:
-        response = bot.respond(prompt, auto=True)
+        response = bot.respond(prompt)
         responses.append(response)
         nodes.append(bot.conversation)
     return responses, nodes
@@ -52,10 +52,10 @@ def branch(bot: Bot,
     nodes = []
     for prompt in prompts:
         bot.conversation = original_conversation
-        response = bot.respond(prompt, auto=True)
+        response = bot.respond(prompt)
         responses.append(response)
         nodes.append(bot.conversation)
-    bot.conversation = original_conversation
+        bot.conversation = original_conversation
     return responses, nodes
 
 

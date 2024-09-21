@@ -435,12 +435,25 @@ if __name__ == '__main__':
         return _process_error(e)
     now = DT.datetime.now()
     formatted_datetime = now.strftime('%Y.%m.%d-%H.%M.%S')
-    temp_file_name = os.path.join(os.getcwd(), 'scripts/temp_script.py')
-    temp_file_copy = os.path.join(os.getcwd(),
-        f'scripts/last_temp_script@{formatted_datetime}.py')
+    
+    # Get the directory of the current file (which should be in your package)
+    package_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    # Define the scripts directory
+    scripts_dir = os.path.join(package_root, 'scripts')
+
+    # Create the scripts directory if it doesn't exist
+    if not os.path.exists(scripts_dir):
+        os.makedirs(scripts_dir)
+
+    # Use package_root instead of cwd
+    temp_file_name = os.path.join(scripts_dir, 'temp_script.py')
+    temp_file_copy = os.path.join(scripts_dir, f'last_temp_script@{formatted_datetime}.py')
+
     with open(temp_file_name, 'w', encoding='utf-8') as temp_file:
         temp_file.write(final_code)
         temp_file.flush()
+
     with open(temp_file_copy, 'w', encoding='utf-8') as temp_file:
         temp_file.write(final_code)
         temp_file.flush()
