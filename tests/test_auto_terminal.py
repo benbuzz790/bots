@@ -8,7 +8,7 @@ from unittest.mock import patch
 from io import StringIO
 from contextlib import redirect_stdout
 
-import bots.auto_terminal.auto_terminal as auto_terminal
+import auto_terminal.start as start
 
 class DetailedTestCase(unittest.TestCase):
 
@@ -55,7 +55,7 @@ class TestCodey(DetailedTestCase):
             , '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                auto_terminal.main()
+                start.main()
             output = buf.getvalue()
         self.assertEqualWithDetails(os.path.exists(self.test_file), True,
             'File was not created')
@@ -73,7 +73,7 @@ class TestCodey(DetailedTestCase):
             '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                auto_terminal.main()
+                start.main()
             output = buf.getvalue()
         self.assertEqualWithDetails('Test content for reading' in output, 
             True, 'File content not read correctly')
@@ -87,7 +87,7 @@ class TestCodey(DetailedTestCase):
             '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                auto_terminal.main()
+                start.main()
             output = buf.getvalue()
         with open(self.test_file, 'r') as file:
             content = file.read()
@@ -101,7 +101,7 @@ class TestCodey(DetailedTestCase):
         mock_input.side_effect = [f'Delete the file {self.test_file}', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                auto_terminal.main()
+                start.main()
             output = buf.getvalue()
         self.assertEqualWithDetails(os.path.exists(self.test_file), False,
             'File was not deleted')
@@ -115,7 +115,7 @@ class TestCodey(DetailedTestCase):
             '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                auto_terminal.main()
+                start.main()
             output = buf.getvalue()
         self.assertEqualWithDetails(str(len(content)) in output, True,
             'File size in bytes not found')
@@ -129,7 +129,7 @@ class TestCodey(DetailedTestCase):
             f'Get the modification time of {self.test_file}', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                auto_terminal.main()
+                start.main()
             output = buf.getvalue()
         self.assertEqualWithDetails('modification time' in output.lower(), 
             True, 'File modification time retrieval failed')
@@ -144,7 +144,7 @@ class TestCodey(DetailedTestCase):
             ]
             with StringIO() as buf, redirect_stdout(buf):
                 with self.assertRaises(SystemExit):
-                    auto_terminal.main()
+                    start.main()
                 return buf.getvalue()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
@@ -177,7 +177,7 @@ print("Some other code")
             , '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                auto_terminal.main()
+                start.main()
             output = buf.getvalue()
         with open(self.test_file, 'r') as file:
             content = file.read()
@@ -206,7 +206,7 @@ print("Some other code")
             , '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                auto_terminal.main()
+                start.main()
             output = buf.getvalue()
         with open(self.test_file, 'r') as file:
             content = file.read()
@@ -246,7 +246,7 @@ print("Some other code")
             , '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                auto_terminal.main()
+                start.main()
             output = buf.getvalue()
         with open(self.test_file, 'r') as file:
             content = file.read()
@@ -286,7 +286,7 @@ print("Some other code")
             , '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                auto_terminal.main()
+                start.main()
             output = buf.getvalue()
         with open(self.test_file, 'r') as file:
             content = file.read()
