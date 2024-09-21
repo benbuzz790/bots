@@ -2,7 +2,7 @@
 
 ## Overview
 
-bots (n): instruct-tuned Language Models, with the ability to use tools, encapsulated with model parameters, metadata, and conversation history.
+bots / bɒts /, noun: Language Models which are instruct-tuned, have the ability to use tools, and are encapsulated with model parameters, metadata, and conversation history.
 
 The Bots library provides a structured interface for working with such agents, aiming to make LLM tools more convenient and accessible for developers and researchers.
 
