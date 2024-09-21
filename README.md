@@ -46,7 +46,7 @@ The core of the Bots library is built on a robust foundation:
 ## Installation
 
 ```bash
-pip install git+https://github.com/your-repo/bots.git
+pip install git+https://github.com/benbuzz790/bots.git
 ```
 
 ## Quick Start
