@@ -593,13 +593,24 @@ class Bot(ABC):
         return filename
 
     def chat(self):
-        print('\n\nSystem: Chat started. Type "/exit" to exit.')
+        separator = '\n\n'
+        print(separator)
+        print('System: Chat started. Type "/exit" to exit.')
         uinput = ''
         while uinput != '/exit':
-            print('\n\n')
+            print(separator)
             uinput = input('You: ')
-            if uinput is not None and uinput != '/exit':
-                print('\n\n')
-                print(f'{self.name}: {self.respond(uinput)}')
+            
+            if uinput is None or uinput == '/exit':
+                break
+
+            print(separator)
+            print(f'{self.name}: {self.respond(uinput)}')
+
+            print(separator)
+            for request in self.tool_handler.get_requests():
+                tool_name, _ = self.tool_handler.tool_name_and_input(request)
+                print(f'Used Tool: {tool_name}')
+                
 
 
