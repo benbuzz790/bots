@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 from unittest.mock import patch, MagicMock
 from bots import AnthropicBot
 from bots import ChatGPT_Bot

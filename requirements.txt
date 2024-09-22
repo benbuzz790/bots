@@ -1,4 +1,4 @@
-﻿anthropic==0.3.2
+anthropic==0.3.2
 openai==0.27.0
 astor==0.8.1
 pytest==7.3.1

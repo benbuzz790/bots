@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 from bots import AnthropicBot
 from bots import ChatGPT_Bot
 from bots.foundation.base import Bot, Engines

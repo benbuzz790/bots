@@ -1,4 +1,4 @@
-﻿from bots.foundation.base import Bot, Mailbox, ConversationNode, Engines, ToolHandler
+from bots.foundation.base import Bot, Mailbox, ConversationNode, Engines, ToolHandler
 from typing import Optional, Dict, Any, Tuple, Callable, List
 import inspect
 from openai import OpenAI

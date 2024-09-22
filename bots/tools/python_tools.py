@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import astor
 import os
 import re

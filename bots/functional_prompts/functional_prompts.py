@@ -1,4 +1,4 @@
-﻿from typing import List, Callable, Any, Tuple, Union
+from typing import List, Callable, Any, Tuple, Union
 from bots.foundation.base import Bot
 from bots.foundation.base import ConversationNode
 

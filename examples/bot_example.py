@@ -1,4 +1,4 @@
-﻿# A simple example giving the bot the ability to read files on your computer
+# A simple example giving the bot the ability to read files on your computer
 import bots
 
 def read_file(file_path):

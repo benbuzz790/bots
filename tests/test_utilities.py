@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 import time
 from unittest.mock import patch, mock_open
 from bots.utilities.cache_util import get_cache_key, cache_response, get_cached_response

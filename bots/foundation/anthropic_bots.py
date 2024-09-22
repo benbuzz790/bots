@@ -1,4 +1,4 @@
-﻿# anthropic_bot.py
+# anthropic_bot.py
 
 from bots.foundation.base import Bot, Mailbox, ConversationNode, Engines, ToolHandler
 from typing import Optional, Dict, Any, List, Callable, Tuple

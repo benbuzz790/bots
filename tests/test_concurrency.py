@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 import threading
 import queue
 from bots import AnthropicBot

@@ -1,4 +1,4 @@
-﻿import inspect
+import inspect
 import os
 import ast
 import logging

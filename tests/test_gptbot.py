@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 import os
 import sys
 

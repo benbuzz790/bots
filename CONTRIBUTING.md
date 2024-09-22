@@ -1,4 +1,4 @@
-﻿# Contributing to LLM Utilities
+# Contributing to LLM Utilities
 
 We welcome contributions to the LLM Utilities project! Here are some guidelines to help you get started.
 

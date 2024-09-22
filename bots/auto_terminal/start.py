@@ -1,4 +1,4 @@
-﻿import bots
+import bots
 import textwrap
 from datetime import datetime as datetime
 from typing import Optional, List, Dict, Any
