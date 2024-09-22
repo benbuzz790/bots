@@ -4,6 +4,7 @@ from datetime import datetime as datetime
 from typing import Optional, List, Dict, Any
 import json
 from tkinter import filedialog
+import os
 
 help_msg: str = """
 This program is an interactive terminal that uses Anthropic's Claude Sonnet 3.5.
@@ -52,11 +53,31 @@ def pretty(string: str, name: Optional[str] = None, width: int = 100, indent: in
     print('\n'.join(formatted_lines))
     print("\n---\n")
 
+def initialize_bot() -> Optional[bots.ChatGPT_Bot | bots.AnthropicBot]:
+    openai_key = os.getenv('OPENAI_API_KEY')
+    anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+
+    if anthropic_key:
+        try:
+            bot = bots.AnthropicBot(name='Claude')
+        except Exception as e:
+            print(f"Failed to initialize Anthropic bot: {e}")
+    elif openai_key:
+        try:
+            bot = bots.ChatGPT_Bot(name='ChatGPT')
+        except Exception as e:
+            print(f"Failed to initialize ChatGPT bot: {e}")
+    else:
+        raise ValueError('No OpenAI or Anthropic API keys found. Set up your key as an environment variable.')
+
+    bot.add_tools(bots.python_tools)
+    bot.add_tools(bots.github_tools)
+
+    return bot
 
 def main() -> None:
-    codey = bots.AnthropicBot(name='Claude')
-    #codey: openai_bots.GPTBot = openai_bots.GPTBot(name='ChatGPT')
-    codey.add_tools(bots.python_tools)
+
+    codey = initialize_bot()
     pretty('Bot initialized', 'System')
     
     verbose: bool = True
