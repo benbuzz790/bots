@@ -12,7 +12,7 @@ def rewrite(file_path, content):
     """
     Completely rewrites the content of a file with new content.
 
-    Use when you want to replace the entire contents of a file.
+    Use when you want to replace the entire contents of a file or write a new file.
 
     Parameters:
     - file_path (str): The path to the file that will be rewritten.
@@ -63,7 +63,7 @@ def replace_class(file_path, new_class_def, old_class_name=None):
 
     Parameters:
     - file_path (str): The path to the file containing the class to be replaced.
-    - new_class_def (str): The new class definition as a string.
+    - new_class_def (str): The new class definition as a string. Note this function uses ast parsing, so it is not necessary to mimic indentation level.
     - old_class_name (str, optional): The name of the class to be replaced.
 
     Returns a confirmation message or an error message.
@@ -118,7 +118,7 @@ def replace_function(file_path, new_function_def):
 
     Parameters:
     - file_path (str): The path to the file containing the function to be replaced.
-    - new_function_def (str): The new function definition as a string.
+    - new_function_def (str): The new function definition as a string. Note this function uses ast parsing, so it is not necessary to mimic indentation level.
 
     Returns a confirmation message or an error message.
     """
@@ -173,7 +173,7 @@ def add_function_to_class(file_path, class_name, new_method_def):
     Parameters:
     - file_path (str): The path to the file containing the class to be modified.
     - class_name (str): The name of the class to which the new method will be added.
-    - new_method_def (str): The new method definition as a string.
+    - new_method_def (str): The new method definition as a string. Note this function uses ast parsing, so it is not necessary to mimic indentation level.
 
     Returns a confirmation message or an error message.
     """
@@ -229,7 +229,7 @@ def add_function_to_file(file_path: str, new_function_def: str) -> str:
 
     Parameters:
     - file_path (str): The path to the file where the new function will be added.
-    - new_function_def (str): The new function definition as a string.
+    - new_function_def (str): The new function definition as a string. Note this function uses ast parsing, so it is not necessary to mimic indentation level.
 
     Returns a confirmation message or an error message.
     """
@@ -267,7 +267,7 @@ def add_class_to_file(file_path, class_def):
 
     Parameters:
     - file_path (str): The path to the file where the new class will be added.
-    - class_def (str): The new class definition as a string.
+    - class_def (str): The new class definition as a string. Note this function uses ast parsing, so it is not necessary to mimic indentation level.
 
     Returns a confirmation message or an error message.
     """
@@ -380,7 +380,7 @@ def read_file(file_path):
 
 def execute_python_code(code, timeout=300):
     """
-    Executes python code in a safe environment.
+    Executes python code in a stateless environment.
 
     Use when you need to run Python code dynamically and capture its output.
 
@@ -475,7 +475,7 @@ if __name__ == '__main__':
 
 def execute_powershell(code):
     """
-    Executes PowerShell code.
+    Executes PowerShell code in a stateless environment
 
     Use when you need to run PowerShell commands and capture their output.
 
@@ -527,34 +527,6 @@ def get_py_interface(file_path: str) -> str:
         return '\n'.join(interface)
     except Exception as e:
         return _process_error(e)
-
-def _dispatch(prompt: str, bot=None) -> bool:
-    """
-    Dispatches a bot with the tools defined in src/bot_tools.py with the input prompt.
-
-    Use when you need to process a prompt using a bot with predefined tools.
-
-    Parameters:
-    - prompt (str): The input prompt to be processed by the bot.
-    - bot (optional): The bot instance to use. If None, a new bot will be created.
-
-    Returns True if the dispatch was successful, False otherwise.
-    """
-    try:
-        from bots.foundation.base import Bot, Engines
-        from bots import GPTBot
-        if bot is None:
-            bot = GPTBot(api_key=os.environ.get('OPENAI_API_KEY'),
-                model_engine=Engines.GPT4, max_tokens=1000, temperature=0.7,
-                name='DispatchBot', role='assistant', role_description=
-                'A helpful AI assistant.')
-        bot.add_tools('src/bot_tools.py')
-        response = bot.respond(prompt)
-        print(f'Bot response: {response}')
-        return True
-    except Exception as e:
-        print(_process_error(e))
-        return False
 
 def _clean(code):
     return code
