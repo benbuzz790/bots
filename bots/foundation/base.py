@@ -53,7 +53,7 @@ class Engines(str, Enum):
     CLAUDE3_HAIKU = 'claude-3-haiku-20240307'
     CLAUDE3_SONNET = 'claude-3-sonnet-20240229'
     CLAUDE3_OPUS = 'claude-3-opus-20240229'
-    CLAUDE35_SONNET = 'claude-3.5-sonnet-20240620'
+    CLAUDE35_SONNET = 'claude-3-5-sonnet-20240620'
 
     @staticmethod
     def get(name):

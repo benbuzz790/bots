@@ -212,7 +212,7 @@ class AnthropicBot(Bot):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_engine: Engines = Engines.CLAUDE35,
+        model_engine: Engines = Engines.CLAUDE35_SONNET,
         max_tokens: int = 4096,
         temperature: float = 0.3,
         name: str = "Claude",
