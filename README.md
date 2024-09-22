@@ -1,4 +1,4 @@
-# bots: Making LLM Tools Convenient
+# bots: making LLM tool use convenient and powerful
 
 ## Overview
 
