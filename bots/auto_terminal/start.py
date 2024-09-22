@@ -24,17 +24,16 @@ Available commands:
 Type your messages normally to chat with the AI assistant.
 """
 
-
 def pretty(string: str, name: Optional[str] = None, width: int = 100, indent: int = 4) -> None:
-    # Prepare the initial line
+    """Prints a string nicely"""
+    
     prefix: str = f"{name}: " if name is not None else ""
     
     if not isinstance(string, str):
         string = str(string)
 
-    # Split the input string into lines
     lines: List[str] = string.split('\n')
-    
+
     # Process each line
     formatted_lines: List[str] = []
     for i, line in enumerate(lines):
@@ -56,7 +55,6 @@ def pretty(string: str, name: Optional[str] = None, width: int = 100, indent: in
 def initialize_bot() -> Optional[bots.ChatGPT_Bot | bots.AnthropicBot]:
     openai_key = os.getenv('OPENAI_API_KEY')
     anthropic_key = os.getenv('ANTHROPIC_API_KEY')
-
     if anthropic_key:
         try:
             bot = bots.AnthropicBot(name='Claude')
@@ -144,17 +142,5 @@ def main() -> None:
                 pretty('')  # separator
                 msg: str = uinput
 
-
-# import sys
-# import traceback
-
-# def debug_on_error(type: Any, value: Any, tb: Any) -> None:
-#     traceback.print_exception(type, value, tb)
-#     print("\n--- Entering post-mortem debugging ---")
-#     import pdb
-#     pdb.post_mortem(tb)
-
-
-if __name__ == "__main__":
-    #sys.excepthook = debug_on_error
+if __name__ == '__main__':
     main()
