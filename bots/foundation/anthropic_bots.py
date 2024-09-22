@@ -110,34 +110,47 @@ class AnthropicMailbox(Mailbox):
         tools: Optional[List[Dict[str, Any]]] = None
         if bot.tool_handler and bot.tool_handler.tools:
             tools = bot.tool_handler.tools
+        tools[-1]["cache_control"] = {"type": "ephemeral"}
 
         # Build messages block
         messages: List[Dict[str, Any]] = conversation.build_messages()
 
-        # Build API package
+        # Add cache control to last message block content
+        if isinstance(messages[-1]['content'], str):
+            text = messages[-1]['content']
+            messages[-1]['content'] = [{}]
+            messages[-1]['content'][0]['type'] = 'text'
+            messages[-1]['content'][0]['text'] = text
+        messages[-1]['content'][-1]['cache_control'] = {"type": "ephemeral"}
+
+        # Add optional blocks to create_dict
+        create_dict: Dict[str, Any] = {}
+        system_message: Optional[str] = bot.system_message
+        if tools:
+            create_dict["tools"] = tools
+        if system_message:
+            create_dict["system"] = system_message
+
+
+        # Create non-optional blocks and update create_dict
         model: Engines = bot.model_engine
         max_tokens: int = bot.max_tokens
         temperature: float = bot.temperature
-        create_dict: Dict[str, Any] = {
+        non_optional = {
             "model": model,
             "max_tokens": max_tokens,
             "temperature": temperature,
             "messages": messages,
         }
-
-        # Add optional blocks
-        system_message: Optional[str] = bot.system_message
-        if system_message:
-            create_dict["system"] = system_message
-        if tools:
-            create_dict["tools"] = tools
+        create_dict.update(**non_optional)
 
         # Send message, automatically handling rate limits and server errors
         max_retries: int = 25
         base_delay: float = 1
         for attempt in range(max_retries):
             try:
-                response: Dict[str, Any] = self.client.messages.create(**create_dict)
+                response = self.client.beta.prompt_caching.messages.create(**create_dict)
+                #response: Dict[str, Any] = self.client.messages.create(**create_dict)
                 return response
             except (anthropic.InternalServerError, anthropic.RateLimitError) as e:
                 if attempt == max_retries - 1:
