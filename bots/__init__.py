@@ -4,8 +4,8 @@ from .foundation.openai_bots import ChatGPT_Bot
 
 # Import entire modules
 from . import auto_terminal
-from . import lazy
-from .tools import python_tools
+from .lazy import lazy
+from .tools import python_tools, github_tools
 from .foundation.base import Engines
 
 __all__ = [
@@ -14,5 +14,6 @@ __all__ = [
     'auto_terminal',
     'lazy',
     'python_tools',
+    'github_tools',
     'Engines'
 ]
