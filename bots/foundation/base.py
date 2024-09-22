@@ -12,9 +12,10 @@ import threading
 import inspect
 import hashlib
 
-# TODO be consistent about what _function_name() means (the underscore)
+# Some utility functions:
 
 def remove_code_blocks(text: str) ->Tuple[List[str], List[str]]:
+    """Extracts code blocks from responses"""
     pattern = '```(\\w*)\\s*([\\s\\S]*?)```'
     matches = re.findall(pattern, text)
     code_blocks = [match[1].strip() for match in matches]
@@ -24,22 +25,35 @@ def remove_code_blocks(text: str) ->Tuple[List[str], List[str]]:
 
 
 def load(filepath: str) ->'Bot':
+    """Loads a bot"""
     return Bot.load(filepath)
 
 
 def formatted_datetime() ->str:
+    """Returns 'now' as a formatted string"""
     now = DT.datetime.now()
     return now.strftime('%Y-%m-%d_%H-%M-%S')
 
-
 class Engines(str, Enum):
     """Enum class representing different AI model engines."""
+    # OpenAI models
     GPT4 = 'gpt-4'
-    GPT4Turbo = 'gpt-4-turbo'
-    GPT35 = 'gpt-3.5-turbo'
-    CLAUDE3OPUS = 'claude-3-opus-20240229'
-    CLAUDE3SONNET = 'claude-3-sonnet-20240229'
-    CLAUDE35 = 'claude-3-5-sonnet-20240620'
+    GPT4_0613 = 'gpt-4-0613'
+    GPT4_32K = 'gpt-4-32k'
+    GPT4_32K_0613 = 'gpt-4-32k-0613'
+    GPT4TURBO = 'gpt-4-turbo-preview'
+    GPT4TURBO_0125 = 'gpt-4-0125-preview'
+    GPT4TURBO_VISION = 'gpt-4-vision-preview'
+    GPT35TURBO = 'gpt-3.5-turbo'
+    GPT35TURBO_16K = 'gpt-3.5-turbo-16k'
+    GPT35TURBO_0125 = 'gpt-3.5-turbo-0125'
+    GPT35TURBO_INSTRUCT = 'gpt-3.5-turbo-instruct'
+    
+    # Anthropic models
+    CLAUDE3_HAIKU = 'claude-3-haiku-20240307'
+    CLAUDE3_SONNET = 'claude-3-sonnet-20240229'
+    CLAUDE3_OPUS = 'claude-3-opus-20240229'
+    CLAUDE35_SONNET = 'claude-3.5-sonnet-20240620'
 
     @staticmethod
     def get(name):
@@ -52,15 +66,14 @@ class Engines(str, Enum):
     @staticmethod
     def get_bot_class(model_engine: 'Engines') -> Type['Bot']:
         """Returns the bot class based on the model engine."""
-        if model_engine in [Engines.GPT4, Engines.GPT35, Engines.GPT4Turbo]:
-            from bots import GPTBot
+        from bots import GPTBot, AnthropicBot
+        
+        if model_engine.value.startswith('gpt'):
             return GPTBot
-        elif model_engine in [Engines.CLAUDE3OPUS, Engines.CLAUDE3SONNET, Engines.CLAUDE35]:
-            from bots import AnthropicBot
+        elif model_engine.value.startswith('claude'):
             return AnthropicBot
         else:
             raise ValueError(f'Unsupported model engine: {model_engine}')
-
 
 class ConversationNode:
 
@@ -229,15 +242,30 @@ class ToolHandler(ABC):
         """
         self.clear()
         requests = self.generate_request_schema(response)
-        if requests:
-            for request_schema in requests:
-                tool_name, input_kwargs = self.tool_name_and_input(request_schema)
-                if tool_name is not None:
-                    output_kwargs = self.function_map[tool_name](**input_kwargs)
-                    response_schema = self.generate_response_schema(request_schema,
-                        output_kwargs)
-                    self.requests.append(request_schema)
-                    self.results.append(response_schema)
+
+        if not requests:
+            return self.requests, self.results
+
+        for request_schema in requests:
+            
+            tool_name, input_kwargs = self.tool_name_and_input(request_schema)
+            
+            if tool_name is None:
+                continue # i.e. skip this request
+                
+            try:
+                output_kwargs = self.function_map[tool_name](**input_kwargs)
+            except KeyError:
+                output_kwargs = {"error": f"Tool '{tool_name}' not found in function map"}
+            except TypeError as e:
+                output_kwargs = {"error": f"Invalid arguments for tool '{tool_name}': {str(e)}"}
+            except Exception as e:
+                output_kwargs = {"error": f"Unexpected error while executing tool '{tool_name}': {str(e)}"}
+
+            response_schema = self.generate_response_schema(request_schema,output_kwargs)
+            self.requests.append(request_schema)
+            self.results.append(response_schema)
+        
         return self.requests, self.results
 
     def add_tool(self, func: Callable) ->None:
@@ -320,12 +348,17 @@ class ToolHandler(ABC):
         return self.requests
 
     def to_dict(self) ->Dict[str, Any]:
-        return {'class': self.__class__.__name__, 'tools': self.tools,
-            'function_map': {k: {'name': v.__name__, 'code': inspect.
-            getsource(v), 'file_path': inspect.getfile(v), 'file_hash':
-            self._get_file_hash(inspect.getfile(v))} for k, v in self.
-            function_map.items()}, 'requests': self.requests, 'results':
-            self.results}
+        return {'class': self.__class__.__name__,
+                'tools': self.tools,
+                'function_map': {k: {'name': v.__name__,
+                                    'code': inspect.getsource(v),
+                                    'file_path': inspect.getfile(v),
+                                    'file_hash': self._get_file_hash(inspect.getfile(v))
+                                    } for k, v in self.function_map.items()
+                                }, 
+                                'requests': self.requests,
+                                'results': self.results
+                }
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) ->'ToolHandler':
