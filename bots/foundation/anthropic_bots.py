@@ -7,6 +7,7 @@ import os
 import inspect
 import random
 import time
+import math
 
 
 class AnthropicNode(ConversationNode):
@@ -115,13 +116,8 @@ class AnthropicMailbox(Mailbox):
         # Build messages block
         messages: List[Dict[str, Any]] = conversation.build_messages()
 
-        # Add cache control to last message block content
-        if isinstance(messages[-1]['content'], str):
-            text = messages[-1]['content']
-            messages[-1]['content'] = [{}]
-            messages[-1]['content'][0]['type'] = 'text'
-            messages[-1]['content'][0]['text'] = text
-        messages[-1]['content'][-1]['cache_control'] = {"type": "ephemeral"}
+        cc = CacheController()
+        messages = cc.manage_cache_controls(messages, .25)
 
         # Add optional blocks to create_dict
         create_dict: Dict[str, Any] = {}
@@ -247,3 +243,104 @@ class AnthropicBot(Bot):
         )
 
 
+class CacheController():
+    def find_cache_control_positions(self, messages: List[Dict[str, Any]]) -> List[int]:
+        positions = []
+        for idx, msg in enumerate(messages):
+            content = msg.get('content', None)
+            if isinstance(content, list):
+                for item in content:
+                    if 'cache_control' in item:
+                        positions.append(idx)
+                        break  # Assuming one cache_control per message
+            elif isinstance(content, dict):
+                if 'cache_control' in content:
+                    positions.append(idx)
+        return positions
+
+    def should_add_cache_control(self, total_messages: int, last_control_pos: int, threshold: float = 0.25) -> bool:
+        required_length = last_control_pos * (1 + threshold)
+        return total_messages >= math.ceil(required_length)
+
+    def insert_cache_control(sel, messages: List[Dict[str, Any]], position: int) -> None:
+        if position < 0 or position > len(messages):
+            position = len(messages) - 1  # Default to last message if out of bounds
+
+        msg = messages[position]
+        content = msg.get('content', None)
+
+        if isinstance(content, str):
+            # Convert string content to a list of dictionaries
+            text = content
+            msg['content'] = [{
+                'type': 'text',
+                'text': text
+            }]
+            content = msg['content']
+
+        if isinstance(content, list):
+            # Add cache_control to the last content block
+            last_content = content[-1]
+            last_content['cache_control'] = {"type": "ephemeral"}
+        elif isinstance(content, dict):
+            # Directly add cache_control
+            msg['content']['cache_control'] = {"type": "ephemeral"}
+
+    def remove_cache_control_at_position(self, messages: List[Dict[str, Any]], position: int) -> None:
+        if position < 0 or position >= len(messages):
+            return  # Invalid position
+
+        msg = messages[position]
+        content = msg.get('content', None)
+
+        if isinstance(content, list):
+            for item in content:
+                if 'cache_control' in item:
+                    del item['cache_control']
+        elif isinstance(content, dict):
+            if 'cache_control' in content:
+                del content['cache_control']
+
+    def manage_cache_controls(self, messages: Any, threshold: float = 0.25) -> List[Dict[str, Any]]:
+
+        # Find existing cache_control positions
+        cache_control_positions = self.find_cache_control_positions(messages)
+
+        if not cache_control_positions:
+            # No existing cache_control, add one at 75% position
+            initial_position = math.ceil(len(messages) * 0.75) - 1
+            self.insert_cache_control(messages, initial_position)
+            cache_control_positions.append(initial_position)
+        elif len(cache_control_positions) == 1:
+            # Only one cache_control exists, check if we need to add the second one
+            last_control_pos = cache_control_positions[-1]
+            if self.should_add_cache_control(len(messages), last_control_pos, threshold):
+                new_position = math.ceil(len(messages) * threshold) - 1
+                self.insert_cache_control(messages, new_position)
+                cache_control_positions.append(new_position)
+        else:
+            # Two cache_control blocks exist, check if we need to add a new one
+            # Identify the latest cache_control position
+            last_control_pos = max(cache_control_positions)
+            if self.should_add_cache_control(len(messages), last_control_pos, threshold):
+                # Add new cache_control at the new position
+                new_position = math.ceil(len(messages) * threshold) - 1
+                self.insert_cache_control(messages, new_position)
+                
+                # Move the older cache_control to the front
+                if cache_control_positions[0] != 0:
+                    # Remove cache_control from its current position
+                    self.remove_cache_control_at_position(messages, cache_control_positions[0])
+                    
+                    # Insert cache_control at the front (position 0)
+                    self.insert_cache_control(messages, 0)
+                
+                # Update cache_control_positions to keep only the two
+                cache_control_positions = self.find_cache_control_positions(messages)
+                if len(cache_control_positions) > 2:
+                    # Remove any extra cache_controls if present
+                    for pos in cache_control_positions[2:]:
+                        self.remove_cache_control_at_position(messages, pos)
+                    cache_control_positions = cache_control_positions[:2]
+
+        return messages
