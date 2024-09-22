@@ -66,10 +66,10 @@ class Engines(str, Enum):
     @staticmethod
     def get_bot_class(model_engine: 'Engines') -> Type['Bot']:
         """Returns the bot class based on the model engine."""
-        from bots import GPTBot, AnthropicBot
+        from bots import ChatGPT_Bot, AnthropicBot
         
         if model_engine.value.startswith('gpt'):
-            return GPTBot
+            return ChatGPT_Bot
         elif model_engine.value.startswith('claude'):
             return AnthropicBot
         else:
