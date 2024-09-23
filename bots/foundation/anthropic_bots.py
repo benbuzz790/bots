@@ -111,7 +111,7 @@ class AnthropicMailbox(Mailbox):
         tools: Optional[List[Dict[str, Any]]] = None
         if bot.tool_handler and bot.tool_handler.tools:
             tools = bot.tool_handler.tools
-        tools[-1]["cache_control"] = {"type": "ephemeral"}
+            tools[-1]["cache_control"] = {"type": "ephemeral"}
 
         # Build messages block
         messages: List[Dict[str, Any]] = conversation.build_messages()
