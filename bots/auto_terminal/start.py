@@ -69,10 +69,30 @@ def initialize_bot() -> Optional[bots.ChatGPT_Bot | bots.AnthropicBot]:
         raise ValueError('No OpenAI or Anthropic API keys found. Set up your key as an environment variable.')
 
     bot.add_tools(bots.python_tools)
-    bot.add_tools(bots.github_tools)
+    bot.add_tools(bots.utf8_tools)
+    #bot.add_tools(bots.github_tools) #not ready
 
     return bot
 
+import sys
+import traceback
+from functools import wraps
+from typing import Any, Callable
+
+def debug_on_error(func: Callable) -> Callable:
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except Exception:
+            type, value, tb = sys.exc_info()
+            traceback.print_exception(type, value, tb)
+            print("\n--- Entering post-mortem debugging ---")
+            import pdb
+            pdb.post_mortem(tb)
+    return wrapper
+
+@debug_on_error
 def main() -> None:
 
     codey = initialize_bot()
