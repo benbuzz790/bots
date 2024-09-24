@@ -7,54 +7,6 @@ import traceback
 import datetime as DT
 import subprocess
 
-
-def rewrite(file_path, content):
-    """
-    Completely rewrites the content of a file with new content.
-
-    Use when you want to replace the entire contents of a file or write a new file.
-
-    Parameters:
-    - file_path (str): The path to the file that will be rewritten.
-    - content (str): The new content that will be written to the file.
-
-    Returns 'success' or an error message string.
-    """
-    try:
-        with open(file_path, 'w', encoding='utf-8') as file:
-            file.write(content)
-        return f'Rewrote {file_path} successfully'
-    except Exception as error:
-        return _process_error(error)
-
-def replace_string(file_path, old_string, new_string):
-    """
-    Replaces all occurrences of a specified string with a new string in a file.
-
-    Use when you need to find and replace a specific string throughout an entire file.
-
-    Parameters:
-    - file_path (str): The path to the file where the replacements will be made.
-    - old_string (str): The string to be replaced.
-    - new_string (str): The string that will replace the old string.
-
-    Returns a confirmation message or an error message.
-    """
-    if not os.path.exists(file_path):
-        return _process_error(FileNotFoundError(
-            f"File '{file_path}' not found."))
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            content = file.read()
-        updated_content = re.sub(re.escape(old_string), new_string, content)
-        with open(file_path, 'w', encoding='utf-8') as file:
-            file.write(updated_content)
-    except Exception as e:
-        return _process_error(e)
-    return (
-        f"Replaced all instances of '{old_string}' with '{new_string}' in '{file_path}'."
-        )
-
 def replace_class(file_path, new_class_def, old_class_name=None):
     """
     Replaces a class definition in a file with a new class definition.
@@ -118,7 +70,10 @@ def replace_function(file_path, new_function_def):
 
     Parameters:
     - file_path (str): The path to the file containing the function to be replaced.
-    - new_function_def (str): The new function definition as a string. Note this function uses ast parsing, so it is not necessary to mimic indentation level.
+    - new_function_def (str): The new, pure function definition as a string. 
+        Note this function uses ast parsing, so do not mimic indentation.
+        Note that adding import statements outside the function will cause an error,
+        as new_function_def would not be a pure function definition
 
     Returns a confirmation message or an error message.
     """
@@ -173,8 +128,11 @@ def add_function_to_class(file_path, class_name, new_method_def):
     Parameters:
     - file_path (str): The path to the file containing the class to be modified.
     - class_name (str): The name of the class to which the new method will be added.
-    - new_method_def (str): The new method definition as a string. Note this function uses ast parsing, so it is not necessary to mimic indentation level.
-
+    - new_method_def (str): The new method definition as a string. 
+        Note this function uses ast parsing, so do not mimic indentation.
+        Note that adding import statements outside the function will cause an error,
+        as new_method_def would not be a pure method definition
+    
     Returns a confirmation message or an error message.
     """
     try:
@@ -229,8 +187,10 @@ def add_function_to_file(file_path: str, new_function_def: str) -> str:
 
     Parameters:
     - file_path (str): The path to the file where the new function will be added.
-    - new_function_def (str): The new function definition as a string. Note this function uses ast parsing, so it is not necessary to mimic indentation level.
-
+    - new_function_def (str): The new pure function definition as a string
+        Note this function uses ast parsing, so do not mimic indentation.
+        Note that adding import statements outside the function will cause an error,
+        as new_function_def would not be a pure function definition
     Returns a confirmation message or an error message.
     """
 
@@ -267,7 +227,10 @@ def add_class_to_file(file_path, class_def):
 
     Parameters:
     - file_path (str): The path to the file where the new class will be added.
-    - class_def (str): The new class definition as a string. Note this function uses ast parsing, so it is not necessary to mimic indentation level.
+    - class_def (str): The new pure class definition as a string. 
+        Note this function uses ast parsing, so it is not necessary to mimic indentation level.
+        Note that adding import statements outside the class will cause an error,
+        as new_class_def would not be a pure class definition
 
     Returns a confirmation message or an error message.
     """
@@ -296,88 +259,6 @@ def add_class_to_file(file_path, class_def):
         return _process_error(e)
     return f"Class '{new_class_node.name}' has been added to '{file_path}'."
 
-def append(file_path, content_to_append):
-    """
-    Appends content to the end of a file.
-
-    Use when you want to add new content to a file without modifying its existing content.
-
-    Parameters:
-    - file_path (str): The path to the file where content will be appended.
-    - content_to_append (str): The content to be added to the end of the file.
-
-    Returns a confirmation message or an error message.
-    """
-    try:
-        with open(file_path, 'a', encoding='utf-8') as file:
-            file.write(content_to_append)
-    except Exception as e:
-        return _process_error(e)
-    return f"Content appended to the file '{file_path}'."
-
-def prepend(file_path, content_to_prepend):
-    """
-    Prepends content to the beginning of a file.
-
-    Use when you need to add new content to the start of a file, before any existing content.
-
-    Parameters:
-    - file_path (str): The path to the file where content will be prepended.
-    - content_to_prepend (str): The content to be added to the beginning of the file.
-
-    Returns a confirmation message or an error message.
-    """
-    try:
-        with open(file_path, 'r+', encoding='utf-8') as file:
-            content = file.read()
-            file.seek(0, 0)
-            file.write(content_to_prepend + content)
-    except Exception as e:
-        return _process_error(e)
-    return f"Content prepended to the file '{file_path}'."
-
-def delete_match(file_path, pattern):
-    """
-    Deletes all lines in a file that contain a specified pattern (case-insensitive).
-
-    Use to remove specific content from a file based on a search pattern.
-
-    Parameters:
-    - file_path (str): The path to the file from which lines will be deleted.
-    - pattern (str): The pattern to search for in each line.
-
-    Returns a confirmation message or an error message.
-    """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-        with open(file_path, 'w', encoding='utf-8') as file:
-            for line in lines:
-                if pattern.lower() not in line.lower():
-                    file.write(line)
-            return (
-                f"Lines containing '{pattern}' (case-insensitive) have been deleted from '{file_path}'."
-                )
-    except Exception as e:
-        return _process_error(e)
-
-def read_file(file_path):
-    """
-    Reads and returns the entire content of a file as a string.
-
-    Use when you need to retrieve the complete content of a file for further processing or analysis.
-
-    Parameters:
-    - file_path (str): The path to the file to be read.
-
-    Returns the file content as a string or an error message.
-    """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            return file.read()
-    except Exception as e:
-        return _process_error(e)
-
 def execute_python_code(code, timeout=300):
     """
     Executes python code in a stateless environment.
@@ -404,18 +285,8 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except Exception as error_error:
-        print(f"An error occurred: {str(error_error)}", file=sys.stderr)
-        print("Local variables at the time of the error:", file=sys.stderr)
-        tb = sys.exc_info()[2]
-        while tb:
-            frame = tb.tb_frame
-            tb = tb.tb_next
-            print(f"Frame {frame.f_code.co_name} in {frame.f_code.co_filename}:{frame.f_lineno}", file=sys.stderr)
-            local_vars = dict(frame.f_locals)
-            for key, value in local_vars.items():
-                if not key.startswith('__') and key not in ['sys', 'traceback', 'error_error', 'main', 'tb', 'frame']:
-                    print(f"    {key} = {value}", file=sys.stderr)
+    except Exception as error:
+        print(f"An error occurred: {str(error)}", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
     """
         return ast.parse(wrapper_code)
@@ -436,27 +307,16 @@ if __name__ == '__main__':
     now = DT.datetime.now()
     formatted_datetime = now.strftime('%Y.%m.%d-%H.%M.%S')
     
-    # Get the directory of the current file (which should be in your package)
+    # Get the directory of this file to store a temp script
     package_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    # Define the scripts directory
     scripts_dir = os.path.join(package_root, 'scripts')
-
-    # Create the scripts directory if it doesn't exist
     if not os.path.exists(scripts_dir):
         os.makedirs(scripts_dir)
-
-    # Use package_root instead of cwd
     temp_file_name = os.path.join(scripts_dir, 'temp_script.py')
-    temp_file_copy = os.path.join(scripts_dir, f'last_temp_script@{formatted_datetime}.py')
-
     with open(temp_file_name, 'w', encoding='utf-8') as temp_file:
         temp_file.write(final_code)
         temp_file.flush()
 
-    with open(temp_file_copy, 'w', encoding='utf-8') as temp_file:
-        temp_file.write(final_code)
-        temp_file.flush()
     try:
         process = subprocess.Popen(['python', temp_file_name], stdout=
             subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding=

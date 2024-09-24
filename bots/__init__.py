@@ -15,5 +15,6 @@ __all__ = [
     'lazy',
     'python_tools',
     'github_tools',
+    'utf8_tools',
     'Engines'
 ]
