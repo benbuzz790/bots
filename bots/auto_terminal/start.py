@@ -18,6 +18,10 @@ Available commands:
 /quiet: Hide tool requests and results
 /save: Save the current bot
 /load: Load a previously saved bot
+/up: "rewind" the conversation by one turn by moving up the conversation tree
+/down: Move down the conversation tree (only first index supported at this time)
+/left: Move to this conversation node's left sibling
+/right: Move to this conversation node's right sibling
 /auto: Prompt the bot to work autonomously for a preset number of prompts
 /exit: Exit the program
 
@@ -105,20 +109,25 @@ def main() -> None:
     while True:
         if turn == 'assistant':
             if auto > 0:
-                msg: str = f'Work autonomously for {auto} more prompts'
+                msg: str = f'ok' # ok seems to be the least anchoring thing to say
                 pretty(msg, 'You')
+                pretty(f'Auto active for {auto} more prompts', 'System')
                 auto -= 1
             else:
                 turn = 'user'
             response: str = codey.respond(msg)
-            tool_use_requests: List[Dict[str, Any]] = codey.tool_handler.get_requests()
-            tool_use_results: List[Dict[str, Any]] = codey.tool_handler.get_results()
+            requests: List[Dict[str, Any]] = codey.tool_handler.get_requests()
+            results: List[Dict[str, Any]] = codey.tool_handler.get_results()
 
             pretty(response, codey.name)
-
-            if verbose:
-                pretty(f'Tool Requests\n\n{json.dumps(tool_use_requests, indent=1)}', "System")
-                pretty(f'Tool Results\n\n{json.dumps(tool_use_results, indent=1)}', "System")       
+            if requests:
+                if verbose:
+                    pretty(f'Tool Requests\n\n{json.dumps(requests, indent=1)}', "System")
+                    pretty(f'Tool Results\n\n{json.dumps(results, indent=1)}', "System")  
+                else:
+                    for request in requests:
+                        tool_name, _ = codey.tool_handler.tool_name_and_input(request)
+                        pretty(f'{codey.name} used {tool_name}', "System")     
         
         else:  # user turn
             uinput: str = input("You: ")
@@ -151,6 +160,43 @@ def main() -> None:
                     verbose = False
                 case "/verbose":
                     verbose = True
+                case "/up":
+                    pretty('Moving up conversation tree', 'System')
+                    codey.conversation = codey.conversation.parent.parent # Move to last bot message
+                    pretty(codey.conversation.content, codey.name)
+                case "/down":
+                    if codey.conversation.replies:
+                        max_index = len(codey.conversation.replies)-1
+                        auto = int(input(f"Reply index (max {max_index}):"))
+                        pretty('Moving down conversation tree','System')
+                        codey.conversation = codey.conversation.replies[0].replies[0] # Move to next bot message
+                        pretty(codey.conversation.content, codey.name)
+                    else:
+                        pretty('Conversation has no replies at this point', 'System')
+                case "/left":
+                    if codey.conversation.parent.replies:
+                        # Find the index of the current conversation in the parent's replies
+                        current_index = next(i for i, reply in enumerate(codey.conversation.parent.replies) if reply is codey.conversation)
+
+                        # Calculate the index of the previous conversation with wraparound
+                        next_index = (current_index - 1) % len(codey.conversation.parent.replies)
+
+                        # Update codey.conversation to the next conversation in the list
+                        codey.conversation = codey.conversation.parent.replies[next_index]
+                    else:
+                        pretty('Conversation has no siblings at this point', 'System')
+                case "/right":
+                    if codey.conversation.parent.replies:
+                        # Find the index of the current conversation in the parent's replies
+                        current_index = next(i for i, reply in enumerate(codey.conversation.parent.replies) if reply is codey.conversation)
+
+                        # Calculate the index of the next conversation with wraparound
+                        next_index = (current_index + 1) % len(codey.conversation.parent.replies)
+
+                        # Update codey.conversation to the next conversation in the list
+                        codey.conversation = codey.conversation.parent.replies[next_index]
+                    else:
+                        pretty('Conversation has no siblings at this point', 'System')
                 case "/help":
                     pretty('')  # separator
                     pretty(help_msg, "System")
