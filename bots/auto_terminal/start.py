@@ -63,17 +63,18 @@ def initialize_bot() -> Optional[bots.ChatGPT_Bot | bots.AnthropicBot]:
         try:
             bot = bots.AnthropicBot(name='Claude')
         except Exception as e:
-            print(f"Failed to initialize Anthropic bot: {e}")
+            pretty(f"Failed to initialize Anthropic bot: {e}", "System")
     elif openai_key:
         try:
             bot = bots.ChatGPT_Bot(name='ChatGPT')
         except Exception as e:
-            print(f"Failed to initialize ChatGPT bot: {e}")
+            pretty(f"Failed to initialize ChatGPT bot: {e}", "System")
     else:
         raise ValueError('No OpenAI or Anthropic API keys found. Set up your key as an environment variable.')
 
     bot.add_tools(bots.python_tools)
     bot.add_tools(bots.utf8_tools)
+    bot.add_tools(bots.terminal_tools)
     #bot.add_tools(bots.github_tools) #not ready
 
     return bot
