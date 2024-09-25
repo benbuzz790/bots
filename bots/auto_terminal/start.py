@@ -19,7 +19,7 @@ Available commands:
 /save: Save the current bot
 /load: Load a previously saved bot
 /up: "rewind" the conversation by one turn by moving up the conversation tree
-/down: Move down the conversation tree (only first index supported at this time)
+/down: Move down the conversation tree. Requests index of reply if there are multiple.
 /left: Move to this conversation node's left sibling
 /right: Move to this conversation node's right sibling
 /auto: Prompt the bot to work autonomously for a preset number of prompts
@@ -110,7 +110,7 @@ def main() -> None:
     while True:
         if turn == 'assistant':
             if auto > 0:
-                msg: str = f'ok' # ok seems to be the least anchoring thing to say
+                msg: str = f'ok' # ok seems to be the least anchoring thing to say, and some apis require a response.
                 pretty(msg, 'You')
                 pretty(f'Auto active for {auto} more prompts', 'System')
                 auto -= 1
@@ -168,9 +168,11 @@ def main() -> None:
                 case "/down":
                     if codey.conversation.replies:
                         max_index = len(codey.conversation.replies)-1
-                        auto = int(input(f"Reply index (max {max_index}):"))
+                        idx = 0
+                        if max_index > 0:
+                            idx = int(input(f"Reply index (max {max_index}):"))
                         pretty('Moving down conversation tree','System')
-                        codey.conversation = codey.conversation.replies[0].replies[0] # Move to next bot message
+                        codey.conversation = codey.conversation.replies[idx].replies[0] # Move to next bot message
                         pretty(codey.conversation.content, codey.name)
                     else:
                         pretty('Conversation has no replies at this point', 'System')
@@ -184,6 +186,7 @@ def main() -> None:
 
                         # Update codey.conversation to the next conversation in the list
                         codey.conversation = codey.conversation.parent.replies[next_index]
+                        pretty(codey.conversation.content, codey.name)
                     else:
                         pretty('Conversation has no siblings at this point', 'System')
                 case "/right":
@@ -196,6 +199,7 @@ def main() -> None:
 
                         # Update codey.conversation to the next conversation in the list
                         codey.conversation = codey.conversation.parent.replies[next_index]
+                        pretty(codey.conversation.content, codey.name)
                     else:
                         pretty('Conversation has no siblings at this point', 'System')
                 case "/help":

@@ -35,7 +35,6 @@ def _process_error(error):
 
 # Suggestions for advanced tools:
 """
-You make an excellent point. Many of the suggestions I provided earlier are indeed within easy reach of typical PowerShell commands. You're right that we should focus on more complex operations that usually require composite or complicated commands. With that in mind, let me suggest some more advanced tools that could be valuable additions:
 
 1. Recursive File Search and Replace:
    A tool that can search for a pattern across multiple files in a directory (and subdirectories) and perform replacements. This often requires a combination of Get-ChildItem, Select-String, and (Get-Content | Set-Content) in PowerShell.
