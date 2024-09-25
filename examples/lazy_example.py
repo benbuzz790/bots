@@ -1,4 +1,4 @@
-from bots.lazy import lazy
+import bots.lazy.lazy as lazy
 
 @lazy("Sort using a funny algorithm. Name all variables as though you're a clown.")
 def sort(arr: list[int]) -> list[int]:
