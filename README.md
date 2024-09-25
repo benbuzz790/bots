@@ -72,7 +72,7 @@ bot.respond("Please write Conway's game of life in a new file conway.py")
 
 ```cmd
 :: Start an autonomous coding session
->>> python -m bots.auto_terminal.auto_terminal
+>>> python -m bots.auto_terminal.start
 System: Bot initialized
 
 ---  
@@ -91,6 +91,8 @@ System:
     /help: Show this help message
     /verbose: Show tool requests and results (default on)
     /quiet: Hide tool requests and results
+    /up: Move up the conversation tree
+    ...
     /save: Save the current bot
     /load: Load a previously saved bot
     /auto: Prompt the bot to work autonomously for a preset number of prompts
@@ -143,7 +145,7 @@ System: Tool Results
 ### Using the Lazy Decorator
 
 ```python
-from bots.lazy import lazy
+import bots.lazy.lazy as lazy
 
 @lazy(prompt="Implement a function that calculates the fibonacci sequence up to n terms.")
 def fibonacci(n: int) -> list:
