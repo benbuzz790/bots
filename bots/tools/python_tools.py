@@ -7,6 +7,14 @@ import traceback
 import datetime as DT
 import subprocess
 
+# TODO
+
+def read_class():
+    pass
+
+def read_function(function_name:str, class_name:str=None):
+    pass
+
 def replace_class(file_path, new_class_def, old_class_name=None):
     """
     Replaces a class definition in a file with a new class definition.
@@ -332,28 +340,6 @@ if __name__ == '__main__':
     finally:
         if os.path.exists(temp_file_name):
             os.remove(temp_file_name)
-
-def execute_powershell(code):
-    """
-    Executes PowerShell code in a stateless environment
-
-    Use when you need to run PowerShell commands and capture their output.
-
-    Parameters:
-    - code (str): PowerShell code to execute.
-
-    Returns command output or an error message.
-    """
-    output = ''
-    try:
-        result = subprocess.run(['powershell', '-Command', code],
-            capture_output=True, text=True, timeout=300)
-        output += result.stdout + result.stderr
-    except subprocess.TimeoutExpired:
-        output += 'Error: Command execution timed out after 30 seconds.'
-    except Exception as e:
-        output += _process_error(e)
-    return output
 
 def get_py_interface(file_path: str) -> str:
     """
