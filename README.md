@@ -4,7 +4,7 @@
 
 **bots** (bɒts), ***n.pl.*** : Language Models which are instruct-tuned, have the ability to use tools, and are encapsulated with model parameters, metadata, and conversation history.
 
-The bots library provides a structured interface for working with such agents, aiming to make LLM tools more convenient and accessible for developers and researchers.
+The bots library provides a structured interface for working with such agents, aiming to make LLM tools more convenient, accessible, and sharable for developers and researchers.
 
 ## Foundation (bots.foundation)
 
