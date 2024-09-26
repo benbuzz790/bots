@@ -1,4 +1,9 @@
-import bots
+from bots.foundation.openai_bots import ChatGPT_Bot
+from bots.foundation.anthropic_bots import AnthropicBot
+import sys
+import bots.tools.python_tools
+import bots.tools.terminal_tools
+import bots.tools.utf8_tools
 import textwrap
 from datetime import datetime as datetime
 from typing import Optional, List, Dict, Any
@@ -56,25 +61,25 @@ def pretty(string: str, name: Optional[str] = None, width: int = 100, indent: in
     print('\n'.join(formatted_lines))
     print("\n---\n")
 
-def initialize_bot() -> Optional[bots.ChatGPT_Bot | bots.AnthropicBot]:
+def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
     openai_key = os.getenv('OPENAI_API_KEY')
     anthropic_key = os.getenv('ANTHROPIC_API_KEY')
     if anthropic_key:
         try:
-            bot = bots.AnthropicBot(name='Claude')
+            bot = AnthropicBot(name='Claude')
         except Exception as e:
             pretty(f"Failed to initialize Anthropic bot: {e}", "System")
     elif openai_key:
         try:
-            bot = bots.ChatGPT_Bot(name='ChatGPT')
+            bot = ChatGPT_Bot(name='ChatGPT')
         except Exception as e:
             pretty(f"Failed to initialize ChatGPT bot: {e}", "System")
     else:
         raise ValueError('No OpenAI or Anthropic API keys found. Set up your key as an environment variable.')
 
-    bot.add_tools(bots.python_tools)
-    bot.add_tools(bots.utf8_tools)
-    bot.add_tools(bots.terminal_tools)
+    bot.add_tools(bots.tools.python_tools)
+    bot.add_tools(bots.tools.utf8_tools)
+    bot.add_tools(bots.tools.terminal_tools)
     #bot.add_tools(bots.github_tools) #not ready
 
     return bot
@@ -109,6 +114,8 @@ def main() -> None:
 
     while True:
         if turn == 'assistant':
+
+            # Decide who goes next
             if auto > 0:
                 msg: str = f'ok' # ok seems to be the least anchoring thing to say, and some apis require a response.
                 pretty(msg, 'You')
@@ -116,6 +123,8 @@ def main() -> None:
                 auto -= 1
             else:
                 turn = 'user'
+            
+            # Print response
             response: str = codey.respond(msg)
             requests: List[Dict[str, Any]] = codey.tool_handler.get_requests()
             results: List[Dict[str, Any]] = codey.tool_handler.get_results()
