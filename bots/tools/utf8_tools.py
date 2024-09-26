@@ -50,7 +50,7 @@ def replace(file_path, old_string, new_string):
         f"Replaced all instances of '{old_string}' with '{new_string}' in '{file_path}'."
         )
 
-def append(file_path, content_to_append):
+def append(file_path, content):
     """
     Appends content to the end of a file.
 
@@ -58,18 +58,18 @@ def append(file_path, content_to_append):
 
     Parameters:
     - file_path (str): The path to the file where content will be appended.
-    - content_to_append (str): The content to be added to the end of the file.
+    - content (str): The content to be added to the end of the file.
 
     Returns a confirmation message or an error message.
     """
     try:
         with open(file_path, 'a', encoding='utf-8') as file:
-            file.write(content_to_append+"\n")
+            file.write(content+"\n")
     except Exception as e:
         return _process_error(e)
     return f"Content appended to the file '{file_path}'."
 
-def prepend(file_path, content_to_prepend):
+def prepend(file_path, content):
     """
     Prepends content to the beginning of a file.
 
@@ -77,7 +77,7 @@ def prepend(file_path, content_to_prepend):
 
     Parameters:
     - file_path (str): The path to the file where content will be prepended.
-    - content_to_prepend (str): The content to be added to the beginning of the file.
+    - content (str): The content to be added to the beginning of the file.
 
     Returns a confirmation message or an error message.
     """
@@ -85,7 +85,7 @@ def prepend(file_path, content_to_prepend):
         with open(file_path, 'r+', encoding='utf-8') as file:
             content = file.read()
             file.seek(0, 0)
-            file.write(content_to_prepend + "\n" + content)
+            file.write(content + "\n" + content)
     except Exception as e:
         return _process_error(e)
     return f"Content prepended to the file '{file_path}'."
