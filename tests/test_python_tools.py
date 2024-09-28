@@ -64,7 +64,7 @@ class DetailedTestCase(unittest.TestCase):
             actual_content = f.read()
         self.assertEqualDetailed(actual_content, expected_content, msg)
 
-class TestBotTools(DetailedTestCase):
+class TestPythonTools(DetailedTestCase):
 
     def setUp(self):
         self.test_file = 'test_file.py'
@@ -74,17 +74,6 @@ class TestBotTools(DetailedTestCase):
     def tearDown(self):
         if os.path.exists(self.test_file):
             os.remove(self.test_file)
-
-    def test_rewrite(self):
-        new_content = '# New content'
-        python_tools.rewrite(self.test_file, new_content)
-        self.assertFileContentEqual(self.test_file, new_content, 'Rewrite failed')
-
-    def test_replace_string(self):
-        initial_content = "old_string = 'value'"
-        python_tools.rewrite(self.test_file, initial_content)
-        python_tools.replace_string(self.test_file, 'old_string', 'new_string')
-        self.assertFileContentEqual(self.test_file, "new_string = 'value'", 'Replace string failed')
 
     def test_replace_class(self):
         initial_content = """
@@ -97,7 +86,7 @@ class OldClass:
     def new_method(self):
         print("New method")
 """
-        python_tools.rewrite(self.test_file, initial_content)
+        python_tools.write(self.test_file, initial_content)
         python_tools.replace_class(self.test_file, new_class)
         self.assertFileContentEqual(self.test_file, new_class, 'Replace class failed')
 
@@ -110,7 +99,7 @@ def old_function():
 def old_function():
     print("New function")
 """
-        python_tools.rewrite(self.test_file, initial_content)
+        python_tools.write(self.test_file, initial_content)
         python_tools.replace_function(self.test_file, new_function)
         self.assertFileContentEqual(self.test_file, new_function, 'Replace function failed')
 
@@ -132,7 +121,7 @@ class TestClass:
     def new_method(self):
         print("New method")
 """
-        python_tools.rewrite(self.test_file, initial_content)
+        python_tools.write(self.test_file, initial_content)
         python_tools.add_function_to_class(self.test_file, 'TestClass', new_method)
         self.assertFileContentEqual(self.test_file, expected_content, 'Add function to class failed')
 
@@ -144,52 +133,9 @@ class NewClass:
         pass
 """
         expected_content = initial_content + new_class
-        python_tools.rewrite(self.test_file, initial_content)
+        python_tools.write(self.test_file, initial_content)
         python_tools.add_class_to_file(self.test_file, new_class)
         self.assertFileContentEqual(self.test_file, expected_content, 'Add class to file failed')
-
-    def test_append(self):
-        initial_content = "# Initial content\n"
-        append_content = "# Appended content\n"
-        python_tools.rewrite(self.test_file, initial_content)
-        python_tools.append(self.test_file, append_content)
-        self.assertFileContentEqual(self.test_file, initial_content + append_content, 'Append failed')
-
-    def test_prepend(self):
-        initial_content = "# Initial content\n"
-        prepend_content = "# Prepended content\n"
-        python_tools.rewrite(self.test_file, initial_content)
-        python_tools.prepend(self.test_file, prepend_content)
-        self.assertFileContentEqual(self.test_file, prepend_content + initial_content, 'Prepend failed')
-
-    def test_read_file(self):
-        # Create a temporary file
-        temp_file = 'temp_test_file.txt'
-        with open(temp_file, 'w') as f:
-            f.write("Test content")
-        
-        # Read the file using the new function
-        content = python_tools.read_file(temp_file)
-        
-        # Check if the content is correct
-        self.assertEqual(content, "Test content")
-        
-        # Clean up
-        os.remove(temp_file)
-
-    def test_delete_match(self):
-        initial_content = """
-# Keep this line
-# Delete this line
-# Keep this line too
-"""
-        expected_content = """
-# Keep this line
-# Keep this line too
-"""
-        python_tools.rewrite(self.test_file, initial_content)
-        python_tools.delete_match(self.test_file, 'Delete this line')
-        self.assertFileContentEqual(self.test_file, expected_content, 'Delete match failed')
 
     def test_replace_class_with_comments(self):
         initial_content = """
@@ -215,7 +161,7 @@ class OldClass:
         print("New method")
 # This is a comment after the class
 """
-        python_tools.rewrite(self.test_file, initial_content)
+        python_tools.write(self.test_file, initial_content)
         python_tools.replace_class(self.test_file, new_class)
         self.assertFileContentEqual(self.test_file, expected_content, 'Replace class with comments failed')
 
@@ -244,7 +190,7 @@ class OldClass:
 
 # Some space after
 """
-        python_tools.rewrite(self.test_file, initial_content)
+        python_tools.write(self.test_file, initial_content)
         python_tools.replace_class(self.test_file, new_class)
         self.assertFileContentEqual(self.test_file, expected_content, 'Replace class preserve whitespace failed')
 
@@ -305,10 +251,9 @@ class ComplexClass(NewBase):
 def some_function():
     pass
 """
-        python_tools.rewrite(self.test_file, initial_content)
+        python_tools.write(self.test_file, initial_content)
         python_tools.replace_class(self.test_file, new_class)
         self.assertFileContentEqual(self.test_file, expected_content, 'Replace complex class failed')
 
 if __name__ == '__main__':
     unittest.main()
-

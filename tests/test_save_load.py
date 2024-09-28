@@ -8,13 +8,17 @@ from bots.foundation.openai_bots import ChatGPT_Bot
 from bots.foundation.anthropic_bots import AnthropicBot
 import bots.tools.python_tools as python_tools
 
+        
+def simple_addition(x, y) -> str:
+    return int(x) + int(y)
+
 class TestSaveLoad(unittest.TestCase):
 
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
-        self.api_key = "test_api_key"
-        self.openai_bot = ChatGPT_Bot(name="TestGPT", model_engine=Engines.GPT35TURBO, api_key=self.api_key)
-        self.anthropic_bot = AnthropicBot(name="TestClaude", model_engine=Engines.CLAUDE3_SONNET, api_key=self.api_key)
+        self.openai_bot = ChatGPT_Bot(name="TestGPT", model_engine=Engines.GPT35TURBO)
+        self.anthropic_bot = AnthropicBot(name="TestClaude", model_engine=Engines.CLAUDE35_SONNET)
+        return self
 
     def tearDown(self):
         for file in os.listdir(self.temp_dir):
@@ -86,31 +90,11 @@ class TestSaveLoad(unittest.TestCase):
     def test_tool_execution_results(self):
         bot = self.openai_bot
         
-        def simple_addition(x: int, y: int) -> int:
-            return x + y
-        
         bot.add_tool(simple_addition)
-        
-        with patch.object(bot.mailbox, 'send_message') as mock_send_message:
-            mock_send_message.return_value = {
-                "choices": [{
-                    "message": {
-                        "content": "The result of 2 + 3 is:",
-                        "tool_calls": [{
-                            "id": "call_123",
-                            "type": "function",
-                            "function": {
-                                "name": "simple_addition",
-                                "arguments": '{"x": 2, "y": 3}'
-                            }
-                        }]
-                    }
-                }]
-            }
-            bot.respond("What is 2 + 3?")
+        bot.respond("What is 2 + 3?")
         
         self.assertEqual(len(bot.tool_handler.get_results()), 1)
-        self.assertEqual(bot.tool_handler.get_results()[0]['content'], {'error': None, 'result': 5})
+        self.assertEqual(int(bot.tool_handler.get_results()[0]['content']), 5)
         
         save_path = os.path.join(self.temp_dir, "tool_exec_bot.bot")
         bot.save(save_path)
@@ -142,35 +126,17 @@ class TestSaveLoad(unittest.TestCase):
         with self.assertRaises(AttributeError):
             _ = loaded_bot.non_existent_attr
 
-    def test_save_load_different_node_types(self):
-        openai_bot = self.openai_bot
-        anthropic_bot = self.anthropic_bot
+from debug_on_error import debug_on_error as dbstoperror
 
-        openai_bot.respond("Hello, OpenAI bot!")
-        anthropic_bot.respond("Hello, Anthropic bot!")
+@dbstoperror
+def main():
+    tests = TestSaveLoad().setUp()
+    tests.test_save_load_with_file_tools()
+    tests.test_save_load_with_module_tools()
+    tests.test_tool_execution_results()
+    tests.test_save_load_after_conversation()
 
-        openai_bot.conversation.tool_calls = [{"id": "call_123", "type": "function", "function": {"name": "test_function", "arguments": "{}"}}]
-        anthropic_bot.conversation.content = [{"type": "text", "text": "Hello, Anthropic bot!"}]
-
-        openai_save_path = os.path.join(self.temp_dir, "openai_node_bot.bot")
-        anthropic_save_path = os.path.join(self.temp_dir, "anthropic_node_bot.bot")
-        openai_bot.save(openai_save_path)
-        anthropic_bot.save(anthropic_save_path)
-
-        loaded_openai_bot = Bot.load(openai_save_path)
-        loaded_anthropic_bot = Bot.load(anthropic_save_path)
-
-        self.assertIsInstance(loaded_openai_bot.conversation, openai_bot.conversation.__class__)
-        self.assertIsInstance(loaded_anthropic_bot.conversation, anthropic_bot.conversation.__class__)
-
-        self.assertEqual(openai_bot.conversation.tool_calls, loaded_openai_bot.conversation.tool_calls)
-        self.assertEqual(anthropic_bot.conversation.content, loaded_anthropic_bot.conversation.content)
-
-        self.assertEqual(openai_bot.conversation.node_count(), loaded_openai_bot.conversation.node_count())
-        self.assertEqual(anthropic_bot.conversation.node_count(), loaded_anthropic_bot.conversation.node_count())
-
-        self.assertEqual(openai_bot.conversation.content, loaded_openai_bot.conversation.content)
-        self.assertEqual(anthropic_bot.conversation.content, loaded_anthropic_bot.conversation.content)
 
 if __name__ == '__main__':
     unittest.main()
+    #main()

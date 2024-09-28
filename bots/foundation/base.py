@@ -11,6 +11,8 @@ from types import ModuleType
 import threading
 import inspect
 import hashlib
+import importlib
+
 
 # Some utility functions:
 
@@ -348,38 +350,64 @@ class ToolHandler(ABC):
         return self.requests
 
     def to_dict(self) ->Dict[str, Any]:
-        return {'class': self.__class__.__name__,
+        return {'class': f"{self.__class__.__module__}.{self.__class__.__name__}",
                 'tools': self.tools,
-                'function_map': {k: {'name': v.__name__,
+                'requests': self.requests,
+                'results': self.results,
+                'function_map': {k: 
+                                    {
+                                    'name': v.__name__,
                                     'code': inspect.getsource(v),
                                     'file_path': inspect.getfile(v),
-                                    'file_hash': self._get_file_hash(inspect.getfile(v))
-                                    } for k, v in self.function_map.items()
-                                }, 
-                                'requests': self.requests,
-                                'results': self.results
+                                    'file_hash': self._get_code_hash(inspect.getsource(v))
+                                    } 
+                                for k, v in self.function_map.items()
+                                }
                 }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) ->'ToolHandler':
+    def from_dict(cls, data: Dict[str, Any]) -> 'ToolHandler':
         handler = cls()
-        handler.tools = data['tools']
         handler.results = data['results']
         handler.requests = data['requests']
-        for _, func_data in data['function_map'].items():
-            if os.path.exists(func_data['file_path']):
-                current_hash = handler._get_file_hash(func_data['file_path'])
-                if current_hash == func_data['file_hash']:
-                    handler.add_tools_from_file(func_data['file_path'])
-                    continue
-            exec(func_data['code'], globals())
-            func = globals()[func_data['name']]
-            handler.add_tool(func)
-        return handler
 
-    def _get_file_hash(self, file_path: str) ->str:
+        def load_function_from_code(code, func_name):
+            exec(code, globals())
+            func = globals().get(func_name)
+            if func_name in globals():
+                del globals()[func_name]
+            return func
+
+        for func_name, func_data in data['function_map'].items():
+            file_path = func_data['file_path']
+            saved_file_hash = func_data['file_hash']
+            saved_code_hash = cls._get_code_hash(func_data['code'])
+
+            file_exists = os.path.exists(file_path)
+            file_unchanged = file_exists and cls._get_file_hash(file_path) == saved_file_hash
+            code_unchanged = cls._get_code_hash(func_data['code']) == saved_code_hash
+
+            if file_unchanged and code_unchanged:
+                handler.add_tools_from_file(file_path)
+            elif code_unchanged:
+                func = load_function_from_code(func_data['code'], func_name)
+                if func:
+                    handler.add_tool(func)
+                else:
+                    print(f"Warning: Function {func_name} could not be loaded from saved code")
+            else:
+                print(f"Warning: Saved code for {func_name} has been modified. Skipping.")
+
+        return handler
+    
+    @staticmethod
+    def _get_file_hash(file_path: str) -> str:
         with open(file_path, 'rb') as f:
             return hashlib.md5(f.read()).hexdigest()
+
+    @staticmethod
+    def _get_code_hash(code):
+        return hashlib.md5(code.encode()).hexdigest()
 
 
 class Mailbox(ABC):
@@ -553,43 +581,71 @@ class Bot(ABC):
 
     @classmethod
     def load(cls, filepath: str, api_key=None) ->'Bot':
+        # Open file
         with open(filepath, 'r') as file:
             data = json.load(file)
+        
+        # Start building bot parameters
         bot_class = Engines.get_bot_class(Engines(data['model_engine']))
+
+        # Find the bot's initialization parameters
         init_params = inspect.signature(bot_class.__init__).parameters
         constructor_args = {k: v for k, v in data.items() if k in init_params}
-        if 'tool_handler' in constructor_args:
-            tool_handler_class = constructor_args['tool_handler']['class']
-            constructor_args['tool_handler'] = tool_handler_class.from_dict(
-                constructor_args['tool_handler'])
+        
+        # Initialize Bot
         bot = bot_class(**constructor_args)
         bot.api_key = api_key if api_key is not None else None
+        
+        # Handle tool handler
+        if 'tool_handler' in data:
+            tool_handler_class = data['tool_handler']['class'] 
+            module_name, class_name = tool_handler_class.rsplit('.', 1)
+            module = importlib.import_module(module_name)
+            actual_class = getattr(module, class_name)
+            handler = actual_class.from_dict(data['tool_handler'])
+            bot.tool_handler = handler
+
+        # Set non-initialization parameters
         for key, value in data.items():
-            if key not in constructor_args and key != 'conversation':
+            if key not in constructor_args and \
+               key not in ('conversation', 'tool_handler', 'tools'):
                 setattr(bot, key, value)
+
         if 'conversation' in data and data['conversation']:
             bot.conversation = ConversationNode.from_dict(data['conversation'])
+            while bot.conversation.replies:
+                bot.conversation = bot.conversation.replies[0] # default 'continue' point
+
         return bot
 
     def save(self, filename: Optional[str]=None) ->str:
-        now = formatted_datetime()
+        
+        # decide name
         if filename is None:
+            now = formatted_datetime()
             filename = f'{self.name}@{now}.bot'
+        
+        # collect bot attributes
         data = {key: value for key, value in self.__dict__.items() if not
             key.startswith('_')}
-        data.pop('api_key')
-        data.pop('mailbox')
+        data.pop('api_key') # never save this
+        data.pop('mailbox') # initialized without saved parameters
+        
+        # set some attributes manually
         data['bot_class'] = self.__class__.__name__
         data['model_engine'] = self.model_engine.value
         data['conversation'] = self.conversation.root_dict()
         if 'tool_handler' in data and data:
             data['tool_handler'] = data['tool_handler'].to_dict()
+
+        # Save as strings
         for key, value in data.items():
-            if not isinstance(value, (str, int, float, bool, list, dict,
-                type(None))):
+            if not isinstance(value, (str, int, float, bool, list, dict, type(None))):
                 data[key] = str(value)
+        
         with open(filename, 'w') as file:
             json.dump(data, file, indent=1)
+        
         return filename
 
     def chat(self):
