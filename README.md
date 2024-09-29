@@ -190,6 +190,12 @@ if __name__ == "__main__":
 
 This example demonstrates how to use functional prompts with the `branch` function to generate multiple versions of a letter in different styles, based on a single purpose.
 
+## Future work
+- Discord, github, reddit toolkits
+- Integrations with other APIs
+- Bot library for 'out of the box' functionality
+- Larger useful functional prompting structures
+
 ## Contributing
 
 We welcome contributions to the Bots project! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to contribute.
