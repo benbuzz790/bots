@@ -26,3 +26,5 @@ env/
 *.bot
 project_structure.txt
 scripts/*
+debug_on_error.py
+discord.txt

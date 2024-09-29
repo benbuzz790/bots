@@ -20,7 +20,7 @@ The core of the Bots library is built on a robust foundation:
 
 ## Features built with bots
 
-1. **Auto Terminal (bots.auto_terminal.start)**
+1. **Auto Terminal (bots.dev.auto_terminal)**
    - Command-line interface for autonomous coding (similar to Cursor or Claude-Dev, but in a terminal)
    - Enables bots to work on complex programming tasks
    - Automatic mode
@@ -31,7 +31,7 @@ The core of the Bots library is built on a robust foundation:
    - Code execution capabilities for both Python and PowerShell
    - Empowers bots to engage in complex coding tasks and project modifications
 
-3. **Lazy Decorator (bots.lazy.lazy)**
+3. **Lazy Decorator (bots.dev.lazy)**
    - Decorator for runtime code generation via LLM calls
    - Automatically replaces placeholder functions with LLM-generated implementations
    - Supports various levels of context awareness for accurate code generation
@@ -54,7 +54,7 @@ Set up your api key environment variables:
 
 [Anthropic](https://docs.anthropic.com/en/docs/initial-setup#set-your-api-key)
 
-You'll need one of these two to use bots, and for now you'll need an Anthropic key for auto_terminal.
+You'll need one of these two to use bots.
 
 ```python
 from bots import AnthropicBot
@@ -72,7 +72,7 @@ bot.respond("Please write Conway's game of life in a new file conway.py")
 
 ```cmd
 :: Start an autonomous coding session
->>> python -m bots.auto_terminal.start
+>>> python -m bots.dev.auto_terminal
 System: Bot initialized
 
 ---  
@@ -145,7 +145,7 @@ System: Tool Results
 ### Using the Lazy Decorator
 
 ```python
-import bots.lazy.lazy as lazy
+from bots import lazy
 
 @lazy(prompt="Implement a function that calculates the fibonacci sequence up to n terms.")
 def fibonacci(n: int) -> list:
