@@ -50,6 +50,10 @@ class Engines(str, Enum):
     GPT35TURBO_16K = 'gpt-3.5-turbo-16k'
     GPT35TURBO_0125 = 'gpt-3.5-turbo-0125'
     GPT35TURBO_INSTRUCT = 'gpt-3.5-turbo-instruct'
+    GPTO1_PREVIEW = 'o1-preview'
+    GPTO1_PREVIEW_0912 = 'o1-preview-2024-09-12'
+    GPTO1_MINI = 'o1-mini'
+    GPTO1_MINI = 'o1-mini-2024-09-12'
     
     # Anthropic models
     CLAUDE3_HAIKU = 'claude-3-haiku-20240307'
