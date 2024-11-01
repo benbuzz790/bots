@@ -216,12 +216,19 @@ def search_repositories(query):
     """
     try:
         api = _setup()
-        results = api.search.repos(q=query)
-        return json.dumps([{
-            "full_name": repo.full_name,
-            "description": repo.description,
-            "stars": repo.stargazers_count
-        } for repo in results.items[:10]])  # Limit to top 10 results
+        # The GitHub Search API expects 'q' parameter in the query string
+        results = api.search.repos(q=query, per_page=10, sort='stars')
+        
+        # Convert the results to a list of dictionaries
+        repos = []
+        for repo in results['items']:  # Access 'items' as a dictionary key
+            repos.append({
+                "full_name": repo['full_name'],
+                "description": repo.get('description', ''),  # Use .get() to handle None values
+                "stars": repo['stargazers_count']
+            })
+        
+        return json.dumps(repos)
     except Exception as e:
         return f"Error: {str(e)}"
 
