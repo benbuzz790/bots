@@ -5,18 +5,15 @@ import logging
 from typing import Callable, Optional, Any
 from bots.foundation.base import remove_code_blocks, Bot
 from bots import AnthropicBot
+
+# Set up logging
 logging.basicConfig(level=logging.WARNING, format=
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-
-
 class NoHTTPFilter(logging.Filter):
-
     def filter(self, record: logging.LogRecord) ->bool:
         return 'response' not in record.name.lower()
-
-
 logger.addFilter(NoHTTPFilter())
 
 
@@ -37,7 +34,7 @@ def lazy(prompt: Optional[str]=None, bot: Optional[Bot]=None, context:
             if not hasattr(wrapper, 'initialized') or not wrapper.initialized:
                 function_name: str = func.__name__
                 logger.debug(f'Initializing lazy function: {function_name}')
-                context_content = get_context(func, context)
+                context_content = _get_context(func, context)
                 instructions: str = (
                     '''Please fill out the following function definition according 
                     to the following requirements. Respond only with the code in a 
@@ -100,7 +97,9 @@ def lazy(prompt: Optional[str]=None, bot: Optional[Bot]=None, context:
     return decorator
 
 
-def get_context(func: Callable, context_level: str) ->str:
+
+
+def _get_context(func: Callable, context_level: str) ->str:
     if context_level == 'None':
         return ''
     source_file = inspect.getfile(func)
@@ -129,7 +128,7 @@ def get_context(func: Callable, context_level: str) ->str:
                 source_file):
                 file_path = os.path.join(source_dir, filename)
                 context += (
-                    f'Interface of {filename}:\n{get_py_interface(file_path)}\n\n'
+                    f'Interface of {filename}:\n{_get_py_interface(file_path)}\n\n'
                     )
         return context
     elif context_level == 'very high':
@@ -143,8 +142,7 @@ def get_context(func: Callable, context_level: str) ->str:
     else:
         raise ValueError(f'Invalid context level: {context_level}')
 
-
-def get_py_interface(file_path: str) ->str:
+def _get_py_interface(file_path: str) ->str:
 
     def get_docstring(node):
         return ast.get_docstring(node) or ''

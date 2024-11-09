@@ -3,11 +3,13 @@ import re
 import traceback
 
 
-def write(file_path, content):
+def overwrite(file_path, content):
     """
-    Completely rewrites the content of a file with new content.
+    Completely rewrites the content of a file with new content, or writes a new file.
 
-    Use when you want to replace the entire contents of a file or write a new file.
+    Use when you want to replace the ENTIRE contents of a file or write a new file.
+    If you have other tools to make precise changes available, you should use them 
+    rather than this.
 
     Parameters:
     - file_path (str): The path to the file that will be rewritten.

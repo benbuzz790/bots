@@ -1,8 +1,10 @@
 from bots.foundation.openai_bots import ChatGPT_Bot
 from bots.foundation.anthropic_bots import AnthropicBot
 import sys
+import bots.tools.github_tools
 import bots.tools.python_tools
 import bots.tools.terminal_tools
+import bots.tools.code_tools
 import bots.tools.utf8_tools
 import textwrap
 from datetime import datetime as datetime
@@ -27,7 +29,7 @@ Available commands:
 /down: Move down the conversation tree. Requests index of reply if there are multiple.
 /left: Move to this conversation node's left sibling
 /right: Move to this conversation node's right sibling
-/auto: Prompt the bot to work autonomously for a preset number of prompts
+/auto: Let the bot work autonomously until it sends a response without using any tools
 /exit: Exit the program
 
 Type your messages normally to chat with the AI assistant.
@@ -66,7 +68,7 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
     anthropic_key = os.getenv('ANTHROPIC_API_KEY')
     if anthropic_key:
         try:
-            bot = AnthropicBot(name='Claude')
+            bot = AnthropicBot(name='Claude', model_engine=bots.foundation.base.Engines.CLAUDE35_SONNET_20241022)
         except Exception as e:
             pretty(f"Failed to initialize Anthropic bot: {e}", "System")
     elif openai_key:
@@ -77,8 +79,10 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
     else:
         raise ValueError('No OpenAI or Anthropic API keys found. Set up your key as an environment variable.')
 
-    bot.add_tools(bots.tools.python_tools)
-    bot.add_tools(bots.tools.utf8_tools)
+    #bot.add_tools(bots.tools.python_tools)
+    #bot.add_tools(bots.tools.utf8_tools)
+    bot.add_tools(bots.tools.code_tools)
+    bot.add_tools(bots.tools.github_tools)
     bot.add_tools(bots.tools.terminal_tools)
     #bot.add_tools(bots.github_tools) #not ready
 
@@ -110,17 +114,14 @@ def main() -> None:
     
     verbose: bool = True
     turn: str = 'user'
-    auto: int = 0
+    auto_mode: bool = False
 
     while True:
         if turn == 'assistant':
-
             # Decide who goes next
-            if auto > 0:
-                msg: str = f'ok' # ok seems to be the least anchoring thing to say, and some apis require a response.
+            if auto_mode:
+                msg: str = 'ok'
                 pretty(msg, 'You')
-                pretty(f'Auto active for {auto} more prompts', 'System')
-                auto -= 1
             else:
                 turn = 'user'
             
@@ -137,7 +138,17 @@ def main() -> None:
                 else:
                     for request in requests:
                         tool_name, _ = codey.tool_handler.tool_name_and_input(request)
-                        pretty(f'{codey.name} used {tool_name}', "System")     
+                        pretty(f'{codey.name} used {tool_name}', "System")
+                        
+                # If we're in auto mode and tools were used, continue with another iteration
+                if auto_mode:
+                    pretty("Tools were used, continuing auto...", "System")
+            else:
+                # If no tools were used and we're in auto mode, exit auto mode
+                if auto_mode:
+                    pretty("No tools used, exiting auto", "System")
+                    auto_mode = False
+                    turn = 'user'
         
         else:  # user turn
             uinput: str = input("You: ")
@@ -148,8 +159,8 @@ def main() -> None:
                     pretty("exiting...", "System")
                     exit(0)
                 case "/auto":
-                    auto = int(input("Automatic prompt limit:"))
-                    pretty(f"Starting automatic work for {auto} prompts", "System")
+                    auto_mode = True
+                    pretty("Auto active", "System")
                     turn = 'assistant'
                 case "/load": 
                     filename: str = filedialog.askopenfilename(

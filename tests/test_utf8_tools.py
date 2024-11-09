@@ -28,26 +28,26 @@ class TestUTF8Tools(DetailedTestCase):
 
     def test_write(self):
         new_content = '# New content'
-        utf8_tools.write(self.test_file, new_content)
+        utf8_tools.overwrite(self.test_file, new_content)
         self.assertFileContentEqual(self.test_file, new_content, 'Write failed')
 
     def test_replace(self):
         initial_content = "old_string = 'value'"
-        utf8_tools.write(self.test_file, initial_content)
+        utf8_tools.overwrite(self.test_file, initial_content)
         utf8_tools.replace(self.test_file, 'old_string', 'new_string')
         self.assertFileContentEqual(self.test_file, "new_string = 'value'", 'Replace failed')
 
     def test_append(self):
         initial_content = "# Initial content\n"
         append_content = "# Appended content\n"
-        utf8_tools.write(self.test_file, initial_content)
+        utf8_tools.overwrite(self.test_file, initial_content)
         utf8_tools.append(self.test_file, append_content)
         self.assertFileContentEqual(self.test_file, initial_content + append_content, 'Append failed')
 
     def test_prepend(self):
         initial_content = "# Initial content\n"
         prepend_content = "# Prepended content\n"
-        utf8_tools.write(self.test_file, initial_content)
+        utf8_tools.overwrite(self.test_file, initial_content)
         utf8_tools.prepend(self.test_file, prepend_content)
         self.assertFileContentEqual(self.test_file, prepend_content + initial_content, 'Prepend failed')
 
@@ -69,7 +69,7 @@ class TestUTF8Tools(DetailedTestCase):
 # Keep this line
 # Keep this line too
 """
-        utf8_tools.write(self.test_file, initial_content)
+        utf8_tools.overwrite(self.test_file, initial_content)
         utf8_tools.delete_match(self.test_file, 'Delete this line')
         self.assertFileContentEqual(self.test_file, expected_content, 'Delete match failed')
 

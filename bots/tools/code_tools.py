@@ -19,12 +19,14 @@ def view(file_path):
 
 def add_lines(file_path, new_content, start_line):
     """
-    Add new lines to a file at a specified position.
+    Add new lines to a file at a specified position. Creates the file if it doesn't exist.
+    Note: INSERTS lines at the specified position, shifting existing lines down.
 
     Parameters:
     - file_path (str): The path to the file to be modified.
     - new_content (str): String containing the new content, with lines separated by newlines.
     - start_line (int): The line number where the new lines should be inserted.
+                       If file is being created, this must be 1.
 
     Returns:
     A string confirming the operation or describing an error.
@@ -37,27 +39,47 @@ def add_lines(file_path, new_content, start_line):
         # Remove empty lines from the end if present
         while new_lines and not new_lines[-1]:
             new_lines.pop()
-            
-        with open(file_path, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
         
+        try:
+            # Try to read existing file
+            with open(file_path, 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+        except FileNotFoundError:
+            # If file doesn't exist, create empty list of lines
+            if start_line != 1:
+                return "Error: When creating a new file, start_line must be 1"
+            lines = []
+            
         # Ensure each line ends with exactly one newline
         normalized_lines = [line + '\n' if not line.endswith('\n') else line 
                           for line in new_lines]
         
+        # Insert the new lines at the specified position
         for i, line in enumerate(normalized_lines):
-            lines.insert(start_line - 1 + i, line)
+            if start_line - 1 + i > len(lines):
+                # If inserting beyond end of file, append instead
+                lines.append(line)
+            else:
+                lines.insert(start_line - 1 + i, line)
         
+        # Create parent directories if they don't exist
+        from pathlib import Path
+        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+        
+        # Write the modified content back to file
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
         
-        return f"Successfully added {len(normalized_lines)} lines starting at line {start_line}."
+        action = "created new file and added" if len(lines) == len(normalized_lines) else "added"
+        return f"Successfully {action} {len(normalized_lines)} lines starting at line {start_line}."
+        
     except Exception as e:
         return f"Error: {str(e)}"
 
 def change_lines(file_path, new_content, start_line, end_line):
     """
     Change specific lines in a file.
+    Note: DELETES the lines from start_line to end_line (both inclusive), replacing them with new_content
 
     Parameters:
     - file_path (str): The path to the file to be modified.
@@ -88,7 +110,7 @@ def change_lines(file_path, new_content, start_line, end_line):
         normalized_lines = [line + '\n' if not line.endswith('\n') else line 
                           for line in new_lines]
         
-        lines[start_line-1:end_line] = normalized_lines
+        lines[start_line-1:end_line+1] = normalized_lines  # Changed to end_line+1 to include end_line
         
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
@@ -100,6 +122,7 @@ def change_lines(file_path, new_content, start_line, end_line):
 def delete_lines(file_path, start_line, end_line):
     """
     Delete specific lines from a file.
+    Note: Removes the specified lines entirely, shifting remaining lines up.
 
     Parameters:
     - file_path (str): The path to the file to be modified.
@@ -154,6 +177,7 @@ def find_lines(file_path, pattern):
 def replace_in_lines(file_path, old_text, new_text, start_line, end_line):
     """
     Replace specific text within a range of lines in a file.
+    Note: OVERWRITES portions of lines containing the old_text with new_text.
 
     Parameters:
     - file_path (str): The path to the file to be modified.
@@ -186,53 +210,3 @@ def replace_in_lines(file_path, old_text, new_text, start_line, end_line):
         return f"Successfully replaced {count} occurrences of '{old_text}' with '{new_text}' in lines {start_line} to {end_line}."
     except Exception as e:
         return f"Error: {str(e)}"
-    
-# Suggested additional tools:
-
-# 1. project_structure(directory_path):
-#    """
-#    Generate a tree-like structure of the project directory.
-#    This would help in understanding the overall structure of the project.
-#    """
-
-# 2. summarize_file(file_path):
-#    """
-#    Provide a summary of a file's contents, including key functions, classes, and overall purpose.
-#    This would be useful for quickly understanding the role of a file in a large project.
-#    """
-
-# 3. diff_changes(file_path, start_line, end_line):
-#    """
-#    Show a visual diff of recent changes made to a specific part of a file.
-#    This would help in reviewing and confirming changes made during the conversation.
-#    """
-
-# 4. run_tests(test_path):
-#    """
-#    Run specified tests and return the results.
-#    This would allow for immediate validation of changes made to the codebase.
-#    """
-
-# 5. generate_docstring(file_path, function_name):
-#    """
-#    Automatically generate or update a docstring for a specified function.
-#    This would help in maintaining up-to-date documentation as code changes.
-#    """
-
-# 6. find_references(project_path, symbol):
-#    """
-#    Find all references to a particular symbol (function, class, variable) across the project.
-#    This would be useful for understanding dependencies and the impact of potential changes.
-#    """
-
-# 7. code_quality_check(file_path):
-#    """
-#    Perform a code quality check on a file, reporting potential issues or improvements.
-#    This could include style checks, complexity analysis, and common error detection.
-#    """
-
-# 8. context_summary():
-#    """
-#    Provide a summary of the current conversation context, including main topics discussed and actions taken.
-#    This would help in managing long conversations and maintaining focus.
-#    """

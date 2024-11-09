@@ -8,7 +8,7 @@ from unittest.mock import patch
 from io import StringIO
 from contextlib import redirect_stdout
 
-import bots.auto_terminal.start as start
+import bots.dev.auto_terminal as start
 
 class DetailedTestCase(unittest.TestCase):
 

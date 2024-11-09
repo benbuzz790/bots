@@ -12,16 +12,30 @@ import math
 
 class AnthropicNode(ConversationNode):
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(role=kwargs.pop('role'), content=kwargs.pop('content'))
+        # Extract required fields
+        role = kwargs.pop('role', None)
+        content = kwargs.pop('content', None)
+        
+        # If content is a list (Anthropic format), extract the text content
+        if isinstance(content, list):
+            text_content = next((item['text'] for item in content if item['type'] == 'text'), '')
+            # Store non-text items (like tool requests/results) as attributes
+            for item in content:
+                if item['type'] != 'text':
+                    kwargs[item['type']] = item
+            content = text_content
+            
+        super().__init__(role=role, content=content)
+        
+        # Store remaining kwargs as attributes
         for key, value in kwargs.items():
-            self.content += f"{key}: {value}"
-
+            setattr(self, key, value)
 
 class AnthropicToolHandler(ToolHandler):
     def __init__(self) -> None:
         super().__init__()
 
-    def generate_tool_schema(self, func: Callable) -> None:
+    def generate_tool_schema(self, func: Callable) -> None:         
         sig: inspect.Signature = inspect.signature(func)
         doc: str = inspect.getdoc(func) or "No description provided."
 
@@ -221,7 +235,7 @@ class AnthropicBot(Bot):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_engine: Engines = Engines.CLAUDE35_SONNET,
+        model_engine: Engines = Engines.CLAUDE35_SONNET_20240620,
         max_tokens: int = 4096,
         temperature: float = 0.3,
         name: str = "Claude",

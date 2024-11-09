@@ -59,7 +59,8 @@ class Engines(str, Enum):
     CLAUDE3_HAIKU = 'claude-3-haiku-20240307'
     CLAUDE3_SONNET = 'claude-3-sonnet-20240229'
     CLAUDE3_OPUS = 'claude-3-opus-20240229'
-    CLAUDE35_SONNET = 'claude-3-5-sonnet-20240620'
+    CLAUDE35_SONNET_20240620 = 'claude-3-5-sonnet-20240620'
+    CLAUDE35_SONNET_20241022 = 'claude-3-5-sonnet-20241022'
 
     @staticmethod
     def get(name):
@@ -139,17 +140,22 @@ class ConversationNode:
 
     def _to_dict_self(self):
         """
-            Convert this node to a dictionary, omitting replies, parent, callables,
-            and private attributes.
+        Convert this node to a dictionary, omitting replies, parent, callables,
+        and private attributes.
         """
-        # Exclude callables, double underscore attributes, 
-        # and specific attributes that could lead to recursive structures
-        return {
-            k: getattr(self, k) for k in dir(self)
-            if not k.startswith('_') and
-               k not in {'parent', 'replies'} and
-               not callable(getattr(self, k))
-        }
+        result = {}
+        for k in dir(self):
+            # Skip private attributes, parent, replies, and callables
+            if (not k.startswith('_') and 
+                k not in {'parent', 'replies'} and 
+                not callable(getattr(self, k))):
+                value = getattr(self, k)
+                # Handle special cases like tool requests/results that might be complex objects
+                if isinstance(value, (str, int, float, bool, list, dict, type(None))):
+                    result[k] = value
+                else:
+                    result[k] = str(value)
+        return result
     
     def build_messages(self):
         node = self
@@ -354,21 +360,30 @@ class ToolHandler(ABC):
         return self.requests
 
     def to_dict(self) ->Dict[str, Any]:
+        def clean_source_code(code: str) -> str:
+            """Remove leading indentation from source code"""
+            lines = code.splitlines()
+            # Find minimum indentation (excluding empty lines)
+            indents = [len(line) - len(line.lstrip()) for line in lines if line.strip()]
+            if indents:
+                min_indent = min(indents)
+                # Remove that amount of indentation from all lines
+                return '\n'.join(line[min_indent:] if line.strip() else '' for line in lines)
+            return code
+
         return {'class': f"{self.__class__.__module__}.{self.__class__.__name__}",
                 'tools': self.tools,
                 'requests': self.requests,
                 'results': self.results,
-                'function_map': {k: 
+                'function_map': {k:
                                     {
                                     'name': v.__name__,
-                                    'code': inspect.getsource(v),
+                                    'code': clean_source_code(inspect.getsource(v)),
                                     'file_path': inspect.getfile(v),
                                     'file_hash': self._get_code_hash(inspect.getsource(v))
-                                    } 
+                                    }
                                 for k, v in self.function_map.items()
-                                }
-                }
-
+                                }}
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ToolHandler':
         handler = cls()
