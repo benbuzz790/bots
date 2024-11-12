@@ -361,33 +361,23 @@ class ToolHandler(ABC):
         return self.requests
 
     def to_dict(self) -> Dict[str, Any]:
-        def clean_source_code(code: str) -> str:
-            """Remove leading indentation from source code"""
-            lines = code.splitlines()
-            indents = [len(line) - len(line.lstrip()) for line in lines if line.strip()]
-            if indents:
-                min_indent = min(indents)
-                return '\n'.join(line[min_indent:] if line.strip() else '' for line in lines)
-            return code
-
         function_details = {}
         for k, v in self.function_map.items():
+            # Get the function's source from its previous saved details
             try:
-                source = inspect.getsource(v)
-                cleaned_source = clean_source_code(source)
-                file_path = inspect.getfile(v) if inspect.getmodule(v) else 'dynamic'
+                source = v.__original_source__  # Use saved source if it exists
+                file_path = v.__original_file__ if hasattr(v, '__original_file__') else 'dynamic'
                 
                 function_details[k] = {
                     'name': v.__name__,
-                    'code': cleaned_source,
+                    'code': source,
                     'file_path': file_path,
                     'file_hash': self._get_file_hash(file_path) if os.path.exists(file_path) else None,
-                    'code_hash': self._get_code_hash(cleaned_source)
+                    'code_hash': self._get_code_hash(source)
                 }
             except Exception as e:
-                print(f"Warning: Could not get source for {k}: {str(e)}")
+                print(f"Warning: Could not get details for {k}: {str(e)}")
                 raise e
-                continue
 
         return {
             'class': f"{self.__class__.__module__}.{self.__class__.__name__}",
@@ -403,11 +393,15 @@ class ToolHandler(ABC):
         handler.results = data['results']
         handler.requests = data['requests']
 
-        def load_function_from_code(code: str, func_name: str):
+        def load_function_from_code(code: str, func_name: str, file_path: str):
             exec(code, globals())
             func = globals().get(func_name)
             if func_name in globals():
                 del globals()[func_name]
+            if func:
+                # Store the source and file path with the function
+                func.__original_source__ = code
+                func.__original_file__ = file_path
             return func
 
         for func_name, func_data in data['function_map'].items():
@@ -419,7 +413,12 @@ class ToolHandler(ABC):
                     continue
 
                 # Load function from verified code
-                func = load_function_from_code(func_data['code'], func_name)
+                func = load_function_from_code(
+                    func_data['code'], 
+                    func_name, 
+                    func_data['file_path']
+                )
+
                 if func:
                     handler.function_map[func_name] = func
                     tool_schema = handler.generate_tool_schema(func)
