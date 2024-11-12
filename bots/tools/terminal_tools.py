@@ -1,7 +1,3 @@
-import subprocess
-import traceback
-
-
 def execute_powershell(code, output_length_limit=60):
     """
     Executes PowerShell code in a stateless environment
@@ -17,7 +13,17 @@ def execute_powershell(code, output_length_limit=60):
 
     Returns command output or an error message.
     """
+
+    import subprocess
+    import traceback
+    
+    def _process_error(error):
+        error_message = f'Tool Failed: {str(error)}\n'
+        error_message += (
+            f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
+        return error_message
     output = ''
+    
     try:
         result = subprocess.run(['powershell', '-Command', code],
             capture_output=True, text=True, timeout=300)
@@ -40,9 +46,3 @@ def execute_powershell(code, output_length_limit=60):
             return truncated_output
     return output
 
-
-def _process_error(error):
-    error_message = f'Tool Failed: {str(error)}\n'
-    error_message += (
-        f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
-    return error_message
