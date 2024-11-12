@@ -73,7 +73,8 @@ class Engines(str, Enum):
     @staticmethod
     def get_bot_class(model_engine: 'Engines') -> Type['Bot']:
         """Returns the bot class based on the model engine."""
-        from bots import ChatGPT_Bot, AnthropicBot
+        from bots.foundation.openai_bots import ChatGPT_Bot
+        from bots.foundation.anthropic_bots import AnthropicBot
         
         if model_engine.value.startswith('gpt'):
             return ChatGPT_Bot
@@ -359,38 +360,50 @@ class ToolHandler(ABC):
         """Get all stored requests"""
         return self.requests
 
-    def to_dict(self) ->Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         def clean_source_code(code: str) -> str:
             """Remove leading indentation from source code"""
             lines = code.splitlines()
-            # Find minimum indentation (excluding empty lines)
             indents = [len(line) - len(line.lstrip()) for line in lines if line.strip()]
             if indents:
                 min_indent = min(indents)
-                # Remove that amount of indentation from all lines
                 return '\n'.join(line[min_indent:] if line.strip() else '' for line in lines)
             return code
 
-        return {'class': f"{self.__class__.__module__}.{self.__class__.__name__}",
-                'tools': self.tools,
-                'requests': self.requests,
-                'results': self.results,
-                'function_map': {k:
-                                    {
-                                    'name': v.__name__,
-                                    'code': clean_source_code(inspect.getsource(v)),
-                                    'file_path': inspect.getfile(v),
-                                    'file_hash': self._get_code_hash(inspect.getsource(v))
-                                    }
-                                for k, v in self.function_map.items()
-                                }}
+        function_details = {}
+        for k, v in self.function_map.items():
+            try:
+                source = inspect.getsource(v)
+                cleaned_source = clean_source_code(source)
+                file_path = inspect.getfile(v) if inspect.getmodule(v) else 'dynamic'
+                
+                function_details[k] = {
+                    'name': v.__name__,
+                    'code': cleaned_source,
+                    'file_path': file_path,
+                    'file_hash': self._get_file_hash(file_path) if os.path.exists(file_path) else None,
+                    'code_hash': self._get_code_hash(cleaned_source)
+                }
+            except Exception as e:
+                print(f"Warning: Could not get source for {k}: {str(e)}")
+                raise e
+                continue
+
+        return {
+            'class': f"{self.__class__.__module__}.{self.__class__.__name__}",
+            'tools': self.tools,
+            'requests': self.requests,
+            'results': self.results,
+            'function_map': function_details
+        }
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ToolHandler':
         handler = cls()
         handler.results = data['results']
         handler.requests = data['requests']
 
-        def load_function_from_code(code, func_name):
+        def load_function_from_code(code: str, func_name: str):
             exec(code, globals())
             func = globals().get(func_name)
             if func_name in globals():
@@ -398,27 +411,28 @@ class ToolHandler(ABC):
             return func
 
         for func_name, func_data in data['function_map'].items():
-            file_path = func_data['file_path']
-            saved_file_hash = func_data['file_hash']
-            saved_code_hash = cls._get_code_hash(func_data['code'])
+            try:
+                # Verify code hash
+                current_code_hash = cls._get_code_hash(func_data['code'])
+                if current_code_hash != func_data['code_hash']:
+                    print(f"Warning: Code hash mismatch for {func_name}. Skipping.")
+                    continue
 
-            file_exists = os.path.exists(file_path)
-            file_unchanged = file_exists and cls._get_file_hash(file_path) == saved_file_hash
-            code_unchanged = cls._get_code_hash(func_data['code']) == saved_code_hash
-
-            if file_unchanged and code_unchanged:
-                handler.add_tools_from_file(file_path)
-            elif code_unchanged:
+                # Load function from verified code
                 func = load_function_from_code(func_data['code'], func_name)
                 if func:
-                    handler.add_tool(func)
+                    handler.function_map[func_name] = func
+                    tool_schema = handler.generate_tool_schema(func)
+                    if tool_schema:
+                        handler.tools.append(tool_schema)
                 else:
-                    print(f"Warning: Function {func_name} could not be loaded from saved code")
-            else:
-                print(f"Warning: Saved code for {func_name} has been modified. Skipping.")
+                    print(f"Warning: Could not load function {func_name}")
+
+            except Exception as e:
+                print(f"Warning: Failed to load function {func_name}: {str(e)}")
 
         return handler
-    
+
     @staticmethod
     def _get_file_hash(file_path: str) -> str:
         with open(file_path, 'rb') as f:
@@ -643,6 +657,8 @@ class Bot(ABC):
         if filename is None:
             now = formatted_datetime()
             filename = f'{self.name}@{now}.bot'
+        else:
+            filename = filename + ".bot"
         
         # collect bot attributes
         data = {key: value for key, value in self.__dict__.items() if not

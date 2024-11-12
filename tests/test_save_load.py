@@ -13,7 +13,7 @@ def simple_addition(x, y) -> str:
 
 class TestSaveLoad(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = tempfile.mkdtemp()
+        self.temp_dir = tempfile.mkdtemp(dir=os.path.dirname(__file__))
         self.bots = {
             'openai': ChatGPT_Bot(name="TestGPT", model_engine=Engines.GPT35TURBO),
             'anthropic': AnthropicBot(name="TestClaude", model_engine=Engines.CLAUDE35_SONNET_20240620)
@@ -33,8 +33,8 @@ class TestSaveLoad(unittest.TestCase):
 
     def test_basic_save_load(self):
         def _test(original_bot):
-            save_path = os.path.join(self.temp_dir, f"{original_bot.name}.bot")
-            original_bot.save(save_path)
+            save_path = os.path.join(self.temp_dir, original_bot.name)
+            save_path = original_bot.save(save_path)
             loaded_bot = Bot.load(save_path)
             self.assertEqual(original_bot.name, loaded_bot.name)
             self.assertEqual(original_bot.model_engine, loaded_bot.model_engine)
@@ -50,8 +50,8 @@ class TestSaveLoad(unittest.TestCase):
             bot.respond("Hello, how are you?")
             bot.respond("What's the weather like today?")
             bot.respond("Thank you for the information.")
-            save_path = os.path.join(self.temp_dir, f"convo_{bot.name}.bot")
-            bot.save(save_path)
+            save_path = os.path.join(self.temp_dir, f"convo_{bot.name}")
+            save_path = bot.save(save_path)
             loaded_bot = Bot.load(save_path)
             self.assertEqual(bot.conversation.node_count(), loaded_bot.conversation.node_count())
             self.assertEqual(bot.conversation.content, loaded_bot.conversation.content)
@@ -62,8 +62,8 @@ class TestSaveLoad(unittest.TestCase):
         def _test(bot):
             tool_file_path = "bots/tools/python_tools.py"
             bot.add_tools(tool_file_path)
-            save_path = os.path.join(self.temp_dir, f"file_tool_{bot.name}.bot")
-            bot.save(save_path)
+            save_path = os.path.join(self.temp_dir, f"file_tool_{bot.name}")
+            save_path = bot.save(save_path)
             loaded_bot = Bot.load(save_path)
             
             # Compare essential attributes of each tool while ignoring formatting
@@ -87,8 +87,8 @@ class TestSaveLoad(unittest.TestCase):
     def test_save_load_with_module_tools(self):
         def _test(bot):
             bot.add_tools(python_tools)
-            save_path = os.path.join(self.temp_dir, f"module_tool_{bot.name}.bot")
-            bot.save(save_path)
+            save_path = os.path.join(self.temp_dir, f"module_tool_{bot.name}")
+            save_path = bot.save(save_path)
             loaded_bot = Bot.load(save_path)
             self.assertEqual(len(bot.tool_handler.tools), len(loaded_bot.tool_handler.tools))
             # Using same tool comparison as file_tools test
@@ -107,8 +107,8 @@ class TestSaveLoad(unittest.TestCase):
         def _test(bot):
             system_message = "You are a helpful assistant specialized in Python programming."
             bot.set_system_message(system_message)
-            save_path = os.path.join(self.temp_dir, f"system_msg_{bot.name}.bot")
-            bot.save(save_path)
+            save_path = os.path.join(self.temp_dir, f"system_msg_{bot.name}")
+            save_path = bot.save(save_path)
             loaded_bot = Bot.load(save_path)
             self.assertEqual(bot.system_message, loaded_bot.system_message)
 
@@ -116,8 +116,8 @@ class TestSaveLoad(unittest.TestCase):
 
     def test_api_key_handling(self):
         def _test(bot):
-            save_path = os.path.join(self.temp_dir, f"api_key_{bot.name}.bot")
-            bot.save(save_path)
+            save_path = os.path.join(self.temp_dir, f"api_key_{bot.name}")
+            save_path = bot.save(save_path)
             loaded_bot = Bot.load(save_path)
             self.assertIsNone(loaded_bot.api_key)
             new_api_key = "new_test_api_key"
@@ -134,8 +134,8 @@ class TestSaveLoad(unittest.TestCase):
             self.assertEqual(len(bot.tool_handler.get_results()), 1)
             self.assertIn('5',bot.tool_handler.get_results()[0]['content'])
             
-            save_path = os.path.join(self.temp_dir, f"tool_exec_{bot.name}.bot")
-            bot.save(save_path)
+            save_path = os.path.join(self.temp_dir, f"tool_exec_{bot.name}")
+            save_path = bot.save(save_path)
             
             loaded_bot = Bot.load(save_path)
             self.assertEqual(bot.tool_handler.get_results(), loaded_bot.tool_handler.get_results())
@@ -159,8 +159,8 @@ class TestSaveLoad(unittest.TestCase):
             
             original_results = bot.tool_handler.get_results()
             
-            save_path = os.path.join(self.temp_dir, f"tool_use_{bot.name}.bot")
-            bot.save(save_path)
+            save_path = os.path.join(self.temp_dir, f"tool_use_{bot.name}")
+            save_path = bot.save(save_path)
             
             loaded_bot = Bot.load(save_path)
             
@@ -187,8 +187,8 @@ class TestSaveLoad(unittest.TestCase):
             bot.custom_attr2 = 42
             bot.custom_attr3 = {"key": "value"}
             
-            save_path = os.path.join(self.temp_dir, f"custom_attr_{bot.name}.bot")
-            bot.save(save_path)
+            save_path = os.path.join(self.temp_dir, f"custom_attr_{bot.name}")
+            save_path = bot.save(save_path)
             
             loaded_bot = Bot.load(save_path)
             

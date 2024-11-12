@@ -1,11 +1,40 @@
 import traceback
-import bots
-from bots import AnthropicBot
+import bots.tools.code_tools as CT
+from bots.foundation.anthropic_bots import AnthropicBot
 
-# Missing somewhere for modules to actually do the work.
 # Should perhaps be multi-threaded
 
 ### Bot tools ###
+
+def run_bot(bot_path, message):
+    """
+    Loads a bot from disk, sends it a message, and allows it to work until
+    it replies without using any tools. Returns only the final message from 
+    the bot.
+
+    Use when a bot is ready to execute a task.
+
+    Parameters:
+    - bot_path (str): File path to the saved bot
+    - message (str): The message to send to the bot
+
+    Returns the bot's first response, tool use names, and final response as a string.
+    """
+    from bots.foundation.base import load
+    from bots.dev.project_tree import _process_error
+    try:
+        bot = load(bot_path)
+        response1 = bot.respond(message)
+        tools = ''
+        while len(bot.tool_handler.requests)>0:
+            tool_name, _ = bot.tool_handler.tool_name_and_input(bot.tool_handler.requests[0])
+            tools += tool_name + "/n"
+            responseF = bot.respond('ok')
+            path = bot.save(bot.name)
+        return response1 +"/n"+ tools + responseF
+    except Exception as error:
+        return _process_error(error)
+
 def ask_root_bot(bot_path: str, message:str):
     """
     Loads the project bot from disk and sends it a message.
@@ -19,11 +48,13 @@ def ask_root_bot(bot_path: str, message:str):
 
     Returns the bot's response as a string or an error message.
     """
-    import bots
+    from bots.foundation.base import load
+    from bots.dev.project_tree import _process_error
+
     try:
-        module_bot = bots.load(bot_path)
-        response = module_bot.respond(message)
-        module_bot.save()  # Save any state changes
+        rootb0t = load(bot_path)
+        response = rootb0t.respond(message)
+        rootb0t.save(rootb0t.name)  
         return response
     except Exception as error:
         return _process_error(error)
@@ -41,6 +72,8 @@ def make_requirements(name: str, requirements: str):
     
     Returns 'success' or an error message string.
     """
+    from bots.dev.project_tree import _process_error
+
     try:
         file_path = f"{name}_requirements.txt"
         with open(file_path, 'w', encoding='utf-8') as f:
@@ -49,30 +82,39 @@ def make_requirements(name: str, requirements: str):
     except Exception as error:
         return _process_error(error)
 
-def initialize_module_bot(module_name: str) -> str:
+def initialize_module_bot(module_name: str, requirements_path: str) -> str:
     """
     Creates and initializes a new module-level bot, saving it to disk.
 
     Use when you need to create a new bot to handle a module's requirements and implementation.
-    The bot will be initialized with appropriate module-level tools and context.
+    The bot will be initialized with appropriate module-level tools and context as well as the 
+    text of the file at requirements_path
 
     Parameters:
     - module_name (str): Name of the module this bot will manage
+    - requirements_path (str): The location of the requirements file for the module
 
     Returns success message with bot's file path or an error message string.
     """
-    import bots
-    from bots import AnthropicBot
+    from bots.foundation.anthropic_bots import AnthropicBot
+    import bots.tools.code_tools as CT
+    from bots.dev.project_tree import _process_error
+    
     try:
-        module_bot = AnthropicBot(name=f"Claude_{module_name}")
-        module_bot.set_system_message(prompts.module_initialization)
-        module_bot.add_tool(ask_root_bot)
-        module_bot.add_tools(bots.tools.code_tools)
+        module_bot = AnthropicBot(name=f"{module_name}_Claude")
+
+        with open(requirements_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+        requirements = "\n\nHere are your requirements:\n\n" + content
+        module_bot.set_system_message(prompts.file_initialization + requirements)
+        #module_bot.add_tool(ask_root_bot)
+        module_bot.add_tools(CT)
         module_bot.add_tool(initialize_file_bot)
         module_bot.add_tool(message_file_bot)
         module_bot.add_tool(make_requirements)
+        module_bot.add_tool(run_bot)
         
-        path = module_bot.save()
+        path = module_bot.save(module_bot.name)
         return f"Success: module bot created at {path}"
     except Exception as error:
         return _process_error(error)
@@ -90,36 +132,45 @@ def message_module_bot(bot_path: str, message: str) -> str:
 
     Returns the bot's response as a string or an error message.
     """
-    import bots
+    from bots.foundation.base import load
+    from bots.dev.project_tree import _process_error
+
     try:
-        module_bot = bots.load(bot_path)
+        module_bot = load(bot_path)
         response = module_bot.respond(message)
-        module_bot.save()  # Save any state changes
+        module_bot.save(module_bot.name)
         return response
     except Exception as error:
         return _process_error(error)
 
-def initialize_file_bot(file_name: str) -> str:
+def initialize_file_bot(file_name: str, requirements_path) -> str:
     """
     Creates and initializes a new file-level bot, saving it to disk.
 
     Use when you need to create a new bot to handle implementation of a specific file.
-    The bot will be initialized with appropriate file-level tools and context.
+    The bot will be initialized with appropriate file-level tools and context, as well as
+    with the text of the requirements file.
 
     Parameters:
     - file_name (str): Name of the file this bot will manage
+    - requirements_path (str): path to the requirements file
 
     Returns success message with bot's file path or an error message string.
     """
-    import bots
-    from bots import AnthropicBot
+    import bots.tools.code_tools as CT
+    from bots.foundation.anthropic_bots import AnthropicBot
+    from bots.dev.project_tree import _process_error
+
     try:
-        file_bot = AnthropicBot(name=f"Claude_{file_name}")
-        file_bot.set_system_message(prompts.file_initialization)
-        file_bot.add_tool(bots.code_tools)
+        file_bot = AnthropicBot(name=f"{file_name}_Claude")
+        with open(requirements_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+        requirements = "\n\nHere are your requirements:\n\n" + content
+        file_bot.set_system_message(prompts.file_initialization + requirements)
+        file_bot.add_tool(CT)
         file_bot.add_tool(message_module_bot)
         
-        path = file_bot.save()
+        path = file_bot.save(file_bot.name)
         return f"Success: file bot created at {path}"
     except Exception as error:
         return _process_error(error)
@@ -137,16 +188,31 @@ def message_file_bot(bot_path: str, message: str) -> str:
 
     Returns the bot's response as a string or an error message.
     """
-    import bots
+    from bots.foundation.base import load
+    from bots.dev.project_tree import _process_error
+
     try:
-        file_bot = bots.load(bot_path)
+        file_bot = load(bot_path)
         response = file_bot.respond(message)
-        path = file_bot.save()  # Save any state changes
+        path = file_bot.save(file_bot.name)  # Save any state changes
         return response
     except Exception as error:
         return _process_error(error)
 
+def _initialize_root_bot():
+    root_bot = AnthropicBot(name="Claude_root")
+    root_bot.add_tools(CT)
+    root_bot.add_tool(initialize_module_bot)
+    root_bot.add_tool(message_module_bot)
+    root_bot.add_tool(make_requirements)
+    root_bot.add_tool(run_bot)
+    root_bot.save(root_bot.name)
+    # Initialize root bot with its role
+    root_bot.set_system_message(prompts.root_initialization)
+    return root_bot
+
 def _process_error(error):
+    raise error
     error_message = f'Tool Failed: {str(error)}\n'
     error_message += (
         f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
@@ -168,35 +234,20 @@ def generate_project(spec: str):
    Returns success or error message string.
    """
    try:
-       # Initialize root bot
-       root_bot = AnthropicBot(name="Claude_root")
-       root_bot.add_tools(bots.tools.code_tools)
-       root_bot.add_tool(initialize_module_bot)
-       root_bot.add_tool(message_module_bot)
-       root_bot.add_tool(make_requirements)
-       root_path = root_bot.save()
+        root_bot = _initialize_root_bot()
+        # Have root bot process spec
+        response = root_bot.respond(prompts.make_spec_prompt(spec))
+        print(response)
 
-       # Initialize root bot with its role
-       root_bot.set_system_message(prompts.root_initialization)
-       if 'error' in response.lower():
-           return response
-           
-       # Have root bot process spec
-       response = root_bot.respond(prompts.make_spec_prompt(spec))
-       if 'error' in response.lower():
-           return response
+        # Let root bot work until it signals completion
+        while not 'DONE' in response:
+            response = root_bot.respond("ok")
+            print("\n\n"+response)
+            root_bot.save(root_bot.name)  # Save state after each interaction
+        return "Project generation completed successfully"
 
-       # Let root bot work until it signals completion
-       while not 'DONE' in response:
-           response = root_bot.respond("ok")
-           if 'error' in response.lower():
-               return response
-           root_bot.save()  # Save state after each interaction
-           
-       return "Project generation completed successfully"
-       
    except Exception as error:
-       return _process_error(error)
+       raise error
    
 ### Prompt Library ###
 
@@ -378,7 +429,8 @@ class prompts:
     """
 
     project_context = """
-    You are part of a hierarchical system of specialized AI assistants working together to create a Python project.
+    You are part of a hierarchical system of specialized AI assistants 
+    working together to create a Python project.
     The system has three levels:
     1. Root: Handles project architecture and module design
     2. Module: Handles module implementation and file organization
@@ -396,8 +448,10 @@ class prompts:
     
     For each module you identify:
     1. Use make_requirements to document module requirements
-    2. Use initialize_module_bot to create a module bot
-    3. Use ask_module_bot to discuss requirements until clear
+    2. Use initialize_module_bot to create a module bot.
+    3. Use ask_module_bot to discuss requirements until clear. Send all requirements in the first message,
+    including the filepath.
+    4. When requirements are clear, call run_bot and allow the module bot to make it's module.
     
     Signal completion by including "DONE" in your response when the project structure is complete.
     """ + requirements_guidance_module
@@ -432,7 +486,8 @@ class prompts:
     For each file you identify:
     1. Use make_requirements to document file requirements
     2. Use initialize_file_bot to create a file bot
-    3. Use ask_file_bot to discuss requirements until clear
+    3. Use ask_file_bot to discuss requirements until clear. Send all requirements in the first message
+    4. Use run_bot to allow the file bot to write the file
     
     You have access to code_tools for viewing and modifying files.
     Ask clarifying questions about requirements when needed using your tools.
@@ -616,8 +671,26 @@ class prompts:
 
 ### Main ###
 
+import sys
+import traceback
+from functools import wraps
+from typing import Any, Callable
+
+def debug_on_error(func: Callable) -> Callable:
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except Exception:
+            type, value, tb = sys.exc_info()
+            traceback.print_exception(type, value, tb)
+            print("\n--- Entering post-mortem debugging ---")
+            import pdb
+            pdb.post_mortem(tb)
+    return wrapper
+
+@debug_on_error
 def main():
     generate_project(prompts.sample_feapy)
 
-if __name__ == 'main':
-    main()
+main()
