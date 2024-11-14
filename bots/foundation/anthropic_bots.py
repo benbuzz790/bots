@@ -31,6 +31,35 @@ class AnthropicNode(ConversationNode):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+    def build_messages(self):
+        node = self
+        if node.is_empty():
+            return []
+        conversation_dict = []
+        while node:
+            # Start with base role
+            entry = {'role': node.role}
+            
+            # Handle content construction
+            if isinstance(node.content, list):
+                # Content is already in Anthropic format
+                entry['content'] = node.content
+            elif isinstance(node.content, str):
+                # Convert string content to list with text item
+                content_list = [{'type': 'text', 'text': node.content}]
+                
+                # Add any tool results/requests stored as attributes
+                if hasattr(node, 'tool_result'):
+                    content_list.append(node.tool_result)
+                if hasattr(node, 'tool_use'):
+                    content_list.append(node.tool_use)
+                
+                entry['content'] = content_list
+            
+            conversation_dict = [entry] + conversation_dict
+            node = node.parent
+        return conversation_dict
+
 class AnthropicToolHandler(ToolHandler):
     def __init__(self) -> None:
         super().__init__()

@@ -281,10 +281,22 @@ class ToolHandler(ABC):
         
         return self.requests, self.results
 
-    def add_tool(self, func: Callable) ->None:
+    def add_tool(self, func: Callable) -> None:
         schema = self.generate_tool_schema(func)
         if schema:
             self.tools.append(schema)
+            # Store original source when first adding the tool
+            try:
+                source = inspect.getsource(func)
+                file_path = inspect.getfile(func) if inspect.getmodule(func) else 'dynamic'
+                func.__original_source__ = source
+                func.__original_file__ = file_path
+            except Exception as e:
+                print(f"Warning: Could not get source for {func.__name__}: {str(e)}")
+                # If we can't get source, still add function but mark it
+                func.__original_source__ = "# Source not available\n" + str(func)
+                func.__original_file__ = 'dynamic'
+                
             self.function_map[func.__name__] = func
 
     def add_tools_from_file(self, filepath: str) ->None:
@@ -363,11 +375,19 @@ class ToolHandler(ABC):
     def to_dict(self) -> Dict[str, Any]:
         function_details = {}
         for k, v in self.function_map.items():
-            # Get the function's source from its previous saved details
             try:
-                source = v.__original_source__  # Use saved source if it exists
-                file_path = v.__original_file__ if hasattr(v, '__original_file__') else 'dynamic'
-                
+                # First try to get source through inspect
+                try:
+                    source = inspect.getsource(v)
+                    file_path = inspect.getfile(v) if inspect.getmodule(v) else 'dynamic'
+                except Exception:
+                    # Fall back to stored source if inspect fails
+                    if hasattr(v, '__original_source__'):
+                        source = v.__original_source__
+                        file_path = v.__original_file__
+                    else:
+                        raise Exception("Could not get source code for function")
+                    
                 function_details[k] = {
                     'name': v.__name__,
                     'code': source,
