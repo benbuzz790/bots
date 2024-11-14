@@ -266,7 +266,7 @@ def generate_project(spec: str):
 
         # Let root bot work until it signals completion
         while not 'DONE' in response:
-            response = root_bot.respond('ok (reply "DONE" when done)')
+            response = root_bot.respond('ok (reply "DONE" when done per definition)')
             print("\n\n" + "root: " + response)
             root_bot.save(root_bot.name)  # Save state after each interaction
         return root_bot
