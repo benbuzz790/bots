@@ -29,8 +29,9 @@ def add_lines(file_path, new_content, start_line):
                        If file is being created, this must be 1.
 
     Returns:
-    A string confirming the operation or describing an error.
+    A string confirming the operation and showing the new file, or a description of an error encountered.
     """
+    from bots.tools.code_tools import view
     try:
         start_line = int(start_line)
         
@@ -71,7 +72,7 @@ def add_lines(file_path, new_content, start_line):
             file.writelines(lines)
         
         action = "created new file and added" if len(lines) == len(normalized_lines) else "added"
-        return f"Successfully {action} {len(normalized_lines)} lines starting at line {start_line}."
+        return f"Successfully {action} {len(normalized_lines)} lines starting at line {start_line}:\n\n{view(file_path)}"
         
     except Exception as e:
         return f"Error: {str(e)}"
@@ -88,8 +89,10 @@ def change_lines(file_path, new_content, start_line, end_line):
     - end_line (int): The ending line number of the lines to be changed.
 
     Returns:
-    A string confirming the operation or describing an error.
+    A string confirming the operation and showing the new file, or a description of an error encountered.
     """
+    from bots.tools.code_tools import view
+
     try:
         start_line = int(start_line)
         end_line = int(end_line)
@@ -115,7 +118,7 @@ def change_lines(file_path, new_content, start_line, end_line):
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
         
-        return f"Successfully changed lines {start_line} to {end_line}."
+        return f"Successfully changed lines {start_line} to {end_line}:\n\n{view(file_path)}"
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -130,8 +133,9 @@ def delete_lines(file_path, start_line, end_line):
     - end_line (int): The ending line number of the lines to be deleted.
 
     Returns:
-    A string confirming the operation or describing an error.
+    A string confirming the operation and showing the new file, or a description of an error encountered.
     """
+    from bots.tools.code_tools import view
     try:
         start_line = int(start_line)
         end_line = int(end_line)
@@ -146,7 +150,7 @@ def delete_lines(file_path, start_line, end_line):
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
         
-        return f"Successfully deleted lines {start_line} to {end_line}."
+        return f"Successfully deleted lines {start_line} to {end_line}:\n\n{view(file_path)}"
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -187,7 +191,7 @@ def replace_in_lines(file_path, old_text, new_text, start_line, end_line):
     - end_line (int): The ending line number of the range to modify.
 
     Returns:
-    A string confirming the operation or describing an error.
+    A string confirming the operation and showing the new file, or a description of an error encountered.
     """
     try:
         start_line = int(start_line)
@@ -207,6 +211,7 @@ def replace_in_lines(file_path, old_text, new_text, start_line, end_line):
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
         
-        return f"Successfully replaced {count} occurrences of '{old_text}' with '{new_text}' in lines {start_line} to {end_line}."
+        return f"Successfully replaced {count} occurrences of '{old_text}' with '{new_text}' \
+                in lines {start_line} to {end_line}:\n\n{view(file_path)}"
     except Exception as e:
         return f"Error: {str(e)}"

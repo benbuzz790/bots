@@ -6,15 +6,16 @@ from bots.foundation.anthropic_bots import AnthropicBot
 
 ### Bot tools ###
 
-def instruct_bot(bot_path, instruction):
+def message_bot(bot_path, message):
     """
-    Loads a bot, sends it an instruction, and allows it to work.
+    Loads a bot, sends it a message, and allows it to work.
 
-    Use when a bot is ready to execute a task.
+    Use to prepare a bot to do a task and to allow it to work. Returns control when the
+    bot replies with 'DONE'.
 
     Parameters:
     - bot_path (str): File path to the saved bot
-    - instruction (str): The instruction to send to the bot
+    - message (str): The message to send to the bot
 
     Returns the bot's first response, a list of tool-uses in order, and final response as a string.
     """
@@ -22,7 +23,7 @@ def instruct_bot(bot_path, instruction):
     from bots.dev.project_tree import _process_error
     try:
         bot = load(bot_path)
-        first_response = bot.respond(instruction+"\nYou may now use tools.")
+        first_response = bot.respond(message)
         bot.save(bot.name)
         last_response = first_response
         print(bot.name + ": " + first_response)
@@ -41,55 +42,7 @@ def instruct_bot(bot_path, instruction):
     except Exception as error:
         return _process_error(error)
 
-def ask_root_bot(bot_path: str, message:str):
-    """
-    Loads the project bot from disk and sends it a message.
-
-    Use when you need to communicate with the project bot to discuss requirements,
-    get clarification, or review implementation details.
-
-    Parameters:
-    - bot_path (str): File path to the saved module bot
-    - message (str): The message to send to the bot
-
-    Returns the bot's response as a string or an error message.
-    """
-    from bots.foundation.base import load
-    from bots.dev.project_tree import _process_error
-
-    try:
-        rootb0t = load(bot_path)
-        response = rootb0t.respond(message)
-        rootb0t.save(rootb0t.name)  
-        return response
-    except Exception as error:
-        return _process_error(error)
-
-def set_module_requirements(name: str, requirements: str):
-    """
-    Creates or updates a requirements file for a module.
-    
-    Use when you need to document requirements for a new module or update
-    existing requirements. Always creates files with _module_requirements.txt suffix.
-    
-    Parameters:
-    - name (str): Base name of the component (without _requirements.txt)
-    - requirements (str): The requirements content to write. This must be comprehensive
-        and complete. Saying 'everything else stays the same' is NOT allowed.
-    
-    Returns 'success' or an error message string.
-    """
-    from bots.dev.project_tree import _process_error
-
-    try:
-        file_path = f"{name}_module_requirements.txt"
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(requirements)
-        return f'Created requirements file {file_path} successfully'
-    except Exception as error:
-        return _process_error(error)
-    
-def set_file_requirements(name: str, requirements: str):
+def set_requirements(name: str, requirements: str):
     """
     Creates or updates a requirements file for a module.
     
@@ -110,63 +63,6 @@ def set_file_requirements(name: str, requirements: str):
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(requirements)
         return f'Created requirements file {file_path} successfully'
-    except Exception as error:
-        return _process_error(error)
-
-def initialize_module_bot(module_name: str) -> str:
-    """
-    Creates and initializes a new module-level bot, saving it to disk.
-
-    Use when you need to create a new bot to handle a module's requirements and implementation.
-    The bot will be initialized with appropriate module-level tools and context as well as the 
-    text of the file at requirements_path.
-
-    Parameters:
-    - module_name (str): Name of the module this bot will manage
-    - requirements_path (str): The location of the requirements file for the module
-
-    Returns success message with bot's file path or an error message string.
-    """
-    from bots.foundation.anthropic_bots import AnthropicBot
-    import bots.tools.code_tools as CT
-    from bots.dev.project_tree import _process_error, prompts
-    
-    try:
-        module_bot = AnthropicBot(name=f"{module_name}_Claude")
-        module_bot.set_system_message(prompts.file_initialization)
-        module_bot.add_tool(initialize_file_bot)
-        module_bot.add_tool(prepare_file_bot)
-        module_bot.add_tool(set_file_requirements)
-        module_bot.add_tool(instruct_bot)
-        _ = module_bot.respond(prompts.module_first_message)
-        path = module_bot.save(module_bot.name)
-        return f"Success: module bot created at {path}"
-    except Exception as error:
-        return _process_error(error)
-
-def prepare_module_bot(bot_path: str, message: str) -> str:
-    """
-    Loads a module bot from disk and sends it a message without
-    allowing the module bot to use any tools.
-
-    Use when
-     - you need to communicate with a module bot to discuss requirements
-    
-    Parameters:
-    - bot_path (str): File path to the saved module bot
-    - message (str): The message to send to the bot
-
-    Returns the bot's response as a string or an error message.
-    """
-    from bots.foundation.base import load
-    from bots.dev.project_tree import _process_error, prompts
-
-    try:
-        module_bot = load(bot_path)
-        response = module_bot.respond(message + "\nDo not use any tools yet.")
-        print("\n" + module_bot.name + ": " + response)
-        module_bot.save(module_bot.name)
-        return response
     except Exception as error:
         return _process_error(error)
 
@@ -199,40 +95,11 @@ def initialize_file_bot(file_name: str) -> str:
     except Exception as error:
         return _process_error(error)
 
-def prepare_file_bot(bot_path: str, message: str) -> str:
-    """
-    Loads a file bot from disk and sends it a message without allowing it
-    to use any tools.
-
-    Use when 
-        - you need to communicate with a file bot to discuss requirements
-        
-    Parameters:
-    - bot_path (str): File path to the saved file bot
-    - message (str): The message to send to the bot
-    - requirements_path (str): The path to the file requirements. 
-      (will be appended to your message if not None)
-
-    Returns the bot's response as a string or an error message.
-    """
-    from bots.foundation.base import load
-    from bots.dev.project_tree import _process_error, prompts
-
-    try:
-        file_bot = load(bot_path)
-        response = file_bot.respond(message + "\nDo not use any tools yet.")
-        print(file_bot.name + ": " + response)
-        path = file_bot.save(file_bot.name)  # Save any state changes
-        return response
-    except Exception as error:
-        return _process_error(error)
-
 def _initialize_root_bot():
     root_bot = AnthropicBot(name="project_Claude")
-    root_bot.add_tool(initialize_module_bot)
-    root_bot.add_tool(prepare_module_bot)
-    root_bot.add_tool(set_module_requirements)
-    root_bot.add_tool(instruct_bot)
+    root_bot.add_tool(initialize_file_bot)
+    root_bot.add_tool(message_bot)
+    root_bot.add_tool(set_requirements)
     root_bot.save(root_bot.name)
     root_bot.set_system_message(prompts.root_initialization)
     return root_bot
@@ -250,8 +117,7 @@ def generate_project(spec: str):
    """
    Executes the standard process for project generation:
    1. Root bot processes spec and creates module requirements 
-   2. Root bot creates and calls module bots for each module
-   3. Module bots create and call file bots
+   2. Root bot creates and calls file bots for each module
    4. File bots implement code
    
    Parameters:
@@ -278,91 +144,6 @@ def generate_project(spec: str):
 ### Prompt Library ###
 
 class prompts:
-
-    requirements_guidance_module = """
-    Module requirements should be written in a structured format:
-
-    1. Overview Section:
-        - Module name and one-line purpose
-        - Key responsibilities (bullet points)
-        - Primary interfaces/APIs it will expose
-        - Critical dependencies (external packages, other modules)
-
-    2. Interface Definitions:
-        - Each public class/function that other modules will use
-        - For each interface:
-            * Purpose and use cases
-            * Parameters with types and descriptions
-            * Return values with types and descriptions
-            * Exceptions it may raise
-            * Example usage if non-obvious
-
-    3. Data Structures:
-        - Key data structures or types defined in this module
-        - Data validation requirements
-        - State management requirements if applicable
-
-    4. Integration Requirements:
-        - How other modules will import/use this module
-        - Any initialization/setup required
-        - Configuration requirements
-        - Resource management (files, connections, etc.)
-
-    5. Non-functional Requirements:
-        - Performance expectations
-        - Error handling strategies
-        - Logging requirements
-        - Thread safety requirements if applicable
-        - Resource cleanup/management
-
-    6. Implementation Constraints:
-        - Required design patterns
-        - Code style requirements beyond PEP 8
-        - Specific algorithms to use
-        - Memory/performance constraints
-
-    Format requirements exactly like this:
-    ```
-    # ModuleName
-
-    ## Overview
-    [Brief description]
-
-    ### Responsibilities
-    - [Responsibility 1]
-    - [Responsibility 2]
-    ...
-
-    ### Primary Interfaces
-    - [Interface 1]
-    - [Interface 2]
-    ...
-
-    ### Dependencies
-    - [Dependency 1: reason needed]
-    - [Dependency 2: reason needed]
-    ...
-
-    ## Interface Definitions
-
-    ### [Interface 1 Name]
-    Purpose: [description]
-    Parameters:
-    - name (type): description
-    Returns: (type) description
-    Raises: 
-    - ExceptionType: when/why
-    Example:
-    ```python
-    [example code]
-    ```
-
-    [Continue sections...]
-    ```
-
-    BE SPECIFIC. "Handle errors appropriately" is not specific enough. 
-    "Catch FileNotFoundError and ValueError, log with error level, re-raise with context" is specific enough.
-    """
 
     requirements_guidance_file = """
     File requirements should be written in a structured format:
@@ -457,10 +238,9 @@ class prompts:
     project_context = """
     You are part of a hierarchical system of specialized AI assistants 
     working together to create a Python project.
-    The system has three levels:
-    1. Root: Handles project architecture and module design. Oversees multiple modules.
-    2. Module: Handles module implementation and file organization. Oversees multiple files.
-    3. File: Handles specific file implementation and testing. 
+    The system has two levels:
+    1. Root: Handles project architecture and module design. Oversees multiple files.
+    2. File: Handles specific file implementation and testing. 
     """
 
     root_initialization = project_context + """
@@ -468,8 +248,8 @@ class prompts:
     1. Analyzing project specifications
     2. Breaking down the project into logical modules
     3. Creating clear requirements for each module
-    4. Creating and coordinating module bots
-    """ + requirements_guidance_module
+    4. Creating and coordinating file bots
+    """ + requirements_guidance_file
 
     def root_first_message(spec: str):
         return f"""
@@ -480,69 +260,33 @@ class prompts:
         {spec}
         ```
 
-        First, list all major modules for the project.
+        First, list all modules for the project.
+        Then, list all files for each module.
     
-        For each module you identify:
+        For each file you identify:
         
-        1. Use initialize_module_bot to create a module bot.
-        2. Use prepare_module_bot to discuss requirements until clear. Note that you
+        1. Use initialize_file_bot to create a file bot.
+        2. Use message_bot to discuss requirements until clear. Note that you
         will need to send the requirements in your message and should instruct the 
-        bot do make at least two files: one will be a test for the other.
-        3. Use make_requirements to memorialize final requirements.
-        4. Use instruct_bot and allow the module bot to work.
+        bot to make at least two files: one will be a test for the other.
+        3. Use set_requirements to memorialize final requirements.
+        4. Use message_bot and instruct the module bot to work (if it hasn't already).
+        5. Use message_bot to confirm both completion of the file, specifically 
+        confirming absence of placeholder implementations.
         
         Again,
-        1. initialize_module_bot
-        2. prepare_module_bot
-        3. make_requirements
-        4. instruct_bot
+        1. initialize_file_bot
+        2. message_bot to discuss requirements
+        3. set_requirements to document requirements
+        4. message_bot to allow work
+        5. message_bot to confirm completion
 
         DO NOT:
         - try to edit or write files (other than requirements). Even for
-            small changes - use instruct_bot with a message which is an instruction 
+            small changes - use message_bot with a message which is an instruction 
             to the appropriate bot.
 
         """
-
-    module_initialization = project_context + """
-    You are a module bot responsible for:
-    1. Understanding module requirements
-    2. Chunking the module responsibilities into multiple files
-    3. Creating clear requirements for each file
-    4. Creating and coordinating file bots for your module.
-    """ + requirements_guidance_file
-
-    module_first_message = """
-    In a moment, you will be contacted by the project manager to discuss module requirements.
-    Do not use any tools until this discussion is finished.
-
-    Second, after that discussion, 
-    
-    0. List all the files which will make up your module, including test files.
-
-    For each file in your list:
-    1. Use initialize_file_bot to create a file bot
-    2. Use prepare_file_bot to discuss requirements until clear.
-    Note that you will have to send the requirements in the first message.
-    3. Use make_requirements to document the agreed-upon requirements
-    4. Use instruct_bot to allow the file bot to write the ENTIRE file at once
-
-    Again:
-    0. Talk to project manager
-    1. List all files
-    2. initialize_file_bot to get started
-    3. prepare_file_bot to clarify
-    4. make_requirements to memorialize 
-    5. instruct_bot to initiate action
-    6. repeat for all files
-
-    DO NOT:
-    - try to edit or write files (other than requirements). Even for
-    small changes - use instruct_bot with a message which is an instruction 
-    to the appropriate bot.
-
-    Please respond with only "YES" to confirm readiness.
-    """
 
     file_initialization = project_context + """
     You are a file bot responsible for:
