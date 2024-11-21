@@ -1,7 +1,3 @@
-import ast
-import astor
-import os
-import re
 import inspect
 import traceback
 import datetime as DT
@@ -20,12 +16,15 @@ def replace_class(file_path, new_class_def, old_class_name=None):
 
     Returns a confirmation message or an error message.
     """
+    import ast
+    import astor
+    import os
+    from bots.tools.python_tools import _process_error, _clean
 
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
-        new_class_node = ast.parse(_clean(new_class_def)).body[0
-            ]
+        new_class_node = ast.parse(_clean(new_class_def)).body[0]
         if not isinstance(new_class_node, ast.ClassDef):
             return _process_error(ValueError(
                 'Provided definition is not a class'))
@@ -38,9 +37,7 @@ def replace_class(file_path, new_class_def, old_class_name=None):
         return _process_error(ValueError(
             f'Error parsing the file {file_path}: {str(e)}'))
 
-
     class ClassReplacer(ast.NodeTransformer):
-
         def visit_ClassDef(self, node):
             if old_class_name:
                 if node.name == old_class_name:
@@ -77,11 +74,15 @@ def replace_function(file_path, new_function_def):
 
     Returns a confirmation message or an error message.
     """
+    import ast
+    import astor
+    import os
+    from bots.tools.python_tools import _process_error, _clean
+
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
-        new_func_node = ast.parse(_clean(new_function_def)
-            ).body[0]
+        new_func_node = ast.parse(_clean(new_function_def)).body[0]
         if not isinstance(new_func_node, ast.FunctionDef):
             return _process_error(ValueError(
                 'Provided definition is not a function'))
@@ -94,9 +95,7 @@ def replace_function(file_path, new_function_def):
         return _process_error(ValueError(
             f'Error parsing the file {file_path}: {str(e)}'))
 
-
     class FunctionReplacer(ast.NodeTransformer):
-
         def __init__(self):
             self.success = False
 
@@ -135,11 +134,15 @@ def add_function_to_class(file_path, class_name, new_method_def):
     
     Returns a confirmation message or an error message.
     """
+    import ast
+    import astor
+    import os
+    from bots.tools.python_tools import _process_error, _clean
+
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
-        new_method_node = ast.parse(_clean(new_method_def)
-            ).body[0]
+        new_method_node = ast.parse(_clean(new_method_def)).body[0]
         if not isinstance(new_method_node, ast.FunctionDef):
             return _process_error(ValueError(
                 'Provided definition is not a function'))
@@ -152,9 +155,7 @@ def add_function_to_class(file_path, class_name, new_method_def):
         return _process_error(ValueError(
             f'Error parsing the file {file_path}: {str(e)}'))
 
-
     class MethodAdder(ast.NodeTransformer):
-
         def __init__(self):
             self.success = False
 
@@ -193,12 +194,15 @@ def add_function_to_file(file_path: str, new_function_def: str) -> str:
         as new_function_def would not be a pure function definition
     Returns a confirmation message or an error message.
     """
+    import ast
+    import astor
+    import os
+    from bots.tools.python_tools import _process_error, _clean
 
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
-        new_func_node = ast.parse(_clean(new_function_def)
-            ).body[0]
+        new_func_node = ast.parse(_clean(new_function_def)).body[0]
         if not isinstance(new_func_node, ast.FunctionDef):
             return _process_error(ValueError(
                 'Provided definition is not a function'))
@@ -234,6 +238,10 @@ def add_class_to_file(file_path, class_def):
 
     Returns a confirmation message or an error message.
     """
+    import ast
+    import astor
+    import os
+    from bots.tools.python_tools import _process_error, _clean
 
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -271,6 +279,10 @@ def execute_python_code(code, timeout=300):
 
     Returns stdout or an error message.
     """
+    import ast
+    import astor
+    import os
+    from bots.tools.python_tools import _process_error
 
     def create_wrapper_ast():
         wrapper_code = """
@@ -344,6 +356,10 @@ def get_py_interface(file_path: str) -> str:
 
     Returns a string containing all class and function definitions with their docstrings.
     """
+    import ast
+    import os
+    from bots.tools.python_tools import _process_error
+
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
@@ -375,5 +391,3 @@ def _process_error(error):
     error_message += (
         f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
     return error_message
-
-
