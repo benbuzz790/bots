@@ -12,7 +12,8 @@ import threading
 import inspect
 import hashlib
 import importlib
-
+from dataclasses import dataclass
+import textwrap
 
 # Some utility functions:
 
@@ -195,63 +196,111 @@ class ConversationNode:
     
         return count_recursive(root)
 
+@dataclass
+class ModuleContext:
+    """Stores context for a module including its source and execution environment"""
+    name: str
+    source: str
+    file_path: str
+    namespace: ModuleType
+    code_hash: str
+
+class ToolHandlerError(Exception):
+    """Base exception class for ToolHandler errors"""
+    pass
+
+class ToolNotFoundError(ToolHandlerError):
+    """Raised when a requested tool cannot be found"""
+    pass
+
+class ToolExecutionError(ToolHandlerError):
+    """Raised when there's an error executing a tool"""
+    pass
+
+class ModuleLoadError(ToolHandlerError):
+    """Raised when there's an error loading a module"""
+    pass
 
 class ToolHandler(ABC):
-
+    """
+    Abstract base class for handling tool registration, execution, and persistence.
+    Supports module-level preservation of dependencies and function contexts.
+    """
+    
     def __init__(self):
         self.tools: List[Dict[str, Any]] = []
         self.function_map: Dict[str, Callable] = {}
         self.requests: List[Dict[str, Any]] = []
         self.results: List[Dict[str, Any]] = []
+        self.modules: Dict[str, ModuleContext] = {}
 
     @abstractmethod
-    def generate_tool_schema(self, func: Callable) ->Dict[str, Any]:
+    def generate_tool_schema(self, func: Callable) -> Dict[str, Any]:
         """
-            Generate tool schema from callable function
-            Return schema as dictionary
+        Generate tool schema from callable function.
+        
+        Args:
+            func: The function to generate schema for
+            
+        Returns:
+            Dictionary containing the tool's schema
         """
-        raise NotImplemented("You must implement this method in a subclass")
-        pass
+        raise NotImplementedError("You must implement this method in a subclass")
 
     @abstractmethod
-    def generate_request_schema(self, response: Any) ->List[Dict[str, Any]]:
+    def generate_request_schema(self, response: Any) -> List[Dict[str, Any]]:
         """
-            Generate request schema from response
-            Return list of schemas (multiple requests may be in one message)
+        Generate request schema from response.
+        
+        Args:
+            response: Raw response from LLM service
+            
+        Returns:
+            List of request schemas (multiple requests may be in one message)
         """
-        raise NotImplemented("You must implement this method in a subclass")
-        pass
+        raise NotImplementedError("You must implement this method in a subclass")
 
     @abstractmethod
-    def tool_name_and_input(self, request_schema) ->Tuple[str, Dict[str, Any]]:
-        """ 
-            Extract tool name and input from request
-            Return (tool name, kwargs) 
+    def tool_name_and_input(self, request_schema: Dict[str, Any]) -> Tuple[Optional[str], Dict[str, Any]]:
         """
-        raise NotImplemented("You must implement this method in a subclass")
-        pass
+        Extract tool name and input from request.
+        
+        Args:
+            request_schema: The request schema to parse
+            
+        Returns:
+            Tuple of (tool name, input kwargs). Tool name may be None if request should be skipped.
+        """
+        raise NotImplementedError("You must implement this method in a subclass")
 
     @abstractmethod
-    def generate_response_schema(self, request, tool_output_kwargs) ->Dict[
-        str, Any]:
+    def generate_response_schema(self, request: Dict[str, Any], tool_output_kwargs: Dict[str, Any]) -> Dict[str, Any]:
         """
-            Generate response schema from request and tool output
-            Return schema
+        Generate response schema from request and tool output.
+        
+        Args:
+            request: The original request schema
+            tool_output_kwargs: The output from tool execution
+            
+        Returns:
+            Response schema dictionary
         """
-        raise NotImplemented("You must implement this method in a subclass")
-        pass
+        raise NotImplementedError("You must implement this method in a subclass")
 
-    def handle_response(self, response) ->Tuple[List[Dict[str, str]], 
-                                                List[Dict[str, str]]]:
+    def handle_response(self, response: Any) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """
-            Arguments:
-                response: the raw response from the llm service
-            Returns:
-                (list[request_schema], list[result_schema]) 
-            Side effects:
-                - Clears old self.requests and self.results
-                - Sets new self.requests and self.results.            
-                - Executes tools and produces any tool use side effects.
+        Process an LLM response, execute any requested tools, and generate results.
+        
+        Args:
+            response: The raw response from the LLM service
+            
+        Returns:
+            Tuple of (list of request schemas, list of result schemas)
+            
+        Side effects:
+            - Clears old requests and results
+            - Sets new requests and results
+            - Executes tools and produces any tool use side effects
         """
         self.clear()
         requests = self.generate_request_schema(response)
@@ -260,93 +309,282 @@ class ToolHandler(ABC):
             return self.requests, self.results
 
         for request_schema in requests:
-            
             tool_name, input_kwargs = self.tool_name_and_input(request_schema)
             
             if tool_name is None:
-                continue # i.e. skip this request
+                continue
                 
             try:
-                output_kwargs = self.function_map[tool_name](**input_kwargs)
-            except KeyError:
-                output_kwargs = {"error": f"Tool '{tool_name}' not found in function map"}
+                if tool_name not in self.function_map:
+                    raise ToolNotFoundError(f"Tool '{tool_name}' not found in function map")
+                    
+                func = self.function_map[tool_name]
+                output_kwargs = func(**input_kwargs)
+                
+            except ToolNotFoundError as e:
+                self.logger.error(f"Tool not found: {str(e)}")
+                output_kwargs = {"error": str(e)}
             except TypeError as e:
+                self.logger.error(f"Invalid arguments for tool '{tool_name}': {str(e)}")
                 output_kwargs = {"error": f"Invalid arguments for tool '{tool_name}': {str(e)}"}
             except Exception as e:
+                self.logger.error(f"Unexpected error executing tool '{tool_name}': {str(e)}")
                 output_kwargs = {"error": f"Unexpected error while executing tool '{tool_name}': {str(e)}"}
 
-            response_schema = self.generate_response_schema(request_schema,output_kwargs)
+            response_schema = self.generate_response_schema(request_schema, output_kwargs)
             self.requests.append(request_schema)
             self.results.append(response_schema)
         
         return self.requests, self.results
 
     def add_tool(self, func: Callable) -> None:
+        """
+        Add a single function as a tool.
+        Creates a dynamic module context if none exists.
+        """
         schema = self.generate_tool_schema(func)
-        if schema:
-            self.tools.append(schema)
-            # Store original source when first adding the tool
+        if not schema:
+            return
+
+        # If function doesn't have a module context, create one
+        if not hasattr(func, '__module_context__'):
             try:
+                # Try to get source and file info
                 source = inspect.getsource(func)
                 file_path = inspect.getfile(func) if inspect.getmodule(func) else 'dynamic'
-                func.__original_source__ = source
-                func.__original_file__ = file_path
-            except Exception as e:
-                print(f"Warning: Could not get source for {func.__name__}: {str(e)}")
-                # If we can't get source, still add function but mark it
-                func.__original_source__ = "# Source not available\n" + str(func)
-                func.__original_file__ = 'dynamic'
-                
-            self.function_map[func.__name__] = func
+            except Exception:
+                # If we can't get source, create minimal version
+                source = f"def {func.__name__}{inspect.signature(func)}:\n    {func.__doc__ or ''}\n    return None"
+                file_path = 'dynamic'
 
-    def add_tools_from_file(self, filepath: str) ->None:
-        functions = self.extract_functions(filepath)
-        for func in functions:
-            self.add_tool(func)
+            # Remove any leading whitespace to avoid indentation issues
+            source = textwrap.dedent(source)
 
-    def add_tools_from_module(self, module:ModuleType):
+            # Create dynamic module
+            module_name = f"dynamic_module_{hashlib.md5(source.encode()).hexdigest()}"
+            module = ModuleType(module_name)
+            module.__file__ = file_path
+
+            # Create module context
+            module_context = ModuleContext(
+                name=module_name,
+                source=source,
+                file_path=file_path,
+                namespace=module,
+                code_hash=self._get_code_hash(source)
+            )
+
+            # Execute the function in the module's namespace
+            exec(source, module.__dict__)
+            
+            # Store module context with function
+            func.__module_context__ = module_context
+            self.modules[file_path] = module_context
+
+        self.tools.append(schema)
+        self.function_map[func.__name__] = func
+
+    def add_tools_from_file(self, filepath: str) -> None:
+        """
+        Add all non-private functions from a file as tools.
+        Preserves complete module context including dependencies.
+        
+        Args:
+            filepath: Path to the Python file containing tools
+        
+        Raises:
+            FileNotFoundError: If the specified file doesn't exist
+            ModuleLoadError: If there's an error loading the module
+        """
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"File '{filepath}' not found.")
+            
+        abs_file_path = os.path.abspath(filepath)
+        module_name = f"dynamic_module_{hashlib.md5(abs_file_path.encode()).hexdigest()}"
+        
         try:
-            # Get all functions from the module
-            functions = inspect.getmembers(module, inspect.isfunction)
-            for name, func in functions:
-                # Skip private functions (those starting with an underscore)
-                if not name.startswith('_'):
-                    self.add_tool(func)
-
-        except Exception as e:
-            print(f"An error occurred while adding tools from module '{module.__name__}': {str(e)}")
-
-    def extract_functions(self, file_path: str) ->List[Callable]:
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File '{file_path}' not found.")
-        abs_file_path = os.path.abspath(file_path)
-        file_dir = os.path.dirname(abs_file_path)
-        sys.path.insert(0, file_dir)
-        try:
+            # Read source code
             with open(abs_file_path, 'r') as file:
-                content = file.read()
-            module = ast.parse(content)
-            imports = []
-            functions = []
-            for node in module.body:
-                if isinstance(node, (ast.Import, ast.ImportFrom)):
-                    imports.append(node)
-                elif isinstance(node, ast.FunctionDef):
-                    functions.append(node)
-            new_module = ast.Module(body=imports + functions, type_ignores=[])
-            compiled = compile(new_module, filename=abs_file_path, mode='exec')
-            namespace = ModuleType('dynamic_module')
-            namespace.__file__ = abs_file_path
-            exec(compiled, namespace.__dict__)
-            extracted_functions = []
-            for func in functions:
-                if (func.name in namespace.__dict__ and not func.name.
-                    startswith('_')):
-                    extracted_functions.append(namespace.__dict__[func.name])
-            return extracted_functions
-        finally:
-            sys.path.pop(0)
+                source = file.read()
+            
+            # Create module context
+            module = ModuleType(module_name)
+            module.__file__ = abs_file_path
+            
+            # Parse AST to find functions
+            tree = ast.parse(source)
+            function_nodes = [node for node in ast.walk(tree) 
+                            if isinstance(node, ast.FunctionDef)]
+            
+            # Execute module in its own namespace
+            sys.path.insert(0, os.path.dirname(abs_file_path))
+            try:
+                exec(source, module.__dict__)
+            finally:
+                sys.path.pop(0)
+            
+            # Create module context
+            module_context = ModuleContext(
+                name=module_name,
+                source=source,
+                file_path=abs_file_path,
+                namespace=module,
+                code_hash=self._get_code_hash(source)
+            )
+            
+            # Store module context
+            self.modules[abs_file_path] = module_context
+            
+            # Add functions as tools
+            for node in function_nodes:
+                if not node.name.startswith('_'):
+                    func = module.__dict__.get(node.name)
+                    if func:
+                        func.__module_context__ = module_context
+                        self.add_tool(func)
+                        
+        except Exception as e:
+            raise ModuleLoadError(f"Error loading module from {filepath}: {str(e)}") from e
 
+    def add_tools_from_module(self, module: ModuleType) -> None:
+        """
+        Add all non-private functions from a module as tools.
+        """
+        try:
+            # Get module source
+            try:
+                source = getattr(module, '__source__', None) or inspect.getsource(module)
+            except Exception:
+                # If we can't get source, construct it from functions
+                functions = inspect.getmembers(module, inspect.isfunction)
+                source_parts = []
+                for name, func in functions:
+                    if not name.startswith('_'):
+                        try:
+                            func_source = inspect.getsource(func)
+                        except Exception:
+                            func_source = f"def {name}{inspect.signature(func)}:\n    {func.__doc__ or ''}\n    return None"
+                        source_parts.append(textwrap.dedent(func_source))
+                source = "\n\n".join(source_parts)
+
+            # Clean up source code
+            source = textwrap.dedent(source).strip()
+
+            # Create module context
+            module_context = ModuleContext(
+                name=module.__name__,
+                source=source,
+                file_path=getattr(module, '__file__', 'dynamic'),
+                namespace=module,
+                code_hash=self._get_code_hash(source)
+            )
+            
+            self.modules[module_context.file_path] = module_context
+            
+            # Add all non-private functions as tools
+            for name, func in inspect.getmembers(module, inspect.isfunction):
+                if not name.startswith('_'):
+                    func.__module_context__ = module_context
+                    self.add_tool(func)
+                    
+        except Exception as e:
+            raise ModuleLoadError(f"Error loading module {module.__name__}: {str(e)}") from e
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize the ToolHandler state to a dictionary.
+        """
+        module_details = {}
+        function_paths = {}
+        
+        # Store module details
+        for file_path, module_context in self.modules.items():
+            module_details[file_path] = {
+                'name': module_context.name,
+                'source': module_context.source,
+                'file_path': file_path,
+                'code_hash': module_context.code_hash
+            }
+        
+        # Store function paths
+        for name, func in self.function_map.items():
+            # Get module context safely
+            module_context = getattr(func, '__module_context__', None)
+            if module_context:
+                function_paths[name] = module_context.file_path
+            else:
+                print(f"Warning: Function {name} has no module context, using 'dynamic'")
+                function_paths[name] = 'dynamic'
+
+        return {
+            'class': f"{self.__class__.__module__}.{self.__class__.__name__}",
+            'tools': self.tools.copy(),  # Ensure we copy the tools list
+            'requests': self.requests.copy(),
+            'results': self.results.copy(),
+            'modules': module_details,
+            'function_map': function_paths
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ToolHandler':
+        """
+        Reconstruct a ToolHandler instance from a serialized state.
+        """
+        handler = cls()
+        handler.results = data['results']
+        handler.requests = data['requests']
+        handler.tools = []  # Ensure we start with empty tools list
+        
+        # First restore all modules
+        for file_path, module_data in data['modules'].items():
+            # Verify code hash
+            current_code_hash = cls._get_code_hash(module_data['source'])
+            if current_code_hash != module_data['code_hash']:
+                print(f"Warning: Code hash mismatch for module {file_path}. Skipping.")
+                continue
+                
+            try:
+                # Create module
+                module = ModuleType(module_data['name'])
+                module.__file__ = file_path
+                
+                # Clean up source code and ensure no leading/trailing whitespace
+                source = textwrap.dedent(module_data['source']).strip()
+                
+                # Create global namespace with module as __name__
+                namespace = {'__name__': module_data['name'], '__file__': file_path}
+                
+                # Execute module code in the namespace
+                exec(source, namespace)
+                
+                # Update module dict with executed namespace
+                module.__dict__.update(namespace)
+                
+                # Create and store module context
+                module_context = ModuleContext(
+                    name=module_data['name'],
+                    source=source,
+                    file_path=file_path,
+                    namespace=module,
+                    code_hash=current_code_hash
+                )
+                handler.modules[file_path] = module_context
+                
+                # Register functions from this module
+                for func_name, func_path in data['function_map'].items():
+                    if func_path == file_path and func_name in namespace:
+                        func = namespace[func_name]
+                        func.__module_context__ = module_context
+                        handler.add_tool(func)
+                
+            except Exception as e:
+                print(f"Warning: Failed to load module {file_path}: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+                continue
+        
+        return handler
+    
     def get_tools_json(self) ->str:
         """Return a JSON string representation of all tools."""
         return json.dumps(self.tools, indent=1)
@@ -371,96 +609,22 @@ class ToolHandler(ABC):
     def get_requests(self) ->List[Dict[str, Any]]:
         """Get all stored requests"""
         return self.requests
-
-    def to_dict(self) -> Dict[str, Any]:
-        function_details = {}
-        for k, v in self.function_map.items():
-            try:
-                # First try to get source through inspect
-                try:
-                    source = inspect.getsource(v)
-                    file_path = inspect.getfile(v) if inspect.getmodule(v) else 'dynamic'
-                except Exception:
-                    # Fall back to stored source if inspect fails
-                    if hasattr(v, '__original_source__'):
-                        source = v.__original_source__
-                        file_path = v.__original_file__
-                    else:
-                        raise Exception("Could not get source code for function")
-                    
-                function_details[k] = {
-                    'name': v.__name__,
-                    'code': source,
-                    'file_path': file_path,
-                    'file_hash': self._get_file_hash(file_path) if os.path.exists(file_path) else None,
-                    'code_hash': self._get_code_hash(source)
-                }
-            except Exception as e:
-                print(f"Warning: Could not get details for {k}: {str(e)}")
-                raise e
-
-        return {
-            'class': f"{self.__class__.__module__}.{self.__class__.__name__}",
-            'tools': self.tools,
-            'requests': self.requests,
-            'results': self.results,
-            'function_map': function_details
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ToolHandler':
-        handler = cls()
-        handler.results = data['results']
-        handler.requests = data['requests']
-
-        def load_function_from_code(code: str, func_name: str, file_path: str):
-            exec(code, globals())
-            func = globals().get(func_name)
-            if func_name in globals():
-                del globals()[func_name]
-            if func:
-                # Store the source and file path with the function
-                func.__original_source__ = code
-                func.__original_file__ = file_path
-            return func
-
-        for func_name, func_data in data['function_map'].items():
-            try:
-                # Verify code hash
-                current_code_hash = cls._get_code_hash(func_data['code'])
-                if current_code_hash != func_data['code_hash']:
-                    print(f"Warning: Code hash mismatch for {func_name}. Skipping.")
-                    continue
-
-                # Load function from verified code
-                func = load_function_from_code(
-                    func_data['code'], 
-                    func_name, 
-                    func_data['file_path']
-                )
-
-                if func:
-                    handler.function_map[func_name] = func
-                    tool_schema = handler.generate_tool_schema(func)
-                    if tool_schema:
-                        handler.tools.append(tool_schema)
-                else:
-                    print(f"Warning: Could not load function {func_name}")
-
-            except Exception as e:
-                print(f"Warning: Failed to load function {func_name}: {str(e)}")
-
-        return handler
-
+    
     @staticmethod
-    def _get_file_hash(file_path: str) -> str:
-        with open(file_path, 'rb') as f:
-            return hashlib.md5(f.read()).hexdigest()
-
-    @staticmethod
-    def _get_code_hash(code):
+    def _get_code_hash(code: str) -> str:
+        """Generate MD5 hash of code string."""
         return hashlib.md5(code.encode()).hexdigest()
 
+    def __str__(self) -> str:
+        """String representation showing number of tools and modules."""
+        return (f"ToolHandler with {len(self.tools)} tools and "
+                f"{len(self.modules)} modules")
+
+    def __repr__(self) -> str:
+        """Detailed representation including tool names."""
+        tool_names = list(self.function_map.keys())
+        return (f"ToolHandler(tools={tool_names}, "
+                f"modules={list(self.modules.keys())})")
 
 class Mailbox(ABC):
 
