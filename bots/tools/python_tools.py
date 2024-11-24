@@ -2,10 +2,240 @@ import inspect
 import traceback
 import datetime as DT
 import subprocess
+import ast
+import astor
+import os
+
+def add_import(file_path: str, import_stmt: str) ->str:
+    """
+    Adds a new import statement to a Python file.
+    Creates the file if it doesn't exist.
+    Avoids adding duplicate imports.
+
+    Parameters:
+    - file_path (str): The path to the file where the import will be added
+    - import_stmt (str): The import statement to add (e.g., "import os" or "from typing import List")
+        Must be a valid Python import statement.
+
+    Returns a confirmation message or an error message.
+    """
+
+    if not os.path.exists(file_path):
+        try:
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write('')
+        except Exception as e:
+            return _process_error(ValueError(
+                f'Error creating new file {file_path}: {str(e)}'))
+    try:
+        new_import_node = ast.parse(import_stmt).body[0]
+        if not isinstance(new_import_node, (ast.Import, ast.ImportFrom)):
+            return _process_error(ValueError(
+                'Provided statement is not a valid import'))
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error parsing import statement: {str(e)}'))
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+        if not content.strip():
+            with open(file_path, 'w', encoding='utf-8') as file:
+                file.write(import_stmt + '\n')
+            return (
+                f"Import '{import_stmt}' has been added to new file '{file_path}'."
+                )
+        tree = ast.parse(content)
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error parsing the file {file_path}: {str(e)}'))
+    for node in tree.body:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            if astor.to_source(node).strip() == import_stmt:
+                return (
+                    f"Import '{import_stmt}' already exists in '{file_path}'.")
+    last_import_idx = -1
+    for i, node in enumerate(tree.body):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            last_import_idx = i
+    tree.body.insert(last_import_idx + 1, new_import_node)
+    try:
+        updated_content = astor.to_source(tree)
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write(updated_content)
+    except Exception as e:
+        return _process_error(e)
+    return f"Import '{import_stmt}' has been added to '{file_path}'."
+
+
+def remove_import(file_path: str, import_to_remove: str) ->str:
+    """
+    Removes an import statement from a Python file.
+    
+    Parameters:
+    - file_path (str): The path to the file to modify
+    - import_to_remove (str): The import statement to remove (e.g., "import os" or "from typing import List")
+        Must match the existing import statement exactly.
+
+    Returns a confirmation message or an error message.
+    """
+
+    if not os.path.exists(file_path):
+        return _process_error(ValueError(f'File {file_path} does not exist'))
+    try:
+        remove_node = ast.parse(import_to_remove).body[0]
+        if not isinstance(remove_node, (ast.Import, ast.ImportFrom)):
+            return _process_error(ValueError(
+                'Provided statement is not a valid import'))
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error parsing import statement: {str(e)}'))
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+        tree = ast.parse(content)
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error parsing the file {file_path}: {str(e)}'))
+    original_length = len(tree.body)
+    new_body = []
+    found = False
+    for node in tree.body:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            node_str = astor.to_source(node).strip()
+            if node_str == import_to_remove:
+                found = True
+                continue
+        new_body.append(node)
+    if not found:
+        return f"Import '{import_to_remove}' not found in '{file_path}'."
+    tree.body = new_body
+    try:
+        updated_content = astor.to_source(tree)
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write(updated_content)
+    except Exception as e:
+        return _process_error(e)
+    return f"Import '{import_to_remove}' has been removed from '{file_path}'."
+
+
+def replace_import(file_path: str, old_import: str, new_import: str) ->str:
+    """
+    Replaces an existing import statement in a Python file.
+    
+    Parameters:
+    - file_path (str): The path to the file to modify
+    - old_import (str): The existing import statement to replace (e.g., "import os" or "from typing import List")
+        Must match the existing import statement exactly.
+    - new_import (str): The new import statement (e.g., "from os import path" or "from typing import List, Dict")
+        Must be a valid Python import statement.
+
+    Returns a confirmation message or an error message.
+    """
+
+    if not os.path.exists(file_path):
+        return _process_error(ValueError(f'File {file_path} does not exist'))
+    try:
+        old_node = ast.parse(old_import).body[0]
+        new_node = ast.parse(new_import).body[0]
+        if not isinstance(old_node, (ast.Import, ast.ImportFrom)
+            ) or not isinstance(new_node, (ast.Import, ast.ImportFrom)):
+            return _process_error(ValueError(
+                'Both statements must be valid imports'))
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error parsing import statements: {str(e)}'))
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+        tree = ast.parse(content)
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error parsing the file {file_path}: {str(e)}'))
+    found = False
+    for i, node in enumerate(tree.body):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            node_str = astor.to_source(node).strip()
+            if node_str == old_import:
+                tree.body[i] = new_node
+                found = True
+                break
+    if not found:
+        return f"Import '{old_import}' not found in '{file_path}'."
+    try:
+        updated_content = astor.to_source(tree)
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write(updated_content)
+    except Exception as e:
+        return _process_error(e)
+    return (
+        f"Import '{old_import}' has been updated to '{new_import}' in '{file_path}'."
+        )
+
+
+def add_class(file_path, class_def):
+    """
+    Adds a new class definition to an existing Python file.
+    Creates the file if it doesn't exist.
+
+    Use when you want to add a completely new class to a Python file without modifying existing content.
+
+    Parameters:
+    - file_path (str): The path to the file where the new class will be added.
+    - class_def (str): The new pure class definition as a string.
+        Note this function uses ast parsing, so it is not necessary to mimic indentation level.
+        Note that adding import statements outside the class will cause an error,
+        as new_class_def would not be a pure class definition
+
+    Returns a confirmation message or an error message.
+    """
+
+    if not os.path.exists(file_path):
+        try:
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write('')
+        except Exception as e:
+            return _process_error(ValueError(
+                f'Error creating new file {file_path}: {str(e)}'))
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+        new_class_node = ast.parse(_clean(class_def)).body[0]
+        if not isinstance(new_class_node, ast.ClassDef):
+            return _process_error(ValueError(
+                'Provided definition is not a class'))
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error in new class definition: {str(e)}'))
+    if not content.strip():
+        try:
+            with open(file_path, 'w', encoding='utf-8') as file:
+                file.write(astor.to_source(new_class_node))
+            return (
+                f"Class '{new_class_node.name}' has been added to new file '{file_path}'."
+                )
+        except Exception as e:
+            return _process_error(e)
+    try:
+        tree = ast.parse(content)
+    except Exception as e:
+        return _process_error(ValueError(
+            f'Error parsing the file {file_path}: {str(e)}'))
+    tree.body.append(new_class_node)
+    try:
+        updated_content = astor.to_source(tree)
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write(updated_content)
+    except Exception as e:
+        return _process_error(e)
+    return f"Class '{new_class_node.name}' has been added to '{file_path}'."
+
 
 def replace_class(file_path, new_class_def, old_class_name=None):
     """
     Replaces a class definition in a file with a new class definition.
+    Creates the file if it doesn't exist.
 
     Use when you need to update or modify an entire class definition within a Python file.
 
@@ -16,11 +246,15 @@ def replace_class(file_path, new_class_def, old_class_name=None):
 
     Returns a confirmation message or an error message.
     """
-    import ast
-    import astor
-    import os
-    from bots.tools.python_tools import _process_error, _clean
 
+    if not os.path.exists(file_path):
+        try:
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write('')
+        except Exception as e:
+            return _process_error(ValueError(
+                f'Error creating new file {file_path}: {str(e)}'))
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
@@ -31,13 +265,24 @@ def replace_class(file_path, new_class_def, old_class_name=None):
     except Exception as e:
         return _process_error(ValueError(
             f'Error in new class definition: {str(e)}'))
+    if not content.strip():
+        try:
+            with open(file_path, 'w', encoding='utf-8') as file:
+                file.write(astor.to_source(new_class_node))
+            return (
+                f"Class '{new_class_node.name}' has been added to new file '{file_path}'."
+                )
+        except Exception as e:
+            return _process_error(e)
     try:
         tree = ast.parse(content)
     except Exception as e:
         return _process_error(ValueError(
             f'Error parsing the file {file_path}: {str(e)}'))
 
+
     class ClassReplacer(ast.NodeTransformer):
+
         def visit_ClassDef(self, node):
             if old_class_name:
                 if node.name == old_class_name:
@@ -47,7 +292,6 @@ def replace_class(file_path, new_class_def, old_class_name=None):
             return node
     tree = ClassReplacer().visit(tree)
     updated_content = astor.to_source(tree)
-
     try:
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(updated_content)
@@ -59,86 +303,33 @@ def replace_class(file_path, new_class_def, old_class_name=None):
         f"Class '{replaced_class_name}' has been replaced with '{new_class_node.name}' in '{file_path}'."
         )
 
-def replace_function(file_path, new_function_def):
-    """
-    Replaces a function definition in a file with a new function definition.
-
-    Use when you need to update or modify an entire function within a Python file.
-
-    Parameters:
-    - file_path (str): The path to the file containing the function to be replaced.
-    - new_function_def (str): The new, pure function definition as a string. 
-        Note this function uses ast parsing, so do not mimic indentation.
-        Note that adding import statements outside the function will cause an error,
-        as new_function_def would not be a pure function definition
-
-    Returns a confirmation message or an error message.
-    """
-    import ast
-    import astor
-    import os
-    from bots.tools.python_tools import _process_error, _clean
-
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            content = file.read()
-        new_func_node = ast.parse(_clean(new_function_def)).body[0]
-        if not isinstance(new_func_node, ast.FunctionDef):
-            return _process_error(ValueError(
-                'Provided definition is not a function'))
-    except Exception as e:
-        return _process_error(ValueError(
-            f'Error in new function definition: {str(e)}'))
-    try:
-        tree = ast.parse(content)
-    except Exception as e:
-        return _process_error(ValueError(
-            f'Error parsing the file {file_path}: {str(e)}'))
-
-    class FunctionReplacer(ast.NodeTransformer):
-        def __init__(self):
-            self.success = False
-
-        def visit_FunctionDef(self, node):
-            if node.name == new_func_node.name:
-                self.success = True
-                return new_func_node
-            return node
-    transformer = FunctionReplacer()
-    tree = transformer.visit(tree)
-    if not transformer.success:
-        return _process_error(ValueError(
-            f"Function '{new_func_node.name}' not found in the file."))
-    try:
-        updated_content = astor.to_source(tree)
-        with open(file_path, 'w', encoding='utf-8') as file:
-            file.write(updated_content)
-    except Exception as e:
-        return _process_error(e)
-    return (
-        f"Function '{new_func_node.name}' has been replaced in '{file_path}'.")
 
 def add_function_to_class(file_path, class_name, new_method_def):
     """
     Adds a new method (function) to an existing class in a Python file.
+    Creates the file and class if they don't exist.
 
     Use when you need to extend a class by adding a new method without modifying existing methods.
 
     Parameters:
     - file_path (str): The path to the file containing the class to be modified.
     - class_name (str): The name of the class to which the new method will be added.
-    - new_method_def (str): The new method definition as a string. 
+    - new_method_def (str): The new method definition as a string.
         Note this function uses ast parsing, so do not mimic indentation.
         Note that adding import statements outside the function will cause an error,
         as new_method_def would not be a pure method definition
-    
+
     Returns a confirmation message or an error message.
     """
-    import ast
-    import astor
-    import os
-    from bots.tools.python_tools import _process_error, _clean
 
+    if not os.path.exists(file_path):
+        try:
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(f'class {class_name}:\n    pass\n')
+        except Exception as e:
+            return _process_error(ValueError(
+                f'Error creating new file {file_path}: {str(e)}'))
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
@@ -155,7 +346,9 @@ def add_function_to_class(file_path, class_name, new_method_def):
         return _process_error(ValueError(
             f'Error parsing the file {file_path}: {str(e)}'))
 
+
     class MethodAdder(ast.NodeTransformer):
+
         def __init__(self):
             self.success = False
 
@@ -180,9 +373,11 @@ def add_function_to_class(file_path, class_name, new_method_def):
         f"Method '{new_method_node.name}' has been added to class '{class_name}' in '{file_path}'."
         )
 
-def add_function_to_file(file_path: str, new_function_def: str) -> str:
+
+def add_function_to_file(file_path: str, new_function_def: str) ->str:
     """
     Adds a new function definition to an existing Python file.
+    Creates the file if it doesn't exist.
 
     Use when you want to add a completely new function to a Python file without modifying existing content.
 
@@ -194,11 +389,15 @@ def add_function_to_file(file_path: str, new_function_def: str) -> str:
         as new_function_def would not be a pure function definition
     Returns a confirmation message or an error message.
     """
-    import ast
-    import astor
-    import os
-    from bots.tools.python_tools import _process_error, _clean
 
+    if not os.path.exists(file_path):
+        try:
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write('')
+        except Exception as e:
+            return _process_error(ValueError(
+                f'Error creating new file {file_path}: {str(e)}'))
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
@@ -209,6 +408,15 @@ def add_function_to_file(file_path: str, new_function_def: str) -> str:
     except Exception as e:
         return _process_error(ValueError(
             f'Error in new function definition: {str(e)}'))
+    if not content.strip():
+        try:
+            with open(file_path, 'w', encoding='utf-8') as file:
+                file.write(astor.to_source(new_func_node))
+            return (
+                f"Function '{new_func_node.name}' has been added to new file '{file_path}'."
+                )
+        except Exception as e:
+            return _process_error(e)
     try:
         tree = ast.parse(content)
     except Exception as e:
@@ -223,49 +431,82 @@ def add_function_to_file(file_path: str, new_function_def: str) -> str:
         return _process_error(e)
     return f"Function '{new_func_node.name}' has been added to '{file_path}'."
 
-def add_class_to_file(file_path, class_def):
-    """
-    Adds a new class definition to an existing Python file.
 
-    Use when you want to add a completely new class to a Python file without modifying existing content.
+def replace_function(file_path, new_function_def):
+    """
+    Replaces a function definition in a file with a new function definition.
+    Creates the file if it doesn't exist.
+
+    Use when you need to update or modify an entire function within a Python file.
 
     Parameters:
-    - file_path (str): The path to the file where the new class will be added.
-    - class_def (str): The new pure class definition as a string. 
-        Note this function uses ast parsing, so it is not necessary to mimic indentation level.
-        Note that adding import statements outside the class will cause an error,
-        as new_class_def would not be a pure class definition
+    - file_path (str): The path to the file containing the function to be replaced.
+    - new_function_def (str): The new, pure function definition as a string.
+        Note this function uses ast parsing, so do not mimic indentation.
+        Note that adding import statements outside the function will cause an error,
+        as new_function_def would not be a pure function definition
 
     Returns a confirmation message or an error message.
     """
-    import ast
-    import astor
-    import os
-    from bots.tools.python_tools import _process_error, _clean
 
+    if not os.path.exists(file_path):
+        try:
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write('')
+        except Exception as e:
+            return _process_error(ValueError(
+                f'Error creating new file {file_path}: {str(e)}'))
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
-        new_class_node = ast.parse(_clean(class_def)).body[0]
-        if not isinstance(new_class_node, ast.ClassDef):
+        new_func_node = ast.parse(_clean(new_function_def)).body[0]
+        if not isinstance(new_func_node, ast.FunctionDef):
             return _process_error(ValueError(
-                'Provided definition is not a class'))
+                'Provided definition is not a function'))
     except Exception as e:
         return _process_error(ValueError(
-            f'Error in new class definition: {str(e)}'))
+            f'Error in new function definition: {str(e)}'))
+    if not content.strip():
+        try:
+            with open(file_path, 'w', encoding='utf-8') as file:
+                file.write(astor.to_source(new_func_node))
+            return (
+                f"Function '{new_func_node.name}' has been added to new file '{file_path}'."
+                )
+        except Exception as e:
+            return _process_error(e)
     try:
         tree = ast.parse(content)
     except Exception as e:
         return _process_error(ValueError(
             f'Error parsing the file {file_path}: {str(e)}'))
-    tree.body.append(new_class_node)
+
+
+    class FunctionReplacer(ast.NodeTransformer):
+
+        def __init__(self):
+            self.success = False
+
+        def visit_FunctionDef(self, node):
+            if node.name == new_func_node.name:
+                self.success = True
+                return new_func_node
+            return node
+    transformer = FunctionReplacer()
+    tree = transformer.visit(tree)
+    if not transformer.success:
+        return _process_error(ValueError(
+            f"Function '{new_func_node.name}' not found in the file."))
     try:
         updated_content = astor.to_source(tree)
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(updated_content)
     except Exception as e:
         return _process_error(e)
-    return f"Class '{new_class_node.name}' has been added to '{file_path}'."
+    return (
+        f"Function '{new_func_node.name}' has been replaced in '{file_path}'.")
+
 
 def execute_python_code(code, timeout=300):
     """
@@ -279,10 +520,6 @@ def execute_python_code(code, timeout=300):
 
     Returns stdout or an error message.
     """
-    import ast
-    import astor
-    import os
-    from bots.tools.python_tools import _process_error
 
     def create_wrapper_ast():
         wrapper_code = """
@@ -308,9 +545,8 @@ if __name__ == '__main__':
             node, ast.FunctionDef) and node.name == 'main')
         main_func.body = code_ast.body
         return wrapper_ast
-    
     try:
-        code_ast = ast.parse(code)    
+        code_ast = ast.parse(code)
         wrapper_ast = create_wrapper_ast()
         combined_ast = insert_code_into_wrapper(wrapper_ast, code_ast)
         final_code = astor.to_source(combined_ast)
@@ -318,8 +554,6 @@ if __name__ == '__main__':
         return _process_error(e)
     now = DT.datetime.now()
     formatted_datetime = now.strftime('%Y.%m.%d-%H.%M.%S')
-    
-    # Get the directory of this file to store a temp script
     package_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     scripts_dir = os.path.join(package_root, 'scripts')
     if not os.path.exists(scripts_dir):
@@ -328,7 +562,6 @@ if __name__ == '__main__':
     with open(temp_file_name, 'w', encoding='utf-8') as temp_file:
         temp_file.write(final_code)
         temp_file.flush()
-
     try:
         process = subprocess.Popen(['python', temp_file_name], stdout=
             subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding=
@@ -338,14 +571,16 @@ if __name__ == '__main__':
             return stdout + stderr
         except subprocess.TimeoutExpired:
             process.terminate()
-            return _process_error(f'Error: Code execution timed out after {300} seconds.')
+            return _process_error(
+                f'Error: Code execution timed out after {300} seconds.')
     except Exception as e:
         return _process_error(e)
     finally:
         if os.path.exists(temp_file_name):
             os.remove(temp_file_name)
 
-def get_py_interface(file_path: str) -> str:
+
+def get_py_interface(file_path: str) ->str:
     """
     Outputs a string showing all class and function definitions including docstrings.
 
@@ -356,9 +591,6 @@ def get_py_interface(file_path: str) -> str:
 
     Returns a string containing all class and function definitions with their docstrings.
     """
-    import ast
-    import os
-    from bots.tools.python_tools import _process_error
 
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -381,6 +613,7 @@ def get_py_interface(file_path: str) -> str:
         return '\n'.join(interface)
     except Exception as e:
         return _process_error(e)
+
 
 def _clean(code):
     return code

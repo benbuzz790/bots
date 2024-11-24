@@ -8,14 +8,23 @@ def view(file_path):
     Returns:
     A string containing the file contents with line numbers.
     """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-        
-        numbered_lines = [f"{i+1}: {line.rstrip()}" for i, line in enumerate(lines)]
-        return "\n".join(numbered_lines)
-    except Exception as e:
-        return f"Error: {str(e)}"
+    encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1'
+        ]
+    for encoding in encodings:
+        try:
+            with open(file_path, 'r', encoding=encoding) as file:
+                lines = file.readlines()
+            numbered_lines = [f'{i + 1}: {line.rstrip()}' for i, line in
+                enumerate(lines)]
+            return '\n'.join(numbered_lines)
+        except UnicodeDecodeError:
+            continue
+        except Exception as e:
+            return f'Error: {str(e)}'
+    return (
+        f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
+        )
+
 
 def add_lines(file_path, new_content, start_line):
     """
@@ -34,48 +43,35 @@ def add_lines(file_path, new_content, start_line):
     from bots.tools.code_tools import view
     try:
         start_line = int(start_line)
-        
-        # Split the input string into lines
         new_lines = new_content.split('\n')
-        # Remove empty lines from the end if present
         while new_lines and not new_lines[-1]:
             new_lines.pop()
-        
         try:
-            # Try to read existing file
             with open(file_path, 'r', encoding='utf-8') as file:
                 lines = file.readlines()
         except FileNotFoundError:
-            # If file doesn't exist, create empty list of lines
             if start_line != 1:
-                return "Error: When creating a new file, start_line must be 1"
+                return 'Error: When creating a new file, start_line must be 1'
             lines = []
-            
-        # Ensure each line ends with exactly one newline
-        normalized_lines = [line + '\n' if not line.endswith('\n') else line 
-                          for line in new_lines]
-        
-        # Insert the new lines at the specified position
+        normalized_lines = [(line + '\n' if not line.endswith('\n') else
+            line) for line in new_lines]
         for i, line in enumerate(normalized_lines):
             if start_line - 1 + i > len(lines):
-                # If inserting beyond end of file, append instead
                 lines.append(line)
             else:
                 lines.insert(start_line - 1 + i, line)
-        
-        # Create parent directories if they don't exist
         from pathlib import Path
         Path(file_path).parent.mkdir(parents=True, exist_ok=True)
-        
-        # Write the modified content back to file
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
-        
-        action = "created new file and added" if len(lines) == len(normalized_lines) else "added"
-        return f"Successfully {action} {len(normalized_lines)} lines starting at line {start_line}:\n\n{view(file_path)}"
-        
+        action = 'created new file and added' if len(lines) == len(
+            normalized_lines) else 'added'
+        return f"""Successfully {action} {len(normalized_lines)} lines starting at line {start_line}:
+
+{view(file_path)}"""
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f'Error: {str(e)}'
+
 
 def change_lines(file_path, new_content, start_line, end_line):
     """
@@ -92,35 +88,27 @@ def change_lines(file_path, new_content, start_line, end_line):
     A string confirming the operation and showing the new file, or a description of an error encountered.
     """
     from bots.tools.code_tools import view
-
     try:
         start_line = int(start_line)
         end_line = int(end_line)
-        
-        # Split the input string into lines
         new_lines = new_content.split('\n')
-        # Remove empty lines from the end if present
         while new_lines and not new_lines[-1]:
             new_lines.pop()
-        
         with open(file_path, 'r', encoding='utf-8') as file:
             lines = file.readlines()
-        
         if start_line < 1 or end_line > len(lines):
-            return "Error: Invalid line range."
-        
-        # Ensure each line ends with exactly one newline
-        normalized_lines = [line + '\n' if not line.endswith('\n') else line 
-                          for line in new_lines]
-        
-        lines[start_line-1:end_line+1] = normalized_lines  # Changed to end_line+1 to include end_line
-        
+            return 'Error: Invalid line range.'
+        normalized_lines = [(line + '\n' if not line.endswith('\n') else
+            line) for line in new_lines]
+        lines[start_line - 1:end_line + 1] = normalized_lines
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
-        
-        return f"Successfully changed lines {start_line} to {end_line}:\n\n{view(file_path)}"
+        return (
+            f'Successfully changed lines {start_line} to {end_line}:\n\n{view(file_path)}'
+            )
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f'Error: {str(e)}'
+
 
 def delete_lines(file_path, start_line, end_line):
     """
@@ -141,18 +129,17 @@ def delete_lines(file_path, start_line, end_line):
         end_line = int(end_line)
         with open(file_path, 'r', encoding='utf-8') as file:
             lines = file.readlines()
-        
         if start_line < 1 or end_line > len(lines):
-            return "Error: Invalid line range."
-        
-        del lines[start_line-1:end_line]
-        
+            return 'Error: Invalid line range.'
+        del lines[start_line - 1:end_line]
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
-        
-        return f"Successfully deleted lines {start_line} to {end_line}:\n\n{view(file_path)}"
+        return (
+            f'Successfully deleted lines {start_line} to {end_line}:\n\n{view(file_path)}'
+            )
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f'Error: {str(e)}'
+
 
 def find_lines(file_path, pattern):
     """
@@ -168,15 +155,16 @@ def find_lines(file_path, pattern):
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             lines = file.readlines()
-        
-        matches = [(i+1, line.strip()) for i, line in enumerate(lines) if pattern in line]
-        
+        matches = [(i + 1, line.strip()) for i, line in enumerate(lines) if
+            pattern in line]
         if matches:
-            return f"Found {len(matches)} matches:\n" + "\n".join([f"Line {m[0]}: {m[1]}" for m in matches])
+            return f'Found {len(matches)} matches:\n' + '\n'.join([
+                f'Line {m[0]}: {m[1]}' for m in matches])
         else:
-            return "No matches found."
+            return 'No matches found.'
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f'Error: {str(e)}'
+
 
 def replace_in_lines(file_path, old_text, new_text, start_line, end_line):
     """
@@ -198,20 +186,17 @@ def replace_in_lines(file_path, old_text, new_text, start_line, end_line):
         end_line = int(end_line)
         with open(file_path, 'r', encoding='utf-8') as file:
             lines = file.readlines()
-        
         if start_line < 1 or end_line > len(lines):
-            return "Error: Invalid line range."
-        
+            return 'Error: Invalid line range.'
         count = 0
-        for i in range(start_line-1, end_line):
+        for i in range(start_line - 1, end_line):
             if old_text in lines[i]:
                 lines[i] = lines[i].replace(old_text, new_text)
                 count += 1
-        
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
-        
-        return f"Successfully replaced {count} occurrences of '{old_text}' with '{new_text}' \
-                in lines {start_line} to {end_line}:\n\n{view(file_path)}"
+        return f"""Successfully replaced {count} occurrences of '{old_text}' with '{new_text}'                 in lines {start_line} to {end_line}:
+
+{view(file_path)}"""
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f'Error: {str(e)}'
