@@ -322,13 +322,13 @@ class ToolHandler(ABC):
                 output_kwargs = func(**input_kwargs)
                 
             except ToolNotFoundError as e:
-                self.logger.error(f"Tool not found: {str(e)}")
+                Warning(f"Tool not found: {str(e)}")
                 output_kwargs = {"error": str(e)}
             except TypeError as e:
-                self.logger.error(f"Invalid arguments for tool '{tool_name}': {str(e)}")
+                Warning(f"Invalid arguments for tool '{tool_name}': {str(e)}")
                 output_kwargs = {"error": f"Invalid arguments for tool '{tool_name}': {str(e)}"}
             except Exception as e:
-                self.logger.error(f"Unexpected error executing tool '{tool_name}': {str(e)}")
+                Warning(f"Unexpected error executing tool '{tool_name}': {str(e)}")
                 output_kwargs = {"error": f"Unexpected error while executing tool '{tool_name}': {str(e)}"}
 
             response_schema = self.generate_response_schema(request_schema, output_kwargs)
