@@ -1,6 +1,12 @@
 import traceback
-import bots.tools.code_tools as CT
+import textwrap
+import os
+import bots.tools.code_tools as code_tools
+import bots.tools.terminal_tools as terminal_tools
+import bots.tools.python_tools as python_tools
 from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.base import load
+import bots.functional_prompts.functional_prompts as fp
 
 # Should perhaps be multi-threaded
 
@@ -19,8 +25,7 @@ def message_bot(bot_path, message):
 
     Returns the bot's first response, a list of tool-uses in order, and final response as a string.
     """
-    from bots.foundation.base import load
-    from bots.dev.project_tree import _process_error
+
     try:
         bot = load(bot_path)
         first_response = bot.respond(message)
@@ -38,11 +43,11 @@ def message_bot(bot_path, message):
             last_response = bot.respond('ok (reply "DONE" when done)')
             path = bot.save(bot.name)
             stop = 'DONE' in last_response
-        return first_response +"\n"+ tools + last_response
+        return first_response +"\n" + tools + last_response
     except Exception as error:
         return _process_error(error)
 
-def set_requirements(name: str, requirements: str):
+def memorialize_requirements(name: str, requirements: str):
     """
     Creates or updates a requirements file for a module.
     
@@ -56,7 +61,6 @@ def set_requirements(name: str, requirements: str):
     
     Returns 'success' or an error message string.
     """
-    from bots.dev.project_tree import _process_error
 
     try:
         file_path = f"{name}_file_requirements.txt"
@@ -71,26 +75,48 @@ def initialize_file_bot(file_name: str) -> str:
     Creates and initializes a new file-editing bot, saving it to disk.
 
     Use when you need to create a new bot to handle implementation of a specific file.
-    The bot will be initialized with appropriate file-level tools and context, as well as
-    with the text of the requirements file.
+    The bot will be initialized with appropriate file-level tools and context.
 
     Parameters:
     - file_name (str): Name of the file this bot will manage
-    - requirements_path (str): path to the requirements file
 
     Returns success message with bot's file path or an error message string.
     """
-    import bots.tools.code_tools as CT
-    import bots.tools.terminal_tools as TT
-    from bots.foundation.anthropic_bots import AnthropicBot
-    from bots.dev.project_tree import _process_error, prompts
 
     try:
-        file_bot = AnthropicBot(name=f"{file_name}_Claude")
+        name, _ = os.path.splitext(file_name)
+        file_bot = AnthropicBot(name=f"{name}_file")
         file_bot.set_system_message(prompts.file_initialization)
-        file_bot.add_tools(CT)
-        file_bot.add_tools(TT)       
+        file_bot.add_tools(code_tools)
+        file_bot.add_tools(terminal_tools)    
+        file_bot.add_tools(python_tools)   
         path = file_bot.save(file_bot.name)
+        return f"Success: file bot created at {path}"
+    except Exception as error:
+        return _process_error(error)
+
+def initialize_validator_bot(files: str, name: str) -> str:
+    """
+    Creates and initializes a new validator bot, saving it to disk.
+
+    Use when you need to create a new bot to handle validation of a set of files.
+    The bot will be initialized with appropriate tools and context, as well as
+    with the 'files' string.
+
+    Parameters:
+    - files (str): A list of files to be validated.
+    - bot_name (str): Name of the bot. Will be saved as [bot_name].bot
+
+    Returns success message with bot's file path or an error message string.
+    """
+
+    try:
+        validator_bot = AnthropicBot(name=f"{name}")
+        responsibility = f"\n\nYou are responsible for:\n\n{files}"
+        validator_bot.set_system_message(prompts.validator_initialization + responsibility)
+        validator_bot.add_tool(code_tools.view)
+        validator_bot.add_tool(message_bot)
+        path = validator_bot.save(validator_bot.name)
         return f"Success: file bot created at {path}"
     except Exception as error:
         return _process_error(error)
@@ -98,14 +124,15 @@ def initialize_file_bot(file_name: str) -> str:
 def _initialize_root_bot():
     root_bot = AnthropicBot(name="project_Claude")
     root_bot.add_tool(initialize_file_bot)
+    root_bot.add_tool(initialize_validator_bot)
     root_bot.add_tool(message_bot)
-    root_bot.add_tool(set_requirements)
+    root_bot.add_tool(memorialize_requirements)
+    root_bot.add_tools(terminal_tools)
     root_bot.save(root_bot.name)
     root_bot.set_system_message(prompts.root_initialization)
     return root_bot
 
 def _process_error(error):
-    #raise error
     error_message = f'Tool Failed: {str(error)}\n'
     error_message += (
         f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
@@ -114,38 +141,42 @@ def _process_error(error):
 ### Project Creation ###
 
 def generate_project(spec: str):
-   """
-   Executes the standard process for project generation:
-   1. Root bot processes spec and creates module requirements 
-   2. Root bot creates and calls file bots for each module
-   4. File bots implement code
+    """
+    Executes the standard process for project generation:
+    1. Root bot processes spec and creates module requirements 
+    2. Root bot creates and calls file bots for each module
+    4. File bots implement code
    
-   Parameters:
-   - spec (str): Project specification text
+    Parameters:
+    - spec (str): Project specification text
    
-   Returns success or error message string.
-   """
-   try:
+    Returns success or error message string.
+    """
+    
+    try:
         root_bot = _initialize_root_bot()
         response = root_bot.respond(prompts.root_first_message(spec))
         print("root: " + response)
 
-        # Let root bot work until it signals completion
-        while not 'DONE' in response:
-            response = root_bot.respond('ok (reply "DONE" when done per definition)')
-            print("\n\n" + "root: " + response)
-            root_bot.save(root_bot.name)  # Save state after each interaction
-        return root_bot
-        #return "Project generation completed successfully"
+        def stop_condition(bot, reply):
+            print("root: " + reply) #cheaty debug
+            bot.save(bot.name)
+            return "DONE" in reply
 
-   except Exception as error:
+        fp.chain_while(root_bot, prompts.root_instruction_array, \
+                       stop_condition, prompts.root_continue)
+
+    except Exception as error:
        raise error
    
+    return "success"
+
+
 ### Prompt Library ###
 
 class prompts:
 
-    requirements_guidance_file = """
+    requirements_guidance_file = textwrap.dedent("""
     File requirements should be written in a structured format:
 
     1. File Overview:
@@ -233,26 +264,35 @@ class prompts:
     BE SPECIFIC:
     BAD: "Write tests for error cases"
     GOOD: "Test FileNotFoundError when config.json is missing, verify logs contain path"
-    """
+    """)
 
-    project_context = """
+    project_context = textwrap.dedent("""
     You are part of a hierarchical system of specialized AI assistants 
     working together to create a Python project.
-    The system has two levels:
+    The system has multiple bot types:
     1. Root: Handles project architecture and module design. Oversees multiple files.
     2. File: Handles specific file implementation and testing. 
-    """
+    3. Validator: Verifies that file implementations meet requirements
+    """)
 
-    root_initialization = project_context + """
+    root_initialization = project_context + textwrap.dedent("""
     You are the root bot responsible for:
     1. Analyzing project specifications
     2. Breaking down the project into logical modules
     3. Creating clear requirements for each module
-    4. Creating and coordinating file bots
-    """ + requirements_guidance_file
+    4. Creating and coordinating other bots
+                                                            
+    DO NOT:
+    - try to edit or write files (other than requirements). Even for
+        small changes - use message_bot with a message which is an instruction 
+        to the appropriate bot.
+                                                            
+    We will walk through a process step by step. Always focus on the latest task.
+
+    """) + requirements_guidance_file
 
     def root_first_message(spec: str):
-        return f"""
+        return textwrap.dedent(f"""
         
         Please analyze this project specification:
 
@@ -262,33 +302,32 @@ class prompts:
 
         First, list all modules for the project.
         Then, list all files for each module.
-    
-        For each file you identify:
-        
-        1. Use initialize_file_bot to create a file bot.
-        2. Use message_bot to discuss requirements until clear. Note that you
-        will need to send the requirements in your message and should instruct the 
-        bot to make at least two files: one will be a test for the other.
-        3. Use set_requirements to memorialize final requirements.
-        4. Use message_bot and instruct the module bot to work (if it hasn't already).
-        5. Use message_bot to confirm both completion of the file, specifically 
-        confirming absence of placeholder implementations.
-        
-        Again,
-        1. initialize_file_bot
-        2. message_bot to discuss requirements
-        3. set_requirements to document requirements
-        4. message_bot to allow work
-        5. message_bot to confirm completion
+        """)
 
-        DO NOT:
-        - try to edit or write files (other than requirements). Even for
-            small changes - use message_bot with a message which is an instruction 
-            to the appropriate bot.
+    root_instruction_array = [
+        textwrap.dedent("""For each non-test file you identified: 
+            INSTRUCTION 1. Use initialize_file_bot to create a set of file bots. These bots will also
+            be responsible for writing their own tests in a partner file to their own. You
+            should use multiple tool calls in a single message."""),
+        textwrap.dedent("""INSTRUCTION 2. Use message_bot and discuss requirements. Go back and forth
+            with each bot at least twice. You should instruct the bot not to use tools yet."""),
+        textwrap.dedent("""INSTRUCTION 3. Use memorialize_requirements to memorialize the agreed-upon
+            requirements."""),
+        textwrap.dedent("""INSTRUCTION 4. Use message_bot and instruct the module bots to create
+            two files: the one discussed and a a set of tests for the one discussed."""),
+        textwrap.dedent("""INSTRUCTION 5. Use initialize_validator_bot to make a validator"""),
+        textwrap.dedent("""INSTRUCTION 6. Use message_bot to instruct the validator to confirm 
+            files meet requirements"""),
+        textwrap.dedent("""INSTRUCTION 7. Message the file bots telling them to run their test files and debug. If the 
+            bots run out of memory or otherwise 'crash', make a note and continue working."""),
+        textwrap.dedent("""INSTRUCTION 8. Finally, use memorialize_requirements to write a set of instructions
+            for humans to read noting all failed bots and other issues.""")
+    ]
 
-        """
+    root_continue = 'Work until the current INSTRUCTION is complete, then say \
+            "DONE" to move on to the next INSTRUCTION'
 
-    file_initialization = project_context + """
+    file_initialization = project_context + textwrap.dedent("""
     You are a file bot responsible for:
     1. Understanding file requirements
     2. Implementing the specified functionality
@@ -304,6 +343,7 @@ class prompts:
 
     DO NOT leave any implementation incomplete
     DO NOT leave placeholders in your code
+    PREFER the python ast editing tools for python code, using line editing as a fallback
 
     You may
     - use external dependencies
@@ -312,9 +352,21 @@ class prompts:
     - examine the current working directory and view other files, if needed, for coordination or imports
 
     You will be contacted by the module manager soon to discuss requirements.
-    """
+    """)
 
-    sample_fuzznet = """
+    validator_initialization = project_context + textwrap.dedent(\
+    """
+    You are a requirements checking bot responsible for:
+    1. Verifying python files meet their associated requirements
+    2. Communicating deviations from requirements with the associated file bot.
+    3. Ensuring requirements are met after the file bot makes changes.
+    
+    Requirements files are located at [filename]_requirements.txt (without the .py)
+    View both files, then message the filebot at [filename].bot (no .py) using message_bot
+    and request corrections. Repeat until the requirements are met.
+    """)
+
+    sample_fuzznet = textwrap.dedent("""
     Project: FuzzNet
 
     Create a protocol fuzzing framework for network security testing. The system should:
@@ -366,9 +418,9 @@ class prompts:
     - Modular architecture for extensions
     - Support for custom protocols
     - Comprehensive logging and debugging
-    """
+    """)
 
-    sample_feapy = """
+    sample_feapy = textwrap.dedent("""
     Project: FeaPy
 
     Create a command-line finite element analysis package for 2D structural problems. 
@@ -383,6 +435,7 @@ class prompts:
     - Generate text-based visualization of results (using ASCII art or similar)
     - Provide error estimates and convergence metrics
     - Export results to CSV/JSON formats
+    - Project structure shall be flat - a single folder with all files.
 
     Key Features:
     1. Mesh Generation
@@ -429,9 +482,9 @@ class prompts:
     FeaPy successfully runs a sample problem which is sufficiently complicated to
     faithfully represent a real-world scenario through the CLI without errors and
     with the correct result.
-    """
+    """)
 
-    sample_logsage = """
+    sample_logsage = textwrap.dedent("""
     Project: LogSage
 
     Create a high-performance log analysis framework for processing 
@@ -482,7 +535,7 @@ class prompts:
     - Process 1GB+ log files
     - Memory usage under 500MB
     - Support for custom plugins
-    - Comprehensive CLI interface"""
+    - Comprehensive CLI interface""")
 
 ### Main ###
 
@@ -507,8 +560,6 @@ def debug_on_error(func: Callable) -> Callable:
 @debug_on_error
 def main():
     bot = generate_project(prompts.sample_feapy)
-    import bots
-    bots.dev.auto_terminal.main()
 
 if __name__ == '__main__':
     main()

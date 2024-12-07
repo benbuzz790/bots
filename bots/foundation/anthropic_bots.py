@@ -15,56 +15,54 @@ class AnthropicNode(ConversationNode):
         # Extract required fields
         role = kwargs.pop('role', None)
         content = kwargs.pop('content', None)
+        tool_calls = kwargs.pop('tool_calls', None)
+        tool_results = kwargs.pop('tool_results', None)
         
-        # If content is a list (Anthropic format), extract the text content
-        if isinstance(content, list):
-            text_content = next((item['text'] for item in content if item['type'] == 'text'), '')
-            # Store non-text items (like tool requests/results) as attributes
-            for item in content:
-                if item['type'] != 'text':
-                    kwargs[item['type']] = item
-            content = text_content
-            
-        super().__init__(role=role, content=content)
-        
-        # Store remaining kwargs as attributes
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+        super().__init__(
+            role=role,
+            content=content,
+            tool_calls=tool_calls,
+            tool_results=tool_results,
+            **kwargs
+        )
 
-    def build_messages(self):
+    def build_messages(self) -> List[Dict[str, Any]]:
         node = self
         if node.is_empty():
             return []
+        
         conversation_dict = []
         while node:
-            # Start with base role
+            # Create base message structure
             entry = {'role': node.role}
             
-            # Handle content construction
-            if isinstance(node.content, list):
-                # Content is already in Anthropic format
-                entry['content'] = node.content
-            elif isinstance(node.content, str):
-                # Convert string content to list with text item
-                content_list = [{'type': 'text', 'text': node.content}]
-                
-                # Add any tool results/requests stored as attributes
-                if hasattr(node, 'tool_result'):
-                    content_list.append(node.tool_result)
-                if hasattr(node, 'tool_use'):
-                    content_list.append(node.tool_use)
-                
-                entry['content'] = content_list
+            # Build content list in Anthropic format
+            content_list = [{'type': 'text', 'text': node.content}]
             
+            #    Add tool calls if present
+            if node.tool_calls:
+                for call in node.tool_calls:
+                    ent = {'type': 'tool_use', **call}
+                    content_list.insert(-1, ent) 
+
+            # Add tool results if present
+            if node.tool_results:
+                for result in node.tool_results:
+                    ent = {'type': 'tool_result', **result}  
+                    content_list.insert(0, ent)  
+
+
+            entry['content'] = content_list
             conversation_dict = [entry] + conversation_dict
             node = node.parent
+            
         return conversation_dict
 
 class AnthropicToolHandler(ToolHandler):
     def __init__(self) -> None:
         super().__init__()
 
-    def generate_tool_schema(self, func: Callable) -> None:         
+    def generate_tool_schema(self, func: Callable):         
         sig: inspect.Signature = inspect.signature(func)
         doc: str = inspect.getdoc(func) or "No description provided."
 
@@ -83,8 +81,7 @@ class AnthropicToolHandler(ToolHandler):
             if param.default == inspect.Parameter.empty:
                 tool["input_schema"]["required"].append(param_name)
 
-        self.tools.append(tool)
-        self.function_map[func.__name__] = func
+        return tool
 
     def generate_request_schema(self, response: Any) -> List[Dict[str, Any]]:
         """
@@ -134,17 +131,11 @@ class AnthropicMailbox(Mailbox):
                 raise ValueError("Anthropic API key not found. Set up 'ANTHROPIC_API_KEY' environment variable.")
         self.client = anthropic.Anthropic(api_key=api_key)
 
-        # Update conversation based on tool calls and results
+        # # Update conversation based on tool calls and results
         conversation: AnthropicNode = bot.conversation
-        if bot.tool_handler and bot.tool_handler.requests:
-            if isinstance(conversation.parent.content, str):
-                conversation.parent.content = [{'type': 'text', 'text': conversation.parent.content}]
-            conversation.parent.content.extend(bot.tool_handler.requests)
-
-        if bot.tool_handler and bot.tool_handler.results:
-            if isinstance(conversation.content, str):
-                conversation.content = [{'type': 'text', 'text': conversation.content}]
-            conversation.content = bot.tool_handler.results + conversation.content
+        if bot.tool_handler and bot.tool_handler.requests and bot.tool_handler.results:
+            conversation.parent.tool_calls = bot.tool_handler.requests
+            conversation.tool_results = bot.tool_handler.results
         
         # Clear old tool calls and results
         if bot.tool_handler:
@@ -204,30 +195,6 @@ class AnthropicMailbox(Mailbox):
 
         raise Exception("Max retries reached. Unable to send message.")
 
-    def merge_content(self, existing_content: Any, new_content: Any) -> Any:
-        if isinstance(existing_content, str) and isinstance(new_content, str):
-            return (existing_content + new_content).strip()
-        
-        elif isinstance(existing_content, str) and isinstance(new_content, list):
-            if new_content and new_content[0]['type'] == 'text':
-                return ([{'type': 'text', 'text': (existing_content + new_content[0]['text']).strip()}] +
-                        new_content[1:])
-            else:
-                return [{'type': 'text', 'text': existing_content.strip()}] + new_content
-        
-        elif isinstance(existing_content, list) and isinstance(new_content, list):
-            return new_content  # new_content contains all of old_content
-        
-        elif isinstance(existing_content, list) and isinstance(new_content, str):
-            if existing_content and existing_content[-1]['type'] == 'text':
-                existing_content[-1]['text'] = (existing_content[-1]['text'] + new_content).strip()
-            else:
-                existing_content.append({'type': 'text', 'text': new_content.strip()})
-            return existing_content
-        else:
-            raise ValueError("Unexpected content types")
-
-
     def process_response(self,
                         response: Dict[str, Any],
                         bot: Optional['AnthropicBot'] = None
@@ -242,7 +209,8 @@ class AnthropicMailbox(Mailbox):
         message = bot.conversation.build_messages()
         while should_continue(response):
             message.append({'role': response.role, 'content':response.content[0].text})
-            response = self.client.messages.create(**message)
+            response = self.client.beta.prompt_caching.messages.create(**message)
+            #response = self.client.messages.create(**message)
             
         response_role: str = response.role
         response_text: str = response.content[0].text
@@ -251,9 +219,10 @@ class AnthropicMailbox(Mailbox):
         if response.stop_reason == 'tool_calls':
             requests = bot.tool_handler.get_requests()
             results = bot.tool_handler.get_results()
-            extra_data: Dict[str, Any] = {"requests": requests, "results": results}
+            extra_data: Dict[str, Any] = {"tool_calls": requests, "tool_results": results}
         else:
             extra_data = {}
+    
         return response_text, response_role, extra_data
 
 
@@ -285,67 +254,153 @@ class AnthropicBot(Bot):
             mailbox=AnthropicMailbox()
         )
 
-
-class CacheController():
+class CacheController:
     def find_cache_control_positions(self, messages: List[Dict[str, Any]]) -> List[int]:
         positions = []
         for idx, msg in enumerate(messages):
+            # Check content
             content = msg.get('content', None)
             if isinstance(content, list):
                 for item in content:
-                    if 'cache_control' in item:
+                    if isinstance(item, dict) and 'cache_control' in item:
                         positions.append(idx)
-                        break  # Assuming one cache_control per message
-            elif isinstance(content, dict):
-                if 'cache_control' in content:
-                    positions.append(idx)
-        return positions
+                        break
+            elif isinstance(content, dict) and 'cache_control' in content:
+                positions.append(idx)
+            
+            # Check tool_calls
+            tool_calls = msg.get('tool_calls', None)
+            if tool_calls:
+                for tool_call in tool_calls:
+                    if isinstance(tool_call, dict) and tool_call.get('cache_control'):
+                        positions.append(idx)
+                        break
+        
+        return sorted(list(set(positions)))  # Remove duplicates and sort
 
     def should_add_cache_control(self, total_messages: int, last_control_pos: int, threshold: float = 0.25) -> bool:
         required_length = last_control_pos * (1 + threshold)
         return total_messages >= math.ceil(required_length)
 
-    def insert_cache_control(sel, messages: List[Dict[str, Any]], position: int) -> None:
+    def shift_cache_control_out_of_tool_block(self, messages: List[Dict[str, Any]], position: int) -> int:
+        """
+        Moves cache control out of tool blocks and returns the new position where it was placed.
+        """
+        if position >= len(messages):
+            return position
+
+        msg = messages[position]
+        content = msg.get('content', None)
+        has_tool_block = False
+
+        # Check if we're in a tool block
+        if isinstance(content, list):
+            for item in content:
+                if isinstance(item, dict) and item.get('type') in ['tool_call', 'tool_result']:
+                    has_tool_block = True
+                    break
+        elif isinstance(content, dict) and content.get('type') in ['tool_call', 'tool_result']:
+            has_tool_block = True
+
+        if has_tool_block:
+            # Find the next non-tool message
+            new_position = position + 1
+            while new_position < len(messages):
+                next_content = messages[new_position].get('content', None)
+                is_tool = False
+                
+                if isinstance(next_content, list):
+                    is_tool = any(isinstance(item, dict) and 
+                                item.get('type') in ['tool_call', 'tool_result'] 
+                                for item in next_content)
+                elif isinstance(next_content, dict):
+                    is_tool = next_content.get('type') in ['tool_call', 'tool_result']
+                
+                if not is_tool:
+                    # Move cache control here
+                    self.remove_cache_control_at_position(messages, position)
+                    self.insert_cache_control(messages, new_position)
+                    return new_position
+                new_position += 1
+            
+            # If we couldn't find a non-tool message after, try to place it before
+            new_position = position - 1
+            while new_position >= 0:
+                prev_content = messages[new_position].get('content', None)
+                is_tool = False
+                
+                if isinstance(prev_content, list):
+                    is_tool = any(isinstance(item, dict) and 
+                                item.get('type') in ['tool_call', 'tool_result'] 
+                                for item in prev_content)
+                elif isinstance(prev_content, dict):
+                    is_tool = prev_content.get('type') in ['tool_call', 'tool_result']
+                
+                if not is_tool:
+                    # Move cache control here
+                    self.remove_cache_control_at_position(messages, position)
+                    self.insert_cache_control(messages, new_position)
+                    return new_position
+                new_position -= 1
+                
+        return position
+
+    def insert_cache_control(self, messages: List[Dict[str, Any]], position: int) -> None:
         if position < 0 or position > len(messages):
-            position = len(messages) - 1  # Default to last message if out of bounds
+            position = len(messages) - 1
 
         msg = messages[position]
         content = msg.get('content', None)
 
+        # Handle content cache control
         if isinstance(content, str):
-            # Convert string content to a list of dictionaries
-            text = content
             msg['content'] = [{
                 'type': 'text',
-                'text': text
+                'text': content,
+                'cache_control': {"type": "ephemeral"}
             }]
-            content = msg['content']
+        elif isinstance(content, list):
+            if not any('cache_control' in item for item in content if isinstance(item, dict)):
+                for item in content:
+                    if isinstance(item, dict) and 'type' in item:
+                        if item['type'] not in ['tool_call', 'tool_result']:
+                            item['cache_control'] = {"type": "ephemeral"}
+                            break
+        elif isinstance(content, dict) and 'cache_control' not in content:
+            if content.get('type') not in ['tool_call', 'tool_result']:
+                content['cache_control'] = {"type": "ephemeral"}
 
-        if isinstance(content, list):
-            # Add cache_control to the last content block
-            last_content = content[-1]
-            last_content['cache_control'] = {"type": "ephemeral"}
-        elif isinstance(content, dict):
-            # Directly add cache_control
-            msg['content']['cache_control'] = {"type": "ephemeral"}
+        # Handle tool_calls cache control
+        tool_calls = msg.get('tool_calls', None)
+        if tool_calls:
+            # Remove any existing cache_control from tool_calls
+            for tool_call in tool_calls:
+                if isinstance(tool_call, dict):
+                    tool_call.pop('cache_control', None)
 
     def remove_cache_control_at_position(self, messages: List[Dict[str, Any]], position: int) -> None:
         if position < 0 or position >= len(messages):
-            return  # Invalid position
+            return
 
         msg = messages[position]
+        
+        # Remove from content
         content = msg.get('content', None)
-
         if isinstance(content, list):
             for item in content:
-                if 'cache_control' in item:
+                if isinstance(item, dict) and 'cache_control' in item:
                     del item['cache_control']
-        elif isinstance(content, dict):
-            if 'cache_control' in content:
-                del content['cache_control']
+        elif isinstance(content, dict) and 'cache_control' in content:
+            del content['cache_control']
+        
+        # Remove from tool_calls
+        tool_calls = msg.get('tool_calls', None)
+        if tool_calls:
+            for tool_call in tool_calls:
+                if isinstance(tool_call, dict) and 'cache_control' in tool_call:
+                    del tool_call['cache_control']
 
-    def manage_cache_controls(self, messages: Any, threshold: float = 0.25) -> List[Dict[str, Any]]:
-
+    def manage_cache_controls(self, messages: List[Dict[str, Any]], threshold: float = 0.25) -> List[Dict[str, Any]]:
         # Find existing cache_control positions
         cache_control_positions = self.find_cache_control_positions(messages)
 
@@ -353,37 +408,49 @@ class CacheController():
             # No existing cache_control, add one at 75% position
             initial_position = math.ceil(len(messages) * 0.75) - 1
             self.insert_cache_control(messages, initial_position)
-            cache_control_positions.append(initial_position)
+            initial_position = self.shift_cache_control_out_of_tool_block(messages, initial_position)
+            cache_control_positions = [initial_position]
         elif len(cache_control_positions) == 1:
             # Only one cache_control exists, check if we need to add the second one
-            last_control_pos = cache_control_positions[-1]
+            last_control_pos = cache_control_positions[0]
+            # First, ensure existing cache control is not in a tool block
+            new_pos = self.shift_cache_control_out_of_tool_block(messages, last_control_pos)
+            if new_pos != last_control_pos:
+                last_control_pos = new_pos
+                cache_control_positions = [new_pos]
+                
             if self.should_add_cache_control(len(messages), last_control_pos, threshold):
                 new_position = math.ceil(len(messages) * threshold) - 1
                 self.insert_cache_control(messages, new_position)
+                new_position = self.shift_cache_control_out_of_tool_block(messages, new_position)
                 cache_control_positions.append(new_position)
         else:
-            # Two cache_control blocks exist, check if we need to add a new one
-            # Identify the latest cache_control position
+            # Two or more cache_control blocks exist
+            # First ensure existing cache controls are not in tool blocks
+            updated_positions = []
+            for pos in cache_control_positions:
+                new_pos = self.shift_cache_control_out_of_tool_block(messages, pos)
+                if new_pos not in updated_positions:
+                    updated_positions.append(new_pos)
+            cache_control_positions = sorted(updated_positions)
+            
             last_control_pos = max(cache_control_positions)
             if self.should_add_cache_control(len(messages), last_control_pos, threshold):
                 # Add new cache_control at the new position
                 new_position = math.ceil(len(messages) * threshold) - 1
                 self.insert_cache_control(messages, new_position)
+                new_position = self.shift_cache_control_out_of_tool_block(messages, new_position)
                 
                 # Move the older cache_control to the front
                 if cache_control_positions[0] != 0:
-                    # Remove cache_control from its current position
                     self.remove_cache_control_at_position(messages, cache_control_positions[0])
-                    
-                    # Insert cache_control at the front (position 0)
                     self.insert_cache_control(messages, 0)
+                    self.shift_cache_control_out_of_tool_block(messages, 0)
                 
-                # Update cache_control_positions to keep only the two
+                # Clean up any extra cache_controls
                 cache_control_positions = self.find_cache_control_positions(messages)
                 if len(cache_control_positions) > 2:
-                    # Remove any extra cache_controls if present
                     for pos in cache_control_positions[2:]:
                         self.remove_cache_control_at_position(messages, pos)
-                    cache_control_positions = cache_control_positions[:2]
 
         return messages

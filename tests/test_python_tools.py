@@ -363,6 +363,75 @@ def some_function():
         self.assertFileContentEqual(self.test_file, expected_after_third,
             'Non-existent import update check failed')
 
+    def test_file_creation_scenarios(self):
+        """Test file creation with different path scenarios"""
+        import tempfile
+        import shutil
+        test_dir = tempfile.mkdtemp()
+        try:
+            simple_file = 'simple.py'
+            result = python_tools.add_import(simple_file, 'import os')
+            self.assertTrue(os.path.exists(os.path.abspath(simple_file)))
+            os.remove(simple_file)
+            rel_path = os.path.join('test_subdir', 'relative.py')
+            result = python_tools.add_import(rel_path, 'import sys')
+            self.assertTrue(os.path.exists(os.path.abspath(rel_path)))
+            shutil.rmtree('test_subdir')
+            abs_path = os.path.join(test_dir, 'subdir', 'absolute.py')
+            result = python_tools.add_import(abs_path, 'import datetime')
+            self.assertTrue(os.path.exists(abs_path))
+            class_file = os.path.join(test_dir, 'class_test.py')
+            result = python_tools.add_class(class_file,
+                'class TestClass:\n    pass')
+            self.assertTrue(os.path.exists(class_file))
+            func_file = os.path.join(test_dir, 'func_test.py')
+            result = python_tools.add_function_to_file(func_file,
+                'def test_func():\n    pass')
+            self.assertTrue(os.path.exists(func_file))
+            method_file = os.path.join(test_dir, 'method_test.py')
+            result = python_tools.add_function_to_class(method_file,
+                'TestClass', """def test_method(self):
+    pass""")
+            self.assertTrue(os.path.exists(method_file))
+        finally:
+            shutil.rmtree(test_dir)
+            for f in [simple_file]:
+                if os.path.exists(f):
+                    os.remove(f)
+
+    def test_make_file(self):
+        """Test the private _make_file function directly for edge cases"""
+        import tempfile
+        import shutil
+        test_dir = tempfile.mkdtemp()
+        try:
+            with self.assertRaises(ValueError):
+                python_tools._make_file('')
+            simple_path = 'test_make_file.py'
+            abs_path = python_tools._make_file(simple_path)
+            self.assertTrue(os.path.isabs(abs_path))
+            self.assertTrue(os.path.exists(abs_path))
+            os.remove(abs_path)
+            rel_path = os.path.join('test_subdir', 'nested', 'test.py')
+            abs_path = python_tools._make_file(rel_path)
+            self.assertTrue(os.path.isabs(abs_path))
+            self.assertTrue(os.path.exists(abs_path))
+            shutil.rmtree('test_subdir')
+            abs_input_path = os.path.join(test_dir, 'absolute_test.py')
+            returned_path = python_tools._make_file(abs_input_path)
+            self.assertEqual(os.path.abspath(abs_input_path), returned_path)
+            self.assertTrue(os.path.exists(returned_path))
+            existing_file = os.path.join(test_dir, 'existing.py')
+            with open(existing_file, 'w') as f:
+                f.write('# existing content')
+            abs_path = python_tools._make_file(existing_file)
+            self.assertTrue(os.path.exists(abs_path))
+            with open(abs_path, 'r') as f:
+                content = f.read()
+            self.assertEqual(content, '# existing content')
+        finally:
+            shutil.rmtree(test_dir)
+
 
 if __name__ == '__main__':
     unittest.main()

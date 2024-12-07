@@ -8,7 +8,7 @@ from bots.foundation.base import Bot, Engines
 
 class TestBaseBot(unittest.TestCase):
     def setUp(self):
-        self.bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE35, max_tokens=100, temperature=0.7, name="TestBot", role="assistant", role_description="Test bot")
+        self.bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100, temperature=0.7, name="TestBot", role="assistant", role_description="Test bot")
 
     # Todo - teardown - remove all bots named TestBot@... from the local directory
 

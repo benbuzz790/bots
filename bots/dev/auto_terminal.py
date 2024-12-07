@@ -5,6 +5,7 @@ import bots.tools.github_tools
 import bots.tools.python_tools
 import bots.tools.terminal_tools
 import bots.tools.code_tools
+import bots.tools.test_tools
 import bots.tools.utf8_tools
 import textwrap
 from datetime import datetime as datetime
@@ -79,9 +80,10 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
     else:
         raise ValueError('No OpenAI or Anthropic API keys found. Set up your key as an environment variable.')
 
-    #bot.add_tools(bots.tools.python_tools)
+    bot.add_tools(bots.tools.python_tools)
     #bot.add_tools(bots.tools.utf8_tools)
     bot.add_tools(bots.tools.code_tools)
+    #bot.add_tools(bots.tools.test_tools)
     #bot.add_tools(bots.tools.github_tools)
     bot.add_tools(bots.tools.terminal_tools)
     #bot.add_tools(bots.github_tools) #not ready

@@ -7,10 +7,11 @@ Prompt = str
 Response = str
 PromptNode = ConversationNode
 ResponseNode = ConversationNode
-StopCondition = Callable[[Response], bool]
+Condition = Callable[[Bot, Response], bool]
 DynamicPrompt = Callable[[Any], Prompt]
-RecombinatorFunction = Callable[[List[Response], List[ResponseNode]], Tuple
-    [Response, ResponseNode]]
+RecombinatorFunction = Callable[[List[Response], 
+                                 List[ResponseNode] ], 
+                                 Tuple[Response, ResponseNode]]
 
 def chain(bot: Bot, 
           prompts: List[Prompt]
@@ -83,7 +84,7 @@ def recombine(bot: Bot,
 
 def tree_of_thought(bot: Bot, 
                     prompts: List[Prompt], 
-                    recombinator_function:RecombinatorFunction
+                    recombinator_function: RecombinatorFunction
                     ) ->Tuple[Response, ResponseNode]:
     """
     Implements a tree of thought approach by branching into multiple 
@@ -105,8 +106,10 @@ def tree_of_thought(bot: Bot,
     return final_response
 
 
-def prompt_while(bot: Bot, prompt: Prompt, stop_condition: StopCondition
-    ) ->Tuple[List[Response], List[ResponseNode]]:
+def prompt_while(bot: Bot, 
+                 prompt: Prompt, 
+                 stop_condition: Condition
+                ) -> Tuple[List[Response], List[ResponseNode]]:
     """
     Repeatedly prompts the bot until a stop condition is met.
 
@@ -129,8 +132,11 @@ def prompt_while(bot: Bot, prompt: Prompt, stop_condition: StopCondition
     return responses, nodes
 
 
-def prompt_for(bot: Bot, items: List[Any], dynamic_prompt: DynamicPrompt,
-    branch: bool=False) ->Tuple[List[Response], List[ResponseNode]]:
+def prompt_for( bot: Bot, 
+                items: List[Any], 
+                dynamic_prompt: DynamicPrompt,
+                branch: bool=False
+                ) -> Tuple[List[Response], List[ResponseNode]]:
     """
     Generates prompts for a list of items and gets responses from the bot.
 
@@ -156,13 +162,27 @@ def prompt_for(bot: Bot, items: List[Any], dynamic_prompt: DynamicPrompt,
             nodes.append(bot.conversation)
         return responses, nodes
 
+def chain_while(bot: Bot, 
+                prompt_list: List[Prompt],
+                continue_condition: Condition = lambda bot, reply: 'DONE' in reply,
+                continue_prompt: str = 'ok (respond "DONE" when done)'
+                ) -> None:
+    """
+    Sends a series of messages. Moves to next message on continue_condition(bot, response).
+    Sends continue_prompt if condition is not met.
+    """
+    for p in prompt_list:
+        response = bot.respond(p)
+        while not continue_condition(bot, response):
+            response = bot.respond(continue_prompt)
 
 def sequential_process( bot: Bot, 
                         task: Prompt,
                         list_length: int, 
                         ) ->Tuple[Response, ResponseNode]:
     """
-    Generates a list of subtasks based on the task, elaborates on each subtask, and then executes each elaboration.
+    Generates a list of subtasks based on the task, elaborates on each subtask,
+    and then executes each elaboration in a separate branch.
     Similar to chain of thought, but more token efficient in theory.
 
     Args:
@@ -210,8 +230,8 @@ def sequential_process( bot: Bot,
 
 
 def retry_until(bot: Bot, 
-                dynamic_prompt: Union[Prompt, Callable[[], Prompt]],
-                condition: Callable[[Response], bool], 
+                dynamic_prompt: DynamicPrompt,
+                condition: Condition, 
                 max_attempts: int=8
                 ) ->Tuple[Response, ResponseNode]:
     """

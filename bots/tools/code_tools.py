@@ -100,7 +100,7 @@ def change_lines(file_path, new_content, start_line, end_line):
             return 'Error: Invalid line range.'
         normalized_lines = [(line + '\n' if not line.endswith('\n') else
             line) for line in new_lines]
-        lines[start_line - 1:end_line + 1] = normalized_lines
+        lines[start_line - 1:end_line] = normalized_lines
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
         return (
@@ -137,66 +137,5 @@ def delete_lines(file_path, start_line, end_line):
         return (
             f'Successfully deleted lines {start_line} to {end_line}:\n\n{view(file_path)}'
             )
-    except Exception as e:
-        return f'Error: {str(e)}'
-
-
-def find_lines(file_path, pattern):
-    """
-    Find lines in a file that match a specific pattern.
-
-    Parameters:
-    - file_path (str): The path to the file to be searched.
-    - pattern (str): The pattern to search for in each line.
-
-    Returns:
-    A list of tuples containing line numbers and matching lines.
-    """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-        matches = [(i + 1, line.strip()) for i, line in enumerate(lines) if
-            pattern in line]
-        if matches:
-            return f'Found {len(matches)} matches:\n' + '\n'.join([
-                f'Line {m[0]}: {m[1]}' for m in matches])
-        else:
-            return 'No matches found.'
-    except Exception as e:
-        return f'Error: {str(e)}'
-
-
-def replace_in_lines(file_path, old_text, new_text, start_line, end_line):
-    """
-    Replace specific text within a range of lines in a file.
-    Note: OVERWRITES portions of lines containing the old_text with new_text.
-
-    Parameters:
-    - file_path (str): The path to the file to be modified.
-    - old_text (str): The text to be replaced.
-    - new_text (str): The text to replace the old text.
-    - start_line (int): The starting line number of the range to modify.
-    - end_line (int): The ending line number of the range to modify.
-
-    Returns:
-    A string confirming the operation and showing the new file, or a description of an error encountered.
-    """
-    try:
-        start_line = int(start_line)
-        end_line = int(end_line)
-        with open(file_path, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-        if start_line < 1 or end_line > len(lines):
-            return 'Error: Invalid line range.'
-        count = 0
-        for i in range(start_line - 1, end_line):
-            if old_text in lines[i]:
-                lines[i] = lines[i].replace(old_text, new_text)
-                count += 1
-        with open(file_path, 'w', encoding='utf-8') as file:
-            file.writelines(lines)
-        return f"""Successfully replaced {count} occurrences of '{old_text}' with '{new_text}'                 in lines {start_line} to {end_line}:
-
-{view(file_path)}"""
     except Exception as e:
         return f'Error: {str(e)}'

@@ -302,19 +302,37 @@ def run_tests():
             categories[category].sort(key=lambda x: (len(x[2]), x[1]))
         else:
             categories[category].sort(key=lambda x: x[1])
-    report = {'summary': {'total': len(test_results), 'failed': sum(1 for r in
-        test_results.values() if not r['passed']), 'passed': sum(1 for r in
-        test_results.values() if r['passed']), 'skipped': sum(1 for r in
-        test_results.values() if 'skipped' in r.get('output', '').lower())},
-        'categories': [{'name': 'Syntax Errors', 'tests': categories[
-        'syntax'], 'error_type': 'syntax', 'priority': 1}, {'name':
-        'Missing Dependencies', 'tests': categories['missing_deps'],
-        'error_type': 'missing_deps', 'priority': 2}, {'name':
-        'Import Errors', 'tests': categories['import'], 'error_type':
-        'import', 'priority': 3}, {'name': 'Other Failures', 'tests':
-        categories['other'], 'error_type': 'other', 'priority': 4}]}
-    report['categories'] = [cat for cat in report['categories'] if cat['tests']
-        ]
+    report = {'summary': 
+              {'total': 
+               len(test_results), 
+               'failed': sum(1 for r in test_results.values() if not r['passed']), 
+               'passed': sum(1 for r in test_results.values() if r['passed']),
+               'skipped': sum(1 for r in test_results.values() if 'skipped' in r.get('output', '').lower())
+               },
+              'categories': [
+                {'name': 'Syntax Errors',
+                 'tests': categories['syntax'], 
+                 'error_type': 'syntax', 
+                 'priority': 1
+                 }, 
+                 {'name': 'Missing Dependencies',
+                  'tests': categories['missing_deps'],
+                  'error_type': 'missing_deps',
+                  'priority': 2
+                 }, 
+                 {'name': 'Import Errors', 
+                  'tests': categories['import'], 
+                  'error_type': 'import',
+                  'priority': 3
+                 }, 
+                 {'name': 'Other Failures',
+                  'tests': categories['other'], 
+                  'error_type': 'other', 
+                  'priority': 4
+                 }
+              ]
+             }
+    report['categories'] = [cat for cat in report['categories'] if cat['tests']]
     return json.dumps(report, indent=2)
 
 

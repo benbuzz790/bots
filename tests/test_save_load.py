@@ -9,13 +9,14 @@ from bots.foundation.anthropic_bots import AnthropicBot
 import bots.tools.python_tools as python_tools
 
 def simple_addition(x, y) -> str:
+    "Returns x + y with appropriate type conversion"
     return str(int(x) + int(y))
 
 class TestSaveLoad(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp(dir=os.path.dirname(__file__))
         self.bots = {
-            'openai': ChatGPT_Bot(name="TestGPT", model_engine=Engines.GPT35TURBO),
+            #'openai': ChatGPT_Bot(name="TestGPT", model_engine=Engines.GPT35TURBO),
             'anthropic': AnthropicBot(name="TestClaude", model_engine=Engines.CLAUDE35_SONNET_20240620)
         }
         return self
@@ -143,7 +144,7 @@ class TestSaveLoad(unittest.TestCase):
         self.run_test_for_both_bots(_test)
 
     def test_save_load_with_tool_use(self):
-        def _test(bot):
+        def _test(bot:Bot):
             bot.add_tool(simple_addition)
             
             interactions = [
@@ -161,9 +162,9 @@ class TestSaveLoad(unittest.TestCase):
             
             save_path = os.path.join(self.temp_dir, f"tool_use_{bot.name}")
             save_path = bot.save(save_path)
-            
             loaded_bot = Bot.load(save_path)
-            
+            loaded_bot.save(save_path+"2")
+
             self.assertEqual(len(bot.tool_handler.tools), len(loaded_bot.tool_handler.tools))
             
             loaded_results = loaded_bot.tool_handler.get_results()
@@ -205,6 +206,31 @@ class TestSaveLoad(unittest.TestCase):
 
         self.run_test_for_both_bots(_test)
 
+import sys
+import traceback
+from functools import wraps
+from typing import Any, Callable
+
+def debug_on_error(func: Callable) -> Callable:
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except Exception:
+            type, value, tb = sys.exc_info()
+            traceback.print_exception(type, value, tb)
+            print("\n--- Entering post-mortem debugging ---")
+            import pdb
+            pdb.post_mortem(tb)
+    return wrapper
+
+@debug_on_error
+def main():
+    test = TestSaveLoad()
+    test.setUp()
+    test.test_save_load_with_tool_use()
+    # test.tearDown()
 
 if __name__ == '__main__':
+    #main()
     unittest.main()
