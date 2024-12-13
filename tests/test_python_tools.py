@@ -432,6 +432,217 @@ def some_function():
         finally:
             shutil.rmtree(test_dir)
 
+    def test_definitions_with_imports(self):
+        """Test that functions/classes with imports are handled correctly"""
+        class_with_imports = """
+from typing import List, Dict
+import os.path
+
+class TestClass:
+    def method(self):
+        path = os.path.join("a", "b")
+        items: List[Dict] = []
+        return items
+"""
+        python_tools.replace_class(self.test_file, class_with_imports)
+        with open(self.test_file, 'r') as f:
+            content = f.read()
+        self.assertIn('from typing import List, Dict', content)
+        self.assertIn('import os.path', content)
+        self.assertIn('class TestClass:', content)
+        function_with_imports = """
+from pathlib import Path
+import json
+
+def test_function():
+    data = json.loads('{}')
+    path = Path('test')
+    return str(path)
+"""
+        python_tools.replace_function(self.test_file, function_with_imports)
+        with open(self.test_file, 'r') as f:
+            content = f.read()
+        self.assertIn('from pathlib import Path', content)
+        self.assertIn('import json', content)
+        self.assertIn('def test_function():', content)
+        method_with_imports = """
+from datetime import datetime
+import calendar
+
+def new_method(self):
+    now = datetime.now()
+    return calendar.month_name[now.month]
+"""
+        python_tools.add_function_to_class(self.test_file, 'TestClass',
+            method_with_imports)
+        with open(self.test_file, 'r') as f:
+            content = f.read()
+        self.assertIn('from datetime import datetime', content)
+        self.assertIn('import calendar', content)
+        self.assertIn('def new_method(self):', content)
+        new_class_with_imports = """
+from typing import Optional
+import sys
+
+class NewClass:
+    def __init__(self):
+        self.version: Optional[str] = sys.version
+"""
+        python_tools.add_class(self.test_file, new_class_with_imports)
+        with open(self.test_file, 'r') as f:
+            content = f.read()
+        self.assertIn('from typing import Optional', content)
+        self.assertIn('import sys', content)
+        self.assertIn('class NewClass:', content)
+
+    def test_add_multiple_methods_to_class(self):
+        initial_content = (
+            '\nclass TestClass:\n    def existing_method(self):\n        pass\n'
+            )
+        new_methods = """
+def method1(self):
+    print("Method 1")
+def method2(self):
+    print("Method 2")
+"""
+        expected_content = """
+class TestClass:
+    def existing_method(self):
+        pass
+
+    def method1(self):
+        print("Method 1")
+
+    def method2(self):
+        print("Method 2")
+"""
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.add_function_to_class(self.test_file, 'TestClass',
+            new_methods)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Add multiple methods to class failed')
+
+    def test_add_multiple_functions_to_file(self):
+        initial_content = '# Empty file\n'
+        new_functions = """
+def func1():
+    print("Function 1")
+def func2():
+    print("Function 2")
+"""
+        expected_content = """# Empty file
+
+def func1():
+    print("Function 1")
+
+def func2():
+    print("Function 2")
+"""
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.add_function_to_file(self.test_file, new_functions)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Add multiple functions to file failed')
+
+    def test_replace_multiple_functions(self):
+        initial_content = (
+            '\ndef func1():\n    print("Old 1")\ndef func2():\n    print("Old 2")\n'
+            )
+        new_functions = (
+            '\ndef func1():\n    print("New 1")\ndef func2():\n    print("New 2")\n'
+            )
+        expected_content = """
+def func1():
+    print("New 1")
+
+def func2():
+    print("New 2")
+"""
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.replace_function(self.test_file, new_functions)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Replace multiple functions failed')
+
+    def test_add_multiple_methods_to_class(self):
+        initial_content = (
+            '\nclass TestClass:\n    def existing_method(self):\n        pass\n'
+            )
+        new_methods = """
+def method1(self):
+    print("Method 1")
+def method2(self):
+    print("Method 2")
+"""
+        expected_content = """
+class TestClass:
+    def existing_method(self):
+        pass
+
+    def method1(self):
+        print("Method 1")
+
+    def method2(self):
+        print("Method 2")
+"""
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.add_function_to_class(self.test_file, 'TestClass',
+            new_methods)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Add multiple methods to class failed')
+
+    def test_add_multiple_functions_to_file(self):
+        initial_content = '# Empty file\n'
+        new_functions = """
+def func1():
+    print("Function 1")
+def func2():
+    print("Function 2")
+"""
+        expected_content = """# Empty file
+
+def func1():
+    print("Function 1")
+
+def func2():
+    print("Function 2")
+"""
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.add_function_to_file(self.test_file, new_functions)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Add multiple functions to file failed')
+
+    def test_replace_multiple_functions(self):
+        initial_content = """
+def func1():
+    print("Old 1")
+def func2():
+    print("Old 2")
+def func3():
+    print("Keep me")
+"""
+        new_functions = (
+            '\ndef func1():\n    print("New 1")\ndef func2():\n    print("New 2")\n'
+            )
+        expected_content = """
+def func1():
+    print("New 1")
+
+def func2():
+    print("New 2")
+
+def func3():
+    print("Keep me")
+"""
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.replace_function(self.test_file, new_functions)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Replace multiple functions failed')
+
 
 if __name__ == '__main__':
     unittest.main()

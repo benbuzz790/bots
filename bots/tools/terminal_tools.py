@@ -1,4 +1,7 @@
-def execute_powershell(code, output_length_limit=60):
+import os, subprocess, traceback
+from typing import List
+
+def execute_powershell(code: str, output_length_limit: str = '60'):
     """
     Executes PowerShell code in a stateless environment
 
@@ -13,8 +16,6 @@ def execute_powershell(code, output_length_limit=60):
 
     Returns command output or an error message.
     """
-    import subprocess
-    import traceback
 
     def _process_error(error):
         error_message = f'Tool Failed: {str(error)}\n'
@@ -46,6 +47,7 @@ def execute_powershell(code, output_length_limit=60):
 
     # Handle output length limiting
     if output_length_limit is not None and output:
+        output_length_limit = int(output_length_limit)
         lines = output.splitlines()
         if len(lines) > output_length_limit:
             truncated_lines = lines[:output_length_limit]

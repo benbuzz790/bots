@@ -151,7 +151,7 @@ class AnthropicMailbox(Mailbox):
         messages: List[Dict[str, Any]] = conversation.build_messages()
 
         cc = CacheController()
-        messages = cc.manage_cache_controls(messages, .25)
+        messages = cc.manage_cache_controls(messages, 1.0)
 
         # Add optional blocks to create_dict
         create_dict: Dict[str, Any] = {}
@@ -163,7 +163,7 @@ class AnthropicMailbox(Mailbox):
 
 
         # Create non-optional blocks and update create_dict
-        model: Engines = bot.model_engine
+        model: Engines = bot.model_engine.value
         max_tokens: int = bot.max_tokens
         temperature: float = bot.temperature
         non_optional = {
@@ -200,29 +200,48 @@ class AnthropicMailbox(Mailbox):
                         bot: Optional['AnthropicBot'] = None
                         ) -> Tuple[str, str, Dict[str, Any]]:
         
-        # If the stop reason was max tokens, request continuation
-        # Continuation is not allowed with tool calls
+        # How should we handle responses from claude which are malformed?
 
-        def should_continue(response):
-            return response.stop_reason == 'max_tokens' and not 'tool_calls' in response
+        try:
+            # For long outputs without tool use, we can prompt over and over rather
+            # than ending mid-sentence.
+            # If the stop reason was max tokens, request a continuation
+            # Continuation is not allowed with tool calls
 
-        message = bot.conversation.build_messages()
-        while should_continue(response):
-            message.append({'role': response.role, 'content':response.content[0].text})
-            response = self.client.beta.prompt_caching.messages.create(**message)
-            #response = self.client.messages.create(**message)
-            
-        response_role: str = response.role
-        response_text: str = response.content[0].text
+            def should_continue(response):
+                return response.stop_reason == 'max_tokens' and not 'tool_calls' in response
 
-        # Incorporate tool use via extra_data
-        if response.stop_reason == 'tool_calls':
-            requests = bot.tool_handler.get_requests()
-            results = bot.tool_handler.get_results()
-            extra_data: Dict[str, Any] = {"tool_calls": requests, "tool_results": results}
-        else:
-            extra_data = {}
-    
+            while should_continue(response):
+                bot.conversation.add_reply(role= 'assistant', content=response.content[0].text)
+                messages = bot.conversation.build_messages()
+                response = self.send_message(bot)
+                
+            response_role: str = response.role
+            response_text: str = getattr(response.content[0], 'text', '~')
+            # The last line uses '~' if claude responds without a text block. Claude can do this,
+            # but the API doesn't like it when you send that back. So I need to add a text block
+            # here with some kind of indication that it contains nothing. '~' seems to do the 
+            # trick.
+
+            # Incorporate tool use via extra_data
+            if response.stop_reason == 'tool_calls':
+                requests = bot.tool_handler.get_requests()
+                results = bot.tool_handler.get_results()
+                extra_data: Dict[str, Any] = {"tool_calls": requests, "tool_results": results}
+            else:
+                extra_data = {}
+        except anthropic.BadRequestError as e:
+            print("--------------------------------------------")
+            print("BAD REQUEST RUINED YOUR DAY AGAIN HAHAHAHAHA")
+            print("--------------------------------------------")
+            if e.status_code == 400:
+                # determine if claude was responsible or if I was responsible:
+                    # claude: tool params missing, tools not in toolmap,
+                    # ben: default
+                pass
+            raise e
+
+
         return response_text, response_role, extra_data
 
 
@@ -233,7 +252,7 @@ class AnthropicBot(Bot):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_engine: Engines = Engines.CLAUDE35_SONNET_20240620,
+        model_engine: Engines = Engines.CLAUDE35_SONNET_20241022,
         max_tokens: int = 4096,
         temperature: float = 0.3,
         name: str = "Claude",
@@ -278,7 +297,7 @@ class CacheController:
         
         return sorted(list(set(positions)))  # Remove duplicates and sort
 
-    def should_add_cache_control(self, total_messages: int, last_control_pos: int, threshold: float = 0.25) -> bool:
+    def should_add_cache_control(self, total_messages: int, last_control_pos: int, threshold: float = 1.0) -> bool:
         required_length = last_control_pos * (1 + threshold)
         return total_messages >= math.ceil(required_length)
 
@@ -400,7 +419,7 @@ class CacheController:
                 if isinstance(tool_call, dict) and 'cache_control' in tool_call:
                     del tool_call['cache_control']
 
-    def manage_cache_controls(self, messages: List[Dict[str, Any]], threshold: float = 0.25) -> List[Dict[str, Any]]:
+    def manage_cache_controls(self, messages: List[Dict[str, Any]], threshold: float = 1.0) -> List[Dict[str, Any]]:
         # Find existing cache_control positions
         cache_control_positions = self.find_cache_control_positions(messages)
 

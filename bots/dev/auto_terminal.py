@@ -64,6 +64,27 @@ def pretty(string: str, name: Optional[str] = None, width: int = 100, indent: in
     print('\n'.join(formatted_lines))
     print("\n---\n")
 
+
+def recursive_json_dumps(obj, indent=2):
+    if isinstance(obj, dict):
+        # Handle each value in the dictionary
+        return {key: recursive_json_dumps(value, indent) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        # Check if all items are dicts
+        if all(isinstance(item, dict) for item in obj):
+            # Process each dict in the list
+            return [recursive_json_dumps(item, indent) for item in obj]
+        return obj
+    elif isinstance(obj, str):
+        # Try to parse string as JSON and process it recursively
+        try:
+            parsed = json.loads(obj)
+            return recursive_json_dumps(parsed, indent)
+        except json.JSONDecodeError:
+            return obj
+    else:
+        return obj
+
 def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
     openai_key = os.getenv('OPENAI_API_KEY')
     anthropic_key = os.getenv('ANTHROPIC_API_KEY')
@@ -135,8 +156,8 @@ def main() -> None:
             pretty(response, codey.name)
             if requests:
                 if verbose:
-                    pretty(f'Tool Requests\n\n{json.dumps(requests, indent=1)}', "System")
-                    pretty(f'Tool Results\n\n{json.dumps(results, indent=1)}', "System")  
+                    pretty(f'Tool Requests\n\n{recursive_json_dumps(requests, indent=2)}', "System")
+                    pretty(f'Tool Results\n\n{recursive_json_dumps(results, indent=2)}', "System")  
                 else:
                     for request in requests:
                         tool_name, _ = codey.tool_handler.tool_name_and_input(request)
@@ -154,6 +175,8 @@ def main() -> None:
         
         else:  # user turn
             uinput: str = input("You: ")
+            if uinput is None:
+                uinput = '~'
             
             match uinput:
                 case "/exit":

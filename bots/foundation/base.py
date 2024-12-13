@@ -186,16 +186,16 @@ class ConversationNode:
         node = self
         if node.is_empty():
             return []
-        conversation_dict = []
+        conversation_list_dict = []
         while node:
             entry = {'role': node.role, 'content': node.content}
             if node.tool_calls is not None:
                 entry['tool_calls'] = node.tool_calls
             if node.tool_results is not None:
                 entry['tool_results'] = node.tool_results
-            conversation_dict = [entry] + conversation_dict
+            conversation_list_dict = [entry] + conversation_list_dict
             node = node.parent
-        return conversation_dict
+        return conversation_list_dict
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ConversationNode':
@@ -553,7 +553,7 @@ class ToolHandler(ABC):
             'requests': self.requests.copy(),
             'results': self.results.copy(),
             'modules': module_details,
-            'function_map': function_paths
+            'function_paths': function_paths
         }
 
     @classmethod
@@ -607,7 +607,7 @@ class ToolHandler(ABC):
                 continue
         
         # Handle dynamic functions if any
-        for func_name, path in data.get('function_map', {}).items():
+        for func_name, path in data.get('function_paths', {}).items():
             if path == 'dynamic' and func_name not in handler.function_map:
                 # Assume dynamic functions have their source saved elsewhere or cannot be restored
                 print(f"Warning: Dynamic function '{func_name}' cannot be restored without source.")
@@ -867,8 +867,10 @@ class Bot(ABC):
                key not in ('conversation', 'tool_handler', 'tools'):
                 setattr(bot, key, value)
 
+        # Recreate conversation
         if 'conversation' in data and data['conversation']:
-            bot.conversation = ConversationNode.from_dict(data['conversation'])
+            node_class = Engines.get_conversation_node_class(data['conversation']['node_class'])
+            bot.conversation = node_class.from_dict(data['conversation'])
             while bot.conversation.replies:
                 bot.conversation = bot.conversation.replies[0] # default 'continue' point
 
