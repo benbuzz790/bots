@@ -770,7 +770,8 @@ class Bot(ABC):
                  role_description: str, 
                  conversation: Optional[ConversationNode]=ConversationNode.create_empty(),
                  tool_handler: Optional[ToolHandler]=None, 
-                 mailbox: Optional[Mailbox]=None
+                 mailbox: Optional[Mailbox]=None,
+                 autosave: bool = True
                  ):
         
         self.api_key = api_key
@@ -784,6 +785,7 @@ class Bot(ABC):
         self.system_message = ''
         self.tool_handler = tool_handler
         self.mailbox = mailbox
+        self.autosave = autosave
         if isinstance(self.model_engine, str):
             self.model_engine = Engines.get(self.model_engine)
 
@@ -794,6 +796,7 @@ class Bot(ABC):
         """
         self.conversation = self.conversation.add_reply(content=prompt, role=role)
         reply, _ = self._cvsn_respond()
+        if self.autosave: self.save(f'{self.name}_auto')
         return reply
 
     def _cvsn_respond(self) -> Tuple[str, ConversationNode]:

@@ -174,6 +174,7 @@ class ChatGPT_Bot(Bot):
                  name: str = 'bot',
                  role: str = 'assistant', 
                  role_description: str = 'a friendly AI assistant',
+                 autosave: bool = True,
                  ):
         
         super().__init__(api_key=api_key, 
@@ -185,7 +186,8 @@ class ChatGPT_Bot(Bot):
                          role_description=role_description,
                          tool_handler = OpenAIToolHandler(),
                          conversation = OpenAINode.create_empty(OpenAINode),
-                         mailbox = OpenAIMailbox()
+                         mailbox = OpenAIMailbox(),
+                         autosave=autosave
                          )
 
 

@@ -258,6 +258,7 @@ class AnthropicBot(Bot):
         name: str = "Claude",
         role: str = "assistant",
         role_description: str = "a friendly AI assistant",
+        autosave: bool = True
     ) -> None:
 
         super().__init__(
@@ -270,7 +271,8 @@ class AnthropicBot(Bot):
             role_description,
             conversation=AnthropicNode.create_empty(AnthropicNode),
             tool_handler=AnthropicToolHandler(),
-            mailbox=AnthropicMailbox()
+            mailbox=AnthropicMailbox(),
+            autosave = autosave,
         )
 
 class CacheController:
