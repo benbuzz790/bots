@@ -1,6 +1,7 @@
 # anthropic_bot.py
 
 from bots.foundation.base import Bot, Mailbox, ConversationNode, Engines, ToolHandler
+from bots.tools.github_tools import create_issue
 from typing import Optional, Dict, Any, List, Callable, Tuple
 import anthropic
 import os
@@ -299,7 +300,7 @@ class CacheController:
         
         return sorted(list(set(positions)))  # Remove duplicates and sort
 
-    def should_add_cache_control(self, total_messages: int, last_control_pos: int, threshold: float = 1.0) -> bool:
+    def should_add_cache_control(self, total_messages: int, last_control_pos: int, threshold: float = 5.0) -> bool:
         required_length = last_control_pos * (1 + threshold)
         return total_messages >= math.ceil(required_length)
 
@@ -421,7 +422,7 @@ class CacheController:
                 if isinstance(tool_call, dict) and 'cache_control' in tool_call:
                     del tool_call['cache_control']
 
-    def manage_cache_controls(self, messages: List[Dict[str, Any]], threshold: float = 1.0) -> List[Dict[str, Any]]:
+    def manage_cache_controls(self, messages: List[Dict[str, Any]], threshold: float = 5.0) -> List[Dict[str, Any]]:
         # Find existing cache_control positions
         cache_control_positions = self.find_cache_control_positions(messages)
 

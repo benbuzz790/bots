@@ -2,11 +2,13 @@ import os
 import sys
 import inspect
 from bots import python_tools
+import textwrap
 import unittest
 import traceback
 import difflib
 import ast
 import astor
+import time
 
 
 def ast_normalize(code):
@@ -244,16 +246,16 @@ def some_function():
         self.assertFileContentEqual(self.test_file, expected_content,
             'Replace complex class failed')
 
-    def test_add_import(self):
+    def test_add_imports(self):
         initial_content = '\ndef some_function():\n    pass\n'
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_import(self.test_file, 'import os')
+        python_tools.add_imports(self.test_file, 'import os')
         expected_after_first = (
             '\nimport os\n\ndef some_function():\n    pass\n')
         self.assertFileContentEqual(self.test_file, expected_after_first,
             'Add simple import failed')
-        python_tools.add_import(self.test_file, 'from typing import List, Dict'
+        python_tools.add_imports(self.test_file, 'from typing import List, Dict'
             )
         expected_after_second = """
 import os
@@ -264,7 +266,7 @@ def some_function():
 """
         self.assertFileContentEqual(self.test_file, expected_after_second,
             'Add from-import failed')
-        python_tools.add_import(self.test_file, 'import os')
+        python_tools.add_imports(self.test_file, 'import os')
         self.assertFileContentEqual(self.test_file, expected_after_second,
             'Duplicate import check failed')
 
@@ -370,15 +372,15 @@ def some_function():
         test_dir = tempfile.mkdtemp()
         try:
             simple_file = 'simple.py'
-            result = python_tools.add_import(simple_file, 'import os')
+            result = python_tools.add_imports(simple_file, 'import os')
             self.assertTrue(os.path.exists(os.path.abspath(simple_file)))
             os.remove(simple_file)
             rel_path = os.path.join('test_subdir', 'relative.py')
-            result = python_tools.add_import(rel_path, 'import sys')
+            result = python_tools.add_imports(rel_path, 'import sys')
             self.assertTrue(os.path.exists(os.path.abspath(rel_path)))
             shutil.rmtree('test_subdir')
             abs_path = os.path.join(test_dir, 'subdir', 'absolute.py')
-            result = python_tools.add_import(abs_path, 'import datetime')
+            result = python_tools.add_imports(abs_path, 'import datetime')
             self.assertTrue(os.path.exists(abs_path))
             class_file = os.path.join(test_dir, 'class_test.py')
             result = python_tools.add_class(class_file,
@@ -643,6 +645,516 @@ def func3():
         self.assertFileContentEqual(self.test_file, expected_content,
             'Replace multiple functions failed')
 
+    def test_replace_async_function(self):
+        """Test replacing an async function with a new async function"""
+        initial_content = """
+async def old_async():
+    await some_call()
+    return "old"
+    """
+        new_function = """
+async def old_async():
+    result = await other_call()
+    return "new"
+    """
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.replace_function(self.test_file, new_function)
+        self.assertFileContentEqual(self.test_file, new_function, 
+            'Replace async function failed')
 
+    def test_add_async_method_to_class(self):
+        """Test adding an async method to an existing class"""
+        initial_content = textwrap.dedent("""
+            class AsyncClass:
+                def normal_method(self):
+                    pass
+            """)
+        new_method = textwrap.dedent("""
+            async def async_method(self):
+                result = await external_call()
+                return result
+            """)
+        expected_content = textwrap.dedent("""
+            class AsyncClass:
+                def normal_method(self):
+                    pass
+
+                async def async_method(self):
+                    result = await external_call()
+                    return result
+            """)
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.add_function_to_class(self.test_file, 'AsyncClass', new_method)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Add async method to class failed')
+
+    def test_mixed_sync_async_functions(self):
+        """Test handling a mix of sync and async functions in the same file"""
+        initial_content = """
+async def async_func():
+    await some_call()
+
+def sync_func():
+    return "sync"
+    """
+        new_functions = """
+async def async_func():
+    return await new_call()
+
+def sync_func():
+    return "new sync"
+    """
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.replace_function(self.test_file, new_functions)
+        self.assertFileContentEqual(self.test_file, new_functions,
+            'Replace mixed sync/async functions failed')
+
+    def test_class_with_mixed_methods(self):
+        """Test class containing both sync and async methods"""
+        initial_content = """
+class MixedClass:
+    def sync_method(self):
+        pass
+"""
+        new_methods = """
+async def async_method(self):
+    await something()
+
+def another_sync(self):
+    pass
+"""
+        expected_content = """
+class MixedClass:
+    def sync_method(self):
+        pass
+
+    async def async_method(self):
+        await something()
+
+    def another_sync(self):
+        pass
+"""
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.add_function_to_class(self.test_file, 'MixedClass', new_methods)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Add mixed sync/async methods to class failed')
+
+    def test_replace_sync_with_async(self):
+        """Test replacing a sync function with an async version"""
+        initial_content = """
+def old_sync():
+    return "sync"
+"""
+        new_function = """
+async def old_sync():
+    return await async_operation()
+"""
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.replace_function(self.test_file, new_function)
+        self.assertFileContentEqual(self.test_file, new_function,
+            'Replace sync with async function failed')
+
+    def test_preserve_async_decorators(self):
+        """Test preserving decorators when modifying async functions"""
+        initial_content = """
+@decorator1
+@decorator2
+async def decorated_async():
+    return await something()
+"""
+        new_function = """
+@decorator1
+@decorator2
+async def decorated_async():
+    return await new_something()
+"""
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.replace_function(self.test_file, new_function)
+        self.assertFileContentEqual(self.test_file, new_function,
+            'Preserve async function decorators failed')
+        
+    def test_multiple_imports_basic(self):
+        """Test basic addition of multiple imports to an empty file"""
+        initial_content = '# Empty file\n'
+        import_statements = """
+import os
+from typing import List
+import sys
+    """
+        expected_content = """# Empty file
+import os
+from typing import List
+import sys
+    """
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.add_imports(self.test_file, import_statements)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Basic multiple imports failed')
+
+    def test_multiple_imports_with_existing(self):
+        """Test adding multiple imports to a file with existing imports"""
+        initial_content = """
+import os
+from datetime import datetime
+
+def some_function():
+    pass
+    """
+        import_statements = """
+from typing import List, Dict
+import sys
+from pathlib import Path
+    """
+        expected_content = """
+import os
+from datetime import datetime
+from typing import List, Dict
+import sys
+from pathlib import Path
+
+def some_function():
+    pass
+    """
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.add_imports(self.test_file, import_statements)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Multiple imports with existing content failed')
+
+    def test_multiple_imports_duplicates(self):
+        """Test handling of duplicate imports in multiple import statements"""
+        initial_content = """
+import os
+from typing import List
+
+def some_function():
+    pass
+    """
+        import_statements = """
+import os
+from typing import Dict
+from typing import List
+import sys
+    """
+        expected_content = """
+import os
+from typing import List
+from typing import Dict
+import sys
+
+def some_function():
+    pass
+    """
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.add_imports(self.test_file, import_statements)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Multiple imports with duplicates failed')
+
+    def test_multiple_imports_invalid_statement(self):
+        """Test handling of invalid import statements within multiple imports"""
+        initial_content = '# Empty file\n'
+        import_statements = """
+import os
+not a valid import
+from typing import List
+    """
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        result = python_tools.add_imports(self.test_file, import_statements)
+        self.assertIn('Tool Failed: Error parsing import statement', result,
+            'Invalid import statement error not detected')
+        with open(self.test_file, 'r') as f:
+            content = f.read()
+        self.assertEqual(content, '# Empty file\n',
+            'File was modified despite invalid import')
+
+    def test_multiple_imports_whitespace_handling(self):
+        """Test handling of various whitespace in multiple import statements"""
+        initial_content = '# Empty file\n'
+        import_statements = """
+
+import os  
+
+from typing import List    
+import sys
+from pathlib import Path  # with comment
+
+    """
+        expected_content = """# Empty file
+
+import os
+from typing import List
+import sys
+from pathlib import Path  # with comment
+    """
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.add_imports(self.test_file, import_statements)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Multiple imports whitespace handling failed')
+
+    def test_multiple_imports_complex_statements(self):
+        """Test handling of complex import statements"""
+        initial_content = '# Empty file\n'
+        import_statements = """
+import os.path as osp
+from typing import List, Dict, Optional as Opt
+import sys as system, json as jsn
+from datetime import datetime as dt, timedelta
+    """
+        expected_content = """# Empty file
+import os.path as osp
+from typing import List, Dict, Optional as Opt
+import sys as system, json as jsn
+from datetime import datetime as dt, timedelta
+    """
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.add_imports(self.test_file, import_statements)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Complex multiple imports failed')
+
+    def test_multiple_imports_empty_input(self):
+        """Test handling of empty or whitespace-only input"""
+        initial_content = '# Empty file\n'
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        
+        # Test empty string
+        result = python_tools.add_imports(self.test_file, '')
+        self.assertIn('No valid import statements found', result,
+            'Empty import string not handled properly')
+        
+        # Test whitespace-only string
+        result = python_tools.add_imports(self.test_file, '   \n  \t  \n   ')
+        self.assertIn('No valid import statements found', result,
+            'Whitespace-only import string not handled properly')
+        
+        with open(self.test_file, 'r') as f:
+            content = f.read()
+        self.assertEqual(content, initial_content,
+            'File was modified despite empty input')
+
+    def test_multiple_imports_file_creation(self):
+        """Test file creation when adding multiple imports to non-existent file"""
+        import tempfile
+        import shutil
+        test_dir = tempfile.mkdtemp()
+        try:
+            test_file = os.path.join(test_dir, 'new_file.py')
+            import_statements = """
+import os
+from typing import List
+import sys
+    """
+            expected_content = """
+import os
+from typing import List
+import sys
+    """
+            python_tools.add_imports(test_file, import_statements)
+            self.assertTrue(os.path.exists(test_file),
+                'File was not created for multiple imports')
+            with open(test_file, 'r') as f:
+                content = f.read()
+            self.assertEqual(content.strip(), expected_content.strip(),
+                'Created file content incorrect')
+        finally:
+            shutil.rmtree(test_dir)
+
+    def test_execute_python_code_basic(self):
+        """Test basic code execution"""
+        code = textwrap.dedent("""
+            print("Hello, World!")
+            x = 5 + 3
+            print(f"Result: {x}")
+        """)
+        result = python_tools.execute_python_code(code)
+        self.assertIn("Hello, World!", result)
+        self.assertIn("Result: 8", result)
+
+    def test_execute_python_code_timeout(self):
+        """Test that the timeout mechanism works properly"""
+        # Test with an infinite loop
+        code = textwrap.dedent("""
+            while True:
+                pass
+        """)
+        result = python_tools.execute_python_code(code, timeout=1)
+        self.assertIn("timed out", result.lower())
+
+        # Test with a long but finite operation that should complete
+        code = textwrap.dedent("""
+            import time
+            time.sleep(1)
+            print("Completed")
+        """)
+        result = python_tools.execute_python_code(code, timeout=2)
+        self.assertIn("Completed", result)
+
+    def test_execute_python_code_syntax_error(self):
+        """Test handling of syntax errors in the code"""
+        code = textwrap.dedent("""
+            print("Start"
+            while True
+                print("Invalid syntax")
+        """)
+        result = python_tools.execute_python_code(code)
+        self.assertIn("SyntaxError", result)
+
+    def test_execute_python_code_runtime_error(self):
+        """Test handling of runtime errors in the code"""
+        code = textwrap.dedent("""
+            x = 1 / 0  # Division by zero
+        """)
+        result = python_tools.execute_python_code(code)
+        self.assertIn("ZeroDivisionError", result)
+
+    def test_execute_python_code_with_imports(self):
+        """Test code execution with various imports"""
+        code = textwrap.dedent("""
+            import math
+            import os
+            from datetime import datetime
+
+            print(f"Pi: {math.pi}")
+            print(f"Current directory: {os.getcwd()}")
+            print(f"Current hour: {datetime.now().hour}")
+        """)
+        result = python_tools.execute_python_code(code)
+        self.assertIn("Pi: 3.14", result)
+        self.assertIn("Current directory:", result)
+        self.assertIn("Current hour:", result)
+
+    def test_execute_python_code_with_multiline_output(self):
+        """Test handling of code that produces multiline output"""
+        code = textwrap.dedent("""
+            for i in range(3):
+                print(f"Line {i}")
+            print("---")
+            for j in range(2):
+                print(f"More {j}")
+        """)
+        result = python_tools.execute_python_code(code)
+        expected_lines = ["Line 0", "Line 1", "Line 2", "---", "More 0", "More 1"]
+        for line in expected_lines:
+            self.assertIn(line, result)
+
+    def test_execute_python_code_with_stderr(self):
+        """Test handling of code that writes to stderr"""
+        code = textwrap.dedent("""
+            import sys
+            print("Standard output")
+            print("Error output", file=sys.stderr)
+        """)
+        result = python_tools.execute_python_code(code)
+        self.assertIn("Standard output", result)
+        self.assertIn("Error output", result)
+
+    def test_execute_python_code_unicode(self):
+        """Test handling of Unicode characters in the code and output"""
+        code = textwrap.dedent("""
+            print("Hello, 世界!")
+            print("🌍 🌎 🌏")
+            print("Café")
+        """)
+        result = python_tools.execute_python_code(code)
+        self.assertIn("Hello, 世界!", result)
+        self.assertIn("🌍 🌎 🌏", result)
+        self.assertIn("Café", result)
+
+    def test_execute_python_code_with_classes(self):
+        """Test execution of code containing class definitions"""
+        code = textwrap.dedent("""
+            class TestClass:
+                def __init__(self, value):
+                    self.value = value
+                
+                def display(self):
+                    print(f"Value is: {self.value}")
+
+            obj = TestClass(42)
+            obj.display()
+        """)
+        result = python_tools.execute_python_code(code)
+        self.assertIn("Value is: 42", result)
+
+    def test_execute_python_code_long_output(self):
+        """Test handling of code that produces a lot of output"""
+        code = textwrap.dedent("""
+            for i in range(1000):
+                print(f"Line {i}")
+        """)
+        result = python_tools.execute_python_code(code)
+        self.assertIn("Line 0", result)
+        self.assertIn("Line 999", result)
+
+    def test_execute_python_code_zero_timeout(self):
+        """Test handling of invalid timeout values"""
+        code = textwrap.dedent("""
+            print('test')
+        """)
+        result = python_tools.execute_python_code(code, timeout=0)
+        self.assertIn("Tool Failed", result)
+        self.assertIn("must be a positive integer", result.lower())
+
+    def test_execute_python_code_negative_timeout(self):
+        """Test handling of negative timeout values"""
+        code = textwrap.dedent("""
+            print('test')
+        """)
+        result = python_tools.execute_python_code(code, timeout=-1)
+        self.assertIn("Tool Failed", result)
+        self.assertIn("must be a positive integer", result.lower())
+
+    def test_execute_python_code_complex_computation(self):
+        """Test execution of computationally intensive code"""
+        code = textwrap.dedent("""
+            def fibonacci(n):
+                if n <= 1:
+                    return n
+                return fibonacci(n-1) + fibonacci(n-2)
+
+            result = fibonacci(10)
+            print(f"Fibonacci(10) = {result}")
+        """)
+        result = python_tools.execute_python_code(code)
+        self.assertIn("Fibonacci(10) = 55", result)
+
+    def test_execute_python_code_system_exit(self):
+        """Test handling of system exit calls"""
+        code = textwrap.dedent("""
+            import sys
+            print("Before exit")
+            sys.exit(1)
+            print("After exit")  # Should not be executed
+        """)
+        result = python_tools.execute_python_code(code)
+        self.assertIn("Before exit", result)
+        self.assertNotIn("After exit", result)
+
+    def test_execute_python_code_process_cleanup(self):
+        """Test that processes are properly cleaned up after execution"""
+        import psutil
+        initial_processes = set(psutil.Process().children(recursive=True))
+        
+        code = textwrap.dedent("""
+            import time
+            time.sleep(0.1)
+        """)
+        python_tools.execute_python_code(code)
+        time.sleep(0.2)  # Give processes time to clean up
+        
+        final_processes = set(psutil.Process().children(recursive=True))
+        new_processes = final_processes - initial_processes
+        self.assertEqual(len(new_processes), 0, "Process cleanup failed")
 if __name__ == '__main__':
     unittest.main()

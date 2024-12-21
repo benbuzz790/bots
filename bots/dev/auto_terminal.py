@@ -105,7 +105,7 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
     #bot.add_tools(bots.tools.utf8_tools)
     bot.add_tools(bots.tools.code_tools)
     #bot.add_tools(bots.tools.test_tools)
-    #bot.add_tools(bots.tools.github_tools)
+    bot.add_tools(bots.tools.github_tools)
     bot.add_tools(bots.tools.terminal_tools)
     #bot.add_tools(bots.github_tools) #not ready
 
