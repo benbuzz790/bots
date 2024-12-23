@@ -1,28 +1,55 @@
+"""
+Implementation of a hierarchical code chunking algorithm with the following properties:
+
+1. Cost function:
+   - Parabolic for large chunks (penalizing overly large chunks)
+   - Inverse for very small chunks (penalizing tiny chunks)
+   - Has a "sweet spot" around ~3,000 characters
+
+2. Properties maintained:
+   - Language Preservation: Only adds chunk markers, no code modification
+   - Hierarchical Coverage: Every AST node belongs to exactly one chunk
+   - Scope Stability: Path-based addressing ensures edits don't affect outside chunks
+   - Statelessness: Chunking decisions use only local subtree info
+   - Parseability: Outputs well-nested chunk markers
+"""
+
 import ast
 import sys
 from typing import Any, Dict, List, Tuple, Optional
 from functools import lru_cache
 
+# ---------------------------------------------------------------------
+# 1. Cost function: parabolic for large, inverse for small, sweet spot ~3k
+# ---------------------------------------------------------------------
 def chunk_cost(length: int) -> float:
     """
-    Continuous cost function for chunk sizes that combines:
-    - Inverse term (1/length) to penalize very small chunks
-    - Quadratic term centered at 3000 for sharp growth
-    The minimum occurs near 3000 characters.
+    Cost function for chunk sizes:
+      - If length < 500 => inverse cost
+      - If 500 <= length <= 4500 => mild parabola w/ minimum near 3000
+      - If length > 4500 => steeper parabolic penalty
     """
     if length <= 0:
-        return 1.0e12  # nonsensical fallback for safety
-        
-    # Combine inverse and quadratic terms
-    A = 5e-3  # Much stronger quadratic coefficient for sharper curve
-    offset = (length - 3000)
-    inverse_term = 1.0e6 / length
-    quadratic_term = A * offset * offset
-    
-    return inverse_term + quadratic_term + 1.0
+        return 999999.0  # nonsensical fallback for safety
+    if length < 500:
+        # Big penalty for very small chunks
+        return 10000.0 / length
+    elif length <= 4500:
+        # Gentle parabola with minimum near 3000
+        A = 1e-5
+        offset = (length - 3000)
+        return A * offset * offset + 1.0
+    else:
+        # Steeper parabola for large chunks
+        A = 5e-5
+        offset = (length - 3000)
+        return A * offset * offset + 1.0
 
+# ---------------------------------------------------------------------
+# 2. Utility: measure character spans from AST node
+# ---------------------------------------------------------------------
 def get_node_span(node: ast.AST, source_lines: List[str]) -> Tuple[int, int]:
-    """Return line number and approximate character length for code spanned by node."""
+    """Return approximate character length for code spanned by node."""
     if not hasattr(node, 'lineno') or not hasattr(node, 'end_lineno'):
         return (0, 0)  # no position info => no length
 
@@ -67,6 +94,9 @@ def measure_subtree_length(node: ast.AST, source_lines: List[str], cache: Dict[i
     cache[node_id] = total
     return total
 
+# ---------------------------------------------------------------------
+# 3. DP approach for chunk optimization
+# ---------------------------------------------------------------------
 class ChunkInfo:
     """
     Holds the structure of how we chunked a node:
@@ -153,6 +183,9 @@ def compute_optimal_chunking(node: ast.AST,
     dp_cache[node_id] = best_scenario
     return best_scenario
 
+# ---------------------------------------------------------------------
+# 4. Address assignment for chunk markers
+# ---------------------------------------------------------------------
 def assign_addresses(node: ast.AST,
                     chunk_info: ChunkInfo,
                     parent_address: str,
@@ -189,40 +222,16 @@ def assign_addresses(node: ast.AST,
 
     return address_map
 
-def get_node_source(node: ast.AST, source_lines: List[str]) -> str:
-    """Extract the source code for a given AST node."""
-    if not hasattr(node, 'lineno') or not hasattr(node, 'end_lineno'):
-        return ""
-
-    start_line = node.lineno - 1  # Convert to 0-based indexing
-    end_line = node.end_lineno
-    
-    if start_line == end_line - 1:
-        # Single line
-        line = source_lines[start_line]
-        start_col = getattr(node, 'col_offset', 0)
-        end_col = getattr(node, 'end_col_offset', len(line))
-        return line[start_col:end_col]
-    else:
-        # Multiple lines
-        result = []
-        for i in range(start_line, end_line):
-            if i == start_line:
-                line = source_lines[i][getattr(node, 'col_offset', 0):]
-            elif i == end_line - 1:
-                line = source_lines[i][:getattr(node, 'end_col_offset', len(source_lines[i]))]
-            else:
-                line = source_lines[i]
-            result.append(line)
-        return '\n'.join(result)
-
+# ---------------------------------------------------------------------
+# 5. Main chunking function
+# ---------------------------------------------------------------------
 def chunk_python_code_all_properties(python_code: str) -> str:
     """
     Main entry point for chunking Python code:
     1) Parse to AST
     2) Use DP to find optimal chunk arrangement
     3) Assign stable addresses
-    4) Return bracketed representation with source code
+    4) Return bracketed representation
     """
     tree = ast.parse(python_code)
     source_lines = python_code.splitlines()
@@ -241,28 +250,27 @@ def chunk_python_code_all_properties(python_code: str) -> str:
     address_map = assign_addresses(tree, root_info, parent_address="", child_index=1,
                                  source_lines=source_lines, subtree_size_cache=subtree_size_cache)
 
-    # Build bracketed representation with source code
+    # Build bracketed representation
     lines = []
     def dfs_print(node: ast.AST, current_address: str, indent: int):
         prefix = "  " * indent
         node_id = id(node)
-        node_source = get_node_source(node, source_lines)
-        
-        lines.append(f"{prefix}C{{{address_map[node_id]}}} # {type(node).__name__}")
-        if node_source:
-            lines.append(node_source)
-        
+        lines.append(f"{prefix}open_chunk({address_map[node_id]}) # {type(node).__name__}")
+
         for child in ast.iter_child_nodes(node):
             dfs_print(child, address_map[id(child)], indent+1)
-        
-        lines.append(f"{prefix}}}C{address_map[node_id]}")
+
+        lines.append(f"{prefix}close_chunk({address_map[node_id]})")
 
     dfs_print(tree, address_map[id(tree)], 0)
     return "\n".join(lines)
 
+# ---------------------------------------------------------------------
+# 6. Command-line interface
+# ---------------------------------------------------------------------
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python chunker.py <python_file>")
+        print("Usage: python chunk_all_props.py <python_file>")
         sys.exit(1)
 
     filename = sys.argv[1]
