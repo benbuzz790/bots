@@ -127,9 +127,9 @@ def debug_on_error(func: Callable) -> Callable:
     return wrapper
 
 @debug_on_error
-def main(existing_bot=None) -> None:
+def main() -> None:
 
-    codey = existing_bot if existing_bot else initialize_bot()
+    codey = initialize_bot()
     pretty('Bot initialized', 'System')
     
     verbose: bool = True
@@ -144,13 +144,6 @@ def main(existing_bot=None) -> None:
             requests: List[Dict[str, Any]] = codey.tool_handler.get_requests()
             results: List[Dict[str, Any]] = codey.tool_handler.get_results()
             pretty(response, codey.name)
-
-            # Decide who goes next
-            if auto_mode:
-                msg: str = 'ok'
-                pretty(msg, 'You')
-            else:
-                turn = 'user'
 
             if requests:
                 if verbose:
@@ -171,12 +164,45 @@ def main(existing_bot=None) -> None:
                     auto_mode = False
                     turn = 'user'
         
+            # Decide who goes next
+            if auto_mode:
+                msg: str = 'ok'
+                pretty(msg, 'You')
+            else:
+                turn = 'user'
+
         else:  # user turn
             uinput: str = input("You: ")
-            if uinput is None:
+            print('\n---\n')
+
+            if uinput is None or uinput == '':
                 uinput = '~'
             
-            match uinput:
+            # Split input into words
+            words = uinput.strip().split()
+            if not words:
+                continue
+                
+            # Check for command at start or end
+            command = None
+            msg = None
+            if words[0].startswith('/'):
+                command = words[0]
+                msg = ' '.join(words[1:]) if len(words) > 1 else None
+            elif words[-1].startswith('/'):
+                command = words[-1]
+                msg = ' '.join(words[:-1]) if len(words) > 1 else None
+            else:
+                msg = uinput
+
+            # Handle turn order
+            # Default to assistant turn but
+            # allow commands to swap to user
+            if msg is not None:
+                turn = 'assistant'
+            
+            # Handle commands
+            match command:
                 case "/exit":
                     pretty('')  # separator
                     pretty("exiting...", "System")
@@ -188,7 +214,7 @@ def main(existing_bot=None) -> None:
                 case "/load": 
                     filename: str = filedialog.askopenfilename(
                         filetypes=[("Bot files", "*.bot"),
-                                   ("All files", "*.*")])
+                                ("All files", "*.*")])
                     try:
                         codey = codey.load(filename)
                     except:
@@ -204,13 +230,14 @@ def main(existing_bot=None) -> None:
                     verbose = False
                 case "/verbose":
                     verbose = True
+                    pretty('Tool output on', 'System')
                 case "/up":
                     if codey.conversation.parent and codey.conversation.parent.parent:
                         pretty('Moving up conversation tree', 'System')
                         codey.conversation = codey.conversation.parent.parent # Move to last bot message
                         pretty(codey.conversation.content, codey.name)
                     else:
-                        pretty('At root - can\'t go up', 'System')
+                        pretty("At root - can't go up", 'System')
                 case "/down":
                     if codey.conversation.replies:
                         max_index = len(codey.conversation.replies)-1
@@ -259,16 +286,17 @@ def main(existing_bot=None) -> None:
                         pretty('Moving right in conversation tree', 'System')
                         codey.conversation = codey.conversation.parent.replies[next_index]
                         pretty(codey.conversation.content, codey.name)
-                    pretty('')  # separator
                 case "/help":
                     pretty('')  # separator
                     pretty(help_msg, "System")
+                case None:
+                    continue
                 case _:
-                    msg: str = uinput
-                    turn = 'assistant'
+                    pretty("Unrecognized command. Try /help.", "System")
+                    turn = 'user'
+
             if turn == 'assistant':
                 pretty('')  # separator
-                msg: str = uinput
 
 if __name__ == '__main__':
     main()

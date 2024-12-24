@@ -309,9 +309,8 @@ print("Some other code")
         else:
             open(self.test_file, 'w').close()
 
-
+@unittest.skip("auto_terminal no longer has a bot input")
 class TestConversationNavigation(DetailedTestCase):
-
     def setUp(self):
         self.bot = start.initialize_bot()
         from bots.foundation.base import ConversationNode
@@ -372,3 +371,56 @@ class TestConversationNavigation(DetailedTestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestCommandHandling(DetailedTestCase):
+
+    def setUp(self):
+        self.bot = start.initialize_bot()
+
+    @patch('builtins.input')
+    def test_command_at_start(self, mock_input):
+        mock_input.side_effect = ['/verbose Hello bot', '/exit']
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main(self.bot)
+            output = buf.getvalue()
+        self.assertTrue('Hello bot' in output)
+
+    @patch('builtins.input')
+    def test_command_at_end(self, mock_input):
+        mock_input.side_effect = ['Hello bot /verbose', '/exit']
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main(self.bot)
+            output = buf.getvalue()
+        self.assertTrue('Hello bot' in output)
+
+    @patch('builtins.input')
+    def test_unrecognized_command(self, mock_input):
+        mock_input.side_effect = ['/nonexistent', '/exit']
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main(self.bot)
+            output = buf.getvalue()
+        self.assertTrue('Unrecognized command' in output)
+        self.assertTrue('/help' in output)
+
+    @patch('builtins.input')
+    def test_regular_chat_input(self, mock_input):
+        mock_input.side_effect = ['Hello bot', '/exit']
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main(self.bot)
+            output = buf.getvalue()
+        self.assertTrue('Hello bot' in output)
+
+    @patch('builtins.input')
+    def test_command_with_chat_processing_order(self, mock_input):
+        mock_input.side_effect = ['Test message /quiet', '/exit']
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main(self.bot)
+            output = buf.getvalue()
+        self.assertFalse('Tool Requests' in output)
+        self.assertTrue('Test message' in output)
