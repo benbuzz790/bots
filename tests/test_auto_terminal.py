@@ -37,20 +37,10 @@ class DetailedTestCase(unittest.TestCase):
 
 class TestCodey(DetailedTestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        cls.test_dir = os.path.join(os.getcwd(), 'tests')
-        cls.test_file = os.path.join(cls.test_dir, 'test_file.py')
-
-    def setUp(self):
-        if not os.path.exists(self.test_file):
-            open(self.test_file, 'w').close()
-        else:
-            open(self.test_file, 'w').close()
-
     @patch('builtins.input')
-    def test_down_navigation_single_path(self, mock_input):
-        mock_input.side_effect = ['Hello', '/up', '/down', '/exit']
+    def test_file_operations(self, mock_input):
+        mock_input.side_effect = [f'Write "Test content" to {self.test_file}',
+            '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
@@ -308,24 +298,34 @@ print("Some other code")
 {content}
 """)
 
+    @classmethod
+    def setUpClass(cls):
+        cls.test_dir = os.path.join(os.getcwd(), 'tests')
+        cls.test_file = os.path.join(cls.test_dir, 'test_file.py')
+
+    def setUp(self):
+        if not os.path.exists(self.test_file):
+            open(self.test_file, 'w').close()
+        else:
+            open(self.test_file, 'w').close()
+
+
 class TestConversationNavigation(DetailedTestCase):
 
     def setUp(self):
         self.bot = start.initialize_bot()
-        # Create a simple conversation tree manually
         from bots.foundation.base import ConversationNode
         root = ConversationNode(role='user', content='Write functions')
-        response1 = ConversationNode(role='assistant', content='Here is function 1')
-        response2 = ConversationNode(role='assistant', content='Here is function 2')
-        response3 = ConversationNode(role='assistant', content='Here is function 3')
-        
-        # Link them up
+        response1 = ConversationNode(role='assistant', content=
+            'Here is function 1')
+        response2 = ConversationNode(role='assistant', content=
+            'Here is function 2')
+        response3 = ConversationNode(role='assistant', content=
+            'Here is function 3')
         root.replies = [response1, response2, response3]
         response1.parent = root
         response2.parent = root
         response3.parent = root
-        
-        # Set the bot's current conversation to the first response
         self.bot.conversation = response1
 
     @patch('builtins.input')
@@ -335,7 +335,7 @@ class TestConversationNavigation(DetailedTestCase):
             with self.assertRaises(SystemExit):
                 start.main(self.bot)
             output = buf.getvalue()
-        self.assertTrue('Moving up conversation tree' in output or
+        self.assertTrue('Moving up conversation tree' in output or 
             "At root - can't go up" in output)
 
     @patch('builtins.input')
@@ -345,7 +345,7 @@ class TestConversationNavigation(DetailedTestCase):
             with self.assertRaises(SystemExit):
                 start.main(self.bot)
             output = buf.getvalue()
-        self.assertTrue('Moving down conversation tree' in output or
+        self.assertTrue('Moving down conversation tree' in output or 
             "At leaf - can't go down" in output)
 
     @patch('builtins.input')
@@ -355,8 +355,8 @@ class TestConversationNavigation(DetailedTestCase):
             with self.assertRaises(SystemExit):
                 start.main(self.bot)
             output = buf.getvalue()
-        self.assertTrue('Reply index' in output or
-            'Moving down conversation tree' in output or
+        self.assertTrue('Reply index' in output or 
+            'Moving down conversation tree' in output or 
             "At leaf - can't go down" in output)
 
     @patch('builtins.input')
@@ -366,7 +366,7 @@ class TestConversationNavigation(DetailedTestCase):
             with self.assertRaises(SystemExit):
                 start.main(self.bot)
             output = buf.getvalue()
-        self.assertTrue('Moving' in output or
+        self.assertTrue('Moving' in output or 
             'Conversation has no siblings at this point' in output)
 
 
