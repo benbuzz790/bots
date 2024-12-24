@@ -1,6 +1,35 @@
 import os, subprocess, traceback
 from typing import List
 
+
+# TODO
+# def get_file_metadata(file_path: str) ->dict:
+#     """
+#     Get metadata about a file including size, modification time, etc.
+
+#     Parameters:
+#     - file_path (str): Path to the file to analyze
+
+#     Returns:
+#     A dictionary containing:
+#     - size: File size in bytes
+#     - modified: Last modification time as a string
+#     - created: Creation time as a string
+#     - exists: Whether the file exists
+#     """
+#     try:
+#         if not os.path.exists(file_path):
+#             return {'exists': False, 'error':
+#                 f'File {file_path} does not exist'}
+#         stats = os.stat(file_path)
+#         return {'exists': True, 'size': stats.st_size, 'modified': DT.
+#             datetime.fromtimestamp(stats.st_mtime).strftime(
+#             '%Y-%m-%d %H:%M:%S'), 'created': DT.datetime.fromtimestamp(
+#             stats.st_ctime).strftime('%Y-%m-%d %H:%M:%S')}
+#     except Exception as e:
+#         return _process_error(e)
+
+
 def execute_powershell(code: str, output_length_limit: str = '60'):
     """
     Executes PowerShell code in a stateless environment
