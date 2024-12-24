@@ -102,9 +102,7 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
         raise ValueError('No OpenAI or Anthropic API keys found. Set up your key as an environment variable.')
 
     bot.add_tools(bots.tools.python_tools)
-    bot.add_tools(bots.tools.utf8_tools)
     bot.add_tools(bots.tools.code_tools)
-    bot.add_tools(bots.tools.test_tools)
     bot.add_tools(bots.tools.github_tools)
     bot.add_tools(bots.tools.terminal_tools)
 
@@ -265,12 +263,9 @@ def main(existing_bot=None) -> None:
                 case "/help":
                     pretty('')  # separator
                     pretty(help_msg, "System")
-                # TODO case "/*":
-                    # pretty("Command not recognized. /help for help", "System")
                 case _:
                     msg: str = uinput
                     turn = 'assistant'
-                    # TODO If the last word is /auto, consider it a command and turn on auto
             if turn == 'assistant':
                 pretty('')  # separator
                 msg: str = uinput
