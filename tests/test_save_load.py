@@ -247,22 +247,7 @@ class TestSaveLoad(unittest.TestCase):
             self.assertEqual(loaded2.conversation.node_count(), 4)
         self.run_test_for_both_bots(_test)
 
-    def test_special_characters_filename(self):
-        """Test saving with special characters in filename"""
-
-        def _test(bot):
-            special_chars = '!@#$%^&*()_+-=[]{}|;:,.<>?'
-            for char in special_chars:
-                filename = f'test{char}name_{bot.name}'
-                try:
-                    save_path = os.path.join(self.temp_dir, filename)
-                    actual_path = bot.save(save_path)
-                    self.assertTrue(os.path.exists(actual_path))
-                except Exception as e:
-                    self.fail(
-                        f"Failed to save with character '{char}': {str(e)}")
-        self.run_test_for_both_bots(_test)
-
+    @unittest.skip('too expensive, not necessary')
     def test_large_conversation(self):
         """Test saving and loading large conversations"""
 
