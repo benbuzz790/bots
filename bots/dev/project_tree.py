@@ -8,7 +8,7 @@ import bots.tools.python_tools as python_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import load
 from bots.foundation.base import Bot
-import bots.functional_prompts.functional_prompts as fp
+import bots.flows.functional_prompts as fp
 
 # Should perhaps be multi-threaded
 

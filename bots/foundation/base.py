@@ -882,3 +882,94 @@ class Bot(ABC):
                         request)
                     print(f'Used Tool: {tool_name}')
                     print(separator)
+        
+    def __str__(self) -> str:
+        """Returns a formatted string representation of the Bot instance.
+        
+        Displays:
+        1. Bot metadata (name, role, model)
+        2. Conversation history with indentation
+        3. Tool information if available
+        """
+        # Helper function to format conversation
+        def format_conversation(node, level=0):
+            # Cap the indentation level to prevent excessive nesting
+            display_level = min(level, 5)
+            indent_size = 1
+            marker_size = 4
+            indent = " " * indent_size * display_level
+            
+            # Calculate available width for content
+            # Start with 80 chars, subtract indent_size chars for each indent level, and leave room for markers
+            available_width = max(40, 80 - (display_level * indent_size) - marker_size)
+            messages = []
+            
+            # Format current message
+            # Map the role to the appropriate display name and add depth indicator if needed
+            if hasattr(node, 'role'):
+                if node.role == 'user':
+                    base_name = "You"
+                elif node.role == 'assistant':
+                    base_name = self.name
+                else:
+                    base_name = node.role.title()
+            else:
+                base_name = "System"
+                
+            # Add depth indicator if we're displaying at a shallower level than actual
+            if level > display_level:
+                hidden_levels = level - display_level
+                # Up to 3 levels just show increasing chevrons
+                if hidden_levels <= 3:
+                    depth_indicator = '>' * hidden_levels
+                # Beyond that, keep 3 chevrons and show the number
+                else:
+                    depth_indicator = f">>>({hidden_levels})"
+                name_display = f"{depth_indicator} {base_name}"
+            else:
+                name_display = base_name
+            
+            content = node.content if hasattr(node, 'content') else str(node)
+            
+            # Format the message content - wrap long lines
+            wrapped_content = "\n".join(
+                textwrap.wrap(
+                    content,
+                    width=available_width,
+                    initial_indent=indent + "│ ",
+                    subsequent_indent=indent + "│ "
+                )
+            )
+            
+            messages.append(f"{indent}┌─ {name_display}")
+            messages.append(wrapped_content)
+            messages.append(f"{indent}└" + "─" * 40)
+            
+            # Recursively format replies
+            if hasattr(node, 'replies') and node.replies:
+                for reply in node.replies:
+                    messages.extend(format_conversation(reply, level + 1))
+            
+            return messages
+
+        # Build the string representation
+        lines = []
+        
+        # Add header with bot metadata using L-shaped box
+        lines.append("╔" + "═" * 12)
+        lines.append(f"║ {self.name}")
+        lines.append(f"║ Role: {self.role}")
+        lines.append(f"║ Model: {self.model_engine.value}")
+        if self.tool_handler:
+            tool_count = len(self.tool_handler.tools)
+            lines.append(f"║ Tools Available: {tool_count}")
+        lines.append("╚" + "═" * 78 + "╝\n")
+        
+        # Add conversation history
+        if self.conversation:
+            root = self.conversation
+            while hasattr(root, 'parent') and root.parent:
+                root = root.parent
+            lines.extend(format_conversation(root))
+        
+        return "\n".join(lines)
