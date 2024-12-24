@@ -213,7 +213,7 @@ def delete_lines(file_path: str, start_line: str, end_line: str):
         return f'Error: {str(e)}'
 
 
-def view_dir(start_path: str='.', output_file='dir.txt', target_extensions:
+def view_dir(start_path: str='.', output_file=None, target_extensions:
     str="['py']"):
     """
     Creates a summary of the directory structure starting from the given path, writing only files 
@@ -221,7 +221,7 @@ def view_dir(start_path: str='.', output_file='dir.txt', target_extensions:
     
     Parameters:
     - start_path (str): The root directory to start scanning from.
-    - output_file (str): The name of the file to write the directory structure to.
+    - output_file (str): The name of the file to optionally write the directory structure to.
     - target_extensions (str): String representation of a list of file extensions (e.g. "['py', 'txt']").
     
     Returns:
@@ -240,23 +240,26 @@ def view_dir(start_path: str='.', output_file='dir.txt', target_extensions:
     extensions_list = [('.' + ext if not ext.startswith('.') else ext) for
         ext in extensions_list]
     output_text = []
-    with open(output_file, 'w') as f:
-        for root, dirs, files in os.walk(start_path):
-            has_py = False
-            for _, _, fs in os.walk(root):
-                if any(f.endswith(tuple(extensions_list)) for f in fs):
-                    has_py = True
-                    break
-            if has_py:
-                level = root.replace(start_path, '').count(os.sep)
-                indent = '    ' * level
-                line = f'{indent}{os.path.basename(root)}/'
-                f.write(line + '\n')
-                output_text.append(line)
-                subindent = '    ' * (level + 1)
-                for file in files:
-                    if file.endswith(tuple(extensions_list)):
-                        line = f'{subindent}{file}'
-                        f.write(line + '\n')
-                        output_text.append(line)
+
+    for root, dirs, files in os.walk(start_path):
+        has_py = False
+        for _, _, fs in os.walk(root):
+            if any(f.endswith(tuple(extensions_list)) for f in fs):
+                has_py = True
+                break
+        if has_py:
+            level = root.replace(start_path, '').count(os.sep)
+            indent = '    ' * level
+            line = f'{indent}{os.path.basename(root)}/'
+            output_text.append(line)
+            subindent = '    ' * (level + 1)
+            for file in files:
+                if file.endswith(tuple(extensions_list)):
+                    line = f'{subindent}{file}'
+                    output_text.append(line)
+
+    if output_file is not None:
+        with open(output_file, 'w') as file:
+            file.write(output_text)
+
     return '\n'.join(output_text)
