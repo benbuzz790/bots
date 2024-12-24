@@ -7,8 +7,8 @@ import concurrent
 from unittest.mock import patch
 from io import StringIO
 from contextlib import redirect_stdout
-
 import bots.dev.auto_terminal as start
+
 
 class DetailedTestCase(unittest.TestCase):
 
@@ -49,10 +49,8 @@ class TestCodey(DetailedTestCase):
             open(self.test_file, 'w').close()
 
     @patch('builtins.input')
-    def test_file_creation(self, mock_input):
-        mock_input.side_effect = [
-            f"Create a file named {self.test_file} with content 'Test content'"
-            , '/exit']
+    def test_down_navigation_single_path(self, mock_input):
+        mock_input.side_effect = ['Hello', '/up', '/down', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
@@ -94,7 +92,8 @@ class TestCodey(DetailedTestCase):
         self.assertEqualWithDetails(content.strip(), 'Updated content',
             'File content not updated correctly')
 
-    @unittest.skip('bots sometimes refuse to delete things without more context')
+    @unittest.skip(
+        'bots sometimes refuse to delete things without more context')
     @patch('builtins.input')
     def test_file_delete(self, mock_input):
         with open(self.test_file, 'w') as file:
@@ -138,25 +137,26 @@ class TestCodey(DetailedTestCase):
     @unittest.skip(reason='Not Implemented')
     @patch('builtins.input')
     def test_concurrent_file_operations(self, mock_input):
+
         def write_file(content):
-            mock_input.side_effect = [
-                f"Append '{content}' to {self.test_file}",
-                '/exit'
-            ]
+            mock_input.side_effect = [f"Append '{content}' to {self.test_file}"
+                , '/exit']
             with StringIO() as buf, redirect_stdout(buf):
                 with self.assertRaises(SystemExit):
                     start.main()
                 return buf.getvalue()
-
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(write_file, f"Content {i}") for i in range(5)]
-            execution_results = [f.result() for f in concurrent.futures.as_completed(futures)]
-
-        self.assertEqualWithDetails(all("appended" in result.lower() for result in execution_results), True, "Concurrent write operations failed")
-        
+            futures = [executor.submit(write_file, f'Content {i}') for i in
+                range(5)]
+            execution_results = [f.result() for f in concurrent.futures.
+                as_completed(futures)]
+        self.assertEqualWithDetails(all('appended' in result.lower() for
+            result in execution_results), True,
+            'Concurrent write operations failed')
         with open(self.test_file, 'r') as file:
             content = file.read()
-        self.assertEqualWithDetails(len(content.split("Content")) > 1, True, "Concurrent file operations failed")
+        self.assertEqualWithDetails(len(content.split('Content')) > 1, True,
+            'Concurrent file operations failed')
 
     @classmethod
     def tearDownClass(cls):
@@ -308,8 +308,67 @@ print("Some other code")
 {content}
 """)
 
+class TestConversationNavigation(DetailedTestCase):
+
+    def setUp(self):
+        self.bot = start.initialize_bot()
+        # Create a simple conversation tree manually
+        from bots.foundation.base import ConversationNode
+        root = ConversationNode(role='user', content='Write functions')
+        response1 = ConversationNode(role='assistant', content='Here is function 1')
+        response2 = ConversationNode(role='assistant', content='Here is function 2')
+        response3 = ConversationNode(role='assistant', content='Here is function 3')
+        
+        # Link them up
+        root.replies = [response1, response2, response3]
+        response1.parent = root
+        response2.parent = root
+        response3.parent = root
+        
+        # Set the bot's current conversation to the first response
+        self.bot.conversation = response1
+
+    @patch('builtins.input')
+    def test_up_navigation(self, mock_input):
+        mock_input.side_effect = ['/up', '/exit']
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main(self.bot)
+            output = buf.getvalue()
+        self.assertTrue('Moving up conversation tree' in output or
+            "At root - can't go up" in output)
+
+    @patch('builtins.input')
+    def test_down_navigation_single_path(self, mock_input):
+        mock_input.side_effect = ['/down', '/exit']
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main(self.bot)
+            output = buf.getvalue()
+        self.assertTrue('Moving down conversation tree' in output or
+            "At leaf - can't go down" in output)
+
+    @patch('builtins.input')
+    def test_down_navigation_multiple_paths(self, mock_input):
+        mock_input.side_effect = ['/up', '0', '/down', '/exit']
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main(self.bot)
+            output = buf.getvalue()
+        self.assertTrue('Reply index' in output or
+            'Moving down conversation tree' in output or
+            "At leaf - can't go down" in output)
+
+    @patch('builtins.input')
+    def test_left_right_navigation(self, mock_input):
+        mock_input.side_effect = ['/right', '/left', '/exit']
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main(self.bot)
+            output = buf.getvalue()
+        self.assertTrue('Moving' in output or
+            'Conversation has no siblings at this point' in output)
+
 
 if __name__ == '__main__':
     unittest.main()
-
-
