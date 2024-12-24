@@ -122,10 +122,23 @@ class ConversationNode:
             self.__init__(**kwargs)
             return self
         else:
+            if (self.replies and 'tool_calls' not in kwargs and 
+                'tool_results' not in kwargs):
+                first_sibling = self.replies[0]
+                kwargs['tool_calls'] = first_sibling.tool_calls
+                kwargs['tool_results'] = first_sibling.tool_results
             reply = type(self)(**kwargs)
             reply.parent = self
             self.replies.append(reply)
             return reply
+
+    def sync_tool_context(self) -> None:
+        """Synchronize tool context between all siblings."""
+        if self.parent and self.parent.replies:
+            first_sibling = self.parent.replies[0]
+            for sibling in self.parent.replies[1:]:
+                sibling.tool_calls = first_sibling.tool_calls
+                sibling.tool_results = first_sibling.tool_results
 
     def add_child(self, node: 'ConversationNode') ->None:
         if self.is_empty():
