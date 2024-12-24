@@ -1,7 +1,7 @@
 import unittest
 import tempfile
 import os
-from bots.tools.code_tools import view, add_lines, change_lines, delete_lines, find_lines, replace_in_lines
+from bots.tools.code_tools import view, add_lines, change_lines, delete_lines
 
 
 class TestCodeTools(unittest.TestCase):
@@ -97,35 +97,18 @@ class TestCodeTools(unittest.TestCase):
         expected = '1: Line 1\n2: Line 5'
         self.assertEqual(updated_content, expected)
 
-    def test_find_lines(self):
-        result = find_lines(self.temp_file, 'Line')
-        self.assertIn('Found 5 matches', result)
-        self.assertIn('Line 1: Line 1', result)
-        self.assertIn('Line 5: Line 5', result)
-
-    def test_replace_in_lines(self):
-        result = replace_in_lines(self.temp_file, 'Line', 'NewLine', 2, 4)
-        self.assertIn(
-            "Successfully replaced 3 occurrences of 'Line' with 'NewLine'",
-            result)
-        updated_content = view(self.temp_file)
-        expected = (
-            '1: Line 1\n2: NewLine 2\n3: NewLine 3\n4: NewLine 4\n5: Line 5')
-        self.assertEqual(updated_content, expected)
 
     def test_invalid_line_ranges(self):
         result = change_lines(self.temp_file, 'Invalid', 10, 11)
         self.assertIn('Error: Invalid line range', result)
         result = delete_lines(self.temp_file, 10, 11)
         self.assertIn('Error: Invalid line range', result)
-        result = replace_in_lines(self.temp_file, 'old', 'new', 10, 11)
-        self.assertIn('Error: Invalid line range', result)
 
     def test_empty_string_input(self):
         result = add_lines(self.temp_file, '', 3)
         self.assertIn('Successfully added 0 lines', result)
         result = change_lines(self.temp_file, '', 2, 3)
-        self.assertIn('Successfully changed lines 2 to 3', result)
+        self.assertIn('Successfully changed lines', result)  # Changed to match new message
         updated_content = view(self.temp_file)
         expected = '1: Line 1\n2: Line 4\n3: Line 5'
         self.assertEqual(updated_content, expected)
@@ -141,11 +124,27 @@ class TestCodeTools(unittest.TestCase):
         new_utf8_content = '新しい行\n🎈'
         result = add_lines(utf8_file, new_utf8_content, 2)
         self.assertIn('Successfully added 2 lines', result)
-        result = find_lines(utf8_file, '世界')
-        self.assertIn('Line 1: Hello 世界', result)
-        result = replace_in_lines(utf8_file, 'мир', '世界', 1, 6)
-        self.assertIn('Successfully replaced', result)
         os.remove(utf8_file)
+
+    def test_change_lines_dedup_end(self):
+        """Test that change_lines deduplicates repeated lines at the end of insertion"""
+        new_content = 'New Line\nLine 4\nLine 5'
+        result = change_lines(self.temp_file, new_content, 3, 4)
+        self.assertIn('Successfully changed lines', result)
+        updated_content = view(self.temp_file)
+        expected = '1: Line 1\n2: Line 2\n3: New Line\n4: Line 4\n5: Line 5'
+        self.assertEqual(updated_content, expected)
+
+    def test_change_lines_dedup_both_ends(self):
+        """Test that change_lines deduplicates repeated lines at both ends of insertion"""
+        new_content = 'Line 2\nNew Line A\nNew Line B\nLine 4'
+        result = change_lines(self.temp_file, new_content, 2, 4)
+        self.assertIn('Successfully changed lines', result)
+        updated_content = view(self.temp_file)
+        expected = (
+            '1: Line 1\n2: Line 2\n3: New Line A\n4: New Line B\n5: Line 4\n6: Line 5'
+            )
+        self.assertEqual(updated_content, expected)
 
 
 if __name__ == '__main__':

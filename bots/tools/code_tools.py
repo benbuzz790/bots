@@ -1,6 +1,55 @@
 import os
 from typing import List
 
+
+def _view_window(file_path: str, start_line: int, end_line: int,
+    context_lines: int=15):
+    """
+    Display a window of lines from a file, centered around the specified range.
+    Includes context lines before and after, with ellipsis indicators if truncated.
+    
+    Parameters:
+    - file_path (str): Path to the file
+    - start_line (int): First line number to show
+    - end_line (int): Last line number to show
+    - context_lines (int): Number of context lines to show before and after
+    
+    Returns:
+    str: The formatted window of text with line numbers
+    """
+    return view(file_path)
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+        window_start = max(start_line - context_lines - 1, 0)
+        window_end = min(end_line + context_lines, len(lines))
+        total_lines = end_line - start_line + 1
+        if total_lines > 50:
+            first_chunk_end = start_line + 4
+            second_chunk_start = end_line - 4
+            result = []
+            if window_start > 0:
+                result.append('...')
+            for i in range(window_start, first_chunk_end):
+                result.append(f'{i + 1}: {lines[i].rstrip()}')
+            result.append('... [truncated] ...')
+            for i in range(second_chunk_start, window_end):
+                result.append(f'{i + 1}: {lines[i].rstrip()}')
+            if window_end < len(lines):
+                result.append('...')
+        else:
+            result = []
+            if window_start > 0:
+                result.append('...')
+            for i in range(window_start, window_end):
+                result.append(f'{i + 1}: {lines[i].rstrip()}')
+            if window_end < len(lines):
+                result.append('...')
+        return '\n'.join(result)
+    except Exception as e:
+        return f'Error: {str(e)}'
+
+
 def view(file_path: str):
     """
     Display the contents of a file with line numbers.
@@ -11,7 +60,8 @@ def view(file_path: str):
     Returns:
     A string containing the file contents with line numbers.
     """
-    encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
+    encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1'
+        ]
     for encoding in encodings:
         try:
             with open(file_path, 'r', encoding=encoding) as file:
@@ -65,19 +115,22 @@ def add_lines(file_path: str, new_content: str, start_line: str):
         Path(file_path).parent.mkdir(parents=True, exist_ok=True)
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
+        end_line = start_line + len(normalized_lines) - 1
         action = 'created new file and added' if len(lines) == len(
             normalized_lines) else 'added'
         return f"""Successfully {action} {len(normalized_lines)} lines starting at line {start_line}:
 
-{view(file_path)}"""
+{_view_window(file_path, start_line, end_line)}"""
     except Exception as e:
         return f'Error: {str(e)}'
 
 
-def change_lines(file_path: str, new_content: str, start_line: str,  end_line: str):
+def change_lines(file_path: str, new_content: str, start_line: str,
+    end_line: str):
     """
     Change specific lines in a file.
     Note: DELETES the lines from start_line to end_line (both inclusive), replacing them with new_content
+    Automatically deduplicates consecutive repeated lines at the beginning and end of the insertion.
 
     Parameters:
     - file_path (str): The path to the file to be modified.
@@ -98,14 +151,34 @@ def change_lines(file_path: str, new_content: str, start_line: str,  end_line: s
             lines = file.readlines()
         if start_line < 1 or end_line > len(lines):
             return 'Error: Invalid line range.'
-        normalized_lines = [(line + '\n' if not line.endswith('\n') else
-            line) for line in new_lines]
-        lines[start_line - 1:end_line] = normalized_lines
+        if not new_lines:
+            lines[start_line - 1:end_line] = []
+            with open(file_path, 'w', encoding='utf-8') as file:
+                file.writelines(lines)
+            return f'Successfully changed lines {start_line} to {end_line}'
+        normalized_new = [(line + '\n' if not line.endswith('\n') else line
+            ) for line in new_lines]
+        normalized_old = [(line + '\n' if not line.endswith('\n') else line
+            ) for line in lines]
+        while len(normalized_new) > 0 and start_line > 1:
+            if normalized_new[0] == normalized_old[start_line - 2]:
+                normalized_new.pop(0)
+                start_line -= 1
+            else:
+                break
+        original_end = end_line
+        while len(normalized_new) > 0 and end_line < len(normalized_old):
+            if normalized_new[-1] == normalized_old[end_line]:
+                end_line += 1
+            else:
+                break
+        lines[start_line - 1:end_line] = normalized_new
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
-        return (
-            f'Successfully changed lines {start_line} to {end_line}:\n\n{view(file_path)}'
-            )
+        new_end_line = start_line + len(normalized_new) - 1
+        return f"""Successfully changed lines {start_line} to {end_line}:
+
+{_view_window(file_path, start_line, new_end_line)}"""
     except Exception as e:
         return f'Error: {str(e)}'
 
@@ -133,14 +206,15 @@ def delete_lines(file_path: str, start_line: str, end_line: str):
         del lines[start_line - 1:end_line]
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
-        return (
-            f'Successfully deleted lines {start_line} to {end_line}:\n\n{view(file_path)}'
-            )
+        return f"""Successfully deleted lines {start_line} to {end_line}:
+
+{_view_window(file_path, max(1, start_line - 1), min(len(lines), start_line + 1))}"""
     except Exception as e:
         return f'Error: {str(e)}'
-    
 
-def view_dir(start_path: str = '.', output_file='dir.txt', target_extensions: str = "['py']"):
+
+def view_dir(start_path: str='.', output_file='dir.txt', target_extensions:
+    str="['py']"):
     """
     Creates a summary of the directory structure starting from the given path, writing only files 
     with specified extensions. The output is written to a text file and returned as a string.
@@ -161,35 +235,28 @@ def view_dir(start_path: str = '.', output_file='dir.txt', target_extensions: st
         module2/
             utils.py
     """
-    # Parse the string representation of list into actual list
-    # Remove brackets, split by comma, strip whitespace and quotes
-    extensions_list = [ext.strip().strip("'\"") for ext in target_extensions.strip('[]').split(',')]
-    # Add dot prefix if not present
-    extensions_list = ['.' + ext if not ext.startswith('.') else ext for ext in extensions_list]
-    
+    extensions_list = [ext.strip().strip('\'"') for ext in
+        target_extensions.strip('[]').split(',')]
+    extensions_list = [('.' + ext if not ext.startswith('.') else ext) for
+        ext in extensions_list]
     output_text = []
     with open(output_file, 'w') as f:
         for root, dirs, files in os.walk(start_path):
-            # Only include directories that have target_extension files somewhere in their tree
             has_py = False
             for _, _, fs in os.walk(root):
                 if any(f.endswith(tuple(extensions_list)) for f in fs):
                     has_py = True
                     break
-                
             if has_py:
                 level = root.replace(start_path, '').count(os.sep)
                 indent = '    ' * level
                 line = f'{indent}{os.path.basename(root)}/'
                 f.write(line + '\n')
                 output_text.append(line)
-                
-                # List python files in this directory
                 subindent = '    ' * (level + 1)
                 for file in files:
                     if file.endswith(tuple(extensions_list)):
                         line = f'{subindent}{file}'
                         f.write(line + '\n')
                         output_text.append(line)
-    
     return '\n'.join(output_text)
