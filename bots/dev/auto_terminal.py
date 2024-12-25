@@ -210,6 +210,8 @@ def main() -> None:
                 case "/auto":
                     auto_mode = True
                     pretty("Auto active", "System")
+                    if msg is None or msg == '':
+                        msg = 'ok'
                     turn = 'assistant'
                 case "/load": 
                     filename: str = filedialog.askopenfilename(
