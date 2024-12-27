@@ -102,3 +102,31 @@ def test_update_issue(created_issues):
     assert final_info['title'] == new_title
     assert final_info['body'] == new_body
     assert final_info['state'] == 'closed'
+
+
+def test_create_issue_unauthorized():
+    """Test that create_issue fails when trying to create an issue in an unauthorized repo"""
+    from bots.tools.github_tools import create_issue, list_repositories
+    import json
+    result = create_issue('facebook/react', 'Test Issue', 'Test Body')
+    assert isinstance(result, str)
+    assert 'Error: Not authorized' in result
+    assert 'facebook/react' in result
+
+
+def test_create_issue_authorized():
+    """Test that create_issue succeeds when using an authorized repo"""
+    from bots.tools.github_tools import create_issue, list_repositories
+    import json
+    repos = json.loads(list_repositories())
+    if not repos:
+        return
+    test_repo = repos[0]
+    result = create_issue(test_repo, 'Test Issue [AUTOMATED TEST]',
+        'This is an automated test of the create_issue function. You can close this issue.'
+        )
+    result_dict = json.loads(result)
+    assert 'number' in result_dict
+    assert 'url' in result_dict
+    assert isinstance(result_dict['number'], int)
+    assert isinstance(result_dict['url'], str)

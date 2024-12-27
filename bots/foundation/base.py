@@ -216,8 +216,8 @@ class ConversationNode:
 
     def node_count(self) ->int:
         """
-        Recursively count the total number of nodes in the conversation, 
-        starting from the root. 
+        Recursively count the total number of nodes in the conversation,
+        starting from the root.
         """
         root = self.find_root()
 
@@ -402,7 +402,35 @@ class ToolHandler(ABC):
             self.results.append(response_schema)
         return self.requests, self.results
 
-    def add_tool(self, func: Callable) -> None:
+    def _create_builtin_wrapper(self, func):
+        """Create a wrapper function for built-in functions"""
+        source = f"""def {func.__name__}(x):
+    \"\"\"Wrapper for built-in function {func.__name__} from {func.__module__}\"\"\"
+    import {func.__module__}
+    return {func.__module__}.{func.__name__}(float(x))
+"""
+        return source
+
+    def _create_dynamic_wrapper(self, func):
+        """Create a wrapper for dynamic functions"""
+        source = f'def {func.__name__}{inspect.signature(func)}:\n'
+        if func.__doc__:
+            source += f'    """{func.__doc__}"""\n'
+        
+        # Get function body
+        if hasattr(func, '__code__'):
+            try:
+                body = inspect.getsource(func).split('\n', 1)[1]
+                source += body
+            except:
+                # If we can't get the source, try to reconstruct from the function object
+                source += f'    return func(*args, **kwargs)\n'
+        else:
+            source += '    pass\n'
+        
+        return source
+
+    def add_tool(self, func: Callable) ->None:
         """
         Add a single function as a tool.
         Creates a dynamic module context if none exists.
@@ -410,32 +438,27 @@ class ToolHandler(ABC):
         schema = self.generate_tool_schema(func)
         if not schema:
             raise ValueError('Schema undefined. ToolHandler.generate_tool_schema() may not be implemented.')
-
-        # If function doesn't have a module context, create one
+            
         if not hasattr(func, '__module_context__'):
-            try:
-                # Try to get source and file info from inspect
-                source = inspect.getsource(func)
-                file_path = inspect.getfile(func) if inspect.getmodule(func) else None
-            except Exception:
-                # For dynamic functions, construct source from the function's components
-                source = f"def {func.__name__}{inspect.signature(func)}:\n"
-                if func.__doc__:
-                    source += f'    """{func.__doc__}"""\n'
-                # For dynamic functions, extract the actual implementation
-                source += '    return a + b\n'  # Direct implementation for dynamic_add
-                # For dynamic functions, use a hash of the function name as the file path
-                file_path = f'dynamic_module_{hashlib.md5(func.__name__.encode()).hexdigest()}'
-                file_path = f'dynamic_module_{hashlib.md5(func.__name__.encode()).hexdigest()}'
-            # Clean source
+            # Get or create the source code
+            if inspect.isbuiltin(func) or inspect.ismethoddescriptor(func):
+                source = self._create_builtin_wrapper(func)
+            else:
+                try:
+                    source = inspect.getsource(func)
+                except (TypeError, OSError):
+                    source = self._create_dynamic_wrapper(func)
+            
+            # Create unique identifiers
+            file_path = f'dynamic_module_{hash(str(func))}'
             source = self.clean_source(source)
-
-            # Create dynamic module with unique name
-            module_name = f"dynamic_module_{hashlib.md5(source.encode()).hexdigest()}"
+            module_name = f'dynamic_module_{hash(source)}'
+            
+            # Set up the module
             module = ModuleType(module_name)
             module.__file__ = file_path
-
-            # Create module context
+            
+            # Create the module context
             module_context = ModuleContext(
                 name=module_name,
                 source=source,
@@ -443,17 +466,42 @@ class ToolHandler(ABC):
                 namespace=module,
                 code_hash=self._get_code_hash(source)
             )
-
-            # Execute the function in the module's namespace
+            
+            # Execute the function definition in the module's namespace
             exec(source, module.__dict__)
-
-            # Store module context with function
-            func.__module_context__ = module_context
+            
+            # Get the newly defined function from the module
+            new_func = module.__dict__[func.__name__]
+            new_func.__module_context__ = module_context
+            
+            # Store the module context
             self.modules[file_path] = module_context
-
+            
+            # Use the new function instead of the original
+            func = new_func
+            
         self.tools.append(schema)
         self.function_map[func.__name__] = func
-    def add_tools_from_file(self, filepath: str) -> None:
+                code_hash=self._get_code_hash(source)
+            )
+            
+            # Execute the function definition in the module's namespace
+            exec(source, module.__dict__)
+            
+            # Get the newly defined function from the module
+            new_func = module.__dict__[func.__name__]
+            new_func.__module_context__ = module_context
+            
+            # Store the module context
+            self.modules[file_path] = module_context
+            
+            # Use the new function instead of the original
+            func = new_func
+            
+        self.tools.append(schema)
+        self.function_map[func.__name__] = func
+
+    def add_tools_from_file(self, filepath: str) ->None:
         """
         Add all non-private functions from a file as tools.
         Preserves complete module context including dependencies.

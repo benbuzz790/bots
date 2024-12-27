@@ -24,26 +24,21 @@ from functools import lru_cache
 # ---------------------------------------------------------------------
 def chunk_cost(length: int) -> float:
     """
-    Cost function for chunk sizes:
-      - If length < 500 => inverse cost
-      - If 500 <= length <= 4500 => mild parabola w/ minimum near 3000
-      - If length > 4500 => steeper parabolic penalty
+    Continuous cost function for chunk sizes that combines:
+    - Inverse term (1/length) to penalize very small chunks
+    - Quadratic term centered at 3000 for sharp growth
+    The minimum occurs near 3000 characters.
     """
     if length <= 0:
-        return 999999.0  # nonsensical fallback for safety
-    if length < 500:
-        # Big penalty for very small chunks
-        return 10000.0 / length
-    elif length <= 4500:
-        # Gentle parabola with minimum near 3000
-        A = 1e-5
-        offset = (length - 3000)
-        return A * offset * offset + 1.0
-    else:
-        # Steeper parabola for large chunks
-        A = 5e-5
-        offset = (length - 3000)
-        return A * offset * offset + 1.0
+        return 1.0e12  # nonsensical fallback for safety
+        
+    # Combine inverse and quadratic terms
+    A = 5e-3  # Much stronger quadratic coefficient for sharper curve
+    offset = (length - 3000)
+    inverse_term = 1.0e6 / length
+    quadratic_term = A * offset * offset
+    
+    return inverse_term + quadratic_term + 1.0
 
 # ---------------------------------------------------------------------
 # 2. Utility: measure character spans from AST node

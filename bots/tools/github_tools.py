@@ -53,13 +53,14 @@ def list_issues(repo_full_name, state='open'):
     Use when you need to get an overview of issues in a specific repository.
 
     Parameters:
-    - repo_full_name (str): The full name of the repository in the format "owner/repo".
+    - repo_full_name (str or dict): The full name of the repository in the format "owner/repo" or {"repo": "owner/repo"}.
     - state (str): The state of issues to list ('open', 'closed', or 'all', default is 'open').
 
     Returns a JSON string containing an array of issues with their number, title, and state.
     """
     try:
         api = _setup()
+        repo_full_name = _normalize_repo_name(repo_full_name)
         owner, repo = repo_full_name.split('/')
         issues = api.issues.list_for_repo(owner=owner, repo=repo, state=state)
         return json.dumps([{'number': issue.number, 'title': issue.title,
@@ -78,7 +79,7 @@ def create_issue(repo_full_name, title, body):
     and any other tools to: https://github.com/benbuzz790/bots.
 
     Parameters:
-    - repo_full_name (str): The full name of the repository in the format "owner/repo".
+    - repo_full_name (str or dict): The full name of the repository in the format "owner/repo" or {"repo": "owner/repo"}.
     - title (str): The title of the issue.
     - body (str): The body content of the issue.
 
@@ -86,8 +87,9 @@ def create_issue(repo_full_name, title, body):
     """
     try:
         api = _setup()
+        repo_full_name = _normalize_repo_name(repo_full_name)
         repos = json.loads(list_repositories())
-        if repo_full_name not in repos:
+        if not any(repo == repo_full_name for repo in repos):
             return (
                 f'Error: Not authorized to create issues in {repo_full_name}. Repository must be in your list of accessible repositories.'
                 )
@@ -106,13 +108,14 @@ def get_issue(repo_full_name, issue_number):
     Use when you need to retrieve full details of a particular issue.
 
     Parameters:
-    - repo_full_name (str): The full name of the repository in the format "owner/repo".
+    - repo_full_name (str or dict): The full name of the repository in the format "owner/repo" or {"repo": "owner/repo"}.
     - issue_number (int): The number of the issue to retrieve.
 
     Returns a JSON string containing the issue details including title, body, state, labels, and comments count.
     """
     try:
         api = _setup()
+        repo_full_name = _normalize_repo_name(repo_full_name)
         owner, repo = repo_full_name.split('/')
         issue = api.issues.get(owner=owner, repo=repo, issue_number=
             issue_number)
@@ -125,16 +128,16 @@ def get_issue(repo_full_name, issue_number):
         return f'Error: {str(e)}'
 
 
-def update_issue(repo_full_name, issue_number, **kwargs):
+def update_issue(repo_full_name, issue_number, kwargs):
     """
     Update an existing issue.
 
     Use when you need to modify an issue's properties like title, body, or state.
 
     Parameters:
-    - repo_full_name (str): The full name of the repository in the format "owner/repo".
+    - repo_full_name (str or dict): The full name of the repository in the format "owner/repo" or {"repo": "owner/repo"}.
     - issue_number (int): The number of the issue to update.
-    - **kwargs: Properties to update. Can include:
+    - kwargs: Properties to update. Can be a dict or string. Can include:
         - title (str): New title for the issue
         - body (str): New body content
         - state (str): New state ('open' or 'closed')
@@ -144,7 +147,17 @@ def update_issue(repo_full_name, issue_number, **kwargs):
     """
     try:
         api = _setup()
+        repo_full_name = _normalize_repo_name(repo_full_name)
         owner, repo = repo_full_name.split('/')
+        if isinstance(kwargs, str):
+            try:
+                kwargs = json.loads(kwargs)
+            except json.JSONDecodeError:
+                if '=' in kwargs:
+                    key, value = kwargs.split('=')
+                    kwargs = {key.strip(): value.strip()}
+                else:
+                    return 'Error: Invalid kwargs format'
         issue = api.issues.update(owner=owner, repo=repo, issue_number=
             issue_number, **kwargs)
         return json.dumps({'number': issue.number, 'title': issue.title,
@@ -171,32 +184,15 @@ def get_github_user_info():
             user.email, 'public_repos': user.public_repos})
     except Exception as e:
         return f'Error: {str(e)}'
-    except Exception as e:
-        return f'Error: {str(e)}'
 
 
-def update_issue(repo_full_name, issue_number, **kwargs):
+
+
+def _normalize_repo_name(repo_full_name):
     """
-    Update an existing issue.
-
-    Use when you need to modify an issue's properties like title, body, or state.
-
-    Parameters:
-    - repo_full_name (str): The full name of the repository in the format "owner/repo".
-    - issue_number (int): The number of the issue to update.
-    - **kwargs: Properties to update. Can include:
-        - title (str): New title for the issue
-        - body (str): New body content
-        - state (str): New state ('open' or 'closed')
-
-    Returns a JSON string containing the updated issue information.
+    Helper function to normalize repository name input.
+    Handles both string format and JSON object format.
     """
-    try:
-        api = _setup()
-        owner, repo = repo_full_name.split('/')
-        issue = api.issues.update(owner=owner, repo=repo, issue_number=
-            issue_number, **kwargs)
-        return json.dumps({'number': issue.number, 'title': issue.title,
-            'state': issue.state, 'url': issue.html_url})
-    except Exception as e:
-        return f'Error: {str(e)}'
+    if isinstance(repo_full_name, dict) and 'repo' in repo_full_name:
+        return repo_full_name['repo']
+    return repo_full_name
