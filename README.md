@@ -10,36 +10,76 @@ The bots library provides a structured interface for working with such agents, a
 
 The core of the Bots library is built on a robust foundation:
 
-- Tool handling capabilities - any self-contained python function can be used by a bot.
-- Key interfaces: `bot.chat()`, `bot.add_tools()`, `bot.respond()`, `bot.save()`, and `bot.load()`
-- Tree-based conversation history management:
-  - Implements a linked m-tree structure for conversation histories
-  - Allows for branching conversations and exploring multiple dialogue paths
+- Tool handling capabilities - any well-structured Python function can be used by a bot
+- Simple primary interface: `bot.respond()`, with supporting operations `add_tool(s)`, `save()`, `load()`, and `chat()`
+- Tree-based conversation management:
+  - Implements a linked tree structure for conversation histories
+  - Allows branching conversations and exploring multiple dialogue paths
+  - Efficiently manages context by only sending path to root
+  - Enables saving and loading specific conversation states
 - Abstract base classes for wrapping LLM API interfaces into a unified 'bot' interface
 - Pre-built implementations for ChatGPT and Anthropic bots
+- Complete bot portability - save and share bots with their full context and tools
 
-## Features built with bots
+## Key Features
 
 1. **Auto Terminal (bots.dev.auto_terminal)**
-   - Command-line interface for autonomous coding (similar to Cursor or Claude-Dev, but in a terminal)
-   - Enables bots to work on complex programming tasks
-   - Automatic mode
+   ```bash
+   python -m bots.dev.auto_terminal
+   ```
+   - Advanced terminal interface for autonomous coding
+   - Full conversation tree navigation (/up, /down, /left, /right)
+   - Autonomous mode (/auto) - bot works until task completion
+   - Tool usage visibility controls (/verbose, /quiet)
+   - Save/load bot states for different tasks
+   - Integrated Python and PowerShell execution
 
-2. **Python Tools (bots.tools.python_tools)**
-   - Tested toolkit which enables bots to perform file and code operations reliably
-   - Functions for reading, writing, and modifying Python files
-   - Code execution capabilities for both Python and PowerShell
-   - Empowers bots to engage in complex coding tasks and project modifications
+2. **Tool System (bots.tools)**
+   - Standardized tool requirements:
+     - Clear docstrings with usage instructions
+     - Consistent error handling
+     - Predictable return formats
+     - Self-contained with explicit dependencies
+   - Built-in tools for:
+     - File operations (read, write, modify)
+     - Code manipulation
+     - GitHub integration
+     - Terminal operations
+   - Tool portability and preservation
 
-3. **Lazy Decorator (bots.dev.lazy)**
-   - Decorator for runtime code generation via LLM calls
-   - Automatically replaces placeholder functions with LLM-generated implementations
-   - Supports various levels of context awareness for accurate code generation
+3. **Functional Prompts (bots.flows.functional_prompts)**
+   - Core operations: chain(), branch(), tree_of_thought()
+   - Composable patterns for complex tasks
+   - Iteration control (prompt_while, chain_while)
+   - Support for parallel exploration
+   ```python
+   # Example: Parallel analysis
+   responses, nodes = fp.branch(bot, [
+       "Technical perspective",
+       "User perspective",
+       "Business perspective"
+   ])
+   ```
 
-4. **Functional Prompts (bots.functional_prompts)**
-   - Advanced prompting techniques for complex, multi-step tasks
-   - Supports sequential processing and branching with multiple bots
-   - Enables the creation of sophisticated workflows
+4. **Event System (bots.events)**
+   - Schedule bot operations
+   - Handle event-triggered behaviors
+   - Manage long-running tasks
+   - Coordinate multiple bots
+   ```python
+   event_system = BotEventSystem()
+   event_system.schedule_bot('daily_report', bot, report_flow, cron='0 9 * * *')
+   event_system.subscribe_bot('new_issue', bot, handle_issue)
+   ```
+
+5. **Lazy Decorator (bots.lazy)**
+   - Runtime code generation via LLM
+   - Context-aware implementations
+   ```python
+   @lazy("Sort using a funny algorithm. Name variables as though you're a clown.")
+   def sort(arr: list[int]) -> list[int]:
+       pass
+   ```
 
 ## Installation
 
@@ -48,157 +88,139 @@ pip install git+https://github.com/benbuzz790/bots.git
 ```
 
 ## Quick Start
-Set up your api key environment variables:
 
-[OpenAI](https://platform.openai.com/docs/quickstart)
+1. Set up your API key as an environment variable:
+   - [OpenAI](https://platform.openai.com/docs/quickstart) or
+   - [Anthropic](https://docs.anthropic.com/en/docs/initial-setup#set-your-api-key)
 
-[Anthropic](https://docs.anthropic.com/en/docs/initial-setup#set-your-api-key)
-
-You'll need one of these two to use bots.
-
+2. Basic Usage:
 ```python
 from bots import AnthropicBot
-from bots.tools import python_tools
+import bots.tools.code_tools as code_tools
 
-# Initialize a bot
-bot = AnthropicBot(name='Claude')
+# Initialize and equip bot
+bot = AnthropicBot()
+bot.add_tools(code_tools)
 
-# Add Python tools to the bot
-bot.add_tools(python_tools)
+# Single response
+response = bot.respond("Please write a basic Flask app in app.py")
 
-# Request action
-bot.respond("Please write Conway's game of life in a new file conway.py")
+# Interactive mode
+bot.chat()
 ```
 
-```cmd
-:: Start an autonomous coding session
->>> python -m bots.dev.auto_terminal
-System: Bot initialized
+3. Save/Load Bot States:
+```python
+# Create a bot with repository context
+bot = AnthropicBot()
+bot.add_tools(code_tools)
+bot.chat()
+  ...
+  "Read and understand our repository structure"
+  ...
+  Tools used...
+  ...
+  /save
 
----  
-     
-You: /help
+# Later use
+review_bot = Bot.load("repo_context.bot", autosave=False)
+review_bot.respond("Review PR #123")
+```
 
----
+4. Functional Patterns:
+```python
+import bots.flows.functional_prompts as fp
 
-System:
-    This program is an interactive terminal that uses Anthropic's Claude Sonnet 3.5.
-    It allows you to chat with the LLM, save and load bot states, and execute various commands.
-    The bot has the ability to read and write files and can execute powershell and python code 
-    directly.
-    The bot also has tools to help edit python files in an accurate and token-efficient way.
-    Available commands:
-    /help: Show this help message
-    /verbose: Show tool requests and results (default on)
-    /quiet: Hide tool requests and results
-    /up: Move up the conversation tree
-    ...
-    /save: Save the current bot
-    /load: Load a previously saved bot
-    /auto: Prompt the bot to work autonomously for a preset number of prompts
-    /exit: Exit the program
-    Type your messages normally to chat with the AI assistant.
+# Chain of thought
+responses, nodes = fp.chain(bot, [
+    "Understand the problem",
+    "Design the solution",
+    "Implement the code"
+])
 
----
+# Parallel exploration
+analyses, nodes = fp.branch(bot, [
+    "Security analysis",
+    "Performance analysis",
+    "Usability analysis"
+])
 
-
-You: please write conway's game of life into a GUI and execute it. 
-   make the pixels toggleable and give it a pause button. no need to save
-   the file.
-
----
-
-Claude: Let's create a GUI version of Conway's Game of Life using
-    Python's tkinter library. Here's the code:
-
----
-
-System: Tool Requests
-    [
-     {
-      "type": "tool_use",
-      "id": "toolu_0139UTzShnVnXTen2pT1y8Su",
-      "name": "execute_python_code",
-      "input": {
-       "code": <removed for brevity>
-      }
-     }
-    ]
-
----
-
-System: Tool Results
-    [
-     {
-      "type": "tool_result",
-      "tool_use_id": "toolu_0139UTzShnVnXTen2pT1y8Su",
-      "content": ""
-     }
-    ]
-
----
-
+# Iterative refinement
+fp.prompt_while(
+    bot,
+    "Run tests and fix bugs",
+    continue_prompt="Continue debugging",
+    stop_condition=fp.conditions.tool_not_used
+)
 ```
 
 ## Advanced Usage
 
-### Using the Lazy Decorator
+### Tool Development
+
+Tools must follow these patterns for reliability:
 
 ```python
-from bots import lazy
-
-@lazy(prompt="Implement a function that calculates the fibonacci sequence up to n terms.")
-def fibonacci(n: int) -> list:
-    pass
-
-# The first call to fibonacci will generate the implementation
-result = fibonacci(10)
-print(result)
+def my_tool(param: type) -> str:
+    """Clear description of what the tool does.
+    
+    Use when you need to [specific use case].
+    
+    Parameters:
+    - param (type): Parameter description
+    
+    Returns:
+    str: Description of return format
+    """
+    try:
+        result = do_operation()
+        return json.dumps(result)  # For complex returns
+    except Exception as e:
+        return f'Error: {str(e)}'
 ```
 
-### Working with Functional Prompts
+### Event-Driven Bots
 
 ```python
-import bots
-import bots.functional_prompts as fp
-
-def main():
-    bot = bots.AnthropicBot(name="letter_writer")
-
-    # First prompt
-    p1 = "Please help me write an invitation to a birthday party"
-
-    # Define different styles for the letter
-    styles = ["formal", "casual", "humorous"]
-
-    # Define branching prompt list
-    plist = [f"Use a {style} style" for style in styles]
-
-    # Use the branch function to generate letters in different styles
-    first_response = bot.respond(p1)
-    letters, _ = fp.branch(bot, plist)
-
-    # Print the results
-    for style, letter in zip(styles, letters):
-        print(f"\n--- {style.capitalize()} Letter ---")
-        print(letter)
-        print("-------------------------\n")
-
-if __name__ == "__main__":
-    main()
+class ProjectBot:
+    def __init__(self):
+        self.bot = bots.load('github.bot')
+        self.event_system = BotEventSystem()
+        
+        # Event handlers
+        self.event_system.subscribe_bot('new_issue', self.bot, self.handle_issue)
+        self.event_system.subscribe_bot('new_pr', self.bot, self.handle_pr)
+        
+        # Scheduled tasks
+        self.event_system.schedule_bot(
+            'daily_triage',
+            self.bot,
+            self.daily_triage,
+            cron='0 9 * * *'
+        )
 ```
 
-This example demonstrates how to use functional prompts with the `branch` function to generate multiple versions of a letter in different styles, based on a single purpose.
+## Future Work
 
-## Future work
-- Discord, github, reddit toolkits
-- Integrations with other APIs
-- Bot library for 'out of the box' functionality
-- Larger useful functional prompting structures
+- Enhanced tool libraries:
+  - Expanded GitHub integration
+  - Discord bot capabilities
+  - Reddit interaction tools
+- Advanced conversation management:
+  - Branch comparison tools
+  - Context optimization
+- Performance improvements:
+  - Parallel tool execution
+  - Batch processing
+  - Rate limiting and queueing
+- Documentation and examples:
+  - Common patterns library
+  - Best practices guide
+  - More example bots
 
 ## Contributing
 
-We welcome contributions to the Bots project! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to contribute.
+We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines.
 
 ## License
 
@@ -206,4 +228,4 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Disclaimer
 
-This library is still under active development and may not be suitable for large-scale industry adoption. Use with caution in production environments.
+This library is under active development. While it's being used successfully in various projects, please test thoroughly before using in production environments.
