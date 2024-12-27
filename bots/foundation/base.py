@@ -331,7 +331,7 @@ class ToolHandler(ABC):
             'You must implement this method in a subclass')
 
     @abstractmethod
-    def get_error_schema(self, request_schema: Dict[str, Any], error_msg: str
+    def generate_error_schema(self, request_schema: Dict[str, Any], error_msg: str
         ) ->Dict[str, Any]:
         """
         Generate an error response schema matching the format expected by this handler.
@@ -384,18 +384,18 @@ class ToolHandler(ABC):
                     output_kwargs)
             except ToolNotFoundError as e:
                 error_msg = 'Error: Tool not found.\n\n' + str(e)
-                response_schema = self.get_error_schema(request_schema,
+                response_schema = self.generate_error_schema(request_schema,
                     error_msg)
             except TypeError as e:
                 error_msg = (
                     f"Invalid arguments for tool '{tool_name}': {str(e)}")
-                response_schema = self.get_error_schema(request_schema,
+                response_schema = self.generate_error_schema(request_schema,
                     error_msg)
             except Exception as e:
                 error_msg = (
                     f"Unexpected error while executing tool '{tool_name}': {str(e)}"
                     )
-                response_schema = self.get_error_schema(request_schema,
+                response_schema = self.generate_error_schema(request_schema,
                     error_msg)
             self.requests.append(request_schema)
             self.results.append(response_schema)
@@ -599,10 +599,9 @@ class ToolHandler(ABC):
             except Exception as e:
                 print(f'Warning: Failed to load module {file_path}: {str(e)}')
                 continue
-            if path == 'dynamic' and func_name not in handler.function_map:
-                print(
-                    f"Warning: Dynamic function '{func_name}' cannot be restored without source."
-                    )
+            for func_name, path in data.get('function_paths', {}).items():
+                if path == 'dynamic' and func_name not in handler.function_map:
+                    print(f"Warning: Dynamic function '{func_name}' cannot be restored without source.")
         return handler
 
     def get_tools_json(self) ->str:

@@ -86,7 +86,7 @@ class AnthropicToolHandler(ToolHandler):
             request.get('id', 'unknown id'), 'content': tool_output_kwargs}
         return response
 
-    def get_error_schema(self, request_schema: Optional[Dict[str, Any]],
+    def generate_error_schema(self, request_schema: Optional[Dict[str, Any]],
         error_msg: str) ->Dict[str, Any]:
         """
         Generate an error response schema matching the format expected by this handler.

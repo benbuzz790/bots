@@ -78,7 +78,7 @@ class OpenAIToolHandler(ToolHandler):
         return {'role': 'tool', 'content': json.dumps(tool_output_kwargs),
             'tool_call_id': request['tool_calls'][0]['id']}
 
-    def get_error_schema(self, error_msg: str, request_schema: Optional[
+    def generate_error_schema(self, error_msg: str, request_schema: Optional[
         Dict[str, Any]]=None) ->Dict[str, Any]:
         """
         Generate an error response schema matching the format expected by this handler.
