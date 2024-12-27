@@ -589,15 +589,16 @@ class ToolHandler(ABC):
                     namespace=module, code_hash=current_code_hash)
                 handler.modules[module_data['file_path']] = module_context
                 for func_name in module.__dict__:
-                    if callable(module.__dict__[func_name]
-                        ) and not func_name.startswith('_'):
+                    if (callable(module.__dict__[func_name]) and 
+                        not func_name.startswith('_') and
+                        hasattr(module.__dict__[func_name], '__module__') and 
+                        module.__dict__[func_name].__module__ == module_data['name']):
                         func = module.__dict__[func_name]
                         func.__module_context__ = module_context
                         handler.function_map[func_name] = func
             except Exception as e:
                 print(f'Warning: Failed to load module {file_path}: {str(e)}')
                 continue
-        for func_name, path in data.get('function_paths', {}).items():
             if path == 'dynamic' and func_name not in handler.function_map:
                 print(
                     f"Warning: Dynamic function '{func_name}' cannot be restored without source."
