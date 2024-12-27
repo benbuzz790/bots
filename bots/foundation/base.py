@@ -1,5 +1,4 @@
 """Base classes and utilities for bot functionality."""
-
 import os
 import sys
 from abc import ABC, abstractmethod
@@ -18,7 +17,7 @@ from dataclasses import dataclass
 import textwrap
 
 
-def remove_code_blocks(text: str) -> Tuple[List[str], List[str]]:
+def remove_code_blocks(text: str) ->Tuple[List[str], List[str]]:
     """Extracts code blocks from responses"""
     pattern = '```(\\w*)\\s*([\\s\\S]*?)```'
     matches = re.findall(pattern, text)
@@ -28,12 +27,12 @@ def remove_code_blocks(text: str) -> Tuple[List[str], List[str]]:
     return code_blocks, labels
 
 
-def load(filepath: str) -> 'Bot':
+def load(filepath: str) ->'Bot':
     """Loads a bot"""
     return Bot.load(filepath)
 
 
-def formatted_datetime() -> str:
+def formatted_datetime() ->str:
     """Returns 'now' as a formatted string"""
     now = DT.datetime.now()
     return now.strftime('%Y-%m-%d_%H-%M-%S')
@@ -71,7 +70,7 @@ class Engines(str, Enum):
         return None
 
     @staticmethod
-    def get_bot_class(model_engine: 'Engines') -> Type['Bot']:
+    def get_bot_class(model_engine: 'Engines') ->Type['Bot']:
         """Returns the bot class based on the model engine."""
         from bots.foundation.openai_bots import ChatGPT_Bot
         from bots.foundation.anthropic_bots import AnthropicBot
@@ -83,20 +82,25 @@ class Engines(str, Enum):
             raise ValueError(f'Unsupported model engine: {model_engine}')
 
     @staticmethod
-    def get_conversation_node_class(class_name: str) -> Type['ConversationNode']:
+    def get_conversation_node_class(class_name: str) ->Type['ConversationNode'
+        ]:
         """Returns the conversation node class based on the class name."""
         from bots.foundation.openai_bots import OpenAINode
         from bots.foundation.anthropic_bots import AnthropicNode
-        NODE_CLASS_MAP = {'OpenAINode': OpenAINode, 'AnthropicNode': AnthropicNode}
+        NODE_CLASS_MAP = {'OpenAINode': OpenAINode, 'AnthropicNode':
+            AnthropicNode}
         node_class = NODE_CLASS_MAP.get(class_name)
         if node_class is None:
-            raise ValueError(f'Unsupported conversation node type: {class_name}')
+            raise ValueError(
+                f'Unsupported conversation node type: {class_name}')
         return node_class
+
+
 class ConversationNode:
     """Base class for conversation nodes that store message history and tool interactions."""
 
-    def __init__(self, content: str, role: str, tool_calls: Optional[Any]=None, 
-                 tool_results: Optional[Any]=None, **kwargs):
+    def __init__(self, content: str, role: str, tool_calls: Optional[Any]=
+        None, tool_results: Optional[Any]=None, **kwargs):
         self.role = role
         self.content = content
         self.tool_calls = tool_calls
@@ -107,29 +111,26 @@ class ConversationNode:
             setattr(self, key, value)
 
     @staticmethod
-    def create_empty(cls=None) -> 'ConversationNode':
+    def create_empty(cls=None) ->'ConversationNode':
         if cls:
             return cls(role='empty', content='')
         return ConversationNode(role='empty', content='')
 
-    def is_empty(self) -> bool:
+    def is_empty(self) ->bool:
         return self.role == 'empty' and self.content == ''
 
-    def add_reply(self, **kwargs) -> 'ConversationNode':
-        if self.is_empty():
-            self.__init__(**kwargs)
-            return self
-        else:
-            if (self.replies and 'tool_calls' not in kwargs and 'tool_results' not in kwargs):
-                first_sibling = self.replies[0]
-                kwargs['tool_calls'] = first_sibling.tool_calls
-                kwargs['tool_results'] = first_sibling.tool_results
-            reply = type(self)(**kwargs)
-            reply.parent = self
-            self.replies.append(reply)
-            return reply
+    def add_reply(self, **kwargs) ->'ConversationNode':
+        if (self.replies and 'tool_calls' not in kwargs and 'tool_results'
+             not in kwargs):
+            first_sibling = self.replies[0]
+            kwargs['tool_calls'] = first_sibling.tool_calls
+            kwargs['tool_results'] = first_sibling.tool_results
+        reply = type(self)(**kwargs)
+        reply.parent = self
+        self.replies.append(reply)
+        return reply
 
-    def sync_tool_context(self) -> None:
+    def sync_tool_context(self) ->None:
         """Synchronize tool context between all siblings."""
         if self.parent and self.parent.replies:
             first_sibling = self.parent.replies[0]
@@ -190,12 +191,13 @@ class ConversationNode:
             return []
         conversation_list_dict = []
         while node:
-            entry = {'role': node.role, 'content': node.content}
-            if node.tool_calls is not None:
-                entry['tool_calls'] = node.tool_calls
-            if node.tool_results is not None:
-                entry['tool_results'] = node.tool_results
-            conversation_list_dict = [entry] + conversation_list_dict
+            if not node.is_empty():
+                entry = {'role': node.role, 'content': node.content}
+                if node.tool_calls is not None:
+                    entry['tool_calls'] = node.tool_calls
+                if node.tool_results is not None:
+                    entry['tool_results'] = node.tool_results
+                conversation_list_dict = [entry] + conversation_list_dict
             node = node.parent
         return conversation_list_dict
 
@@ -402,7 +404,7 @@ class ToolHandler(ABC):
     def _create_builtin_wrapper(self, func):
         """Create a wrapper function for built-in functions"""
         source = f"""def {func.__name__}(x):
-    \"\"\"Wrapper for built-in function {func.__name__} from {func.__module__}\"\"\"
+    ""\"Wrapper for built-in function {func.__name__} from {func.__module__}""\"
     import {func.__module__}
     return {func.__module__}.{func.__name__}(float(x))
 """
@@ -413,18 +415,14 @@ class ToolHandler(ABC):
         source = f'def {func.__name__}{inspect.signature(func)}:\n'
         if func.__doc__:
             source += f'    """{func.__doc__}"""\n'
-        
-        # Get function body
         if hasattr(func, '__code__'):
             try:
                 body = inspect.getsource(func).split('\n', 1)[1]
                 source += body
             except:
-                # If we can't get the source, try to reconstruct from the function object
                 source += f'    return func(*args, **kwargs)\n'
         else:
             source += '    pass\n'
-        
         return source
 
     def add_tool(self, func: Callable) ->None:
@@ -434,10 +432,10 @@ class ToolHandler(ABC):
         """
         schema = self.generate_tool_schema(func)
         if not schema:
-            raise ValueError('Schema undefined. ToolHandler.generate_tool_schema() may not be implemented.')
-            
+            raise ValueError(
+                'Schema undefined. ToolHandler.generate_tool_schema() may not be implemented.'
+                )
         if not hasattr(func, '__module_context__'):
-            # Get or create the source code
             if inspect.isbuiltin(func) or inspect.ismethoddescriptor(func):
                 source = self._create_builtin_wrapper(func)
             else:
@@ -445,38 +443,19 @@ class ToolHandler(ABC):
                     source = inspect.getsource(func)
                 except (TypeError, OSError):
                     source = self._create_dynamic_wrapper(func)
-
-            # Create unique identifiers
             file_path = f'dynamic_module_{hash(str(func))}'
             source = self.clean_source(source)
             module_name = f'dynamic_module_{hash(source)}'
-
-            # Set up the module
             module = ModuleType(module_name)
             module.__file__ = file_path
-
-            # Create the module context
-            module_context = ModuleContext(
-                name=module_name,
-                source=source,
-                file_path=file_path,
-                namespace=module,
-                code_hash=self._get_code_hash(source)
-            )
-
-            # Execute the function definition in the module's namespace
+            module_context = ModuleContext(name=module_name, source=source,
+                file_path=file_path, namespace=module, code_hash=self.
+                _get_code_hash(source))
             exec(source, module.__dict__)
-
-            # Get the newly defined function from the module
             new_func = module.__dict__[func.__name__]
             new_func.__module_context__ = module_context
-
-            # Store the module context
             self.modules[file_path] = module_context
-
-            # Use the new function instead of the original
             func = new_func
-
         self.tools.append(schema)
         self.function_map[func.__name__] = func
 
@@ -909,8 +888,8 @@ class Bot(ABC):
                         request)
                     print(f'Used Tool: {tool_name}')
                     print(separator)
-        
-    def __str__(self) -> str:
+
+    def __str__(self) ->str:
         """Returns a formatted string representation of the Bot instance.
         
         Displays:
@@ -918,85 +897,56 @@ class Bot(ABC):
         2. Conversation history with indentation
         3. Tool information if available
         """
-        # Helper function to format conversation
+
         def format_conversation(node, level=0):
-            # Cap the indentation level to prevent excessive nesting
             display_level = min(level, 5)
             indent_size = 1
             marker_size = 4
-            indent = " " * indent_size * display_level
-            
-            # Calculate available width for content
-            # Start with 80 chars, subtract indent_size chars for each indent level, and leave room for markers
-            available_width = max(40, 80 - (display_level * indent_size) - marker_size)
+            indent = ' ' * indent_size * display_level
+            available_width = max(40, 80 - display_level * indent_size -
+                marker_size)
             messages = []
-            
-            # Format current message
-            # Map the role to the appropriate display name and add depth indicator if needed
             if hasattr(node, 'role'):
                 if node.role == 'user':
-                    base_name = "You"
+                    base_name = 'You'
                 elif node.role == 'assistant':
                     base_name = self.name
                 else:
                     base_name = node.role.title()
             else:
-                base_name = "System"
-                
-            # Add depth indicator if we're displaying at a shallower level than actual
+                base_name = 'System'
             if level > display_level:
                 hidden_levels = level - display_level
-                # Up to 3 levels just show increasing chevrons
                 if hidden_levels <= 3:
                     depth_indicator = '>' * hidden_levels
-                # Beyond that, keep 3 chevrons and show the number
                 else:
-                    depth_indicator = f">>>({hidden_levels})"
-                name_display = f"{depth_indicator} {base_name}"
+                    depth_indicator = f'>>>({hidden_levels})'
+                name_display = f'{depth_indicator} {base_name}'
             else:
                 name_display = base_name
-            
             content = node.content if hasattr(node, 'content') else str(node)
-            
-            # Format the message content - wrap long lines
-            wrapped_content = "\n".join(
-                textwrap.wrap(
-                    content,
-                    width=available_width,
-                    initial_indent=indent + "│ ",
-                    subsequent_indent=indent + "│ "
-                )
-            )
-            
-            messages.append(f"{indent}┌─ {name_display}")
+            wrapped_content = '\n'.join(textwrap.wrap(content, width=
+                available_width, initial_indent=indent + '│ ',
+                subsequent_indent=indent + '│ '))
+            messages.append(f'{indent}┌─ {name_display}')
             messages.append(wrapped_content)
-            messages.append(f"{indent}└" + "─" * 40)
-            
-            # Recursively format replies
+            messages.append(f'{indent}└' + '─' * 40)
             if hasattr(node, 'replies') and node.replies:
                 for reply in node.replies:
                     messages.extend(format_conversation(reply, level + 1))
-            
             return messages
-
-        # Build the string representation
         lines = []
-        
-        # Add header with bot metadata using L-shaped box
-        lines.append("╔" + "═" * 12)
-        lines.append(f"║ {self.name}")
-        lines.append(f"║ Role: {self.role}")
-        lines.append(f"║ Model: {self.model_engine.value}")
+        lines.append('╔' + '═' * 12)
+        lines.append(f'║ {self.name}')
+        lines.append(f'║ Role: {self.role}')
+        lines.append(f'║ Model: {self.model_engine.value}')
         if self.tool_handler:
             tool_count = len(self.tool_handler.tools)
-            lines.append(f"║ Tools Available: {tool_count}")
-        lines.append("╚" + "═" * 78 + "╝\n")
-        
-        # Add conversation history
+            lines.append(f'║ Tools Available: {tool_count}')
+        lines.append('╚' + '═' * 78 + '╝\n')
         if self.conversation:
             root = self.conversation
             while hasattr(root, 'parent') and root.parent:
                 root = root.parent
             lines.extend(format_conversation(root))
-        
-        return "\n".join(lines)
+        return '\n'.join(lines)
