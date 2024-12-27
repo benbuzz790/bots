@@ -12,31 +12,34 @@ import math
 class AnthropicNode(ConversationNode):
 
     def __init__(self, **kwargs: Any) ->None:
-        role = kwargs.pop('role', None)
-        content = kwargs.pop('content', None)
+        role = kwargs.pop('role', 'empty')
+        content = kwargs.pop('content', '')
         tool_calls = kwargs.pop('tool_calls', None)
         tool_results = kwargs.pop('tool_results', None)
         super().__init__(role=role, content=content, tool_calls=tool_calls,
             tool_results=tool_results, **kwargs)
 
     def build_messages(self) ->List[Dict[str, Any]]:
+        """
+        Build message list for Anthropic API, properly handling empty nodes and tool calls.
+        Empty nodes are preserved in the structure but filtered from API messages.
+        """
         node = self
-        if node.is_empty():
-            return []
         conversation_dict = []
         while node:
-            entry = {'role': node.role}
-            content_list = [{'type': 'text', 'text': node.content}]
-            if node.tool_calls:
-                for call in node.tool_calls:
-                    ent = {'type': 'tool_use', **call}
-                    content_list.insert(-1, ent)
-            if node.tool_results:
-                for result in node.tool_results:
-                    ent = {'type': 'tool_result', **result}
-                    content_list.insert(0, ent)
-            entry['content'] = content_list
-            conversation_dict = [entry] + conversation_dict
+            if not node.is_empty():
+                entry = {'role': node.role}
+                content_list = [{'type': 'text', 'text': node.content}]
+                if node.tool_calls:
+                    for call in node.tool_calls:
+                        ent = {'type': 'tool_use', **call}
+                        content_list.insert(-1, ent)
+                if node.tool_results:
+                    for result in node.tool_results:
+                        ent = {'type': 'tool_result', **result}
+                        content_list.insert(0, ent)
+                entry['content'] = content_list
+                conversation_dict = [entry] + conversation_dict
             node = node.parent
         return conversation_dict
 
@@ -83,8 +86,8 @@ class AnthropicToolHandler(ToolHandler):
             request.get('id', 'unknown id'), 'content': tool_output_kwargs}
         return response
 
-    def get_error_schema(self, request_schema: Optional[
-        Dict[str, Any]], error_msg: str, ) ->Dict[str, Any]:
+    def get_error_schema(self, request_schema: Optional[Dict[str, Any]],
+        error_msg: str) ->Dict[str, Any]:
         """
         Generate an error response schema matching the format expected by this handler.
         

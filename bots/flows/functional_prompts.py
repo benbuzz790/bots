@@ -37,6 +37,7 @@ def branch(bot: Bot, prompts: List[Prompt]) ->Tuple[List[Response], List[
     ResponseNode]]:
     """
     Creates multiple conversation branches from the current node.
+    Each branch starts from the current conversation state.
 
     Args:
     bot (Bot): The bot to use for the responses.
@@ -53,7 +54,6 @@ def branch(bot: Bot, prompts: List[Prompt]) ->Tuple[List[Response], List[
         response = bot.respond(prompt)
         responses.append(response)
         nodes.append(bot.conversation)
-        bot.conversation = original_conversation
     return responses, nodes
 
 

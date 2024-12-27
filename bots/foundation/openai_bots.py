@@ -15,19 +15,19 @@ class OpenAINode(ConversationNode):
         super().__init__(role=role, content=content, **kwargs)
 
     def build_messages(self):
+        """Build message list for OpenAI API, properly handling empty nodes and tool calls"""
         node = self
-        if node.is_empty():
-            return []
         conversation_dict = []
         while node:
-            if hasattr(node, 'tool_calls'):
-                entry = node._to_dict_self()
-            elif node.role == 'tool':
-                entry = {'role': node.role, 'content': node.content,
-                    'tool_call_id': node.tool_call_id}
-            else:
-                entry = {'role': node.role, 'content': node.content}
-            conversation_dict = [entry] + conversation_dict
+            if not node.is_empty():
+                if hasattr(node, 'tool_calls') and node.tool_calls:
+                    entry = node._to_dict_self()
+                elif node.role == 'tool':
+                    entry = {'role': node.role, 'content': node.content,
+                        'tool_call_id': node.tool_call_id}
+                else:
+                    entry = {'role': node.role, 'content': node.content}
+                conversation_dict = [entry] + conversation_dict
             node = node.parent
         return conversation_dict
 
