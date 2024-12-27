@@ -1,3 +1,5 @@
+"""Base classes and utilities for bot functionality."""
+
 import os
 import sys
 from abc import ABC, abstractmethod
@@ -16,7 +18,7 @@ from dataclasses import dataclass
 import textwrap
 
 
-def remove_code_blocks(text: str) ->Tuple[List[str], List[str]]:
+def remove_code_blocks(text: str) -> Tuple[List[str], List[str]]:
     """Extracts code blocks from responses"""
     pattern = '```(\\w*)\\s*([\\s\\S]*?)```'
     matches = re.findall(pattern, text)
@@ -26,12 +28,12 @@ def remove_code_blocks(text: str) ->Tuple[List[str], List[str]]:
     return code_blocks, labels
 
 
-def load(filepath: str) ->'Bot':
+def load(filepath: str) -> 'Bot':
     """Loads a bot"""
     return Bot.load(filepath)
 
 
-def formatted_datetime() ->str:
+def formatted_datetime() -> str:
     """Returns 'now' as a formatted string"""
     now = DT.datetime.now()
     return now.strftime('%Y-%m-%d_%H-%M-%S')
@@ -69,7 +71,7 @@ class Engines(str, Enum):
         return None
 
     @staticmethod
-    def get_bot_class(model_engine: 'Engines') ->Type['Bot']:
+    def get_bot_class(model_engine: 'Engines') -> Type['Bot']:
         """Returns the bot class based on the model engine."""
         from bots.foundation.openai_bots import ChatGPT_Bot
         from bots.foundation.anthropic_bots import AnthropicBot
@@ -81,24 +83,20 @@ class Engines(str, Enum):
             raise ValueError(f'Unsupported model engine: {model_engine}')
 
     @staticmethod
-    def get_conversation_node_class(class_name: str) ->Type['ConversationNode'
-        ]:
+    def get_conversation_node_class(class_name: str) -> Type['ConversationNode']:
         """Returns the conversation node class based on the class name."""
         from bots.foundation.openai_bots import OpenAINode
         from bots.foundation.anthropic_bots import AnthropicNode
-        NODE_CLASS_MAP = {'OpenAINode': OpenAINode, 'AnthropicNode':
-            AnthropicNode}
+        NODE_CLASS_MAP = {'OpenAINode': OpenAINode, 'AnthropicNode': AnthropicNode}
         node_class = NODE_CLASS_MAP.get(class_name)
         if node_class is None:
-            raise ValueError(
-                f'Unsupported conversation node type: {class_name}')
+            raise ValueError(f'Unsupported conversation node type: {class_name}')
         return node_class
-
-
 class ConversationNode:
+    """Base class for conversation nodes that store message history and tool interactions."""
 
-    def __init__(self, content: str, role: str, tool_calls: Optional[Any]=
-        None, tool_results: Optional[Any]=None, **kwargs):
+    def __init__(self, content: str, role: str, tool_calls: Optional[Any]=None, 
+                 tool_results: Optional[Any]=None, **kwargs):
         self.role = role
         self.content = content
         self.tool_calls = tool_calls
@@ -109,21 +107,20 @@ class ConversationNode:
             setattr(self, key, value)
 
     @staticmethod
-    def create_empty(cls=None) ->'ConversationNode':
+    def create_empty(cls=None) -> 'ConversationNode':
         if cls:
             return cls(role='empty', content='')
         return ConversationNode(role='empty', content='')
 
-    def is_empty(self) ->bool:
+    def is_empty(self) -> bool:
         return self.role == 'empty' and self.content == ''
 
-    def add_reply(self, **kwargs) ->'ConversationNode':
+    def add_reply(self, **kwargs) -> 'ConversationNode':
         if self.is_empty():
             self.__init__(**kwargs)
             return self
         else:
-            if (self.replies and 'tool_calls' not in kwargs and 
-                'tool_results' not in kwargs):
+            if (self.replies and 'tool_calls' not in kwargs and 'tool_results' not in kwargs):
                 first_sibling = self.replies[0]
                 kwargs['tool_calls'] = first_sibling.tool_calls
                 kwargs['tool_results'] = first_sibling.tool_results
@@ -448,16 +445,16 @@ class ToolHandler(ABC):
                     source = inspect.getsource(func)
                 except (TypeError, OSError):
                     source = self._create_dynamic_wrapper(func)
-            
+
             # Create unique identifiers
             file_path = f'dynamic_module_{hash(str(func))}'
             source = self.clean_source(source)
             module_name = f'dynamic_module_{hash(source)}'
-            
+
             # Set up the module
             module = ModuleType(module_name)
             module.__file__ = file_path
-            
+
             # Create the module context
             module_context = ModuleContext(
                 name=module_name,
@@ -466,38 +463,20 @@ class ToolHandler(ABC):
                 namespace=module,
                 code_hash=self._get_code_hash(source)
             )
-            
+
             # Execute the function definition in the module's namespace
             exec(source, module.__dict__)
-            
+
             # Get the newly defined function from the module
             new_func = module.__dict__[func.__name__]
             new_func.__module_context__ = module_context
-            
+
             # Store the module context
             self.modules[file_path] = module_context
-            
+
             # Use the new function instead of the original
             func = new_func
-            
-        self.tools.append(schema)
-        self.function_map[func.__name__] = func
-                code_hash=self._get_code_hash(source)
-            )
-            
-            # Execute the function definition in the module's namespace
-            exec(source, module.__dict__)
-            
-            # Get the newly defined function from the module
-            new_func = module.__dict__[func.__name__]
-            new_func.__module_context__ = module_context
-            
-            # Store the module context
-            self.modules[file_path] = module_context
-            
-            # Use the new function instead of the original
-            func = new_func
-            
+
         self.tools.append(schema)
         self.function_map[func.__name__] = func
 
