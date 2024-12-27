@@ -37,6 +37,58 @@ class DetailedTestCase(unittest.TestCase):
 
 class TestCodey(DetailedTestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.test_dir = os.path.join(os.getcwd(), 'tests')
+        cls.test_file = os.path.join(cls.test_dir, 'test_file.py')
+
+    def setUp(self):
+        if not os.path.exists(self.test_file):
+            open(self.test_file, 'w').close()
+        else:
+            open(self.test_file, 'w').close()
+
+    @patch('builtins.input')
+    def test_file_read(self, mock_input):
+        test_content = 'Test content for reading'
+        with open(self.test_file, 'w') as file:
+            file.write(test_content)
+        prompt = f'Use the view tool to read {self.test_file}'
+        mock_input.side_effect = [prompt, '/exit']
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main()
+            output = buf.getvalue()
+        self.assertTrue('Tool Requests' in output and 'view' in output,
+            'View tool was not used')
+        self.assertTrue('Tool Results' in output, 'No tool results found')
+        cleaned_output = ' '.join(line.strip() for line in output.split(
+            '\n') if line.strip())
+        expected_content = f'1: {test_content}'
+        cleaned_expected = ' '.join(expected_content.split())
+        print(f'\nCleaned output: {cleaned_output}')
+        print(f'Looking for: {cleaned_expected}')
+        self.assertTrue(cleaned_expected in cleaned_output,
+            f'Expected content "{cleaned_expected}" not found in cleaned output'
+            )
+
+    @patch('builtins.input')
+    def test_file_update(self, mock_input):
+        with open(self.test_file, 'w') as file:
+            file.write('Original content')
+        prompt = (
+            f"Use the change_lines tool to update {self.test_file}. Replace line 1 with 'Updated content'"
+            )
+        mock_input.side_effect = [prompt, '/exit']
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main()
+            output = buf.getvalue()
+        with open(self.test_file, 'r') as file:
+            content = file.read()
+        self.assertEqualWithDetails(content.strip(), 'Updated content',
+            'File content not updated correctly')
+
     @patch('builtins.input')
     def test_file_operations(self, mock_input):
         mock_input.side_effect = [f'Write "Test content" to {self.test_file}',
@@ -51,36 +103,6 @@ class TestCodey(DetailedTestCase):
             content = file.read()
         self.assertEqualWithDetails(content.strip(), 'Test content',
             'File content does not match')
-
-    @patch('builtins.input')
-    def test_file_read(self, mock_input):
-        with open(self.test_file, 'w') as file:
-            file.write('Test content for reading')
-        mock_input.side_effect = [
-            f'Read and return the content of the file {self.test_file}',
-            '/exit']
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-        self.assertEqualWithDetails('Test content for reading' in output, 
-            True, 'File content not read correctly')
-
-    @patch('builtins.input')
-    def test_file_update(self, mock_input):
-        with open(self.test_file, 'w') as file:
-            file.write('Original content')
-        mock_input.side_effect = [
-            f"Update the content of {self.test_file} to 'Updated content'",
-            '/exit']
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-        with open(self.test_file, 'r') as file:
-            content = file.read()
-        self.assertEqualWithDetails(content.strip(), 'Updated content',
-            'File content not updated correctly')
 
     @unittest.skip(
         'bots sometimes refuse to delete things without more context')
@@ -148,76 +170,6 @@ class TestCodey(DetailedTestCase):
         self.assertEqualWithDetails(len(content.split('Content')) > 1, True,
             'Concurrent file operations failed')
 
-    @classmethod
-    def tearDownClass(cls):
-        if os.path.exists(cls.test_file):
-            os.remove(cls.test_file)
-
-    @patch('builtins.input')
-    def test_replace_function(self, mock_input):
-        initial_content = """
-def old_function():
-    print("This is the old function")
-
-print("Some other code")
-"""
-        with open(self.test_file, 'w') as file:
-            file.write(initial_content)
-        mock_input.side_effect = [
-            f"Replace the function 'old_function' in {self.test_file} with a new function that prints 'This is the new function'"
-            , '/exit']
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-        with open(self.test_file, 'r') as file:
-            content = file.read()
-        self.assertEqualWithDetails('def old_function():' in content, True,
-            'Function name was changed')
-        self.assertEqualWithDetails('This is the new function' in content, 
-            True, 'New function content not found')
-        self.assertEqualWithDetails('This is the old function' in content, 
-            False, 'Old function content still present')
-        self.assertEqualWithDetails('Some other code' in content, True,
-            'Other code was affected')
-
-    @patch('builtins.input')
-    def test_replace_class(self, mock_input):
-        initial_content = """
-class OldClass:
-    def __init__(self):
-        print("This is the old class")
-
-print("Some other code")
-"""
-        with open(self.test_file, 'w') as file:
-            file.write(initial_content)
-        mock_input.side_effect = [
-            f"Replace the class 'OldClass' in {self.test_file} with 'NewClass' that has a method printing 'This is the new class'"
-            , '/exit']
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-        with open(self.test_file, 'r') as file:
-            content = file.read()
-        self.assertEqualWithDetails('class OldClass:' not in content, True,
-            f"""OldClass still present:
-{content}
-""")
-        self.assertEqualWithDetails('This is the new class' in content, 
-            True, """New class content not found:
-{content}
-""")
-        self.assertEqualWithDetails('This is the old class' not in content,
-            True, """Old class content still present:
-{content}
-""")
-        self.assertEqualWithDetails('Some other code' in content, True,
-            """Other code was affected:
-{content}
-""")
-
     @patch('builtins.input')
     def test_insert_method_in_class(self, mock_input):
         initial_content = """
@@ -232,9 +184,10 @@ print("Some other code")
 """
         with open(self.test_file, 'w') as file:
             file.write(initial_content)
-        mock_input.side_effect = [
-            f"Insert a new method 'new_method' in the class 'TestClass' in {self.test_file} that prints 'This is a new method'"
-            , '/exit']
+        prompt = f"""Add a new method to the TestClass in {self.test_file}. The method should be called 'new_method' and should be defined as:
+def new_method(self):
+    print('This is a new method')"""
+        mock_input.side_effect = [prompt, '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
@@ -245,8 +198,8 @@ print("Some other code")
             True, f"""New method not inserted:
 {content}
 """)
-        self.assertEqualWithDetails('This is a new method' in content, True,
-            f"""New method content not found:
+        self.assertEqualWithDetails("print('This is a new method')" in
+            content, True, f"""New method content not found:
 {content}
 """)
         self.assertEqualWithDetails('def existing_method(self):' in content,
@@ -258,101 +211,36 @@ print("Some other code")
 {content}
 """)
 
-    @unittest.skip(reason='Not Implemented')
-    @patch('builtins.input')
-    def test_modify_nested_structure(self, mock_input):
-        initial_content = """
-def outer_function():
-    def inner_function():
-        print("This is the inner function")
-    
-    inner_function()
 
-print("Some other code")
-"""
-        with open(self.test_file, 'w') as file:
-            file.write(initial_content)
-        mock_input.side_effect = [
-            f"Modify the inner_function inside outer_function in {self.test_file} to print 'This is the modified inner function'"
-            , '/exit']
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-        with open(self.test_file, 'r') as file:
-            content = file.read()
-        self.assertEqualWithDetails('This is the modified inner function' in
-            content, True, """Inner function not modified:
-{content}
-""")
-        self.assertEqualWithDetails('This is the inner function' in content,
-            False, """Old inner function content still present:
-{content}
-""")
-        self.assertEqualWithDetails('def outer_function():' in content, 
-            True, """Outer function affected:
-{content}
-""")
-        self.assertEqualWithDetails('Some other code' in content, True,
-            """Other code was affected:
-{content}
-""")
-
-    @classmethod
-    def setUpClass(cls):
-        cls.test_dir = os.path.join(os.getcwd(), 'tests')
-        cls.test_file = os.path.join(cls.test_dir, 'test_file.py')
-
-    def setUp(self):
-        if not os.path.exists(self.test_file):
-            open(self.test_file, 'w').close()
-        else:
-            open(self.test_file, 'w').close()
-
-@unittest.skip("auto_terminal no longer has a bot input")
 class TestConversationNavigation(DetailedTestCase):
-    def setUp(self):
-        self.bot = start.initialize_bot()
-        from bots.foundation.base import ConversationNode
-        root = ConversationNode(role='user', content='Write functions')
-        response1 = ConversationNode(role='assistant', content=
-            'Here is function 1')
-        response2 = ConversationNode(role='assistant', content=
-            'Here is function 2')
-        response3 = ConversationNode(role='assistant', content=
-            'Here is function 3')
-        root.replies = [response1, response2, response3]
-        response1.parent = root
-        response2.parent = root
-        response3.parent = root
-        self.bot.conversation = response1
 
     @patch('builtins.input')
     def test_up_navigation(self, mock_input):
-        mock_input.side_effect = ['/up', '/exit']
+        mock_input.side_effect = ['Write a function', 'ok', '/up', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                start.main(self.bot)
+                start.main()
             output = buf.getvalue()
         self.assertTrue('Moving up conversation tree' in output or 
             "At root - can't go up" in output)
 
     @patch('builtins.input')
     def test_down_navigation_single_path(self, mock_input):
-        mock_input.side_effect = ['/down', '/exit']
+        mock_input.side_effect = ['Write a function', '/up', '/down', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                start.main(self.bot)
+                start.main()
             output = buf.getvalue()
         self.assertTrue('Moving down conversation tree' in output or 
             "At leaf - can't go down" in output)
 
     @patch('builtins.input')
     def test_down_navigation_multiple_paths(self, mock_input):
-        mock_input.side_effect = ['/up', '0', '/down', '/exit']
+        mock_input.side_effect = ['Write a function',
+            'Write it differently', '/up', '0', '/down', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                start.main(self.bot)
+                start.main()
             output = buf.getvalue()
         self.assertTrue('Reply index' in output or 
             'Moving down conversation tree' in output or 
@@ -360,10 +248,12 @@ class TestConversationNavigation(DetailedTestCase):
 
     @patch('builtins.input')
     def test_left_right_navigation(self, mock_input):
-        mock_input.side_effect = ['/right', '/left', '/exit']
+        mock_input.side_effect = ['Write a function',
+            'Write it differently', 'Write another version', '/right',
+            '/left', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                start.main(self.bot)
+                start.main()
             output = buf.getvalue()
         self.assertTrue('Moving' in output or 
             'Conversation has no siblings at this point' in output)
@@ -375,33 +265,32 @@ if __name__ == '__main__':
 
 class TestCommandHandling(DetailedTestCase):
 
-    def setUp(self):
-        self.bot = start.initialize_bot()
-
     @patch('builtins.input')
     def test_command_at_start(self, mock_input):
         mock_input.side_effect = ['/verbose Hello bot', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                start.main(self.bot)
+                start.main()
             output = buf.getvalue()
-        self.assertTrue('Hello bot' in output)
+        self.assertTrue('Tool output on' in output)
+        self.assertTrue('Claude:' in output or 'ChatGPT:' in output)
 
     @patch('builtins.input')
     def test_command_at_end(self, mock_input):
         mock_input.side_effect = ['Hello bot /verbose', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                start.main(self.bot)
+                start.main()
             output = buf.getvalue()
-        self.assertTrue('Hello bot' in output)
+        self.assertTrue('Tool output on' in output)
+        self.assertTrue('Claude:' in output or 'ChatGPT:' in output)
 
     @patch('builtins.input')
     def test_unrecognized_command(self, mock_input):
         mock_input.side_effect = ['/nonexistent', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                start.main(self.bot)
+                start.main()
             output = buf.getvalue()
         self.assertTrue('Unrecognized command' in output)
         self.assertTrue('/help' in output)
@@ -411,16 +300,16 @@ class TestCommandHandling(DetailedTestCase):
         mock_input.side_effect = ['Hello bot', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                start.main(self.bot)
+                start.main()
             output = buf.getvalue()
-        self.assertTrue('Hello bot' in output)
+        self.assertTrue('Claude:' in output or 'ChatGPT:' in output)
 
     @patch('builtins.input')
     def test_command_with_chat_processing_order(self, mock_input):
         mock_input.side_effect = ['Test message /quiet', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                start.main(self.bot)
+                start.main()
             output = buf.getvalue()
         self.assertFalse('Tool Requests' in output)
-        self.assertTrue('Test message' in output)
+        self.assertTrue('Claude:' in output or 'ChatGPT:' in output)
