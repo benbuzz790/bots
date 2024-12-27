@@ -233,17 +233,43 @@ class TestSaveLoad(unittest.TestCase):
             bot.add_tool(simple_addition)
             original_tool_count = len(bot.tool_handler.tools)
             save_path1 = os.path.join(self.temp_dir, f'cycle1_{bot.name}')
+            
+            # First tool use
             bot.respond('What is 5 + 3?')
+            first_result = bot.tool_handler.get_results()[0]
+            self.assertEqual(first_result['content'], '8')
+            
+            # Save and load first time
             bot.save(save_path1)
             loaded1 = Bot.load(save_path1 + '.bot')
+            self.assertEqual(loaded1.tool_handler.get_results()[0]['content'], '8')
+            
+            # Second tool use
             save_path2 = os.path.join(self.temp_dir, f'cycle2_{bot.name}')
             loaded1.respond('What is 10 + 15?')
+            second_result = loaded1.tool_handler.get_results()[0]
+            self.assertEqual(second_result['content'], '25')
+            
+            # Save and load second time
             loaded1.save(save_path2)
             loaded2 = Bot.load(save_path2 + '.bot')
-            self.assertEqual(original_tool_count, len(loaded2.tool_handler.
-                tools))
-            self.assertEqual(len(bot.tool_handler.get_results()) + 1, len(
-                loaded2.tool_handler.get_results()))
+            
+            # Verify tool count stayed the same
+            self.assertEqual(original_tool_count, len(loaded2.tool_handler.tools))
+            
+            # Verify conversation count is correct (user, assistant, user, assistant)
+            self.assertEqual(loaded2.conversation.node_count(), 4)
+            
+            # The key change: We should only expect the most recent tool result
+            self.assertEqual(len(loaded2.tool_handler.get_results()), 1)
+            self.assertEqual(loaded2.tool_handler.get_results()[0]['content'], '25')
+        self.run_test_for_both_bots(_test)
+            loaded1.save(save_path2)
+            loaded2 = Bot.load(save_path2 + '.bot')
+            print(f"After second load results: {loaded2.tool_handler.get_results()}\n")
+            
+            self.assertEqual(original_tool_count, len(loaded2.tool_handler.tools))
+            self.assertEqual(len(bot.tool_handler.get_results()) + 1, len(loaded2.tool_handler.get_results()))
             self.assertEqual(loaded2.conversation.node_count(), 4)
         self.run_test_for_both_bots(_test)
 
