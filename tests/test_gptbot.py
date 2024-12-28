@@ -8,7 +8,7 @@ from bots.tools.code_tools import view
 
 class TestGPTBot(unittest.TestCase):
     def setUp(self):
-        self.bot = ChatGPT_Bot(model_engine=Engines.GPT4Turbo, max_tokens=1000, temperature=0.7, name='TestBot')
+        self.bot = ChatGPT_Bot(model_engine=Engines.GPT4TURBO, max_tokens=1000, temperature=0.7, name='TestBot')
         self.bot.add_tool(view)
         
         # Create a test file
