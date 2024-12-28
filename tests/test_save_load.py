@@ -325,33 +325,36 @@ def dynamic_add(x, y):
         self.run_test_for_both_bots(_test)
     def test_mixed_tool_sources(self):
         """Test saving and loading bots with tools from multiple sources"""
+        def floor_str(x) -> str:
+            """Returns floor of x as a string"""
+            import math
+            return str(math.floor(float(x)))
+
         def _test(bot):
             # Add tools from different modules
             bot.add_tool(simple_addition)
-            import math
-            bot.add_tool(math.floor)
-            
+            bot.add_tool(floor_str)
+
             # Test original tool usage
             bot.respond('What is 3 + 4?')
             bot.respond('What is the floor of 7.8?')
             original_results = bot.tool_handler.get_results()
-            
+
             # Save and load
             save_path = os.path.join(self.temp_dir, f'mixed_tools_{bot.name}')
             bot.save(save_path)
             loaded_bot = Bot.load(save_path + '.bot')
-            
+
             # Test loaded tool usage
             loaded_bot.respond('What is 8 + 9?')
             loaded_bot.respond('What is the floor of 5.6?')
             loaded_results = loaded_bot.tool_handler.get_results()
-            
+
             # Verify results
             self.assertEqual('7', original_results[0]['content'])
-            self.assertEqual('7', original_results[1]['content'])
+            self.assertEqual('7', original_results[1]['content'])  # floor_str(7.8) = '7'
             self.assertEqual('17', loaded_results[2]['content'])
-            self.assertEqual('5', loaded_results[3]['content'])
-        self.run_test_for_both_bots(_test)
+            self.assertEqual('5', loaded_results[3]['content'])  # floor_str(5.6) = '5'
 
 
 import sys

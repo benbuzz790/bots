@@ -128,7 +128,7 @@ def get_issue(repo_full_name, issue_number):
         return f'Error: {str(e)}'
 
 
-def update_issue(repo_full_name, issue_number, kwargs):
+def update_issue(repo_full_name, issue_number, **kwargs):
     """
     Update an existing issue.
 
@@ -137,7 +137,7 @@ def update_issue(repo_full_name, issue_number, kwargs):
     Parameters:
     - repo_full_name (str or dict): The full name of the repository in the format "owner/repo" or {"repo": "owner/repo"}.
     - issue_number (int): The number of the issue to update.
-    - kwargs: Properties to update. Can be a dict or string. Can include:
+    - **kwargs: Properties to update. Can include:
         - title (str): New title for the issue
         - body (str): New body content
         - state (str): New state ('open' or 'closed')
@@ -149,17 +149,7 @@ def update_issue(repo_full_name, issue_number, kwargs):
         api = _setup()
         repo_full_name = _normalize_repo_name(repo_full_name)
         owner, repo = repo_full_name.split('/')
-        if isinstance(kwargs, str):
-            try:
-                kwargs = json.loads(kwargs)
-            except json.JSONDecodeError:
-                if '=' in kwargs:
-                    key, value = kwargs.split('=')
-                    kwargs = {key.strip(): value.strip()}
-                else:
-                    return 'Error: Invalid kwargs format'
-        issue = api.issues.update(owner=owner, repo=repo, issue_number=
-            issue_number, **kwargs)
+        issue = api.issues.update(owner=owner, repo=repo, issue_number=issue_number, **kwargs)
         return json.dumps({'number': issue.number, 'title': issue.title,
             'state': issue.state, 'url': issue.html_url})
     except Exception as e:
