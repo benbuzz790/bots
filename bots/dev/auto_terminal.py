@@ -112,10 +112,19 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
 from bots.dev.decorators import create_issues
 @create_issues(repo = 'benbuzz790/bots')
 def main() -> None:
-
-    codey = initialize_bot()
-    pretty('Bot initialized', 'System')
-    
+    # Check for filename argument
+    if len(sys.argv) > 1:
+        bot_file = sys.argv[1]
+        try:
+            codey = initialize_bot().load(bot_file)
+            pretty(f'Loaded bot from {bot_file}', 'System')
+            pretty("\n"+str(codey), 'System')
+        except Exception as e:
+            pretty(f'Failed to load {bot_file}: {e}', 'System')
+            codey = initialize_bot()
+    else:
+        codey = initialize_bot()
+        pretty('Bot initialized', 'System')
     verbose: bool = True
     turn: str = 'user'
     auto_mode: bool = False
