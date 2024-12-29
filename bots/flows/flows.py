@@ -2,7 +2,7 @@ from typing import Dict, Any, Callable
 import time
 import bots
 from bots.foundation.base import Bot
-from bots.tools.github_tools import create_issue
+from bots.tools.github_tools import create_issue, list_issues
 from bots.tools.code_tools import view_dir, view
 import bots.flows.functional_prompts as fp
 import json
@@ -27,18 +27,21 @@ def create_issue_flow(bot: Bot, **kwargs: Dict[str, Any]):
     bot.add_tool(create_issue)
     bot.add_tool(view_dir)
     bot.add_tool(view)
+    bot.add_tool(list_issues)
     bot.autosave = False
+    
     repo = kwargs.get('repo', None)
     if repo is None:
         raise ValueError("kwargs must include repo name")
 
     sysp = "You are responsible for creating a thoroughly researched github issue."
     chain = [
-        f"We are going to follow a four task process. Always focus on the current task.",
+        f"We are going to follow a five task process. Always focus on the current task.",
         f"Task 1: You are in {repo}. Use view_dir to take a look around.",
         f"Task 2: Please identify the potentially involved files based on this error:\n\n{json.dumps(kwargs)}",
         f"Task 3: Read all the potentially involved files and send a text block report with your diagnosis",
-        f"Task 4: Thank you. Finally, use create_issue to submit the issue."
+        f"Task 4: use list_issues and investigate whether this is/would be a duplicate issue."
+        f"Task 5: Finally, if this would not be a duplicate, use create_issue to submit the issue, otherwise just reply with 'done'. Thanks!"
     ]
 
     bot.set_system_message(sysp)

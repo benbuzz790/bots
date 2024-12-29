@@ -10,7 +10,7 @@ Implementation of a hierarchical code chunking algorithm with the following prop
    - Language Preservation: Only adds chunk markers, no code modification
    - Hierarchical Coverage: Every AST node belongs to exactly one chunk
    - Scope Stability: Path-based addressing ensures edits don't affect outside chunks
-   - Statelessness: Chunking decisions use only local subtree info
+   - Composable: Chunking a file with an edit produces the same chunks as a an edit to the chunked file.
    - Parseability: Outputs well-nested chunk markers
 """
 

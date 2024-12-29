@@ -181,23 +181,35 @@ def _normalize_repo_name(repo_full_name):
     """
     Helper function to normalize repository name input.
     Handles both string format and JSON object format.
-    
+
     Parameters:
     - repo_full_name: Can be one of:
         - string in format "owner/repo"
         - dict with 'repo' key
         - JSON string representing dict with 'repo' key
-    
+
     Returns:
     str: Normalized repository name in "owner/repo" format
     """
+    if isinstance(repo_full_name, dict):
+        if 'repo' in repo_full_name:
+            return repo_full_name['repo']
+        raise ValueError("Dictionary input must contain 'repo' key")
     if isinstance(repo_full_name, str):
-        try:
-            parsed = json.loads(repo_full_name)
-            if isinstance(parsed, dict):
-                repo_full_name = parsed
-        except json.JSONDecodeError:
-            pass
-    if isinstance(repo_full_name, dict) and 'repo' in repo_full_name:
-        return repo_full_name['repo']
-    return repo_full_name
+        if '{' in repo_full_name:
+            try:
+                parsed = json.loads(repo_full_name)
+                if isinstance(parsed, dict):
+                    if 'repo' in parsed:
+                        return parsed['repo']
+                    raise ValueError(
+                        "Parsed JSON dictionary must contain 'repo' key")
+            except json.JSONDecodeError:
+                pass
+        if '/' in repo_full_name:
+            owner, repo = repo_full_name.split('/')
+            if owner and repo:
+                return repo_full_name
+    raise ValueError(
+        "Invalid repository name format. Must be 'owner/repo' string, dict with 'repo' key, or JSON string with 'repo' key"
+        )
