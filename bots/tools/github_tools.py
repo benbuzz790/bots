@@ -149,7 +149,8 @@ def update_issue(repo_full_name, issue_number, **kwargs):
         api = _setup()
         repo_full_name = _normalize_repo_name(repo_full_name)
         owner, repo = repo_full_name.split('/')
-        issue = api.issues.update(owner=owner, repo=repo, issue_number=issue_number, **kwargs)
+        issue = api.issues.update(owner=owner, repo=repo, issue_number=
+            issue_number, **kwargs)
         return json.dumps({'number': issue.number, 'title': issue.title,
             'state': issue.state, 'url': issue.html_url})
     except Exception as e:
@@ -176,13 +177,27 @@ def get_github_user_info():
         return f'Error: {str(e)}'
 
 
-
-
 def _normalize_repo_name(repo_full_name):
     """
     Helper function to normalize repository name input.
     Handles both string format and JSON object format.
+    
+    Parameters:
+    - repo_full_name: Can be one of:
+        - string in format "owner/repo"
+        - dict with 'repo' key
+        - JSON string representing dict with 'repo' key
+    
+    Returns:
+    str: Normalized repository name in "owner/repo" format
     """
+    if isinstance(repo_full_name, str):
+        try:
+            parsed = json.loads(repo_full_name)
+            if isinstance(parsed, dict):
+                repo_full_name = parsed
+        except json.JSONDecodeError:
+            pass
     if isinstance(repo_full_name, dict) and 'repo' in repo_full_name:
         return repo_full_name['repo']
     return repo_full_name
