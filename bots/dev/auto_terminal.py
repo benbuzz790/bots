@@ -6,7 +6,6 @@ import bots.tools.python_tools
 import bots.tools.terminal_tools
 import bots.tools.code_tools
 import bots.tools.test_tools
-import bots.tools.utf8_tools
 import textwrap
 from datetime import datetime as datetime
 from typing import Optional, List, Dict, Any

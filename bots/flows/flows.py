@@ -18,7 +18,7 @@ class BotFlow:
         self.flow = flow_func
 
     def handle(self, data: Any):
-        return self.flow(self.bot, data)
+        return self.flow(self.bot, **data)
 
 
 def create_issue_flow(bot: Bot, **kwargs: Dict[str, Any]):
