@@ -211,7 +211,7 @@ def retry_until(bot: Bot, dynamic_prompt: DynamicPrompt, stop_condition:
 class conditions:
 
     def tool_used(bot: Bot):
-        if bot.conversation.tool_calls:
+        if bot.tool_handler.requests:
             return True
         else:
             return False

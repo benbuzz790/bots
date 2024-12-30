@@ -850,10 +850,9 @@ class Bot(ABC):
         if filename is None:
             now = formatted_datetime()
             filename = f'{self.name}@{now}.bot'
-        else:
+        elif not filename.endswith('.bot'):
             filename = filename + '.bot'
-        data = {key: value for key, value in self.__dict__.items() if not
-            key.startswith('_')}
+        data = {key: value for key, value in self.__dict__.items() if not key.startswith('_')}
         data.pop('api_key', None)
         data.pop('mailbox', None)
         data['bot_class'] = self.__class__.__name__
