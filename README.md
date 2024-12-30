@@ -123,7 +123,8 @@ bot.chat()
   /save
 
 # Later use
-review_bot = Bot.load("repo_context.bot", autosave=False)
+import bots
+review_bot = bots.load("repo_context.bot", autosave=False)
 review_bot.respond("Review PR #123")
 ```
 
@@ -133,9 +134,9 @@ import bots.flows.functional_prompts as fp
 
 # Chain of thought
 responses, nodes = fp.chain(bot, [
-    "Understand the problem",
-    "Design the solution",
-    "Implement the code"
+    "Look at the directory",
+    "Read x, y, z",
+    "Refactor these three files to better separate concerns"
 ])
 
 # Parallel exploration
@@ -148,8 +149,8 @@ analyses, nodes = fp.branch(bot, [
 # Iterative refinement
 fp.prompt_while(
     bot,
-    "Run tests and fix bugs",
-    continue_prompt="Continue debugging",
+    "Run tests and create issues",
+    continue_prompt="ok",
     stop_condition=fp.conditions.tool_not_used
 )
 ```
