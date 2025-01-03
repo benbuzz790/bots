@@ -31,10 +31,10 @@ class EventListener:
                 event_name, data = self._event_queue.get(timeout=1.0)
                 if event_name in self._handlers:
                     for handler in self._handlers[event_name]:
-                            try:
-                                handler(data)
-                            except Exception as e:
-                                logging.error(f'Error in event handler: {e}')
+                        try:
+                            handler(data)
+                        except Exception as e:
+                            logging.error(f'Error in event handler: {e}')
             except Empty:
                 continue
 
@@ -136,3 +136,21 @@ class BotEventSystem:
         """Stop both systems"""
         self.listener.stop()
         self.scheduler.stop()
+
+
+@dataclass
+class ScheduledTask:
+    """Represents a scheduled task with either cron or interval-based timing."""
+    name: str
+    handler: Callable
+    next_run: datetime
+    cron_expr: Optional[str] = None
+    interval: Optional[timedelta] = None
+
+    def update_next_run(self):
+        """Updates the next run time based on cron expression or interval."""
+        if self.cron_expr:
+            self.next_run = croniter(self.cron_expr, datetime.now()).get_next(
+                datetime)
+        elif self.interval:
+            self.next_run = datetime.now() + self.interval
