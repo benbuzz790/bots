@@ -130,3 +130,17 @@ def test_create_issue_authorized():
     assert 'url' in result_dict
     assert isinstance(result_dict['number'], int)
     assert isinstance(result_dict['url'], str)
+
+
+def test_normalize_repo_name():
+    """Test repository name normalization with different input formats"""
+    from bots.tools.github_tools import _normalize_repo_name
+    assert _normalize_repo_name('owner/repo') == 'owner/repo'
+    assert _normalize_repo_name({'repo': 'owner/repo'}) == 'owner/repo'
+    assert _normalize_repo_name('{"repo": "owner/repo"}') == 'owner/repo'
+    with pytest.raises(ValueError):
+        _normalize_repo_name({})
+    with pytest.raises(ValueError):
+        _normalize_repo_name('')
+    with pytest.raises(ValueError):
+        _normalize_repo_name('invalid')

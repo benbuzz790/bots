@@ -192,24 +192,40 @@ def _normalize_repo_name(repo_full_name):
     str: Normalized repository name in "owner/repo" format
     """
     if isinstance(repo_full_name, dict):
-        if 'repo' in repo_full_name:
-            return repo_full_name['repo']
-        raise ValueError("Dictionary input must contain 'repo' key")
-    if isinstance(repo_full_name, str):
-        if '{' in repo_full_name:
-            try:
-                parsed = json.loads(repo_full_name)
-                if isinstance(parsed, dict):
-                    if 'repo' in parsed:
-                        return parsed['repo']
-                    raise ValueError(
-                        "Parsed JSON dictionary must contain 'repo' key")
-            except json.JSONDecodeError:
-                pass
-        if '/' in repo_full_name:
-            owner, repo = repo_full_name.split('/')
-            if owner and repo:
-                return repo_full_name
-    raise ValueError(
-        "Invalid repository name format. Must be 'owner/repo' string, dict with 'repo' key, or JSON string with 'repo' key"
-        )
+        if not repo_full_name:
+            raise ValueError('Empty dictionary provided')
+        if 'repo' not in repo_full_name:
+            raise ValueError("Dictionary input must contain 'repo' key")
+        repo_name = repo_full_name['repo']
+        if not isinstance(repo_name, str):
+            raise ValueError('Repository name must be a string')
+        if '/' not in repo_name:
+            raise ValueError("Repository name must be in 'owner/repo' format")
+        return repo_name
+    if not isinstance(repo_full_name, str):
+        raise ValueError('Input must be a string or dictionary')
+    if repo_full_name.strip().startswith('{'):
+        try:
+            parsed = json.loads(repo_full_name)
+            if not isinstance(parsed, dict):
+                raise ValueError('Parsed JSON must be a dictionary')
+            if 'repo' not in parsed:
+                raise ValueError(
+                    "Parsed JSON dictionary must contain 'repo' key")
+            repo_name = parsed['repo']
+            if not isinstance(repo_name, str):
+                raise ValueError('Repository name must be a string')
+            if '/' not in repo_name:
+                raise ValueError(
+                    "Repository name must be in 'owner/repo' format")
+            return repo_name
+        except json.JSONDecodeError:
+            pass
+    if not repo_full_name:
+        raise ValueError('Empty string provided')
+    if '/' not in repo_full_name:
+        raise ValueError("Repository name must be in 'owner/repo' format")
+    owner, repo = repo_full_name.split('/')
+    if not owner or not repo:
+        raise ValueError('Both owner and repo must be non-empty')
+    return repo_full_name
