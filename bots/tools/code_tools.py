@@ -29,143 +29,8 @@ def view(file_path: str):
         )
 
 
-def add_lines(file_path: str, new_content: str, start_line: str):
-    """
-    Add new lines to a file at a specified position. Creates the file if it doesn't exist.
-    Note: INSERTS lines at the specified position, shifting existing lines down.
-
-    Parameters:
-    - file_path (str): The path to the file to be modified.
-    - new_content (str): String containing the new content, with lines separated by newlines.
-    - start_line (int): The line number where the new lines should be inserted.
-                       If file is being created, this must be 1.
-
-    Returns:
-    A string confirming the operation and showing the new file, or a description of an error encountered.
-    """
-    try:
-        start_line = int(start_line)
-        new_lines = new_content.split('\n')
-        while new_lines and not new_lines[-1]:
-            new_lines.pop()
-        try:
-            with open(file_path, 'r', encoding='utf-8') as file:
-                lines = file.readlines()
-        except FileNotFoundError:
-            if start_line != 1:
-                return 'Error: When creating a new file, start_line must be 1'
-            lines = []
-        normalized_lines = [(line + '\n' if not line.endswith('\n') else
-            line) for line in new_lines]
-        for i, line in enumerate(normalized_lines):
-            if start_line - 1 + i > len(lines):
-                lines.append(line)
-            else:
-                lines.insert(start_line - 1 + i, line)
-        from pathlib import Path
-        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
-        with open(file_path, 'w', encoding='utf-8') as file:
-            file.writelines(lines)
-        end_line = start_line + len(normalized_lines) - 1
-        action = 'created new file and added' if len(lines) == len(
-            normalized_lines) else 'added'
-        return f"""Successfully {action} {len(normalized_lines)} lines starting at line {start_line}:
-
-{_view_window(file_path, start_line, end_line)}"""
-    except Exception as e:
-        return f'Error: {str(e)}'
-
-
-def change_lines(file_path: str, new_content: str, start_line: str,
-    end_line: str):
-    """
-    Change specific lines in a file.
-    Note: DELETES the lines from start_line to end_line (both inclusive), replacing them with new_content
-    Automatically deduplicates consecutive repeated lines at the beginning and end of the insertion.
-
-    Parameters:
-    - file_path (str): The path to the file to be modified.
-    - new_content (str): String containing the new content, with lines separated by newlines.
-    - start_line (int): The starting line number of the lines to be changed.
-    - end_line (int): The ending line number of the lines to be changed.
-
-    Returns:
-    A string confirming the operation and showing the new file, or a description of an error encountered.
-    """
-    try:
-        start_line = int(start_line)
-        end_line = int(end_line)
-        new_lines = new_content.split('\n')
-        while new_lines and not new_lines[-1]:
-            new_lines.pop()
-        with open(file_path, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-        if start_line < 1 or end_line > len(lines):
-            return 'Error: Invalid line range.'
-        if not new_lines:
-            lines[start_line - 1:end_line] = []
-            with open(file_path, 'w', encoding='utf-8') as file:
-                file.writelines(lines)
-            return f'Successfully changed lines {start_line} to {end_line}'
-        normalized_new = [(line + '\n' if not line.endswith('\n') else line
-            ) for line in new_lines]
-        normalized_old = [(line + '\n' if not line.endswith('\n') else line
-            ) for line in lines]
-        while len(normalized_new) > 0 and start_line > 1:
-            if normalized_new[0] == normalized_old[start_line - 2]:
-                normalized_new.pop(0)
-                start_line -= 1
-            else:
-                break
-        original_end = end_line
-        while len(normalized_new) > 0 and end_line < len(normalized_old):
-            if normalized_new[-1] == normalized_old[end_line]:
-                end_line += 1
-            else:
-                break
-        lines[start_line - 1:end_line] = normalized_new
-        with open(file_path, 'w', encoding='utf-8') as file:
-            file.writelines(lines)
-        new_end_line = start_line + len(normalized_new) - 1
-        return f"""Successfully changed lines {start_line} to {end_line}:
-
-{_view_window(file_path, start_line, new_end_line)}"""
-    except Exception as e:
-        return f'Error: {str(e)}'
-
-
-def delete_lines(file_path: str, start_line: str, end_line: str):
-    """
-    Delete specific lines from a file.
-    Note: Removes the specified lines entirely, shifting remaining lines up.
-
-    Parameters:
-    - file_path (str): The path to the file to be modified.
-    - start_line (int): The starting line number of the lines to be deleted.
-    - end_line (int): The ending line number of the lines to be deleted.
-
-    Returns:
-    A string confirming the operation and showing the new file, or a description of an error encountered.
-    """
-    try:
-        start_line = int(start_line)
-        end_line = int(end_line)
-        with open(file_path, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-        if start_line < 1 or end_line > len(lines):
-            return 'Error: Invalid line range.'
-        del lines[start_line - 1:end_line]
-        with open(file_path, 'w', encoding='utf-8') as file:
-            file.writelines(lines)
-        return f"""Successfully deleted lines {start_line} to {end_line}:
-
-{_view_window(file_path, max(1, start_line - 1), min(len(lines), start_line + 1))}"""
-    except Exception as e:
-        return f'Error: {str(e)}'
-
-
-def view_dir(start_path: str='.', output_file=None, target_extensions:
-    str="['py']"):
+def view_dir(start_path: str='.', output_file=None, target_extensions: str=
+    "['py']"):
     """
     Creates a summary of the directory structure starting from the given path, writing only files 
     with specified extensions. The output is written to a text file and returned as a string.
@@ -214,3 +79,123 @@ def view_dir(start_path: str='.', output_file=None, target_extensions:
             file.write(output_text)
 
     return '\n'.join(output_text)
+
+
+def diff_edit(file_path: str, diff_spec: str) ->str:
+    """Change code using a diff-like specification.
+
+    Use when you need to make specific text replacements in code files.
+    The diff spec uses a simplified format:
+    - Lines starting with '-' indicate text to be replaced (no space after -)
+    - Lines starting with '+' indicate replacement text (no space after +)
+    - Alternatively, a line starting with '-#' can specify a line number to insert after
+    - Blank lines separate different changes
+    - Changes are applied in order
+
+    For text replacement:
+    ```
+    -def old_function(
+    +def new_function(
+    ```
+
+    For line insertion:
+    ```
+    -5
+    +    new_line_of_code
+    ```
+
+    Parameters:
+    - file_path (str): Path to the file to modify
+    - diff_spec (str): Diff-style specification of changes
+
+    Returns:
+    str: Description of changes made or error message
+
+    Example:
+    ```
+    diff_edit("my_file.py", '''
+    -def old_function(
+    +def new_function(
+
+    -   return dict_value
+    +   return json.dumps(dict_value)
+    ''')
+    ```
+
+    Caution:
+    Line numbers may change when using this function. Always check
+    line numbers if calling with -# more than once.
+    """
+    try:
+        if not diff_spec.strip():
+            return 'No changes specified'
+        with open(file_path, 'r', encoding='utf-8') as file:
+            original_content = file.read()
+            original_lines = original_content.splitlines()
+        changes = []
+        current_old = []
+        current_new = []
+        for line in diff_spec.splitlines():
+            if not line:
+                if current_old and current_new:
+                    changes.append((current_old.copy(), current_new.copy()))
+                    current_old.clear()
+                    current_new.clear()
+                continue
+            if line.startswith('-'):
+                # Check if it's a line number specification
+                try:
+                    line_num = int(line[1:])
+                    current_old = [str(line_num)]  # Store as string to differentiate from text match
+                except ValueError:
+                    current_old.append(line[1:])
+            elif line.startswith('+'):
+                current_new.append(line[1:])
+        if current_old and current_new:
+            changes.append((current_old, current_new))
+        if not changes:
+            return 'No valid changes found in diff specification'
+        current_lines = original_lines.copy()
+        applied_changes = []
+        failed_changes = []
+        for old_lines, new_lines in changes:
+            found = False
+            # Check if old_lines[0] is a line number
+            try:
+                line_num = int(old_lines[0])
+                # Insert after the specified line
+                if line_num <= len(current_lines):
+                    current_lines[line_num:line_num] = new_lines
+                    applied_changes.append((f"after line {line_num}", '\n'.join(new_lines)))
+                    found = True
+            except ValueError:
+                # Regular text replacement
+                for i in range(len(current_lines) - len(old_lines) + 1):
+                    current_block = current_lines[i:i + len(old_lines)]
+                    matches = all(c.strip() == o.strip() for c, o in zip(current_block, old_lines))
+                    if matches:
+                        current_lines[i:i + len(old_lines)] = new_lines
+                        applied_changes.append(('\n'.join(old_lines), '\n'.join(new_lines)))
+                        found = True
+                        break
+            if not found:
+                failed_changes.append(('\n'.join(old_lines), '\n'.join(new_lines)))
+        if applied_changes:
+            new_content = '\n'.join(current_lines)
+            if not new_content.endswith('\n'):
+                new_content += '\n'
+            with open(file_path, 'w', encoding='utf-8') as file:
+                file.write(new_content)
+        report = []
+        if applied_changes:
+            report.append(
+                f'Successfully applied {len(applied_changes)} changes:')
+            for old, new in applied_changes:
+                report.append(f'\nChanged:\n{old}\nTo:\n{new}')
+        if failed_changes:
+            report.append(f'\nFailed to apply {len(failed_changes)} changes:')
+            for old, new in failed_changes:
+                report.append(f'\nCould not find:\n{old}')
+        return '\n'.join(report) if report else 'No changes were applied'
+    except Exception as e:
+        return f'Error: {str(e)}'
