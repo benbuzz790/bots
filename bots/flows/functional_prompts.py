@@ -1,6 +1,8 @@
 from typing import List, Callable, Any, Tuple, Union
 from bots.foundation.base import Bot
 from bots.foundation.base import ConversationNode
+
+
 """Custom typing for clarity (hopefully)"""
 Prompt = str
 Response = str
@@ -8,8 +10,31 @@ PromptNode = ConversationNode
 ResponseNode = ConversationNode
 Condition = Callable[[Bot], bool]
 DynamicPrompt = Callable[[Any], Prompt]
-RecombinatorFunction = Callable[[List[Response], List[ResponseNode]], Tuple
-    [Response, ResponseNode]]
+RecombinatorFunction = Callable[[List[Response], List[ResponseNode]], Tuple[Response, ResponseNode]]
+
+
+class conditions:
+    """
+    A list of frequently used and helpful conditions for convenience
+    """
+    def tool_used(bot: Bot):
+        return bool(bot.tool_handler.requests)
+
+    def tool_not_used(bot: Bot):
+        return not bool(bot.tool_handler.requests)
+
+    def said_DONE(bot: Bot):
+        return 'DONE' in bot.conversation.content
+
+
+
+def basic(bot: Bot, prompt: Prompt) ->Tuple[Response, ResponseNode]:
+    """
+    Included as a demonstration. Sends prompt to bot and returns the result.
+    """
+    response = bot.respond(prompt)
+    node = bot.conversation
+    return response, node
 
 
 def chain(bot: Bot, prompts: List[Prompt]) ->Tuple[List[Response], List[
@@ -57,15 +82,10 @@ def branch(bot: Bot, prompts: List[Prompt]) ->Tuple[List[Response], List[
     return responses, nodes
 
 
-def basic(bot: Bot, prompt: Prompt) ->Tuple[Response, ResponseNode]:
-    response = bot.respond(prompt)
-    node = bot.conversation
-    return response, node
-
-
-def recombine(bot: Bot, responses: List[Response], nodes: List[ResponseNode
-    ], recombinator_function: RecombinatorFunction) ->Tuple[Response,
-    ResponseNode]:
+def recombine(bot: Bot, responses: List[Response], 
+              nodes: List[ResponseNode], 
+              recombinator_function: RecombinatorFunction
+              ) ->Tuple[Response, ResponseNode]:
     """
     Recombines multiple conversation branches using a provided function.
 
@@ -83,8 +103,10 @@ def recombine(bot: Bot, responses: List[Response], nodes: List[ResponseNode
     return response, node
 
 
-def tree_of_thought(bot: Bot, prompts: List[Prompt], recombinator_function:
-    RecombinatorFunction) ->Tuple[Response, ResponseNode]:
+def tree_of_thought(bot: Bot, 
+                    prompts: List[Prompt], 
+                    recombinator_function: RecombinatorFunction
+                    ) ->Tuple[Response, ResponseNode]:
     """
     Implements a tree of thought approach by branching into multiple 
     conversation paths and then recombining the results.
@@ -105,8 +127,11 @@ def tree_of_thought(bot: Bot, prompts: List[Prompt], recombinator_function:
     return final_response
 
 
-def prompt_while(bot: Bot, first_prompt: Prompt, continue_prompt: Prompt,
-    stop_condition: Condition) ->Tuple[List[Response], List[ResponseNode]]:
+def prompt_while(bot: Bot, 
+                 first_prompt: Prompt, 
+                 continue_prompt: Prompt = 'ok',
+                 stop_condition: Condition = conditions.tool_not_used,
+                ) ->Tuple[List[Response], List[ResponseNode]]:
     """
     Repeatedly prompts the bot until a stop condition is met.
 
@@ -130,8 +155,10 @@ def prompt_while(bot: Bot, first_prompt: Prompt, continue_prompt: Prompt,
     return responses, nodes
 
 
-def prompt_for(bot: Bot, items: List[Any], dynamic_prompt: DynamicPrompt,
-    should_branch: bool=False) ->Tuple[List[Response], List[ResponseNode]]:
+def prompt_for(bot: Bot, items: List[Any], 
+               dynamic_prompt: DynamicPrompt,
+               should_branch: bool=False
+              ) ->Tuple[List[Response], List[ResponseNode]]:
     """
     Generates prompts for a list of items and gets responses from the bot.
 
@@ -152,9 +179,11 @@ def prompt_for(bot: Bot, items: List[Any], dynamic_prompt: DynamicPrompt,
         return chain(bot, prompts)
 
 
-def chain_while(bot: Bot, prompt_list: List[Prompt], stop_condition:
-    Condition, continue_prompt: str) ->Tuple[List[Response], List[ResponseNode]
-    ]:
+def chain_while(bot: Bot, 
+                prompt_list: List[Prompt], 
+                stop_condition:Condition = conditions.tool_not_used, 
+                continue_prompt: str = 'ok'
+                ) ->Tuple[List[Response], List[ResponseNode]]:
     """
     Sends a series of messages. Moves to next message when stop_condition(bot) is met.
     Sends continue_prompt if condition is not met.
@@ -182,42 +211,36 @@ def chain_while(bot: Bot, prompt_list: List[Prompt], stop_condition:
     bot.tool_handler.clear()
     return responses, nodes
 
-
-def retry_until(bot: Bot, dynamic_prompt: DynamicPrompt, stop_condition:
-    Condition, max_attempts: int=8) ->Tuple[Response, ResponseNode]:
+def branch_while(bot: Bot, 
+                 prompt_list: List[Prompt], 
+                 stop_condition: Condition = conditions.tool_not_used, 
+                 continue_prompt: str = 'ok'
+                 ) ->Tuple[List[Response], List[ResponseNode]]:
     """
-    Repeatedly branches and retries a prompt until a condition is met or max attempts are reached.
+    Creates parallel branches for a list of prompts, continuing each branch until its stop condition is met.
+    Each branch starts from the current conversation state and develops independently.
 
     Args:
     bot (Bot): The bot to use for the responses.
-    prompt (Union[Prompt, Callable[[], Prompt]]): Either a static prompt string or a function that returns a prompt.
-    condition (Callable[[Response], bool]): A function that takes a Response and returns True if the condition is met.
-    max_attempts (int): The maximum number of attempts before giving up. Defaults to 8.
+    prompt_list (List[Prompt]): List of prompts to create branches with
+    stop_condition (Condition): Function that takes a Bot and returns True when ready to move to next prompt
+    continue_prompt (str): Prompt to send when stop_condition is False
 
     Returns:
-    Tuple[Response, ResponseNode]: A tuple containing the successful response string and its corresponding ConversationNode.
-    If max attempts are reached without meeting the condition, returns the last attempt.
+    Tuple[List[Response], List[ResponseNode]]: Lists of final responses and their corresponding nodes from each branch
     """
     original_conversation = bot.conversation
-    for _ in range(max_attempts):
+    responses = []
+    nodes = []
+    for initial_prompt in prompt_list:
         bot.conversation = original_conversation
-        current_prompt = dynamic_prompt()
-        response = bot.respond(current_prompt, auto=True)
-        if stop_condition(bot):
-            return response, bot.conversation
-    return response, bot.conversation
+        response = bot.respond(initial_prompt)
+        branch_responses = [response]
+        while not stop_condition(bot):
+            response = bot.respond(continue_prompt)
+            branch_responses.append(response)
+        responses.append(branch_responses[-1])
+        nodes.append(bot.conversation)
+    bot.tool_handler.clear()
+    return responses, nodes
 
-
-class conditions:
-
-    def tool_used(bot: Bot):
-        if bot.tool_handler.requests:
-            return True
-        else:
-            return False
-
-    def tool_not_used(bot: Bot):
-        return not conditions.tool_used(bot)
-
-    def said_DONE(bot: Bot):
-        return 'DONE' in bot.conversation.content
