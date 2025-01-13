@@ -1,16 +1,16 @@
 # Import specific classes from submodules
 from .foundation.anthropic_bots import AnthropicBot
 from .foundation.openai_bots import ChatGPT_Bot
+from .foundation.base import Engines
+from .foundation.base import load
 
 # Import entire modules
 from .dev import auto_terminal
 from .dev.decorators import lazy
-from .tools import *
-
-# Import more stuff
-from .foundation.base import Engines
-from .foundation.base import load
 from .dev import project_tree
+
+# Import tools after foundation imports
+from .tools import *
 
 __all__ = [
     'AnthropicBot',
@@ -19,9 +19,9 @@ __all__ = [
     'lazy',
     'python_tools',
     'github_tools',
-    'utf8_tools',
+    'meta_tools',
     'terminal_tools',
-    'test_tools',
+    'self_tools',
     'Engines',
     'code_tools',
     'load',
