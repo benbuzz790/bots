@@ -17,7 +17,8 @@ def simple_addition(x, y) ->str:
 class TestSaveLoad(unittest.TestCase):
 
     def setUp(self):
-        self.temp_dir = tempfile.mkdtemp(dir=os.path.dirname(__file__))
+        self.temp_dir = os.path.join('benbuzz790', 'private_tests', 'temp')
+        os.makedirs(self.temp_dir, exist_ok=True)
         self.bots = {'anthropic': AnthropicBot(name='TestClaude',
             model_engine=Engines.CLAUDE35_SONNET_20240620)}
         return self

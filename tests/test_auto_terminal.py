@@ -39,7 +39,8 @@ class TestCodey(DetailedTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.test_dir = os.path.join(os.getcwd(), 'tests')
+        cls.test_dir = os.path.join('benbuzz790', 'private_tests')
+        os.makedirs(cls.test_dir, exist_ok=True)
         cls.test_file = os.path.join(cls.test_dir, 'test_file.py')
 
     def setUp(self):

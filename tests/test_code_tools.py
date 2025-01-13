@@ -1,13 +1,24 @@
 import unittest
-import tempfile
+import textwrap
 import os
-from bots.tools.code_tools import view, add_lines, change_lines, delete_lines
+import tempfile
+from bots.tools.code_tools import view, diff_edit
+
+
+def create_temp_file(content):
+    """Helper function to create a temporary file with given content."""
+    fd, path = tempfile.mkstemp()
+    os.close(fd)
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(content)
+    return path
 
 
 class TestCodeTools(unittest.TestCase):
 
     def setUp(self):
-        self.temp_dir = tempfile.mkdtemp()
+        self.temp_dir = os.path.join('benbuzz790', 'private_tests', 'temp')
+        os.makedirs(self.temp_dir, exist_ok=True)
         self.temp_file = os.path.join(self.temp_dir, 'test_file.txt')
         content = 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n'
         with open(self.temp_file, 'w', encoding='utf-8') as f:
@@ -22,129 +33,223 @@ class TestCodeTools(unittest.TestCase):
         expected = '1: Line 1\n2: Line 2\n3: Line 3\n4: Line 4\n5: Line 5'
         self.assertEqual(result, expected)
 
-    def test_add_lines(self):
-        new_content = 'New Line A\nNew Line B'
-        result = add_lines(self.temp_file, new_content, 3)
-        self.assertIn('Successfully added 2 lines starting at line 3', result)
-        updated_content = view(self.temp_file)
-        expected = """1: Line 1
-2: Line 2
-3: New Line A
-4: New Line B
-5: Line 3
-6: Line 4
-7: Line 5"""
-        self.assertEqual(updated_content, expected)
+    def test_basic_replacement(self):
+        """Test basic single-line replacement."""
+        initial_content = textwrap.dedent(
+            """
+        def hello():
+            print("Hello")
+            return True
+    """
+            ).lstrip()
+        diff_spec = textwrap.dedent(
+            """
+        -    print("Hello")
+        +    print("Hello, World!")
+    """
+            ).lstrip()
+        file_path = create_temp_file(initial_content)
+        try:
+            result = diff_edit(file_path, diff_spec)
+            self.assertIn('Successfully', result)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                new_content = f.read()
+            expected = textwrap.dedent(
+                """
+            def hello():
+                print("Hello, World!")
+                return True
+        """
+                ).lstrip()
+            self.assertEqual(new_content, expected)
+        finally:
+            os.remove(file_path)
 
-    def test_add_lines_single_line(self):
-        new_content = 'Single New Line'
-        result = add_lines(self.temp_file, new_content, 3)
-        self.assertIn('Successfully added 1 lines starting at line 3', result)
-        updated_content = view(self.temp_file)
-        expected = (
-            '1: Line 1\n2: Line 2\n3: Single New Line\n4: Line 3\n5: Line 4\n6: Line 5'
-            )
-        self.assertEqual(updated_content, expected)
+    def test_multi_line_replacement(self):
+        """Test replacing multiple consecutive lines."""
+        initial_content = textwrap.dedent(
+            """
+        def complex_function():
+            x = 1
+            y = 2
+            z = 3
+            return x + y + z
+    """
+            ).lstrip()
+        diff_spec = textwrap.dedent(
+            """
+        -    x = 1
+        -    y = 2
+        -    z = 3
+        +    total = 6
+    """
+            ).lstrip()
+        file_path = create_temp_file(initial_content)
+        try:
+            result = diff_edit(file_path, diff_spec)
+            self.assertIn('Successfully', result)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                new_content = f.read()
+            expected = textwrap.dedent(
+                """
+            def complex_function():
+                total = 6
+                return x + y + z
+        """
+                ).lstrip()
+            self.assertEqual(new_content, expected)
+        finally:
+            os.remove(file_path)
 
-    def test_add_lines_with_trailing_newline(self):
-        new_content = 'New Line A\nNew Line B\n'
-        result = add_lines(self.temp_file, new_content, 3)
-        self.assertIn('Successfully added 2 lines starting at line 3', result)
-        updated_content = view(self.temp_file)
-        expected = """1: Line 1
-2: Line 2
-3: New Line A
-4: New Line B
-5: Line 3
-6: Line 4
-7: Line 5"""
-        self.assertEqual(updated_content, expected)
+    def test_indentation_preservation(self):
+        """Test that indentation is properly preserved."""
+        initial_content = textwrap.dedent(
+            """
+        class MyClass:
+            def method(self):
+                if True:
+                    print("old")
+                    return None
+    """
+            ).lstrip()
+        diff_spec = textwrap.dedent(
+            """
+        -            print("old")
+        +            print("new")
+    """
+            ).lstrip()
+        file_path = create_temp_file(initial_content)
+        try:
+            result = diff_edit(file_path, diff_spec)
+            self.assertIn('Successfully', result)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                new_content = f.read()
+            expected = textwrap.dedent(
+                """
+            class MyClass:
+                def method(self):
+                    if True:
+                        print("new")
+                        return None
+        """
+                ).lstrip()
+            self.assertEqual(new_content, expected)
+        finally:
+            os.remove(file_path)
 
-    def test_change_lines(self):
-        new_content = 'Changed Line 2\nChanged Line 3'
-        result = change_lines(self.temp_file, new_content, 2, 3)
-        self.assertIn('Successfully changed lines 2 to 3', result)
-        updated_content = view(self.temp_file)
-        expected = (
-            '1: Line 1\n2: Changed Line 2\n3: Changed Line 3\n4: Line 4\n5: Line 5'
-            )
-        self.assertEqual(updated_content, expected)
+    def test_multiple_changes(self):
+        """Test multiple separate changes in the same file."""
+        initial_content = textwrap.dedent(
+            """
+        def first():
+            return 1
 
-    def test_change_lines_with_trailing_newline(self):
-        new_content = 'Changed Line 2\nChanged Line 3\n'
-        result = change_lines(self.temp_file, new_content, 2, 3)
-        self.assertIn('Successfully changed lines 2 to 3', result)
-        updated_content = view(self.temp_file)
-        expected = (
-            '1: Line 1\n2: Changed Line 2\n3: Changed Line 3\n4: Line 4\n5: Line 5'
-            )
-        self.assertEqual(updated_content, expected)
+        def second():
+            return 2
 
-    def test_change_lines_single_line(self):
-        new_content = 'Single Changed Line'
-        result = change_lines(self.temp_file, new_content, 2, 2)
-        self.assertIn('Successfully changed lines 2 to 2', result)
-        updated_content = view(self.temp_file)
-        expected = (
-            '1: Line 1\n2: Single Changed Line\n3: Line 3\n4: Line 4\n5: Line 5'
-            )
-        self.assertEqual(updated_content, expected)
+        def third():
+            return 3
+    """
+            ).lstrip()
+        diff_spec = textwrap.dedent(
+            """
+        -    return 1
+        +    return "one"
 
-    def test_delete_lines(self):
-        result = delete_lines(self.temp_file, 2, 4)
-        self.assertIn('Successfully deleted lines 2 to 4', result)
-        updated_content = view(self.temp_file)
-        expected = '1: Line 1\n2: Line 5'
-        self.assertEqual(updated_content, expected)
+        -    return 2
+        +    return "two"
+    """
+            ).lstrip()
+        file_path = create_temp_file(initial_content)
+        try:
+            result = diff_edit(file_path, diff_spec)
+            self.assertIn('Successfully', result)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                new_content = f.read()
+            expected = textwrap.dedent(
+                """
+            def first():
+                return "one"
 
+            def second():
+                return "two"
 
-    def test_invalid_line_ranges(self):
-        result = change_lines(self.temp_file, 'Invalid', 10, 11)
-        self.assertIn('Error: Invalid line range', result)
-        result = delete_lines(self.temp_file, 10, 11)
-        self.assertIn('Error: Invalid line range', result)
+            def third():
+                return 3
+        """
+                ).lstrip()
+            self.assertEqual(new_content, expected)
+        finally:
+            os.remove(file_path)
 
-    def test_empty_string_input(self):
-        result = add_lines(self.temp_file, '', 3)
-        self.assertIn('Successfully added 0 lines', result)
-        result = change_lines(self.temp_file, '', 2, 3)
-        self.assertIn('Successfully changed lines', result)  # Changed to match new message
-        updated_content = view(self.temp_file)
-        expected = '1: Line 1\n2: Line 4\n3: Line 5'
-        self.assertEqual(updated_content, expected)
+    def test_no_match(self):
+        """Test handling of changes that don't match the file content."""
+        initial_content = textwrap.dedent(
+            """
+        def hello():
+            print("Hello")
+    """
+            ).lstrip()
+        diff_spec = textwrap.dedent(
+            """
+        -    print("Nonexistent")
+        +    print("New")
+    """
+            ).lstrip()
+        file_path = create_temp_file(initial_content)
+        try:
+            result = diff_edit(file_path, diff_spec)
+            self.assertIn('Failed to apply', result)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                new_content = f.read()
+            self.assertEqual(new_content, initial_content)
+        finally:
+            os.remove(file_path)
 
-    def test_utf8_content(self):
-        utf8_content = 'Hello 世界\nTest 🌍\nПривет мир\n€ñçødîñg\n'
-        utf8_file = os.path.join(self.temp_dir, 'utf8_test.txt')
-        with open(utf8_file, 'w', encoding='utf-8') as f:
-            f.write(utf8_content)
-        result = view(utf8_file)
-        expected = '1: Hello 世界\n2: Test 🌍\n3: Привет мир\n4: €ñçødîñg'
-        self.assertEqual(result, expected)
-        new_utf8_content = '新しい行\n🎈'
-        result = add_lines(utf8_file, new_utf8_content, 2)
-        self.assertIn('Successfully added 2 lines', result)
-        os.remove(utf8_file)
+    def test_line_number_insertion(self):
+        """Test inserting content at a specific line number."""
+        initial_content = textwrap.dedent("""
+            def test_function():
+                x = 1
+                z = 3
+                return x + z
+        """).lstrip()
+        
+        diff_spec = textwrap.dedent("""
+            -2
+            +    y = 2
+        """).lstrip()
+        
+        file_path = create_temp_file(initial_content)
+        try:
+            result = diff_edit(file_path, diff_spec)
+            self.assertIn('Successfully', result)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                new_content = f.read()
+            expected = textwrap.dedent("""
+                def test_function():
+                    x = 1
+                    y = 2
+                    z = 3
+                    return x + z
+            """).lstrip()
+            self.assertEqual(new_content, expected)
+        finally:
+            os.remove(file_path)
 
-    def test_change_lines_dedup_end(self):
-        """Test that change_lines deduplicates repeated lines at the end of insertion"""
-        new_content = 'New Line\nLine 4\nLine 5'
-        result = change_lines(self.temp_file, new_content, 3, 4)
-        self.assertIn('Successfully changed lines', result)
-        updated_content = view(self.temp_file)
-        expected = '1: Line 1\n2: Line 2\n3: New Line\n4: Line 4\n5: Line 5'
-        self.assertEqual(updated_content, expected)
-
-    def test_change_lines_dedup_both_ends(self):
-        """Test that change_lines deduplicates repeated lines at both ends of insertion"""
-        new_content = 'Line 2\nNew Line A\nNew Line B\nLine 4'
-        result = change_lines(self.temp_file, new_content, 2, 4)
-        self.assertIn('Successfully changed lines', result)
-        updated_content = view(self.temp_file)
-        expected = (
-            '1: Line 1\n2: Line 2\n3: New Line A\n4: New Line B\n5: Line 4\n6: Line 5'
-            )
-        self.assertEqual(updated_content, expected)
+    def test_empty_diff(self):
+        """Test handling of empty diff specification."""
+        initial_content = "print('test')\n"
+        diff_spec = ''
+        file_path = create_temp_file(initial_content)
+        try:
+            result = diff_edit(file_path, diff_spec)
+            self.assertTrue('No changes' in result or 'Failed' in result)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                new_content = f.read()
+            self.assertEqual(new_content, initial_content)
+        finally:
+            os.remove(file_path)
 
 
 if __name__ == '__main__':
