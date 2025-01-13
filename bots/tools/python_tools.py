@@ -466,7 +466,7 @@ def replace_function(file_path: str, new_function_def: str) -> str:
         return _process_error(e)
 
 
-def execute_python_code(code: str, timeout: int = 300) -> str:
+def _execute_python_code(code: str, timeout: int = 300) -> str:
     """
     Executes python code in a stateless environment with cross-platform timeout handling.
 
@@ -581,7 +581,7 @@ def execute_python_code(code: str, timeout: int = 300) -> str:
         except Exception:
             pass  # Best effort cleanup
 
-def _get_py_interface(file_path: str) -> str:
+def _get_py_interface(file_path: str) ->str:
     """
     Outputs a string showing all class and function definitions including docstrings.
 
