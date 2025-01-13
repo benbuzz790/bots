@@ -1,5 +1,4 @@
 from bots.foundation.base import Bot, Mailbox, ConversationNode, Engines, ToolHandler
-from bots.tools.github_tools import create_issue
 from typing import Optional, Dict, Any, List, Callable, Tuple
 import anthropic
 import os
@@ -86,8 +85,8 @@ class AnthropicToolHandler(ToolHandler):
             request.get('id', 'unknown id'), 'content': tool_output_kwargs}
         return response
 
-    def generate_error_schema(self, request_schema: Optional[Dict[str, Any]],
-        error_msg: str) ->Dict[str, Any]:
+    def generate_error_schema(self, request_schema: Optional[Dict[str, Any]
+        ], error_msg: str) ->Dict[str, Any]:
         """
         Generate an error response schema matching the format expected by this handler.
         
