@@ -242,6 +242,7 @@ class TestSaveLoad(unittest.TestCase):
             loaded1 = Bot.load(save_path1 + '.bot')
             self.assertEqual(loaded1.tool_handler.get_results()[0][
                 'content'], '8')
+            
             save_path2 = os.path.join(self.temp_dir, f'cycle2_{bot.name}')
             loaded1.respond('What is 10 + 15?')
             second_result = loaded1.tool_handler.get_results()[0]
@@ -252,8 +253,9 @@ class TestSaveLoad(unittest.TestCase):
                 tools))
             self.assertEqual(loaded2.conversation.node_count(), 5)
             self.assertEqual(len(loaded2.tool_handler.get_results()), 1)
-            self.assertEqual(loaded2.tool_handler.get_results()[0][
-                'content'], '25')
+            # Verify we can still use tools after loading
+            loaded2.respond('What is 12 + 13?')
+            self.assertEqual(loaded2.tool_handler.get_results()[0]['content'], '25')
         self.run_test_for_both_bots(_test)
 
     @unittest.skip('too expensive, not necessary')
