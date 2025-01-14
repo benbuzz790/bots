@@ -202,48 +202,16 @@ class ConversationNode:
         return conversation_list_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) ->'ToolHandler':
-        """
-    Reconstruct a ToolHandler instance from a serialized state.
-    Only restores functions that were explicitly registered as tools.
-    """
-        handler = cls()
-        handler.results = data.get('results', [])
-        handler.requests = data.get('requests', [])
-        handler.tools = data.get('tools', []).copy()
-        function_paths = data.get('function_paths', {})
-        for file_path, module_data in data.get('modules', {}).items():
-            current_code_hash = cls._get_code_hash(module_data['source'])
-            if current_code_hash != module_data['code_hash']:
-                print(
-                    f'Warning: Code hash mismatch for module {file_path}. Skipping.'
-                    )
-                continue
-            try:
-                module = ModuleType(module_data['name'])
-                module.__file__ = file_path
-                source = textwrap.dedent(module_data['source']).strip()
-                exec(source, module.__dict__)
-                module_context = ModuleContext(name=module_data['name'],
-                    source=source, file_path=module_data['file_path'],
-                    namespace=module, code_hash=current_code_hash)
-                handler.modules[module_data['file_path']] = module_context
-                for func_name, path in function_paths.items():
-                    if path == module_data['file_path'
-                        ] and func_name in module.__dict__:
-                        func = module.__dict__[func_name]
-                        if callable(func):
-                            func.__module_context__ = module_context
-                            handler.function_map[func_name] = func
-            except Exception as e:
-                print(f'Warning: Failed to load module {file_path}: {str(e)}')
-                continue
-        for func_name, path in function_paths.items():
-            if path == 'dynamic' and func_name not in handler.function_map:
-                print(
-                    f"Warning: Dynamic function '{func_name}' cannot be restored without source."
-                    )
-        return handler
+    def from_dict(cls, data: Dict[str, Any]) ->'ConversationNode':
+        node_data = {k: v for k, v in data.items() if k != 'replies'}
+        node_class = Engines.get_conversation_node_class(data.get(
+            'node_class', cls.__name__))
+        node = node_class(**node_data)
+        for reply_data in data.get('replies', []):
+            reply_node = cls.from_dict(reply_data)
+            reply_node.parent = node
+            node.replies.append(reply_node)
+        return node
 
     def node_count(self) ->int:
         """
@@ -363,8 +331,8 @@ class ToolHandler(ABC):
             'You must implement this method in a subclass')
 
     @abstractmethod
-    def generate_error_schema(self, request_schema: Dict[str, Any],
-        error_msg: str) ->Dict[str, Any]:
+    def generate_error_schema(self, request_schema: Dict[str, Any], error_msg: str
+        ) ->Dict[str, Any]:
         """
         Generate an error response schema matching the format expected by this handler.
         
@@ -472,11 +440,7 @@ class ToolHandler(ABC):
                 source = self._create_builtin_wrapper(func)
             else:
                 try:
-                    module = inspect.getmodule(func)
-                    if module:
-                        source = inspect.getsource(module)
-                    else:
-                        source = inspect.getsource(func)
+                    source = inspect.getsource(func)
                 except (TypeError, OSError):
                     source = self._create_dynamic_wrapper(func)
             file_path = f'dynamic_module_{hash(str(func))}'
@@ -604,6 +568,7 @@ class ToolHandler(ABC):
         """
         Reconstruct a ToolHandler instance from a serialized state.
         Only restores functions that were explicitly registered as tools.
+        Requests and Results are conserverved.
         """
         handler = cls()
         handler.results = data.get('results', [])
@@ -638,8 +603,11 @@ class ToolHandler(ABC):
                 continue
         for func_name, path in function_paths.items():
             if path == 'dynamic' and func_name not in handler.function_map:
-                print(f"Warning: Dynamic function '{func_name}' cannot be restored without source.")
+                print(
+                    f"Warning: Dynamic function '{func_name}' cannot be restored without source."
+                    )
         return handler
+
 
     def get_tools_json(self) ->str:
         """Return a JSON string representation of all tools."""
@@ -869,8 +837,8 @@ class Bot(ABC):
             module_name, class_name = tool_handler_class.rsplit('.', 1)
             module = importlib.import_module(module_name)
             actual_class = getattr(module, class_name)
-            handler = actual_class.from_dict(data['tool_handler'])
-            bot.tool_handler = handler
+            # Create handler instance first, then restore its state
+            bot.tool_handler = actual_class().from_dict(data['tool_handler'])
         for key, value in data.items():
             if key not in constructor_args and key not in ('conversation',
                 'tool_handler', 'tools'):
