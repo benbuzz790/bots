@@ -88,9 +88,10 @@ def diff_edit(file_path: str, diff_spec: str) ->str:
     The diff spec uses a simplified format:
     - Lines starting with '-' indicate text to be replaced (no space after -)
     - Lines starting with '+' indicate replacement text (no space after +)
-    - Alternatively, a line starting with '-#' can specify a line number to insert after
+    - Alternatively, a line starting with '-#' (where # is a specific integer) can specify a line number to insert after
     - Blank lines separate different changes
     - Changes are applied in order
+    - You must match indentation
 
     For text replacement:
     ```
@@ -98,10 +99,20 @@ def diff_edit(file_path: str, diff_spec: str) ->str:
     +def new_function(
     ```
 
+    ```
+    -\tdef do_stuff():
+    -\t\tprint('starting')
+    -\t\tdo_work(x)
+    -\t\tprint('done')
+    +\tdef do_stuff_better():
+    +\t\tprint('starting work')
+    +\t\tdo_work(y)
+    +\t\tprint('done with work')
+
     For line insertion:
     ```
     -5
-    +    new_line_of_code
+    +       new_line_of_code
     ```
 
     Parameters:
