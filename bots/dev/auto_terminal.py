@@ -12,6 +12,7 @@ from typing import Optional, List, Dict, Any
 import json
 from tkinter import filedialog
 import os
+import re
 
 help_msg: str = """
 This program is an interactive terminal that uses Anthropic's Claude Sonnet 3.5.
@@ -35,7 +36,7 @@ Available commands:
 Type your messages normally to chat.
 """
 
-def pretty(string: str, name: Optional[str] = None, width: int = 100, indent: int = 4) -> None:
+def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: int = 4) -> None:
     """Prints a string nicely"""
     
     prefix: str = f"{name}: " if name is not None else ""
@@ -63,27 +64,6 @@ def pretty(string: str, name: Optional[str] = None, width: int = 100, indent: in
     print('\n'.join(formatted_lines))
     print("\n---\n")
 
-
-def recursive_json_dumps(obj, indent=2):
-    if isinstance(obj, dict):
-        # Handle each value in the dictionary
-        return {key: recursive_json_dumps(value, indent) for key, value in obj.items()}
-    elif isinstance(obj, list):
-        # Check if all items are dicts
-        if all(isinstance(item, dict) for item in obj):
-            # Process each dict in the list
-            return [recursive_json_dumps(item, indent) for item in obj]
-        return obj
-    elif isinstance(obj, str):
-        # Try to parse string as JSON and process it recursively
-        try:
-            parsed = json.loads(obj)
-            return recursive_json_dumps(parsed, indent)
-        except json.JSONDecodeError:
-            return obj
-    else:
-        return obj
-
 def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
     openai_key = os.getenv('OPENAI_API_KEY')
     anthropic_key = os.getenv('ANTHROPIC_API_KEY')
@@ -107,10 +87,30 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
 
     return bot
 
+def clean_dict(d:dict, indent:int=4, level:int=1):
+    """
+    Clean a dict containing recursive json dumped strings for printing
+    Returns: clean string representation of the dict
+    """
+    for k,v in d.items():
+        if isinstance(v, dict):
+            clean_dict(v, indent, level+1)
+        if isinstance(v,str) and '\n' in v:
+            lines = v.splitlines()
+            for i, line in enumerate(lines):
+                line = ' '*indent*(level+1) + line
+                if i == 0: line = '\n' + line
+                lines[i] = line
+            d[k] = '\n'.join(lines)
+    cleaned_dict = json.dumps(d, indent=indent*level)
+    cleaned_dict = re.sub(r'(?<!\\)\\n', '\n', cleaned_dict)
+    cleaned_dict = cleaned_dict.replace('\\"', '"')
+    cleaned_dict = cleaned_dict.replace('\\\\', '\\')
+    return cleaned_dict
 
-
-from bots.dev.decorators import create_issues
-@create_issues(repo = 'benbuzz790/bots')
+from bots.dev.decorators import create_issues, debug_on_error
+#@create_issues(repo = 'benbuzz790/bots')
+@debug_on_error
 def main() -> None:
     # Check for filename argument
     if len(sys.argv) > 1:
@@ -134,14 +134,17 @@ def main() -> None:
             
             # Print response and grab tool info
             response: str = codey.respond(msg)
-            requests: List[Dict[str, Any]] = codey.tool_handler.get_requests()
-            results: List[Dict[str, Any]] = codey.tool_handler.get_results()
+            requests: List[Dict[str, Any]] = codey.tool_handler.requests
+            results: List[Dict[str, Any]] = codey.tool_handler.results
             pretty(response, codey.name)
+
+            request_str = ''.join(clean_dict(r) for r in requests)
+            result_str = ''.join(clean_dict(r) for r in results)
 
             if requests:
                 if verbose:
-                    pretty(f'Tool Requests\n\n{recursive_json_dumps(requests, indent=2)}', "System")
-                    pretty(f'Tool Results\n\n{recursive_json_dumps(results, indent=2)}', "System")  
+                    pretty(f'Tool Requests\n\n{request_str}', "System")
+                    pretty(f'Tool Results\n\n{result_str}', "System")  
                 else:
                     for request in requests:
                         tool_name, _ = codey.tool_handler.tool_name_and_input(request)
