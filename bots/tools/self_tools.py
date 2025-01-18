@@ -4,9 +4,10 @@ from bots.foundation.base import Bot, ConversationNode, ToolHandler
 import json
 from bots.flows import functional_prompts as fp
 from typing import Optional
-import time
+from typing import List
+import ast
 
-# Let's isolate my spaghetti code
+
 def _get_calling_bot() ->Optional[Bot]:
     """Helper function to get a reference to the calling bot.
 
@@ -15,12 +16,10 @@ def _get_calling_bot() ->Optional[Bot]:
     """
     frame = inspect.currentframe()
     while frame:
-        if (frame.f_code.co_name == 'handle_response' and 'self' in frame.
-            f_locals and isinstance(frame.f_locals['self'], ToolHandler)):
-            for frame_up in inspect.stack()[1:]:
-                if 'self' in frame_up.frame.f_locals and isinstance(frame_up
-                    .frame.f_locals['self'], Bot):
-                    return frame_up.frame.f_locals['self']
+        if (frame.f_code.co_name == '_cvsn_respond' and 'self' in frame.f_locals):
+            potential_bot = frame.f_locals['self']
+            if isinstance(potential_bot, Bot):
+                return potential_bot
         frame = frame.f_back
     return None
 
@@ -86,57 +85,63 @@ def _modify_own_settings(temperature: str=None, max_tokens: str=None) ->str:
     except Exception as e:
         return f'Error: {str(e)}'
 
-''' # string literal for preservation through bot edits.
-# Bug assessment:
-# Tool calls are processed in base.py before the text response,
-# therefore, any tool like this which messes with the conversation
-# structure will NOT contain the bot's response until AFTER execution
-# is complete.
 
-# Questions:
-# 1. Does tool processing need to happen first?
-# 2. Can tool processing happen in mailbox.process_response? Probably
-# 3. Is there a way around this here through fancy conversation management? NO
-'''
-
-def branch_self(self_prompts: str, allow_work: str = 'False') ->str:
-    """Branches your conversation using a list of self-prompts. The prompts 
-    will be sent as use messages in response to your message that calls this
-    tool. Tags the messages with (self-prompt) to distinguish from legitimate
-    user messages. Avoid losing your place -- if you see the tag, know that 
-    you're on a branch and consider carefully whether you should branch further.
+def _branch_self(self_prompts: str, allow_work: str='False') ->str:
+    """Branches your conversation using a list of self-prompts. The prompts
+    will be sent as user messages in response to your message that calls this
+    tool. Also tags the messages with (self-prompt) to distinguish from legitimate
+    user messages.
 
     Use when you need to:
-    - explore multiple conversation paths in parallel.
-    - execute a parallelizable list of large tasks
-    - 'spin off' tangent tasks
-    
+    - explore multiple conversation paths.
+    - break down a large list of tasks (>~6)
+
+    Branches will be traversed sequentially.
+
     Each message will start a new conversation branch from the current message.
 
     Parameters:
-        self-prompts (str): Array formatted.
+        self_prompts (str): Array formatted as a string, i.e. ['1', '2', '3']
         allow_work: 'True' or 'False' (default). If True, allows each branch to work until it
             does not respond with any tool calls (i.e. each branch will be a chain).
 
     Returns:
         str: success message or error string.
     """
+
     bot = _get_calling_bot()
+
+
+    # Insert a dummy result to prevent repeated tool calls
+    if not bot.tool_handler.requests:
+        return 'Error: No tool request found'
+    
+    request = bot.tool_handler.requests[-1]
+    dummy_result = bot.tool_handler.generate_response_schema(
+        request, 
+        {'status': 'in_progress', 'message': 'Branching in progress...'}
+    )
+    bot.tool_handler.add_result(dummy_result)
+    bot.conversation.add_tool_results([dummy_result])
+
+
     if not bot:
         return 'Error: Could not find calling bot'
     try:
-        allow_work = bool(allow_work)
-        message_list = [msg.strip() for msg in self_prompts.split(',') if msg.strip()]
+        allow_work = allow_work.lower() == 'true'
+
+        message_list = _process_string_array(self_prompts)
+
         if not message_list:
             return 'Error: No valid messages provided'
+        
         original_node = bot.conversation
         if not original_node:
             return 'Error: No current conversation node found'
-
+        
         for i, item in enumerate(message_list):
-            message_list[i] = f"(self-prompt): {item}"
-            print(message_list[i])
-
+            message_list[i] = f'(self-prompt): {item}'
+        
         try:
             if not allow_work:
                 responses, nodes = fp.branch(bot, message_list)
@@ -144,12 +149,12 @@ def branch_self(self_prompts: str, allow_work: str = 'False') ->str:
                 responses, nodes = fp.branch_while(bot, message_list)
         except Exception as e:
             return 'Branch operation failed:' + str(e)
-
+        
         bot.conversation = original_node
-
         return f'Successfully created {len(responses)} conversation branches'
     except Exception as e:
         return f'Error: {str(e)}'
+
 
 def add_tools(filepath: str) ->str:
     """Adds a new set of tools (python functions) to your toolkit
@@ -168,5 +173,27 @@ def add_tools(filepath: str) ->str:
     
     """
     bot = _get_calling_bot()
-    # Add validation
     bot.add_tools(filepath)
+
+
+def _process_string_array(input_str: str) ->List[str]:
+    """Parse a string representation of an array into a list of strings.
+    Only works with properly formatted Python list literals.
+    
+    Args:
+        input_str (str): String representation of a Python list literal
+        
+    Returns:
+        List[str]: List of parsed strings
+        
+    Raises:
+        ValueError: If the input is not a valid Python list literal
+    """
+    try:
+        result = ast.literal_eval(input_str)
+        if not isinstance(result, list) or not all(isinstance(x, str) for x in
+            result):
+            raise ValueError('Input must evaluate to a list of strings')
+        return result
+    except (SyntaxError, ValueError) as e:
+        raise ValueError(f'Invalid input format: {e}')
