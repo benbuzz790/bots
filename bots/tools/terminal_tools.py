@@ -54,8 +54,12 @@ def execute_powershell(code: str, output_length_limit: str='60'):
             truncated_lines = lines[:output_length_limit]
             lines_omitted = len(lines) - output_length_limit
             truncated_output = '\n'.join(truncated_lines)
+            # Save full output to file
+            output_file = os.path.join(os.getcwd(), 'powershell_full_output.txt')
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(output)
             truncated_output += (
-                f'\n\n{lines_omitted} lines omitted due to length limit.')
+                f'\n\n{lines_omitted} lines omitted due to length limit. Full output saved to {output_file}')
             return truncated_output
 
     return output
