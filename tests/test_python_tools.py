@@ -980,6 +980,45 @@ from datetime import datetime as dt, timedelta
         self.assertEqual(content, initial_content,
             'File was modified despite empty input')
 
+    def test_indentation_handling(self):
+        """Test that code tools handle various indentation patterns correctly"""
+        # Test with differently indented input code
+        initial_content = "class TestClass:\n    pass\n"
+        indented_method = """
+            def test_method(self):
+                print("test")
+                return True
+        """
+        very_indented_method = """
+                    def another_method(self):
+                        print("another test")
+                        return False
+        """
+        
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+            
+        # Both methods should be added with correct indentation
+        python_tools.add_function_to_class(self.test_file, 'TestClass', indented_method)
+        python_tools.add_function_to_class(self.test_file, 'TestClass', very_indented_method)
+        
+                # Create expected content using AST to ensure correct formatting
+                expected_tree = ast.parse('''
+class TestClass:
+    pass
+
+    def test_method(self):
+        print("test")
+        return True
+
+    def another_method(self):
+        print("another test")
+        return False
+''')
+                expected_content = astor.to_source(expected_tree)
+        self.assertFileContentEqual(self.test_file, expected_content, 
+            'Indentation handling failed')
+            
     def test_multiple_imports_file_creation(self):
         """Test file creation when adding multiple imports to non-existent file"""
         import tempfile
