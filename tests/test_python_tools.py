@@ -1002,8 +1002,8 @@ from datetime import datetime as dt, timedelta
         python_tools.add_function_to_class(self.test_file, 'TestClass', indented_method)
         python_tools.add_function_to_class(self.test_file, 'TestClass', very_indented_method)
         
-                # Create expected content using AST to ensure correct formatting
-                expected_tree = ast.parse('''
+        # Create expected content using AST to ensure correct formatting
+        expected_tree = ast.parse('''
 class TestClass:
     pass
 
@@ -1015,7 +1015,7 @@ class TestClass:
         print("another test")
         return False
 ''')
-                expected_content = astor.to_source(expected_tree)
+        expected_content = astor.to_source(expected_tree)
         self.assertFileContentEqual(self.test_file, expected_content, 
             'Indentation handling failed')
             
