@@ -683,46 +683,70 @@ def _add_single_function_to_class(file_path: str, class_name: str,
         return _process_error(e)
 
 
-def _add_single_function_to_file(file_path: str, new_function_def: str) ->str:
-    """Adds a single function to a file."""
-    try:
-        abs_path = _make_file(file_path)
+    def _add_single_function_to_file(file_path: str, new_function_def: str) ->str:
+        """Adds a single function and preserves all other code blocks."""
         try:
-            new_func_node = ast.parse(_clean(new_function_def)).body[0]
-            if not isinstance(new_func_node, (ast.FunctionDef, ast.
-                AsyncFunctionDef)):
-                return _process_error(ValueError(
-                    'Provided definition is not a function'))
-        except Exception as e:
-            return _process_error(ValueError(
-                f'Error in new function definition: {str(e)}'))
-        with open(abs_path, 'r', encoding='utf-8') as file:
-            content = file.read()
-        if not content.strip():
+            abs_path = _make_file(file_path)
             try:
+                # Parse all the new code
+                new_tree = ast.parse(_clean(new_function_def))
+                # Find the function definition
+                new_func_node = None
+                for node in new_tree.body:
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        new_func_node = node
+                        break
+                if not new_func_node:
+                    return _process_error(ValueError('No function definition found in provided code'))
+            except Exception as e:
+                return _process_error(ValueError(f'Error in code: {str(e)}'))
+
+            # Read existing file content
+            with open(abs_path, 'r', encoding='utf-8') as file:
+                content = file.read()
+
+            if not content.strip():
+                # If file is empty, write all the new code
+                try:
+                    with open(abs_path, 'w', encoding='utf-8') as file:
+                        file.write(astor.to_source(new_tree))
+                    return f"Code with function '{new_func_node.name}' has been added to new file '{abs_path}'."
+                except Exception as e:
+                    return _process_error(e)
+
+            try:
+                existing_tree = ast.parse(content)
+                # Combine the trees: imports first, then functions, then other code
+                combined_body = []
+                
+                # First add all imports from both trees
+                for node in existing_tree.body + new_tree.body:
+                    if isinstance(node, (ast.Import, ast.ImportFrom)):
+                        combined_body.append(node)
+                
+                # Then add all functions (including the new one)
+                for node in existing_tree.body + new_tree.body:
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        combined_body.append(node)
+                
+                # Finally add all other code blocks
+                for node in existing_tree.body + new_tree.body:
+                    if not isinstance(node, (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.AsyncFunctionDef)):
+                        combined_body.append(node)
+
+                # Create new tree with combined body
+                combined_tree = ast.Module(body=combined_body, type_ignores=[])
+                
+                # Write the combined tree
+                updated_content = astor.to_source(combined_tree)
                 with open(abs_path, 'w', encoding='utf-8') as file:
-                    file.write(astor.to_source(new_func_node))
-                return (
-                    f"Function '{new_func_node.name}' has been added to new file '{abs_path}'."
-                    )
+                    file.write(updated_content)
             except Exception as e:
                 return _process_error(e)
-        try:
-            tree = ast.parse(content)
-        except Exception as e:
-            return _process_error(ValueError(
-                f'Error parsing the file {abs_path}: {str(e)}'))
-        tree.body.append(new_func_node)
-        try:
-            updated_content = astor.to_source(tree)
-            with open(abs_path, 'w', encoding='utf-8') as file:
-                file.write(updated_content)
+
+            return f"Code with function '{new_func_node.name}' has been added to '{abs_path}'."
         except Exception as e:
             return _process_error(e)
-        return (
-            f"Function '{new_func_node.name}' has been added to '{abs_path}'.")
-    except Exception as e:
-        return _process_error(e)
 
 
 def _replace_single_function(file_path: str, new_function_def: str,
