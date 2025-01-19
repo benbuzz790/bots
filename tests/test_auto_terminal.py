@@ -117,9 +117,7 @@ Got:
         with open(self.test_file, 'r') as f:
             before = f.read()
         print(f"\nInitial file content: '{before}'")
-        prompt = (
-            f"Please modify {self.test_file} to contain 'Updated content' instead of its current content"
-            )
+        prompt = f"/auto Please modify {self.test_file} to contain 'Updated content' instead of its current content"
         mock_input.side_effect = [prompt, '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
@@ -137,7 +135,7 @@ Got:
         """Test the bot's ability to create and write to a file."""
         if os.path.exists(self.test_file):
             os.remove(self.test_file)
-        prompt = f"Create a file at {self.test_file} containing 'Test content'"
+        prompt = f"/auto Create a file at {self.test_file} containing 'Test content'"
         mock_input.side_effect = [prompt, '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
@@ -269,9 +267,7 @@ Got:
             file.write('        pass\n')
             file.write('\n')
             file.write('print("Some other code")\n')
-        prompt = (
-            f"Please add a method to the TestClass in {self.test_file}. The method should be called 'new_method' and should print 'This is a new method'. Do not change any existing code."
-            )
+        prompt = f"/auto Please add a method to the TestClass in {self.test_file}. The method should be called 'new_method' and should print 'This is a new method'. Do not change any existing code."
         mock_input.side_effect = [prompt, '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
