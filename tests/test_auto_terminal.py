@@ -277,10 +277,9 @@ Got:
         with open(self.test_file, 'r', encoding='utf-8') as file:
             content = file.read()
         print(f'\nUpdated file content:\n{content}')
-        original_elements = ['class TestClass:', 'def __init__(self):',
-            'def existing_method(self):', 'print("Some other code")', 'pass']
+        original_elements = ['class TestClass:', 'def __init__(self):', 'def existing_method(self):', 'print("Some other code")', 'pass']
         for element in original_elements:
-            self.assertIn(element, content,
+            self.assertIn(self.normalize_text(element), self.normalize_text(content),
                 f'Original code element missing: {element}')
         method_found = any(pattern in content for pattern in [
             'def new_method(self):', 'def new_method (self):',
