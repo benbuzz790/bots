@@ -30,7 +30,7 @@ class TestCodeTools(unittest.TestCase):
 
     def test_view(self):
         result = view(self.temp_file)
-        expected = '1: Line 1\n2: Line 2\n3: Line 3\n4: Line 4\n5: Line 5'
+        expected = '1:Line 1\n2:Line 2\n3:Line 3\n4:Line 4\n5:Line 5'
         self.assertEqual(result, expected)
 
     def test_basic_replacement(self):

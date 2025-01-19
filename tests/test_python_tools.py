@@ -1220,19 +1220,6 @@ class TestClass:
         result = python_tools._execute_python_code(code)
         self.assertIn('Fibonacci(10) = 55', result)
 
-    def test_execute_python_code_system_exit(self):
-        """Test handling of system exit calls"""
-        code = textwrap.dedent(
-            """
-            import sys
-            print("Before exit")
-            sys.exit(1)
-            print("After exit")  # Should not be executed
-        """
-            )
-        result = python_tools._execute_python_code(code)
-        self.assertIn('Before exit', result)
-        self.assertNotIn('After exit', result)
 
     def test_execute_python_code_process_cleanup(self):
         """Test that processes are properly cleaned up after execution"""

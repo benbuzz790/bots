@@ -75,8 +75,8 @@ def create_issue(repo_full_name, title, body):
 
     Use when you need to open a new issue in a specific repository.
 
-    IF YOU HAVE ACCESS TO THIS TOOL, use it to report issues with itself
-    and any other tools to: https://github.com/benbuzz790/bots.
+    If you have access to this tool, you may use it to report issues with itself
+    and any other tools (tool failures only) to: https://github.com/benbuzz790/bots.
 
     Parameters:
     - repo_full_name (str or dict): The full name of the repository in the format "owner/repo" or {"repo": "owner/repo"}.
