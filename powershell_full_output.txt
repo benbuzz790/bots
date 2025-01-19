@@ -1,0 +1,75 @@
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	deleted:    .gitignore
+	deleted:    CONTRIBUTING.md
+	deleted:    LICENSE.txt
+	deleted:    README.md
+	deleted:    bots/__init__.py
+	deleted:    bots/bots/tools/code_tools.py
+	deleted:    bots/bots/tools/python_tools.py
+	deleted:    bots/dev/__init__.py
+	deleted:    bots/dev/auto_terminal.py
+	deleted:    bots/dev/decorators.py
+	deleted:    bots/dev/project_tree.py
+	deleted:    bots/dev/spec_builder.py
+	deleted:    bots/dev/utils.py
+	deleted:    bots/events/__init__.py
+	deleted:    bots/events/check_issues.py
+	deleted:    bots/events/event_system.py
+	deleted:    bots/flows/__init__.py
+	deleted:    bots/flows/flows.py
+	deleted:    bots/flows/functional_prompts.py
+	deleted:    bots/foundation/__init__.py
+	deleted:    bots/foundation/anthropic_bots.py
+	deleted:    bots/foundation/base.py
+	deleted:    bots/foundation/openai_bots.py
+	deleted:    bots/tests/test_auto_terminal.py
+	deleted:    bots/tests/test_bots.py
+	deleted:    bots/tools/__init__.py
+	deleted:    bots/tools/code_tools.py
+	deleted:    bots/tools/github_tools.py
+	deleted:    bots/tools/meta_tools.py
+	deleted:    bots/tools/python_tools.py
+	deleted:    bots/tools/self_tools.py
+	deleted:    bots/tools/terminal_tools.py
+	deleted:    bots/tools/test_tools.py
+	deleted:    conway.py
+	deleted:    examples/bot_example.py
+	deleted:    examples/event_system_example.py
+	deleted:    examples/functional_prompt_example.py
+	deleted:    examples/lazy_example.py
+	deleted:    pytest.ini
+	deleted:    requirements.txt
+	deleted:    setup.py
+	deleted:    tests/__init__.py
+	deleted:    tests/test_auto_terminal.py
+	deleted:    tests/test_basic.py
+	deleted:    tests/test_bots.py
+	deleted:    tests/test_code_tools.py
+	deleted:    tests/test_decorators.py
+	deleted:    tests/test_event_system.py
+	deleted:    tests/test_flows.py
+	deleted:    tests/test_github_tools.py
+	deleted:    tests/test_gptbot.py
+	deleted:    tests/test_new_tools.py
+	deleted:    tests/test_python_tools.py
+	deleted:    tests/test_save_load.py
+	deleted:    tests/test_terminal_tools.py
+	deleted:    tests/test_tool_handler.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	Claude.bot
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+Remote Information:
+origin	https://github.com/benbuzz790/bots.git (fetch)
+origin	https://github.com/benbuzz790/bots.git (push)
+
+Branch Information:
+* main 1e0f6d0 [origin/main] fix: indentation

@@ -85,7 +85,7 @@ def add_imports(file_path: str, code: str) ->str:
         new_import_nodes = []
         for stmt in import_list:
             try:
-                node = ast.parse(stmt).body[0]
+                node = ast.parse(_clean(stmt)).body[0]
                 if not isinstance(node, (ast.Import, ast.ImportFrom)):
                     return _process_error(ValueError(
                         f'Invalid import statement: {stmt}'))
@@ -215,8 +215,8 @@ def replace_import(file_path: str, old_import: str, new_import: str) ->str:
     if not os.path.exists(file_path):
         return _process_error(ValueError(f'File {file_path} does not exist'))
     try:
-        old_node = ast.parse(old_import).body[0]
-        new_node = ast.parse(new_import).body[0]
+        old_node = ast.parse(_clean(old_import)).body[0]
+        new_node = ast.parse(_clean(new_import)).body[0]
         if not isinstance(old_node, (ast.Import, ast.ImportFrom)
             ) or not isinstance(new_node, (ast.Import, ast.ImportFrom)):
             return _process_error(ValueError(
@@ -266,7 +266,7 @@ def add_class(file_path: str, class_def: str) ->str:
     try:
         abs_path = _make_file(file_path)
         try:
-            new_tree = ast.parse(class_def)
+            new_tree = ast.parse(_clean(class_def))
             new_class_node = None
             for node in new_tree.body:
                 if isinstance(node, (ast.Import, ast.ImportFrom)):
@@ -310,7 +310,7 @@ def replace_class(file_path: str, new_class_def: str, old_class_name: str=None
     try:
         abs_path = _make_file(file_path)
         try:
-            new_tree = ast.parse(new_class_def)
+            new_tree = ast.parse(_clean(new_class_def))
             new_class_node = None
             for node in new_tree.body:
                 if isinstance(node, (ast.Import, ast.ImportFrom)):
@@ -370,7 +370,7 @@ def add_function_to_class(file_path: str, class_name: str, new_method_def: str
     Returns a confirmation message or an error message.
     """
     try:
-        tree = ast.parse(new_method_def)
+        tree = ast.parse(_clean(new_method_def))
         messages = []
         for node in tree.body:
             if isinstance(node, (ast.Import, ast.ImportFrom)):
@@ -405,7 +405,7 @@ def add_function_to_file(file_path: str, new_function_def: str, class_name:
     Returns a confirmation message or an error message.
     """
     try:
-        tree = ast.parse(new_function_def)
+        tree = ast.parse(_clean(new_function_def))
         messages = []
         for node in tree.body:
             if isinstance(node, (ast.Import, ast.ImportFrom)):
@@ -444,7 +444,7 @@ def replace_function(file_path: str, new_function_def: str, class_name: str
     Returns a confirmation message or an error message.
     """
     try:
-        tree = ast.parse(new_function_def)
+        tree = ast.parse(_clean(new_function_def))
         messages = []
         for node in tree.body:
             if isinstance(node, (ast.Import, ast.ImportFrom)):
@@ -515,7 +515,7 @@ def _execute_python_code(code: str, timeout: int=300) ->str:
             return _process_error(ValueError(
                 'Timeout must be a positive integer'))
         try:
-            code_ast = ast.parse(code)
+            code_ast = ast.parse(_clean(code))
         except SyntaxError as e:
             return f'SyntaxError: {str(e)}'
         wrapper_ast = create_wrapper_ast()
@@ -597,7 +597,15 @@ def _get_py_interface(file_path: str) ->str:
 
 
 def _clean(code: str) ->str:
-    return code
+    """Clean and dedent code before parsing.
+    
+    Args:
+        code (str): The code to clean
+        
+    Returns:
+        str: The cleaned and dedented code
+    """
+    return textwrap.dedent(code).strip()
 
 
 def _process_error(error: Exception) ->str:
@@ -647,7 +655,7 @@ def _add_single_function_to_class(file_path: str, class_name: str,
     try:
         abs_path = _make_file(file_path)
         try:
-            new_tree = ast.parse(new_method_def)
+            new_tree = ast.parse(_clean(new_method_def))
             new_method_node = None
             for node in new_tree.body:
                 if isinstance(node, (ast.Import, ast.ImportFrom)):
@@ -683,70 +691,70 @@ def _add_single_function_to_class(file_path: str, class_name: str,
         return _process_error(e)
 
 
-    def _add_single_function_to_file(file_path: str, new_function_def: str) ->str:
-        """Adds a single function and preserves all other code blocks."""
+def _add_single_function_to_file(file_path: str, new_function_def: str) ->str:
+    """Adds a single function and preserves all other code blocks."""
+    try:
+        abs_path = _make_file(file_path)
         try:
-            abs_path = _make_file(file_path)
+            # Parse all the new code
+            new_tree = ast.parse(_clean(new_function_def))
+            # Find the function definition
+            new_func_node = None
+            for node in new_tree.body:
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    new_func_node = node
+                    break
+            if not new_func_node:
+                return _process_error(ValueError('No function definition found in provided code'))
+        except Exception as e:
+            return _process_error(ValueError(f'Error in code: {str(e)}'))
+
+        # Read existing file content
+        with open(abs_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+
+        if not content.strip():
+            # If file is empty, write all the new code
             try:
-                # Parse all the new code
-                new_tree = ast.parse(_clean(new_function_def))
-                # Find the function definition
-                new_func_node = None
-                for node in new_tree.body:
-                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        new_func_node = node
-                        break
-                if not new_func_node:
-                    return _process_error(ValueError('No function definition found in provided code'))
-            except Exception as e:
-                return _process_error(ValueError(f'Error in code: {str(e)}'))
-
-            # Read existing file content
-            with open(abs_path, 'r', encoding='utf-8') as file:
-                content = file.read()
-
-            if not content.strip():
-                # If file is empty, write all the new code
-                try:
-                    with open(abs_path, 'w', encoding='utf-8') as file:
-                        file.write(astor.to_source(new_tree))
-                    return f"Code with function '{new_func_node.name}' has been added to new file '{abs_path}'."
-                except Exception as e:
-                    return _process_error(e)
-
-            try:
-                existing_tree = ast.parse(content)
-                # Combine the trees: imports first, then functions, then other code
-                combined_body = []
-                
-                # First add all imports from both trees
-                for node in existing_tree.body + new_tree.body:
-                    if isinstance(node, (ast.Import, ast.ImportFrom)):
-                        combined_body.append(node)
-                
-                # Then add all functions (including the new one)
-                for node in existing_tree.body + new_tree.body:
-                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        combined_body.append(node)
-                
-                # Finally add all other code blocks
-                for node in existing_tree.body + new_tree.body:
-                    if not isinstance(node, (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.AsyncFunctionDef)):
-                        combined_body.append(node)
-
-                # Create new tree with combined body
-                combined_tree = ast.Module(body=combined_body, type_ignores=[])
-                
-                # Write the combined tree
-                updated_content = astor.to_source(combined_tree)
                 with open(abs_path, 'w', encoding='utf-8') as file:
-                    file.write(updated_content)
+                    file.write(astor.to_source(new_tree))
+                return f"Code with function '{new_func_node.name}' has been added to new file '{abs_path}'."
             except Exception as e:
                 return _process_error(e)
 
-            return f"Code with function '{new_func_node.name}' has been added to '{abs_path}'."
+        try:
+            existing_tree = ast.parse(content)
+            # Combine the trees: imports first, then functions, then other code
+            combined_body = []
+            
+            # First add all imports from both trees
+            for node in existing_tree.body + new_tree.body:
+                if isinstance(node, (ast.Import, ast.ImportFrom)):
+                    combined_body.append(node)
+            
+            # Then add all functions (including the new one)
+            for node in existing_tree.body + new_tree.body:
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    combined_body.append(node)
+            
+            # Finally add all other code blocks
+            for node in existing_tree.body + new_tree.body:
+                if not isinstance(node, (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.AsyncFunctionDef)):
+                    combined_body.append(node)
+
+            # Create new tree with combined body
+            combined_tree = ast.Module(body=combined_body, type_ignores=[])
+            
+            # Write the combined tree
+            updated_content = astor.to_source(combined_tree)
+            with open(abs_path, 'w', encoding='utf-8') as file:
+                file.write(updated_content)
         except Exception as e:
             return _process_error(e)
+
+        return f"Code with function '{new_func_node.name}' has been added to '{abs_path}'."
+    except Exception as e:
+        return _process_error(e)
 
 
 def _replace_single_function(file_path: str, new_function_def: str,
@@ -761,7 +769,7 @@ def _replace_single_function(file_path: str, new_function_def: str,
     try:
         abs_path = _make_file(file_path)
         try:
-            new_tree = ast.parse(new_function_def)
+            new_tree = ast.parse(_clean(new_function_def))
             new_func_node = None
             for node in new_tree.body:
                 if isinstance(node, (ast.Import, ast.ImportFrom)):
