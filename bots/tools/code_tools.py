@@ -17,7 +17,7 @@ def view(file_path: str):
         try:
             with open(file_path, 'r', encoding=encoding) as file:
                 lines = file.readlines()
-            numbered_lines = [f'{i + 1}: {line.rstrip()}' for i, line in
+            numbered_lines = [f'{i + 1}:{line.rstrip()}' for i, line in
                 enumerate(lines)]
             return '\n'.join(numbered_lines)
         except UnicodeDecodeError:
