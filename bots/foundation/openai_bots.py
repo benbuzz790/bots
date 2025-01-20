@@ -14,7 +14,7 @@ class OpenAINode(ConversationNode):
         content = kwargs.pop('content')
         super().__init__(role=role, content=content, **kwargs)
 
-    def build_messages(self):
+    def _build_messages(self):
         """Build message list for OpenAI API, properly handling empty nodes and tool calls"""
         node = self
         conversation_dict = []
@@ -106,7 +106,7 @@ class OpenAIMailbox(Mailbox):
 
     def send_message(self, bot) ->Dict[str, Any]:
         system_message = bot.system_message
-        messages = bot.conversation.build_messages()
+        messages = bot.conversation._build_messages()
         if system_message:
             messages.insert(0, {'role': 'system', 'content': system_message})
         tools = bot.tool_handler.tools if bot.tool_handler else None

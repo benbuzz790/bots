@@ -11,14 +11,13 @@ import math
 class AnthropicNode(ConversationNode):
 
     def __init__(self, **kwargs: Any) ->None:
-        role = kwargs.pop('role', 'empty')
-        content = kwargs.pop('content', '')
-        tool_calls = kwargs.pop('tool_calls', None)
-        tool_results = kwargs.pop('tool_results', None)
-        super().__init__(role=role, content=content, tool_calls=tool_calls,
-            tool_results=tool_results, **kwargs)
+        super().__init__(**kwargs)
 
-    def build_messages(self) ->List[Dict[str, Any]]:
+    def add_tool_results(self, results):
+        # by default, all results should be added to self.pending_results
+        self.pending_results.extend(results)
+
+    def _build_messages(self) ->List[Dict[str, Any]]:
         """
         Build message list for Anthropic API, properly handling empty nodes and tool calls.
         Empty nodes are preserved in the structure but filtered from API messages.
@@ -31,12 +30,13 @@ class AnthropicNode(ConversationNode):
                 content_list = [{'type': 'text', 'text': node.content}]
                 if node.tool_calls:
                     for call in node.tool_calls:
-                        ent = {'type': 'tool_use', **call}
-                        content_list.insert(-1, ent)
+                        sub_entry = {'type': 'tool_use', **call}
+                        content_list.insert(-1, sub_entry)
                 if node.tool_results:
                     for result in node.tool_results:
-                        ent = {'type': 'tool_result', **result}
-                        content_list.insert(0, ent)
+                        sub_entry = {'type': 'tool_result', **result}
+                        content_list.insert(0, sub_entry)
+                        node._sync_tool_context()
                 entry['content'] = content_list
                 conversation_dict = [entry] + conversation_dict
             node = node.parent
@@ -116,24 +116,19 @@ class AnthropicMailbox(Mailbox):
             try:
                 api_key = os.getenv('ANTHROPIC_API_KEY')
             except:
-                raise ValueError(
-                    "Anthropic API key not found. Set up 'ANTHROPIC_API_KEY' environment variable."
-                    )
+                raise ValueError("Anthropic API key not found. Set up 'ANTHROPIC_API_KEY' environment variable.")
         self.client = anthropic.Anthropic(api_key=api_key)
         conversation: AnthropicNode = bot.conversation
-        if (bot.tool_handler and bot.tool_handler.requests and bot.
-            tool_handler.results):
-            conversation.parent.tool_calls = bot.tool_handler.requests
-            conversation.tool_results = bot.tool_handler.results
-        if bot.tool_handler:
-            bot.tool_handler.clear()
+
         tools: Optional[List[Dict[str, Any]]] = None
         if bot.tool_handler and bot.tool_handler.tools:
             tools = bot.tool_handler.tools
             tools[-1]['cache_control'] = {'type': 'ephemeral'}
-        messages: List[Dict[str, Any]] = conversation.build_messages()
+        
+        messages: List[Dict[str, Any]] = conversation._build_messages()
         cc = CacheController()
-        messages = cc.manage_cache_controls(messages, 1.0)
+        messages = cc.manage_cache_controls(messages)
+
         create_dict: Dict[str, Any] = {}
         system_message: Optional[str] = bot.system_message
         if tools:
@@ -146,6 +141,7 @@ class AnthropicMailbox(Mailbox):
         non_optional = {'model': model, 'max_tokens': max_tokens,
             'temperature': temperature, 'messages': messages}
         create_dict.update(**non_optional)
+
         max_retries: int = 25
         base_delay: float = 1
         for attempt in range(max_retries):
@@ -167,35 +163,33 @@ class AnthropicMailbox(Mailbox):
                 time.sleep(delay)
         raise Exception('Max retries reached. Unable to send message.')
 
-    def process_response(self, response: Dict[str, Any], bot: Optional[
-        'AnthropicBot']=None) ->Tuple[str, str, Dict[str, Any]]:
+    def process_response(self, 
+                         response: Dict[str, Any], 
+                         bot: 'AnthropicBot'
+                         ) ->Tuple[str, str, Dict[str, Any]]:
         try:
 
+            # Work around max_token limit by sending incomplete responses back
             def should_continue(response):
                 return (response.stop_reason == 'max_tokens' and not 
                     'tool_calls' in response)
+            
             while should_continue(response):
-                bot.conversation.add_reply(role='assistant', content=
-                    response.content[0].text)
-                messages = bot.conversation.build_messages()
+                if bot.conversation.role == 'user': # base case
+                    bot.conversation.add_reply(role='assistant', content=response.content[0].text)
+                elif bot.conversation.role == 'assistant': # recursive case
+                    bot.conversation.content += response
                 response = self.send_message(bot)
+            
+            # process the complete response
             response_role: str = response.role
             response_text: str = getattr(response.content[0], 'text', '~')
-            if response.stop_reason == 'tool_calls':
-                requests = bot.tool_handler.get_requests()
-                results = bot.tool_handler.get_results()
-                extra_data: Dict[str, Any] = {'tool_calls': requests,
-                    'tool_results': results}
-            else:
-                extra_data = {}
+
         except anthropic.BadRequestError as e:
-            print('--------------------------------------------')
-            print('BAD REQUEST RUINED YOUR DAY AGAIN HAHAHAHAHA')
-            print('--------------------------------------------')
             if e.status_code == 400:
-                pass
+                pass # not yet implemented
             raise e
-        return response_text, response_role, extra_data
+        return response_text, response_role, {}
 
 
 class AnthropicBot(Bot):

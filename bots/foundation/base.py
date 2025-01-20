@@ -99,14 +99,15 @@ class Engines(str, Enum):
 class ConversationNode:
     """Base class for conversation nodes that store message history and tool interactions."""
 
-    def __init__(self, content: str, role: str, tool_calls: Optional[Any]=
-        None, tool_results: Optional[Any]=None, **kwargs):
+    def __init__(self, content: str, role: str, tool_calls: List[Dict]=None,
+        tool_results: List[Dict]=None, pending_results: List[Dict]=None, **kwargs):
         self.role = role
         self.content = content
-        self.tool_calls = tool_calls
-        self.tool_results = tool_results
-        self.replies: list[ConversationNode] = []
         self.parent: ConversationNode = None
+        self.replies: list[ConversationNode] = []
+        self.tool_calls = tool_calls or []
+        self.tool_results = tool_results or []
+        self.pending_results = pending_results or []
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -120,42 +121,47 @@ class ConversationNode:
         return self.role == 'empty' and self.content == ''
 
     def add_reply(self, **kwargs) ->'ConversationNode':
-        if (self.replies and 'tool_calls' not in kwargs and 'tool_results'
-             not in kwargs):
-            first_sibling = self.replies[0]
-            kwargs['tool_calls'] = first_sibling.tool_calls
-            kwargs['tool_results'] = first_sibling.tool_results
         reply = type(self)(**kwargs)
         reply.parent = self
         self.replies.append(reply)
+        if self.pending_results:
+            reply.tool_results = self.pending_results.copy()
+            self.pending_results = []
+        self._sync_tool_context()
         return reply
 
-    def sync_tool_context(self) ->None:
-        """Synchronize tool context between all siblings."""
+    def _sync_tool_context(self) -> None:
+        """Synchronize tool context between all siblings by taking the union of their tool results."""
         if self.parent and self.parent.replies:
-            first_sibling = self.parent.replies[0]
-            for sibling in self.parent.replies[1:]:
-                sibling.tool_calls = first_sibling.tool_calls
-                sibling.tool_results = first_sibling.tool_results
+            # Create a list of all unique tool results across siblings
+            all_tool_results = []
+            for sibling in self.parent.replies:
+                for result in sibling.tool_results:
+                    if result not in all_tool_results:
+                        all_tool_results.append(result)
+            
+            # Update each sibling with the complete list
+            for sibling in self.parent.replies:
+                sibling.tool_results = all_tool_results
 
-    def add_child(self, node: 'ConversationNode') ->None:
-        if self.is_empty():
-            raise NotImplementedError(
-                'Cannot add a child node to an empty node')
-        else:
-            node.parent = self
-            self.replies.append(node)
+    def add_tool_calls(self, calls):
+        self.tool_calls.extend(calls)
+        self._sync_tool_context()
 
-    def find_root(self) ->'ConversationNode':
+    def add_tool_results(self, results):
+        self.tool_results.extend(results)
+        self._sync_tool_context()
+
+    def _find_root(self) ->'ConversationNode':
         """Navigate to the root of the conversation tree."""
         current = self
         while current.parent is not None:
             current = current.parent
         return current
 
-    def root_dict(self) ->Dict:
+    def _root_dict(self) ->Dict:
         """Convert the conversation tree starting from the root to a dictionary."""
-        root = self.find_root()
+        root = self._find_root()
         return root._to_dict_recursive()
 
     def _to_dict_recursive(self) ->Dict:
@@ -168,8 +174,7 @@ class ConversationNode:
 
     def _to_dict_self(self) ->Dict:
         """
-        Convert this node to a dictionary, omitting replies, parent, callables,
-        and private attributes.
+        Convert this node to a dictionary, omitting replies, parent, callables.
         """
         result = {}
         for k in dir(self):
@@ -184,8 +189,7 @@ class ConversationNode:
         result['node_class'] = self.__class__.__name__
         return result
 
-    def build_messages(self) ->List[Dict[str, str]]:
-        print('base class')
+    def _build_messages(self) ->List[Dict[str, str]]:
         node = self
         if node.is_empty():
             return []
@@ -203,12 +207,11 @@ class ConversationNode:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) ->'ConversationNode':
-        node_data = {k: v for k, v in data.items() if k != 'replies'}
-        node_class = Engines.get_conversation_node_class(data.get(
-            'node_class', cls.__name__))
-        node = node_class(**node_data)
-        for reply_data in data.get('replies', []):
-            reply_node = cls.from_dict(reply_data)
+        reply_data = data.pop('replies', [])
+        node_class = Engines.get_conversation_node_class(data.get('node_class', cls.__name__))
+        node = node_class(**data)
+        for reply in reply_data:
+            reply_node = cls.from_dict(reply)
             reply_node.parent = node
             node.replies.append(reply_node)
         return node
@@ -218,7 +221,7 @@ class ConversationNode:
         Recursively count the total number of nodes in the conversation,
         starting from the root.
         """
-        root = self.find_root()
+        root = self._find_root()
 
         def count_recursive(current_node):
             count = 1
@@ -331,8 +334,8 @@ class ToolHandler(ABC):
             'You must implement this method in a subclass')
 
     @abstractmethod
-    def generate_error_schema(self, request_schema: Dict[str, Any], error_msg: str
-        ) ->Dict[str, Any]:
+    def generate_error_schema(self, request_schema: Dict[str, Any],
+        error_msg: str) ->Dict[str, Any]:
         """
         Generate an error response schema matching the format expected by this handler.
         
@@ -350,26 +353,37 @@ class ToolHandler(ABC):
         """Helper function to ensure source is handled consistently"""
         return textwrap.dedent(source).strip()
 
-    def handle_response(self, response: Any) ->Tuple[List[Dict[str, Any]],
-        List[Dict[str, Any]]]:
+    def extract_requests(self, response: Any) ->List[Dict[str, Any]]:
         """
-        Process an LLM response, execute any requested tools, and generate results.
+        Extract tool requests from an LLM response.
         
         Args:
             response: The raw response from the LLM service
             
         Returns:
-            Tuple of (list of request schemas, list of result schemas)
+            List of request schemas
+
+        Side effect:
+            Cl`ears self.requests and sets to return value
+        """
+        self.requests = self.generate_request_schema(response)
+        return self.requests
+
+    def exec_requests(self) ->List[Dict[str, Any]]:
+        """
+        Execute tool requests and generate results.
+        
+        Args:
+            requests: List of request schemas to execute
+            
+        Returns:
+            List of result schemas
             
         Side effects:
-            - Clears old requests and results
-            - Sets new requests and results
             - Executes tools and produces any tool use side effects
         """
-        self.clear()
-        requests = self.generate_request_schema(response)
-        if not requests:
-            return self.requests, self.results
+        results = []
+        requests = self.requests
         for request_schema in requests:
             tool_name, input_kwargs = self.tool_name_and_input(request_schema)
             if tool_name is None:
@@ -397,9 +411,9 @@ class ToolHandler(ABC):
                     )
                 response_schema = self.generate_error_schema(request_schema,
                     error_msg)
-            self.requests.append(request_schema)
             self.results.append(response_schema)
-        return self.requests, self.results
+            results.append(response_schema)
+        return results
 
     def _create_builtin_wrapper(self, func):
         """Create a wrapper function for built-in functions"""
@@ -608,7 +622,6 @@ class ToolHandler(ABC):
                     )
         return handler
 
-
     def get_tools_json(self) ->str:
         """Return a JSON string representation of all tools."""
         return json.dumps(self.tools, indent=1)
@@ -693,8 +706,8 @@ class Mailbox(ABC):
         This method should extract the relevant information from the AI's response
         and return it in a consistent format across different AI services.
 
-        Note that if tool_handler has been implemented, handle_response has already
-        been called and requests and results can be accessed through bot.tool_handler.
+        Note that if tool_handler has been implemented, extract_requests and results
+        have already been called and are available in the tool_handler.
 
         Parameters:
         - response (Dict[str, Any]): The raw response from the AI service.
@@ -712,12 +725,11 @@ class Mailbox(ABC):
                 - By default, Conversation Node saves each kwarg as an attribute
         """
         raise NotImplemented('You must implement this method in a subclass')
-        pass
 
     def _log_outgoing(self, conversation: ConversationNode, model: Engines,
         max_tokens, temperature):
         log_message = {'date': formatted_datetime(), 'messages':
-            conversation.build_messages(), 'max_tokens': max_tokens,
+            conversation._build_messages(), 'max_tokens': max_tokens,
             'temperature': temperature, 'model': model}
         self._log_message(json.dumps(log_message, indent=1), 'OUTGOING')
 
@@ -789,20 +801,25 @@ class Bot(ABC):
     def _cvsn_respond(self) ->Tuple[str, ConversationNode]:
         """
         1) Requests a response based on the current conversation using send_message
-        2) Handles tool use with tool_handler.handle_results
+        2) Extracts tool requests if tool_handler exists
         3) Processes the response using process_response
-        4) Creates a new conversation node from the response and adds it to 
-        the conversation history
-        5) Returns the text of the response and the new conversation node
+        4) Creates a new conversation node from the response and adds it to the conversation history
+        5) Executes tools if any requests exist and updates node with results
+        6) Returns the text of the response and the new conversation node
         """
         try:
+            self.tool_handler.clear()
             response = self.mailbox.send_message(self)
-            if self.tool_handler:
-                self.tool_handler.handle_response(response)
+            requests = []
+            results = []
+            requests = self.tool_handler.extract_requests(response)
             text, role, data = self.mailbox.process_response(response, self)
-            node = self.conversation.add_reply(content=text, role=role, **data)
-            self.conversation = node
-            return text, node
+            self.conversation = self.conversation.add_reply(content=text,
+                role=role, data=data)
+            self.conversation.add_tool_calls(requests)
+            results = self.tool_handler.exec_requests()
+            self.conversation.add_tool_results(results)
+            return text, self.conversation
         except Exception as e:
             raise e
 
@@ -837,7 +854,6 @@ class Bot(ABC):
             module_name, class_name = tool_handler_class.rsplit('.', 1)
             module = importlib.import_module(module_name)
             actual_class = getattr(module, class_name)
-            # Create handler instance first, then restore its state
             bot.tool_handler = actual_class().from_dict(data['tool_handler'])
         for key, value in data.items():
             if key not in constructor_args and key not in ('conversation',
@@ -857,12 +873,13 @@ class Bot(ABC):
             filename = f'{self.name}@{now}.bot'
         elif not filename.endswith('.bot'):
             filename = filename + '.bot'
-        data = {key: value for key, value in self.__dict__.items() if not key.startswith('_')}
+        data = {key: value for key, value in self.__dict__.items() if not
+            key.startswith('_')}
         data.pop('api_key', None)
         data.pop('mailbox', None)
         data['bot_class'] = self.__class__.__name__
         data['model_engine'] = self.model_engine.value
-        data['conversation'] = self.conversation.root_dict()
+        data['conversation'] = self.conversation._root_dict()
         if self.tool_handler:
             data['tool_handler'] = self.tool_handler.to_dict()
         for key, value in data.items():
@@ -932,8 +949,52 @@ class Bot(ABC):
             wrapped_content = '\n'.join(textwrap.wrap(content, width=
                 available_width, initial_indent=indent + '│ ',
                 subsequent_indent=indent + '│ '))
+            tool_info = []
+            if hasattr(node, 'tool_calls') and node.tool_calls:
+                tool_info.append(f'{indent}│ Tool Calls:')
+                for call in node.tool_calls:
+                    if isinstance(call, dict):
+                        tool_info.append(
+                            f"{indent}│   - {call.get('name', 'unknown')}")
+            if hasattr(node, 'tool_results') and node.tool_results:
+                tool_info.append(f'{indent}│ Tool Results:')
+                for result in node.tool_results:
+                    if isinstance(result, dict):
+                        tool_info.append(
+                            f"{indent}│   - {str(result.get('content', ''))[:50]}"
+                            )
+            if hasattr(node, 'pending_results') and node.pending_results:
+                tool_info.append(f'{indent}│ Pending Results:')
+                for result in node.pending_results:
+                    if isinstance(result, dict):
+                        tool_info.append(
+                            f"{indent}│   - {str(result.get('content', ''))[:50]}"
+                            )
+                    else:
+                        raise ValueError()
+            tool_info_str = '\n'.join(tool_info) if tool_info else ''
             messages.append(f'{indent}┌─ {name_display}')
             messages.append(wrapped_content)
+            if hasattr(node, 'tool_calls') and node.tool_calls:
+                messages.append(f'{indent}│ Tool Calls:')
+                for call in node.tool_calls:
+                    if isinstance(call, dict):
+                        messages.append(
+                            f"{indent}│   - {call.get('name', 'unknown')}")
+            if hasattr(node, 'tool_results') and node.tool_results:
+                messages.append(f'{indent}│ Tool Results:')
+                for result in node.tool_results:
+                    if isinstance(result, dict):
+                        messages.append(
+                            f"{indent}│   - {str(result.get('content', ''))[:50]}"
+                            )
+            if hasattr(node, 'pending_results') and node.pending_results:
+                messages.append(f'{indent}│ Pending Results:')
+                for result in node.pending_results:
+                    if isinstance(result, dict):
+                        messages.append(
+                            f"{indent}│   - {str(result.get('content', ''))[:50]}"
+                            )
             messages.append(f'{indent}└' + '─' * 40)
             if hasattr(node, 'replies') and node.replies:
                 for reply in node.replies:
@@ -951,6 +1012,8 @@ class Bot(ABC):
         if self.conversation:
             root = self.conversation
             while hasattr(root, 'parent') and root.parent:
+                if root.parent.is_empty() and len(root.parent.replies) == 1:
+                    break
                 root = root.parent
             lines.extend(format_conversation(root))
         return '\n'.join(lines)
