@@ -86,7 +86,7 @@ def _modify_own_settings(temperature: str=None, max_tokens: str=None) ->str:
         return f'Error: {str(e)}'
 
 
-def _branch_self(self_prompts: str, allow_work: str='False') ->str:
+def branch_self(self_prompts: str, allow_work: str='False') ->str:
     """Branches your conversation using a list of self-prompts. The prompts
     will be sent as user messages in response to your message that calls this
     tool. Also tags the messages with (self-prompt) to distinguish from legitimate
@@ -114,16 +114,15 @@ def _branch_self(self_prompts: str, allow_work: str='False') ->str:
 
     # Insert a dummy result to prevent repeated tool calls
     if not bot.tool_handler.requests:
-        return 'Error: No tool request found'
+        return 'Error: No branch_self tool request found'
     
     request = bot.tool_handler.requests[-1]
     dummy_result = bot.tool_handler.generate_response_schema(
-        request, 
-        {'status': 'in_progress', 'message': 'Branching in progress...'}
+        request = request, 
+        tool_output_kwargs = json.dumps({'status': 'branching_in_progress'})
     )
     bot.tool_handler.add_result(dummy_result)
     bot.conversation.add_tool_results([dummy_result])
-
 
     if not bot:
         return 'Error: Could not find calling bot'
@@ -150,13 +149,28 @@ def _branch_self(self_prompts: str, allow_work: str='False') ->str:
         except Exception as e:
             return 'Branch operation failed:' + str(e)
         
+        # Clean up
         bot.conversation = original_node
-        return f'Successfully created {len(responses)} conversation branches'
+        bot.conversation.tool_results = [r for r in bot.conversation.tool_results if r != dummy_result]
+        for reply in bot.conversation.replies:
+            reply.tool_results = [r for r in reply.tool_results if r != dummy_result]
+        bot.tool_handler.results = [r for r in bot.tool_handler.results if r != dummy_result]
+
+        # return
+        if not any(response is None for response in responses):
+            return f'Successfully created {len(responses)} conversation branches'
+        else:
+            error_messages = []
+            for i, response in enumerate(responses):
+                if response is None:
+                    error_messages.append(f"Tool Error: branch {i+1} failed")
+            return "\n".join(error_messages)
+
     except Exception as e:
         return f'Error: {str(e)}'
 
 
-def add_tools(filepath: str) ->str:
+def _add_tools(filepath: str) ->str:
     """Adds a new set of tools (python functions) to your toolkit
 
     All top-level, non-private functions in filepath will be uploaded

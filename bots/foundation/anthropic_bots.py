@@ -14,8 +14,17 @@ class AnthropicNode(ConversationNode):
         super().__init__(**kwargs)
 
     def add_tool_results(self, results):
-        # by default, all results should be added to self.pending_results
-        self.pending_results.extend(results)
+        """
+        This is called on the node that contains the tool call for anthropic bots.
+        Therefore, the results need to be propagated to the replies or stored as 
+        pending (to be moved to the replies when a reply is added).
+        """
+        if self.replies:
+            self.replies[0].tool_results.extend(results)
+            self.replies[0]._sync_tool_context()
+        else:
+            self.pending_results.extend(results)
+
 
     def _build_messages(self) ->List[Dict[str, Any]]:
         """

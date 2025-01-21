@@ -69,16 +69,25 @@ def branch(bot: Bot, prompts: List[Prompt]) ->Tuple[List[Response], List[
     prompts (List[Prompt]): A list of prompts to send to the bot.
 
     Returns:
-    Tuple[List[Response], List[ResponseNode]]: A tuple containing a list of response strings and a list of corresponding ConversationNodes.
+    Tuple[List[Response], List[ResponseNode]]: A tuple containing a 
+    list of response strings and a list of corresponding 
+    ConversationNodes. If an error occurs, 'None' is sent for both the 
+    response and node.
     """
     original_conversation = bot.conversation
     responses = []
     nodes = []
     for prompt in prompts:
         bot.conversation = original_conversation
-        response = bot.respond(prompt)
-        responses.append(response)
-        nodes.append(bot.conversation)
+        try:
+            response = bot.respond(prompt)
+            node = bot.conversation
+        except:
+            response = None
+            node = None
+        finally:
+            responses.append(response)
+            nodes.append(node)            
     return responses, nodes
 
 
@@ -227,20 +236,22 @@ def branch_while(bot: Bot,
     continue_prompt (str): Prompt to send when stop_condition is False
 
     Returns:
-    Tuple[List[Response], List[ResponseNode]]: Lists of final responses and their corresponding nodes from each branch
+    Tuple[List[Response], List[ResponseNode]]: Lists of final responses and their corresponding nodes from each branch. If an error occurs on a branch, the response and node returned are 'None'.
     """
     original_conversation = bot.conversation
     responses = []
     nodes = []
     for initial_prompt in prompt_list:
-        bot.conversation = original_conversation
-        response = bot.respond(initial_prompt)
-        branch_responses = [response]
-        while not stop_condition(bot):
-            response = bot.respond(continue_prompt)
-            branch_responses.append(response)
-        responses.append(branch_responses[-1])
-        nodes.append(bot.conversation)
-    bot.tool_handler.clear()
+        try:
+            bot.conversation = original_conversation
+            response = bot.respond(initial_prompt)
+            while not stop_condition(bot):
+                response = bot.respond(continue_prompt)
+            node = bot.conversation
+        except Exception as e:
+            response = None
+            node = None
+        finally:
+            responses.append(response)
+            nodes.append(node)
     return responses, nodes
-

@@ -127,7 +127,7 @@ class ConversationNode:
         if self.pending_results:
             reply.tool_results = self.pending_results.copy()
             self.pending_results = []
-        self._sync_tool_context()
+        reply._sync_tool_context()
         return reply
 
     def _sync_tool_context(self) -> None:
@@ -142,11 +142,10 @@ class ConversationNode:
             
             # Update each sibling with the complete list
             for sibling in self.parent.replies:
-                sibling.tool_results = all_tool_results
+                sibling.tool_results = all_tool_results.copy()
 
     def add_tool_calls(self, calls):
         self.tool_calls.extend(calls)
-        self._sync_tool_context()
 
     def add_tool_results(self, results):
         self.tool_results.extend(results)
@@ -791,11 +790,10 @@ class Bot(ABC):
         Sends 'prompt' to the Bot and returns the text response
         Allows tool use
         """
-        self.conversation = self.conversation.add_reply(content=prompt,
-            role=role)
+        self.conversation = self.conversation.add_reply(content=prompt,role=role)
+        if self.autosave: self.save(f'{self.name}')
         reply, _ = self._cvsn_respond()
-        if self.autosave:
-            self.save(f'{self.name}')
+        if self.autosave: self.save(f'{self.name}')
         return reply
 
     def _cvsn_respond(self) ->Tuple[str, ConversationNode]:
@@ -961,14 +959,14 @@ class Bot(ABC):
                 for result in node.tool_results:
                     if isinstance(result, dict):
                         tool_info.append(
-                            f"{indent}│   - {str(result.get('content', ''))[:50]}"
+                            f"{indent}│   - {str(result.get('content', ''))[:available_width]}"
                             )
             if hasattr(node, 'pending_results') and node.pending_results:
                 tool_info.append(f'{indent}│ Pending Results:')
                 for result in node.pending_results:
                     if isinstance(result, dict):
                         tool_info.append(
-                            f"{indent}│   - {str(result.get('content', ''))[:50]}"
+                            f"{indent}│   - {str(result.get('content', ''))[:available_width]}"
                             )
                     else:
                         raise ValueError()
@@ -986,14 +984,14 @@ class Bot(ABC):
                 for result in node.tool_results:
                     if isinstance(result, dict):
                         messages.append(
-                            f"{indent}│   - {str(result.get('content', ''))[:50]}"
+                            f"{indent}│   - {str(result.get('content', ''))[:available_width]}"
                             )
             if hasattr(node, 'pending_results') and node.pending_results:
                 messages.append(f'{indent}│ Pending Results:')
                 for result in node.pending_results:
                     if isinstance(result, dict):
                         messages.append(
-                            f"{indent}│   - {str(result.get('content', ''))[:50]}"
+                            f"{indent}│   - {str(result.get('content', ''))[:available_width]}"
                             )
             messages.append(f'{indent}└' + '─' * 40)
             if hasattr(node, 'replies') and node.replies:
