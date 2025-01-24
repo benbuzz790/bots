@@ -1,143 +1,153 @@
-import traceback
-import textwrap
-import os
-import time
-import bots.tools.code_tools as code_tools
-import bots.tools.terminal_tools as terminal_tools
-import bots.tools.python_tools as python_tools
-from bots.foundation.anthropic_bots import AnthropicBot
-from bots.foundation.base import load
-from bots.foundation.base import Bot
+import os, traceback, textwrap
 import bots.flows.functional_prompts as fp
+from bots.foundation.base import Bot, load
+from bots.foundation.anthropic_bots import AnthropicBot
+from bots.tools import code_tools, terminal_tools, python_tools
 
-# Should perhaps be multi-threaded
+### Helper Functions ###
 
-def _initialize_root_bot():
-    root_bot = AnthropicBot(name="project_Claude")
-    root_bot.add_tools(r"C:\Users\benbu\Code\llm-utilities-git\bots\bots\dev\project_tree_tools.py")
-    root_bot.add_tools(terminal_tools)
-    root_bot.save(root_bot.name)
-    root_bot.set_system_message(prompts.root_initialization)
-    return root_bot
+def _process_error(error):
+    error_message = f'Tool Failed: {str(error)}\n'
+    error_message += (
+        f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
+    return error_message
 
-def _get_new_files(start_time, directory="."):
-    """Get all files created after start_time in directory"""
-    new_files = []
-    
-    for root, _, files in os.walk(directory):
-        for file in files:
-            path = os.path.join(root, file)
-            if os.path.getctime(path) >= start_time:
-                new_files.append(path)
-                
-    return new_files
+### Bot tools ###
 
-### Project Creation ###
-
-def generate_project(spec: str):
+def message_bot(bot_path, message):
     """
-    Executes the standard process for project generation:
-    1. Root bot processes spec and creates module requirements 
-    2. Root bot creates and calls file bots for each module
-    4. File bots implement code
-   
+    Loads a bot, sends it a message, and allows it to work.
+
+    Use to prepare a bot to do a task and to allow it to work. Returns control when the
+    bot replies with '/DONE'.
+
     Parameters:
-    - spec (str): Project specification text
-   
-    Returns success or error message string.
+    - bot_path (str): File path to the saved bot
+    - message (str): The message to send to the bot
+
+    Returns the bot's first response, a list of tool-uses in order, and final response as a string.
     """
-    
+
     try:
-
-        # Decide on structure
-        print("----- Making Spec -----")
-        root_bot = _initialize_root_bot()
-        response = root_bot.respond(prompts.root_breakdown_spec(spec))
-        print("root: " + response)
-
-        # Make other bots
-        print("----- Making Bots -----")
-        start_time = time.time()
-        responses, _ = fp.prompt_while(
-            bot = root_bot, 
-            first_prompt = prompts.root_make_bots(), 
-            continue_prompt = prompts.root_continue, 
-            stop_condition = fp.conditions.tool_not_used
-            )
-        print("root: "+ '\n'.join(responses))
-
-        # get all new file bots
-        bot_list = _get_new_files(start_time)
-
-        # Create requirements for each bot
-        print("----- Making requirements -----")
-        _, nodes = fp.prompt_for(
-            bot = root_bot, 
-            items = bot_list, 
-            dynamic_prompt = prompts.root_make_req, 
-            should_branch = False
-            )
+        # Set up prompt_while arguments
+        bot = load(bot_path)
+        first_message = "MESSAGE:\n\n" + message
+        continue_prompt = prompts.message_continue
         
-        # return to branch
-        #root_bot.conversation = nodes[0].parent.parent
+        def stop_condition(bot:Bot):
+            
+            # Side effect: print
+            tool_name = ''
+            tools = ''
+            if bot.tool_handler.requests:
+                for request in bot.tool_handler.requests:
+                    tool_name, _ = bot.tool_handler.tool_name_and_input(request)
+                tools += "- " + tool_name + "\n"
+            response = bot.conversation.content
+            print(bot.name + ": " + response + "\n" + tool_name)
+
+            # Stop when /DONE in response
+            return "/DONE" in response
         
-        # Create files by instructing each bot to make them
-        print("----- Making Files -----")
+        # prompt_while bot hasn't said "/DONE"
+        _, nodes = fp.prompt_while(bot, first_message, continue_prompt, stop_condition)
 
-        _, nodes = fp.prompt_for(
-            bot = root_bot, 
-            items = bot_list, 
-            dynamic_prompt = prompts.root_make_files, 
-            should_branch = True
-        )
-
-        # return to branch
-        root_bot.conversation = nodes[0].parent.parent
-
-        # run requirements validator
-        print("----- Running Validator -----")
-        fp.prompt_while(
-            bot = root_bot,
-            first_prompt = prompts.root_validate(),
-            continue_prompt = "say command 'DONE' when validator is done", 
-            stop_condition = fp.conditions.said_DONE    
-            )
+        # get desired information from returned conversation nodes
+        tools = ''
+        for node in nodes:
+            tool_name = ''
+            if node.tool_calls:
+                for call in node.tool_calls:
+                    tool_name, _ = bot.tool_handler.tool_name_and_input(call)
+                    tools += "- " + tool_name + "\n"
         
-        # run tests via branching
-        print("----- Running Tests -----")
-        fp.prompt_for(
-            bot = root_bot, 
-            items = bot_list, 
-            dynamic_prompt = prompts.root_run_tests, 
-            should_branch = True
-        )
-
-        print("----- Final Touches -----")
-        fp.prompt_while(
-            bot = root_bot,
-            first_prompt = prompts.root_cleanup(),
-            continue_prompt = "say command 'DONE' when cleanup is done",
-            stop_condition = fp.conditions.said_DONE
-        )
-        
-        print("----- Making Demo -----")
-        fp.prompt_while(
-            bot = root_bot, 
-            first_prompt = prompts.root_demo(),
-            continue_prompt = "say command 'DONE' when demo bot has run demo successfully", 
-            stop_condition = fp.conditions.said_DONE
-            )
-        
-        print("----- Wrapping Up -----")
-        print(root_bot.respond(prompts.root_wrap_up()))
-
+        return nodes[0].content +":\n" + tools + "\n---" + nodes[-1].content
+    
     except Exception as error:
-       raise error
-   
-    return "success"
+        return _process_error(error)
 
+def memorialize_requirements(name: str, requirements: str):
+    """
+    Creates or updates a requirements file for a module.
+    
+    Use when you need to document requirements for a new file or update
+    existing requirements.
+    
+    Parameters:
+    - name (str): Name of the file (.md or .txt)
+    - requirements (str): The requirements content to write. This must be comprehensive
+        and complete. Saying 'everything else stays the same' is NOT allowed.
+    
+    Returns the filename or an error message string.
+    """
 
-### Prompt Library ###
+    try:
+        file_path = f"{name}"
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(requirements)
+        return f'Created requirements file {file_path} successfully'
+    except Exception as error:
+        return _process_error(error)
+
+def initialize_file_bot(file_name: str) -> str:
+    """
+    Creates and initializes a new file-editing bot, saving it to disk.
+    Creates any necessary directories from the file_name path if they don't exist.
+
+    Use when you need to create a new bot to handle implementation of a specific file.
+    The bot will be initialized with appropriate file-level tools and context.
+
+    Parameters:
+    - file_name (str): Name of the file this bot will manage (can include directory path)
+
+    Returns success message with bot's file path or an error message string.
+    """
+    try:
+        # Create directories from the file path if they don't exist
+        directory = os.path.dirname(file_name)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+            
+        name, _ = os.path.splitext(file_name)
+        file_bot = AnthropicBot(name=f"{name}")
+        file_bot.set_system_message(prompts.file_initialization)
+        file_bot.add_tools(code_tools)
+        file_bot.add_tools(terminal_tools)    
+        file_bot.add_tools(python_tools)   
+        path = file_bot.save(file_bot.name)
+        return f"Success: file bot created at {path}"
+    except Exception as error:
+        return _process_error(error)
+
+def initialize_validator_bot(name: str) -> str:
+    """
+    Creates and initializes a new validator bot, saving it to disk.
+    Creates any necessary directories from the name path if they don't exist.
+
+    Use when you need to create a new bot to handle validation of a set of files
+    against a set of requirements.
+
+    Parameters:
+    - name (str): Name of the bot including optional path (will be saved as [name].bot)
+
+    Returns success message with bot's file path or an error message string.
+    """
+
+    try:
+        # Create directories from the name path if they don't exist
+        directory = os.path.dirname(name)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+            
+        validator_bot = AnthropicBot(name=f"{name}")
+        validator_bot.set_system_message(prompts.validator_initialization)
+        validator_bot.add_tools(code_tools)
+        validator_bot.add_tool(message_bot)
+        path = validator_bot.save(validator_bot.name)
+        return f"Success: validator bot created at {path}"
+    except Exception as error:
+        return _process_error(error)
+
 
 class prompts:
 
@@ -287,7 +297,7 @@ class prompts:
         return textwrap.dedent(f"""INSTRUCTION 6. Clean up any borked components -- message bots to finish
             their work if they haven't already, attempt to fix any issues that arose, etc.""")
 
-    def root_demo():
+    def root_demo(bot_name: str):
         return textwrap.dedent(f"""INSTRUCTION 7. Make the full system demo""")
 
     def root_wrap_up():
@@ -416,21 +426,19 @@ class prompts:
     - Allow definition of structures through JSON/YAML input files
     - Support point loads and distributed loads
     - Calculate displacements, stresses, and strains
-    - Generate text-based visualization of results (using ASCII art or similar)
-    - Provide error estimates and convergence metrics
     - Export results to CSV/JSON formats
     - Project structure shall be flat - a single folder with all files.
 
     Key Features:
     1. Mesh Generation
     - Read geometry from input files
-    - Basic mesh refinement capabilities
+    - Create mesh
     - Mesh quality checks
 
     2. Material Models
     - Linear elastic materials
     - Support for different material properties (Young's modulus, Poisson's ratio)
-    - Material library management
+    - Material library
 
     3. Analysis
     - Assembly of global stiffness matrix
@@ -446,17 +454,13 @@ class prompts:
 
     5. CLI Interface
     - Interactive mode for analysis setup
-    - Batch processing mode
     - Progress indicators for long computations
-    - Result browsing and querying
 
     6. Testing
     - Thorough testing of all features
 
     Performance Requirements:
     - Handle problems up to 1000 elements
-    - Memory efficient sparse matrix operations
-    - Parallelize matrix assembly and solving where beneficial
 
     Documentation Requirements:
     - Is a package
@@ -774,29 +778,3 @@ LLM Email System is complete when:
 - Approved By: Ben Rinauto
 """
 
-### Main ###
-
-import sys
-import traceback
-from functools import wraps
-from typing import Any, Callable
-
-def debug_on_error(func: Callable) -> Callable:
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        try:
-            return func(*args, **kwargs)
-        except Exception:
-            type, value, tb = sys.exc_info()
-            traceback.print_exception(type, value, tb)
-            print("\n--- Entering post-mortem debugging ---")
-            import pdb
-            pdb.post_mortem(tb)
-    return wrapper
-
-@debug_on_error
-def main():
-    generate_project(prompts.sample_feapy)
-
-if __name__ == '__main__':
-    main()
