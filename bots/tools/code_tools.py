@@ -34,15 +34,15 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str=
     """
     Creates a summary of the directory structure starting from the given path, writing only files 
     with specified extensions. The output is written to a text file and returned as a string.
-    
+
     Parameters:
     - start_path (str): The root directory to start scanning from.
     - output_file (str): The name of the file to optionally write the directory structure to.
     - target_extensions (str): String representation of a list of file extensions (e.g. "['py', 'txt']").
-    
+
     Returns:
     str: A formatted string containing the directory structure, with each directory and file properly indented.
-    
+
     Example output:
     my_project/
         module1/
@@ -79,7 +79,7 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str=
 
 
 def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
-    False, preview: bool=False, context_lines: int=2) ->str:
+    False, context_lines: int=2) ->str:
     """Diff spec editing with flexible matching.
 
     Use when you need to make specific text replacements in code files.
@@ -99,7 +99,6 @@ def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
     - file_path (str): Path to the file to modify
     - diff_spec (str): Diff-style specification of changes
     - ignore_indentation (bool): If True, ignores whitespace at start of lines when matching
-    - preview (bool): If True, shows what would change without making changes
     - context_lines (int): Number of lines of context to show around failed matches
 
     Returns:
@@ -109,15 +108,20 @@ def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
         encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252',
             'iso-8859-1']
         content = None
-        used_encoding = None
-        for encoding in encodings:
-            try:
-                with open(file_path, 'r', encoding=encoding) as file:
-                    content = file.read()
-                    used_encoding = encoding
-                    break
-            except UnicodeDecodeError:
-                continue
+        used_encoding = 'utf-8'
+        if not os.path.exists(file_path):
+            with open(file_path, 'w', encoding=used_encoding) as file:
+                file.write('')
+            content = ''
+        else:
+            for encoding in encodings:
+                try:
+                    with open(file_path, 'r', encoding=encoding) as file:
+                        content = file.read()
+                        used_encoding = encoding
+                        break
+                except UnicodeDecodeError:
+                    continue
         if content is None:
             return (
                 f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
@@ -139,8 +143,6 @@ def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
                 in_minus_block = False
                 in_plus_block = False
                 continue
-            
-            # Check for improperly formatted blocks
             if line.startswith('-'):
                 in_minus_block = True
                 in_plus_block = False
@@ -148,13 +150,14 @@ def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
                 in_plus_block = True
                 in_minus_block = False
             else:
-                # Line has no prefix but we're in a block - this is an error
                 if in_minus_block:
-                    return "Error in diff specification: Found unmarked line after '-' marker. Each line to be replaced must start with '-'"
+                    return (
+                        "Error in diff specification: Found unmarked line after '-' marker. Each line to be replaced must start with '-'"
+                        )
                 if in_plus_block:
-                    return "Error in diff specification: Found unmarked line after '+' marker. Each line to be added must start with '+'"
-            
-            # Process the line as before
+                    return (
+                        "Error in diff specification: Found unmarked line after '+' marker. Each line to be added must start with '+'"
+                        )
             if line.startswith('-'):
                 try:
                     line_num = int(line[1:])
@@ -210,8 +213,7 @@ def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
                             prev_indent)
                     else:
                         adjusted_new = new_lines
-                    if not preview:
-                        current_lines[line_num:line_num] = adjusted_new
+                    current_lines[line_num:line_num] = adjusted_new
                     applied_changes.append((f'after line {line_num}', '\n'.
                         join(adjusted_new)))
                     found = True
@@ -237,14 +239,14 @@ def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
                                 target_indent)
                         else:
                             adjusted_new = new_lines
-                        if not preview:
-                            current_lines[i:i + len(old_lines)] = adjusted_new
+                        current_lines[i:i + len(old_lines)] = adjusted_new
                         applied_changes.append(('\n'.join(old_lines), '\n'.
                             join(adjusted_new)))
                         found = True
                         break
                     else:
-                        match_score = _calculate_block_match_score(current_block, old_lines, ignore_indentation)
+                        match_score = _calculate_block_match_score(
+                            current_block, old_lines, ignore_indentation)
                         if match_score > best_match_score:
                             best_match_score = match_score
                             best_match_index = i
@@ -263,25 +265,19 @@ def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
                 failed_changes.append(('\n'.join(old_lines), '\n'.join(
                     new_lines), failure_context))
         report = []
-        if preview:
-            report.append('Preview of changes to be made:')
+        report.append('Changes made:')
         if applied_changes:
             report.append(
-                f"""
-Successfully {'previewed' if preview else 'applied'} {len(applied_changes)} changes:"""
-                )
+                f'\nSuccessfully applied {len(applied_changes)} changes:')
             for old, new in applied_changes:
                 report.append(f'\nChanged:\n{old}\nTo:\n{new}')
         if failed_changes:
-            report.append(
-                f"""
-Failed to {'preview' if preview else 'apply'} {len(failed_changes)} changes:"""
-                )
+            report.append(f'\nFailed to apply {len(failed_changes)} changes:')
             for old, new, context in failed_changes:
                 report.append(
                     f'\nCould not find:\n{old}\nTo replace with:\n{new}{context}'
                     )
-        if not preview and applied_changes:
+        if applied_changes:
             new_content = '\n'.join(current_lines)
             if not new_content.endswith('\n'):
                 new_content += '\n'

@@ -208,31 +208,34 @@ class TestCodeTools(unittest.TestCase):
 
     def test_line_number_insertion(self):
         """Test inserting content at a specific line number."""
-        initial_content = textwrap.dedent("""
+        initial_content = textwrap.dedent(
+            """
             def test_function():
                 x = 1
                 z = 3
                 return x + z
-        """).lstrip()
-        
-        diff_spec = textwrap.dedent("""
+        """
+            ).lstrip()
+        diff_spec = textwrap.dedent(
+            """
             -2
             +    y = 2
         """).lstrip()
-        
         file_path = create_temp_file(initial_content)
         try:
             result = diff_edit(file_path, diff_spec)
             self.assertIn('Successfully', result)
             with open(file_path, 'r', encoding='utf-8') as f:
                 new_content = f.read()
-            expected = textwrap.dedent("""
+            expected = textwrap.dedent(
+                """
                 def test_function():
                     x = 1
                     y = 2
                     z = 3
                     return x + z
-            """).lstrip()
+            """
+                ).lstrip()
             self.assertEqual(new_content, expected)
         finally:
             os.remove(file_path)
@@ -250,6 +253,85 @@ class TestCodeTools(unittest.TestCase):
             self.assertEqual(new_content, initial_content)
         finally:
             os.remove(file_path)
+
+    def test_create_new_file(self):
+        """Test that diff_edit creates a new file if it doesn't exist."""
+        new_file = os.path.join(self.temp_dir, 'new_file.py')
+        if os.path.exists(new_file):
+            os.remove(new_file)
+        diff_spec = textwrap.dedent(
+            """
+        -0
+        +def hello():
+        +    print("Hello, World!")
+    """
+            ).lstrip()
+        try:
+            result = diff_edit(new_file, diff_spec)
+            self.assertIn('Successfully', result)
+            self.assertTrue(os.path.exists(new_file))
+            with open(new_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            expected = textwrap.dedent(
+                """
+            def hello():
+                print("Hello, World!")
+        """
+                ).lstrip()
+            self.assertEqual(content, expected)
+        finally:
+            if os.path.exists(new_file):
+                os.remove(new_file)
+
+    def test_create_new_file_empty_diff(self):
+        """Test that diff_edit creates an empty file when given empty diff spec."""
+        new_file = os.path.join(self.temp_dir, 'empty_file.py')
+        if os.path.exists(new_file):
+            os.remove(new_file)
+        result = diff_edit(new_file, '')
+        try:
+            self.assertIn('No changes', result)
+            self.assertTrue(os.path.exists(new_file))
+            with open(new_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            self.assertEqual(content, '')
+        finally:
+            if os.path.exists(new_file):
+                os.remove(new_file)
+
+    def test_create_new_file_multiple_changes(self):
+        """Test that diff_edit can create a new file with multiple changes."""
+        new_file = os.path.join(self.temp_dir, 'multi_change_file.py')
+        if os.path.exists(new_file):
+            os.remove(new_file)
+        diff_spec = textwrap.dedent(
+            """
+            -0
+            +def subtract(a, b):
+            +    return a - b
+
+            -0
+            +def add(a, b):
+            +    return a + b
+            """)
+        try:
+            result = diff_edit(new_file, diff_spec)
+            self.assertIn('Successfully', result)
+            self.assertTrue(os.path.exists(new_file))
+            with open(new_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            expected = textwrap.dedent(
+                """
+            def add(a, b):
+                return a + b
+            def subtract(a, b):
+                return a - b
+        """
+                ).lstrip()
+            self.assertEqual(content, expected)
+        finally:
+            if os.path.exists(new_file):
+                os.remove(new_file)
 
 
 if __name__ == '__main__':
