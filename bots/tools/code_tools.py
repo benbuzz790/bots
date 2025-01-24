@@ -77,6 +77,7 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str=
             file.write(output_text)
     return '\n'.join(output_text)
 
+
 def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
     False, preview: bool=False, context_lines: int=2) ->str:
     """Diff spec editing with flexible matching.
@@ -127,13 +128,33 @@ def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
         changes = []
         current_old = []
         current_new = []
+        in_minus_block = False
+        in_plus_block = False
         for line in diff_spec.splitlines():
             if not line:
                 if current_old and current_new:
                     changes.append((current_old.copy(), current_new.copy()))
                     current_old.clear()
                     current_new.clear()
+                in_minus_block = False
+                in_plus_block = False
                 continue
+            
+            # Check for improperly formatted blocks
+            if line.startswith('-'):
+                in_minus_block = True
+                in_plus_block = False
+            elif line.startswith('+'):
+                in_plus_block = True
+                in_minus_block = False
+            else:
+                # Line has no prefix but we're in a block - this is an error
+                if in_minus_block:
+                    return "Error in diff specification: Found unmarked line after '-' marker. Each line to be replaced must start with '-'"
+                if in_plus_block:
+                    return "Error in diff specification: Found unmarked line after '+' marker. Each line to be added must start with '+'"
+            
+            # Process the line as before
             if line.startswith('-'):
                 try:
                     line_num = int(line[1:])
@@ -170,27 +191,6 @@ def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
                     stripped = line[min_indent:]
                     adjusted.append(target_indent + stripped)
             return adjusted
-
-        def calculate_block_match_score(current_block, old_lines):
-            """Calculate how well two blocks match, returning a score and matching line indices."""
-            if ignore_indentation:
-                current_stripped = [c.strip() for c in current_block]
-                old_stripped = [o.strip() for o in old_lines]
-            else:
-                current_stripped = current_block
-                old_stripped = old_lines
-            exact_matches = sum(1 for c, o in zip(current_stripped,
-                old_stripped) if c == o)
-            partial_matches = 0
-            for c, o in zip(current_stripped, old_stripped):
-                c_words = set(c.split())
-                o_words = set(o.split())
-                word_matches = len(c_words.intersection(o_words))
-                if word_matches > 0:
-                    partial_matches += word_matches / max(len(c_words), len
-                        (o_words))
-            total_score = exact_matches * 2 + partial_matches
-            return total_score
 
         def get_context(lines, center_idx, context_size):
             """Get context lines around an index with line numbers."""
@@ -244,8 +244,7 @@ def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
                         found = True
                         break
                     else:
-                        match_score = calculate_block_match_score(current_block
-                            , old_lines)
+                        match_score = _calculate_block_match_score(current_block, old_lines, ignore_indentation)
                         if match_score > best_match_score:
                             best_match_score = match_score
                             best_match_index = i
@@ -292,3 +291,31 @@ Failed to {'preview' if preview else 'apply'} {len(failed_changes)} changes:"""
     except Exception as e:
         import traceback
         return f'Error: {str(e)}\n{traceback.format_exc()}'
+
+
+def _calculate_block_match_score(current_block, old_lines, ignore_indentation):
+    """Calculate how well two blocks match, returning a score and matching line indices."""
+    if ignore_indentation:
+        current_joined = ' '.join(l.strip() for l in current_block)
+        old_joined = ' '.join(l.strip() for l in old_lines)
+        current_stripped = [c.strip() for c in current_block]
+        old_stripped = [o.strip() for o in old_lines]
+    else:
+        current_joined = ' '.join(current_block)
+        old_joined = ' '.join(old_lines)
+        current_stripped = current_block
+        old_stripped = old_lines
+    exact_matches = sum(1 for c, o in zip(current_stripped, old_stripped) if
+        c == o)
+    if current_joined == old_joined:
+        return len(current_block) * 3
+    c_words = set(current_joined.split())
+    o_words = set(old_joined.split())
+    word_matches = len(c_words.intersection(o_words))
+    partial_score = 0
+    if word_matches > 0:
+        partial_score = word_matches / max(len(c_words), len(o_words))
+        if word_matches == len(c_words) and word_matches == len(o_words):
+            partial_score *= 2
+    total_score = exact_matches * 2 + partial_score
+    return total_score
