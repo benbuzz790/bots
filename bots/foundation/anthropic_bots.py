@@ -158,8 +158,8 @@ class AnthropicMailbox(Mailbox):
                 response = self.client.beta.prompt_caching.messages.create(**
                     create_dict)
                 return response
-            except (anthropic.InternalServerError, anthropic.RateLimitError
-                ) as e:
+            except (anthropic.InternalServerError, anthropic.RateLimitError, anthropic.APIConnectionError
+            ) as e:
                 if attempt == max_retries - 1:
                     print('\n\n\n ---debug---\n')
                     print(create_dict)
