@@ -29,3 +29,19 @@ class TestTerminalTools(unittest.TestCase):
         ps_script = 'Write-Output ""'
         result = execute_powershell(ps_script)
         self.assertEqual(result.strip(), '')
+
+    def test_powershell_timeout(self):
+        """Test that long-running commands timeout correctly"""
+        from bots.tools.terminal_tools import execute_powershell
+        ps_script = 'Start-Sleep -Seconds 308'  # Just over 5 minute timeout
+        result = execute_powershell(ps_script)
+        self.assertIn('Error: Command execution timed out after 300 seconds', result)
+
+    def test_powershell_truncated_output(self):
+        """Test that long output is truncated and saved to file"""
+        from bots.tools.terminal_tools import execute_powershell
+        ps_script = '1..100 | ForEach-Object { Write-Output "Line $_" }'
+        result = execute_powershell(ps_script, output_length_limit='50')
+        self.assertEqual(len(result.splitlines()), 52)  # 50 lines + 2 for truncation message
+        self.assertIn('50 lines omitted', result)
+        self.assertIn('Full output saved to', result)
