@@ -63,54 +63,44 @@ class DetailedTestCase(unittest.TestCase):
 
 
 class TestPythonTools(DetailedTestCase):
+
     def test_class_scoped_functions(self):
         """Test function replacement and addition within specific classes"""
-        # Test replacing a method in a specific class while preserving it in another
-        test_dir = os.path.join('benbuzz790', 'private_tests', 'test_class_scoped')
+        test_dir = os.path.join('benbuzz790', 'private_tests',
+            'test_class_scoped')
         os.makedirs(test_dir, exist_ok=True)
         test_file = os.path.join(test_dir, 'test_class_functions.py')
-        
         try:
-            # Setup initial class with method
-            initial_code = '''
+            initial_code = """
 class TestClass:
     def test_method(self):
         return "old"
         
 class OtherClass:
     def test_method(self):
-        return "other"
-'''
+        return "other\"
+"""
             with open(test_file, 'w') as f:
                 f.write(textwrap.dedent(initial_code))
-                
-            # Replace method in specific class
-            new_method = '''
-def test_method(self):
-    return "new"
-'''
-            result = python_tools.replace_function(test_file, new_method, class_name="TestClass")
-            self.assertIn("replaced", result)
-            
-            # Verify only the targeted class method was replaced
+            new_method = '\ndef test_method(self):\n    return "new"\n'
+            result = python_tools.replace_function(test_file, new_method,
+                class_name='TestClass')
+            self.assertIn('replaced', result)
             with open(test_file, 'r') as f:
                 content = f.read()
-            self.assertTrue('return "new"' in content or "return 'new'" in content)
-            self.assertTrue('return "other"' in content or "return 'other'" in content)
-            
-            # Test adding new method to specific class
-            new_method = '''
-def new_method(self):
-    return "added"
-'''
-            result = python_tools.add_function_to_file(test_file, new_method, class_name="TestClass")
-            self.assertIn("added", result)
-            
+            self.assertTrue('return "new"' in content or "return 'new'" in
+                content)
+            self.assertTrue('return "other"' in content or "return 'other'" in
+                content)
+            new_method = '\ndef new_method(self):\n    return "added"\n'
+            result = python_tools.add_function_to_file(test_file,
+                new_method, class_name='TestClass')
+            self.assertIn('added', result)
             with open(test_file, 'r') as f:
                 content = f.read()
             self.assertIn('def new_method', content)
-            self.assertTrue('return "added"' in content or "return 'added'" in content)
-            
+            self.assertTrue('return "added"' in content or "return 'added'" in
+                content)
         finally:
             if os.path.exists(test_dir):
                 import shutil
@@ -982,8 +972,7 @@ from datetime import datetime as dt, timedelta
 
     def test_indentation_handling(self):
         """Test that code tools handle various indentation patterns correctly"""
-        # Test with differently indented input code
-        initial_content = "class TestClass:\n    pass\n"
+        initial_content = 'class TestClass:\n    pass\n'
         indented_method = """
             def test_method(self):
                 print("test")
@@ -994,16 +983,14 @@ from datetime import datetime as dt, timedelta
                         print("another test")
                         return False
         """
-        
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-            
-        # Both methods should be added with correct indentation
-        python_tools.add_function_to_class(self.test_file, 'TestClass', indented_method)
-        python_tools.add_function_to_class(self.test_file, 'TestClass', very_indented_method)
-        
-        # Create expected content using AST to ensure correct formatting
-        expected_tree = ast.parse('''
+        python_tools.add_function_to_class(self.test_file, 'TestClass',
+            indented_method)
+        python_tools.add_function_to_class(self.test_file, 'TestClass',
+            very_indented_method)
+        expected_tree = ast.parse(
+            """
 class TestClass:
     pass
 
@@ -1014,11 +1001,12 @@ class TestClass:
     def another_method(self):
         print("another test")
         return False
-''')
+"""
+            )
         expected_content = astor.to_source(expected_tree)
-        self.assertFileContentEqual(self.test_file, expected_content, 
+        self.assertFileContentEqual(self.test_file, expected_content,
             'Indentation handling failed')
-            
+
     def test_multiple_imports_file_creation(self):
         """Test file creation when adding multiple imports to non-existent file"""
         import tempfile
@@ -1220,7 +1208,6 @@ class TestClass:
         result = python_tools._execute_python_code(code)
         self.assertIn('Fibonacci(10) = 55', result)
 
-
     def test_execute_python_code_process_cleanup(self):
         """Test that processes are properly cleaned up after execution"""
         import psutil
@@ -1236,6 +1223,43 @@ class TestClass:
         final_processes = set(psutil.Process().children(recursive=True))
         new_processes = final_processes - initial_processes
         self.assertEqual(len(new_processes), 0, 'Process cleanup failed')
+
+    def test_parenthesized_imports(self):
+        """Test handling of parenthesized multi-line import statements"""
+        initial_content = '# Empty file\n'
+        import_statements = """
+    from typing import (
+        List,
+        Dict,
+        Optional,
+        Union
+    )
+    from collections import (
+        defaultdict as dd,
+        Counter,
+        deque
+    )
+    import os
+    """
+        expected_content = """# Empty file
+from typing import (
+    List,
+    Dict,
+    Optional,
+    Union
+)
+from collections import (
+    defaultdict as dd,
+    Counter,
+    deque
+)
+import os
+"""
+        with open(self.test_file, 'w') as f:
+            f.write(initial_content)
+        python_tools.add_imports(self.test_file, import_statements)
+        self.assertFileContentEqual(self.test_file, expected_content,
+            'Parenthesized multi-line imports failed')
 
 
 if __name__ == '__main__':

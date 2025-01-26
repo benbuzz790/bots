@@ -27,13 +27,12 @@ env/
 project_structure.txt
 scripts/*
 debug_on_error.py
-discord.txt
 Notes.txt
 *credentials*
 bot_context.txt
 scratch.py
 tests/test_file.py
-sample.py
 benbuzz790*
 *experiments*
 *conversation_search*
+*issue103*

@@ -206,40 +206,6 @@ class TestCodeTools(unittest.TestCase):
         finally:
             os.remove(file_path)
 
-    def test_line_number_insertion(self):
-        """Test inserting content at a specific line number."""
-        initial_content = textwrap.dedent(
-            """
-            def test_function():
-                x = 1
-                z = 3
-                return x + z
-        """
-            ).lstrip()
-        diff_spec = textwrap.dedent(
-            """
-            -2
-            +    y = 2
-        """).lstrip()
-        file_path = create_temp_file(initial_content)
-        try:
-            result = diff_edit(file_path, diff_spec)
-            self.assertIn('Successfully', result)
-            with open(file_path, 'r', encoding='utf-8') as f:
-                new_content = f.read()
-            expected = textwrap.dedent(
-                """
-                def test_function():
-                    x = 1
-                    y = 2
-                    z = 3
-                    return x + z
-            """
-                ).lstrip()
-            self.assertEqual(new_content, expected)
-        finally:
-            os.remove(file_path)
-
     def test_empty_diff(self):
         """Test handling of empty diff specification."""
         initial_content = "print('test')\n"
@@ -261,7 +227,6 @@ class TestCodeTools(unittest.TestCase):
             os.remove(new_file)
         diff_spec = textwrap.dedent(
             """
-        -0
         +def hello():
         +    print("Hello, World!")
     """
@@ -306,13 +271,11 @@ class TestCodeTools(unittest.TestCase):
             os.remove(new_file)
         diff_spec = textwrap.dedent(
             """
-            -0
-            +def subtract(a, b):
-            +    return a - b
-
-            -0
             +def add(a, b):
             +    return a + b
+
+            +def subtract(a, b):
+            +    return a - b
             """)
         try:
             result = diff_edit(new_file, diff_spec)

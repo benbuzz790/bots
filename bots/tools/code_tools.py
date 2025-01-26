@@ -1,4 +1,5 @@
 import os
+import traceback
 
 
 def view(file_path: str):
@@ -78,32 +79,44 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str=
     return '\n'.join(output_text)
 
 
-def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
-    False, context_lines: int=2) ->str:
+def diff_edit(file_path: str, diff_spec: str):
     """Diff spec editing with flexible matching.
 
-    Use when you need to make specific text replacements in code files.
-    The diff spec uses a simplified format:
-    - Lines starting with '-' indicate text to be replaced (no space after -)
-    - Lines starting with '+' indicate replacement text (no space after +)
-    - Alternatively, a line starting with '-#' (where # is a specific integer) can specify a line number to insert after
-    - Blank lines separate different changes
-    - Changes are applied in order
-
-    When ignore_indentation is True:
-    - Matches text ignoring leading whitespace
-    - Preserves the indentation level where the match is found
-    - All lines in the replacement maintain their relative indentation
+    Use when you need to make specific changes in text files.
 
     Parameters:
     - file_path (str): Path to the file to modify
     - diff_spec (str): Diff-style specification of changes
-    - ignore_indentation (bool): If True, ignores whitespace at start of lines when matching
-    - context_lines (int): Number of lines of context to show around failed matches
 
     Returns:
     str: Description of changes made/to be made or error message with context
+
+    The diff spec uses a simplified format:
+    - Lines starting with '-' indicate text to be removed (no space after -)
+    - Lines starting with '+' indicate text to be added (no space after +)
+    - Blank lines separate different changes
+    - Changes are applied in order:
+        - Text to be removed is matched
+        - Start of text is indexed
+        - Lines are removed
+        - Lines to add are inserted at index (If no lines were removed, index is set to EOF)
+
+    Diff Spec Example: replace multiple sets of multiple lines:
+    -def bad_function():
+    -    return x+y
+    +def good_function(x, y):
+    +    return x+y
+
+    -def print_nice():
+    -    print('---')
+    -    print(string)
+    -    print('---')
+    +def print_nice(string):
+    +    sep = '---\\n'
+    +    print(sep+string+sep)
     """
+    ignore_indentation: bool = True
+    context_lines: int = 2
     try:
         encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252',
             'iso-8859-1']
@@ -127,166 +140,166 @@ def diff_edit(file_path: str, diff_spec: str, ignore_indentation: bool=
                 f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
                 )
         if not diff_spec.strip():
-            return 'No changes specified'
+            return 'Error: No changes specified'
+        changes, errors = _parse_diff_spec(diff_spec=diff_spec)
+        if errors:
+            return 'Error parsing:' + '\n'.join(errors)
         original_lines = content.splitlines()
-        changes = []
-        current_old = []
-        current_new = []
-        in_minus_block = False
-        in_plus_block = False
-        for line in diff_spec.splitlines():
-            if not line:
-                if current_old and current_new:
-                    changes.append((current_old.copy(), current_new.copy()))
-                    current_old.clear()
-                    current_new.clear()
-                in_minus_block = False
-                in_plus_block = False
-                continue
-            if line.startswith('-'):
-                in_minus_block = True
-                in_plus_block = False
-            elif line.startswith('+'):
-                in_plus_block = True
-                in_minus_block = False
-            else:
-                if in_minus_block:
-                    return (
-                        "Error in diff specification: Found unmarked line after '-' marker. Each line to be replaced must start with '-'"
-                        )
-                if in_plus_block:
-                    return (
-                        "Error in diff specification: Found unmarked line after '+' marker. Each line to be added must start with '+'"
-                        )
-            if line.startswith('-'):
-                try:
-                    line_num = int(line[1:])
-                    current_old = [str(line_num)]
-                except ValueError:
-                    current_old.append(line[1:])
-            elif line.startswith('+'):
-                current_new.append(line[1:])
-        if current_old and current_new:
-            changes.append((current_old, current_new))
-        if not changes:
-            return 'No valid changes found in diff specification'
         current_lines = original_lines.copy()
-        applied_changes = []
-        failed_changes = []
-
-        def get_indentation(line):
-            """Extract the leading whitespace from a line."""
-            return line[:len(line) - len(line.lstrip())]
-
-        def adjust_indentation(lines, target_indent):
-            """Adjust indentation of a block of lines to match target_indent."""
-            if not lines:
-                return lines
-            non_empty_lines = [l for l in lines if l.strip()]
-            if not non_empty_lines:
-                return lines
-            min_indent = min(len(get_indentation(l)) for l in non_empty_lines)
-            adjusted = []
-            for line in lines:
-                if not line.strip():
-                    adjusted.append(line)
-                else:
-                    stripped = line[min_indent:]
-                    adjusted.append(target_indent + stripped)
-            return adjusted
-
-        def get_context(lines, center_idx, context_size):
-            """Get context lines around an index with line numbers."""
-            start = max(0, center_idx - context_size)
-            end = min(len(lines), center_idx + context_size + 1)
-            return [f'{i + 1}: {line}' for i, line in enumerate(lines[start
-                :end], start)]
-        for old_lines, new_lines in changes:
-            found = False
-            try:
-                line_num = int(old_lines[0])
-                if line_num <= len(current_lines):
-                    if line_num > 0:
-                        prev_indent = get_indentation(current_lines[
-                            line_num - 1])
-                        adjusted_new = adjust_indentation(new_lines,
-                            prev_indent)
-                    else:
-                        adjusted_new = new_lines
-                    current_lines[line_num:line_num] = adjusted_new
-                    applied_changes.append((f'after line {line_num}', '\n'.
-                        join(adjusted_new)))
-                    found = True
-                else:
-                    failed_changes.append((
-                        f'Line number {line_num} exceeds file length {len(current_lines)}'
-                        , '\n'.join(new_lines), ''))
-            except ValueError:
-                best_match_score = 0
-                best_match_index = None
-                for i in range(len(current_lines) - len(old_lines) + 1):
-                    current_block = current_lines[i:i + len(old_lines)]
-                    if ignore_indentation:
-                        match = all(c.strip() == o.strip() for c, o in zip(
-                            current_block, old_lines))
-                    else:
-                        match = all(c == o for c, o in zip(current_block,
-                            old_lines))
-                    if match:
-                        if ignore_indentation:
-                            target_indent = get_indentation(current_block[0])
-                            adjusted_new = adjust_indentation(new_lines,
-                                target_indent)
-                        else:
-                            adjusted_new = new_lines
-                        current_lines[i:i + len(old_lines)] = adjusted_new
-                        applied_changes.append(('\n'.join(old_lines), '\n'.
-                            join(adjusted_new)))
-                        found = True
-                        break
-                    else:
-                        match_score = _calculate_block_match_score(
-                            current_block, old_lines, ignore_indentation)
-                        if match_score > best_match_score:
-                            best_match_score = match_score
-                            best_match_index = i
-            if not found:
+        matched_changes = []
+        unmatched_changes = []
+        for remove, add in changes:
+            match_found, line_num, prev_indent, match_score, best_index = (
+                _find_matching_block(current_lines, remove, ignore_indentation)
+                )
+            if match_found:
+                indented_add = _adjust_indentation(add, prev_indent)
+                current_lines[line_num:line_num + len(remove)] = indented_add
+                matched_changes.append(('\n'.join(remove), '\n'.join(
+                    indented_add)))
+            else:
                 failure_context = ''
-                if best_match_index is not None and best_match_score > 0:
-                    context = get_context(current_lines, best_match_index,
+                if match_score > 0:
+                    context = _get_context(current_lines, best_index,
                         context_lines)
-                    failure_context = (
-                        '\nNearest partial match found at:\n' + '\n'.join(
-                        context))
+                    failure_context = '\nNearest partial match found around:\n' + '\n'.join(context) + f"""
+Match score: {match_score:.2f}"""
                     if ignore_indentation:
                         failure_context += (
                             '\n(Note: matching with ignore_indentation=True)')
-                    failure_context += f'\nMatch score: {best_match_score:.2f}'
-                failed_changes.append(('\n'.join(old_lines), '\n'.join(
-                    new_lines), failure_context))
-        report = []
-        report.append('Changes made:')
-        if applied_changes:
-            report.append(
-                f'\nSuccessfully applied {len(applied_changes)} changes:')
-            for old, new in applied_changes:
-                report.append(f'\nChanged:\n{old}\nTo:\n{new}')
-        if failed_changes:
-            report.append(f'\nFailed to apply {len(failed_changes)} changes:')
-            for old, new, context in failed_changes:
-                report.append(
-                    f'\nCould not find:\n{old}\nTo replace with:\n{new}{context}'
-                    )
-        if applied_changes:
+                unmatched_changes.append(('\n'.join(remove), '\n'.join(add),
+                    failure_context))
+        if matched_changes:
             new_content = '\n'.join(current_lines)
             if not new_content.endswith('\n'):
                 new_content += '\n'
             with open(file_path, 'w', encoding=used_encoding) as file:
                 file.write(new_content)
+        report = []
+        report.append('Changes made:')
+        if matched_changes:
+            report.append(
+                f'\nSuccessfully applied {len(matched_changes)} changes:')
+            for old, new in matched_changes:
+                report.append(f'\nChanged:\n{old}\nTo:\n{new}')
+        if unmatched_changes:
+            report.append(
+                f'\nFailed to apply {len(unmatched_changes)} changes:')
+            for old, new, context in unmatched_changes:
+                report.append(f'\nCould not find:\n{old}')
         return '\n'.join(report) if report else 'No changes were applied'
     except Exception as e:
-        import traceback
         return f'Error: {str(e)}\n{traceback.format_exc()}'
+
+
+def _parse_diff_spec(diff_spec: str):
+    changes = []
+    remove = []
+    add = []
+    errors = []
+    last_prefix = None
+    for line in diff_spec.splitlines():
+        if not line:
+            if add:
+                changes.append((remove.copy(), add.copy()))
+                remove.clear()
+                add.clear()
+                last_prefix = None
+            continue
+        if line.startswith('-'):
+            last_prefix = '-'
+            content = line[1:]
+        elif line.startswith('+'):
+            last_prefix = '+'
+            content = line[1:]
+        elif last_prefix is not None:
+            content = line
+        else:
+            errors.append(
+                f'Error: First line in a change block "{line}" does not start with + or -.'
+                )
+            continue
+        if last_prefix == '-':
+            remove.append(content)
+        elif last_prefix == '+':
+            add.append(content)
+    if remove or add:
+        changes.append((remove, add))
+    if not changes and not errors:
+        errors.append('Error: No valid changes found in diff spec')
+    return changes, errors
+
+
+def _find_matching_block(current_lines, remove_lines, ignore_indentation):
+    """Find where a block of lines matches in the current file content.
+    
+    Args:
+        current_lines: List of strings representing current file content
+        remove_lines: List of strings to find in the file
+        ignore_indentation: Whether to ignore leading whitespace when matching
+    
+    Returns:
+        tuple (match_found: bool, line_num: int, indent: str, match_score: float, best_index: int)
+        where:
+        - match_found indicates if an exact match was found
+        - line_num is the line where the match starts (or best partial match)
+        - indent is the indentation to preserve
+        - match_score indicates quality of best partial match (0-1)
+        - best_index is the line number of best partial match
+    """
+    if not remove_lines:
+        return True, len(current_lines), '', 1.0, len(current_lines)
+    for i in range(len(current_lines) - len(remove_lines) + 1):
+        current_block = current_lines[i:i + len(remove_lines)]
+        if ignore_indentation:
+            match = all(c.strip() == o.strip() for c, o in zip(
+                current_block, remove_lines))
+        else:
+            match = all(c == o for c, o in zip(current_block, remove_lines))
+        if match:
+            return True, i, _get_indentation(current_lines[i]), 1.0, i
+    best_match_score = 0
+    best_match_index = 0
+    for i in range(len(current_lines) - len(remove_lines) + 1):
+        current_block = current_lines[i:i + len(remove_lines)]
+        match_score = _calculate_block_match_score(current_block,
+            remove_lines, ignore_indentation)
+        if match_score > best_match_score:
+            best_match_score = match_score
+            best_match_index = i
+    return False, best_match_index, _get_indentation(current_lines[
+        best_match_index]), best_match_score, best_match_index
+
+
+def _get_indentation(line):
+    """Extract the leading whitespace from a line."""
+    return line[:len(line) - len(line.lstrip())]
+
+
+def _adjust_indentation(lines, target_indent):
+    """Adjust indentation of a block of lines to match target_indent."""
+    if not lines:
+        return lines
+    non_empty_lines = [l for l in lines if l.strip()]
+    if not non_empty_lines:
+        return lines
+    min_indent = min(len(_get_indentation(l)) for l in non_empty_lines)
+    adjusted = []
+    for line in lines:
+        if not line.strip():
+            adjusted.append(line)
+        else:
+            stripped = line[min_indent:]
+            adjusted.append(target_indent + stripped)
+    return adjusted
+
+
+def _get_context(lines, center_idx, context_size):
+    """Get context lines around an index with line numbers."""
+    start = max(0, center_idx - context_size)
+    end = min(len(lines), center_idx + context_size + 1)
+    return [f'{i + 1}: {line}' for i, line in enumerate(lines[start:end],
+        start)]
 
 
 def _calculate_block_match_score(current_block, old_lines, ignore_indentation):
@@ -315,3 +328,37 @@ def _calculate_block_match_score(current_block, old_lines, ignore_indentation):
             partial_score *= 2
     total_score = exact_matches * 2 + partial_score
     return total_score
+
+
+def _has_line_number_prefix(line: str) ->bool:
+    """Check if a string starts with a line number format (e.g., '123:' or '  123:')
+    Args:
+        line (str): The line to check
+    Returns:
+        bool: True if the line starts with a number followed by a colon
+    """
+    stripped = line.lstrip()
+    if ':' not in stripped:
+        return False
+    prefix = stripped.split(':', 1)[0]
+    try:
+        int(prefix)
+        return True
+    except ValueError:
+        return False
+
+
+def _strip_line_number(line: str) ->str:
+    """Remove line number prefix if present (e.g., '123:content' or '  123:content' becomes 'content')
+    Preserves any leading whitespace before the line number.
+    Args:
+        line (str): The line to process
+    Returns:
+        str: The line with any line number prefix removed
+    """
+    if not _has_line_number_prefix(line):
+        return line
+    whitespace = line[:len(line) - len(line.lstrip())]
+    stripped = line.lstrip()
+    content = stripped.split(':', 1)[1]
+    return whitespace + content
