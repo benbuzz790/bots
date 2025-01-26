@@ -1,6 +1,6 @@
 import os
 import traceback
-
+import textwrap
 
 def view(file_path: str):
     """
@@ -198,6 +198,8 @@ def _parse_diff_spec(diff_spec: str):
     add = []
     errors = []
     last_prefix = None
+    # Prevents the common LLM error of indenting, then adding +/-, then indenting again
+    diff_spec = textwrap.dedent(diff_spec)
     for line in diff_spec.splitlines():
         if not line:
             if add:
