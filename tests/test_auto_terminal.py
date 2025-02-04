@@ -14,7 +14,7 @@ import bots.dev.auto_terminal as start
 class DetailedTestCase(unittest.TestCase):
     """Base test class with enhanced assertion capabilities."""
 
-    def normalize_text(self, text: str) ->str:
+    def normalize_text(self, text: str) -> str:
         """
         Normalize text for flexible comparison.
         Handles JSON, line numbers, quotes, and case sensitivity.
@@ -26,8 +26,7 @@ class DetailedTestCase(unittest.TestCase):
         text = text.replace(':', '').replace(',', '')
         return ' '.join(text.split())
 
-    def assertContainsNormalized(self, haystack: str, needle: str, msg: str
-        =None):
+    def assertContainsNormalized(self, haystack: str, needle: str, msg: str=None):
         """
         Assert that needle exists in haystack after normalization.
         Better for comparing file contents, JSON responses, etc.
@@ -62,8 +61,6 @@ Got:
                 error_message += '\nTraceback:\n'
                 error_message += ''.join(traceback.format_tb(exc_traceback))
             raise AssertionError(error_message)
-
-
 class TestCodey(DetailedTestCase):
 
     @classmethod
@@ -148,8 +145,7 @@ Got:
         self.assertEqualWithDetails(content.strip(), 'Test content',
             'File content does not match requested content')
 
-    @unittest.skip(
-        'bots sometimes refuse to delete things without more context')
+    @unittest.skip('bots sometimes refuse to delete things without more context')
     @patch('builtins.input')
     def test_file_delete(self, mock_input):
         with open(self.test_file, 'w') as file:
@@ -291,8 +287,6 @@ Got:
             "print(f'This is a new method')", 'print(f"This is a new method")']
             )
         self.assertTrue(print_found, 'Required print statement not found')
-
-
 class TestConversationNavigation(DetailedTestCase):
 
     @patch('builtins.input')
@@ -356,12 +350,6 @@ class TestConversationNavigation(DetailedTestCase):
         self.assertTrue(any(self.normalize_text(msg) in self.normalize_text
             (output) for msg in expected_messages),
             'Expected navigation message not found in output')
-
-
-if __name__ == '__main__':
-    unittest.main()
-
-
 class TestCommandHandling(DetailedTestCase):
 
     @patch('builtins.input')
@@ -420,54 +408,123 @@ class TestCommandHandling(DetailedTestCase):
         self.assertTrue('Claude:' in output or 'ChatGPT:' in output)
 
 
-class DetailedTestCase(unittest.TestCase):
-    """Base test class with enhanced assertion capabilities."""
+class TestAdvancedNavigation(DetailedTestCase):
+    """Test class for advanced navigation commands: root, label, and goto."""
 
-    def normalize_text(self, text: str) ->str:
-        """
-        Normalize text for flexible comparison.
-        Handles JSON, line numbers, quotes, and case sensitivity.
-        """
-        text = str(text).lower()
-        text = text.replace('"', '').replace("'", '')
-        text = text.replace('{', '').replace('}', '')
-        text = text.replace('[', '').replace(']', '')
-        text = text.replace(':', '').replace(',', '')
-        return ' '.join(text.split())
+    @patch('builtins.input')
+    def test_root_navigation(self, mock_input):
+        """Test navigating to root from various depths."""
+        mock_input.side_effect = [
+            'Write a function',  # First level
+            'Make it better',    # Second level
+            'Add error handling',# Third level
+            '/root',            # Go to root
+            '/exit'
+        ]
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main()
+            output = buf.getvalue()
+            print(f'\nBot output:\n{output}')
+        self.assertContainsNormalized(output, 'Moved to root of conversation tree')
 
-    def assertContainsNormalized(self, haystack: str, needle: str, msg: str
-        =None):
-        """
-        Assert that needle exists in haystack after normalization.
-        Better for comparing file contents, JSON responses, etc.
-        """
-        normalized_haystack = self.normalize_text(haystack)
-        normalized_needle = self.normalize_text(needle)
-        self.assertTrue(normalized_needle in normalized_haystack, msg or
-            f"""Expected to find "{needle}" in text (after normalization).
-Got:
-{haystack}"""
-            )
+    @patch('builtins.input')
+    def test_label_node(self, mock_input):
+        """Test labeling a conversation node."""
+        mock_input.side_effect = [
+            'Write a function',
+            '/label good_function',  # Label the response
+            '/exit'
+        ]
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main()
+            output = buf.getvalue()
+            print(f'\nBot output:\n{output}')
+        self.assertContainsNormalized(output, 'Saved current node with label: good_function')
 
-    def assertEqualWithDetails(self, first, second, msg=None):
-        """Detailed assertion with local variable context on failure."""
-        try:
-            self.assertEqual(first, second, msg)
-        except AssertionError as e:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            frame = exc_traceback.tb_frame.f_back
-            if frame:
-                local_vars = frame.f_locals.copy()
-                local_vars.pop('self', None)
-                error_message = f'\nAssertion Error: {str(e)}\n'
-                error_message += '\nLocal variables:\n'
-                for key, value in local_vars.items():
-                    error_message += f'{key} = {repr(value)}\n'
-                error_message += '\nTraceback:\n'
-                error_message += ''.join(traceback.format_tb(exc_traceback))
-            else:
-                error_message = f'\nAssertion Error: {str(e)}\n'
-                error_message += 'Unable to retrieve local variables.\n'
-                error_message += '\nTraceback:\n'
-                error_message += ''.join(traceback.format_tb(exc_traceback))
-            raise AssertionError(error_message)
+    @patch('builtins.input')
+    def test_goto_labeled_node(self, mock_input):
+        """Test moving to a labeled node."""
+        mock_input.side_effect = [
+            'Write a function',
+            '/label good_function',  # Label the response
+            'Write another function',
+            '/goto good_function',   # Return to labeled node
+            '/exit'
+        ]
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main()
+            output = buf.getvalue()
+            print(f'\nBot output:\n{output}')
+        self.assertContainsNormalized(output, 'Moved to node labeled: good_function')
+
+    @patch('builtins.input')
+    def test_goto_nonexistent_label(self, mock_input):
+        """Test attempting to goto a non-existent label."""
+        mock_input.side_effect = [
+            'Write a function',
+            '/goto nonexistent_label',
+            '/exit'
+        ]
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main()
+            output = buf.getvalue()
+            print(f'\nBot output:\n{output}')
+        self.assertContainsNormalized(output, 'No node found with label: nonexistent_label')
+
+    @patch('builtins.input')
+    def test_label_without_name(self, mock_input):
+        """Test attempting to label without providing a name."""
+        mock_input.side_effect = [
+            'Write a function',
+            '/label',  # Missing label name
+            '/exit'
+        ]
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main()
+            output = buf.getvalue()
+            print(f'\nBot output:\n{output}')
+        self.assertContainsNormalized(output, 'Please provide a label after /label')
+
+    @patch('builtins.input')
+    def test_goto_without_label(self, mock_input):
+        """Test attempting to goto without providing a label."""
+        mock_input.side_effect = [
+            'Write a function',
+            '/goto',  # Missing label name
+            '/exit'
+        ]
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main()
+            output = buf.getvalue()
+            print(f'\nBot output:\n{output}')
+        self.assertContainsNormalized(output, 'Please provide a label after /goto')
+
+    @patch('builtins.input')
+    def test_multiple_labels(self, mock_input):
+        """Test using multiple labels and navigating between them."""
+        mock_input.side_effect = [
+            'Write a function',
+            '/label function1',
+            'Write another function',
+            '/label function2',
+            '/goto function1',
+            '/goto function2',
+            '/exit'
+        ]
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main()
+            output = buf.getvalue()
+            print(f'\nBot output:\n{output}')
+        self.assertContainsNormalized(output, 'Moved to node labeled: function1')
+        self.assertContainsNormalized(output, 'Moved to node labeled: function2')
+
+
+if __name__ == '__main__':
+    unittest.main()

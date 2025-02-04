@@ -1,7 +1,8 @@
 from typing import List, Callable, Any, Tuple, Union
 from bots.foundation.base import Bot
 from bots.foundation.base import ConversationNode
-
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
 
 """Custom typing for clarity (hopefully)"""
 Prompt = str
@@ -17,15 +18,19 @@ class conditions:
     """
     A list of frequently used and helpful conditions for convenience
     """
+
     def tool_used(bot: Bot):
         return bool(bot.tool_handler.requests)
 
     def tool_not_used(bot: Bot):
         return not bool(bot.tool_handler.requests)
 
+    def tool_not_used_debug(bot: Bot):
+        print(bot.conversation.content)
+        return not bool(bot.tool_handler.requests)
+
     def said_DONE(bot: Bot):
         return 'DONE' in bot.conversation.content
-
 
 
 def basic(bot: Bot, prompt: Prompt) ->Tuple[Response, ResponseNode]:
@@ -87,14 +92,13 @@ def branch(bot: Bot, prompts: List[Prompt]) ->Tuple[List[Response], List[
             node = None
         finally:
             responses.append(response)
-            nodes.append(node)            
+            nodes.append(node)
     return responses, nodes
 
 
-def recombine(bot: Bot, responses: List[Response], 
-              nodes: List[ResponseNode], 
-              recombinator_function: RecombinatorFunction
-              ) ->Tuple[Response, ResponseNode]:
+def recombine(bot: Bot, responses: List[Response], nodes: List[ResponseNode
+    ], recombinator_function: RecombinatorFunction) ->Tuple[Response,
+    ResponseNode]:
     """
     Recombines multiple conversation branches using a provided function.
 
@@ -107,15 +111,16 @@ def recombine(bot: Bot, responses: List[Response],
     Returns:
     Tuple[Response, ResponseNode]: A tuple containing the recombined response string and its corresponding ConversationNode.
     """
+    start_point = bot.conversation
     response, node = recombinator_function(responses, nodes)
+    node.parent = start_point
+    start_point.replies[-1] = node
     bot.conversation = node
     return response, node
 
 
-def tree_of_thought(bot: Bot, 
-                    prompts: List[Prompt], 
-                    recombinator_function: RecombinatorFunction
-                    ) ->Tuple[Response, ResponseNode]:
+def tree_of_thought(bot: Bot, prompts: List[Prompt], recombinator_function:
+    RecombinatorFunction) ->Tuple[Response, ResponseNode]:
     """
     Implements a tree of thought approach by branching into multiple 
     conversation paths and then recombining the results.
@@ -136,11 +141,9 @@ def tree_of_thought(bot: Bot,
     return final_response
 
 
-def prompt_while(bot: Bot, 
-                 first_prompt: Prompt, 
-                 continue_prompt: Prompt = 'ok',
-                 stop_condition: Condition = conditions.tool_not_used,
-                ) ->Tuple[List[Response], List[ResponseNode]]:
+def prompt_while(bot: Bot, first_prompt: Prompt, continue_prompt: Prompt=
+    'ok', stop_condition: Condition=conditions.tool_not_used) ->Tuple[List[
+    Response], List[ResponseNode]]:
     """
     Repeatedly prompts the bot until a stop condition is met.
 
@@ -164,10 +167,8 @@ def prompt_while(bot: Bot,
     return responses, nodes
 
 
-def prompt_for(bot: Bot, items: List[Any], 
-               dynamic_prompt: DynamicPrompt,
-               should_branch: bool=False
-              ) ->Tuple[List[Response], List[ResponseNode]]:
+def prompt_for(bot: Bot, items: List[Any], dynamic_prompt: DynamicPrompt,
+    should_branch: bool=False) ->Tuple[List[Response], List[ResponseNode]]:
     """
     Generates prompts for a list of items and gets responses from the bot.
 
@@ -188,11 +189,9 @@ def prompt_for(bot: Bot, items: List[Any],
         return chain(bot, prompts)
 
 
-def chain_while(bot: Bot, 
-                prompt_list: List[Prompt], 
-                stop_condition:Condition = conditions.tool_not_used, 
-                continue_prompt: str = 'ok'
-                ) ->Tuple[List[Response], List[ResponseNode]]:
+def chain_while(bot: Bot, prompt_list: List[Prompt], stop_condition:
+    Condition=conditions.tool_not_used, continue_prompt: str='ok') ->Tuple[
+    List[Response], List[ResponseNode]]:
     """
     Sends a series of messages. Moves to next message when stop_condition(bot) is met.
     Sends continue_prompt if condition is not met.
@@ -220,11 +219,10 @@ def chain_while(bot: Bot,
     bot.tool_handler.clear()
     return responses, nodes
 
-def branch_while(bot: Bot, 
-                 prompt_list: List[Prompt], 
-                 stop_condition: Condition = conditions.tool_not_used, 
-                 continue_prompt: str = 'ok'
-                 ) ->Tuple[List[Response], List[ResponseNode]]:
+
+def branch_while(bot: Bot, prompt_list: List[Prompt], stop_condition:
+    Condition=conditions.tool_not_used, continue_prompt: str='ok') ->Tuple[
+    List[Response], List[ResponseNode]]:
     """
     Creates parallel branches for a list of prompts, continuing each branch until its stop condition is met.
     Each branch starts from the current conversation state and develops independently.
@@ -254,4 +252,112 @@ def branch_while(bot: Bot,
         finally:
             responses.append(response)
             nodes.append(node)
+    return responses, nodes
+
+
+def par_branch(bot: Bot, prompts: List[Prompt]) ->Tuple[List[Response],
+    List[ResponseNode]]:
+    """
+    Creates multiple conversation branches from the current node in parallel.
+    Each branch starts from the current conversation state and processes independently.
+
+    Args:
+    bot (Bot): The bot to use for the responses.
+    prompts (List[Prompt]): A list of prompts to send to the bot.
+
+    Returns:
+    Tuple[List[Response], List[ResponseNode]]: A tuple containing a list of response
+    strings and a list of corresponding ConversationNodes. If an error occurs in any
+    branch, 'None' is sent for both the response and node for that branch.
+    """
+    original_autosave = bot.autosave
+    original_conversation = bot.conversation
+    bot.autosave = False
+    temp_file = 'temp_bot.bot'
+    bot.save(temp_file)
+    responses = [None] * len(prompts)
+    nodes = [None] * len(prompts)
+
+    def process_prompt(index: int, prompt: str) ->Tuple[int, Response,
+        ResponseNode]:
+        try:
+            branch_bot = Bot.load(temp_file)
+            branch_bot.autosave = False
+            response = branch_bot.respond(prompt)
+            new_node = branch_bot.conversation
+            new_node.parent = original_conversation
+            original_conversation.replies.append(new_node)
+            return index, response, new_node
+        except:
+            return index, None, None
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(process_prompt, i, prompt) for i, prompt in
+            enumerate(prompts)]
+        for future in as_completed(futures):
+            idx, response, node = future.result()
+            responses[idx] = response
+            nodes[idx] = node
+    bot.autosave = original_autosave
+    try:
+        os.remove(temp_file)
+    except:
+        pass
+    return responses, nodes
+
+
+def par_branch_while(bot: Bot, prompt_list: List[Prompt], stop_condition:
+    Condition=conditions.tool_not_used, continue_prompt: str='ok') ->Tuple[
+    List[Response], List[ResponseNode]]:
+    """
+    Creates parallel branches for a list of prompts, continuing each branch until its
+    stop condition is met. Each branch starts from the current conversation state and
+    develops independently. Branches are processed in parallel.
+
+    Args:
+    bot (Bot): The bot to use for the responses.
+    prompt_list (List[Prompt]): List of prompts to create branches with
+    stop_condition (Condition): Function that takes a Bot and returns True when ready
+                              to move to next prompt
+    continue_prompt (str): Prompt to send when stop_condition is False
+
+    Returns:
+    Tuple[List[Response], List[ResponseNode]]: Lists of final responses and their
+    corresponding nodes from each branch. If an error occurs on a branch, the response
+    and node returned are 'None'.
+    """
+    original_autosave = bot.autosave
+    original_conversation = bot.conversation
+    bot.autosave = False
+    temp_file = 'temp_bot.bot'
+    bot.save(temp_file)
+    responses = [None] * len(prompt_list)
+    nodes = [None] * len(prompt_list)
+
+    def process_branch(index: int, initial_prompt: str) ->Tuple[int,
+        Response, ResponseNode]:
+        try:
+            branch_bot = Bot.load(temp_file)
+            branch_bot.autosave = False
+            first_response = branch_bot.respond(initial_prompt)
+            first_node = branch_bot.conversation
+            response = first_response
+            while not stop_condition(branch_bot):
+                response = branch_bot.respond(continue_prompt)
+            first_node.parent = original_conversation
+            original_conversation.replies.append(first_node)
+            return index, response, first_node
+        except Exception as e:
+            return index, None, None
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(process_branch, i, prompt) for i, prompt in
+            enumerate(prompt_list)]
+        for future in as_completed(futures):
+            idx, response, node = future.result()
+            responses[idx] = response
+            nodes[idx] = node
+    bot.autosave = original_autosave
+    try:
+        os.remove(temp_file)
+    except:
+        pass
     return responses, nodes

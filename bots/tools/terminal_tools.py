@@ -1,6 +1,9 @@
 import os, subprocess, traceback
 from typing import List
 
+
+"""Deb: Ah, now I understand! There's a Unicode decoding error in PowerShell when trying to handle certain bytes (0xb0) in pytest's output. This is why we're not seeing any output - it's failing silently due to the encoding error."""
+
 def execute_powershell(code: str, output_length_limit: str='60'):
    """
    Executes PowerShell code in a stateless environment
@@ -56,7 +59,8 @@ def execute_powershell(code: str, output_length_limit: str='60'):
            lines_omitted = len(lines) - output_length_limit
            truncated_output = '\n'.join(truncated_lines)
            # Save full output to file
-           output_file = os.path.join(os.getcwd(), 'powershell_full_output.txt')
+           from datetime import datetime
+           output_file = os.path.join(os.getcwd(), f'ps_output.txt')
            with open(output_file, 'w', encoding='utf-8') as f:
                f.write(output)
            truncated_output += (

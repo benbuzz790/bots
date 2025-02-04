@@ -2,6 +2,7 @@ import os
 import traceback
 import textwrap
 
+
 def view(file_path: str):
     """
     Display the contents of a file with line numbers.
@@ -31,7 +32,7 @@ def view(file_path: str):
 
 
 def view_dir(start_path: str='.', output_file=None, target_extensions: str=
-    "['py']"):
+    "['py', 'txt', '.md']"):
     """
     Creates a summary of the directory structure starting from the given path, writing only files 
     with specified extensions. The output is written to a text file and returned as a string.
@@ -82,7 +83,7 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str=
 def diff_edit(file_path: str, diff_spec: str):
     """Diff spec editing with flexible matching.
 
-    Use when you need to make specific changes in text files.
+    Use when you need to make precision changes in text files.
 
     Parameters:
     - file_path (str): Path to the file to modify
@@ -91,29 +92,68 @@ def diff_edit(file_path: str, diff_spec: str):
     Returns:
     str: Description of changes made/to be made or error message with context
 
-    The diff spec uses a simplified format:
-    - Lines starting with '-' indicate text to be removed (no space after -)
-    - Lines starting with '+' indicate text to be added (no space after +)
-    - Blank lines separate different changes
-    - Changes are applied in order:
-        - Text to be removed is matched
-        - Start of text is indexed
-        - Lines are removed
-        - Lines to add are inserted at index (If no lines were removed, index is set to EOF)
+    The diff spec uses a simplified format for precise text replacement:
 
-    Diff Spec Example: replace multiple sets of multiple lines:
-    -def bad_function():
-    -    return x+y
-    +def good_function(x, y):
-    +    return x+y
+    Key Rules:
+    1. Format:
+       - Lines to remove start with '-' (no space after, no tabs before)
+       - Lines to add start with '+' (no space after, no tabs before)
+       - TWO blank lines between separate changes
+    2. Matching:
+       - Whitespace-aware but flexible
+       - Matches entire blocks exactly (all lines must match)
+       - Best to include surrounding context for precision
+    3. Order:
+       - Changes applied sequentially
+       - Each change: match -> remove -> add at same position
+       - If no match found, provides context of nearest partial match
 
-    -def print_nice():
-    -    print('---')
-    -    print(string)
-    -    print('---')
-    +def print_nice(string):
-    +    sep = '---\\n'
-    +    print(sep+string+sep)
+    Example 1: Simple import change
+    ```
+    -from typing import List
+    +from typing import List, Optional
+    ```
+
+    Example 2: Class modification with context
+    ```
+    -class Calculator:
+    -    def __init__(self):
+    -        self.value = 0
+    +class Calculator:
+    +    #A simple calculator class.
+    +    def __init__(self, initial_value: float = 0):
+    +        self.value = initial_value
+    ```
+
+    Example 3: Function replacement preserving indentation
+    ```
+    -    def add(self, x):
+    -        self.value += x
+    -        return self.value
+    +    def add(self, x: float) -> float:
+    +        #Add a number to current value.
+    +        self.value += x
+    +        return self.value
+    ```
+
+    Example 4: Multiple separate changes (note double newline)
+    ```
+    -import os
+    +import os.path
+
+
+    -def process_file(filename):
+    -    with open(filename) as f:
+    +def process_file(filename: str) -> str:
+    +    #Process a file and return its contents.
+    +    with open(filename, encoding='utf-8') as f:
+    ```
+
+    Common Pitfalls:
+    1. Missing exact indentation in match
+    2. Not including enough context for unique matches
+    3. Forgetting double newlines between changes
+    4. Including line numbers from view() output
     """
     ignore_indentation: bool = True
     context_lines: int = 2
@@ -198,7 +238,6 @@ def _parse_diff_spec(diff_spec: str):
     add = []
     errors = []
     last_prefix = None
-    # Prevents the common LLM error of indenting, then adding +/-, then indenting again
     diff_spec = textwrap.dedent(diff_spec)
     for line in diff_spec.splitlines():
         if not line:
@@ -364,3 +403,36 @@ def _strip_line_number(line: str) ->str:
     stripped = line.lstrip()
     content = stripped.split(':', 1)[1]
     return whitespace + content
+
+
+def overwrite(file_path: str, content: str):
+    """
+    ⚠️ CAUTION: This is a last-resort tool. Only use when more efficient tools have failed.
+
+    Parameters:
+    - file_path (str): Path to the file to overwrite
+    - content (str): New content to write to the file
+
+    Returns:
+    str: Success message or error details
+    """
+    try:
+        used_encoding = 'utf-8'
+        if os.path.exists(file_path):
+            encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252',
+                'iso-8859-1']
+            for encoding in encodings:
+                try:
+                    with open(file_path, 'r', encoding=encoding) as f:
+                        f.read()
+                        used_encoding = encoding
+                        break
+                except UnicodeDecodeError:
+                    continue
+        with open(file_path, 'w', encoding=used_encoding) as f:
+            f.write(content)
+        return (
+            f'⚠️ File overwritten successfully using {used_encoding} encoding.'
+            )
+    except Exception as e:
+        return f'Error: {str(e)}\n{traceback.format_exc()}'

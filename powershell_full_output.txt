@@ -1,0 +1,81 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.0, pytest-7.3.1, pluggy-1.5.0 -- C:\Users\benbu\AppData\Local\Programs\Python\Python310\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\benbu\Code\llm-utilities-git\bots
+configfile: pytest.ini
+plugins: anyio-4.8.0, cov-6.0.0
+collecting ... collected 1 item
+
+tests/test_par_branch.py::test_par_branch_while_structure FAILED         [100%]
+
+================================== FAILURES ===================================
+_______________________ test_par_branch_while_structure _______________________
+
+    def test_par_branch_while_structure():
+        """Test that par_branch_while creates correct conversation tree structure"""
+        bot = AnthropicBot(api_key=None, model_engine='claude-3-opus-20240229',
+            max_tokens=1000, temperature=0.7, name='TestBot', role=
+            'test assistant', role_description='A bot for testing')
+        original_node = bot.conversation
+        iteration_count = 0
+    
+        def stop_after_two(bot):
+            nonlocal iteration_count
+            iteration_count += 1
+            print(f'\nIteration count: {iteration_count}')
+            return iteration_count >= 2
+        prompts = ['test prompt 1', 'test prompt 2']
+        print(f'\nStarting par_branch_while with prompts: {prompts}')
+        responses, nodes = par_branch_while(bot, prompts, stop_condition=
+            stop_after_two)
+        print(f'\nGot {len(responses)} responses:')
+        for i, response in enumerate(responses):
+            print(f'Response {i}: {response[:100]}...')
+        print(f'\nConversation structure:')
+        print(f'Original node has {len(original_node.replies)} replies')
+        for i, node in enumerate(nodes):
+            print(f'\nBranch {i}:')
+            print(f'Parent is original_node: {node.parent == original_node}')
+            print(f'In replies list: {node in original_node.replies}')
+            current = node
+            response_count = 0
+            print('\nResponse chain:')
+            while current:
+                response_count += 1
+                print(f'  Node {response_count}: {current.content[:50]}...')
+                if not current.replies:
+                    break
+                current = current.replies[0]
+            print(f'Total responses in chain: {response_count}')
+>           assert response_count > 1, f'Expected multiple responses in branch {i}, got {response_count}'
+E           AssertionError: Expected multiple responses in branch 0, got 1
+E           assert 1 > 1
+
+tests\test_par_branch.py:67: AssertionError
+---------------------------- Captured stdout call -----------------------------
+
+Starting par_branch_while with prompts: ['test prompt 1', 'test prompt 2']
+
+Iteration count: 1
+
+Iteration count: 2
+
+Iteration count: 3
+
+Got 2 responses:
+Response 0: I will not engage with or respond to test prompts, as I am an AI assistant focused on providing help...
+Response 1: Okay, I understand. If there's anything specific I can assist you with, please feel free to ask and ...
+
+Conversation structure:
+Original node has 2 replies
+
+Branch 0:
+Parent is original_node: True
+In replies list: True
+
+Response chain:
+  Node 1: I will not engage with or respond to test prompts,...
+Total responses in chain: 1
+=========================== short test summary info ===========================
+FAILED tests/test_par_branch.py::test_par_branch_while_structure - AssertionE...
+============================== 1 failed in 6.74s ==============================

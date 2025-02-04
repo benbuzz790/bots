@@ -9,6 +9,8 @@ from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import load
 from bots.foundation.base import Bot
 import bots.flows.functional_prompts as fp
+from importlib import resources
+from bots.dev.project_tree_prompts import prompts
 
 # Should perhaps be multi-threaded
 
@@ -39,7 +41,11 @@ def generate_project(spec: str):
     Executes the standard process for project generation:
     1. Root bot processes spec and creates module requirements 
     2. Root bot creates and calls file bots for each module
-    4. File bots implement code
+    3. File bots implement code
+    4. Root bot makes and commits to a new gh repo
+    5. File bots debug code
+    6. Root bot cleans up
+    7. Root bot writes tool report
    
     Parameters:
     - spec (str): Project specification text
@@ -67,59 +73,126 @@ def generate_project(spec: str):
         print("root: "+ '\n'.join(responses))
 
         # get all new file bots
-        bot_list = _get_new_files(start_time)
+        bot_file_list = _get_new_files(start_time)
 
         # Create requirements for each bot
+        # Interdependencies mean this is a bad branching task
         print("----- Making requirements -----")
         _, nodes = fp.prompt_for(
             bot = root_bot, 
-            items = bot_list, 
+            items = bot_file_list, 
             dynamic_prompt = prompts.root_make_req, 
             should_branch = False
             )
         
-        # return to branch
-        #root_bot.conversation = nodes[0].parent.parent
-        
-        # Create files by instructing each bot to make them
+        # Create files by instructing each bot to make them in parallel
+        # This is a great parallel branching task
+        branch_point = root_bot.conversation.parent.parent
         print("----- Making Files -----")
+        _, nodes = fp.par_branch(
+            bot = root_bot,
+            prompts = [prompts.root_make_files(item) for item in bot_file_list]
+        )
+        # return to branch point
+        root_bot.conversation = branch_point
 
-        _, nodes = fp.prompt_for(
-            bot = root_bot, 
-            items = bot_list, 
-            dynamic_prompt = prompts.root_make_files, 
-            should_branch = True
+        # Verify requirements in parallel
+        # This is a great parallel branching task
+        print("----- Verifying Requirements -----")
+        _, nodes = fp.par_branch_while(
+            bot = root_bot,
+            prompt_list=[prompts.root_verify_req(item) for item in bot_file_list],
+            continue_prompt = prompts.root_continue,
+            stop_condition = fp.conditions.said_DONE
         )
 
         # return to branch
-        root_bot.conversation = nodes[0].parent.parent
-
-        # run requirements validator
-        print("----- Running Validator -----")
-        fp.prompt_while(
-            bot = root_bot,
-            first_prompt = prompts.root_validate(),
-            continue_prompt = "say command 'DONE' when validator is done", 
-            stop_condition = fp.conditions.said_DONE    
-            )
+        root_bot.conversation = branch_point
         
-        # run tests via branching
-        print("----- Running Tests -----")
-        fp.prompt_for(
-            bot = root_bot, 
-            items = bot_list, 
-            dynamic_prompt = prompts.root_run_tests, 
-            should_branch = True
+        # Making Repo
+        _, _ = fp.prompt_while(
+            bot = root_bot,
+            first_prompt="INSTRUCTION: Please use powershell to commit all files and all changes. You may use the gh cli. If a repo hasn't been made, please make one (private) with the appropriate name.",
+            continue_prompt = prompts.root_continue,
+            stop_condition = fp.conditions.said_DONE
         )
 
-        print("----- Final Touches -----")
+        # prepare test environment
+        print("----- Cleaning Directory -----")
+        _, nodes = fp.prompt_while(
+            bot = root_bot,
+            first_prompt= "Use powershell to view files and ensure they're in the correct locations. DO NOT DELETE FILES. You may use powershell to move them.",
+            continue_prompt = prompts.root_continue,
+            stop_condition = fp.conditions.said_DONE
+        )
+
+        # prepare test environment
+        print("----- Prepping Tests -----")
+        _, nodes = fp.prompt_while(
+            bot = root_bot,
+            first_prompt= prompts.root_prep_tests(''),
+            continue_prompt = prompts.root_continue,
+            stop_condition = fp.conditions.said_DONE
+        )
+
+        # run tests via parallel branching
+        branch_point = root_bot.conversation.parent.parent
+        print("----- Running Tests -----")
+        _, nodes = fp.par_branch_while(
+            bot = root_bot,
+            prompt_list = [prompts.root_run_tests(item) for item in bot_file_list],
+            continue_prompt = prompts.root_continue,
+            stop_condition = fp.conditions.said_DONE
+        )
+        # return to branch
+        root_bot.conversation = branch_point
+
+        print("----- Cleanup -----")
         fp.prompt_while(
             bot = root_bot,
             first_prompt = prompts.root_cleanup(),
-            continue_prompt = "say command 'DONE' when cleanup is done",
+            continue_prompt = prompts.root_continue,
             stop_condition = fp.conditions.said_DONE
         )
-        
+
+        # Commit
+        _, _ = fp.prompt_while(
+            bot = root_bot,
+            first_prompt="INSTRUCTION: Please use powershell to commit all files and all changes.",
+            continue_prompt = prompts.root_continue,
+            stop_condition = fp.conditions.said_DONE
+        )
+
+
+        # Debugging
+        # Retry debugging 4 times
+        count = 0
+        limit = 2
+        while count < limit:
+            count = count + 1
+            print(f"----- Debugging with Deb iteration {count} -----")
+            deb_path = r"C:\Users\benbu\Code\llm-utilities-git\bots\botlib\Deb@4Feb2025.bot"
+            deb = load(deb_path)
+            
+            try:
+                fp.prompt_while(
+                    bot = deb,
+                    first_prompt= prompts.deb_init,
+                    continue_prompt= 'ok',
+                    stop_condition= fp.conditions.tool_not_used_debug
+                )
+                
+                # Commit
+                _, _ = fp.prompt_while(
+                    bot = deb,
+                    first_prompt="INSTRUCTION: Please use powershell to commit all files and all changes. Be sure .gitignore includes any venv you made.",
+                )
+            except:
+                continue
+
+        import sys
+        sys.exit(0)
+
         print("----- Making Demo -----")
         fp.prompt_while(
             bot = root_bot, 
@@ -127,6 +200,12 @@ def generate_project(spec: str):
             continue_prompt = "say command 'DONE' when demo bot has run demo successfully", 
             stop_condition = fp.conditions.said_DONE
             )
+        
+        # Commit
+        _, _ = fp.prompt_while(
+            bot = root_bot,
+            first_prompt="Please use powershell to commit all files and all changes."
+        )
         
         print("----- Wrapping Up -----")
         print(root_bot.respond(prompts.root_wrap_up()))
@@ -137,829 +216,33 @@ def generate_project(spec: str):
     return "success"
 
 
-### Prompt Library ###
-
-class prompts:
-
-    requirements_guidance = textwrap.dedent("""
-    File requirements should be written in a structured format:
-
-    1. File Overview:
-        - Filename with extension
-        - Single clear purpose
-        - Role in the module
-        - Direct dependencies
-
-    2. Implementation Requirements:
-        For each class/function to implement:
-        ```
-        def function_name(param1: type, param2: type) -> return_type:
-            '''
-            [Purpose in active voice]
-            '''
-        ```
-
-    3. Test Requirements:
-        For each test:
-        ```
-        test_[feature]_[scenario]:
-            Action: [specific method call with specific values]
-            Assert: [exact condition to verify]
-        ```
-
-    Format requirements exactly like this:
-    ```
-    # filename.py
-
-    ## Purpose
-
-    ## Dependencies
-    - [Import 1: reason needed]
-    - [Import 2: reason needed]
-
-    ## Classes and Functions
-
-    ### class ClassName
-    Purpose: [description]
-
-    Methods:
-    #### method_name(param1: type, param2: type) -> return_type
-    [Follow function template above]
-
-    ## Tests
-    [Follow test template for each test case]
-    ```
-
-    BE SPECIFIC
-    """)
-
-    project_context = textwrap.dedent("""
-    You are part of a hierarchical system of specialized AI assistants 
-    working together to create an industry-ready Python project. 
-    The system has multiple bot types:
-    1. Root: Handles project architecture and module design. Oversees multiple files.
-    2. File: Handles specific file implementation and testing. 
-    3. Validator: Verifies that file implementations meet requirements
-
-    You are all responsible for keeping things simple (KISS) and minimal (YAGNI)
-    to the extent that requirements allow.
-    """)
-
-    root_initialization = project_context + textwrap.dedent("""
-    You are the root bot responsible for:
-    1. Analyzing project specifications
-    2. Breaking down the project into logical modules
-    3. Creating clear requirements for each module
-    4. Creating and coordinating bots
-    5. Creatively solving problems in the workflow.
-                                                            
-    We will walk through a process step by step. Focus always on the latest INSTRUCTION.
-    
-    YOU ARE RESPONSIBLE FOR SOLVING YOUR OWN PROBLEMS
-    ex) If a file is missing, view_dir and try to find it. search C:, figure it out.
-                                      
-    "It's not my job" IS NOT ALLOWED:
-    If you believe there is a problem with this framework or a tool, work around it.
-    """)
-
-    def root_breakdown_spec(spec: str):
-        return textwrap.dedent(f"""
-        Please analyze this project specification:
-
-        ```specification
-        {spec}
-        ```
-
-        Save a technical architecture document based on the specification, 
-        including:
-        1. Top-level project requirements
-        2. A free-form, 'thinking' section in which you consider different 
-        ideas and concepts which might be used to accomplish the project.
-        3. An explanation of the general flow of control, starting with the 
-        entry point and moving through the modules in the order that 
-        information does.
-        4. A list of all modules for the project.
-        5. A list all files for each module.
-
-        Save as project_req.txt.
-        """)
-
-    def root_make_bots():
-        return textwrap.dedent("""
-            For each non-test file you identified: 
-            INSTRUCTION 1. Use initialize_file_bot to create a set of file bots. These bots will also
-            be responsible for writing their own tests in a partner file to their own. You
-            should use multiple parallel tool calls in a single message.""")
-    
-    def root_make_req(bot_name: str):
-        # Intended to be used in a prompt_for loop
-        bot_name = bot_name.removesuffix('.bot')
-        return textwrap.dedent(f"""INSTRUCTION 2. Consider {bot_name}. Determine how top level
-        requirements flow down to that file. Then use memorialize_requirements to set the requirements
-        for {bot_name}.bot. Name the file {bot_name}_req.txt. Note: mocking during tests is not allowed""")
-
-    def root_make_files(bot_name: str):
-        # Intended to be used in a prompt_for loop
-        bot_name = bot_name.removesuffix('.bot')
-        return textwrap.dedent(f"""INSTRUCTION 3. We just created requirements for each bot in in other threads. 
-            Use message_bot telling {bot_name} their name and to find their requirements file. Instruct them to 
-            create two files: one to meet the requirements, and one to test the previous file against those 
-            requirements. (If appropriate -- don't worry about telling a README bot to make tests, for instance). 
-            Tell them not to run tests yet. Remind them about YAGNI and KISS, and note that 
-            for our purposes 'mocking' is considered an unecessary element of tests - use real integration
-            tests instead.""")
-        
-    def root_validate():
-        return textwrap.dedent("""INSTRUCTION 4. We just had the file bots write files and tests in another
-            thread. Use initialize_validator_bot to make a validator bot. INSTRUCTION 4.5 Use message_bot to 
-            instruct the validator to confirm ALL files with a corresponding _req.txt file meet requirements 
-            (but do not run any tests), and to give you a summary. Tell it to message any bots with issues 
-            and point out the requirements issues.""")
-    
-    def root_run_tests(bot_name: str):
-        # prompt_for
-        return textwrap.dedent(f"""INSTRUCTION 5. Message {bot_name} telling them to run their test files
-            and debug. If the bot runs out of memory, it means the initial approach was too complex. Apply
-            RAGNI and KISS and attempt to simplify the requirements. Then initialize a new one. They may 
-            sometimes accidentally end their session early. Just message them to get them to continue.""")
-    
-    def root_cleanup():
-        return textwrap.dedent(f"""INSTRUCTION 6. Clean up any borked components -- message bots to finish
-            their work if they haven't already, attempt to fix any issues that arose, etc.""")
-
-    def root_demo():
-        return textwrap.dedent(f"""INSTRUCTION 7. Make the full system demo""")
-
-    def root_wrap_up():
-        return textwrap.dedent("""INSTRUCTION 8. Finally, use memorialize_requirements to write a report
-            for humans to read noting all failed bots, potential tool issues, odd behaviors in the framework,
-            or other issues. Also include a project status report. Include instructions for running the demo.
-            Name the file 'final-report.md'""")
-
-    root_continue = 'Work until the current INSTRUCTION is complete, then say \
-            "DONE" to move on to the next INSTRUCTION'
-    
-    message_continue = 'Reply with command "/DONE" when MESSAGE has been addressed'
-
-    file_initialization = project_context + textwrap.dedent("""
-    You are a file bot responsible for:
-    1. Understanding file requirements
-    2. Implementing the specified functionality
-    3. Writing appropriate tests
-    4. Ensuring code quality and documentation
-        
-    Focus on:
-    - Clean, maintainable code
-    - Clear documentation
-    - Following KISS and YAGNI principles
-    - Making a functional, testable file
-
-    DO NOT leave any implementation incomplete
-    DO NOT leave placeholders in your code
-    PREFER the python ast editing tools for python code
-
-    You may
-    - use external dependencies
-    - install items with pip
-    - make multiple editing passes
-    - examine the current working directory and view other files, if needed, for coordination or imports
-    - use scratch.py as a testing space to determine if small snippets of code work or to explore data
-    structures you aren't 100 percent familiar with.
-    
-                                          
-    YOU ARE RESPONSIBLE FOR SOLVING YOUR OWN PROBLEMS
-    ex) If a file is missing, view_dir and try to find it. If you need credentials, figure out how
-    to make your own account. Think creatively. You have my permission to use your tools to the full extent
-    of their capabilities
-    """)
-
-    validator_initialization = project_context + textwrap.dedent(\
-    """
-    You are a requirements checking bot responsible for:
-    1. Verifying python files meet their associated requirements
-    2. Communicating deviations from requirements with the associated file bot.
-    3. Ensuring requirements are met after the file bot makes changes.
-
-    NEVER RUN TESTS. Just examine files and requirements files.
-    You may need to clarify filenames - use view_dir if you can't find a file.
-
-    1. Read a *_req.txt file and the associated *.py file
-    2. If all requirements are not met, use message_bot on *.bot to let them know.
-    They will make changes and then reply, at which point you can check the file
-    again.
-    3. If all requirements are met, go on to the next file.
-    """)
-
-    sample_fuzznet = textwrap.dedent("""
-    Project: FuzzNet
-
-    Create a protocol fuzzing framework for network security testing. The system should:
-
-    Core Requirements:
-    - Support common protocols (HTTP, FTP, SMTP, custom TCP/UDP)
-    - Generate protocol-aware test cases
-    - Monitor target for crashes/hangs
-    - Record and replay capabilities
-    - Mutation-based and generation-based fuzzing
-    - Coverage-guided fuzzing for open-source targets
-    - Export findings in standard format
-
-    Key Features:
-    1. Protocol Handlers
-    - Protocol definitions in YAML/JSON
-    - Basic protocol automation
-    - State tracking
-    - Custom protocol support
-
-    2. Fuzzing Engine
-    - Smart field mutation
-    - Test case generation
-    - Coverage feedback integration
-    - Crash detection and classification
-    - Resource monitoring
-
-    3. Test Case Management
-    - Save/load test cases
-    - Minimize test cases
-    - Export/import capabilities
-    - Crash reproduction
-
-    4. Monitoring
-    - Target health checking
-    - Resource utilization tracking
-    - Network traffic monitoring
-    - Result correlation
-
-    5. Reporting
-    - Detailed crash reports
-    - Coverage statistics
-    - Test case statistics
-    - Export in multiple formats
-
-    Technical Requirements:
-    - Handle high-speed packet generation
-    - Efficient memory management
-    - Modular architecture for extensions
-    - Support for custom protocols
-    - Comprehensive logging and debugging
-    """)
-
-    sample_feapy = textwrap.dedent("""
-    Project: FeaPy
-
-    Create a command-line finite element analysis package for 2D structural problems. 
-    The package should:
-
-    Core Requirements:
-    - Support linear elastic analysis of 2D structures
-    - Handle triangular and quadrilateral elements
-    - Allow definition of structures through JSON/YAML input files
-    - Support point loads and distributed loads
-    - Calculate displacements, stresses, and strains
-    - Generate text-based visualization of results (using ASCII art or similar)
-    - Provide error estimates and convergence metrics
-    - Export results to CSV/JSON formats
-    - Project structure shall be flat - a single folder with all files.
-
-    Key Features:
-    1. Mesh Generation
-    - Read geometry from input files
-    - Basic mesh refinement capabilities
-    - Mesh quality checks
-
-    2. Material Models
-    - Linear elastic materials
-    - Support for different material properties (Young's modulus, Poisson's ratio)
-    - Material library management
-
-    3. Analysis
-    - Assembly of global stiffness matrix
-    - Application of boundary conditions
-    - Linear system solver
-    - Post-processing of results
-
-    4. Results Processing
-    - Calculation of derived quantities (stress, strain)
-    - Error estimation
-    - Results visualization in terminal
-    - Data export
-
-    5. CLI Interface
-    - Interactive mode for analysis setup
-    - Batch processing mode
-    - Progress indicators for long computations
-    - Result browsing and querying
-
-    6. Testing
-    - Thorough testing of all features
-
-    Performance Requirements:
-    - Handle problems up to 1000 elements
-    - Memory efficient sparse matrix operations
-    - Parallelize matrix assembly and solving where beneficial
-
-    Documentation Requirements:
-    - Is a package
-    - Follows github community guidelines
-
-    DEFINITION OF DONE:
-    FeaPy successfully runs a sample problem which is sufficiently complicated to
-    faithfully represent a real-world scenario through the CLI without errors and
-    with the correct result.
-    """)
-
-    sample_logsage = textwrap.dedent("""
-    Project: LogSage
-
-    Create a high-performance log analysis framework for processing 
-    and analyzing large log files. The system should:
-
-    Core Requirements:
-    - Parse multiple log formats (Apache, Nginx, Custom patterns)
-    - Process logs in streaming fashion for memory efficiency
-    - Support regular expression-based pattern matching
-    - Generate statistical summaries and reports
-    - Alert on pattern matches or threshold violations
-    - Support pipeline-style processing of log data
-    - Handle compressed log files directly
-
-    Key Features:
-    1. Log Ingestion
-    - Multiple input sources (files, streams, S3)
-    - Custom log format definition
-    - Automatic format detection
-    - Handling of malformed entries
-
-    2. Analysis Engine
-    - Pattern matching with regex
-    - Statistical aggregations
-    - Time-window analysis
-    - Anomaly detection
-    - Custom analyzers plugin system
-
-    3. Alerting
-    - Threshold-based alerts
-    - Pattern-based alerts
-    - Alert aggregation and deduplication
-    - Custom alert handlers
-
-    4. Reporting
-    - Summary statistics
-    - Trend analysis
-    - Top-N reports
-    - Custom report formats
-
-    5. Performance
-    - Stream processing
-    - Multi-threading support
-    - Memory efficient operations
-    - Progress tracking
-
-    Technical Requirements:
-    - Process 1GB+ log files
-    - Memory usage under 500MB
-    - Support for custom plugins
-    - Comprehensive CLI interface""")
-
-    sample_ainet = """
-# ainet Technical Specification
-Version 2.0
-
-## 1. Problem Statement
-
-### 1.1 Background
-Large Language Models (LLMs) need clean, structured text to work effectively. Web pages contain noise and complex structures that interfere with LLM processing. ainet solves this by transforming web content into LLM-friendly formats.
-
-### 1.2 Design Principles
-1. KISS: Keep solutions simple and focused
-2. YAGNI: Only implement proven necessary features
-3. SOLID: Design modular, maintainable components
-4. flat: Use a single directory for all files to avoid annoying python path issues.
-
-## 2. Technical Requirements
-
-### 2.1 Input Requirements
-- HTTPS URLs only
-- Single URL processing per request
-- Content-Type: application/json
-- Required headers: 
-  - Authorization: API key
-  - Accept: application/json
-
-### 2.2 Output Format
-```json
-{
-  "url": "string",
-  "text": "string",
-  "title": "string",
-  "error": "string?"
-}
-```
-
-## 3. System Architecture
-
-### 3.1 Core Components
-```
-[Client] → [FastAPI] → [Content Extractor] → [Response]
-```
-
-### 3.2 Component Specifications
-
-#### 3.2.1 API Layer
-- Framework: FastAPI
-- Endpoints:
-  ```
-  POST /v1/extract  # URL processing
-  ```
-#### 3.2.2 Content Extractor
-- Single extractor: Trafilatura
-
-## 4. Performance Requirements - None
-
-## 5. Monitoring and Logging - None
-
-## 6. Testing Requirements
-
-### 6.1 Core Testing
-- Unit tests
-- Complete integration tests
-- Successful "full system" demo
-
-## 7. Security Requirements
-
-### 7.1 Authentication
-- HTTPS only
-
-### 7.2 Data Protection
-- No content storage
-- Input sanitization
-
-## 8. Development Guidelines
-
-### 8.1 Code Quality
-- Follow KISS, YAGNI, and SOLID principles
-
-### 8.2 Documentation
-- API reference
-- Setup guide
-
-## 9. Future Considerations
-Features intentionally deferred (DO NOT IMPLEMENT):
-1. Batch processing
-2. Advanced metadata extraction
-3. Memory caching
-4. Advanced monitoring
-5. Complex authentication
-6. Comprehensive test coverage
-7. Rate Limit
-8. Logging
-9. Performance Requirements
-10.   GET  /v1/health   # Service health check
-11. Redis Cache Layer
-12. API key authentication
-
-## 10. Definition of Done
-
-Core functionality is complete when:
-1. Single URLs can be processed reliably
-2. Content is extracted correctly
-3. Basic security is implemented
-4. Critical paths are tested
-5. demo.py successfully extracts content from an arbitrary webpage and displays it in the terminal
-
-## 11. Special Instructions
-1. Write demo.py LAST
-
-## 12. Version History
-
-- 2.2: Core specification 
-- Date: Dec 17 2024
-- Previous: v2.0 Core specification (YAGNI-focused)
-- Approved By: Ben Rinauto
-    """
-
-    llm_email = """
-# LLM Email System Technical Specification
-
-## 1. Problem Statement
-
-Create a SIMPLE python email client for llms.
-
-### 1.1 Background
-- Current LLM interactions are limited to terminal or bespoke interfaces
-- Human users need to communicate with LLMs through their native email clients
-- LLMs need a standardized way to send and receive emails
-- This solution will benefit both LLM developers and end-users by enabling 
-email-based interactions
-
-### 1.2 Design Principles
-The overarching goal is for this project to be "LLM - implementable". 
-The following principles are designed to keep this project specification 
-implementable by LLMs that exist as of 18Dec2024. LLMs tend to both add 
-unecessary complexity AND fail on complex projects, the combination of 
-which means llms need some design principles to keep them on the right
-track. With that in mind: 
-
-1. KISS: Keep solutions simple and focused
-2. YAGNI: Only implement proven necessary features
-3. SOLID: Design modular, maintainable components
-4. flat: All program files in a single directory.
-
-Follow these design principles even if they contradict requirements!
-
-## 2. Technical Requirements
-
-### 2.1 Misc Requirements
-- System will integrate with benbuzz790's 'bots' library
-- Interface to system will be a small set of functions which
-receive and return strings.
-- An example tool file can be found in "C:/Users/benbu/Code/
-llm-utilities-git/bots/bots/tools/utf8_tools.py"
-- 'bots' is designed to work with arbitrary *stateless* python functions - 
-no further interface design is required for llms to use the functions.
-- System will use authentication method as demonstrated in (existing) example.py
-
-## 3. System Architecture
-
-### 3.1 Core Components
-```
-[Email Service]
-    │
-    ├── Email Handler
-    │
-    └── LLM tool interface (single file)
-        ├── send_email(cred_filepath:str, to:str, cc:str, bcc:str, subject:str, body:str) -> str (confirmation / error msg)
-        ├── reply_to_email(cred_filepath:str, email_id:str, body:str) -> str (confirmation/err)
-        ├── check_inbox(cred_filepath:str) -> str (newline separated list of sender: subject)
-        ├── read_email(cred_filepath:str, email_id:str) -> str (output format per below)
-        └── archive_emails(cred_filepath:str, email_id:str) -> str (confirmation / error)
-```
-
-
-#### 3.1.1 Email Format
-- eml
-
-### 3.2 Component Specifications
-
-#### 3.2.1 Email Handler
-- Framework: Standard email libraries
-- Local storage
-- Simple folder structure (inbox, sent, archive)
-- GMAIL email protocol support -- see existing example.py
-
-## 4. Performance Requirements
-- None
-
-## 5. Monitoring and Logging
-- None
-
-## 6. Testing Requirements
-
-### 6.1 Core Testing
-- Unit tests for each core function
-- Integration tests for email sending/receiving
-- Required DEMO: Successful email exchange with external systems
-- (send test emails to benbuzz790@gmail.com with subject "TEST EMAIL")
-
-## 7. Security Requirements
-
-### 7.1 Authentication
-- API key authentication for service access (credentials.json already exists, use it as shown in example.py)
-- **Be sure any auth bots know of example.py**!
-- Standard email security (TLS) for transmission
-
-### 7.2 Data Protection
-- Emails stored locally in standard format
-- No encryption
-
-## 8. Development Guidelines
-
-### 8.1 Code Quality
-- Follow PEP 8 for Python code
-- Use type hints 
-
-### 8.2 Documentation
-- Example usage documentation
-
-## 9. Future Considerations
-Features intentionally deferred (DO NOT IMPLEMENT):
-1. Attachment support
-2. Custom email templates
-3. Multiple provider-specific implementations
-4. Advanced filtering and search
-5. Unread status management
-6. File transformation -- use eml directly when possible
-7. Custom exceptions
-8. Sanitization
-9. Logging
-10. Schema definitions
-11. Thread safety, atomic operations, etc. for file control
-12. Validators
-
-## 10. Definition of Done
-LLM Email System is complete when:
-1. All core functions are implemented and tested
-2. System can successfully exchange emails with external email systems
-3. Authentication and security measures are in place
-4. A full system demonstration shows successful bi-directional communication
-
-## 11. Special Instructions
-- Keep the interface and implementation simple
-
-## 12. Version History
-
-- Version: 1.2 (cred.json auth)
-- Date: 20-Dec-2024
-- Previous: 1.1 (simpler)
-- Approved By: Ben Rinauto
-"""
-
-    fastener_analysis = """# Fastener Analysis Library Technical Specification
-Version 1.0
-
-## 1. Problem Statement
-
-### 1.1 Background
-Engineering calculations for fastener assemblies require careful consideration of materials, geometry, and loading conditions. Current solutions often:
-- Lack proper unit handling, leading to calculation errors
-- Don't provide a clear object-oriented structure for assembly representation
-- Mix data structures with analysis logic
-
-This library will provide a foundation for fastener analysis by:
-- Implementing robust data structures with built-in unit handling
-- Separating component representation from analysis logic
-- Supporting both standard and custom fastener configurations
-
-### 1.2 Design Principles
-0. "LLM - implementable"
-1. KISS: Keep solutions simple and focused
-2. YAGNI: Only implement proven necessary features
-3. SOLID: Design modular, maintainable components
-4. flat: All program files shall be in a single directory
-5. Units Required: All parameters must include units using pint library
-6. Data-First: Focus on data structures before analysis implementation
-
-## 2. Technical Requirements
-
-### 2.1 Input Requirements
-- All dimensional inputs must include units
-- Material properties must include appropriate units
-- Thread specifications must be provided as strings (e.g., "1/4-20 UNC")
-- Imperial units preferred but system should be unit-agnostic
-- JSON support for future component loading
-
-### 2.2 Core Data Structures
-```python
-# Key class structure
-BaseComponent
-├── Material
-│   ├── GenericSteel
-│   └── GenericAluminum
-│
-├── ThreadedComponent
-│   ├── Fastener
-│   └── Nut
-│
-├── ClampedComponent
-│   ├── Washer
-│   └── PlateComponent
-│
-├── ThreadedPlate (both a clamped component and a threaded component)
-│
-└── Junction  # Standalone
-```
-
-## 3. System Architecture
-
-### 3.1 Core Components
-
-#### Material Library
-Required properties:
-- Yield strength
-- Ultimate strength
-- Density
-- Poisson's ratio
-- Modulus of elasticity
-- Coefficient of thermal expansion
-
-#### Threaded Components
-Required properties:
-- Thread specification (string)
-- Pitch diameter (calculated/stored)
-- Threaded section length
-- Material reference
-
-#### Clamped Components
-Required properties:
-- Thickness
-- Material reference
-- For washers: Inner and outer diameter
-
-### Fastener
-Required properties
-- Those for threaded members
-- Length
-- Head Diameter
-- Head Height
-- Type (Flat / not flat)
-- Tool (I.e. fastening tool size required)
-
-#### Junction
-Required properties:
-- One fastener
-- One or more clamped members
-- One threaded member
-
-### 3.2 Component Specifications
-
-#### 3.2.1 External Dependencies
-- Framework: Python 3.x
-- Required Libraries: pint for unit handling
-
-## 4. Performance Requirements
-None specified (YAGNI)
-
-## 5. Monitoring and Logging
-None specified (YAGNI)
-
-## 6. Testing Requirements
-
-### 6.1 Core Testing
-- Unit tests for data structure creation
-- Unit tests for material property access
-- Validation of unit handling
-- Basic assembly creation tests
-
-## 7. Security Requirements
-None specified (YAGNI)
-
-## 8. Development Guidelines
-
-### 8.1 Code Quality
-- All properties must include units
-- Clear separation between data structures and future analysis
-- Type hints required for all methods
-- Documentation strings required for all classes
-
-### 8.2 Documentation
-- Class and method documentation
-- Usage examples
-- Unit handling examples
-
-## 9. Future Considerations
-Features intentionally deferred:
-1. Analysis module (NASA 5020 compliance)
-2. Component loading from specifications/files
-3. Visualization capabilities
-4. Advanced thread validation
-5. Additional material definitions
-6. Assembly validation logic
-
-
-## 10. Definition of Done
-Project is complete when:
-1. All core data structures are implemented with unit support
-2. Generic steel and aluminum materials are defined
-3. Basic junction assembly is demonstrated
-4. Unit tests pass
-5. A full system demonstration
-
-## 11. Special Instructions
-- Maintain strict separation between data structures and future analysis logic
-- Ensure all numerical values include appropriate units
-- Keep thread specifications as strings with associated pitch diameters
-
-## 12. Version History
-
-- Version: 1.0
-- Date: 2023-12-18
-- Previous: None
-- Approved By: Ben Rinauto
-"""
-
 ### Main ###
-
 import sys
-import traceback
-from functools import wraps
-from typing import Any, Callable
-
-def debug_on_error(func: Callable) -> Callable:
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        try:
-            return func(*args, **kwargs)
-        except Exception:
-            type, value, tb = sys.exc_info()
-            traceback.print_exception(type, value, tb)
-            print("\n--- Entering post-mortem debugging ---")
-            import pdb
-            pdb.post_mortem(tb)
-    return wrapper
+import argparse
+from bots.dev.decorators import debug_on_error
 
 @debug_on_error
-def main():
-    generate_project(prompts.fastener_analysis)
+def main(prompt_file=None):
+    """
+    Run the project generator with either a file input or default prompts.
+    
+    Args:
+        prompt_file (str, optional): Path to the prompt file to load.
+                                   If None, uses default prompts.
+    """
+    if prompt_file:
+        with open(prompt_file, 'r') as f:
+            prompt_content = f.read()
+        generate_project(prompt_content)
+    else:
+        generate_project(prompts.fastener_analysis)
+
+def run_from_command_line():
+    """Parse command line arguments and run the generator."""
+    parser = argparse.ArgumentParser(description='Generate project from prompt file')
+    parser.add_argument('--file', '-f', type=str, help='Path to prompt file')
+    args = parser.parse_args()
+    main(args.file)
 
 if __name__ == '__main__':
-    main()
+    run_from_command_line()

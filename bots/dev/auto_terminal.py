@@ -30,6 +30,9 @@ Available commands:
 /left: Move to this conversation node's left sibling
 /right: Move to this conversation node's right sibling
 /auto: Let the bot work autonomously until it sends a response without using any tools
+/root: Move to the root node of the conversation tree
+/label: Save current node with a label for later reference
+/goto: Move to a previously labeled node
 /exit: Exit the program
 
 Type your messages normally to chat.
@@ -135,6 +138,7 @@ def main() -> None:
             response: str = codey.respond(msg)
             requests: List[Dict[str, Any]] = codey.tool_handler.requests
             results: List[Dict[str, Any]] = codey.tool_handler.results
+            labeled_nodes = {}
             pretty(response, codey.name)
 
             request_str = ''.join(clean_dict(r) for r in requests)
@@ -283,6 +287,26 @@ def main() -> None:
                         pretty('Moving right in conversation tree', 'System')
                         codey.conversation = codey.conversation.parent.replies[next_index]
                         pretty(codey.conversation.content, codey.name)
+                case "/root":
+                    # Find root by traversing up until no parent exists
+                    while codey.conversation.parent and codey.conversation.parent.parent:
+                        codey.conversation = codey.conversation.parent
+                    pretty('Moved to root of conversation tree', 'System')
+                    pretty(codey.conversation.content, codey.name)
+                case "/label":
+                        label = input("Label:")
+                        labeled_nodes[label] = codey.conversation
+                        pretty(f'Saved current node with label: {label}', 'System')
+                        turn = 'user'
+                case "/goto":
+                    label = input("Label:")
+                    if label in labeled_nodes:
+                        codey.conversation = labeled_nodes[label]
+                        pretty(f'Moved to node labeled: {label}', 'System')
+                        pretty(codey.conversation.content, codey.name)
+                    else:
+                        pretty(f'No node found with label: {label}', 'System')
+                    turn = 'user'
                 case "/help":
                     pretty('')  # separator
                     pretty(help_msg, "System")
