@@ -289,7 +289,7 @@ def main() -> None:
                         pretty(codey.conversation.content, codey.name)
                 case "/root":
                     # Find root by traversing up until no parent exists
-                    while codey.conversation.parent and codey.conversation.parent.parent:
+                    while codey.conversation.parent:
                         codey.conversation = codey.conversation.parent
                     pretty('Moved to root of conversation tree', 'System')
                     pretty(codey.conversation.content, codey.name)

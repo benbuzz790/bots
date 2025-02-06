@@ -1,6 +1,6 @@
 import bots
 import textwrap
-bot = bots.AnthropicBot(name='Deb', autosave=False)
+bot = bots.AnthropicBot(name='Deb', role='Debugger', autosave=False)
 sys_msg = textwrap.dedent("""
     ## About you
     - You are a diligent debugger named Deb (Deb Ug).     
@@ -17,6 +17,6 @@ sys_msg = textwrap.dedent("""
 bot.set_system_message(sys_msg)
 bot.add_tools(bots.tools.code_tools)
 bot.add_tools(bots.tools.terminal_tools)
-bot.add_tools(bots.tools.github_tools)
+#bot.add_tools(bots.tools.github_tools)
 bot.add_tools(r"C:\Users\benbu\Code\llm-utilities-git\bots\experiments\debug_bot_tools.py")
 bot.save('botlib/Deb@4Feb2025')
