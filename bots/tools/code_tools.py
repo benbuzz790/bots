@@ -2,40 +2,37 @@ import os
 import traceback
 import textwrap
 
-
-def view(file_path: str):
+def view(file_path: str, max_lines: int = 2500):
     """
     Display the contents of a file with line numbers.
 
     Parameters:
     - file_path (str): The path to the file to be viewed.
+    - max_lines (int, optional): Maximum number of lines to display. Defaults to 2500.
 
     Returns:
     A string containing the file contents with line numbers.
     """
-    encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1'
-        ]
+    encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
     for encoding in encodings:
         try:
             with open(file_path, 'r', encoding=encoding) as file:
                 lines = file.readlines()
-            numbered_lines = [f'{i + 1}:{line.rstrip()}' for i, line in
-                enumerate(lines)]
-            return '\n'.join(numbered_lines)
+                if len(lines) > max_lines:
+                    return f'Error: File has {len(lines)} lines, which exceeds the maximum of {max_lines} lines.'
+                numbered_lines = [f'{i + 1}:{line.rstrip()}' for i, line in enumerate(lines)]
+                return '\n'.join(numbered_lines)
         except UnicodeDecodeError:
             continue
         except Exception as e:
             return f'Error: {str(e)}'
-    return (
-        f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
-        )
+    return f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
 
 
-def view_dir(start_path: str='.', output_file=None, target_extensions: str=
-    "['py', 'txt', '.md']"):
+def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py', 'txt', '.md']"):
     """
     Creates a summary of the directory structure starting from the given path, writing only files 
-    with specified extensions. The output is written to a text file and returned as a string.
+    with specified extensions and showing venv directories without their contents.
 
     Parameters:
     - start_path (str): The root directory to start scanning from.
@@ -47,38 +44,84 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str=
 
     Example output:
     my_project/
+        venv/
         module1/
             script.py
             README.md
         module2/
             utils.py
     """
-    extensions_list = [ext.strip().strip('\'"') for ext in
-        target_extensions.strip('[]').split(',')]
-    extensions_list = [('.' + ext if not ext.startswith('.') else ext) for
-        ext in extensions_list]
+    extensions_list = [ext.strip().strip('\'"') for ext in target_extensions.strip('[]').split(',')]
+    extensions_list = [('.' + ext if not ext.startswith('.') else ext) for ext in extensions_list]
     output_text = []
+
     for root, dirs, files in os.walk(start_path):
-        has_py = False
+        level = root.replace(start_path, '').count(os.sep)
+        indent = '    ' * level
+        basename = os.path.basename(root)
+
+        # Check if current directory is a venv
+        is_venv = basename in ['venv', 'env', '.env'] or 'pyvenv.cfg' in files
+
+        if is_venv:
+            # Add venv directory without scanning its contents
+            line = f'{indent}{basename}/'
+            output_text.append(line)
+            dirs[:] = []  # Skip processing contents of venv
+            continue
+
+        has_relevant_files = False
         for _, _, fs in os.walk(root):
             if any(f.endswith(tuple(extensions_list)) for f in fs):
-                has_py = True
+                has_relevant_files = True
                 break
-        if has_py:
-            level = root.replace(start_path, '').count(os.sep)
-            indent = '    ' * level
-            line = f'{indent}{os.path.basename(root)}/'
+
+        if has_relevant_files:
+            line = f'{indent}{basename}/'
             output_text.append(line)
             subindent = '    ' * (level + 1)
             for file in files:
                 if file.endswith(tuple(extensions_list)):
                     line = f'{subindent}{file}'
                     output_text.append(line)
+
     if output_file is not None:
         with open(output_file, 'w') as file:
-            file.write(output_text)
+            file.write('\n'.join(output_text))
+            
     return '\n'.join(output_text)
 
+def overwrite_corrupt_file(file_path: str, content: str):
+    """
+    ⚠️ CAUTION: This is a LAST RESORT. Only use when other tools have failed.⚠️
+
+    Parameters:
+    - file_path (str): Path to the file to overwrite
+    - content (str): New content to write to the file
+
+    Returns:
+    str: Success message or error details
+    """
+    try:
+        used_encoding = 'utf-8'
+        if os.path.exists(file_path):
+            encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252',
+                'iso-8859-1']
+            for encoding in encodings:
+                try:
+                    with open(file_path, 'r', encoding=encoding) as f:
+                        f.read()
+                        used_encoding = encoding
+                        break
+                except UnicodeDecodeError:
+                    continue
+        with open(file_path, 'w', encoding=used_encoding) as f:
+            f.write(content)
+        return (
+            f'⚠️ File overwritten successfully using {used_encoding} encoding.'
+            )
+    except Exception as e:
+        return f'Error: {str(e)}\n{traceback.format_exc()}'
 
 def diff_edit(file_path: str, diff_spec: str):
     """Diff spec editing with flexible matching.
@@ -403,36 +446,3 @@ def _strip_line_number(line: str) ->str:
     stripped = line.lstrip()
     content = stripped.split(':', 1)[1]
     return whitespace + content
-
-
-def overwrite(file_path: str, content: str):
-    """
-    ⚠️ CAUTION: This is a last-resort tool. Only use when more efficient tools have failed.
-
-    Parameters:
-    - file_path (str): Path to the file to overwrite
-    - content (str): New content to write to the file
-
-    Returns:
-    str: Success message or error details
-    """
-    try:
-        used_encoding = 'utf-8'
-        if os.path.exists(file_path):
-            encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252',
-                'iso-8859-1']
-            for encoding in encodings:
-                try:
-                    with open(file_path, 'r', encoding=encoding) as f:
-                        f.read()
-                        used_encoding = encoding
-                        break
-                except UnicodeDecodeError:
-                    continue
-        with open(file_path, 'w', encoding=used_encoding) as f:
-            f.write(content)
-        return (
-            f'⚠️ File overwritten successfully using {used_encoding} encoding.'
-            )
-    except Exception as e:
-        return f'Error: {str(e)}\n{traceback.format_exc()}'

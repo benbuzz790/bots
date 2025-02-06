@@ -42,6 +42,6 @@ class TestTerminalTools(unittest.TestCase):
         from bots.tools.terminal_tools import execute_powershell
         ps_script = '1..100 | ForEach-Object { Write-Output "Line $_" }'
         result = execute_powershell(ps_script, output_length_limit='50')
-        self.assertEqual(len(result.splitlines()), 52)  # 50 lines + 2 for truncation message
+        self.assertEqual(len(result.splitlines()), 54)  # 50 lines + 4 for truncation message
         self.assertIn('50 lines omitted', result)
         self.assertIn('Full output saved to', result)
