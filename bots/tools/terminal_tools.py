@@ -6,24 +6,24 @@ from typing import List
 
 def execute_powershell(code: str, output_length_limit: str='60'):
     """
-   Executes PowerShell code in a stateless environment
+    Executes PowerShell code in a stateless environment
 
-   Use when you need to run PowerShell commands and capture their output. If
-   you have other tools available, you should use this as a fallback when the
-   other tools fail. Coerces to utf-8 encoding.
+    Use when you need to run PowerShell commands and capture their output. If
+    you have other tools available, you should use this as a fallback when the
+    other tools fail. Coerces to utf-8 encoding.
 
-   Potential use cases:
-   - git commands
-   - gh cli
-   - other cli (which you may need to install using this tool)
+    Potential use cases:
+    - git commands
+    - gh cli
+    - other cli (which you may need to install using this tool)
 
-   Parameters:
-   - code (str): PowerShell code to execute.
-   - output_length_limit (int, optional): Maximum number of lines in the output.
-     If set, output exceeding this limit will be truncated. Default 60.
+    Parameters:
+    - code (str): PowerShell code to execute.
+    - output_length_limit (int, optional): Maximum number of lines in the output.
+      If set, output exceeding this limit will be truncated. Default 60.
 
-   Returns command output or an error message.
-   """
+    Returns command output or an error message.
+    """
 
     def _process_error(error):
         error_message = f'Tool Failed: {str(error)}\n'
@@ -33,10 +33,22 @@ def execute_powershell(code: str, output_length_limit: str='60'):
     output = ''
     try:
         processed_code = _process_commands(code)
-        wrapped_code = f'chcp 65001 > $null; {processed_code}'
-        process = subprocess.Popen(['powershell', '-Command', wrapped_code],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-            encoding='utf-8')
+        setup_encoding = """
+        $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+        [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+        $OutputEncoding = [System.Text.Encoding]::UTF8
+        $env:PYTHONIOENCODING = "utf-8"
+        """
+        wrapped_code = f'{setup_encoding}; {processed_code}'
+        startupinfo = None
+        if os.name == 'nt':
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        process = subprocess.Popen(['powershell', '-NoProfile',
+            '-NonInteractive', '-Command', wrapped_code], stdout=subprocess
+            .PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo,
+            encoding='utf-8', errors='replace')
         stdout, stderr = process.communicate(timeout=300)
         output = stdout
         if stderr:
@@ -58,8 +70,9 @@ def execute_powershell(code: str, output_length_limit: str='60'):
             truncated_output += (
                 f'\n\n... {lines_omitted} lines omitted ...\n\n')
             truncated_output += '\n'.join(end_lines)
-            output_file = os.path.join(os.getcwd(), f'ps_output.txt')
-            with open(output_file, 'w', encoding='utf-8') as f:
+            output_file = os.path.join(os.getcwd(), 'ps_output.txt')
+            with open(output_file, 'w', encoding='utf-8', errors='replace'
+                ) as f:
                 f.write(output)
             truncated_output += f'\nFull output saved to {output_file}'
             return truncated_output

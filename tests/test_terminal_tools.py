@@ -75,3 +75,57 @@ class TestTerminalTools(unittest.TestCase):
         result = execute_powershell(ps_script)
         self.assertNotIn('Should Not See This', result)
         cleanup = execute_powershell('Remove-Item -Path "test.txt" -Force')
+
+    def test_powershell_special_characters(self):
+        """Test handling of special characters and box drawing symbols"""
+        from bots.tools.terminal_tools import execute_powershell
+        ps_script = 'Write-Output "Box chars: ─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼"'
+        result = execute_powershell(ps_script)
+        self.assertIn('Box chars:', result)
+        self.assertTrue(any(char in result for char in '─│┌┐└┘├┤┬┴┼'))
+        ps_script = 'Write-Output "Extended ASCII: ° ± ² ³ µ ¶ · ¹ º"'
+        result = execute_powershell(ps_script)
+        self.assertIn('Extended ASCII:', result)
+        self.assertTrue(any(char in result for char in '°±²³µ¶·¹º'))
+
+    def test_powershell_invalid_encoding_handling(self):
+        """Test handling of potentially problematic encoding scenarios"""
+        from bots.tools.terminal_tools import execute_powershell
+        ps_script = """
+        Write-Output "Mixed scripts: Latin-ASCII-한글-עברית-العربية"
+        Write-Output "More mixed: Русский-日本語-🌟-‱-√"
+    """
+        result = execute_powershell(ps_script)
+        self.assertIn('Mixed scripts:', result)
+        self.assertIn('More mixed:', result)
+        ps_script = """
+        [byte[]]$bytes = 0xC4,0x80,0xE2,0x98,0x83
+        [System.Text.Encoding]::UTF8.GetString($bytes)
+    """
+        result = execute_powershell(ps_script)
+        self.assertTrue(len(result.strip()) > 0)
+
+    def test_powershell_encoding_environment(self):
+        """Test that PowerShell encoding environment is properly configured"""
+        from bots.tools.terminal_tools import execute_powershell
+                    
+        # Test Console Output Encoding
+        ps_script = "[Console]::OutputEncoding.WebName"
+        result = execute_powershell(ps_script)
+        self.assertEqual('utf-8', result.strip().lower())
+                    
+        # Test Console Input Encoding
+        ps_script = "[Console]::InputEncoding.WebName"
+        result = execute_powershell(ps_script)
+        self.assertEqual('utf-8', result.strip().lower())
+                    
+        # Verify PowerShell default encoding parameter
+        ps_script = "$PSDefaultParameterValues['*:Encoding']"
+        result = execute_powershell(ps_script)
+        self.assertEqual('utf8', result.strip().lower())
+                    
+        # Test that encoding works with actual output
+        test_string = "Test UTF8 String: ★ → ♠ ±"
+        ps_script = f'Write-Output "{test_string}"'
+        result = execute_powershell(ps_script)
+        self.assertEqual(test_string, result.strip())
