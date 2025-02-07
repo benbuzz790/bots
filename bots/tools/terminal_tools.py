@@ -1,8 +1,5 @@
 import os, subprocess, traceback
 from typing import List
-"""Deb: Ah, now I understand! There's a Unicode decoding error in PowerShell when trying to handle certain bytes (0xb0) in pytest's output. This is why we're not seeing any output - it's failing silently due to the encoding error."""
-"""Need to appropriately handle && notation"""
-
 
 def execute_powershell(code: str, output_length_limit: str='60'):
     """
