@@ -13,6 +13,18 @@ from tkinter import filedialog
 import os
 import re
 
+import platform
+# Import platform-specific modules
+if platform.system() == 'Windows':
+    import msvcrt
+else:
+    import select
+    import termios
+    import tty
+
+
+
+
 help_msg: str = """
 This program is an interactive terminal that uses Anthropic's Claude Sonnet 3.5.
 It allows you to chat with the LLM, save and load bot states, and execute various commands.
@@ -38,16 +50,56 @@ Available commands:
 Type your messages normally to chat.
 """
 
+def check_for_interrupt() -> bool:
+    """
+    Check if user pressed Escape without blocking execution.
+    Returns True if Escape was pressed, False otherwise.
+    """
+    if platform.system() == 'Windows':
+        # Windows implementation using msvcrt
+        if msvcrt.kbhit():
+            key = msvcrt.getch()
+            return key == b'\x1b'  # ESC key
+        return False
+    else:
+        # Unix implementation using select
+        if select.select([sys.stdin], [], [], 0.0)[0]:
+            key = sys.stdin.read(1)
+            # Clear the input buffer
+            termios.tcflush(sys.stdin, termios.TCIOFLUSH)
+            return key == '\x1b'  # ESC key
+        return False
+
+def setup_raw_mode():
+    """Set up terminal for raw input mode on Unix systems"""
+    if platform.system() != 'Windows':
+        # Save the terminal settings
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            # Set the terminal to raw mode
+            tty.setraw(sys.stdin.fileno())
+        except termios.error:
+            # If setting raw mode fails, restore old settings
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return old_settings
+    return None
+
+def restore_terminal(old_settings):
+    """Restore terminal settings on Unix systems"""
+    if platform.system() != 'Windows' and old_settings is not None:
+        fd = sys.stdin.fileno()
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
 def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: int = 4) -> None:
     """Prints a string nicely"""
-    
     prefix: str = f"{name}: " if name is not None else ""
     
     if not isinstance(string, str):
         string = str(string)
 
     lines: List[str] = string.split('\n')
-
+    
     # Process each line
     formatted_lines: List[str] = []
     for i, line in enumerate(lines):
@@ -94,10 +146,10 @@ def clean_dict(d:dict, indent:int=4, level:int=1):
     Clean a dict containing recursive json dumped strings for printing
     Returns: clean string representation of the dict
     """
-    for k,v in d.items():
+    for k, v in d.items():
         if isinstance(v, dict):
             clean_dict(v, indent, level+1)
-        if isinstance(v,str) and '\n' in v:
+        if isinstance(v, str) and '\n' in v:
             lines = v.splitlines()
             for i, line in enumerate(lines):
                 line = ' '*indent*(level+1) + line
@@ -127,197 +179,209 @@ def main() -> None:
     else:
         codey = initialize_bot()
         pretty('Bot initialized', 'System')
+    
     verbose: bool = True
     turn: str = 'user'
     auto_mode: bool = False
+    old_settings = None
+    labeled_nodes = {}
 
-    while True:
-        if turn == 'assistant':
-            
-            # Print response and grab tool info
-            response: str = codey.respond(msg)
-            requests: List[Dict[str, Any]] = codey.tool_handler.requests
-            results: List[Dict[str, Any]] = codey.tool_handler.results
-            labeled_nodes = {}
-            pretty(response, codey.name)
+    try:
+        while True:
+            if turn == 'assistant':
+                # Print response and grab tool info
+                response: str = codey.respond(msg)
+                requests: List[Dict[str, Any]] = codey.tool_handler.requests
+                results: List[Dict[str, Any]] = codey.tool_handler.results
+                pretty(response, codey.name)
 
-            request_str = ''.join(clean_dict(r) for r in requests)
-            result_str = ''.join(clean_dict(r) for r in results)
+                request_str = ''.join(clean_dict(r) for r in requests)
+                result_str = ''.join(clean_dict(r) for r in results)
 
-            if requests:
-                if verbose:
-                    pretty(f'Tool Requests\n\n{request_str}', "System")
-                    pretty(f'Tool Results\n\n{result_str}', "System")  
+                if requests:
+                    if verbose:
+                        pretty(f'Tool Requests\n\n{request_str}', "System")
+                        pretty(f'Tool Results\n\n{result_str}', "System")  
+                    else:
+                        for request in requests:
+                            tool_name, _ = codey.tool_handler.tool_name_and_input(request)
+                            pretty(f'{codey.name} used {tool_name}', "System")
+                            
+                    if auto_mode:
+                        pretty("Tools were used, continuing auto...", "System")
                 else:
-                    for request in requests:
-                        tool_name, _ = codey.tool_handler.tool_name_and_input(request)
-                        pretty(f'{codey.name} used {tool_name}', "System")
-                        
-                # If we're in auto mode and tools were used, continue with another iteration
+                    if auto_mode:
+                        pretty("No tools used, exiting auto", "System")
+                        auto_mode = False
+                        turn = 'user'
+            
                 if auto_mode:
-                    pretty("Tools were used, continuing auto...", "System")
-            else:
-                # If no tools were used and we're in auto mode, exit auto mode
-                if auto_mode:
-                    pretty("No tools used, exiting auto", "System")
-                    auto_mode = False
+                    print("Auto mode active (press ESC to interrupt)... ", end='', flush=True)
+                    
+                    # Set up raw mode for Unix systems
+                    if not old_settings:
+                        old_settings = setup_raw_mode()
+                    
+                    # Check for interrupt
+                    if check_for_interrupt():
+                        pretty("Auto mode interrupted", "System")
+                        auto_mode = False
+                        turn = 'user'
+                        continue
+                    
+                    if auto_mode:  # Only continue if not interrupted
+                        msg: str = 'ok'
+                        pretty(msg, 'You')
+                else:
                     turn = 'user'
-        
-            # Decide who goes next
-            if auto_mode:
-                msg: str = 'ok'
-                pretty(msg, 'You')
-            else:
-                turn = 'user'
 
-        else:  # user turn
-            uinput: str = input("You: ")
-            print('\n---\n')
-
-            if uinput is None or uinput == '':
-                uinput = '~'
-            
-            # Split input into words
-            words = uinput.strip().split()
-            if not words:
-                continue
+            else:  # user turn
+                # Restore terminal settings before getting user input
+                restore_terminal(old_settings)
+                old_settings = None
                 
-            # Check for command at start or end
-            command = None
-            msg = None
-            if words[0].startswith('/'):
-                command = words[0]
-                msg = ' '.join(words[1:]) if len(words) > 1 else None
-            elif words[-1].startswith('/'):
-                command = words[-1]
-                msg = ' '.join(words[:-1]) if len(words) > 1 else None
-            else:
-                msg = uinput
+                uinput: str = input("You: ")
+                print('\n---\n')
 
-            # Handle turn order
-            # Default to assistant turn but
-            # allow commands to swap to user
-            if msg is not None:
-                turn = 'assistant'
-            
-            # Handle commands
-            match command:
-                case "/exit":
-                    pretty('')  # separator
-                    pretty("exiting...", "System")
-                    exit(0)
-                case "/auto":
-                    auto_mode = True
-                    pretty("Auto active", "System")
-                    if msg is None or msg == '':
-                        msg = 'ok'
+                if uinput is None or uinput == '':
+                    uinput = '~'
+                
+                # Split input into words
+                words = uinput.strip().split()
+                if not words:
+                    continue
+                    
+                # Check for command at start or end
+                command = None
+                msg = None
+                if words[0].startswith('/'):
+                    command = words[0]
+                    msg = ' '.join(words[1:]) if len(words) > 1 else None
+                elif words[-1].startswith('/'):
+                    command = words[-1]
+                    msg = ' '.join(words[:-1]) if len(words) > 1 else None
+                else:
+                    msg = uinput
+
+                # Handle turn order
+                # Default to assistant turn but
+                # allow commands to swap to user
+                if msg is not None:
                     turn = 'assistant'
-                case "/load": 
-                    filename: str = filedialog.askopenfilename(
-                        filetypes=[("Bot files", "*.bot"),
-                                ("All files", "*.*")])
-                    try:
-                        codey = codey.load(filename)
-                    except:
-                        pretty(f"Error loading {filename}", "System")
-                case "/save": 
-                    name: str = input("Filename (leave blank for automatic filename):")
-                    if name:
-                        codey.save(name)
-                    else:
-                        codey.save()
-                    pass
-                case "/quiet":
-                    verbose = False
-                case "/verbose":
-                    verbose = True
-                    pretty('Tool output on', 'System')
-                case "/up":
-                    if codey.conversation.parent and codey.conversation.parent.parent:
-                        pretty('Moving up conversation tree', 'System')
-                        codey.conversation = codey.conversation.parent.parent # Move to last bot message
-                        pretty(codey.conversation.content, codey.name)
-                    else:
-                        pretty("At root - can't go up", 'System')
-                case "/down":
-                    if codey.conversation.replies:
-                        max_index = len(codey.conversation.replies)-1
-                        idx = 0
-                        if max_index > 0:
-                            idx = int(input(f"Reply index (max {max_index}):"))
-                        pretty('Moving down conversation tree','System')
-                        next_node = codey.conversation.replies[idx]
-                        if next_node.replies:  # Check if there's a bot reply
-                            codey.conversation = next_node.replies[0]
+                
+                # Handle commands
+                match command:
+                    case "/exit":
+                        pretty('')  # separator
+                        pretty("exiting...", "System")
+                        return
+                    case "/auto":
+                        auto_mode = True
+                        pretty("Auto active", "System")
+                        if msg is None or msg == '':
+                            msg = 'ok'
+                        turn = 'assistant'
+                    case "/load": 
+                        filename: str = filedialog.askopenfilename(
+                            filetypes=[("Bot files", "*.bot"),
+                                    ("All files", "*.*")])
+                        try:
+                            codey = codey.load(filename)
+                        except:
+                            pretty(f"Error loading {filename}", "System")
+                    case "/save": 
+                        name: str = input("Filename (leave blank for automatic filename):")
+                        if name:
+                            codey.save(name)
+                        else:
+                            codey.save()
+                    case "/quiet":
+                        verbose = False
+                    case "/verbose":
+                        verbose = True
+                        pretty('Tool output on', 'System')
+                    case "/up":
+                        if codey.conversation.parent and codey.conversation.parent.parent:
+                            pretty('Moving up conversation tree', 'System')
+                            codey.conversation = codey.conversation.parent.parent
                             pretty(codey.conversation.content, codey.name)
                         else:
-                            codey.conversation = next_node
-                            pretty(next_node.content, codey.name)
-                    else:
-                        pretty('At leaf - can\'t go down', 'System')
-                case "/left":
-                    if not codey.conversation.parent:
-                        pretty('At root - can\'t go left', 'System')
-                    elif not codey.conversation.parent.replies or len(codey.conversation.parent.replies) <= 1:
-                        pretty('Conversation has no siblings at this point', 'System')
-                    else:
-                        # Find the index of the current conversation in the parent's replies
-                        current_index = next(i for i, reply in enumerate(codey.conversation.parent.replies) if reply is codey.conversation)
-
-                        # Calculate the index of the previous conversation with wraparound
-                        next_index = (current_index - 1) % len(codey.conversation.parent.replies)
-
-                        # Update codey.conversation to the next conversation in the list
-                        pretty('Moving left in conversation tree', 'System')
-                        codey.conversation = codey.conversation.parent.replies[next_index]
+                            pretty("At root - can't go up", 'System')
+                    case "/down":
+                        if codey.conversation.replies:
+                            max_index = len(codey.conversation.replies)-1
+                            idx = 0
+                            if max_index > 0:
+                                idx = int(input(f"Reply index (max {max_index}):"))
+                            pretty('Moving down conversation tree','System')
+                            next_node = codey.conversation.replies[idx]
+                            if next_node.replies:
+                                codey.conversation = next_node.replies[0]
+                                pretty(codey.conversation.content, codey.name)
+                            else:
+                                codey.conversation = next_node
+                                pretty(next_node.content, codey.name)
+                        else:
+                            pretty('At leaf - can\'t go down', 'System')
+                    case "/left":
+                        if not codey.conversation.parent:
+                            pretty('At root - can\'t go left', 'System')
+                        elif not codey.conversation.parent.replies or len(codey.conversation.parent.replies) <= 1:
+                            pretty('Conversation has no siblings at this point', 'System')
+                        else:
+                            current_index = next(i for i, reply in enumerate(codey.conversation.parent.replies) 
+                                              if reply is codey.conversation)
+                            next_index = (current_index - 1) % len(codey.conversation.parent.replies)
+                            pretty('Moving left in conversation tree', 'System')
+                            codey.conversation = codey.conversation.parent.replies[next_index]
+                            pretty(codey.conversation.content, codey.name)
+                    case "/right":
+                        if not codey.conversation.parent:
+                            pretty('At root - can\'t go right', 'System')
+                        elif not codey.conversation.parent.replies or len(codey.conversation.parent.replies) <= 1:
+                            pretty('Conversation has no siblings at this point', 'System')
+                        else:
+                            current_index = next(i for i, reply in enumerate(codey.conversation.parent.replies) 
+                                              if reply is codey.conversation)
+                            next_index = (current_index + 1) % len(codey.conversation.parent.replies)
+                            pretty('Moving right in conversation tree', 'System')
+                            codey.conversation = codey.conversation.parent.replies[next_index]
+                            pretty(codey.conversation.content, codey.name)
+                    case "/root":
+                        while codey.conversation.parent:
+                            codey.conversation = codey.conversation.parent
+                        pretty('Moved to root of conversation tree', 'System')
                         pretty(codey.conversation.content, codey.name)
-                case "/right":
-                    if not codey.conversation.parent:
-                        pretty('At root - can\'t go right', 'System')
-                    elif not codey.conversation.parent.replies or len(codey.conversation.parent.replies) <= 1:
-                        pretty('Conversation has no siblings at this point', 'System')
-                    else:
-                        # Find the index of the current conversation in the parent's replies
-                        current_index = next(i for i, reply in enumerate(codey.conversation.parent.replies) if reply is codey.conversation)
-
-                        # Calculate the index of the next conversation with wraparound
-                        next_index = (current_index + 1) % len(codey.conversation.parent.replies)
-
-                        # Update codey.conversation to the next conversation in the list
-                        pretty('Moving right in conversation tree', 'System')
-                        codey.conversation = codey.conversation.parent.replies[next_index]
-                        pretty(codey.conversation.content, codey.name)
-                case "/root":
-                    # Find root by traversing up until no parent exists
-                    while codey.conversation.parent:
-                        codey.conversation = codey.conversation.parent
-                    pretty('Moved to root of conversation tree', 'System')
-                    pretty(codey.conversation.content, codey.name)
-                case "/label":
+                    case "/label":
                         label = input("Label:")
                         labeled_nodes[label] = codey.conversation
                         pretty(f'Saved current node with label: {label}', 'System')
                         turn = 'user'
-                case "/goto":
-                    label = input("Label:")
-                    if label in labeled_nodes:
-                        codey.conversation = labeled_nodes[label]
-                        pretty(f'Moved to node labeled: {label}', 'System')
-                        pretty(codey.conversation.content, codey.name)
-                    else:
-                        pretty(f'No node found with label: {label}', 'System')
-                    turn = 'user'
-                case "/help":
-                    pretty('')  # separator
-                    pretty(help_msg, "System")
-                case None:
-                    continue
-                case _:
-                    pretty("Unrecognized command. Try /help.", "System")
-                    turn = 'user'
+                    case "/goto":
+                        label = input("Label:")
+                        if label in labeled_nodes:
+                            codey.conversation = labeled_nodes[label]
+                            pretty(f'Moved to node labeled: {label}', 'System')
+                            pretty(codey.conversation.content, codey.name)
+                        else:
+                            pretty(f'No node found with label: {label}', 'System')
+                        turn = 'user'
+                    case "/help":
+                        pretty('')  # separator
+                        pretty(help_msg, "System")
+                    case None:
+                        continue
+                    case _:
+                        pretty("Unrecognized command. Try /help.", "System")
+                        turn = 'user'
 
-            if turn == 'assistant':
-                pretty('')  # separator
+                if turn == 'assistant':
+                    pretty('')  # separator
+
+    finally:
+        # Ensure terminal settings are restored when exiting
+        restore_terminal(old_settings)
+
 
 if __name__ == '__main__':
     main()
