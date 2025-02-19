@@ -23,7 +23,6 @@ setup(
     install_requires=[
         'anthropic',
         'openai',
-        'astor',
         'typing_extensions',
     ],
     extras_require={

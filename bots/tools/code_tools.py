@@ -12,6 +12,8 @@ def view(file_path: str, max_lines: int = 2500):
 
     Returns:
     A string containing the file contents with line numbers.
+
+    cost: varies
     """
     encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
     for encoding in encodings:
@@ -50,6 +52,8 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
             README.md
         module2/
             utils.py
+    
+    cost: low
     """
     extensions_list = [ext.strip().strip('\'"') for ext in target_extensions.strip('[]').split(',')]
     extensions_list = [('.' + ext if not ext.startswith('.') else ext) for ext in extensions_list]
@@ -91,7 +95,7 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
             
     return '\n'.join(output_text)
 
-def overwrite_corrupt_file(file_path: str, content: str):
+def _overwrite_corrupt_file(file_path: str, content: str):
     """
     ⚠️ CAUTION: This is a LAST RESORT. Only use when other tools have failed.⚠️
 
@@ -123,6 +127,7 @@ def overwrite_corrupt_file(file_path: str, content: str):
     except Exception as e:
         return f'Error: {str(e)}\n{traceback.format_exc()}'
 
+
 def diff_edit(file_path: str, diff_spec: str):
     """Diff spec editing with flexible matching.
 
@@ -130,73 +135,20 @@ def diff_edit(file_path: str, diff_spec: str):
 
     Parameters:
     - file_path (str): Path to the file to modify
-    - diff_spec (str): Diff-style specification of changes
+    - diff_spec (str): Diff-style specification of changes. 
+    Input lines beginning with '-' are removed, and input lines 
+    beginning with '+' are added at the starting index of the 
+    removed lines. All lines must start with + or -, and white
+    space must be matched exactly.
 
     Returns:
     str: Description of changes made/to be made or error message with context
 
-    The diff spec uses a simplified format for precise text replacement:
+    ex) diff_spec:
+    -import numpy
+    +import scipy
 
-    Key Rules:
-    1. Format:
-       - Lines to remove start with '-' (no space after, no tabs before)
-       - Lines to add start with '+' (no space after, no tabs before)
-       - TWO blank lines between separate changes
-    2. Matching:
-       - Whitespace-aware but flexible
-       - Matches entire blocks exactly (all lines must match)
-       - Best to include surrounding context for precision
-    3. Order:
-       - Changes applied sequentially
-       - Each change: match -> remove -> add at same position
-       - If no match found, provides context of nearest partial match
-
-    Example 1: Simple import change
-    ```
-    -from typing import List
-    +from typing import List, Optional
-    ```
-
-    Example 2: Class modification with context
-    ```
-    -class Calculator:
-    -    def __init__(self):
-    -        self.value = 0
-    +class Calculator:
-    +    #A simple calculator class.
-    +    def __init__(self, initial_value: float = 0):
-    +        self.value = initial_value
-    ```
-
-    Example 3: Function replacement preserving indentation
-    ```
-    -    def add(self, x):
-    -        self.value += x
-    -        return self.value
-    +    def add(self, x: float) -> float:
-    +        #Add a number to current value.
-    +        self.value += x
-    +        return self.value
-    ```
-
-    Example 4: Multiple separate changes (note double newline)
-    ```
-    -import os
-    +import os.path
-
-
-    -def process_file(filename):
-    -    with open(filename) as f:
-    +def process_file(filename: str) -> str:
-    +    #Process a file and return its contents.
-    +    with open(filename, encoding='utf-8') as f:
-    ```
-
-    Common Pitfalls:
-    1. Missing exact indentation in match
-    2. Not including enough context for unique matches
-    3. Forgetting double newlines between changes
-    4. Including line numbers from view() output
+    cost: medium
     """
     ignore_indentation: bool = True
     context_lines: int = 2
@@ -245,13 +197,8 @@ def diff_edit(file_path: str, diff_spec: str):
                 if match_score > 0:
                     context = _get_context(current_lines, best_index,
                         context_lines)
-                    failure_context = '\nNearest partial match found around:\n' + '\n'.join(context) + f"""
-Match score: {match_score:.2f}"""
-                    if ignore_indentation:
-                        failure_context += (
-                            '\n(Note: matching with ignore_indentation=True)')
-                unmatched_changes.append(('\n'.join(remove), '\n'.join(add),
-                    failure_context))
+                    failure_context = '\nNearest partial match found around:\n' + '\n'.join(context) + f"""\n\nMatch score: {match_score:.2f}"""
+                unmatched_changes.append(('\n'.join(remove), '\n'.join(add), failure_context))
         if matched_changes:
             new_content = '\n'.join(current_lines)
             if not new_content.endswith('\n'):
@@ -263,13 +210,13 @@ Match score: {match_score:.2f}"""
         if matched_changes:
             report.append(
                 f'\nSuccessfully applied {len(matched_changes)} changes:')
-            for old, new in matched_changes:
-                report.append(f'\nChanged:\n{old}\nTo:\n{new}')
+            #for old, new in matched_changes:
+                #report.append(f'\nChanged:\n{old}\nTo:\n{new}')
         if unmatched_changes:
             report.append(
                 f'\nFailed to apply {len(unmatched_changes)} changes:')
             for old, new, context in unmatched_changes:
-                report.append(f'\nCould not find:\n{old}')
+                report.append(f'\nCould not find:\n{old}\n\n{context}')
         return '\n'.join(report) if report else 'No changes were applied'
     except Exception as e:
         return f'Error: {str(e)}\n{traceback.format_exc()}'
@@ -300,7 +247,7 @@ def _parse_diff_spec(diff_spec: str):
             content = line
         else:
             errors.append(
-                f'Error: First line in a change block "{line}" does not start with + or -.'
+                f'Error: "{line}" does not start with + or -. All lines must start with + or -.'
                 )
             continue
         if last_prefix == '-':
@@ -316,12 +263,12 @@ def _parse_diff_spec(diff_spec: str):
 
 def _find_matching_block(current_lines, remove_lines, ignore_indentation):
     """Find where a block of lines matches in the current file content.
-    
+
     Args:
         current_lines: List of strings representing current file content
         remove_lines: List of strings to find in the file
         ignore_indentation: Whether to ignore leading whitespace when matching
-    
+
     Returns:
         tuple (match_found: bool, line_num: int, indent: str, match_score: float, best_index: int)
         where:
@@ -333,26 +280,45 @@ def _find_matching_block(current_lines, remove_lines, ignore_indentation):
     """
     if not remove_lines:
         return True, len(current_lines), '', 1.0, len(current_lines)
-    for i in range(len(current_lines) - len(remove_lines) + 1):
-        current_block = current_lines[i:i + len(remove_lines)]
+    
+    # Filter out empty lines for matching
+    def filter_empty_lines(lines):
+        return [line for line in lines if line.strip()]
+    
+    filtered_current = filter_empty_lines(current_lines)
+    filtered_remove = filter_empty_lines(remove_lines)
+    
+    # Build index mapping from filtered to original lines
+    current_map = []
+    for i, line in enumerate(current_lines):
+        if line.strip():
+            current_map.append(i)
+    
+    if len(filtered_remove) > len(filtered_current):
+        return False, 0, '', 0.0, 0
+        
+    for i in range(len(filtered_current) - len(filtered_remove) + 1):
+        current_block = filtered_current[i:i + len(filtered_remove)]
         if ignore_indentation:
-            match = all(c.strip() == o.strip() for c, o in zip(
-                current_block, remove_lines))
+            match = all(c.strip() == o.strip() for c, o in zip(current_block, filtered_remove))
         else:
-            match = all(c == o for c, o in zip(current_block, remove_lines))
+            match = all(c == o for c, o in zip(current_block, filtered_remove))
         if match:
-            return True, i, _get_indentation(current_lines[i]), 1.0, i
+            # Map back to original line number
+            orig_index = current_map[i]
+            # Find the span of lines to remove including empty lines
+            end_index = current_map[i + len(filtered_remove) - 1]
+            return True, orig_index, _get_indentation(current_lines[orig_index]), 1.0, orig_index
+            
     best_match_score = 0
     best_match_index = 0
-    for i in range(len(current_lines) - len(remove_lines) + 1):
-        current_block = current_lines[i:i + len(remove_lines)]
-        match_score = _calculate_block_match_score(current_block,
-            remove_lines, ignore_indentation)
+    for i in range(len(filtered_current) - len(filtered_remove) + 1):
+        current_block = filtered_current[i:i + len(filtered_remove)]
+        match_score = _calculate_block_match_score(current_block, filtered_remove, ignore_indentation)
         if match_score > best_match_score:
             best_match_score = match_score
-            best_match_index = i
-    return False, best_match_index, _get_indentation(current_lines[
-        best_match_index]), best_match_score, best_match_index
+            best_match_index = current_map[i]
+    return False, best_match_index, _get_indentation(current_lines[best_match_index]), best_match_score, best_match_index
 
 
 def _get_indentation(line):

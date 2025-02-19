@@ -3,7 +3,6 @@ import datetime as DT
 import os
 import sys
 import traceback
-import time
 import concurrent
 from unittest.mock import patch
 from io import StringIO

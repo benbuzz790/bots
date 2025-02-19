@@ -2,7 +2,7 @@ import traceback
 import os
 import bots.tools.code_tools as code_tools
 import bots.tools.terminal_tools as terminal_tools
-import bots.tools.python_tools as python_tools
+import bots.tools.python_editing_tools as python_editing_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import load
 from bots.foundation.base import Bot
@@ -23,6 +23,8 @@ def message_bot(bot_path, message):
     Returns the bot's first response, a list of tool-uses in order, and final response as a string.
 
     Does NOT save the bot.
+
+    cost: varies
     """
     try:
         bot = load(bot_path)
@@ -67,6 +69,8 @@ def initialize_file_bot(file_name: str, system_message: str) ->str:
     - file_name (str): Name of the file this bot will manage (can include directory path)
 
     Returns success message with bot's file path or an error message string.
+
+    cost: low
     """
     try:
         directory = os.path.dirname(file_name)
@@ -77,7 +81,7 @@ def initialize_file_bot(file_name: str, system_message: str) ->str:
         file_bot.set_system_message(system_message)
         file_bot.add_tools(code_tools)
         file_bot.add_tools(terminal_tools)
-        file_bot.add_tools(python_tools)
+        file_bot.add_tools(python_editing_tools)
         path = file_bot.save(file_bot.name)
         return f'Success: file bot created at {path}'
     except Exception as error:
@@ -107,6 +111,8 @@ def generate_project(spec: str) ->str:
     
     Returns:
     str: Success message or error message string
+    
+    cost: very high
     """
     import bots.dev.project_tree as project_tree
     return project_tree.generate_project(spec)

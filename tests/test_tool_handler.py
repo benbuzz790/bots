@@ -3,7 +3,7 @@ import os
 import tempfile
 import textwrap
 from types import ModuleType
-from typing import Dict, Any, List
+from typing import Dict, List
 from bots.foundation.base import ToolHandler
 
 
@@ -109,7 +109,7 @@ class TestToolHandlerPersistence(unittest.TestCase):
         module.__dict__.update(namespace)
         
         # Add tool and save state
-        self.handler.add_tools_from_module(module)
+        self.handler._add_tools_from_module(module)
         original_state = self.handler.to_dict()
         self.assertEqual(len(self.handler.tools), 1, 'Tool not added initially'
             )
@@ -143,7 +143,7 @@ class TestToolHandlerPersistence(unittest.TestCase):
         namespace = {'__name__': 'test_module', '__file__': 'test_module.py'}
         exec(module_code, namespace)
         module.__dict__.update(namespace)
-        self.handler.add_tools_from_module(module)
+        self.handler._add_tools_from_module(module)
         original_state = self.handler.to_dict()
         new_handler = DummyToolHandler.from_dict(original_state)
         self.assertEqual(len(new_handler.tools), 2, 'Tools not loaded')
@@ -162,7 +162,7 @@ class TestToolHandlerPersistence(unittest.TestCase):
 
     def test_file_persistence(self):
         """Test saving and loading tools from a file"""
-        self.handler.add_tools_from_file(self.module_path)
+        self.handler._add_tools_from_file(self.module_path)
         original_state = self.handler.to_dict()
         original_tools = self.handler.tools.copy()
         new_handler = DummyToolHandler.from_dict(original_state)
@@ -198,7 +198,7 @@ class TestToolHandlerPersistence(unittest.TestCase):
         module.__dict__.update(namespace)
         
         # Add tool and verify initial state
-        self.handler.add_tools_from_module(module)
+        self.handler._add_tools_from_module(module)
         self.assertEqual(len(self.handler.tools), 1, 'Tool not added properly')
         self.assertEqual(len(self.handler.function_map), 1,
             'Function not mapped properly')

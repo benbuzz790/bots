@@ -1,8 +1,7 @@
 from bots.foundation.openai_bots import ChatGPT_Bot
 from bots.foundation.anthropic_bots import AnthropicBot
 import sys
-import bots.tools.github_tools
-import bots.tools.python_tools
+import bots.tools.python_editing_tools
 import bots.tools.terminal_tools
 import bots.tools.code_tools
 import textwrap
@@ -123,7 +122,8 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
     anthropic_key = os.getenv('ANTHROPIC_API_KEY')
     if anthropic_key:
         try:
-            bot = AnthropicBot(name='Claude', model_engine=bots.foundation.base.Engines.CLAUDE35_SONNET_20241022)
+            bot = AnthropicBot(name='Claude', 
+                               model_engine=bots.foundation.base.Engines.CLAUDE35_SONNET_20241022)
         except Exception as e:
             pretty(f"Failed to initialize Anthropic bot: {e}", "System")
     elif openai_key:
@@ -132,9 +132,9 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
         except Exception as e:
             pretty(f"Failed to initialize ChatGPT bot: {e}", "System")
     else:
-        raise ValueError('No OpenAI or Anthropic API keys found. Set up your key as an environment variable.')
-
-    bot.add_tools(bots.tools.python_tools)
+        raise ValueError('No OpenAI or Anthropic API keys found. Set up your key')
+    
+    bot.add_tools(bots.tools.python_editing_tools)
     bot.add_tools(bots.tools.code_tools)
     bot.add_tools(bots.tools.github_tools)
     bot.add_tools(bots.tools.terminal_tools)
@@ -162,7 +162,7 @@ def clean_dict(d:dict, indent:int=4, level:int=1):
     cleaned_dict = cleaned_dict.replace('\\\\', '\\')
     return cleaned_dict
 
-from bots.dev.decorators import create_issues, debug_on_error
+from bots.dev.decorators import make_issue_upon_error, debug_on_error
 #@create_issues(repo = 'benbuzz790/bots')
 @debug_on_error
 def main() -> None:
@@ -170,14 +170,14 @@ def main() -> None:
     if len(sys.argv) > 1:
         bot_file = sys.argv[1]
         try:
-            codey = initialize_bot().load(bot_file)
+            at_bot = initialize_bot().load(bot_file)
             pretty(f'Loaded bot from {bot_file}', 'System')
-            pretty("\n"+str(codey), 'System')
+            pretty("\n"+str(at_bot), 'System')
         except Exception as e:
             pretty(f'Failed to load {bot_file}: {e}', 'System')
-            codey = initialize_bot()
+            at_bot = initialize_bot()
     else:
-        codey = initialize_bot()
+        at_bot = initialize_bot()
         pretty('Bot initialized', 'System')
     
     verbose: bool = True
@@ -190,10 +190,10 @@ def main() -> None:
         while True:
             if turn == 'assistant':
                 # Print response and grab tool info
-                response: str = codey.respond(msg)
-                requests: List[Dict[str, Any]] = codey.tool_handler.requests
-                results: List[Dict[str, Any]] = codey.tool_handler.results
-                pretty(response, codey.name)
+                response: str = at_bot.respond(msg)
+                requests: List[Dict[str, Any]] = at_bot.tool_handler.requests
+                results: List[Dict[str, Any]] = at_bot.tool_handler.results
+                pretty(response, at_bot.name)
 
                 request_str = ''.join(clean_dict(r) for r in requests)
                 result_str = ''.join(clean_dict(r) for r in results)
@@ -204,8 +204,8 @@ def main() -> None:
                         pretty(f'Tool Results\n\n{result_str}', "System")  
                     else:
                         for request in requests:
-                            tool_name, _ = codey.tool_handler.tool_name_and_input(request)
-                            pretty(f'{codey.name} used {tool_name}', "System")
+                            tool_name, _ = at_bot.tool_handler.tool_name_and_input(request)
+                            pretty(f'{at_bot.name} used {tool_name}', "System")
                             
                     if auto_mode:
                         pretty("Tools were used, continuing auto...", "System")
@@ -282,87 +282,91 @@ def main() -> None:
                             msg = 'ok'
                         turn = 'assistant'
                     case "/load": 
-                        filename: str = filedialog.askopenfilename(
-                            filetypes=[("Bot files", "*.bot"),
-                                    ("All files", "*.*")])
+
+                        filename = input("Filename: ")
+                        if filename == '':
+                            filename: str = filedialog.askopenfilename(
+                                filetypes=[("Bot files", "*.bot"),
+                                        ("All files", "*.*")])
                         try:
-                            codey = codey.load(filename)
+                            at_bot = at_bot.load(filename)
+                            print(at_bot)
                         except:
                             pretty(f"Error loading {filename}", "System")
                     case "/save": 
-                        name: str = input("Filename (leave blank for automatic filename):")
+                        name: str = input("Filename (leave blank for automatic filename): ")
                         if name:
-                            codey.save(name)
+                            at_bot.save(name)
                         else:
-                            codey.save()
+                            at_bot.save()
                     case "/quiet":
                         verbose = False
                     case "/verbose":
                         verbose = True
                         pretty('Tool output on', 'System')
                     case "/up":
-                        if codey.conversation.parent and codey.conversation.parent.parent:
+                        if at_bot.conversation.parent and at_bot.conversation.parent.parent:
                             pretty('Moving up conversation tree', 'System')
-                            codey.conversation = codey.conversation.parent.parent
-                            pretty(codey.conversation.content, codey.name)
+                            at_bot.conversation = at_bot.conversation.parent.parent
+                            pretty(at_bot.conversation.content, at_bot.name)
                         else:
                             pretty("At root - can't go up", 'System')
                     case "/down":
-                        if codey.conversation.replies:
-                            max_index = len(codey.conversation.replies)-1
+                        if at_bot.conversation.replies:
+                            max_index = len(at_bot.conversation.replies)-1
                             idx = 0
                             if max_index > 0:
                                 idx = int(input(f"Reply index (max {max_index}):"))
                             pretty('Moving down conversation tree','System')
-                            next_node = codey.conversation.replies[idx]
+                            next_node = at_bot.conversation.replies[idx]
                             if next_node.replies:
-                                codey.conversation = next_node.replies[0]
-                                pretty(codey.conversation.content, codey.name)
+                                at_bot.conversation = next_node.replies[0]
+                                pretty(at_bot.conversation.content, at_bot.name)
                             else:
-                                codey.conversation = next_node
-                                pretty(next_node.content, codey.name)
+                                at_bot.conversation = next_node
+                                pretty(next_node.content, at_bot.name)
                         else:
                             pretty('At leaf - can\'t go down', 'System')
                     case "/left":
-                        if not codey.conversation.parent:
+                        if not at_bot.conversation.parent:
                             pretty('At root - can\'t go left', 'System')
-                        elif not codey.conversation.parent.replies or len(codey.conversation.parent.replies) <= 1:
+                        elif not at_bot.conversation.parent.replies or len(at_bot.conversation.parent.replies) <= 1:
                             pretty('Conversation has no siblings at this point', 'System')
                         else:
-                            current_index = next(i for i, reply in enumerate(codey.conversation.parent.replies) 
-                                              if reply is codey.conversation)
-                            next_index = (current_index - 1) % len(codey.conversation.parent.replies)
+                            current_index = next(i for i, reply in enumerate(at_bot.conversation.parent.replies) 
+                                              if reply is at_bot.conversation)
+                            next_index = (current_index - 1) % len(at_bot.conversation.parent.replies)
                             pretty('Moving left in conversation tree', 'System')
-                            codey.conversation = codey.conversation.parent.replies[next_index]
-                            pretty(codey.conversation.content, codey.name)
+                            at_bot.conversation = at_bot.conversation.parent.replies[next_index]
+                            pretty(at_bot.conversation.content, at_bot.name)
                     case "/right":
-                        if not codey.conversation.parent:
+                        if not at_bot.conversation.parent:
                             pretty('At root - can\'t go right', 'System')
-                        elif not codey.conversation.parent.replies or len(codey.conversation.parent.replies) <= 1:
+                        elif not at_bot.conversation.parent.replies or len(at_bot.conversation.parent.replies) <= 1:
                             pretty('Conversation has no siblings at this point', 'System')
                         else:
-                            current_index = next(i for i, reply in enumerate(codey.conversation.parent.replies) 
-                                              if reply is codey.conversation)
-                            next_index = (current_index + 1) % len(codey.conversation.parent.replies)
+                            current_index = next(i for i, reply in enumerate(at_bot.conversation.parent.replies) 
+                                              if reply is at_bot.conversation)
+                            next_index = (current_index + 1) % len(at_bot.conversation.parent.replies)
                             pretty('Moving right in conversation tree', 'System')
-                            codey.conversation = codey.conversation.parent.replies[next_index]
-                            pretty(codey.conversation.content, codey.name)
+                            at_bot.conversation = at_bot.conversation.parent.replies[next_index]
+                            pretty(at_bot.conversation.content, at_bot.name)
                     case "/root":
-                        while codey.conversation.parent:
-                            codey.conversation = codey.conversation.parent
+                        while at_bot.conversation.parent:
+                            at_bot.conversation = at_bot.conversation.parent
                         pretty('Moved to root of conversation tree', 'System')
-                        pretty(codey.conversation.content, codey.name)
+                        pretty(at_bot.conversation.content, at_bot.name)
                     case "/label":
                         label = input("Label:")
-                        labeled_nodes[label] = codey.conversation
+                        labeled_nodes[label] = at_bot.conversation
                         pretty(f'Saved current node with label: {label}', 'System')
                         turn = 'user'
                     case "/goto":
                         label = input("Label:")
                         if label in labeled_nodes:
-                            codey.conversation = labeled_nodes[label]
+                            at_bot.conversation = labeled_nodes[label]
                             pretty(f'Moved to node labeled: {label}', 'System')
-                            pretty(codey.conversation.content, codey.name)
+                            pretty(at_bot.conversation.content, at_bot.name)
                         else:
                             pretty(f'No node found with label: {label}', 'System')
                         turn = 'user'

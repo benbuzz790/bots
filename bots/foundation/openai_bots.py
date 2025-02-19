@@ -19,7 +19,7 @@ class OpenAINode(ConversationNode):
         node = self
         conversation_dict = []
         while node:
-            if not node.is_empty():
+            if not node._is_empty():
                 if hasattr(node, 'tool_calls') and node.tool_calls:
                     entry = node._to_dict_self()
                 elif node.role == 'tool':
@@ -134,9 +134,9 @@ class OpenAIMailbox(Mailbox):
             return response_text, response_role, extra_data
         if message.tool_calls:
             requests, results = bot.tool_handler.handle_response(response)
-            bot.conversation = bot.conversation.add_reply(**requests[1])
+            bot.conversation = bot.conversation._add_reply(**requests[1])
             for result in results:
-                bot.conversation = bot.conversation.add_reply(**result)
+                bot.conversation = bot.conversation._add_reply(**result)
             response = bot.mailbox.send_message(bot)
             message = response.choices[0].message
             response_text = message.content
@@ -157,5 +157,5 @@ class ChatGPT_Bot(Bot):
         super().__init__(api_key=api_key, model_engine=model_engine,
             max_tokens=max_tokens, temperature=temperature, name=name, role
             =role, role_description=role_description, tool_handler=
-            OpenAIToolHandler(), conversation=OpenAINode.create_empty(
+            OpenAIToolHandler(), conversation=OpenAINode._create_empty(
             OpenAINode), mailbox=OpenAIMailbox(), autosave=autosave)

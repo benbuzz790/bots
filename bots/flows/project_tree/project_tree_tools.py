@@ -1,18 +1,10 @@
-import os, traceback, textwrap
+import os
 import bots.flows.functional_prompts as fp
 from bots.foundation.base import Bot, load
 from bots.foundation.anthropic_bots import AnthropicBot
-from bots.tools import code_tools, terminal_tools, python_tools
-from bots.dev.project_tree_prompts import prompts
-
-
-### Helper Functions ###
-
-def _process_error(error):
-    error_message = f'Tool Failed: {str(error)}\n'
-    error_message += (
-        f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
-    return error_message
+from bots.tools import code_tools, python_editing_tools, terminal_tools
+from bots.flows.project_tree.project_tree_prompts import prompts
+from bots.utils.helpers import _process_error
 
 ### Bot tools ###
 
@@ -115,7 +107,7 @@ def initialize_file_bot(file_name: str) -> str:
         file_bot.set_system_message(prompts.file_initialization)
         file_bot.add_tools(code_tools)
         file_bot.add_tools(terminal_tools)    
-        file_bot.add_tools(python_tools)   
+        file_bot.add_tools(python_editing_tools)   
         path = file_bot.save(file_bot.name)
         return f"Success: file bot created at {path}"
     except Exception as error:

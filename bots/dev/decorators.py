@@ -1,10 +1,14 @@
-import os, sys, json, inspect, functools, ast, logging, traceback, textwrap
-from typing import Callable, Optional, Any, Dict
-from bots.foundation.base import remove_code_blocks, Bot
-from bots.flows.flows import create_issue_flow, BotFlow
-import bots.flows.functional_prompts as fp
+import os, sys, inspect, ast, logging, traceback, textwrap
+from typing import Callable, Optional, Any
+from bots.utils.helpers import remove_code_blocks
+from bots.foundation.base import Bot
 from bots import AnthropicBot
-from bots.events import BotEventSystem
+import sys
+import traceback
+from functools import wraps
+from typing import Any, Callable
+import logging
+# Set up file handler for logging
 
 
 # Set up logging
@@ -12,9 +16,14 @@ logging.basicConfig(level=logging.WARNING, format=
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+
 class NoHTTPFilter(logging.Filter):
+
     def filter(self, record: logging.LogRecord) ->bool:
         return 'response' not in record.name.lower()
+
+
 logger.addFilter(NoHTTPFilter())
 
 
@@ -36,21 +45,25 @@ def lazy(prompt: Optional[str]=None, bot: Optional[Bot]=None, context:
                 function_name: str = func.__name__
                 logger.debug(f'Initializing lazy function: {function_name}')
                 context_content = _get_context(func, context)
-                instructions: str = textwrap.dedent("""Please fill out the following 
+                instructions: str = textwrap.dedent(
+                    """Please fill out the following 
                     function definition according to the following requirements. 
                     Respond only with the code in a single code block. Include all 
                     import statements inside the function definition. Remove the lazy 
                     decorator. Respond only with the function definition, including 
                     any new decorators and docstring. Include 'gen by @lazy' in the 
-                    docstring. Use PEP8 convention with type hints for all variables.""")
-                complete_prompt: str = textwrap.dedent(f"""
+                    docstring. Use PEP8 convention with type hints for all variables."""
+                    )
+                complete_prompt: str = textwrap.dedent(
+                    f"""
                     {instructions}
 
                     {prompt}
 
                     {context_content}
 
-                    {function_name}{str(inspect.signature(func))}""")
+                    {function_name}{str(inspect.signature(func))}"""
+                    )
                 response: str = bot.respond(complete_prompt)
                 function_code, _ = remove_code_blocks(response)
                 function_code = function_code[0]
@@ -96,7 +109,7 @@ def lazy(prompt: Optional[str]=None, bot: Optional[Bot]=None, context:
         return wrapper
     return decorator
 
-# Helper function for lazy
+
 def _get_context(func: Callable, context_level: str) ->str:
     if context_level == 'None':
         return ''
@@ -140,7 +153,7 @@ def _get_context(func: Callable, context_level: str) ->str:
     else:
         raise ValueError(f'Invalid context level: {context_level}')
 
-# Helper function for lazy
+
 def _get_py_interface(file_path: str) ->str:
 
     def get_docstring(node):
@@ -170,86 +183,6 @@ def _get_py_interface(file_path: str) ->str:
         elif isinstance(node, ast.FunctionDef):
             interface += format_function(node) + '\n'
     return interface.strip()
-
-def create_issues(repo: str, include_args: bool=True):
-    """
-    A decorator that creates GitHub issues asynchronously when decorated functions raise exceptions.
-    Uses BotFlow and BotEventSystem to handle issue creation in the background.
-
-    Parameters:
-    - repo (str): The target repository in format "owner/repo" where issues will be created
-    - include_args (bool): Whether to include function arguments in the issue (default True)
-
-    Returns:
-    - Callable: The decorator function
-
-    Example:
-    @create_issues(repo="owner/repo")
-    def my_function():
-        # This will create an issue asynchronously if it raises an exception
-        pass
-    """
-
-    def decorator(func: Callable) ->Callable:
-
-        bot = AnthropicBot(name='issue_tracker_bot', autosave=False)
-        bot_flow = BotFlow(bot, create_issue_flow)
-        event_system = BotEventSystem()
-        event_system.listener.subscribe('error_occurred', bot_flow.handle)
-        event_system.start()
-
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except Exception as e:
-                exc_type, exc_value, exc_tb = sys.exc_info()
-                tb_str = ''.join(traceback.format_tb(exc_tb))
-                title = f'Error in {func.__name__}: {str(e)}'
-                body_parts = [
-                    f'An error occurred in function `{func.__name__}`',
-                    '',
-                    '### Error Details', 
-                    f'- **Type**: {exc_type.__name__}',
-                    f'- **Message**: {str(e)}', 
-                    '',
-                    '### Traceback',
-                    '```python', 
-                    tb_str, 
-                    '```'
-                    ]
-                if include_args:
-                    sig = inspect.signature(func)
-                    body_parts.extend([
-                        '', 
-                        '### Function Details',
-                        f'- **Signature**: `{func.__name__}{sig}`',
-                        '- **Arguments**:', 
-                        '```python', 
-                        f'args: {args}',
-                        f'kwargs: {kwargs}', 
-                        '```'
-                        ])
-                try:
-                    source = inspect.getsource(func)
-                    body_parts.extend(['', '### Source Code', '```python', source, '```'])
-                except Exception:
-                    body_parts.extend(['', '### Source Code','*Source code not available*'])
-                
-                body = '\n'.join(body_parts)
-                error_info = {
-                    'repo': repo,
-                    'title': title, 
-                    'body': body, 
-                    'function': func.__name__, 
-                    'error_type': exc_type.__name__,
-                    'error_message': str(e)
-                    }
-                event_system.listener.emit('error_occurred', {'error_info':error_info})
-                logger.info(f'Error event emitted for async issue creation: {title}')
-                raise
-        return wrapper
-    return decorator
 
 import sys
 import traceback

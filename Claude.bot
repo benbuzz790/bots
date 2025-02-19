@@ -1,0 +1,69 @@
+{
+ "name": "Claude",
+ "model_engine": "claude-3-5-sonnet-20241022",
+ "max_tokens": 4096,
+ "temperature": 0.3,
+ "role": "assistant",
+ "role_description": "a friendly AI assistant",
+ "conversation": {
+  "content": "",
+  "pending_results": [],
+  "role": "empty",
+  "tool_calls": [],
+  "tool_results": [],
+  "node_class": "AnthropicNode",
+  "replies": [
+   {
+    "content": "What's the capital of France?",
+    "pending_results": [],
+    "role": "user",
+    "tool_calls": [],
+    "tool_results": [],
+    "node_class": "AnthropicNode",
+    "replies": [
+     {
+      "content": "The capital of France is Paris.",
+      "data": {},
+      "pending_results": [],
+      "role": "assistant",
+      "tool_calls": [],
+      "tool_results": [],
+      "node_class": "AnthropicNode",
+      "replies": [
+       {
+        "content": "What's its population?",
+        "pending_results": [],
+        "role": "user",
+        "tool_calls": [],
+        "tool_results": [],
+        "node_class": "AnthropicNode",
+        "replies": [
+         {
+          "content": "The population of Paris proper (within its administrative limits) is around 2.2 million people. However, if you include the entire Paris metropolitan area (Greater Paris), the population is approximately 12.2 million people, making it one of the largest metropolitan areas in Europe.",
+          "data": {},
+          "pending_results": [],
+          "role": "assistant",
+          "tool_calls": [],
+          "tool_results": [],
+          "node_class": "AnthropicNode"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "system_message": "",
+ "tool_handler": {
+  "class": "bots.foundation.anthropic_bots.AnthropicToolHandler",
+  "tools": [],
+  "requests": [],
+  "results": [],
+  "modules": {},
+  "function_paths": {}
+ },
+ "autosave": true,
+ "bot_class": "AnthropicBot"
+}

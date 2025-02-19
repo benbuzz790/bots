@@ -1,7 +1,6 @@
 import pytest
-from bots.foundation.base import Bot, ConversationNode
-from bots.flows.functional_prompts import par_branch, par_branch_while, conditions
-from bots.foundation.anthropic_bots import AnthropicBot, AnthropicNode
+from bots.flows.functional_prompts import par_branch, par_branch_while
+from bots.foundation.anthropic_bots import AnthropicBot
 
 
 @pytest.fixture

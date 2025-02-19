@@ -1,12 +1,11 @@
 import unittest
 import os
-import tempfile
 import json
 from unittest.mock import patch
 from bots.foundation.base import Bot, Engines
 from bots.foundation.openai_bots import ChatGPT_Bot
 from bots.foundation.anthropic_bots import AnthropicBot
-import bots.tools.python_tools as python_tools
+import bots.tools.python_editing_tools as python_editing_tools
 
 
 def simple_addition(x, y) ->str:
@@ -60,8 +59,8 @@ class TestSaveLoad(unittest.TestCase):
             save_path = os.path.join(self.temp_dir, f'convo_{bot.name}')
             save_path = bot.save(save_path)
             loaded_bot = Bot.load(save_path)
-            self.assertEqual(bot.conversation.node_count(), loaded_bot.
-                conversation.node_count())
+            self.assertEqual(bot.conversation._node_count(), loaded_bot.
+                conversation._node_count())
             self.assertEqual(bot.conversation.content, loaded_bot.
                 conversation.content)
         self.run_test_for_both_bots(_test)
@@ -69,7 +68,7 @@ class TestSaveLoad(unittest.TestCase):
     def test_save_load_with_file_tools(self):
 
         def _test(bot):
-            tool_file_path = 'bots/tools/python_tools.py'
+            tool_file_path = 'bots/tools/python_editing_tools.py'
             bot.add_tools(tool_file_path)
             save_path = os.path.join(self.temp_dir, f'file_tool_{bot.name}')
             save_path = bot.save(save_path)
@@ -94,7 +93,7 @@ class TestSaveLoad(unittest.TestCase):
     def test_save_load_with_module_tools(self):
 
         def _test(bot):
-            bot.add_tools(python_tools)
+            bot.add_tools(python_editing_tools)
             save_path = os.path.join(self.temp_dir, f'module_tool_{bot.name}')
             save_path = bot.save(save_path)
             loaded_bot = Bot.load(save_path)
@@ -141,7 +140,7 @@ class TestSaveLoad(unittest.TestCase):
         """Test that tool results are properly saved in conversation nodes"""
 
         def _test(bot):
-            bot.add_tool(simple_addition)
+            bot.add_tools(simple_addition)
             bot.respond('What is 2 + 3?')
             tool_results = bot.conversation.tool_results[0].values(
                 ) if bot.conversation.tool_results else []
@@ -164,7 +163,7 @@ class TestSaveLoad(unittest.TestCase):
         """Test that tool results are properly maintained in individual conversation nodes"""
 
         def _test(bot: Bot):
-            bot.add_tool(simple_addition)
+            bot.add_tools(simple_addition)
             interactions = ['What is 5 + 3?', 'Can you add 10 and 20?',
                 'Please add 7 and 15']
             for query in interactions:
@@ -250,7 +249,7 @@ class TestSaveLoad(unittest.TestCase):
         """Test multiple save/load cycles with tool usage"""
 
         def _test(bot):
-            bot.add_tool(simple_addition)
+            bot.add_tools(simple_addition)
             original_tool_count = len(bot.tool_handler.tools)
             save_path1 = os.path.join(self.temp_dir, f'cycle1_{bot.name}')
             bot.respond('What is 5 + 3?')
@@ -280,7 +279,7 @@ class TestSaveLoad(unittest.TestCase):
             loaded2 = Bot.load(save_path2 + '.bot')
             self.assertEqual(original_tool_count, len(loaded2.tool_handler.
                 tools))
-            self.assertEqual(loaded2.conversation.node_count(), 5)
+            self.assertEqual(loaded2.conversation._node_count(), 5)
             loaded2.respond('What is 12 + 13?')
             loaded_tool_results = loaded2.conversation.tool_results[0].values(
                 ) if loaded2.conversation.tool_results else []
@@ -301,8 +300,8 @@ class TestSaveLoad(unittest.TestCase):
             actual_path = bot.save(save_path)
             self.assertTrue(os.path.exists(actual_path))
             loaded_bot = Bot.load(actual_path)
-            self.assertEqual(bot.conversation.node_count(), loaded_bot.
-                conversation.node_count())
+            self.assertEqual(bot.conversation._node_count(), loaded_bot.
+                conversation._node_count())
             response = loaded_bot.respond('Can you still respond?')
             self.assertIsNotNone(response)
             self.assertTrue(len(response) > 0)
@@ -315,7 +314,7 @@ class TestSaveLoad(unittest.TestCase):
         def _test(bot):
             subdir = os.path.join(self.temp_dir, 'subdir')
             os.makedirs(subdir, exist_ok=True)
-            bot.add_tool(simple_addition)
+            bot.add_tools(simple_addition)
             original_path = os.path.join(self.temp_dir, f'original_{bot.name}')
             bot.save(original_path)
             original_cwd = os.getcwd()
@@ -352,7 +351,7 @@ def dynamic_add(x, y):
             exec(dynamic_code, namespace)
             dynamic_func = namespace['dynamic_add']
             with self.assertRaises(ValueError) as context:
-                bot.add_tool(dynamic_func)
+                bot.add_tools(dynamic_func)
             self.assertIn('Dynamic functions cannot be used as tools', str(
                 context.exception))
         self.run_test_for_both_bots(_test)
@@ -366,8 +365,8 @@ def dynamic_add(x, y):
             return str(math.floor(float(x)))
 
         def _test(bot):
-            bot.add_tool(simple_addition)
-            bot.add_tool(floor_str)
+            bot.add_tools(simple_addition)
+            bot.add_tools(floor_str)
             bot.respond('What is 3 + 4?')
             bot.respond('What is the floor of 7.8?')
             original_results = bot.tool_handler.get_results()
@@ -388,7 +387,7 @@ import traceback
 from functools import wraps
 from typing import Any, Callable
 import shutil
-from bots.tools.python_tools import replace_function
+from bots.tools.python_editing_tools import replace_function
 
 
 def debug_on_error(func: Callable) ->Callable:

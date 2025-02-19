@@ -1,8 +1,9 @@
-from typing import List, Callable, Any, Tuple, Union
+from typing import List, Callable, Any, Tuple
 from bots.foundation.base import Bot
 from bots.foundation.base import ConversationNode
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
+
 
 """Custom typing for clarity (hopefully)"""
 Prompt = str
@@ -12,6 +13,7 @@ ResponseNode = ConversationNode
 Condition = Callable[[Bot], bool]
 DynamicPrompt = Callable[[Any], Prompt]
 RecombinatorFunction = Callable[[List[Response], List[ResponseNode]], Tuple[Response, ResponseNode]]
+"""Add callbacks?"""
 
 
 class conditions:
@@ -26,10 +28,14 @@ class conditions:
         return not bool(bot.tool_handler.requests)
 
     def tool_not_used_debug(bot: Bot):
-        print(bot.conversation.content)
+        print(f'{bot.name}: {bot.conversation.content}')
         return not bool(bot.tool_handler.requests)
 
     def said_DONE(bot: Bot):
+        return 'DONE' in bot.conversation.content
+
+    def said_DONE_debug(bot: Bot):
+        print(f'{bot.name}: {bot.conversation.content}')
         return 'DONE' in bot.conversation.content
 
 
@@ -361,3 +367,44 @@ def par_branch_while(bot: Bot, prompt_list: List[Prompt], stop_condition:
     except:
         pass
     return responses, nodes
+
+
+def par_dispatch(bot_list: List[Bot], functional_prompt: Callable, **kwargs
+    ) ->List[Tuple[Response, ResponseNode]]:
+    """
+    Dispatches each bot in bot_list through functional_prompt(bot, **kwargs) in parallel.
+
+    Args:
+        bot_list (List[Bot]): List of bots to process in parallel
+        functional_prompt (Callable): A function that takes a bot and kwargs as arguments
+        **kwargs: Additional arguments to pass to the functional_prompt
+
+    Returns:
+        List[ 
+            Tuple[
+                    Optional[List[Response] Respsonse], 
+                    Optional[List[ResponseNode] RespsonseNode]
+                ]
+            ]
+        
+        I.e. [(responses, nodes), (responses, nodes), (responses, nodes), ...]
+                
+        List of results from each bot's functional prompt execution, in the same form 
+        as that functional prompt (list or node). If an error occurs for any bot, that
+        position will contain (None, None).
+    """
+    results = [None] * len(bot_list)
+
+    def process_bot(index: int, bot: Bot) ->Tuple[int, Tuple[Response,ResponseNode]]:
+        try:
+            result = functional_prompt(bot, **kwargs)
+            return index, result
+        except Exception as e:
+            return index, (None, None)
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(process_bot, i, bot) for i, bot in
+            enumerate(bot_list)]
+        for future in as_completed(futures):
+            idx, result = future.result()
+            results[idx] = result
+    return results

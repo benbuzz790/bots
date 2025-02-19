@@ -6,7 +6,7 @@ def read_file(file_path):
         return file.read()
 
 bot = bots.AnthropicBot()
-bot.add_tool(read_file)
+bot.add_tools(read_file)
 bot.chat()
 
 

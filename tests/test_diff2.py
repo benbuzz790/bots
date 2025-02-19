@@ -1,4 +1,3 @@
-import os
 import pytest
 from bots.tools.code_tools import diff_edit
 
@@ -142,3 +141,53 @@ def test_mixed_indentation_multiline(temp_file):
                     print("three")
 """
     assert result == expected
+
+import textwrap
+def test_newline_insensitive_matching(temp_file):
+    """Test that function blocks match regardless of number of newlines between them."""
+    initial = textwrap.dedent("""
+    class Calculator:
+        def add(self, a, b):
+            return a + b
+
+
+
+        def multiply(self, x, y):
+            return x * y
+
+
+
+        def divide(self, a, b):
+            if b == 0:
+                raise ValueError("Cannot divide by zero")
+            return a / b""")
+
+    # Try to match with different newline counts
+    diff = """
+-def add(self, a, b):
+-    return a + b
+-
+-def multiply(self, x, y):
+-    return x * y
+-
+-def divide(self, a, b):
+-    if b == 0:
+-        raise ValueError("Cannot divide by zero")
+-    return a / b
++def add(self, a, b):
++    '''Adds two numbers'''
++    return a + b
++
++def multiply(self, x, y):
++    '''Multiplies two numbers'''
++    return x * y
++
++def divide(self, a, b):
++    '''Divides two numbers'''
++    if b == 0:
++        raise ValueError("Cannot divide by zero")
++    return a / b"""
+
+    write_and_edit(temp_file, initial, diff)
+    result = read_file(temp_file)
+    assert('''Divides two numbers''' in result)

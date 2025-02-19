@@ -7,7 +7,7 @@ from .foundation.base import load
 # Import entire modules
 from .dev import auto_terminal
 from .dev.decorators import lazy
-from .dev import project_tree
+from .flows.project_tree import project_tree
 
 # Import tools after foundation imports
 from .tools import *
@@ -17,7 +17,7 @@ __all__ = [
     'ChatGPT_Bot',
     'auto_terminal',
     'lazy',
-    'python_tools',
+    'python_editing_tools',
     'github_tools',
     'meta_tools',
     'terminal_tools',

@@ -1,20 +1,19 @@
 import os
 import sys
 import inspect
-from bots import python_tools
+from bots.tools import python_editing_tools, python_execution_tool
 import textwrap
 import unittest
 import traceback
 import difflib
 import ast
-import astor
 import time
 
 
 def ast_normalize(code):
     try:
         tree = ast.parse(code)
-        normalized_code = astor.to_source(tree)
+        normalized_code = ast.unparse(tree)
         return normalized_code
     except SyntaxError:
         return code
@@ -83,7 +82,7 @@ class OtherClass:
             with open(test_file, 'w') as f:
                 f.write(textwrap.dedent(initial_code))
             new_method = '\ndef test_method(self):\n    return "new"\n'
-            result = python_tools.replace_function(test_file, new_method,
+            result = python_editing_tools.replace_function(test_file, new_method,
                 class_name='TestClass')
             self.assertIn('replaced', result)
             with open(test_file, 'r') as f:
@@ -93,7 +92,7 @@ class OtherClass:
             self.assertTrue('return "other"' in content or "return 'other'" in
                 content)
             new_method = '\ndef new_method(self):\n    return "added"\n'
-            result = python_tools.add_function_to_file(test_file,
+            result = python_editing_tools.add_function_to_file(test_file,
                 new_method, class_name='TestClass')
             self.assertIn('added', result)
             with open(test_file, 'r') as f:
@@ -123,7 +122,7 @@ class OtherClass:
             )
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.replace_class(self.test_file, new_class)
+        python_editing_tools.replace_class(self.test_file, new_class)
         self.assertFileContentEqual(self.test_file, new_class,
             'Replace class failed')
 
@@ -132,7 +131,7 @@ class OtherClass:
         new_function = '\ndef old_function():\n    print("New function")\n'
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.replace_function(self.test_file, new_function)
+        python_editing_tools.replace_function(self.test_file, new_function)
         self.assertFileContentEqual(self.test_file, new_function,
             'Replace function failed')
 
@@ -151,7 +150,7 @@ class TestClass:
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_function_to_class(self.test_file, 'TestClass',
+        python_editing_tools.add_function_to_class(self.test_file, 'TestClass',
             new_method)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Add function to class failed')
@@ -162,7 +161,7 @@ class TestClass:
         expected_content = initial_content + new_class
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_class(self.test_file, new_class)
+        python_editing_tools.add_class(self.test_file, new_class)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Add class to file failed')
 
@@ -192,7 +191,7 @@ class OldClass:
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.replace_class(self.test_file, new_class)
+        python_editing_tools.replace_class(self.test_file, new_class)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Replace class with comments failed')
 
@@ -221,7 +220,7 @@ class OldClass:
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.replace_class(self.test_file, new_class)
+        python_editing_tools.replace_class(self.test_file, new_class)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Replace class preserve whitespace failed')
 
@@ -284,7 +283,7 @@ def some_function():
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.replace_class(self.test_file, new_class)
+        python_editing_tools.replace_class(self.test_file, new_class)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Replace complex class failed')
 
@@ -292,12 +291,12 @@ def some_function():
         initial_content = '\ndef some_function():\n    pass\n'
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_imports(self.test_file, 'import os')
+        python_editing_tools.add_imports(self.test_file, 'import os')
         expected_after_first = (
             '\nimport os\n\ndef some_function():\n    pass\n')
         self.assertFileContentEqual(self.test_file, expected_after_first,
             'Add simple import failed')
-        python_tools.add_imports(self.test_file,
+        python_editing_tools.add_imports(self.test_file,
             'from typing import List, Dict')
         expected_after_second = """
 import os
@@ -308,7 +307,7 @@ def some_function():
 """
         self.assertFileContentEqual(self.test_file, expected_after_second,
             'Add from-import failed')
-        python_tools.add_imports(self.test_file, 'import os')
+        python_editing_tools.add_imports(self.test_file, 'import os')
         self.assertFileContentEqual(self.test_file, expected_after_second,
             'Duplicate import check failed')
 
@@ -324,7 +323,7 @@ def some_function():
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.remove_import(self.test_file, 'import sys')
+        python_editing_tools.remove_import(self.test_file, 'import sys')
         expected_after_first = """
 import os
 from typing import List, Dict
@@ -335,7 +334,7 @@ def some_function():
 """
         self.assertFileContentEqual(self.test_file, expected_after_first,
             'Remove simple import failed')
-        python_tools.remove_import(self.test_file,
+        python_editing_tools.remove_import(self.test_file,
             'from typing import List, Dict')
         expected_after_second = """
 import os
@@ -346,7 +345,7 @@ def some_function():
 """
         self.assertFileContentEqual(self.test_file, expected_after_second,
             'Remove from-import failed')
-        python_tools.remove_import(self.test_file, 'import non_existent')
+        python_editing_tools.remove_import(self.test_file, 'import non_existent')
         self.assertFileContentEqual(self.test_file, expected_after_second,
             'Non-existent import removal check failed')
 
@@ -362,7 +361,7 @@ def some_function():
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.replace_import(self.test_file, 'import os',
+        python_editing_tools.replace_import(self.test_file, 'import os',
             'from os import path, getcwd')
         expected_after_first = """
 from os import path, getcwd
@@ -375,7 +374,7 @@ def some_function():
 """
         self.assertFileContentEqual(self.test_file, expected_after_first,
             'Update simple import to from-import failed')
-        python_tools.replace_import(self.test_file,
+        python_editing_tools.replace_import(self.test_file,
             'from typing import List, Dict',
             'from typing import List, Dict, Optional, Union')
         expected_after_second = """
@@ -389,7 +388,7 @@ def some_function():
 """
         self.assertFileContentEqual(self.test_file, expected_after_second,
             'Update from-import to add imports failed')
-        python_tools.replace_import(self.test_file, 'import sys as system',
+        python_editing_tools.replace_import(self.test_file, 'import sys as system',
             'from sys import path as syspath, version as py_version')
         expected_after_third = """
 from os import path, getcwd
@@ -402,7 +401,7 @@ def some_function():
 """
         self.assertFileContentEqual(self.test_file, expected_after_third,
             'Update aliased import failed')
-        python_tools.replace_import(self.test_file, 'import non_existent',
+        python_editing_tools.replace_import(self.test_file, 'import non_existent',
             'from non_existent import something')
         self.assertFileContentEqual(self.test_file, expected_after_third,
             'Non-existent import update check failed')
@@ -414,26 +413,26 @@ def some_function():
         test_dir = tempfile.mkdtemp()
         try:
             simple_file = 'simple.py'
-            result = python_tools.add_imports(simple_file, 'import os')
+            result = python_editing_tools.add_imports(simple_file, 'import os')
             self.assertTrue(os.path.exists(os.path.abspath(simple_file)))
             os.remove(simple_file)
             rel_path = os.path.join('test_subdir', 'relative.py')
-            result = python_tools.add_imports(rel_path, 'import sys')
+            result = python_editing_tools.add_imports(rel_path, 'import sys')
             self.assertTrue(os.path.exists(os.path.abspath(rel_path)))
             shutil.rmtree('test_subdir')
             abs_path = os.path.join(test_dir, 'subdir', 'absolute.py')
-            result = python_tools.add_imports(abs_path, 'import datetime')
+            result = python_editing_tools.add_imports(abs_path, 'import datetime')
             self.assertTrue(os.path.exists(abs_path))
             class_file = os.path.join(test_dir, 'class_test.py')
-            result = python_tools.add_class(class_file,
+            result = python_editing_tools.add_class(class_file,
                 'class TestClass:\n    pass')
             self.assertTrue(os.path.exists(class_file))
             func_file = os.path.join(test_dir, 'func_test.py')
-            result = python_tools.add_function_to_file(func_file,
+            result = python_editing_tools.add_function_to_file(func_file,
                 'def test_func():\n    pass')
             self.assertTrue(os.path.exists(func_file))
             method_file = os.path.join(test_dir, 'method_test.py')
-            result = python_tools.add_function_to_class(method_file,
+            result = python_editing_tools.add_function_to_class(method_file,
                 'TestClass', """def test_method(self):
     pass""")
             self.assertTrue(os.path.exists(method_file))
@@ -450,25 +449,25 @@ def some_function():
         test_dir = tempfile.mkdtemp()
         try:
             with self.assertRaises(ValueError):
-                python_tools._make_file('')
+                python_editing_tools._make_file('')
             simple_path = 'test_make_file.py'
-            abs_path = python_tools._make_file(simple_path)
+            abs_path = python_editing_tools._make_file(simple_path)
             self.assertTrue(os.path.isabs(abs_path))
             self.assertTrue(os.path.exists(abs_path))
             os.remove(abs_path)
             rel_path = os.path.join('test_subdir', 'nested', 'test.py')
-            abs_path = python_tools._make_file(rel_path)
+            abs_path = python_editing_tools._make_file(rel_path)
             self.assertTrue(os.path.isabs(abs_path))
             self.assertTrue(os.path.exists(abs_path))
             shutil.rmtree('test_subdir')
             abs_input_path = os.path.join(test_dir, 'absolute_test.py')
-            returned_path = python_tools._make_file(abs_input_path)
+            returned_path = python_editing_tools._make_file(abs_input_path)
             self.assertEqual(os.path.abspath(abs_input_path), returned_path)
             self.assertTrue(os.path.exists(returned_path))
             existing_file = os.path.join(test_dir, 'existing.py')
             with open(existing_file, 'w') as f:
                 f.write('# existing content')
-            abs_path = python_tools._make_file(existing_file)
+            abs_path = python_editing_tools._make_file(existing_file)
             self.assertTrue(os.path.exists(abs_path))
             with open(abs_path, 'r') as f:
                 content = f.read()
@@ -488,7 +487,7 @@ class TestClass:
         items: List[Dict] = []
         return items
 """
-        python_tools.replace_class(self.test_file, class_with_imports)
+        python_editing_tools.replace_class(self.test_file, class_with_imports)
         with open(self.test_file, 'r') as f:
             content = f.read()
         self.assertIn('from typing import List, Dict', content)
@@ -503,7 +502,7 @@ def test_function():
     path = Path('test')
     return str(path)
 """
-        python_tools.replace_function(self.test_file, function_with_imports)
+        python_editing_tools.replace_function(self.test_file, function_with_imports)
         with open(self.test_file, 'r') as f:
             content = f.read()
         self.assertIn('from pathlib import Path', content)
@@ -517,7 +516,7 @@ def new_method(self):
     now = datetime.now()
     return calendar.month_name[now.month]
 """
-        python_tools.add_function_to_class(self.test_file, 'TestClass',
+        python_editing_tools.add_function_to_class(self.test_file, 'TestClass',
             method_with_imports)
         with open(self.test_file, 'r') as f:
             content = f.read()
@@ -532,7 +531,7 @@ class NewClass:
     def __init__(self):
         self.version: Optional[str] = sys.version
 """
-        python_tools.add_class(self.test_file, new_class_with_imports)
+        python_editing_tools.add_class(self.test_file, new_class_with_imports)
         with open(self.test_file, 'r') as f:
             content = f.read()
         self.assertIn('from typing import Optional', content)
@@ -562,7 +561,7 @@ class TestClass:
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_function_to_class(self.test_file, 'TestClass',
+        python_editing_tools.add_function_to_class(self.test_file, 'TestClass',
             new_methods)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Add multiple methods to class failed')
@@ -585,7 +584,7 @@ def func2():
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_function_to_file(self.test_file, new_functions)
+        python_editing_tools.add_function_to_file(self.test_file, new_functions)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Add multiple functions to file failed')
 
@@ -605,7 +604,7 @@ def func2():
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.replace_function(self.test_file, new_functions)
+        python_editing_tools.replace_function(self.test_file, new_functions)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Replace multiple functions failed')
 
@@ -632,7 +631,7 @@ class TestClass:
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_function_to_class(self.test_file, 'TestClass',
+        python_editing_tools.add_function_to_class(self.test_file, 'TestClass',
             new_methods)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Add multiple methods to class failed')
@@ -655,7 +654,7 @@ def func2():
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_function_to_file(self.test_file, new_functions)
+        python_editing_tools.add_function_to_file(self.test_file, new_functions)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Add multiple functions to file failed')
 
@@ -683,7 +682,7 @@ def func3():
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.replace_function(self.test_file, new_functions)
+        python_editing_tools.replace_function(self.test_file, new_functions)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Replace multiple functions failed')
 
@@ -699,7 +698,7 @@ async def old_async():
     """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.replace_function(self.test_file, new_function)
+        python_editing_tools.replace_function(self.test_file, new_function)
         self.assertFileContentEqual(self.test_file, new_function,
             'Replace async function failed')
 
@@ -732,7 +731,7 @@ async def old_async():
             )
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_function_to_class(self.test_file, 'AsyncClass',
+        python_editing_tools.add_function_to_class(self.test_file, 'AsyncClass',
             new_method)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Add async method to class failed')
@@ -755,7 +754,7 @@ def sync_func():
     """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.replace_function(self.test_file, new_functions)
+        python_editing_tools.replace_function(self.test_file, new_functions)
         self.assertFileContentEqual(self.test_file, new_functions,
             'Replace mixed sync/async functions failed')
 
@@ -783,7 +782,7 @@ class MixedClass:
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_function_to_class(self.test_file, 'MixedClass',
+        python_editing_tools.add_function_to_class(self.test_file, 'MixedClass',
             new_methods)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Add mixed sync/async methods to class failed')
@@ -795,7 +794,7 @@ class MixedClass:
             '\nasync def old_sync():\n    return await async_operation()\n')
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.replace_function(self.test_file, new_function)
+        python_editing_tools.replace_function(self.test_file, new_function)
         self.assertFileContentEqual(self.test_file, new_function,
             'Replace sync with async function failed')
 
@@ -815,7 +814,7 @@ async def decorated_async():
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.replace_function(self.test_file, new_function)
+        python_editing_tools.replace_function(self.test_file, new_function)
         self.assertFileContentEqual(self.test_file, new_function,
             'Preserve async function decorators failed')
 
@@ -829,7 +828,7 @@ async def decorated_async():
             )
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_imports(self.test_file, import_statements)
+        python_editing_tools.add_imports(self.test_file, import_statements)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Basic multiple imports failed')
 
@@ -859,7 +858,7 @@ def some_function():
     """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_imports(self.test_file, import_statements)
+        python_editing_tools.add_imports(self.test_file, import_statements)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Multiple imports with existing content failed')
 
@@ -889,7 +888,7 @@ def some_function():
     """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_imports(self.test_file, import_statements)
+        python_editing_tools.add_imports(self.test_file, import_statements)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Multiple imports with duplicates failed')
 
@@ -900,7 +899,7 @@ def some_function():
             '\nimport os\nnot a valid import\nfrom typing import List\n    ')
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        result = python_tools.add_imports(self.test_file, import_statements)
+        result = python_editing_tools.add_imports(self.test_file, import_statements)
         self.assertIn('Tool Failed: Error parsing import statement', result,
             'Invalid import statement error not detected')
         with open(self.test_file, 'r') as f:
@@ -929,7 +928,7 @@ from pathlib import Path  # with comment
     """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_imports(self.test_file, import_statements)
+        python_editing_tools.add_imports(self.test_file, import_statements)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Multiple imports whitespace handling failed')
 
@@ -950,7 +949,7 @@ from datetime import datetime as dt, timedelta
     """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_imports(self.test_file, import_statements)
+        python_editing_tools.add_imports(self.test_file, import_statements)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Complex multiple imports failed')
 
@@ -959,10 +958,10 @@ from datetime import datetime as dt, timedelta
         initial_content = '# Empty file\n'
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        result = python_tools.add_imports(self.test_file, '')
+        result = python_editing_tools.add_imports(self.test_file, '')
         self.assertIn('No valid import statements found', result,
             'Empty import string not handled properly')
-        result = python_tools.add_imports(self.test_file, '   \n  \t  \n   ')
+        result = python_editing_tools.add_imports(self.test_file, '   \n  \t  \n   ')
         self.assertIn('No valid import statements found', result,
             'Whitespace-only import string not handled properly')
         with open(self.test_file, 'r') as f:
@@ -985,9 +984,9 @@ from datetime import datetime as dt, timedelta
         """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_function_to_class(self.test_file, 'TestClass',
+        python_editing_tools.add_function_to_class(self.test_file, 'TestClass',
             indented_method)
-        python_tools.add_function_to_class(self.test_file, 'TestClass',
+        python_editing_tools.add_function_to_class(self.test_file, 'TestClass',
             very_indented_method)
         expected_tree = ast.parse(
             """
@@ -1003,7 +1002,7 @@ class TestClass:
         return False
 """
             )
-        expected_content = astor.to_source(expected_tree)
+        expected_content = ast.unparse(expected_tree)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Indentation handling failed')
 
@@ -1018,7 +1017,7 @@ class TestClass:
                 '\nimport os\nfrom typing import List\nimport sys\n    ')
             expected_content = (
                 '\nimport os\nfrom typing import List\nimport sys\n    ')
-            python_tools.add_imports(test_file, import_statements)
+            python_editing_tools.add_imports(test_file, import_statements)
             self.assertTrue(os.path.exists(test_file),
                 'File was not created for multiple imports')
             with open(test_file, 'r') as f:
@@ -1038,7 +1037,7 @@ class TestClass:
             print(f"Result: {x}")
         """
             )
-        result = python_tools._execute_python_code(code)
+        result = python_execution_tool._execute_python_code(code)
         self.assertIn('Hello, World!', result)
         self.assertIn('Result: 8', result)
 
@@ -1049,7 +1048,7 @@ class TestClass:
             while True:
                 pass
         """)
-        result = python_tools._execute_python_code(code, timeout=1)
+        result = python_execution_tool._execute_python_code(code, timeout=1)
         self.assertIn('timed out', result.lower())
         code = textwrap.dedent(
             """
@@ -1058,7 +1057,7 @@ class TestClass:
             print("Completed")
         """
             )
-        result = python_tools._execute_python_code(code, timeout=2)
+        result = python_execution_tool._execute_python_code(code, timeout=2)
         self.assertIn('Completed', result)
 
     def test_execute_python_code_syntax_error(self):
@@ -1070,7 +1069,7 @@ class TestClass:
                 print("Invalid syntax")
         """
             )
-        result = python_tools._execute_python_code(code)
+        result = python_execution_tool._execute_python_code(code)
         self.assertIn('SyntaxError', result)
 
     def test_execute_python_code_runtime_error(self):
@@ -1079,7 +1078,7 @@ class TestClass:
             """
             x = 1 / 0  # Division by zero
         """)
-        result = python_tools._execute_python_code(code)
+        result = python_execution_tool._execute_python_code(code)
         self.assertIn('ZeroDivisionError', result)
 
     def test_execute_python_code_with_imports(self):
@@ -1095,7 +1094,7 @@ class TestClass:
             print(f"Current hour: {datetime.now().hour}")
         """
             )
-        result = python_tools._execute_python_code(code)
+        result = python_execution_tool._execute_python_code(code)
         self.assertIn('Pi: 3.14', result)
         self.assertIn('Current directory:', result)
         self.assertIn('Current hour:', result)
@@ -1111,7 +1110,7 @@ class TestClass:
                 print(f"More {j}")
         """
             )
-        result = python_tools._execute_python_code(code)
+        result = python_execution_tool._execute_python_code(code)
         expected_lines = ['Line 0', 'Line 1', 'Line 2', '---', 'More 0',
             'More 1']
         for line in expected_lines:
@@ -1126,7 +1125,7 @@ class TestClass:
             print("Error output", file=sys.stderr)
         """
             )
-        result = python_tools._execute_python_code(code)
+        result = python_execution_tool._execute_python_code(code)
         self.assertIn('Standard output', result)
         self.assertIn('Error output', result)
 
@@ -1139,7 +1138,7 @@ class TestClass:
             print("Café")
         """
             )
-        result = python_tools._execute_python_code(code)
+        result = python_execution_tool._execute_python_code(code)
         self.assertIn('Hello, 世界!', result)
         self.assertIn('🌍 🌎 🌏', result)
         self.assertIn('Café', result)
@@ -1159,7 +1158,7 @@ class TestClass:
             obj.display()
         """
             )
-        result = python_tools._execute_python_code(code)
+        result = python_execution_tool._execute_python_code(code)
         self.assertIn('Value is: 42', result)
 
     def test_execute_python_code_long_output(self):
@@ -1170,7 +1169,7 @@ class TestClass:
                 print(f"Line {i}")
         """
             )
-        result = python_tools._execute_python_code(code)
+        result = python_execution_tool._execute_python_code(code)
         self.assertIn('Line 0', result)
         self.assertIn('Line 999', result)
 
@@ -1179,7 +1178,7 @@ class TestClass:
         code = textwrap.dedent("""
             print('test')
         """)
-        result = python_tools._execute_python_code(code, timeout=0)
+        result = python_execution_tool._execute_python_code(code, timeout=0)
         self.assertIn('Tool Failed', result)
         self.assertIn('must be a positive integer', result.lower())
 
@@ -1188,7 +1187,7 @@ class TestClass:
         code = textwrap.dedent("""
             print('test')
         """)
-        result = python_tools._execute_python_code(code, timeout=-1)
+        result = python_execution_tool._execute_python_code(code, timeout=-1)
         self.assertIn('Tool Failed', result)
         self.assertIn('must be a positive integer', result.lower())
 
@@ -1205,7 +1204,7 @@ class TestClass:
             print(f"Fibonacci(10) = {result}")
         """
             )
-        result = python_tools._execute_python_code(code)
+        result = python_execution_tool._execute_python_code(code)
         self.assertIn('Fibonacci(10) = 55', result)
 
     def test_execute_python_code_process_cleanup(self):
@@ -1218,7 +1217,7 @@ class TestClass:
             time.sleep(0.1)
         """
             )
-        python_tools._execute_python_code(code)
+        python_execution_tool._execute_python_code(code)
         time.sleep(0.2)
         final_processes = set(psutil.Process().children(recursive=True))
         new_processes = final_processes - initial_processes
@@ -1257,7 +1256,7 @@ import os
 """
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
-        python_tools.add_imports(self.test_file, import_statements)
+        python_editing_tools.add_imports(self.test_file, import_statements)
         self.assertFileContentEqual(self.test_file, expected_content,
             'Parenthesized multi-line imports failed')
 

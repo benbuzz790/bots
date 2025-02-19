@@ -1,10 +1,8 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, List
 import inspect
-from bots.foundation.base import Bot, ConversationNode, ToolHandler
+from bots.foundation.base import Bot
 import json
 from bots.flows import functional_prompts as fp
-from typing import Optional
-from typing import List
 import ast
 
 
@@ -24,7 +22,7 @@ def _get_calling_bot() ->Optional[Bot]:
     return None
 
 
-def _get_own_info() ->str:
+def get_own_info() ->str:
     """Get information about yourself.
 
     Use when you need to inspect your current configuration (not tools).
@@ -122,7 +120,7 @@ def branch_self(self_prompts: str, allow_work: str='False') ->str:
         tool_output_kwargs = json.dumps({'status': 'branching_in_progress'})
     )
     bot.tool_handler.add_result(dummy_result)
-    bot.conversation.add_tool_results([dummy_result])
+    bot.conversation._add_tool_results([dummy_result])
 
     if not bot:
         return 'Error: Could not find calling bot'
@@ -170,7 +168,7 @@ def branch_self(self_prompts: str, allow_work: str='False') ->str:
         return f'Error: {str(e)}'
 
 
-def _add_tools(filepath: str) ->str:
+def add_tools(filepath: str) ->str:
     """Adds a new set of tools (python functions) to your toolkit
 
     All top-level, non-private functions in filepath will be uploaded

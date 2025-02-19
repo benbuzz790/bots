@@ -13,7 +13,7 @@ class AnthropicNode(ConversationNode):
     def __init__(self, **kwargs: Any) ->None:
         super().__init__(**kwargs)
 
-    def add_tool_results(self, results):
+    def _add_tool_results(self, results):
         """
         This is called on the node that contains the tool call for anthropic bots.
         Therefore, the results need to be propagated to the replies or stored as 
@@ -34,7 +34,7 @@ class AnthropicNode(ConversationNode):
         node = self
         conversation_dict = []
         while node:
-            if not node.is_empty():
+            if not node._is_empty():
                 entry = {'role': node.role}
                 content_list = [{'type': 'text', 'text': node.content}]
                 if node.tool_calls:
@@ -155,8 +155,7 @@ class AnthropicMailbox(Mailbox):
         base_delay: float = 1
         for attempt in range(max_retries):
             try:
-                response = self.client.beta.prompt_caching.messages.create(**
-                    create_dict)
+                response = self.client.messages.create(**create_dict)
                 return response
             except (anthropic.InternalServerError, anthropic.RateLimitError, anthropic.APIConnectionError
             ) as e:
@@ -185,7 +184,7 @@ class AnthropicMailbox(Mailbox):
             
             while should_continue(response):
                 if bot.conversation.role == 'user': # base case
-                    bot.conversation.add_reply(role='assistant', content=response.content[0].text)
+                    bot.conversation._add_reply(role='assistant', content=response.content[0].text)
                 elif bot.conversation.role == 'assistant': # recursive case
                     bot.conversation.content += response
                 response = self.send_message(bot)
@@ -213,7 +212,7 @@ class AnthropicBot(Bot):
         ) ->None:
         super().__init__(api_key, model_engine, max_tokens, temperature,
             name, role, role_description, conversation=AnthropicNode.
-            create_empty(AnthropicNode), tool_handler=AnthropicToolHandler(
+            _create_empty(AnthropicNode), tool_handler=AnthropicToolHandler(
             ), mailbox=AnthropicMailbox(), autosave=autosave)
 
 
