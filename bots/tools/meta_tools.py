@@ -114,5 +114,5 @@ def generate_project(spec: str) ->str:
     
     cost: very high
     """
-    import bots.dev.project_tree as project_tree
+    import bots.flows.project_tree.project_tree as project_tree
     return project_tree.generate_project(spec)
