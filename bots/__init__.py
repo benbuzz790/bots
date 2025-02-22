@@ -18,7 +18,6 @@ __all__ = [
     'auto_terminal',
     'lazy',
     'python_editing_tools',
-    'github_tools',
     'meta_tools',
     'terminal_tools',
     'self_tools',
