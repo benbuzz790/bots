@@ -34,7 +34,7 @@ class TestBaseBot(unittest.TestCase):
 
 class TestGPTBot(unittest.TestCase):
     def setUp(self):
-        self.bot = ChatGPT_Bot(api_key=None, model_engine=Engines.GPT4, max_tokens=100, temperature=0.7, name="TestGPTBot", role="assistant", role_description="Test bot")
+        self.bot = ChatGPT_Bot(api_key=None, model_engine=Engines.GPT4, max_tokens=100, temperature=0.7, name="TestGPTBot", role="assistant", role_description="Test bot", autosave=False)
 
     @unittest.skip(reason="Not Implemented")
     def test_batch_respond(self):
@@ -44,7 +44,7 @@ class TestGPTBot(unittest.TestCase):
 
 class TestAnthropicBot(unittest.TestCase):
     def setUp(self):
-        self.bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE35, max_tokens=100, temperature=0.7, name="TestAnthropicBot")
+        self.bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE35, max_tokens=100, temperature=0.7, name="TestAnthropicBot", autosave=False)
     
     @unittest.skip(reason="Not Implemented")
     def test_parallel_respond(self):
@@ -54,4 +54,3 @@ class TestAnthropicBot(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

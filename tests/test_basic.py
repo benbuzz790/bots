@@ -7,7 +7,7 @@ from bots.foundation.base import Engines
 class TestAnthropicBot(unittest.TestCase):
 
     def setUp(self):
-        self.bot = AnthropicBot()
+        self.bot = AnthropicBot(autosave=False)
 
     def test_initialization(self):
         self.assertIsInstance(self.bot, AnthropicBot)
@@ -20,7 +20,7 @@ class TestAnthropicBot(unittest.TestCase):
     def test_custom_initialization(self):
         custom_bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU,
             max_tokens=1000, temperature=0.7, name='CustomClaude', role=
-            'expert', role_description='an AI language expert')
+            'expert', role_description='an AI language expert', autosave=False)
         self.assertEqual(custom_bot.model_engine, Engines.CLAUDE3_HAIKU)
         self.assertEqual(custom_bot.max_tokens, 1000)
         self.assertEqual(custom_bot.temperature, 0.7)
@@ -84,7 +84,7 @@ def test_bot_multiplication():
     from bots.foundation.base import Bot, Engines, ConversationNode
     bot = Bot(api_key=None, model_engine=Engines.GPT35TURBO, max_tokens=100,
         temperature=0.7, name='TestBot', role='test', role_description=
-        'A test bot')
+        'A test bot', autosave=False)
     bot.conversation = bot.conversation._add_reply(content='Hello', role='user'
         )
     bot.conversation = bot.conversation._add_reply(content='Hi there!',

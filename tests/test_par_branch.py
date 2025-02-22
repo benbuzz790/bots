@@ -7,7 +7,7 @@ from bots.foundation.anthropic_bots import AnthropicBot
 def test_bot():
     bot = AnthropicBot(api_key='dummy_key', model_engine=
         'claude-3-opus-20240229', max_tokens=1000, temperature=0.7, name=
-        'TestBot', role='test assistant', role_description='A bot for testing')
+        'TestBot', role='test assistant', role_description='A bot for testing', autosave=False)
     return bot
 
 
@@ -15,7 +15,7 @@ def test_par_branch_structure():
     """Test that par_branch creates correct conversation tree structure"""
     bot = AnthropicBot(api_key=None, model_engine='claude-3-opus-20240229',
         max_tokens=1000, temperature=0.7, name='TestBot', role=
-        'test assistant', role_description='A bot for testing')
+        'test assistant', role_description='A bot for testing', autosave=False)
     original_node = bot.conversation
     prompts = ['test prompt 1', 'test prompt 2', 'test prompt 3']
     responses, nodes = par_branch(bot, prompts)
@@ -31,7 +31,7 @@ def test_par_branch_while_structure():
     """Test that par_branch_while creates correct conversation tree structure"""
     bot = AnthropicBot(api_key=None, model_engine='claude-3-opus-20240229',
         max_tokens=1000, temperature=0.7, name='TestBot', role=
-        'test assistant', role_description='A bot for testing')
+        'test assistant', role_description='A bot for testing', autosave=False)
     original_node = bot.conversation
 
     def stop_after_two(bot):
@@ -72,7 +72,7 @@ def test_empty_prompt_list():
     """Test behavior with empty prompt list"""
     bot = AnthropicBot(api_key=None, model_engine='claude-3-opus-20240229',
         max_tokens=1000, temperature=0.7, name='TestBot', role=
-        'test assistant', role_description='A bot for testing')
+        'test assistant', role_description='A bot for testing', autosave=False)
     responses, nodes = par_branch(bot, [])
     assert len(responses) == 0
     assert len(nodes) == 0
@@ -83,7 +83,7 @@ def test_error_handling():
     """Test that errors in one branch don't affect others"""
     bot = AnthropicBot(api_key=None, model_engine='claude-3-opus-20240229',
         max_tokens=1000, temperature=0.7, name='TestBot', role=
-        'test assistant', role_description='A bot for testing')
+        'test assistant', role_description='A bot for testing', autosave=False)
     original_node = bot.conversation
     prompts = ['valid prompt', None, 'another valid prompt']
     responses, nodes = par_branch(bot, prompts)
