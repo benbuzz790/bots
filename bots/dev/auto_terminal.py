@@ -136,7 +136,6 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
     
     bot.add_tools(bots.tools.python_editing_tools)
     bot.add_tools(bots.tools.code_tools)
-    bot.add_tools(bots.tools.github_tools)
     bot.add_tools(bots.tools.terminal_tools)
 
     return bot
@@ -162,8 +161,7 @@ def clean_dict(d:dict, indent:int=4, level:int=1):
     cleaned_dict = cleaned_dict.replace('\\\\', '\\')
     return cleaned_dict
 
-from bots.dev.decorators import make_issue_upon_error, debug_on_error
-#@create_issues(repo = 'benbuzz790/bots')
+from bots.dev.decorators import debug_on_error
 @debug_on_error
 def main() -> None:
     # Check for filename argument
@@ -274,6 +272,7 @@ def main() -> None:
                     case "/exit":
                         pretty('')  # separator
                         pretty("exiting...", "System")
+                        exit(0)
                         return
                     case "/auto":
                         auto_mode = True
