@@ -6,8 +6,6 @@ from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 import shutil
 import bots
-import inspect
-import json
 
 def create_test_file(content: str) -> str:
     """Creates a temporary Python file with the given content and returns its path."""

@@ -8,7 +8,7 @@ from unittest.mock import patch
 from io import StringIO
 from contextlib import redirect_stdout
 import bots.dev.auto_terminal as start
-
+from datetime import datetime
 
 class DetailedTestCase(unittest.TestCase):
     """Base test class with enhanced assertion capabilities."""
@@ -32,11 +32,7 @@ class DetailedTestCase(unittest.TestCase):
         """
         normalized_haystack = self.normalize_text(haystack)
         normalized_needle = self.normalize_text(needle)
-        self.assertTrue(normalized_needle in normalized_haystack, msg or
-            f"""Expected to find "{needle}" in text (after normalization).
-Got:
-{haystack}"""
-            )
+        self.assertTrue(normalized_needle in normalized_haystack, msg or f'Expected to find "{needle}" in text (after normalization).\nGot:\n{haystack}')
 
     def assertEqualWithDetails(self, first, second, msg=None):
         """Detailed assertion with local variable context on failure."""
@@ -60,6 +56,7 @@ Got:
                 error_message += '\nTraceback:\n'
                 error_message += ''.join(traceback.format_tb(exc_traceback))
             raise AssertionError(error_message)
+
 class TestCodey(DetailedTestCase):
 
     @classmethod
@@ -80,9 +77,7 @@ class TestCodey(DetailedTestCase):
         test_content = 'Test content for reading'
         with open(self.test_file, 'w') as file:
             file.write(test_content)
-        prompt = (
-            f'What is in the file {self.test_file}? I need to know its contents.'
-            )
+        prompt = f'What is in the file {self.test_file}? I need to know its contents.'
         mock_input.side_effect = [prompt, '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
@@ -99,11 +94,7 @@ class TestCodey(DetailedTestCase):
             return ' '.join(text.split())
         normalized_output = normalize(output)
         normalized_content = normalize(test_content)
-        self.assertTrue(normalized_content in normalized_output,
-            f"""Expected to find content "{test_content}" in response (after normalization).
-Got:
-{output}"""
-            )
+        self.assertTrue(normalized_content in normalized_output, f'Expected to find content "{test_content}" in response (after normalization).\nGot:\n{output}')
 
     @patch('builtins.input')
     def test_file_update(self, mock_input):
@@ -123,8 +114,7 @@ Got:
         with open(self.test_file, 'r') as f:
             after = f.read()
         print(f"\nFinal file content: '{after}'")
-        self.assertEqualWithDetails(after.strip(), 'Updated content',
-            'File content was not updated as requested')
+        self.assertEqualWithDetails(after.strip(), 'Updated content', 'File content was not updated as requested')
 
     @patch('builtins.input')
     def test_file_operations(self, mock_input):
@@ -141,21 +131,28 @@ Got:
         self.assertTrue(os.path.exists(self.test_file), 'File was not created')
         with open(self.test_file, 'r') as file:
             content = file.read()
-        self.assertEqualWithDetails(content.strip(), 'Test content',
-            'File content does not match requested content')
+        self.assertEqualWithDetails(content.strip(), 'Test content', 'File content does not match requested content')
 
-    @unittest.skip('bots sometimes refuse to delete things without more context')
     @patch('builtins.input')
     def test_file_delete(self, mock_input):
+        """Test the bot's ability to delete a file when given appropriate context."""
         with open(self.test_file, 'w') as file:
-            file.write('Content to be deleted')
-        mock_input.side_effect = [f'Delete the file {self.test_file}', '/exit']
+            file.write('This is a temporary test file that should be deleted\nCreated for test_file_delete')
+        delete_prompt = f"/auto I need you to delete the file at {self.test_file}. This is a test file that contains only the text 'This is a temporary test file that should be deleted'. I've verified its contents and confirm it should be deleted. Use powershell to delete the file."
+        mock_input.side_effect = [delete_prompt, '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
             output = buf.getvalue()
-        self.assertEqualWithDetails(os.path.exists(self.test_file), False,
-            'File was not deleted')
+            print(f'\nBot output:\n{output}')
+        import time
+        time.sleep(1)
+        file_exists = os.path.exists(self.test_file)
+        if file_exists:
+            with open(self.test_file, 'r') as f:
+                print(f'\nFile still exists with content:\n{f.read()}')
+            print(f"\nBot's response was:\n{output}")
+        self.assertFalse(file_exists, 'File was not deleted despite clear context and permission')
 
     @patch('builtins.input')
     def test_file_size(self, mock_input):
@@ -164,35 +161,22 @@ Got:
         with open(self.test_file, 'w') as file:
             file.write(content)
         expected_size = len(content)
-        prompt = (
-            f'What is the size of {self.test_file} in bytes? Please include the number in your response.'
-            )
+        prompt = f'What is the size of {self.test_file} in bytes? Please include the number in your response.'
         mock_input.side_effect = [prompt, '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
             output = buf.getvalue()
             print(f'\nBot output:\n{output}')
-        size_variants = [str(expected_size), f'{expected_size} bytes',
-            f'{expected_size:,}', f'{expected_size:,} bytes',
-            f'{expected_size / 1024:.0f}kb',
-            f'{expected_size / 1024:.0f} kb',
-            f'{expected_size / 1024:.0f} KB', f'{expected_size / 1024:.1f}',
-            f'{expected_size / 1024:.1f} kb', f'{expected_size / 1024:.2f}',
-            '12 kilobytes', '11.7 kilobytes', 'approximately 12kb',
-            'around 12 kilobytes', 'size is 12000', 'contains 12000 bytes',
-            '12000 b', '12000b']
-        found_size = any(self.normalize_text(variant) in self.
-            normalize_text(output) for variant in size_variants)
+        size_variants = [str(expected_size), f'{expected_size} bytes', f'{expected_size:,}', f'{expected_size:,} bytes', f'{expected_size / 1024:.0f}kb', f'{expected_size / 1024:.0f} kb', f'{expected_size / 1024:.0f} KB', f'{expected_size / 1024:.1f}', f'{expected_size / 1024:.1f} kb', f'{expected_size / 1024:.2f}', '12 kilobytes', '11.7 kilobytes', 'approximately 12kb', 'around 12 kilobytes', 'size is 12000', 'contains 12000 bytes', '12000 b', '12000b']
+        found_size = any((self.normalize_text(variant) in self.normalize_text(output) for variant in size_variants))
         if not found_size:
             print('\nTried looking for these variants:')
             for variant in size_variants:
                 print(f'- {variant}')
             print('\nNormalized output:')
             print(self.normalize_text(output))
-        self.assertTrue(found_size,
-            f'Expected file size ({expected_size} bytes) not found in response in any common format'
-            )
+        self.assertTrue(found_size, f'Expected file size ({expected_size} bytes) not found in response in any common format')
 
     @patch('builtins.input')
     def test_file_modification_time(self, mock_input):
@@ -200,55 +184,22 @@ Got:
         with open(self.test_file, 'w') as file:
             file.write('Test content')
         mod_time = os.path.getmtime(self.test_file)
-        prompt = (
-            f'When was {self.test_file} last changed? Please include the time or date in your response.'
-            )
+        prompt = f'When was {self.test_file} last changed? Please include the time or date in your response.'
         mock_input.side_effect = [prompt, '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
             output = buf.getvalue()
             print(f'\nBot output:\n{output}')
-        time_related_terms = ['modified', 'changed', 'updated', 'timestamp',
-            'date', 'time', 'created', 'accessed', str(int(mod_time)), DT.
-            datetime.fromtimestamp(mod_time).strftime('%Y'), DT.datetime.
-            fromtimestamp(mod_time).strftime('%m'), DT.datetime.
-            fromtimestamp(mod_time).strftime('%d')]
-        found_time = any(self.normalize_text(term) in self.normalize_text(
-            output) for term in time_related_terms)
+        time_related_terms = ['modified', 'changed', 'updated', 'timestamp', 'date', 'time', 'created', 'accessed', str(int(mod_time)), DT.datetime.fromtimestamp(mod_time).strftime('%Y'), DT.datetime.fromtimestamp(mod_time).strftime('%m'), DT.datetime.fromtimestamp(mod_time).strftime('%d')]
+        found_time = any((self.normalize_text(term) in self.normalize_text(output) for term in time_related_terms))
         if not found_time:
             print('\nTried looking for these time-related terms:')
             for term in time_related_terms:
                 print(f'- {term}')
             print('\nNormalized output:')
             print(self.normalize_text(output))
-        self.assertTrue(found_time,
-            'No time or date information found in response')
-
-    @unittest.skip('Concurrent operations need further design consideration')
-    @patch('builtins.input')
-    def test_concurrent_file_operations(self, mock_input):
-        """Test the bot's ability to handle concurrent file access."""
-
-        def request_append(content: str):
-            """Helper to make a file append request."""
-            prompt = f"Please add '{content}' to the file {self.test_file}"
-            mock_input.side_effect = [prompt, '/exit']
-            with StringIO() as buf, redirect_stdout(buf):
-                with self.assertRaises(SystemExit):
-                    start.main()
-                return buf.getvalue()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            contents = [f'Content {i}' for i in range(5)]
-            futures = [executor.submit(request_append, content) for content in
-                contents]
-            responses = [f.result() for f in concurrent.futures.
-                as_completed(futures)]
-        with open(self.test_file, 'r') as file:
-            final_content = file.read()
-        for content in contents:
-            self.assertTrue(content in final_content,
-                f'Expected content "{content}" not found in file')
+        self.assertTrue(found_time, 'No time or date information found in response')
 
     @patch('builtins.input')
     def test_insert_method_in_class(self, mock_input):
@@ -274,18 +225,12 @@ Got:
         print(f'\nUpdated file content:\n{content}')
         original_elements = ['class TestClass:', 'def __init__(self):', 'def existing_method(self):', 'print("Some other code")', 'pass']
         for element in original_elements:
-            self.assertIn(self.normalize_text(element), self.normalize_text(content),
-                f'Original code element missing: {element}')
-        method_found = any(pattern in content for pattern in [
-            'def new_method(self):', 'def new_method (self):',
-            'def new_method( self ):'])
+            self.assertIn(self.normalize_text(element), self.normalize_text(content), f'Original code element missing: {element}')
+        method_found = any((pattern in content for pattern in ['def new_method(self):', 'def new_method (self):', 'def new_method( self ):']))
         self.assertTrue(method_found, 'New method definition not found')
-        print_found = any(pattern in content for pattern in [
-            "print('This is a new method')",
-            'print("This is a new method")',
-            "print(f'This is a new method')", 'print(f"This is a new method")']
-            )
+        print_found = any((pattern in content for pattern in ["print('This is a new method')", 'print("This is a new method")', "print(f'This is a new method')", 'print(f"This is a new method")']))
         self.assertTrue(print_found, 'Required print statement not found')
+
 class TestConversationNavigation(DetailedTestCase):
 
     @patch('builtins.input')
@@ -297,10 +242,7 @@ class TestConversationNavigation(DetailedTestCase):
                 start.main()
             output = buf.getvalue()
             print(f'\nBot output:\n{output}')
-        self.assertTrue(any(self.normalize_text(msg) in self.normalize_text
-            (output) for msg in ['Moving up conversation tree',
-            "At root - can't go up"]),
-            'Expected navigation message not found in output')
+        self.assertTrue(any((self.normalize_text(msg) in self.normalize_text(output) for msg in ['Moving up conversation tree', "At root - can't go up"])), 'Expected navigation message not found in output')
 
     @patch('builtins.input')
     def test_down_navigation_single_path(self, mock_input):
@@ -311,44 +253,32 @@ class TestConversationNavigation(DetailedTestCase):
                 start.main()
             output = buf.getvalue()
             print(f'\nBot output:\n{output}')
-        self.assertTrue(any(self.normalize_text(msg) in self.normalize_text
-            (output) for msg in ['Moving down conversation tree',
-            "At leaf - can't go down"]),
-            'Expected navigation message not found in output')
+        self.assertTrue(any((self.normalize_text(msg) in self.normalize_text(output) for msg in ['Moving down conversation tree', "At leaf - can't go down"])), 'Expected navigation message not found in output')
 
     @patch('builtins.input')
     def test_down_navigation_multiple_paths(self, mock_input):
         """Test navigating down when multiple paths exist."""
-        mock_input.side_effect = ['Write a function',
-            'Write it differently', '/up', '0', '/down', '/exit']
+        mock_input.side_effect = ['Write a function', 'Write it differently', '/up', '0', '/down', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
             output = buf.getvalue()
             print(f'\nBot output:\n{output}')
-        expected_messages = ['Reply index', 'Moving down conversation tree',
-            "At leaf - can't go down"]
-        self.assertTrue(any(self.normalize_text(msg) in self.normalize_text
-            (output) for msg in expected_messages),
-            'Expected navigation message not found in output')
+        expected_messages = ['Reply index', 'Moving down conversation tree', "At leaf - can't go down"]
+        self.assertTrue(any((self.normalize_text(msg) in self.normalize_text(output) for msg in expected_messages)), 'Expected navigation message not found in output')
 
     @patch('builtins.input')
     def test_left_right_navigation(self, mock_input):
         """Test navigating between sibling nodes in the conversation tree."""
-        mock_input.side_effect = ['Write a function',
-            'Write it differently', 'Write another version', '/right',
-            '/left', '/exit']
+        mock_input.side_effect = ['Write a function', 'Write it differently', 'Write another version', '/right', '/left', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
             output = buf.getvalue()
             print(f'\nBot output:\n{output}')
-        expected_messages = ['Moving right in conversation tree',
-            'Moving left in conversation tree', 'Moving',
-            'Conversation has no siblings at this point']
-        self.assertTrue(any(self.normalize_text(msg) in self.normalize_text
-            (output) for msg in expected_messages),
-            'Expected navigation message not found in output')
+        expected_messages = ['Moving right in conversation tree', 'Moving left in conversation tree', 'Moving', 'Conversation has no siblings at this point']
+        self.assertTrue(any((self.normalize_text(msg) in self.normalize_text(output) for msg in expected_messages)), 'Expected navigation message not found in output')
+
 class TestCommandHandling(DetailedTestCase):
 
     @patch('builtins.input')
@@ -406,20 +336,13 @@ class TestCommandHandling(DetailedTestCase):
         self.assertFalse('Tool Requests' in output)
         self.assertTrue('Claude:' in output or 'ChatGPT:' in output)
 
-
 class TestAdvancedNavigation(DetailedTestCase):
     """Test class for advanced navigation commands: root, label, and goto."""
 
     @patch('builtins.input')
     def test_root_navigation(self, mock_input):
         """Test navigating to root from various depths."""
-        mock_input.side_effect = [
-            'Write a function',  # First level
-            'Make it better',    # Second level
-            'Add error handling',# Third level
-            '/root',            # Go to root
-            '/exit'
-        ]
+        mock_input.side_effect = ['Write a function', 'Make it better', 'Add error handling', '/root', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
@@ -430,11 +353,7 @@ class TestAdvancedNavigation(DetailedTestCase):
     @patch('builtins.input')
     def test_label_node(self, mock_input):
         """Test labeling a conversation node."""
-        mock_input.side_effect = [
-            'Write a function',
-            '/label good_function',  # Label the response
-            '/exit'
-        ]
+        mock_input.side_effect = ['Write a function', '/label', 'good_function', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
@@ -445,13 +364,7 @@ class TestAdvancedNavigation(DetailedTestCase):
     @patch('builtins.input')
     def test_goto_labeled_node(self, mock_input):
         """Test moving to a labeled node."""
-        mock_input.side_effect = [
-            'Write a function',
-            '/label good_function',  # Label the response
-            'Write another function',
-            '/goto good_function',   # Return to labeled node
-            '/exit'
-        ]
+        mock_input.side_effect = ['Write a function', '/label', 'good_function', 'Write another function', '/goto', 'good_function', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
@@ -462,11 +375,7 @@ class TestAdvancedNavigation(DetailedTestCase):
     @patch('builtins.input')
     def test_goto_nonexistent_label(self, mock_input):
         """Test attempting to goto a non-existent label."""
-        mock_input.side_effect = [
-            'Write a function',
-            '/goto nonexistent_label',
-            '/exit'
-        ]
+        mock_input.side_effect = ['Write a function', '/goto', 'nonexistent_label', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
@@ -475,47 +384,9 @@ class TestAdvancedNavigation(DetailedTestCase):
         self.assertContainsNormalized(output, 'No node found with label: nonexistent_label')
 
     @patch('builtins.input')
-    def test_label_without_name(self, mock_input):
-        """Test attempting to label without providing a name."""
-        mock_input.side_effect = [
-            'Write a function',
-            '/label',  # Missing label name
-            '/exit'
-        ]
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-            print(f'\nBot output:\n{output}')
-        self.assertContainsNormalized(output, 'Please provide a label after /label')
-
-    @patch('builtins.input')
-    def test_goto_without_label(self, mock_input):
-        """Test attempting to goto without providing a label."""
-        mock_input.side_effect = [
-            'Write a function',
-            '/goto',  # Missing label name
-            '/exit'
-        ]
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-            print(f'\nBot output:\n{output}')
-        self.assertContainsNormalized(output, 'Please provide a label after /goto')
-
-    @patch('builtins.input')
     def test_multiple_labels(self, mock_input):
         """Test using multiple labels and navigating between them."""
-        mock_input.side_effect = [
-            'Write a function',
-            '/label function1',
-            'Write another function',
-            '/label function2',
-            '/goto function1',
-            '/goto function2',
-            '/exit'
-        ]
+        mock_input.side_effect = ['Write a function', '/label', 'function1', 'Write another function', '/label', 'function2', '/goto', 'function1', '/goto', 'function2', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
@@ -523,7 +394,6 @@ class TestAdvancedNavigation(DetailedTestCase):
             print(f'\nBot output:\n{output}')
         self.assertContainsNormalized(output, 'Moved to node labeled: function1')
         self.assertContainsNormalized(output, 'Moved to node labeled: function2')
-
 
 if __name__ == '__main__':
     unittest.main()
