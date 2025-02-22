@@ -4,8 +4,7 @@ from threading import Thread, Lock, local
 from typing import Dict, Generator
 from datetime import datetime
 
-
-def execute_powershell(command: str, output_length_limit: str = '120') -> Generator[str, None, None]:
+def execute_powershell(command: str, output_length_limit: str='120') -> str:
     """
     Executes PowerShell commands in a stateful environment
 
@@ -23,12 +22,12 @@ def execute_powershell(command: str, output_length_limit: str = '120') -> Genera
     - output_length_limit (int, optional): Maximum number of lines in the output.
       If set, output exceeding this limit will be truncated. Default 120.
 
-    Yields command output or an error message as strings
+    Returns:
+        str: The complete output from the command execution
     """
-    # Get or create the PowerShell manager for this thread
     manager = PowerShellManager.get_instance()
-    return '\n'.join(manager.execute(command, output_length_limit))
-
+    output = ''.join(manager.execute(command, output_length_limit))
+    return output
 
 class PowerShellSession:
     """
@@ -51,54 +50,24 @@ class PowerShellSession:
 
     def _start_reader_threads(self):
         """Start background threads to read stdout and stderr"""
+
         def reader_thread(pipe, queue):
             try:
                 for line in pipe:
                     queue.put(line.rstrip('\n\r'))
             finally:
                 queue.put(None)
-
-        self._reader_threads = [
-            Thread(target=reader_thread, args=(self._process.stdout, self._output_queue), daemon=True),
-            Thread(target=reader_thread, args=(self._process.stderr, self._error_queue), daemon=True)
-        ]
+        self._reader_threads = [Thread(target=reader_thread, args=(self._process.stdout, self._output_queue), daemon=True), Thread(target=reader_thread, args=(self._process.stderr, self._error_queue), daemon=True)]
         for thread in self._reader_threads:
             thread.start()
 
     def __enter__(self):
         if not self._process:
-            # Start PowerShell in a mode that accepts stdin and doesn't exit
-            self._process = subprocess.Popen(
-                ['powershell', '-NoProfile', '-NoLogo', '-NonInteractive', '-Command', '-'],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                startupinfo=self.startupinfo,
-                encoding='utf-8',
-                errors='replace',
-                bufsize=1
-            )
-            
-            # Start reader threads before any commands
+            self._process = subprocess.Popen(['powershell', '-NoProfile', '-NoLogo', '-NonInteractive', '-Command', '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=self.startupinfo, encoding='utf-8', errors='replace', bufsize=1)
             self._start_reader_threads()
-            
-            # Initialize PowerShell environment directly through stdin
-            init_commands = [
-                "$VerbosePreference='SilentlyContinue'",
-                "$DebugPreference='SilentlyContinue'",
-                "$ProgressPreference='SilentlyContinue'",
-                "$WarningPreference='SilentlyContinue'",
-                "$ErrorActionPreference='Stop'",
-                "function prompt { '' }",
-                "$PSDefaultParameterValues['*:Encoding']='utf8'",
-                "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8",
-                "[Console]::InputEncoding=[System.Text.Encoding]::UTF8",
-                "$OutputEncoding=[System.Text.Encoding]::UTF8",
-                "$env:PYTHONIOENCODING='utf-8'"
-            ]
-            
+            init_commands = ["$VerbosePreference='SilentlyContinue'", "$DebugPreference='SilentlyContinue'", "$ProgressPreference='SilentlyContinue'", "$WarningPreference='SilentlyContinue'", "$ErrorActionPreference='Stop'", "function prompt { '' }", "$PSDefaultParameterValues['*:Encoding']='utf8'", '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8', '[Console]::InputEncoding=[System.Text.Encoding]::UTF8', '$OutputEncoding=[System.Text.Encoding]::UTF8', "$env:PYTHONIOENCODING='utf-8'"]
             for cmd in init_commands:
-                self._process.stdin.write(cmd + "\n")
+                self._process.stdin.write(cmd + '\n')
             self._process.stdin.flush()
         return self
 
@@ -132,52 +101,25 @@ class PowerShellSession:
         """
         if not self._process:
             raise Exception('PowerShell process is not running')
-
         try:
             self._command_counter += 1
             delimiter = f'<<<COMMAND_{self._command_counter}_COMPLETE>>>'
-            # Wrap code in a script block that captures output and errors
-            wrapped_code = f"""
-            $ErrorActionPreference = 'Stop'
-            
-            # Execute in main scope
-            {code}
-            
-            # Collect output after execution
-            $output = @()
-            try {{
-                if ($?) {{ 
-                    # Add any output from the last command
-                    $output += $LASTOUTPUT
-                }}
-            }} catch {{
-                Write-Error $_
-            }}
-            $output | ForEach-Object {{ $_ }}
-            Write-Output '{delimiter}'
-            """
-
-            # Clear queues before execution
+            wrapped_code = f"\n            $ErrorActionPreference = 'Stop'\n            \n            # Execute in main scope\n            {code}\n            \n            # Collect output after execution\n            $output = @()\n            try {{\n                if ($?) {{ \n                    # Add any output from the last command\n                    $output += $LASTOUTPUT\n                }}\n            }} catch {{\n                Write-Error $_\n            }}\n            $output | ForEach-Object {{ $_ }}\n            Write-Output '{delimiter}'\n            "
             while not self._output_queue.empty():
                 self._output_queue.get_nowait()
             while not self._error_queue.empty():
                 self._error_queue.get_nowait()
-
             self._process.stdin.write(wrapped_code + '\n')
             self._process.stdin.flush()
-
             output_lines = []
             error_output = []
             start_time = time.time()
             done = False
-
             while not done:
                 if time.time() - start_time > timeout:
                     raise TimeoutError(f'Command execution timed out after {timeout} seconds')
-
                 if self._process.poll() is not None:
                     raise Exception('PowerShell process unexpectedly closed')
-
                 try:
                     line = self._output_queue.get(timeout=0.1)
                     if line is None:
@@ -188,7 +130,6 @@ class PowerShellSession:
                         output_lines.append(line)
                 except Empty:
                     pass
-
                 try:
                     while True:
                         line = self._error_queue.get_nowait()
@@ -197,15 +138,12 @@ class PowerShellSession:
                         error_output.append(line)
                 except Empty:
                     pass
-
             all_output = [line for line in output_lines if line.strip()]
             if error_output:
                 error_lines = [line for line in error_output if line.strip()]
                 if error_lines:
                     all_output.extend(['', 'Errors:', *error_lines])
-
             return '\n'.join(all_output)
-
         except Exception as e:
             self.__exit__(type(e), e, e.__traceback__)
             raise
@@ -220,7 +158,7 @@ class PowerShellManager:
     _lock = Lock()
 
     @classmethod
-    def get_instance(cls, bot_id: str = None) -> 'PowerShellManager':
+    def get_instance(cls, bot_id: str=None) -> 'PowerShellManager':
         """
         Get or create a PowerShell manager instance for the given bot_id.
         If no bot_id is provided, uses the current thread name.
@@ -233,7 +171,6 @@ class PowerShellManager:
         """
         if bot_id is None:
             bot_id = threading.current_thread().name
-
         with cls._lock:
             if bot_id not in cls._instances:
                 instance = cls.__new__(cls)
@@ -247,7 +184,7 @@ class PowerShellManager:
         """
         Private initializer - use get_instance() instead.
         """
-        raise RuntimeError("Use PowerShellManager.get_instance() to create or get a PowerShell manager")
+        raise RuntimeError('Use PowerShellManager.get_instance() to create or get a PowerShell manager')
 
     @property
     def session(self) -> PowerShellSession:
@@ -257,15 +194,15 @@ class PowerShellManager:
         """
         try:
             if not hasattr(self._thread_local, 'session'):
-                print(f"Session not found for {self.bot_id}, starting new session")
+                print(f'Session not found for {self.bot_id}, starting new session')
                 self._start_new_session()
             elif not self._is_session_valid():
-                print(f"Invalid session detected for {self.bot_id}, starting new session")
+                print(f'Invalid session detected for {self.bot_id}, starting new session')
                 self.cleanup()
                 self._start_new_session()
             return self._thread_local.session
         except Exception as e:
-            print(f"Error accessing session: {str(e)}. Starting new session.")
+            print(f'Error accessing session: {str(e)}. Starting new session.')
             self._start_new_session()
             return self._thread_local.session
 
@@ -285,20 +222,16 @@ class PowerShellManager:
         try:
             if not hasattr(self._thread_local, 'session'):
                 return False
-            
             session = self._thread_local.session
             if not session._process or session._process.poll() is not None:
                 return False
-                
-            # Try a simple command to test session
             test_output = session.execute("Write-Output 'test'", timeout=5)
             return 'test' in test_output
-            
         except Exception as e:
-            print(f"Session validation failed: {str(e)}")
+            print(f'Session validation failed: {str(e)}')
             return False
 
-    def execute(self, code: str, output_length_limit: str = '60') -> Generator[str, None, None]:
+    def execute(self, code: str, output_length_limit: str='60') -> Generator[str, None, None]:
         """
         Execute PowerShell code in the session with automatic recovery.
 
@@ -314,15 +247,12 @@ class PowerShellManager:
 
         def _process_error(error):
             error_message = f'Tool Failed: {str(error)}\n'
-            error_message += (
-                f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
+            error_message += f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}"
             return error_message
-
         while retry_count <= max_retries:
             try:
                 processed_code = _process_commands(code)
                 output = self.session.execute(processed_code)
-
                 if output_length_limit is not None and output:
                     output_length_limit_int = int(output_length_limit)
                     lines = output.splitlines()
@@ -334,8 +264,6 @@ class PowerShellManager:
                         truncated_output = '\n'.join(start_lines)
                         truncated_output += f'\n\n... {lines_omitted} lines omitted ...\n\n'
                         truncated_output += '\n'.join(end_lines)
-
-                        # Use automatically generated ID for output files
                         output_file = os.path.join(os.getcwd(), f'ps_output_{self.bot_id}.txt')
                         with open(output_file, 'w', encoding='utf-8', errors='replace') as f:
                             f.write(output)
@@ -345,16 +273,13 @@ class PowerShellManager:
                         yield output
                 else:
                     yield output
-                break  # Success, exit the retry loop
-
+                break
             except Exception as e:
                 retry_count += 1
                 if retry_count <= max_retries:
-                    print(f"Command failed, attempt {retry_count} of {max_retries}. Starting new session...")
+                    print(f'Command failed, attempt {retry_count} of {max_retries}. Starting new session...')
                     self.cleanup()
-                    # Don't yield error message for retries
                 else:
-                    # Only yield error message on final attempt
                     yield _process_error(e)
 
     def cleanup(self):
@@ -366,7 +291,7 @@ class PowerShellManager:
             try:
                 self._thread_local.session.__exit__(None, None, None)
             except Exception as e:
-                print(f"Error during session cleanup: {str(e)}")
+                print(f'Error during session cleanup: {str(e)}')
             finally:
                 delattr(self._thread_local, 'session')
 
@@ -383,12 +308,7 @@ def _get_active_sessions() -> list:
             local_dict = thread._thread_local.__dict__
             if 'ps_manager' in local_dict:
                 manager = local_dict['ps_manager']
-                sessions.append({
-                    'bot_id': manager.bot_id,
-                    'thread_name': thread.name,
-                    'created_at': manager.created_at.isoformat(),
-                    'active': hasattr(manager._thread_local, 'session')
-                })
+                sessions.append({'bot_id': manager.bot_id, 'thread_name': thread.name, 'created_at': manager.created_at.isoformat(), 'active': hasattr(manager._thread_local, 'session')})
     return sessions
 
 def _execute_powershell_stateless(code: str, output_length_limit: str='120'):
@@ -414,28 +334,18 @@ def _execute_powershell_stateless(code: str, output_length_limit: str='120'):
 
     def _process_error(error):
         error_message = f'Tool Failed: {str(error)}\n'
-        error_message += (
-            f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
+        error_message += f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}"
         return error_message
     output = ''
     try:
         processed_code = _process_commands(code)
-        setup_encoding = """
-        $PSDefaultParameterValues['*:Encoding'] = 'utf8'
-        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-        [Console]::InputEncoding = [System.Text.Encoding]::UTF8
-        $OutputEncoding = [System.Text.Encoding]::UTF8
-        $env:PYTHONIOENCODING = "utf-8"
-        """
+        setup_encoding = '\n        $PSDefaultParameterValues[\'*:Encoding\'] = \'utf8\'\n        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n        [Console]::InputEncoding = [System.Text.Encoding]::UTF8\n        $OutputEncoding = [System.Text.Encoding]::UTF8\n        $env:PYTHONIOENCODING = "utf-8"\n        '
         wrapped_code = f'{setup_encoding}; {processed_code}'
         startupinfo = None
         if os.name == 'nt':
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        process = subprocess.Popen(['powershell', '-NoProfile',
-            '-NonInteractive', '-Command', wrapped_code], stdout=subprocess
-            .PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo,
-            encoding='utf-8', errors='replace')
+        process = subprocess.Popen(['powershell', '-NoProfile', '-NonInteractive', '-Command', wrapped_code], stdout=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo, encoding='utf-8', errors='replace')
         stdout, stderr = process.communicate(timeout=300)
         output = stdout
         if stderr:
@@ -454,18 +364,16 @@ def _execute_powershell_stateless(code: str, output_length_limit: str='120'):
             end_lines = lines[-half_limit:]
             lines_omitted = len(lines) - output_length_limit
             truncated_output = '\n'.join(start_lines)
-            truncated_output += (
-                f'\n\n... {lines_omitted} lines omitted ...\n\n')
+            truncated_output += f'\n\n... {lines_omitted} lines omitted ...\n\n'
             truncated_output += '\n'.join(end_lines)
             output_file = os.path.join(os.getcwd(), 'ps_output.txt')
-            with open(output_file, 'w', encoding='utf-8', errors='replace'
-                ) as f:
+            with open(output_file, 'w', encoding='utf-8', errors='replace') as f:
                 f.write(output)
             truncated_output += f'\nFull output saved to {output_file}'
             return truncated_output
     return output
 
-def _process_commands(code: str) ->str:
+def _process_commands(code: str) -> str:
     """
     Process PowerShell commands separated by &&, ensuring each command only runs if the previous succeeded.
     Uses PowerShell error handling to catch both command failures and non-existent commands.
@@ -481,9 +389,6 @@ def _process_commands(code: str) ->str:
         return code
     processed_commands = []
     for cmd in commands:
-        wrapped_cmd = (
-            f'$ErrorActionPreference = "Stop"; try {{ {cmd}; $LastSuccess = $true }} catch {{ $LastSuccess = $false; $_ }}'
-            )
+        wrapped_cmd = f'$ErrorActionPreference = "Stop"; try {{ {cmd}; $LastSuccess = $true }} catch {{ $LastSuccess = $false; $_ }}'
         processed_commands.append(wrapped_cmd)
-    return '; '.join([processed_commands[0]] + [
-        f'if ($LastSuccess) {{ {cmd} }}' for cmd in processed_commands[1:]])
+    return '; '.join([processed_commands[0]] + [f'if ($LastSuccess) {{ {cmd} }}' for cmd in processed_commands[1:]])

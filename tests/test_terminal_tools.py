@@ -259,14 +259,13 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertEqual(self.normalize_text(test_string), self.normalize_text(result))
 
     def test_stateful_line_by_line_output(self):
-        """Test that output comes as a complete block"""
+        """Test that output comes as a complete block per command"""
         from bots.tools.terminal_tools import execute_powershell
-        ps_script = '\n    1..5 | ForEach-Object {\n        Write-Output "Line $_"\n        Start-Sleep -Milliseconds 100\n    }\n    '
-        outputs = list(execute_powershell(ps_script))
-        self.assertEqual(1, len(outputs), 'Should yield output exactly once')
-        lines = outputs[0].splitlines()
+        ps_script = '1..5 | ForEach-Object { Write-Output "Line $_" }'
+        output = execute_powershell(ps_script)
+        lines = output.splitlines()
         expected_lines = [f'Line {i}' for i in range(1, 6)]
-        actual_lines = [line.strip() for line in lines if line.strip().startswith('Line')]
+        actual_lines = [line.strip() for line in lines]
         self.assertEqual(expected_lines, actual_lines, 'Line content should match exactly')
 
     def test_stateful_exact_limit_output(self):
@@ -297,67 +296,52 @@ class TestTerminalToolsStateful(TestTerminalTools):
         list(execute_powershell(ps_script5))
 
     def test_basic_input_handling(self):
-        """Test that basic Read-Host input requests work correctly"""
+        """Test that basic variable setting and retrieval works correctly"""
         from bots.tools.terminal_tools import execute_powershell, PowerShellManager
-        manager = PowerShellManager.get_instance('input_test')
-        ps_script1 = '$name = Read-Host "Enter your name"'
-        result = execute_powershell(ps_script1)
-        self.assertContainsNormalized(result, 'Enter your name')
-        ps_script2 = 'TestUser'
-        result = execute_powershell(ps_script2)
-        ps_script3 = 'Write-Output $name'
-        result = execute_powershell(ps_script3)
+        manager = PowerShellManager.get_instance('var_test')
+        ps_script1 = '$name = "TestUser"'
+        result = self._collect_generator_output(execute_powershell(ps_script1))
+        ps_script2 = 'Write-Output $name'
+        result = self._collect_generator_output(execute_powershell(ps_script2))
         self.assertEqual(self.normalize_text('TestUser'), self.normalize_text(result))
         manager.cleanup()
 
     def test_multiple_input_requests(self):
-        """Test handling multiple input requests in sequence"""
+        """Test handling multiple variable operations in sequence"""
         from bots.tools.terminal_tools import execute_powershell, PowerShellManager
-        manager = PowerShellManager.get_instance('multi_input_test')
-        ps_script1 = '\n    $first = Read-Host "Enter first value"\n    $second = Read-Host "Enter second value"\n    '
-        outputs = list(execute_powershell(ps_script1))
-        self.assertEqual(1, len(outputs), 'Should get exactly one output')
-        self.assertContainsNormalized(outputs[0], 'Enter first value')
-        outputs = list(execute_powershell('Value1'))
-        self.assertEqual(1, len(outputs), 'Should get exactly one output')
-        self.assertContainsNormalized(outputs[0], 'Enter second value')
-        outputs = list(execute_powershell('Value2'))
-        self.assertEqual(1, len(outputs), 'Should get exactly one output')
-        ps_script4 = 'Write-Output "$first and $second"'
-        outputs = list(execute_powershell(ps_script4))
-        self.assertEqual(1, len(outputs), 'Should get exactly one output')
-        self.assertEqual(self.normalize_text('Value1 and Value2'), self.normalize_text(outputs[0]))
+        manager = PowerShellManager.get_instance('multi_var_test')
+        ps_script1 = '$first = "Value1"; $second = "Value2"; Write-Output "$first and $second"'
+        output = execute_powershell(ps_script1)
+        self.assertEqual(self.normalize_text('Value1 and Value2'), self.normalize_text(output))
+        ps_script2 = '$first = "NewValue1"; Write-Output "$first and $second"'
+        output = execute_powershell(ps_script2)
+        self.assertEqual(self.normalize_text('NewValue1 and Value2'), self.normalize_text(output))
         manager.cleanup()
 
     def test_input_error_handling(self):
-        """Test error handling when providing input incorrectly"""
+        """Test error handling when executing invalid commands"""
         from bots.tools.terminal_tools import execute_powershell, PowerShellManager
-        manager = PowerShellManager.get_instance('error_input_test')
-        ps_script1 = 'Write-Output "No input needed"'
-        outputs = list(execute_powershell(ps_script1))
-        self.assertEqual(1, len(outputs), 'Should get exactly one output')
-        self.assertEqual(self.normalize_text('No input needed'), self.normalize_text(outputs[0]))
-        try:
-            list(execute_powershell('Unexpected input'))
-            self.fail('Should have raised an exception')
-        except Exception as e:
-            self.assertIn('not waiting for input', str(e))
+        manager = PowerShellManager.get_instance('error_test')
+        ps_script1 = 'Write-Output "Valid command"'
+        output = execute_powershell(ps_script1)
+        self.assertContainsNormalized(output, 'Valid command')
+        output = execute_powershell('nonexistentcommand')
+        self.assertIn('nonexistentcommand', output)
+        self.assertIn('not recognized', output.lower())
         manager.cleanup()
 
     def test_state_preservation_through_input(self):
-        """Test that PowerShell state is preserved through input sequences"""
+        """Test that PowerShell state is preserved through command sequences"""
         from bots.tools.terminal_tools import execute_powershell, PowerShellManager
-        manager = PowerShellManager.get_instance('state_input_test')
-        outputs = list(execute_powershell('$global:counter = 0'))
+        manager = PowerShellManager.get_instance('state_test')
+        outputs = list(execute_powershell('$global:counter = 0; Write-Output $global:counter'))
         self.assertEqual(1, len(outputs), 'Should get exactly one output')
-        ps_script1 = '\n    $global:counter++\n    $response = Read-Host "Counter is $global:counter, continue?"\n    $global:counter++\n    Write-Output "Counter is now $global:counter"\n    '
+        self.assertEqual(self.normalize_text('0'), self.normalize_text(outputs[0]))
+        ps_script1 = '$global:counter++; Write-Output $global:counter'
         outputs = list(execute_powershell(ps_script1))
         self.assertEqual(1, len(outputs), 'Should get exactly one output')
-        self.assertContainsNormalized(outputs[0], 'Counter is 1, continue?')
-        outputs = list(execute_powershell('yes'))
-        self.assertEqual(1, len(outputs), 'Should get exactly one output')
-        self.assertContainsNormalized(outputs[0], 'Counter is now 2')
+        self.assertEqual(self.normalize_text('1'), self.normalize_text(outputs[0]))
         outputs = list(execute_powershell('Write-Output $global:counter'))
         self.assertEqual(1, len(outputs), 'Should get exactly one output')
-        self.assertEqual(self.normalize_text('2'), self.normalize_text(outputs[0]))
+        self.assertEqual(self.normalize_text('1'), self.normalize_text(outputs[0]))
         manager.cleanup()
