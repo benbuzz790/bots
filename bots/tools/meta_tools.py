@@ -4,7 +4,6 @@ import bots.tools.code_tools as code_tools
 import bots.tools.terminal_tools as terminal_tools
 import bots.tools.python_editing_tools as python_editing_tools
 from bots.foundation.anthropic_bots import AnthropicBot
-from bots.foundation.base import load
 from bots.foundation.base import Bot
 import bots.flows.functional_prompts as fp
 
@@ -27,8 +26,8 @@ def message_bot(bot_path, message):
     cost: varies
     """
     try:
-        bot = load(bot_path)
-        bot.autosave = False
+        bot = Bot.load(bot_path)
+        bot.autosave = True
         first_message = 'MESSAGE:\n\n' + message
         continue_prompt = "reply '/DONE' to stop when MESSAGE is addressed."
 
@@ -37,8 +36,7 @@ def message_bot(bot_path, message):
             tools = ''
             if bot.tool_handler.requests:
                 for request in bot.tool_handler.requests:
-                    tool_name, _ = bot.tool_handler.tool_name_and_input(request
-                        )
+                    tool_name, _ = bot.tool_handler.tool_name_and_input(request)
                 tools += '- ' + tool_name + '\n'
             response = bot.conversation.content
             print(bot.name + ': ' + response + '\n' + tool_name)
