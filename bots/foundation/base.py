@@ -1,5 +1,5 @@
 """Base classes and utilities for bot functionality."""
-import os, sys, json, ast, threading, inspect, hashlib, importlib, textwrap, copy
+import os, sys, json, ast, inspect, hashlib, importlib, textwrap, copy
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Optional, Type, Dict, Any, List, Callable, Tuple
@@ -150,11 +150,9 @@ class ConversationNode:
         """
         result = {}
         for k in dir(self):
-            if not k.startswith('_') and k not in {'parent', 'replies'
-                } and not callable(getattr(self, k)):
+            if not k.startswith('_') and k not in {'parent', 'replies'} and not callable(getattr(self, k)):
                 value = getattr(self, k)
-                if isinstance(value, (str, int, float, bool, list, dict,
-                    type(None))):
+                if isinstance(value, (str, int, float, bool, list, dict, type(None))):
                     result[k] = value
                 else:
                     result[k] = str(value)
@@ -180,8 +178,7 @@ class ConversationNode:
     @classmethod
     def _from_dict(cls, data: Dict[str, Any]) ->'ConversationNode':
         reply_data = data.pop('replies', [])
-        node_class = Engines.get_conversation_node_class(data.get(
-            'node_class', cls.__name__))
+        node_class = Engines.get_conversation_node_class(data.pop('node_class', cls.__name__))
         node = node_class(**data)
         for reply in reply_data:
             reply_node = cls._from_dict(reply)
@@ -706,25 +703,6 @@ class Mailbox(ABC):
         with open(self.log_file, 'a', encoding='utf-8') as file:
             file.write(log_entry)
 
-    def batch_send(self, conversations, model, max_tokens, temperature,
-        api_key, system_message=None):
-        raise NotImplemented
-        threads = []
-        results = [None] * len(conversations)
-
-        def send_thread(index, conv):
-            result = self.send_message(self)
-            results[index] = result
-        for i, conversation in enumerate(conversations):
-            thread = threading.Thread(target=send_thread, args=(i,
-                conversation))
-            threads.append(thread)
-            thread.start()
-        for thread in threads:
-            thread.join()
-        return results
-
-
 class Bot(ABC):
     """Abstract base class for all bot implementations."""
 
@@ -871,8 +849,7 @@ class Bot(ABC):
                 'tool_handler', 'tools'):
                 setattr(bot, key, value)
         if 'conversation' in data and data['conversation']:
-            node_class = Engines.get_conversation_node_class(data[
-                'conversation']['node_class'])
+            node_class = Engines.get_conversation_node_class(data['conversation']['node_class'])
             bot.conversation = node_class._from_dict(data['conversation'])
             while bot.conversation.replies:
                 bot.conversation = bot.conversation.replies[0]
