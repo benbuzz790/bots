@@ -1,6 +1,6 @@
 import textwrap, ast, os, subprocess, traceback
 from bots.utils.helpers import _clean
-from bots.utils.helpers import py_ast_to_source
+from bots.utils.helpers import _py_ast_to_source
 
 
 
@@ -60,7 +60,7 @@ def _execute_python_code(code: str, timeout: int=300) ->str:
             return f'SyntaxError: {str(e)}'
         wrapper_ast = create_wrapper_ast()
         combined_ast = insert_code_into_wrapper(wrapper_ast, code_ast, timeout)
-        final_code = py_ast_to_source(combined_ast)
+        final_code = _py_ast_to_source(combined_ast)
     except Exception as e:
         return _process_error(e)
     package_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
