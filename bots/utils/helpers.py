@@ -12,7 +12,6 @@ def _process_error(error):
         f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
     return error_message
 
-
 def _get_new_files(start_time, directory=".", extension=None):
     """Get all files created after start_time in directory that have a certain extension"""
     new_files = []
@@ -20,11 +19,12 @@ def _get_new_files(start_time, directory=".", extension=None):
     for root, _, files in os.walk(directory):
         for file in files:
             path = os.path.join(root, file)
-            if os.path.getctime(path) >= start_time and extension and os.path.splitext(path)[1].startswith(extension):
-                new_files.append(path)
+            if os.path.getctime(path) >= start_time:
+                if extension is None or os.path.splitext(path)[1] == extension:
+                    new_files.append(path)
                 
     return new_files
-
+ 
 def _clean(code: str) ->str:
     """Clean and dedent code before parsing.
     
@@ -36,7 +36,7 @@ def _clean(code: str) ->str:
     """
     return textwrap.dedent(code).strip()
 
-def py_ast_to_source(node):
+def _py_ast_to_source(node):
     """Convert a python AST node to source code."""
     return ast.unparse(node)
 
