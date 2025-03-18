@@ -95,39 +95,6 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
             
     return '\n'.join(output_text)
 
-def _overwrite_corrupt_file(file_path: str, content: str):
-    """
-    ⚠️ CAUTION: This is a LAST RESORT. Only use when other tools have failed.⚠️
-
-    Parameters:
-    - file_path (str): Path to the file to overwrite
-    - content (str): New content to write to the file
-
-    Returns:
-    str: Success message or error details
-    """
-    try:
-        used_encoding = 'utf-8'
-        if os.path.exists(file_path):
-            encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252',
-                'iso-8859-1']
-            for encoding in encodings:
-                try:
-                    with open(file_path, 'r', encoding=encoding) as f:
-                        f.read()
-                        used_encoding = encoding
-                        break
-                except UnicodeDecodeError:
-                    continue
-        with open(file_path, 'w', encoding=used_encoding) as f:
-            f.write(content)
-        return (
-            f'⚠️ File overwritten successfully using {used_encoding} encoding.'
-            )
-    except Exception as e:
-        return f'Error: {str(e)}\n{traceback.format_exc()}'
-
-
 def diff_edit(file_path: str, diff_spec: str):
     """Diff spec editing with flexible matching.
 
