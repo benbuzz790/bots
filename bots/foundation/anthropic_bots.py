@@ -40,7 +40,7 @@ class AnthropicNode(ConversationNode):
                 if node.tool_calls:
                     for call in node.tool_calls:
                         sub_entry = {'type': 'tool_use', **call}
-                        content_list.insert(-1, sub_entry)
+                        content_list.append(sub_entry)
                 if node.tool_results:
                     for result in node.tool_results:
                         sub_entry = {'type': 'tool_result', **result}
