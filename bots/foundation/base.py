@@ -24,15 +24,12 @@ class Engines(str, Enum):
     GPT35TURBO_16K = 'gpt-3.5-turbo-16k'
     GPT35TURBO_0125 = 'gpt-3.5-turbo-0125'
     GPT35TURBO_INSTRUCT = 'gpt-3.5-turbo-instruct'
-    # GPTO1_PREVIEW = 'o1-preview'
-    # GPTO1_PREVIEW_0912 = 'o1-preview-2024-09-12'
-    # GPTO1_MINI = 'o1-mini'
-    # GPTO1_MINI_0912 = 'o1-mini-2024-09-12'
     CLAUDE3_HAIKU = 'claude-3-haiku-20240307'
     CLAUDE3_SONNET = 'claude-3-sonnet-20240229'
     CLAUDE3_OPUS = 'claude-3-opus-20240229'
     CLAUDE35_SONNET_20240620 = 'claude-3-5-sonnet-20240620'
     CLAUDE35_SONNET_20241022 = 'claude-3-5-sonnet-20241022'
+    CLAUDE37_SONNET_20250224 = 'claude-3-7-sonnet-202502'
 
     @staticmethod
     def get(name):
@@ -141,7 +138,7 @@ class ConversationNode:
         """
         result = {}
         for k in dir(self):
-            if not k.startswith('_') and k not in {'parent', 'replies'} and not callable(getattr(self, k)):
+            if not k.startswith('_') and k not in {'parent', 'replies'} and (not callable(getattr(self, k))):
                 value = getattr(self, k)
                 if isinstance(value, (str, int, float, bool, list, dict, type(None))):
                     result[k] = value
@@ -349,11 +346,7 @@ class ToolHandler(ABC):
 
     def _create_builtin_wrapper(self, func):
         """Create a wrapper function for built-in functions"""
-        source = f"""def {func.__name__}(x):
-    ""\"Wrapper for built-in function {func.__name__} from {func.__module__}""\"
-    import {func.__module__}
-    return {func.__module__}.{func.__name__}(float(x))
-"""
+        source = f'def {func.__name__}(x):\n    """Wrapper for built-in function {func.__name__} from {func.__module__}"""\n    import {func.__module__}\n    return {func.__module__}.{func.__name__}(float(x))\n'
         return source
 
     def _create_dynamic_wrapper(self, func):
@@ -382,14 +375,22 @@ class ToolHandler(ABC):
         if not hasattr(func, '__module_context__'):
             if inspect.isbuiltin(func) or inspect.ismethoddescriptor(func):
                 source = self._create_builtin_wrapper(func)
+                context = {}
             else:
                 try:
                     source = inspect.getsource(func)
+                    if hasattr(func, '__globals__'):
+                        code = func.__code__
+                        names = code.co_names
+                        context = {name: func.__globals__[name] for name in names if name in func.__globals__}
+                    else:
+                        context = {}
                 except (TypeError, OSError):
                     source = self._create_dynamic_wrapper(func)
-            file_path = f'dynamic_module_{hash(str(func))}'
+                    context = {}
             source = _clean(source)
             module_name = f'dynamic_module_{hash(source)}'
+            file_path = f'dynamic_module_{hash(str(func))}'
             module = ModuleType(module_name)
             module.__file__ = file_path
             module.__dict__.update(context)
@@ -441,51 +442,45 @@ class ToolHandler(ABC):
         except Exception as e:
             raise ModuleLoadError(f'Error loading module from {filepath}: {str(e)}') from e
 
-    def _add_tools_from_module(self, module: ModuleType) ->None:
+    def _add_tools_from_module(self, module: ModuleType) -> None:
         """
         Add all non-private functions from a module as tools.
-        Handles both file-based and dynamic modules.
-        """
-        if hasattr(module, '__source__'):
-            source = module.__source__
-        else:
-            functions = inspect.getmembers(module, inspect.isfunction)
-            source_parts = []
-            for name, func in functions:
-                if not name.startswith('_'):
-                    if inspect.isbuiltin(func) or inspect.ismethoddescriptor(
-                        func):
-                        source_parts.append(self._create_builtin_wrapper(func))
-                    else:
-                        try:
-                            source_parts.append(inspect.getsource(func))
-                        except (TypeError, OSError):
-                            source_parts.append(self.
-                                _create_dynamic_wrapper(func))
-                    source_parts[-1] = textwrap.dedent(source_parts[-1])
-            source = '\n\n'.join(source_parts)
-        source = _clean(source)
-        module_context = ModuleContext(name=module.__name__, source=source,
-            file_path=getattr(module, '__file__',
-            f'dynamic_module_{hashlib.md5(module.__name__.encode()).hexdigest()}'
-            ), namespace=module, code_hash=self._get_code_hash(source))
-        self.modules[module_context.file_path] = module_context
-        for name, func in inspect.getmembers(module, inspect.isfunction):
-            if not name.startswith('_'):
-                func.__module_context__ = module_context
-                self.add_tool(func)
+        Module must have either a __file__ attribute or a __source__ attribute.
 
-    def to_dict(self) ->Dict[str, Any]:
+        Args:
+            module: Module containing the tools to add
+
+        Raises:
+            ModuleLoadError: If module has neither __file__ nor __source__ attribute
+        """
+        if hasattr(module, '__file__'):
+            self._add_tools_from_file(module.__file__)
+        elif hasattr(module, '__source__'):
+            source = module.__source__
+            module_name = f'dynamic_module_{hashlib.md5(module.__name__.encode()).hexdigest()}'
+            try:
+                dynamic_module = ModuleType(module_name)
+                dynamic_module.__file__ = f'dynamic_module_{hash(source)}'
+                exec(source, dynamic_module.__dict__)
+                module_context = ModuleContext(name=module_name, source=source, file_path=dynamic_module.__file__, namespace=dynamic_module, code_hash=self._get_code_hash(source))
+                self.modules[dynamic_module.__file__] = module_context
+                for name, func in inspect.getmembers(dynamic_module, inspect.isfunction):
+                    if not name.startswith('_'):
+                        func.__module_context__ = module_context
+                        self.add_tool(func)
+            except Exception as e:
+                raise ModuleLoadError(f'Error loading module {module.__name__}: {str(e)}') from e
+        else:
+            raise ModuleLoadError(f'Module {module.__name__} has neither file path nor source. Cannot load.')
+
+    def to_dict(self) -> Dict[str, Any]:
         """
         Serialize the ToolHandler state to a dictionary.
         """
         module_details = {}
         function_paths = {}
         for file_path, module_context in self.modules.items():
-            module_details[file_path] = {'name': module_context.name,
-                'source': module_context.source, 'file_path':
-                module_context.file_path, 'code_hash': module_context.code_hash
-                }
+            module_details[file_path] = {'name': module_context.name, 'source': module_context.source, 'file_path': module_context.file_path, 'code_hash': module_context.code_hash, 'globals': {k: str(v) for k, v in module_context.namespace.__dict__.items() if not k.startswith('__')}}
         for name, func in self.function_map.items():
             module_context = getattr(func, '__module_context__', None)
             if module_context:
@@ -514,11 +509,11 @@ class ToolHandler(ABC):
             try:
                 module = ModuleType(module_data['name'])
                 module.__file__ = file_path
-                source = textwrap.dedent(module_data['source']).strip()
+                source = module_data['source']
+                if 'globals' in module_data:
+                    module.__dict__.update(module_data['globals'])
                 exec(source, module.__dict__)
-                module_context = ModuleContext(name=module_data['name'],
-                    source=source, file_path=module_data['file_path'],
-                    namespace=module, code_hash=current_code_hash)
+                module_context = ModuleContext(name=module_data['name'], source=source, file_path=module_data['file_path'], namespace=module, code_hash=current_code_hash)
                 handler.modules[module_data['file_path']] = module_context
                 for func_name, path in function_paths.items():
                     if path == module_data['file_path'] and func_name in module.__dict__:
@@ -529,11 +524,6 @@ class ToolHandler(ABC):
             except Exception as e:
                 print(f'Warning: Failed to load module {file_path}: {str(e)}')
                 continue
-        for func_name, path in function_paths.items():
-            if path == 'dynamic' and func_name not in handler.function_map:
-                print(
-                    f"Warning: Dynamic function '{func_name}' cannot be restored without source."
-                    )
         return handler
 
     def get_tools_json(self) -> str:
@@ -755,7 +745,7 @@ class Bot(ABC):
             results = []
             requests = self.tool_handler.extract_requests(response)
             text, role, data = self.mailbox.process_response(response, self)
-            self.conversation = self.conversation._add_reply(content=text, role=role, data=data)
+            self.conversation = self.conversation._add_reply(content=text, role=role, **data)
             self.conversation._add_tool_calls(requests)
             results = self.tool_handler.exec_requests()
             self.conversation._add_tool_results(results)
