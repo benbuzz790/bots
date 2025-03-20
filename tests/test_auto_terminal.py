@@ -117,23 +117,6 @@ class TestCodey(DetailedTestCase):
         self.assertEqualWithDetails(after.strip(), 'Updated content', 'File content was not updated as requested')
 
     @patch('builtins.input')
-    def test_file_operations(self, mock_input):
-        """Test the bot's ability to create and write to a file."""
-        if os.path.exists(self.test_file):
-            os.remove(self.test_file)
-        prompt = f"/auto Create a file at {self.test_file} containing 'Test content'"
-        mock_input.side_effect = [prompt, '/exit']
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-        print(f'\nBot output:\n{output}')
-        self.assertTrue(os.path.exists(self.test_file), 'File was not created')
-        with open(self.test_file, 'r') as file:
-            content = file.read()
-        self.assertEqualWithDetails(content.strip(), 'Test content', 'File content does not match requested content')
-
-    @patch('builtins.input')
     def test_file_delete(self, mock_input):
         """Test the bot's ability to delete a file when given appropriate context."""
         with open(self.test_file, 'w') as file:

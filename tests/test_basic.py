@@ -11,7 +11,7 @@ class TestAnthropicBot(unittest.TestCase):
 
     def test_initialization(self):
         self.assertIsInstance(self.bot, AnthropicBot)
-        self.assertEqual(self.bot.model_engine, Engines.CLAUDE37_SONNET_20250224)
+        self.assertEqual(self.bot.model_engine, Engines.CLAUDE37_SONNET_20250219)
         self.assertEqual(self.bot.max_tokens, 4096)
         self.assertEqual(self.bot.temperature, 0.3)
         self.assertEqual(self.bot.name, 'Claude')
@@ -73,24 +73,16 @@ class TestGPTBot(unittest.TestCase):
         response2 = self.bot.respond("What's its population?")
         self.assertIn('million', response2.lower())
 
-
-if __name__ == '__main__':
-    unittest.main()
-
-
 def test_bot_multiplication():
     """Test that the __mul__ operator creates proper deep copies of the Bot."""
-    from bots.foundation.base import Bot, Engines, ConversationNode
-    bot = Bot(api_key=None, model_engine=Engines.GPT35TURBO, max_tokens=100,
+    bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100,
         temperature=0.7, name='TestBot', role='test', role_description=
         'A test bot', autosave=False)
-    bot.conversation = bot.conversation._add_reply(content='Hello', role='user'
-        )
-    bot.conversation = bot.conversation._add_reply(content='Hi there!',
-        role='assistant')
+    bot.conversation = bot.conversation._add_reply(content='Hello', role='user')
+    bot.conversation = bot.conversation._add_reply(content='Hi there!', role='assistant')
     bot_copies = bot * 3
     assert len(bot_copies) == 3
-    assert all(isinstance(copy, Bot) for copy in bot_copies)
+    assert all(isinstance(copy, AnthropicBot) for copy in bot_copies)
     assert all(copy is not bot for copy in bot_copies)
     assert all(copy is not bot_copies[0] for copy in bot_copies[1:])
     for copy in bot_copies:
@@ -105,3 +97,7 @@ def test_bot_multiplication():
         assert copy.conversation.role == bot.conversation.role
         assert copy.conversation.parent is not None
         assert copy.conversation.parent is not bot.conversation.parent
+
+
+if __name__ == '__main__':
+    unittest.main()
