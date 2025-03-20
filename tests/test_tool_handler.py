@@ -100,11 +100,10 @@ class TestToolHandlerPersistence(unittest.TestCase):
         
         # Create module and execute code
         module = ModuleType('test_simple')
-        module.__file__ = 'test_simple.py'
         module.__source__ = module_code
-        
+
         # Execute in module's namespace
-        namespace = {'__name__': 'test_simple', '__file__': 'test_simple.py'}
+        namespace = {'__name__': 'test_simple'}
         exec(module_code, namespace)
         module.__dict__.update(namespace)
         
@@ -138,9 +137,8 @@ class TestToolHandlerPersistence(unittest.TestCase):
             """
             ).strip()
         module = ModuleType('test_module')
-        module.__file__ = 'test_module.py'
         module.__source__ = module_code
-        namespace = {'__name__': 'test_module', '__file__': 'test_module.py'}
+        namespace = {'__name__': 'test_module'}
         exec(module_code, namespace)
         module.__dict__.update(namespace)
         self.handler._add_tools_from_module(module)
@@ -189,11 +187,10 @@ class TestToolHandlerPersistence(unittest.TestCase):
         
         # Create module and execute code
         module = ModuleType('test_preserve')
-        module.__file__ = 'test_preserve.py'
         module.__source__ = module_code
-        
+
         # Execute in module's namespace
-        namespace = {'__name__': 'test_preserve', '__file__': 'test_preserve.py'}
+        namespace = {'__name__': 'test_preserve'}
         exec(module_code, namespace)
         module.__dict__.update(namespace)
         

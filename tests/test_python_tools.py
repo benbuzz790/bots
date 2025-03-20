@@ -8,7 +8,7 @@ import traceback
 import difflib
 import ast
 import time
-
+import tempfile
 
 def ast_normalize(code):
     try:
@@ -65,8 +65,7 @@ class TestPythonTools(DetailedTestCase):
 
     def test_class_scoped_functions(self):
         """Test function replacement and addition within specific classes"""
-        test_dir = os.path.join('benbuzz790', 'private_tests',
-            'test_class_scoped')
+        test_dir = os.path.join(self.temp_dir, 'test_class_scoped')
         os.makedirs(test_dir, exist_ok=True)
         test_file = os.path.join(test_dir, 'test_class_functions.py')
         try:
@@ -106,13 +105,16 @@ class OtherClass:
                 shutil.rmtree(test_dir)
 
     def setUp(self):
-        self.test_file = 'test_file.py'
+        self.temp_dir = tempfile.mkdtemp()
+        self.test_file = os.path.join(self.temp_dir, 'test_file.py')
         with open(self.test_file, 'w') as f:
             f.write('# Original content\n')
 
     def tearDown(self):
-        if os.path.exists(self.test_file):
-            os.remove(self.test_file)
+        try:
+            shutil.rmtree(self.temp_dir, ignore_errors=True)
+        except Exception as e:
+            print(f'Warning: Could not clean up {self.temp_dir}: {e}')
 
     def test_replace_class(self):
         initial_content = (
@@ -412,14 +414,14 @@ def some_function():
         import shutil
         test_dir = tempfile.mkdtemp()
         try:
-            simple_file = 'simple.py'
+            simple_file = os.path.join(self.temp_dir, 'simple.py')
             result = python_editing_tools.add_imports(simple_file, 'import os')
-            self.assertTrue(os.path.exists(os.path.abspath(simple_file)))
+            self.assertTrue(os.path.exists(simple_file))
             os.remove(simple_file)
-            rel_path = os.path.join('test_subdir', 'relative.py')
+            rel_path = os.path.join(self.temp_dir, 'test_subdir', 'relative.py')
             result = python_editing_tools.add_imports(rel_path, 'import sys')
-            self.assertTrue(os.path.exists(os.path.abspath(rel_path)))
-            shutil.rmtree('test_subdir')
+            self.assertTrue(os.path.exists(rel_path))
+            shutil.rmtree(os.path.join(self.temp_dir, 'test_subdir'))
             abs_path = os.path.join(test_dir, 'subdir', 'absolute.py')
             result = python_editing_tools.add_imports(abs_path, 'import datetime')
             self.assertTrue(os.path.exists(abs_path))
@@ -450,16 +452,16 @@ def some_function():
         try:
             with self.assertRaises(ValueError):
                 python_editing_tools._make_file('')
-            simple_path = 'test_make_file.py'
+            simple_path = os.path.join(self.temp_dir, 'test_make_file.py')
             abs_path = python_editing_tools._make_file(simple_path)
             self.assertTrue(os.path.isabs(abs_path))
             self.assertTrue(os.path.exists(abs_path))
             os.remove(abs_path)
-            rel_path = os.path.join('test_subdir', 'nested', 'test.py')
+            rel_path = os.path.join(self.temp_dir, 'test_subdir', 'nested', 'test.py')
             abs_path = python_editing_tools._make_file(rel_path)
             self.assertTrue(os.path.isabs(abs_path))
             self.assertTrue(os.path.exists(abs_path))
-            shutil.rmtree('test_subdir')
+            shutil.rmtree(os.path.join(self.temp_dir, 'test_subdir'))
             abs_input_path = os.path.join(test_dir, 'absolute_test.py')
             returned_path = python_editing_tools._make_file(abs_input_path)
             self.assertEqual(os.path.abspath(abs_input_path), returned_path)

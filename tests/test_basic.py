@@ -11,8 +11,7 @@ class TestAnthropicBot(unittest.TestCase):
 
     def test_initialization(self):
         self.assertIsInstance(self.bot, AnthropicBot)
-        self.assertEqual(self.bot.model_engine, Engines.
-            CLAUDE35_SONNET_20241022)
+        self.assertEqual(self.bot.model_engine, Engines.CLAUDE37_SONNET_20250224)
         self.assertEqual(self.bot.max_tokens, 4096)
         self.assertEqual(self.bot.temperature, 0.3)
         self.assertEqual(self.bot.name, 'Claude')
