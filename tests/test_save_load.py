@@ -15,7 +15,10 @@ class TestSaveLoad(unittest.TestCase):
 
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
-        self.bots = {'anthropic': AnthropicBot(name='TestClaude', model_engine=Engines.CLAUDE35_SONNET_20240620)}
+        self.bots = {
+            'anthropic': AnthropicBot(name='TestClaude', model_engine=Engines.CLAUDE35_SONNET_20240620),
+            'openai': ChatGPT_Bot(name='TestGPT', model_engine=Engines.GPT4)
+        }
         return self
 
     def tearDown(self):
