@@ -9,6 +9,7 @@ import difflib
 import ast
 import time
 import tempfile
+import shutil
 
 def ast_normalize(code):
     try:
