@@ -743,12 +743,12 @@ class Bot(ABC):
             response = self.mailbox.send_message(self)
             requests = []
             results = []
-            requests = self.tool_handler.extract_requests(response)
+            _ = self.tool_handler.extract_requests(response)
             text, role, data = self.mailbox.process_response(response, self)
             self.conversation = self.conversation._add_reply(content=text, role=role, **data)
-            self.conversation._add_tool_calls(requests)
-            results = self.tool_handler.exec_requests()
-            self.conversation._add_tool_results(results)
+            self.conversation._add_tool_calls(self.tool_handler.requests)
+            _ = self.tool_handler.exec_requests()
+            self.conversation._add_tool_results(self.tool_handler.results)
             return (text, self.conversation)
         except Exception as e:
             raise e

@@ -9,24 +9,35 @@ import json
 class OpenAINode(ConversationNode):
 
     def __init__(self, **kwargs: Any) -> None:
-        if 'role' not in kwargs and 'type' in kwargs:
-            # Handle tool calls
-            kwargs['role'] = 'assistant'
-            kwargs['content'] = ''
         super().__init__(**kwargs)
-
+        
     def _build_messages(self):
         """Build message list for OpenAI API, properly handling empty nodes and tool calls"""
         node = self
         conversation_dict = []
         while node:
-            if not node._is_empty():
-                entry = {'role': node.role, 'content': node.content}
-                if hasattr(node, 'tool_calls') and node.tool_calls:
-                    entry['tool_calls'] = node.tool_calls
-                if node.role == 'tool' and hasattr(node, 'tool_call_id'):
-                    entry['tool_call_id'] = node.tool_call_id
-                conversation_dict = [entry] + conversation_dict
+            if node._is_empty():
+                node = node.parent
+                continue
+
+            if node.role == 'user':
+                conversation_dict = [{'role': 'user', 'content': node.content}] + conversation_dict
+            
+            if node.role == 'assistant':
+                
+                if not (node.tool_calls or node.tool_results):
+                    assistant_msg = {'role': 'assistant', 'content': node.content}
+                    conversation_dict = [assistant_msg] + conversation_dict
+                    node = node.parent
+                    continue
+                
+                for result in node.tool_results:
+                    conversation_dict = [result] + conversation_dict
+
+                if node.tool_calls:
+                    assistant_msg = {'role': 'assistant', 'content': node.content, 'tool_calls': node.tool_calls}
+                    conversation_dict = [assistant_msg] + conversation_dict
+
             node = node.parent
         return conversation_dict
 
@@ -45,14 +56,7 @@ class OpenAIToolHandler(ToolHandler):
     def generate_request_schema(self, response: Any) -> List[Dict[str, Any]]:
         """Extract tool calls from OpenAI responses."""
         if hasattr(response.choices[0].message, 'tool_calls') and response.choices[0].message.tool_calls is not None:
-            return [{
-                'id': tool_call.id,
-                'type': tool_call.type,
-                'function': {
-                    'name': tool_call.function.name,
-                    'arguments': tool_call.function.arguments
-                }
-            } for tool_call in response.choices[0].message.tool_calls]
+            return [{'id': tool_call.id, 'type': tool_call.type, 'function': {'name': tool_call.function.name, 'arguments': tool_call.function.arguments}} for tool_call in response.choices[0].message.tool_calls]
         return []
 
     def tool_name_and_input(self, request_schema: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
@@ -63,11 +67,7 @@ class OpenAIToolHandler(ToolHandler):
 
     def generate_response_schema(self, request: Dict[str, Any], tool_output_kwargs: Dict[str, Any]) -> Dict[str, Any]:
         """Format tool results for OpenAI."""
-        return {
-            'role': 'tool',
-            'content': str(tool_output_kwargs),
-            'tool_call_id': request['id']
-        }
+        return {'role': 'tool', 'content': str(tool_output_kwargs), 'tool_call_id': request['id']}
 
     def generate_error_schema(self, request_schema: Optional[Dict[str, Any]], error_msg: str) -> Dict[str, Any]:
         """
@@ -80,11 +80,7 @@ class OpenAIToolHandler(ToolHandler):
         Returns:
             Dict containing the error in the correct schema format for this handler
         """
-        return {
-            'role': 'tool',
-            'content': error_msg,
-            'tool_call_id': request_schema['id'] if request_schema else 'unknown'
-        }
+        return {'role': 'tool', 'content': error_msg, 'tool_call_id': request_schema['id'] if request_schema else 'unknown'}
 
 class OpenAIMailbox(Mailbox):
 
@@ -98,40 +94,42 @@ class OpenAIMailbox(Mailbox):
     def send_message(self, bot) -> Dict[str, Any]:
         system_message = bot.system_message
         messages = bot.conversation._build_messages()
+        try:
+            self._log_message(json.dumps({'messages': messages}, indent=2), 'OUTGOING')
+        except FileNotFoundError:
+            pass
         if system_message:
             messages.insert(0, {'role': 'system', 'content': system_message})
         tools = bot.tool_handler.tools if bot.tool_handler else None
         model = bot.model_engine
         max_tokens = bot.max_tokens
         temperature = bot.temperature
-        if tools:
-            response = self.client.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens, temperature=temperature, tools=tools, tool_choice='auto')
-        else:
-            response = self.client.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens, temperature=temperature)
-        return response
+        try:
+            if tools:
+                response = self.client.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens, temperature=temperature, tools=tools, tool_choice='auto')
+            else:
+                response = self.client.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens, temperature=temperature)
+            try:
+                self._log_message(json.dumps({'response': response.model_dump()}, indent=2), 'INCOMING')
+            except FileNotFoundError:
+                pass
+            return response
+        except Exception as e:
+            raise e
 
     def process_response(self, response: Dict[str, Any], bot: Bot) -> Tuple[str, str, Dict[str, Any]]:
         """Process the raw response and handle tool calls until no more are left."""
         message: ChatCompletionMessage = response.choices[0].message
-        if not message.tool_calls:
-            return (message.content, message.role, {})
-
-        # First add the assistant's message with tool calls
-        bot.conversation = bot.conversation._add_reply(
-            role='assistant',
-            content=message.content or '',
-            tool_calls=bot.tool_handler.requests
-        )
-
-        # Execute tools and add their results
-        results = bot.tool_handler.exec_requests()
-        for result in results:
-            bot.conversation = bot.conversation._add_reply(**result)
-
-        # Get final response from model
-        response = bot.mailbox.send_message(bot)
-        final_message = response.choices[0].message
-        return (final_message.content, final_message.role, {})
+        
+        if not message.tool_calls: # base case
+            return (message.content or '~', message.role, {})
+        
+        while message.tool_calls: # recursive case
+            bot.conversation = bot.conversation._add_reply(role='assistant', content=message.content or '~')
+            bot.conversation._add_tool_calls(calls=bot.tool_handler.requests)
+            bot.conversation._add_tool_results(results=bot.tool_handler.exec_requests())
+            bot.tool_handler.clear()
+            return self.process_response(bot.mailbox.send_message(bot), bot)
 
 class ChatGPT_Bot(Bot):
     """
