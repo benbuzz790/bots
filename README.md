@@ -52,13 +52,32 @@ The core of the Bots library is built on a robust foundation:
    - Composable patterns for complex tasks
    - Iteration control (prompt_while, chain_while)
    - Support for parallel exploration
+   - Parallel execution functions:
+     - par_branch() - Like branch() but processes in parallel
+     - par_branch_while() - Like branch_while() but processes in parallel
+     - par_dispatch() - Run any functional prompt across multiple bots in parallel
    ```python
-   # Example: Parallel analysis
+   # Example: Parallel analysis using branch()
    responses, nodes = fp.branch(bot, [
        "Technical perspective",
        "User perspective",
        "Business perspective"
    ])
+
+   # Example: Parallel processing with par_branch()
+   responses, nodes = fp.par_branch(bot, [
+       "Analyze code structure",
+       "Review documentation",
+       "Check test coverage",
+       "Audit dependencies"
+   ])
+
+   # Example: Parallel dispatch across multiple bots
+   results = fp.par_dispatch(
+       bot_list=[bot1, bot2, bot3],
+       functional_prompt=fp.chain,
+       prompts=["Analyze this component", "Suggest improvements"]
+   )
    ```
 
 4. **Event System (bots.events)**

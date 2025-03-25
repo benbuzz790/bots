@@ -72,8 +72,7 @@ class prompts:
         return textwrap.dedent(f"""INSTRUCTION: We just created requirements for each bot in in other threads. Use message_bot telling {bot_name} their name and to find their requirements file. Instruct them to create two files: one to meet the requirements, and one to test the previous file against those requirements. Tell them not to run tests yet. Remind them about YAGNI and KISS, and note that for our purposes 'mocking' is considered an unecessary element of tests - use real integrationtests instead.""")
     
 
-    def file_debug(bot_name: str):
-        bot_name = bot_name.removesuffix('.bot')
+    def file_debug():
         return textwrap.dedent(f"""
             INSTRUCTION: We just created a subdirectory for bot debug, /clone. 
             Please:
@@ -111,7 +110,7 @@ class prompts:
     def message_bot_first_message(message):
         return "MESSAGE:\n\n" + message
 
-    message_bot_continue = 'Reply with command "/DONE" when MESSAGE has been addressed. thx'
+    message_bot_continue = 'Reply with command "/DONE" when MESSAGE has been addressed.'
 
     file_initialization = project_context + textwrap.dedent("""
     You are a file bot responsible for:

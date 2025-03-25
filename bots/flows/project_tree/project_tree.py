@@ -2,6 +2,7 @@ import traceback
 import textwrap
 import os
 import time
+import shutil
 import bots.tools.code_tools as code_tools
 import bots.tools.terminal_tools as terminal_tools
 import bots.tools.python_editing_tools as python_editing_tools
@@ -24,6 +25,40 @@ def _initialize_root_bot():
     root_bot.set_system_message(prompts.root_initialization)
     return root_bot
 
+def _merge_bot_changes(bot_name, branch_name, clone_dir, original_dir):
+    """
+    Merge changes from a bot's branch back into the main branch.
+    
+    Parameters:
+    - bot_name (str): Name of the bot
+    - branch_name (str): Name of the branch containing the bot's changes
+    - clone_dir (str): Directory containing the bot's clone
+    - original_dir (str): Original project directory
+    
+    Returns:
+    - bool: True if merge successful, False otherwise
+    """
+    # Commit changes in the bot's directory
+    os.chdir(clone_dir)
+    os.system('git add .')
+    os.system(f'git commit -m "Changes from {bot_name}"')
+    os.chdir(original_dir)
+    
+    # Pull changes from bot's branch
+    os.system(f'git fetch {clone_dir} {branch_name}')
+    
+    # Merge changes
+    merge_result = os.system(f'git merge FETCH_HEAD --no-ff -m "Merge changes from {bot_name}"')
+    
+    if merge_result != 0:
+        print(f"⚠️ Merge conflict detected with {bot_name}'s changes")
+        # Handle merge conflicts as needed
+        os.system('git merge --abort')
+        print(f"Changes from {bot_name} were not merged automatically")
+        return False
+    
+    return True
+
 ### Project Creation ###
 
 def generate_project(spec: str):
@@ -37,13 +72,11 @@ def generate_project(spec: str):
     """
     
     try:
-
         # Decide on structure
         print("----- Making Spec -----")
         root_bot = _initialize_root_bot()
         response = root_bot.respond(prompts.root_breakdown_spec(spec))
         print("root: " + response)
-
 
         # Make other bots
         print("----- Making Bots -----")
@@ -55,11 +88,9 @@ def generate_project(spec: str):
             stop_condition = fp.conditions.tool_not_used
             )
         print("root: "+ '\n'.join(responses))
-
-
+        
         # get all new file bots
-        bot_file_list = _get_new_files(start_time, '.bot')
-
+        bot_file_list = _get_new_files(start_time, extension='.bot')
 
         # Create requirements for each bot
         print("----- Making requirements -----")
@@ -70,7 +101,6 @@ def generate_project(spec: str):
             should_branch = False
             )
         
-
         # Create files by instructing each bot to make them in parallel
         branch_point = root_bot.conversation.parent.parent
         print("----- Making Files -----")
@@ -81,31 +111,75 @@ def generate_project(spec: str):
         # return to branch point
         root_bot.conversation = branch_point
 
-
         # Clone and debug
+        print("----- Setting up Git and Clones -----")
         os.makedirs('clones', exist_ok=True)
-
-
+        
+        # Ensure we're in a git repo and have an initial commit
+        if not os.path.exists('.git'):
+            os.system('git init')
+            os.system('git add .')
+            os.system('git commit -m "Initial project structure"')
+        
         bot_list = []
+        bot_branches = {}
+        original_dir = os.getcwd()
+        
         for bot_file in bot_file_list:
-            bot_list.append(load(bot_file))
-
-
-        debug_results= fp.par_dispatch(
-            bot_list = bot_list, 
-            functional_prompt = fp.prompt_while,
-            first_prompt = prompts.file_debug,
-            continue_prompt = "ok",
-            stop_condition = fp.conditions.tool_not_used_debug)
-
-
+            # Extract bot name from file path
+            bot_name = os.path.basename(bot_file).replace('.bot', '')
+            branch_name = f"bot-{bot_name}-{int(time.time())}"
+            bot_branches[bot_name] = branch_name
+            
+            print(f"Creating clone for {bot_name}...")
+            
+            # Create a dedicated clone directory
+            clone_dir = os.path.join('clones', bot_name)
+            os.makedirs(clone_dir, exist_ok=True)
+            
+            # Create a new branch for this bot
+            os.system(f'git checkout -b {branch_name}')
+            
+            # Clone the repo to the dedicated directory
+            os.system(f'git clone --branch {branch_name} . {clone_dir}')
+            
+            # Copy the bot file to the cloned directory
+            bot_file_name = os.path.basename(bot_file)
+            shutil.copy(bot_file, os.path.join(clone_dir, bot_file_name))
+            
+            # Return to main branch
+            os.system('git checkout main || git checkout master')
+            
+            # Load the bot from the cloned directory
+            cloned_bot_path = os.path.join(clone_dir, bot_file_name)
+            bot = load(cloned_bot_path)  # This will set the working directory correctly
+            bot_list.append(bot)
+        
+        # Run debugging with all bots
+        print("----- Debugging -----")
+        debug_results = fp.par_dispatch(
+            bot_list=bot_list, 
+            functional_prompt=fp.prompt_while,
+            first_prompt=prompts.file_debug(),
+            continue_prompt="ok",
+            stop_condition=fp.conditions.tool_not_used_debug
+        )
+        
+        # After debugging, merge changes from each bot
+        print("----- Merging Changes -----")
+        os.chdir(original_dir)  # Return to the original directory
+        
         for bot in bot_list:
-            bot = load(bot_file)
-            _, _ = fp.prompt_while(
-                bot = bot, 
-                first_prompt='Use powershell and ghapi to commit and merge your changes. Be methodical.'
-                )
+            bot_name = bot.name
+            branch_name = bot_branches.get(bot_name)
+            clone_dir = os.path.join('clones', bot_name)
+            
+            print(f"Merging changes from {bot_name}...")
+            merge_successful = _merge_bot_changes(bot_name, branch_name, clone_dir, original_dir)
+            if not merge_successful:
+                print(f"Manual intervention may be required for {bot_name}'s changes")
 
+        # Optional: Uncomment the following sections as needed
 
         # # return to branch
         # root_bot.conversation = branch_point
@@ -159,7 +233,6 @@ def generate_project(spec: str):
         # )
         # # return to branch
         # root_bot.conversation = branch_point
-
 
         # print("----- Cleanup -----")
         # fp.prompt_while(

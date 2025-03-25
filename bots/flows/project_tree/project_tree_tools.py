@@ -1,6 +1,6 @@
 import os
 import bots.flows.functional_prompts as fp
-from bots.foundation.base import Bot, load
+from bots.foundation.base import Bot
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.tools import code_tools, python_editing_tools, terminal_tools
 from bots.flows.project_tree.project_tree_prompts import prompts
@@ -24,7 +24,7 @@ def message_bot(bot_path, message):
 
     try:
         # Set up prompt_while arguments
-        bot = load(bot_path)
+        bot = Bot.load(bot_path)
         first_message = prompts.message_bot_first_message(message)
         continue_prompt = prompts.message_bot_continue
         
