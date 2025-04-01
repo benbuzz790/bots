@@ -1,0 +1,1316 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bots.flows package &mdash; bots 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            bots
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">bots.flows package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-bots.flows.functional_prompts">bots.flows.functional_prompts module</a><ul>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.conditions"><code class="docutils literal notranslate"><span class="pre">conditions</span></code></a><ul>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.conditions.tool_used"><code class="docutils literal notranslate"><span class="pre">conditions.tool_used()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.conditions.tool_not_used"><code class="docutils literal notranslate"><span class="pre">conditions.tool_not_used()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.conditions.tool_not_used_debug"><code class="docutils literal notranslate"><span class="pre">conditions.tool_not_used_debug()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.conditions.said_DONE"><code class="docutils literal notranslate"><span class="pre">conditions.said_DONE()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.conditions.said_DONE_debug"><code class="docutils literal notranslate"><span class="pre">conditions.said_DONE_debug()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.single_prompt"><code class="docutils literal notranslate"><span class="pre">single_prompt()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.chain"><code class="docutils literal notranslate"><span class="pre">chain()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.branch"><code class="docutils literal notranslate"><span class="pre">branch()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.recombine"><code class="docutils literal notranslate"><span class="pre">recombine()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.tree_of_thought"><code class="docutils literal notranslate"><span class="pre">tree_of_thought()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.prompt_while"><code class="docutils literal notranslate"><span class="pre">prompt_while()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.prompt_for"><code class="docutils literal notranslate"><span class="pre">prompt_for()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.chain_while"><code class="docutils literal notranslate"><span class="pre">chain_while()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.branch_while"><code class="docutils literal notranslate"><span class="pre">branch_while()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.par_branch"><code class="docutils literal notranslate"><span class="pre">par_branch()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.par_branch_while"><code class="docutils literal notranslate"><span class="pre">par_branch_while()</span></code></a></li>
+<li><a class="reference internal" href="#bots.flows.functional_prompts.par_dispatch"><code class="docutils literal notranslate"><span class="pre">par_dispatch()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-bots.flows">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">bots</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">bots.flows package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/source/bots.flows.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="bots-flows-package">
+<h1>bots.flows package<a class="headerlink" href="#bots-flows-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-bots.flows.functional_prompts">
+<span id="bots-flows-functional-prompts-module"></span><h2>bots.flows.functional_prompts module<a class="headerlink" href="#module-bots.flows.functional_prompts" title="Link to this heading"></a></h2>
+<p>Functional patterns for structured bot interactions and complex reasoning.</p>
+<p>This module provides a collection of higher-level functions for orchestrating bot
+interactions in common patterns like chains, branches, and trees. These patterns
+enable sophisticated reasoning approaches while maintaining clear structure and
+reproducibility.</p>
+<p>Key Features:
+- Sequential Processing:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>chain(): Execute prompts in sequence</p></li>
+<li><p>chain_while(): Chain with iteration until condition met</p></li>
+<li><p>prompt_while(): Single prompt with iteration</p></li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Parallel Exploration:</dt><dd><ul>
+<li><p>branch(): Explore multiple paths independently</p></li>
+<li><p>branch_while(): Branch with iteration</p></li>
+<li><p>par_branch(): Parallel version of branch()</p></li>
+<li><p>par_branch_while(): Parallel version of branch_while()</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Advanced Reasoning:</dt><dd><ul>
+<li><p>tree_of_thought(): Branch, explore, then synthesize</p></li>
+<li><p>prompt_for(): Dynamic prompts from data</p></li>
+<li><p>par_dispatch(): Compare multiple bots</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>Common Parameters:
+- bot (Bot): The bot instance to use
+- prompts (List[Prompt]): List of prompts to process
+- stop_condition (Condition): Function determining when to stop iteration</p>
+<p>Common Return Values:
+- Response: String containing bot’s response
+- ResponseNode: ConversationNode containing response and context</p>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">chain</span><span class="p">(</span><span class="n">bot</span><span class="p">,</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="s2">&quot;First, analyze the problem...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Now, propose solutions...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Finally, implement the best solution...&quot;</span>
+<span class="gp">... </span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.conditions">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bots.flows.functional_prompts.</span></span><span class="sig-name descname"><span class="pre">conditions</span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#conditions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.conditions" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Predefined condition functions for controlling bot iteration.</p>
+<p>This class provides a collection of static methods that can be used as
+stop conditions in functions like prompt_while() and chain_while(). Each
+condition evaluates some aspect of the bot’s state to determine whether
+iteration should continue.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">No</span> <span class="pre">instance</span> <span class="pre">attributes</span> <span class="pre">-</span> <span class="pre">all</span> <span class="pre">methods</span> <span class="pre">are</span> <span class="pre">static</span></span></dt>
+<dd></dd></dl>
+
+<dl>
+<dt>Common Usage:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Continue until bot stops using tools</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">prompt_while</span><span class="p">(</span><span class="n">bot</span><span class="p">,</span> <span class="n">prompt</span><span class="p">,</span> <span class="n">stop_condition</span><span class="o">=</span><span class="n">conditions</span><span class="o">.</span><span class="n">tool_not_used</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Continue until bot says &quot;DONE&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">chain_while</span><span class="p">(</span><span class="n">bot</span><span class="p">,</span> <span class="n">prompts</span><span class="p">,</span> <span class="n">stop_condition</span><span class="o">=</span><span class="n">conditions</span><span class="o">.</span><span class="n">said_DONE</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Each condition function takes a Bot instance and returns a boolean.
+True typically indicates iteration should stop.</p>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.conditions.tool_used">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tool_used</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#conditions.tool_used"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.conditions.tool_used" title="Link to this definition"></a></dt>
+<dd><p>Check if the bot has used any tools in its last response.</p>
+<p>Use when you need to continue prompting until the bot uses a tool.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to check</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if the bot has used any tools, False otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.conditions.tool_not_used">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tool_not_used</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#conditions.tool_not_used"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.conditions.tool_not_used" title="Link to this definition"></a></dt>
+<dd><p>Check if the bot has not used any tools in its last response.</p>
+<p>Use when you need to continue prompting until the bot stops using tools.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to check</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if the bot has not used any tools, False otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.conditions.tool_not_used_debug">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tool_not_used_debug</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#conditions.tool_not_used_debug"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.conditions.tool_not_used_debug" title="Link to this definition"></a></dt>
+<dd><p>Debug version of tool_not_used that prints the bot’s response.</p>
+<p>Use when debugging why a bot continues to use tools.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to check</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if the bot has not used any tools, False otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.conditions.said_DONE">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">said_DONE</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#conditions.said_DONE"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.conditions.said_DONE" title="Link to this definition"></a></dt>
+<dd><p>Check if the bot’s response contains the word ‘DONE’.</p>
+<p>Use when you need to continue prompting until the bot indicates completion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to check</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if the response contains ‘DONE’, False otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.conditions.said_DONE_debug">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">said_DONE_debug</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#conditions.said_DONE_debug"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.conditions.said_DONE_debug" title="Link to this definition"></a></dt>
+<dd><p>Debug version of said_DONE that prints the bot’s response.</p>
+<p>Use when debugging why a bot isn’t indicating completion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to check</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if the response contains ‘DONE’, False otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.single_prompt">
+<span class="sig-prename descclassname"><span class="pre">bots.flows.functional_prompts.</span></span><span class="sig-name descname"><span class="pre">single_prompt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#single_prompt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.single_prompt" title="Link to this definition"></a></dt>
+<dd><p>Execute a single prompt and return both response and conversation state.</p>
+<p>Use when you need:
+- The simplest possible bot interaction
+- To capture both response and conversation state
+- A building block for custom interaction patterns
+- To understand the fundamental bot interaction model</p>
+<p>This function serves as:
+1. A demonstration of the basic bot interaction pattern
+2. A template for more complex functional patterns
+3. A utility for simple, one-shot interactions
+4. A way to understand conversation node handling</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to interact with. The bot’s current conversation
+state is preserved and updated with this interaction</p></li>
+<li><p><strong>prompt</strong> (<em>Prompt</em>) – The prompt to send to the bot. Should be a clear,
+self-contained instruction or question</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A tuple containing:</dt><dd><ul class="simple">
+<li><p>response (str): The bot’s response text</p></li>
+<li><dl class="simple">
+<dt>node (ConversationNode): Conversation node containing:</dt><dd><ul>
+<li><p>The response</p></li>
+<li><p>The prompt that generated it</p></li>
+<li><p>Links to parent/child nodes</p></li>
+<li><p>Associated metadata</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[Response, ResponseNode]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Simple question and answer</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">response</span><span class="p">,</span> <span class="n">node</span> <span class="o">=</span> <span class="n">basic</span><span class="p">(</span><span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;What is the time complexity of quicksort?&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Tool usage</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">response</span><span class="p">,</span> <span class="n">node</span> <span class="o">=</span> <span class="n">basic</span><span class="p">(</span><span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Review the code in main.py&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">)</span>  <span class="c1"># See what tools were used</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Access conversation context</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">response</span><span class="p">,</span> <span class="n">node</span> <span class="o">=</span> <span class="n">basic</span><span class="p">(</span><span class="n">bot</span><span class="p">,</span> <span class="s2">&quot;Analyze this.&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>  <span class="c1"># See previous context</span>
+</pre></div>
+</div>
+</div>
+<dl class="simple">
+<dt>Implementation Notes:</dt><dd><ul class="simple">
+<li><p>Maintains conversation tree structure</p></li>
+<li><p>Updates bot’s current conversation state</p></li>
+<li><p>Preserves tool usage information</p></li>
+<li><p>Serves as foundation for other patterns</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.chain">
+<span class="sig-prename descclassname"><span class="pre">bots.flows.functional_prompts.</span></span><span class="sig-name descname"><span class="pre">chain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#chain"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.chain" title="Link to this definition"></a></dt>
+<dd><p>Execute a sequence of prompts that build on each other.</p>
+<p>Use when you need to:
+- Guide a bot through a structured sequence of steps
+- Build up complex reasoning through progressive stages
+- Maintain context between related prompts
+- Create a linear flow of thought or analysis</p>
+<p>This is one of the most fundamental patterns, providing a way to break down
+complex tasks into ordered steps where each step builds on the context and
+understanding developed in previous steps.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to interact with. The bot maintains conversation
+context throughout the chain, allowing each step to reference
+and build upon previous responses</p></li>
+<li><p><strong>prompts</strong> (<em>List</em><em>[</em><em>Prompt</em><em>]</em>) – Ordered list of prompts to process sequentially.
+For best results:
+- Make prompts build progressively
+- Reference previous steps when needed
+- Keep a clear logical flow
+- Use explicit transitions between steps</p></li>
+</ul>
+</dd>
+</dl>
+<p>Returns:
+Tuple[List[Response], List[ResponseNode]]: A tuple containing a list of response strings and a list of corresponding ConversationNodes.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.branch">
+<span class="sig-prename descclassname"><span class="pre">bots.flows.functional_prompts.</span></span><span class="sig-name descname"><span class="pre">branch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#branch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.branch" title="Link to this definition"></a></dt>
+<dd><p>Create multiple independent conversation paths from the current state.</p>
+<p>Use when you need to:
+- Explore multiple perspectives simultaneously
+- Analyze different aspects of a problem independently
+- Compare different approaches without cross-influence
+- Generate diverse solutions or viewpoints</p>
+<p>This is a fundamental pattern for parallel thinking that allows exploration
+of multiple lines of thought without letting them influence each other.
+Each branch starts from the same context but develops independently.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to interact with. The bot’s current conversation
+state is used as the starting point for all branches, but each
+branch gets its own independent context</p></li>
+<li><p><strong>prompts</strong> (<em>List</em><em>[</em><em>Prompt</em><em>]</em>) – List of prompts, each creating a separate
+conversation branch. For effective branching:
+- Make prompts independent of each other
+- Focus each prompt on a distinct aspect
+- Be explicit about the perspective or approach
+- Maintain consistent depth across branches</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A tuple containing:</dt><dd><ul class="simple">
+<li><p>responses (List[Optional[str]]): List of responses, one per
+branch. Failed branches contain None</p></li>
+<li><p>nodes (List[Optional[ConversationNode]]): List of conversation
+nodes containing responses and their independent contexts.
+Failed branches contain None</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[List[Response], List[ResponseNode]]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Multi-perspective analysis</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">branch</span><span class="p">(</span><span class="n">bot</span><span class="p">,</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="s2">&quot;Analyze this code from a security perspective...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Analyze this code from a performance perspective...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Analyze this code from a maintainability perspective...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Analyze this code from a scalability perspective...&quot;</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Solution exploration</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">branch</span><span class="p">(</span><span class="n">bot</span><span class="p">,</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="s2">&quot;Solve this using a recursive approach...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Solve this using an iterative approach...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Solve this using a dynamic programming approach...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Solve this using a divide-and-conquer approach...&quot;</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Stakeholder perspectives</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">branch</span><span class="p">(</span><span class="n">bot</span><span class="p">,</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="s2">&quot;Evaluate this feature from a user&#39;s perspective...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Evaluate this feature from a developer&#39;s perspective...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Evaluate this feature from a business perspective...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Evaluate this feature from a maintenance perspective...&quot;</span>
+<span class="gp">... </span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<dl class="simple">
+<dt>Implementation Notes:</dt><dd><ul class="simple">
+<li><p>Creates independent context for each branch</p></li>
+<li><p>Handles branch failures gracefully</p></li>
+<li><p>Maintains tree structure for conversation history</p></li>
+<li><p>Conversation is left at final prompt’s response.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.recombine">
+<span class="sig-prename descclassname"><span class="pre">bots.flows.functional_prompts.</span></span><span class="sig-name descname"><span class="pre">recombine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">responses</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nodes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recombinator_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#recombine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.recombine" title="Link to this definition"></a></dt>
+<dd><p>Synthesize multiple conversation branches into a unified conclusion.</p>
+<p>Use when you need to:
+- Combine insights from parallel explorations
+- Synthesize multiple perspectives into one view
+- Create a summary from multiple analyses
+- Resolve potentially conflicting viewpoints</p>
+<p>This function is a key component in tree-based reasoning patterns,
+typically used after branch() or as part of tree_of_thought() to
+combine parallel thinking paths into a coherent conclusion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot instance. Currently maintained for future
+extensions that might involve bot interaction during
+recombination</p></li>
+<li><p><strong>responses</strong> (<em>List</em><em>[</em><em>Response</em><em>]</em>) – List of response strings from parallel
+branches. Each response typically represents:
+- A different perspective on the problem
+- Analysis of a specific aspect
+- Results from a particular approach</p></li>
+<li><p><strong>nodes</strong> (<em>List</em><em>[</em><em>ResponseNode</em><em>]</em>) – List of conversation nodes containing
+the responses and their context. These nodes maintain the
+full conversation history of each branch</p></li>
+<li><p><strong>recombinator_function</strong> (<em>RecombinatorFunction</em>) – <p>Custom function that
+implements the synthesis logic. Must have signature:
+(List[Response], List[ResponseNode]) -&gt; Tuple[Response, ResponseNode]</p>
+<p>The function should:
+- Process all input responses
+- Consider their relationships
+- Resolve any conflicts
+- Produce a coherent synthesis</p>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A tuple containing:</dt><dd><ul class="simple">
+<li><p>response (str): The synthesized response combining insights
+from all input branches</p></li>
+<li><p>node (ConversationNode): A new conversation node containing
+the combined response and linking to all source branches</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[Response, ResponseNode]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Simple concatenation with formatting</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">basic_combine</span><span class="p">(</span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">combined</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- </span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">responses</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Combined Insights:</span><span class="se">\n</span><span class="si">{</span><span class="n">combined</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">nodes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">final_response</span><span class="p">,</span> <span class="n">final_node</span> <span class="o">=</span> <span class="n">recombine</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span> <span class="n">branch_responses</span><span class="p">,</span> <span class="n">branch_nodes</span><span class="p">,</span> <span class="n">basic_combine</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Structured synthesis with weighting</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">weighted_synthesis</span><span class="p">(</span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="c1"># Weight responses by confidence markers</span>
+<span class="gp">... </span>    <span class="n">weighted</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="gp">... </span>    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">responses</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">confidence</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">&quot;definitely&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">r</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">&quot;clearly&quot;</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="n">weighted</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">confidence</span><span class="p">,</span> <span class="n">r</span><span class="p">))</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="c1"># Sort by confidence and format</span>
+<span class="gp">... </span>    <span class="n">sorted_insights</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">weighted</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+<span class="gp">... </span>    <span class="n">synthesis</span> <span class="o">=</span> <span class="s2">&quot;Synthesis (by confidence):</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sorted_insights</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="n">synthesis</span><span class="p">,</span> <span class="n">nodes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">final_response</span><span class="p">,</span> <span class="n">final_node</span> <span class="o">=</span> <span class="n">recombine</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span> <span class="n">branch_responses</span><span class="p">,</span> <span class="n">branch_nodes</span><span class="p">,</span> <span class="n">weighted_synthesis</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<dl class="simple">
+<dt>Implementation Notes:</dt><dd><ul class="simple">
+<li><p>Maintains conversation tree structure</p></li>
+<li><p>Links final node to all source branches</p></li>
+<li><p>Preserves full conversation history</p></li>
+<li><p>Updates bot’s current conversation state</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.tree_of_thought">
+<span class="sig-prename descclassname"><span class="pre">bots.flows.functional_prompts.</span></span><span class="sig-name descname"><span class="pre">tree_of_thought</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recombinator_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#tree_of_thought"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.tree_of_thought" title="Link to this definition"></a></dt>
+<dd><p>Implement tree-of-thought reasoning for complex problem-solving.</p>
+<p>Use when you need the bot to:
+- Break down complex problems into multiple perspectives
+- Explore different aspects of a problem in parallel
+- Synthesize multiple lines of thinking into a coherent solution
+- Make decisions that require considering multiple factors</p>
+<p>This function implements the tree-of-thought reasoning pattern in three phases:
+1. Branch: Create parallel conversation paths for different aspects
+2. Explore: Process each branch independently
+3. Synthesize: Combine insights from all branches into a final response</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to interact with</p></li>
+<li><p><strong>prompts</strong> (<em>List</em><em>[</em><em>Prompt</em><em>]</em>) – List of prompts that define different thinking
+paths. Each prompt should focus on a distinct aspect or approach
+to the problem. For best results, make prompts:
+- Independent of each other
+- Focused on specific aspects
+- Clear about their perspective</p></li>
+<li><p><strong>recombinator_function</strong> (<em>RecombinatorFunction</em>) – Function that synthesizes
+multiple responses into a final conclusion. Must have signature:
+(List[Response], List[ResponseNode]) -&gt; Tuple[Response, ResponseNode]
+The function should:
+- Consider all responses
+- Identify key insights
+- Resolve conflicts
+- Create a coherent synthesis</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A tuple containing:</dt><dd><ul class="simple">
+<li><p>response (str): The final synthesized response combining
+insights from all branches</p></li>
+<li><p>node (ConversationNode): Conversation node containing the
+final response, with links to all branch nodes</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[Response, ResponseNode]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Technical decision making</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">combine_tech_analysis</span><span class="p">(</span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">insights</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- </span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">responses</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Technical Analysis:</span><span class="se">\n</span><span class="si">{</span><span class="n">insights</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">nodes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">response</span><span class="p">,</span> <span class="n">node</span> <span class="o">=</span> <span class="n">tree_of_thought</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="s2">&quot;Analyze performance implications...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Consider security aspects...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Evaluate maintenance impact...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Assess scalability concerns...&quot;</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="n">combine_tech_analysis</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Product feature evaluation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">synthesize_feature</span><span class="p">(</span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">aspects</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="s2">&quot;Technical&quot;</span><span class="p">,</span> <span class="s2">&quot;Business&quot;</span><span class="p">,</span> <span class="s2">&quot;User&quot;</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="n">responses</span>
+<span class="gp">... </span>    <span class="p">))</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="p">(</span>
+<span class="gp">... </span>        <span class="sa">f</span><span class="s2">&quot;Feature Analysis:</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span>
+<span class="gp">... </span>        <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">aspects</span><span class="o">.</span><span class="n">items</span><span class="p">()),</span>
+<span class="gp">... </span>        <span class="n">nodes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">response</span><span class="p">,</span> <span class="n">node</span> <span class="o">=</span> <span class="n">tree_of_thought</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="s2">&quot;Evaluate technical feasibility...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Analyze business value...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Assess user impact...&quot;</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="n">synthesize_feature</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<dl class="simple">
+<dt>Implementation Notes:</dt><dd><ul class="simple">
+<li><p>Uses branch() internally for parallel exploration</p></li>
+<li><p>Maintains conversation history in a tree structure</p></li>
+<li><p>Final node links to all exploration branches</p></li>
+<li><p>All branch contexts are preserved for reference</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.prompt_while">
+<span class="sig-prename descclassname"><span class="pre">bots.flows.functional_prompts.</span></span><span class="sig-name descname"><span class="pre">prompt_while</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">bot:</span> <span class="pre">~bots.foundation.base.Bot,</span> <span class="pre">first_prompt:</span> <span class="pre">str,</span> <span class="pre">continue_prompt:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'ok',</span> <span class="pre">stop_condition:</span> <span class="pre">~typing.Callable[[~bots.foundation.base.Bot],</span> <span class="pre">bool]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">conditions.tool_not_used&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#prompt_while"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.prompt_while" title="Link to this definition"></a></dt>
+<dd><p>Repeatedly engage a bot in a task until completion criteria are met.</p>
+<p>Use when you need to:
+- Have a bot work iteratively on a task
+- Continue processing until specific criteria are met
+- Maintain context across multiple iterations
+- Handle tasks with unknown completion time</p>
+<p>This is a fundamental iteration pattern that enables:
+- Progressive refinement of solutions
+- Exhaustive processing of complex tasks
+- Self-guided task completion
+- Dynamic interaction flows</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to interact with. Maintains conversation context
+across all iterations, allowing progressive improvement and
+refinement</p></li>
+<li><p><strong>first_prompt</strong> (<em>Prompt</em>) – The initial task prompt. Should:
+- Clearly define the task
+- Set expectations for completion
+- Include any relevant constraints
+- Specify how to indicate completion</p></li>
+<li><p><strong>continue_prompt</strong> (<em>Prompt</em><em>, </em><em>optional</em>) – Prompt sent for each iteration
+after the first. Defaults to ‘ok’. Consider customizing to:
+- Guide the iteration process
+- Maintain task focus
+- Encourage progress
+- Request specific improvements</p></li>
+<li><p><strong>stop_condition</strong> (<em>Condition</em><em>, </em><em>optional</em>) – Function that determines when
+to stop iterating. Takes a Bot parameter and returns bool.
+Common patterns:
+- conditions.tool_not_used (default): Stop when bot stops using tools
+- conditions.said_DONE: Stop when bot indicates completion
+- Custom conditions for specific criteria</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A tuple containing:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>responses (List[str]): All bot responses in order:</dt><dd><ul>
+<li><p>First response to initial prompt</p></li>
+<li><p>All subsequent iteration responses</p></li>
+<li><p>Final response meeting stop condition</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>nodes (List[ConversationNode]): Conversation nodes containing
+responses and their cumulative context</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[List[Response], List[ResponseNode]]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Code debugging with tool usage</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">prompt_while</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Debug this code. Fix all errors you find.&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">continue_prompt</span><span class="o">=</span><span class="s2">&quot;Continue debugging. Any more issues?&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">stop_condition</span><span class="o">=</span><span class="n">conditions</span><span class="o">.</span><span class="n">tool_not_used</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Document improvement with explicit completion</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">prompt_while</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Improve this text. Say DONE when perfect.&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">continue_prompt</span><span class="o">=</span><span class="s2">&quot;What else can be improved?&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">stop_condition</span><span class="o">=</span><span class="n">conditions</span><span class="o">.</span><span class="n">said_DONE</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Custom completion criteria</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">quality_threshold</span><span class="p">(</span><span class="n">bot</span><span class="p">:</span> <span class="n">Bot</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="c1"># Stop when response contains confidence marker</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="s2">&quot;99</span><span class="si">% c</span><span class="s2">onfident&quot;</span> <span class="ow">in</span> <span class="n">bot</span><span class="o">.</span><span class="n">conversation</span><span class="o">.</span><span class="n">content</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">prompt_while</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Optimize this function until confident.&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">continue_prompt</span><span class="o">=</span><span class="s2">&quot;Continue optimization.&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">stop_condition</span><span class="o">=</span><span class="n">quality_threshold</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<dl class="simple">
+<dt>Implementation Notes:</dt><dd><ul class="simple">
+<li><p>Maintains continuous conversation context</p></li>
+<li><p>Preserves all iteration responses</p></li>
+<li><p>Allows custom iteration control</p></li>
+<li><p>Supports progressive refinement</p></li>
+<li><p>Enables self-guided completion</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.prompt_for">
+<span class="sig-prename descclassname"><span class="pre">bots.flows.functional_prompts.</span></span><span class="sig-name descname"><span class="pre">prompt_for</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">items</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dynamic_prompt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">should_branch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#prompt_for"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.prompt_for" title="Link to this definition"></a></dt>
+<dd><p>Generate and process prompts dynamically from a list of items.</p>
+<p>Use when you need to process a collection of items where each item requires
+its own customized prompt. This function enables data-driven conversation
+flows by combining dynamic prompt generation with either sequential or
+parallel processing strategies.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to interact with</p></li>
+<li><p><strong>items</strong> (<em>List</em><em>[</em><em>Any</em><em>]</em>) – List of items to process. Each item will be passed
+to dynamic_prompt to generate a prompt</p></li>
+<li><p><strong>dynamic_prompt</strong> (<em>DynamicPrompt</em>) – Function that generates a prompt string
+for each item. Must have signature: (item: Any) -&gt; str</p></li>
+<li><p><strong>should_branch</strong> (<em>bool</em><em>, </em><em>optional</em>) – <p>Processing strategy flag:
+- If True: Creates parallel conversation branches for each item,</p>
+<blockquote>
+<div><p>preserving independent context for each response</p>
+</div></blockquote>
+<ul>
+<li><p>If False (default): Processes items sequentially in the same
+conversation (i.e. a chain), maintaining cumulative context</p></li>
+</ul>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A tuple containing:</dt><dd><ul class="simple">
+<li><p>responses: List[str] - Bot’s responses, one per input item</p></li>
+<li><p>nodes: List[ConversationNode] - Conversation nodes containing
+the responses and their context</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[List[Response], List[ResponseNode]]</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Define a prompt generator</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">review_prompt</span><span class="p">(</span><span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Review </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2"> for security issues.&quot;</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Process multiple files in parallel branches</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">prompt_for</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="s2">&quot;auth.py&quot;</span><span class="p">,</span> <span class="s2">&quot;api.py&quot;</span><span class="p">,</span> <span class="s2">&quot;data.py&quot;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">review_prompt</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">should_branch</span><span class="o">=</span><span class="kc">True</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Process sequentially, building on previous context</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">prompt_for</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="s2">&quot;Step 1&quot;</span><span class="p">,</span> <span class="s2">&quot;Step 2&quot;</span><span class="p">,</span> <span class="s2">&quot;Step 3&quot;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="k">lambda</span> <span class="n">step</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Complete </span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">should_branch</span><span class="o">=</span><span class="kc">False</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When should_branch is True, this function uses branch() internally,
+allowing parallel exploration of items. When False, it uses chain(),
+which maintains conversation context between items.</p>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.chain_while">
+<span class="sig-prename descclassname"><span class="pre">bots.flows.functional_prompts.</span></span><span class="sig-name descname"><span class="pre">chain_while</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">bot:</span> <span class="pre">~bots.foundation.base.Bot,</span> <span class="pre">prompt_list:</span> <span class="pre">~typing.List[str],</span> <span class="pre">stop_condition:</span> <span class="pre">~typing.Callable[[~bots.foundation.base.Bot],</span> <span class="pre">bool]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">conditions.tool_not_used&gt;,</span> <span class="pre">continue_prompt:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'ok'</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#chain_while"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.chain_while" title="Link to this definition"></a></dt>
+<dd><p>Execute a sequence of steps where each step can iterate until complete.</p>
+<p>Use when you need to:
+- Guide a bot through ordered steps
+- Allow each step to take multiple iterations
+- Ensure completion criteria for each step
+- Maintain context between steps and iterations</p>
+<p>This function combines two fundamental patterns:
+1. chain(): For sequential processing of steps
+2. prompt_while(): For iteration within each step</p>
+<p>The result is a powerful pattern for complex tasks where each stage
+needs to reach completion before moving to the next.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to interact with. Maintains conversation context
+across all steps and iterations</p></li>
+<li><p><strong>prompt_list</strong> (<em>List</em><em>[</em><em>Prompt</em><em>]</em>) – Ordered list of step prompts. Each prompt
+should:
+- Define a clear task or objective
+- Include completion criteria
+- Build on previous steps appropriately
+- Be self-contained for iteration</p></li>
+<li><p><strong>stop_condition</strong> (<em>Condition</em><em>, </em><em>optional</em>) – Function that determines when
+each step is complete. Takes a Bot parameter and returns bool.
+Common options:
+- conditions.tool_not_used (default): Stop when bot stops using tools
+- conditions.said_DONE: Stop when bot indicates completion
+- Custom conditions for specific criteria</p></li>
+<li><p><strong>continue_prompt</strong> (<em>str</em><em>, </em><em>optional</em>) – Prompt to send for each iteration
+after the first when a step hasn’t met its stop condition.
+Defaults to ‘ok’. Consider customizing for clearer interaction:
+- “Continue with this step…”
+- “Keep going until complete…”
+- “Any more improvements needed?”</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A tuple containing:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>responses (List[str]): All bot responses, including:</dt><dd><ul>
+<li><p>Initial response for each step</p></li>
+<li><p>All iteration responses</p></li>
+<li><p>Final response for each step</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>nodes (List[ConversationNode]): Conversation nodes containing
+responses and their cumulative context</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[List[Response], List[ResponseNode]]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Code improvement chain</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">chain_while</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="s2">&quot;Analyze the code and list all issues...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Fix each identified issue...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Add tests for the changes...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Document the improvements...&quot;</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="n">stop_condition</span><span class="o">=</span><span class="n">conditions</span><span class="o">.</span><span class="n">said_DONE</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">continue_prompt</span><span class="o">=</span><span class="s2">&quot;Continue until this step is complete...&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Document review chain</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">chain_while</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="s2">&quot;Review document structure and format...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Check content for accuracy and clarity...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Improve language and style...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Add missing sections and details...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Final proofreading...&quot;</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="n">stop_condition</span><span class="o">=</span><span class="n">conditions</span><span class="o">.</span><span class="n">tool_not_used</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">continue_prompt</span><span class="o">=</span><span class="s2">&quot;Continue reviewing...&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<dl class="simple">
+<dt>Implementation Notes:</dt><dd><ul class="simple">
+<li><p>Maintains continuous context across steps</p></li>
+<li><p>Each step can iterate independently</p></li>
+<li><p>Tool handler is cleared after completion</p></li>
+<li><p>All responses and iterations are preserved</p></li>
+<li><p>Context includes full iteration history</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.branch_while">
+<span class="sig-prename descclassname"><span class="pre">bots.flows.functional_prompts.</span></span><span class="sig-name descname"><span class="pre">branch_while</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">bot:</span> <span class="pre">~bots.foundation.base.Bot,</span> <span class="pre">prompt_list:</span> <span class="pre">~typing.List[str],</span> <span class="pre">stop_condition:</span> <span class="pre">~typing.Callable[[~bots.foundation.base.Bot],</span> <span class="pre">bool]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">conditions.tool_not_used&gt;,</span> <span class="pre">continue_prompt:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'ok'</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#branch_while"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.branch_while" title="Link to this definition"></a></dt>
+<dd><p>Create parallel conversation branches with independent iteration control.</p>
+<p>Use when you need to explore multiple iterative processes independently,
+where each process may require a different number of steps to complete.
+This function combines the parallel exploration capability of branch()
+with the iterative control of prompt_while(), allowing multiple
+concurrent processes to run until they individually reach completion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to interact with</p></li>
+<li><p><strong>prompt_list</strong> (<em>List</em><em>[</em><em>Prompt</em><em>]</em>) – Initial prompts that start each branch.
+Each prompt begins an independent conversation path that can
+iterate multiple times</p></li>
+<li><p><strong>stop_condition</strong> (<em>Condition</em><em>, </em><em>optional</em>) – Function that determines when
+each branch should stop iterating. Takes a Bot parameter and
+returns bool. Defaults to conditions.tool_not_used, which stops
+when the bot stops using tools</p></li>
+<li><p><strong>continue_prompt</strong> (<em>str</em><em>, </em><em>optional</em>) – Prompt to send for each iteration
+after the first when a branch hasn’t met its stop condition.
+Defaults to ‘ok’</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl>
+<dt>A tuple containing:</dt><dd><ul class="simple">
+<li><p>responses: List[str] - Final responses from each branch,
+representing the last response before the stop condition was met</p></li>
+<li><p>nodes: List[ConversationNode] - Conversation nodes containing
+the final responses and their full iteration history</p></li>
+</ul>
+<p>Note: Failed branches return (None, None) at their positions</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[List[Response], List[ResponseNode]]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Optimize multiple functions until they&#39;re &quot;DONE&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">branch_while</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="s2">&quot;Optimize sort() until O(n log n) average case...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Improve search() until O(log n) worst case...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Reduce memory usage in cache() to O(n)...&quot;</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="n">stop_condition</span><span class="o">=</span><span class="n">conditions</span><span class="o">.</span><span class="n">said_DONE</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">continue_prompt</span><span class="o">=</span><span class="s2">&quot;Continue optimization&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Process multiple files until no more tools are used</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">branch_while</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="s2">&quot;Review and fix issues in auth.py...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Review and fix issues in api.py...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Review and fix issues in data.py...&quot;</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="n">stop_condition</span><span class="o">=</span><span class="n">conditions</span><span class="o">.</span><span class="n">tool_not_used</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">continue_prompt</span><span class="o">=</span><span class="s2">&quot;Continue reviewing and fixing&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Each branch maintains its own conversation context and can iterate
+a different number of times. This is useful when some tasks may
+require more steps to complete than others.</p>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.par_branch">
+<span class="sig-prename descclassname"><span class="pre">bots.flows.functional_prompts.</span></span><span class="sig-name descname"><span class="pre">par_branch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#par_branch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.par_branch" title="Link to this definition"></a></dt>
+<dd><p>Create and process multiple conversation branches in parallel.</p>
+<p>Use when you need to explore multiple lines of thinking simultaneously and
+want to leverage multiple CPU cores for faster processing. This is the
+parallel version of branch(), providing the same functionality but with
+improved performance for multiple prompts.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to interact with</p></li>
+<li><p><strong>prompts</strong> (<em>List</em><em>[</em><em>Prompt</em><em>]</em>) – List of prompts to process in parallel</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl>
+<dt>A tuple containing:</dt><dd><ul class="simple">
+<li><p>List of responses, one per prompt</p></li>
+<li><p>List of conversation nodes containing those responses</p></li>
+</ul>
+<p>Note: Failed branches return (None, None) at their positions</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[List[Response], List[ResponseNode]]</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<dl>
+<dt>responses, nodes = par_branch(</dt><dd><p>bot,
+[</p>
+<blockquote>
+<div><p>“Analyze code structure…”,
+“Review documentation…”,
+“Check test coverage…”,
+“Audit dependencies…”</p>
+</div></blockquote>
+<p>]</p>
+</dd>
+</dl>
+<p>)</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This function temporarily disables bot autosave and creates a temporary
+file to facilitate parallel processing. The file is cleaned up after
+completion.</p>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.par_branch_while">
+<span class="sig-prename descclassname"><span class="pre">bots.flows.functional_prompts.</span></span><span class="sig-name descname"><span class="pre">par_branch_while</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">bot:</span> <span class="pre">~bots.foundation.base.Bot,</span> <span class="pre">prompt_list:</span> <span class="pre">~typing.List[str],</span> <span class="pre">stop_condition:</span> <span class="pre">~typing.Callable[[~bots.foundation.base.Bot],</span> <span class="pre">bool]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">conditions.tool_not_used&gt;,</span> <span class="pre">continue_prompt:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'ok'</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#par_branch_while"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.par_branch_while" title="Link to this definition"></a></dt>
+<dd><p>Execute multiple iterative conversation branches in parallel threads.</p>
+<p>Use when you need to explore multiple iterative processes simultaneously
+This is the parallel processing version of branch_while(), using
+ThreadPoolExecutor to run multiple conversation branches concurrently.</p>
+<p>Performance Benefits:
+- Processes multiple branches simultaneously using thread pool
+- Reduces total execution time for multiple long-running tasks
+- Especially effective when branches have similar iteration counts</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bot</strong> (<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a>) – The bot to interact with. A copy is made for each branch
+to ensure thread safety</p></li>
+<li><p><strong>prompt_list</strong> (<em>List</em><em>[</em><em>Prompt</em><em>]</em>) – Initial prompts that start each branch.
+Each prompt begins an independent conversation path that runs
+in its own thread</p></li>
+<li><p><strong>stop_condition</strong> (<em>Condition</em><em>, </em><em>optional</em>) – Function that determines when
+each branch should stop iterating. Takes a Bot parameter and
+returns bool. Must be thread-safe. Defaults to
+conditions.tool_not_used</p></li>
+<li><p><strong>continue_prompt</strong> (<em>str</em><em>, </em><em>optional</em>) – Prompt to send for each iteration
+after the first when a branch hasn’t met its stop condition.
+Defaults to ‘ok’</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl>
+<dt>A tuple containing:</dt><dd><ul class="simple">
+<li><p>responses: List[str] - Final responses from each branch,
+representing the last response before the stop condition was met</p></li>
+<li><p>nodes: List[ConversationNode] - Conversation nodes containing
+the final responses and their full iteration history</p></li>
+</ul>
+<p>Note: Failed branches return (None, None) at their positions</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[List[Response], List[ResponseNode]]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Parallel optimization of multiple components</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">par_branch_while</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="s2">&quot;Optimize database queries until response time &lt; 100ms...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Reduce API latency until &lt; 50ms...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Improve cache hit rate until &gt; 95%...&quot;</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="n">stop_condition</span><span class="o">=</span><span class="n">conditions</span><span class="o">.</span><span class="n">said_DONE</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">continue_prompt</span><span class="o">=</span><span class="s2">&quot;Continue optimization&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Parallel code review and fix</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">par_branch_while</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">bot</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="s2">&quot;Review and fix security issues in auth.py...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Review and fix performance in api.py...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Review and fix error handling in data.py...&quot;</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="n">stop_condition</span><span class="o">=</span><span class="n">conditions</span><span class="o">.</span><span class="n">tool_not_used</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">continue_prompt</span><span class="o">=</span><span class="s2">&quot;Continue fixes&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<dl class="simple">
+<dt>Implementation Notes:</dt><dd><ul class="simple">
+<li><p>Uses temporary file to store bot state for thread safety</p></li>
+<li><p>Disables autosave during parallel processing</p></li>
+<li><p>Each branch gets its own bot instance to prevent interference</p></li>
+<li><p>Conversation nodes are properly re-linked after parallel execution</p></li>
+<li><p>Temporary resources are cleaned up after completion</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.flows.functional_prompts.par_dispatch">
+<span class="sig-prename descclassname"><span class="pre">bots.flows.functional_prompts.</span></span><span class="sig-name descname"><span class="pre">par_dispatch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">functional_prompt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/flows/functional_prompts.html#par_dispatch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.flows.functional_prompts.par_dispatch" title="Link to this definition"></a></dt>
+<dd><p>Execute a functional prompt pattern across multiple bots in parallel.</p>
+<p>Use when you need to:
+- Compare how different LLM providers handle the same task
+- Test multiple bot configurations simultaneously
+- Run the same complex operation across a fleet of bots
+- Benchmark performance across different bot implementations</p>
+<p>This function enables parallel processing of any functional prompt pattern
+(chain, branch, tree_of_thought, etc.) across multiple bots using a thread
+pool for concurrent execution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bot_list</strong> (<em>List</em><em>[</em><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a><em>]</em>) – List of bots to process in parallel. Each bot
+can be a different type (AnthropicBot, OpenAIBot, etc.) or the
+same type with different configurations</p></li>
+<li><p><strong>functional_prompt</strong> (<em>Callable</em><em>[</em><em>[</em><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a><em>, </em><em>...</em><em>]</em><em>, </em><em>Tuple</em><em>[</em><em>Response</em><em>, </em><em>ResponseNode</em><em>]</em><em>]</em>) – Any function from this module that takes a bot as its first
+argument. Common choices include:
+- chain: For sequential processing
+- branch: For parallel exploration
+- tree_of_thought: For complex reasoning</p></li>
+<li><p><strong>**kwargs</strong> (<em>Any</em>) – Additional arguments to pass to the functional prompt.
+These must match the signature of the chosen functional_prompt</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>A list with
+the same length as bot_list, where each element is either:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>A tuple (response, node) from successful execution</p></li>
+<li><p>A tuple (None, None) if that bot’s execution failed</p></li>
+</ul>
+</div></blockquote>
+<p>The ordering matches the input bot_list.</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Tuple[Optional[Response], Optional[ResponseNode]]]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Compare LLM providers on code review</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">par_dispatch</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="n">anthropic_bot</span><span class="p">,</span> <span class="n">openai_bot</span><span class="p">,</span> <span class="n">claude_bot</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">chain</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">prompts</span><span class="o">=</span><span class="p">[</span>
+<span class="gp">... </span>        <span class="s2">&quot;Review code structure...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Identify security issues...&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;Suggest improvements...&quot;</span>
+<span class="gp">... </span>    <span class="p">]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Compare different temperature settings</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">par_dispatch</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="n">AnthropicBot</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">0.1</span><span class="p">),</span>
+<span class="gp">... </span>        <span class="n">AnthropicBot</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">0.5</span><span class="p">),</span>
+<span class="gp">... </span>        <span class="n">AnthropicBot</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="n">tree_of_thought</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">prompts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Solve this complex problem...&quot;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">recombinator_function</span><span class="o">=</span><span class="n">my_recombinator</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Process and compare results</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">bot</span><span class="p">,</span> <span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">node</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bot_list</span><span class="p">,</span> <span class="n">results</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bot</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">bot</span><span class="o">.</span><span class="n">temperature</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">response</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<dl class="simple">
+<dt>Implementation Notes:</dt><dd><ul class="simple">
+<li><p>Uses ThreadPoolExecutor for parallel processing</p></li>
+<li><p>Each bot executes independently in its own thread</p></li>
+<li><p>Failed executions are caught and return (None, None)</p></li>
+<li><p>Order of results matches order of input bots</p></li>
+<li><p>No state is shared between bot executions</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-bots.flows">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-bots.flows" title="Link to this heading"></a></h2>
+<p>Flows Module - Higher-level interaction patterns for bot behaviors.</p>
+<p>This module provides structured patterns and operations for complex bot interactions:</p>
+<ul class="simple">
+<li><p>Core operations (chain, branch, tree_of_thought) for sequential and parallel processing</p></li>
+<li><p>Flow composition utilities for building complex behaviors</p></li>
+</ul>
+<p>The flows module consists of one main components:
+- functional_prompts: Core operations and building blocks</p>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">bots.flows.functional_prompts</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fp</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span><span class="n">bot</span><span class="p">,</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="s2">&quot;First prompt&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Second prompt&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Third prompt&quot;</span>
+<span class="gp">... </span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">responses</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="n">bot</span><span class="p">,</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="s2">&quot;Approach A&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Approach B&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Approach C&quot;</span>
+<span class="gp">... </span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, benbuzz790.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

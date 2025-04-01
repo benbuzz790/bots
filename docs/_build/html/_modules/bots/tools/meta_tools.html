@@ -1,0 +1,223 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bots.tools.meta_tools &mdash; bots 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            bots
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">bots</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">bots.tools.meta_tools</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for bots.tools.meta_tools</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">bots.tools.code_tools</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">code_tools</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">bots.tools.terminal_tools</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">terminal_tools</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">bots.tools.python_editing_tools</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">python_editing_tools</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bots.foundation.anthropic_bots</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnthropicBot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bots.foundation.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Bot</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">bots.flows.functional_prompts</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fp</span>
+
+
+<div class="viewcode-block" id="message_bot">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.meta_tools.message_bot">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">message_bot</span><span class="p">(</span><span class="n">bot_path</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Loads a bot, sends it a message, and allows it to work.</span>
+
+<span class="sd">    Use to prepare a bot to do a task and to allow it to work. Returns control when the</span>
+<span class="sd">    bot replies with &#39;/DONE&#39;.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    - bot_path (str): File path to the saved bot</span>
+<span class="sd">    - message (str): The message to send to the bot</span>
+
+<span class="sd">    Returns the bot&#39;s first response, a list of tool-uses in order, and final response as a string.</span>
+
+<span class="sd">    Does NOT save the bot.</span>
+
+<span class="sd">    cost: varies</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">bot</span> <span class="o">=</span> <span class="n">Bot</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">bot_path</span><span class="p">)</span>
+        <span class="n">bot</span><span class="o">.</span><span class="n">autosave</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">first_message</span> <span class="o">=</span> <span class="s1">&#39;MESSAGE:</span><span class="se">\n\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">message</span>
+        <span class="n">continue_prompt</span> <span class="o">=</span> <span class="s2">&quot;reply &#39;/DONE&#39; to stop when MESSAGE is addressed.&quot;</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">stop_condition</span><span class="p">(</span><span class="n">bot</span><span class="p">:</span> <span class="n">Bot</span><span class="p">):</span>
+            <span class="n">tool_name</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+            <span class="n">tools</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+            <span class="k">if</span> <span class="n">bot</span><span class="o">.</span><span class="n">tool_handler</span><span class="o">.</span><span class="n">requests</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">request</span> <span class="ow">in</span> <span class="n">bot</span><span class="o">.</span><span class="n">tool_handler</span><span class="o">.</span><span class="n">requests</span><span class="p">:</span>
+                    <span class="n">tool_name</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">tool_handler</span><span class="o">.</span><span class="n">tool_name_and_input</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+                <span class="n">tools</span> <span class="o">+=</span> <span class="s1">&#39;- &#39;</span> <span class="o">+</span> <span class="n">tool_name</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">conversation</span><span class="o">.</span><span class="n">content</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">bot</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;: &#39;</span> <span class="o">+</span> <span class="n">response</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">tool_name</span><span class="p">)</span>
+            <span class="k">return</span> <span class="s1">&#39;/DONE&#39;</span> <span class="ow">in</span> <span class="n">response</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">prompt_while</span><span class="p">(</span><span class="n">bot</span><span class="p">,</span> <span class="n">first_message</span><span class="p">,</span> <span class="n">continue_prompt</span><span class="p">,</span>
+            <span class="n">stop_condition</span><span class="p">)</span>
+        <span class="n">tools</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">:</span>
+            <span class="n">tool_name</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+            <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">:</span>
+                    <span class="n">tool_name</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">tool_handler</span><span class="o">.</span><span class="n">tool_name_and_input</span><span class="p">(</span><span class="n">call</span><span class="p">)</span>
+                    <span class="n">tools</span> <span class="o">+=</span> <span class="s1">&#39;- &#39;</span> <span class="o">+</span> <span class="n">tool_name</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="k">return</span> <span class="n">nodes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">content</span> <span class="o">+</span> <span class="s1">&#39;:</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">tools</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">---&#39;</span> <span class="o">+</span> <span class="n">nodes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">content</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_process_error</span><span class="p">(</span><span class="n">error</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="initialize_file_bot">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.meta_tools.initialize_file_bot">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">initialize_file_bot</span><span class="p">(</span><span class="n">file_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">system_message</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span><span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates and initializes a new file-editing bot, saving it to disk.</span>
+<span class="sd">    Creates any necessary directories from the file_name path if they don&#39;t exist.</span>
+
+<span class="sd">    Use when you need to create a new bot to handle implementation of a specific file.</span>
+<span class="sd">    The bot will be initialized with appropriate file-level tools and context.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    - file_name (str): Name of the file this bot will manage (can include directory path)</span>
+
+<span class="sd">    Returns success message with bot&#39;s file path or an error message string.</span>
+
+<span class="sd">    cost: low</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">directory</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">directory</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">name</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+        <span class="n">file_bot</span> <span class="o">=</span> <span class="n">AnthropicBot</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">file_bot</span><span class="o">.</span><span class="n">set_system_message</span><span class="p">(</span><span class="n">system_message</span><span class="p">)</span>
+        <span class="n">file_bot</span><span class="o">.</span><span class="n">add_tools</span><span class="p">(</span><span class="n">code_tools</span><span class="p">)</span>
+        <span class="n">file_bot</span><span class="o">.</span><span class="n">add_tools</span><span class="p">(</span><span class="n">terminal_tools</span><span class="p">)</span>
+        <span class="n">file_bot</span><span class="o">.</span><span class="n">add_tools</span><span class="p">(</span><span class="n">python_editing_tools</span><span class="p">)</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">file_bot</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">file_bot</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;Success: file bot created at </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">&#39;</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_process_error</span><span class="p">(</span><span class="n">error</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_process_error</span><span class="p">(</span><span class="n">error</span><span class="p">):</span>
+    <span class="n">error_message</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;Tool Failed: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span>
+    <span class="n">error_message</span> <span class="o">+=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Traceback:</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_tb</span><span class="p">(</span><span class="n">error</span><span class="o">.</span><span class="n">__traceback__</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">error_message</span>
+
+
+<div class="viewcode-block" id="generate_project">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.meta_tools.generate_project">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_project</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span><span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Executes the standard process for project generation using a hierarchical system of specialized AI assistants.</span>
+<span class="sd">    </span>
+<span class="sd">    Use when you need to create a complete Python project from a specification. The system will:</span>
+<span class="sd">    1. Analyze project specifications and create module requirements</span>
+<span class="sd">    2. Break down the project into logical modules</span>
+<span class="sd">    3. Create and coordinate specialized bots for implementation</span>
+<span class="sd">    4. Implement and test the code</span>
+<span class="sd">    5. Validate against requirements</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    - spec (str): Project specification text describing the desired system</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    str: Success message or error message string</span>
+<span class="sd">    </span>
+<span class="sd">    cost: very high</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">bots.flows.project_tree.project_tree</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">project_tree</span>
+    <span class="k">return</span> <span class="n">project_tree</span><span class="o">.</span><span class="n">generate_project</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, benbuzz790.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
