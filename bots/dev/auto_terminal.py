@@ -1,29 +1,3 @@
-from bots.foundation.openai_bots import ChatGPT_Bot
-from bots.foundation.anthropic_bots import AnthropicBot
-import sys
-import bots.tools.python_editing_tools
-import bots.tools.terminal_tools
-import bots.tools.code_tools
-import textwrap
-from datetime import datetime as datetime
-from typing import Optional, List, Dict, Any
-import json
-from tkinter import filedialog
-import os
-import re
-
-import platform
-# Import platform-specific modules
-if platform.system() == 'Windows':
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-
-
-
-
 help_msg: str = """
 This program is an interactive terminal that uses Anthropic's Claude Sonnet 3.5.
 It allows you to chat with the LLM, save and load bot states, and execute various commands.
@@ -49,6 +23,29 @@ Available commands:
 Type your messages normally to chat.
 """
 
+from bots.foundation.openai_bots import ChatGPT_Bot
+from bots.foundation.anthropic_bots import AnthropicBot
+import sys
+import bots.tools.python_editing_tools
+import bots.tools.terminal_tools
+import bots.tools.code_tools
+import textwrap
+from datetime import datetime as datetime
+from typing import Optional, List, Dict, Any
+import json
+from tkinter import filedialog
+import os
+import re
+
+import platform
+# Import platform-specific modules
+if platform.system() == 'Windows':
+    import msvcrt
+else:
+    import select
+    import termios
+    import tty
+
 def check_for_interrupt() -> bool:
     """
     Check if user pressed Escape without blocking execution.
@@ -70,7 +67,7 @@ def check_for_interrupt() -> bool:
         return False
 
 def setup_raw_mode():
-    """Set up terminal for raw input mode on Unix systems"""
+    """Set up terminal for raw input mode on Unix systems (untested)"""
     if platform.system() != 'Windows':
         # Save the terminal settings
         fd = sys.stdin.fileno()

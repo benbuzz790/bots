@@ -1,26 +1,112 @@
-import unittest
-import os
+"""Test suite for AnthropicBot save and load functionality.
+
+This module contains comprehensive tests for verifying the persistence
+and restoration capabilities of AnthropicBot instances. It tests:
+
+- Basic bot attribute persistence (name, model, settings)
+- Conversation history preservation
+- Tool configuration and execution state
+- Custom attribute handling
+- Error cases and edge conditions
+- Working directory independence
+- Multiple save/load cycles
+
+The test suite ensures that bots can be properly serialized and
+deserialized while maintaining their complete state and functionality.
+"""
+
 import json
-import tempfile
+import os
 import shutil
+import tempfile
+import unittest
+
 from bots.foundation.base import Bot, Engines
 from bots.foundation.anthropic_bots import AnthropicBot
 import bots.tools.python_editing_tools as python_editing_tools
 
 class TestSaveLoadAnthropic(unittest.TestCase):
+    """Test suite for AnthropicBot save and load functionality.
+    
+    This test suite verifies the complete serialization and deserialization
+    capabilities of AnthropicBot instances. It ensures that all bot state
+    is properly preserved across save/load operations.
+    
+    Attributes:
+        temp_dir (str): Temporary directory path for test file operations
+        bot (AnthropicBot): Test bot instance with Claude 3.5 Sonnet configuration
+    
+    Test Categories:
+        - Basic Persistence: Core bot attribute preservation
+        - Conversation: Chat history and structure preservation
+        - Tools: Tool configuration and execution state
+        - Custom State: User-defined attribute handling
+        - Error Handling: Corrupt files and edge cases
+        - Directory Handling: Path resolution and working directory
+    """
 
-    def setUp(self):
+    def setUp(self) -> 'TestSaveLoadAnthropic':
+        """Set up test environment before each test.
+        
+        Creates a temporary directory and initializes a test AnthropicBot instance
+        with Claude 3.5 Sonnet configuration.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            TestSaveLoadAnthropic: Self reference for method chaining
+        
+        Note:
+            The temporary directory is created using tempfile.mkdtemp()
+            and will be cleaned up in tearDown().
+        """
         self.temp_dir = tempfile.mkdtemp()
         self.bot = AnthropicBot(name='TestClaude', model_engine=Engines.CLAUDE35_SONNET_20240620)
         return self
 
-    def tearDown(self):
+    def tearDown(self) -> None:
+        """Clean up test environment after each test.
+        
+        Removes the temporary directory and all its contents created during setUp.
+        Handles cleanup errors gracefully with warning messages.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Note:
+            Uses shutil.rmtree with ignore_errors=True for robust cleanup
+        """
         try:
             shutil.rmtree(self.temp_dir, ignore_errors=True)
         except Exception as e:
             print(f'Warning: Could not clean up {self.temp_dir}: {e}')
 
-    def test_basic_save_load(self):
+    def test_basic_save_load(self) -> None:
+        """Test basic bot attribute persistence during save and load operations.
+        
+        Use when verifying that fundamental bot attributes (name, model, settings)
+        are correctly preserved during serialization and deserialization.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Tests:
+            - Bot name preservation
+            - Model engine configuration
+            - Token limits
+            - Temperature settings
+            - Role configurations
+        
+        Raises:
+            AssertionError: If any bot attributes don't match after reload
+        """
         save_path = os.path.join(self.temp_dir, self.bot.name)
         save_path = self.bot.save(save_path)
         loaded_bot = Bot.load(save_path)
@@ -31,7 +117,30 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.assertEqual(self.bot.role, loaded_bot.role)
         self.assertEqual(self.bot.role_description, loaded_bot.role_description)
 
-    def test_save_load_after_conversation(self):
+    def test_save_load_after_conversation(self) -> None:
+        """Test conversation history persistence during save and load operations.
+        
+        Use when verifying that complete conversation trees and their content
+        are correctly preserved during serialization and deserialization.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Tests:
+            - Conversation node count preservation
+            - Conversation content preservation
+            - Conversation structure integrity
+        
+        Raises:
+            AssertionError: If conversation state doesn't match after reload
+        
+        Note:
+            Tests a three-message conversation sequence to ensure proper
+            conversation tree structure preservation
+        """
         self.bot.respond('Hello, how are you?')
         self.bot.respond("What's the weather like today?")
         self.bot.respond('Thank you for the information.')
@@ -41,12 +150,36 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.assertEqual(self.bot.conversation._node_count(), loaded_bot.conversation._node_count())
         self.assertEqual(self.bot.conversation.content, loaded_bot.conversation.content)
 
-    def test_tool_execution_results(self):
-        """Test that tool results are properly saved in conversation nodes"""
+    def test_tool_execution_results(self) -> None:
+        """Test tool execution result persistence in conversation nodes.
+        
+        Use when verifying that tool execution results are properly saved
+        and restored within the conversation history nodes.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Tests:
+            - Tool result storage in conversation nodes
+            - Tool result preservation during save/load
+            - Result accessibility after loading
+            - Tool result value verification
+        
+        Raises:
+            AssertionError: If tool results are not properly preserved
+        
+        Note:
+            Uses a simple addition tool to generate verifiable results
+            and checks both completed and pending tool results
+        """
 
-        def simple_addition(x, y) -> str:
+        def simple_addition(x: str | int | float, y: str | int | float) -> str:
             """Returns x + y with appropriate type conversion"""
             return str(int(x) + int(y))
+
         self.bot.add_tools(simple_addition)
         self.bot.respond('What is 2 + 3?')
         tool_results = self.bot.conversation.tool_results[0].values() if self.bot.conversation.tool_results else []
@@ -59,12 +192,37 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         loaded_pending_results = loaded_bot.conversation.pending_results[0].values() if loaded_bot.conversation.pending_results else []
         self.assertTrue(any(('5' in str(v) for v in loaded_tool_results)) or any(('5' in str(v) for v in loaded_pending_results)))
 
-    def test_save_load_with_tool_use(self):
-        """Test that tool results are properly maintained in individual conversation nodes"""
-
-        def simple_addition(x, y) -> str:
+    def test_save_load_with_tool_use(self) -> None:
+        """Test tool functionality persistence through multiple interactions.
+        
+        Use when verifying that tools remain functional across multiple
+        save/load cycles and continue to produce correct results.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Tests:
+            - Tool execution before and after save/load
+            - Multiple sequential tool operations
+            - Tool result persistence
+            - Tool handler state preservation
+            - Result value accuracy across operations
+        
+        Raises:
+            AssertionError: If tool functionality or results don't match
+                after save/load operations
+        
+        Note:
+            Performs multiple arithmetic operations to verify both
+            tool functionality and result accuracy
+        """
+        def simple_addition(x: str | int | float, y: str | int | float) -> str:
             """Returns x + y with appropriate type conversion"""
             return str(int(x) + int(y))
+
         self.bot.add_tools(simple_addition)
         interactions = ['What is 5 + 3?', 'Can you add 10 and 20?', 'Please add 7 and 15']
         for query in interactions:
@@ -86,8 +244,33 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         loaded_pending_results = loaded_bot.conversation.pending_results[0].values() if loaded_bot.conversation.pending_results else []
         self.assertTrue(any(('42' in str(v) for v in loaded_tool_results)) or any(('42' in str(v) for v in loaded_pending_results)))
 
-    def test_module_tool_persistence(self):
-        """Test that module tools persist correctly through multiple save/load cycles"""
+    def test_module_tool_persistence(self) -> None:
+        """Test module-based tool persistence through multiple save/load cycles.
+        
+        Use when verifying that tools imported from modules maintain their
+        functionality and configuration through multiple serialization cycles.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Tests:
+            - Module tool count preservation
+            - Function name mapping preservation
+            - Tool callability after multiple save/load cycles
+            - Tool configuration consistency
+            - Function map integrity
+        
+        Raises:
+            AssertionError: If tool configurations don't match or functions
+                become uncallable after save/load cycles
+        
+        Note:
+            Uses python_editing_tools module as test subject and performs
+            multiple save/load cycles to ensure stability
+        """
         self.bot.add_tools(python_editing_tools)
         initial_tool_count = len(self.bot.tool_handler.tools)
         initial_function_names = set(self.bot.tool_handler.function_map.keys())
@@ -104,8 +287,33 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         for func_name in initial_function_names:
             self.assertTrue(callable(loaded_bot2.tool_handler.function_map[func_name]), f'Function {func_name} is not callable after two save/load cycles')
 
-    def test_save_load_empty_bot(self):
-        """Test saving and loading a bot that has no conversation history"""
+    def test_save_load_empty_bot(self) -> None:
+        """Test save/load operations on a bot with no conversation history.
+        
+        Use when verifying that new bots can be properly serialized and
+        maintain correct initial state after deserialization.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Tests:
+            - Empty conversation tree structure
+            - Root node properties
+            - Post-load conversation capabilities
+            - Node count and structure after first interaction
+            - Node role assignments
+        
+        Raises:
+            AssertionError: If initial state or conversation structure
+                doesn't match expected values
+        
+        Note:
+            Verifies both the initial empty state and the bot's ability
+            to properly function after loading from an empty state
+        """
         fresh_bot = AnthropicBot(name='TestClaude', model_engine=Engines.CLAUDE35_SONNET_20240620)
         save_path = os.path.join(self.temp_dir, f'empty_{fresh_bot.name}')
         save_path = fresh_bot.save(save_path)
@@ -130,7 +338,33 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.assertEqual(assistant_response.role, 'assistant')
         self.assertTrue(len(assistant_response.content) > 0)
 
-    def test_save_load_with_file_tools(self):
+    def test_save_load_with_file_tools(self) -> None:
+        """Test persistence of tools loaded from file paths.
+        
+        Use when verifying that tools loaded from file paths maintain
+        their configuration and functionality after serialization.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Tests:
+            - Tool count preservation
+            - Tool configuration matching
+            - Tool parameter preservation
+            - Tool return type consistency
+            - Function type preservation
+            - Tool source path handling
+        
+        Raises:
+            AssertionError: If tool configurations don't match after reload
+        
+        Note:
+            Uses python_editing_tools.py as a test subject for file-based
+            tool loading and persistence verification
+        """
         tool_file_path = 'bots/tools/python_editing_tools.py'
         self.bot.add_tools(tool_file_path)
         save_path = os.path.join(self.temp_dir, f'file_tool_{self.bot.name}')
@@ -145,7 +379,34 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             if 'function' in original_tool and 'function' in loaded_tool:
                 self.assertEqual(type(original_tool['function']), type(loaded_tool['function']))
 
-    def test_save_load_with_module_tools(self):
+    def test_save_load_with_module_tools(self) -> None:
+        """Test persistence of tools loaded from imported modules.
+        
+        Use when verifying that tools imported directly from modules
+        maintain their configuration after serialization.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Tests:
+            - Tool count preservation
+            - Tool name preservation
+            - Parameter configuration matching
+            - Return type consistency
+            - Tool type verification
+            - Module import path handling
+        
+        Raises:
+            AssertionError: If tool configurations or functionality
+                don't match after reload
+        
+        Note:
+            Differs from file_tools test by using direct module imports
+            rather than file paths for tool loading
+        """
         self.bot.add_tools(python_editing_tools)
         save_path = os.path.join(self.temp_dir, f'module_tool_{self.bot.name}')
         save_path = self.bot.save(save_path)
@@ -157,7 +418,34 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             self.assertEqual(original_tool.get('returns', {}).get('type'), loaded_tool.get('returns', {}).get('type'))
             self.assertEqual(original_tool.get('type'), loaded_tool.get('type'))
 
-    def test_custom_attributes(self):
+    def test_custom_attributes(self) -> None:
+        """Test persistence of custom bot attributes.
+        
+        Use when verifying that arbitrary custom attributes added to the bot
+        are correctly preserved during serialization and deserialization.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Tests:
+            - String attribute preservation
+            - Integer attribute preservation
+            - Dictionary attribute preservation
+            - Type consistency after loading
+            - Non-existent attribute handling
+            - AttributeError raising
+        
+        Raises:
+            AssertionError: If attribute values or types don't match after reload
+            AttributeError: When accessing non-existent attributes (expected)
+        
+        Note:
+            Tests both simple and complex data types to ensure proper
+            serialization of custom attributes
+        """
         self.bot.custom_attr1 = 'Test Value'
         self.bot.custom_attr2 = 42
         self.bot.custom_attr3 = {'key': 'value'}
@@ -173,8 +461,33 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         with self.assertRaises(AttributeError):
             _ = loaded_bot.non_existent_attr
 
-    def test_file_creation(self):
-        """Test that save files are created in the expected location"""
+    def test_file_creation(self) -> None:
+        """Test bot save file creation and naming.
+        
+        Use when verifying that bot save files are created in the correct
+        locations with proper file extensions.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Tests:
+            - Explicit path save file creation
+            - Automatic path save file creation
+            - File extension handling
+            - File existence verification
+            - Path resolution
+        
+        Raises:
+            AssertionError: If files aren't created in expected locations
+                or with correct extensions
+        
+        Note:
+            Tests both explicit path saving and automatic path generation
+            to ensure consistent file handling
+        """
         save_path = os.path.join(self.temp_dir, f'explicit_{self.bot.name}')
         actual_path = self.bot.save(save_path)
         self.assertTrue(os.path.exists(actual_path))
@@ -183,8 +496,33 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.assertTrue(os.path.exists(auto_path))
         self.assertTrue(auto_path.endswith('.bot'))
 
-    def test_corrupted_save(self):
-        """Test handling of corrupted save files"""
+    def test_corrupted_save(self) -> None:
+        """Test handling of corrupted save file scenarios.
+        
+        Use when verifying that the system properly handles and reports
+        errors when loading corrupted or invalid save files.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Tests:
+            - Invalid JSON handling
+            - Invalid model configuration handling
+            - Appropriate error raising
+            - Error message clarity
+        
+        Raises:
+            AssertionError: If incorrect error types are raised
+            json.JSONDecodeError: When loading invalid JSON (expected)
+            ValueError: When loading invalid model configuration (expected)
+        
+        Note:
+            Tests multiple corruption scenarios to ensure robust error
+            handling and appropriate error reporting
+        """
         save_path = os.path.join(self.temp_dir, f'corrupted_{self.bot.name}.bot')
         self.bot.save(save_path[:-4])
         with open(save_path, 'w') as f:
@@ -196,9 +534,33 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         with self.assertRaises(ValueError):
             Bot.load(save_path)
 
-    def test_working_directory_independence(self):
-        """Test that bots can be saved and loaded from different working directories
-    while maintaining proper tool results state"""
+    def test_working_directory_independence(self) -> None:
+        """Test bot persistence across different working directories.
+        
+        Use when verifying that bots can be saved and loaded from different
+        working directories while maintaining proper tool functionality.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Tests:
+            - Cross-directory loading
+            - Tool functionality in new directory
+            - Result persistence across directories
+            - Path resolution handling
+            - Relative path handling
+        
+        Raises:
+            AssertionError: If tool functionality or results don't match
+                when loading from different directories
+        
+        Note:
+            Changes working directory during test to verify path independence,
+            ensures cleanup of working directory state
+        """
         subdir = os.path.join(self.temp_dir, 'subdir')
         os.makedirs(subdir, exist_ok=True)
         self.bot.add_tools(simple_addition)
@@ -217,9 +579,35 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         finally:
             os.chdir(original_cwd)
 
-    def test_mixed_tool_sources(self):
-        """Test saving and loading bots with tools from multiple sources"""
-
+    def test_mixed_tool_sources(self) -> None:
+        """Test persistence of tools from multiple sources.
+        
+        Use when verifying that bots with tools from different sources
+        (inline functions, imported modules, etc.) maintain functionality
+        after serialization.
+        
+        Args:
+            self: Test class instance
+        
+        Returns:
+            None
+        
+        Tests:
+            - Multiple tool source handling
+            - Tool result consistency
+            - Pre-save tool functionality
+            - Post-load tool functionality
+            - Result accuracy verification
+            - Tool source independence
+        
+        Raises:
+            AssertionError: If tool results don't match expected values
+                or if tool functionality is lost after reload
+        
+        Note:
+            Combines inline functions, imported functions, and module tools
+            to verify comprehensive tool persistence
+        """
         def floor_str(x) -> str:
             """Returns floor of x as a string"""
             import math
