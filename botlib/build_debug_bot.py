@@ -17,6 +17,10 @@ Tool Configuration:
 - terminal_tools: For system interaction and command execution
 - python_editing_tools: For Python-specific code modifications
 
+Performance Considerations:
+    The bot maintains conversation history which can grow over time. For long-running
+    sessions, consider creating new instances periodically to manage memory usage.
+
 Example Usage:
     # Load the configured debug bot
     from bots import load
