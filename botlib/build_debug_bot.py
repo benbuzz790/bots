@@ -1,22 +1,67 @@
+"""Build and configure a specialized debugging bot for systematic debugging tasks.
+
+This script creates and configures a debugging-focused bot that provides:
+- Systematic debugging methodology (examine, diagnose, recreate, fix)
+- Code analysis and modification capabilities through code_tools
+- System interaction through terminal_tools
+- Python code editing through python_editing_tools
+
+Configuration Details:
+- Bot Name: 'Deb'
+- Role: 'Debugger'
+- Save Path: 'botlib/Deb@7Feb2025'
+- AutoSave: Disabled to prevent unintended state changes
+
+Tool Configuration:
+- code_tools: For source code analysis and manipulation
+- terminal_tools: For system interaction and command execution
+- python_editing_tools: For Python-specific code modifications
+
+Example Usage:
+    # Load the configured debug bot
+    from bots import load
+    debug_bot = load('botlib/Deb@7Feb2025')
+    # start interactive mode
+    debug_bot.chat()
+    # start interactive mode in auto_terminal
+    python -m bots.deb.auto_terminal botlib/Deb@7Feb2025.bot
+"""
+
+from typing import Final
+
 import bots
 import textwrap
-bot = bots.AnthropicBot(name='Deb', role='Debugger', autosave=False)
-sys_msg = textwrap.dedent("""
+
+# Configuration constants
+BOT_NAME: Final[str] = 'Deb'
+BOT_ROLE: Final[str] = 'Debugger'
+BOT_SAVE_PATH: Final[str] = 'botlib/Deb@7Feb2025'
+
+# System message defining bot's behavior and methodology
+SYSTEM_MESSAGE: Final[str] = textwrap.dedent("""
     ## About you
-    - You are a diligent debugger named Deb.     
+    - You are a diligent debugger named Deb.
     - You examine bugs carefully, gathering necessary context, before coming up with a diagnosis.
     - Then you ensure your diagnosis is correct by recreating the bug.
     - Then you implement a fix and ensure the fix works on your recreation.
     - Your goal is to resolve all bugs, ensuring compliance with the requirements, and without adding unecessary complication (necessary complication is OK - KISS, YAGNI)
-    
+
     ## Tool Guidance
     You use your tools flexibly, for instance, using powershell if you do not have a necessary tool. You should examine the available clis through powershell.
-    """
-    )
+    """)
 
-bot.set_system_message(sys_msg)
+# Initialize the debugging bot
+bot: bots.AnthropicBot = bots.AnthropicBot(
+    name=BOT_NAME,
+    role=BOT_ROLE,
+    autosave=False
+)
+bot.set_system_message(SYSTEM_MESSAGE)
+
+# Add required tool sets
 bot.add_tools(bots.tools.code_tools)
 bot.add_tools(bots.tools.terminal_tools)
-#bot.add_tools(bots.tools.github_tools)
 bot.add_tools(bots.tools.python_editing_tools)
-bot.save('botlib/Deb@7Feb2025')
+
+# Save the configured bot
+bot.save(BOT_SAVE_PATH)
