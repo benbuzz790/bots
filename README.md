@@ -80,18 +80,7 @@ The core of the Bots library is built on a robust foundation:
    )
    ```
 
-4. **Event System (bots.events)**
-   - Schedule bot operations
-   - Handle event-triggered behaviors
-   - Manage long-running tasks
-   - Coordinate multiple bots
-   ```python
-   event_system = BotEventSystem()
-   event_system.schedule_bot('daily_report', bot, report_flow, cron='0 9 * * *')
-   event_system.subscribe_bot('new_issue', bot, handle_issue)
-   ```
-
-5. **Lazy Decorator (bots.lazy)**
+4. **Lazy Decorator (bots.lazy)**
    - Runtime code generation via LLM
    - Context-aware implementations
    ```python
@@ -199,48 +188,9 @@ def my_tool(param: type) -> str:
         return f'Error: {str(e)}'
 ```
 
-### Event-Driven Bots
-
-```python
-class ProjectBot:
-    def __init__(self):
-        self.bot = bots.load('github.bot')
-        self.event_system = BotEventSystem()
-        
-        # Event handlers
-        self.event_system.subscribe_bot('new_issue', self.bot, self.handle_issue)
-        self.event_system.subscribe_bot('new_pr', self.bot, self.handle_pr)
-        
-        # Scheduled tasks
-        self.event_system.schedule_bot(
-            'daily_triage',
-            self.bot,
-            self.daily_triage,
-            cron='0 9 * * *'
-        )
-```
-
-## Future Work
-
-- Enhanced tool libraries:
-  - Expanded GitHub integration
-  - Discord bot capabilities
-  - Reddit interaction tools
-- Advanced conversation management:
-  - Branch comparison tools
-  - Context optimization
-- Performance improvements:
-  - Parallel tool execution
-  - Batch processing
-  - Rate limiting and queueing
-- Documentation and examples:
-  - Common patterns library
-  - Best practices guide
-  - More example bots
-
 ## Contributing
 
-We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines.
+We welcome contributions!
 
 ## License
 
