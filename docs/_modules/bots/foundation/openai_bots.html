@@ -1,0 +1,539 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bots.foundation.openai_bots &mdash; bots 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            bots
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">bots</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">bots.foundation.openai_bots</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for bots.foundation.openai_bots</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;OpenAI-specific implementations of the bot framework components.</span>
+
+<span class="sd">Use when you need to create and manage bots that interface with OpenAI&#39;s chat completion API.</span>
+<span class="sd">This module provides OpenAI-specific implementations of conversation nodes, tool handling,</span>
+<span class="sd">message processing, and the main bot class.</span>
+
+<span class="sd">Key Components:</span>
+<span class="sd">    - OpenAINode: Manages conversation history in OpenAI&#39;s expected format</span>
+<span class="sd">    - OpenAIToolHandler: Handles function calling with OpenAI&#39;s schema</span>
+<span class="sd">    - OpenAIMailbox: Manages API communication with OpenAI</span>
+<span class="sd">    - ChatGPT_Bot: Main bot implementation for OpenAI models</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bots.foundation.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Bot</span><span class="p">,</span> <span class="n">Mailbox</span><span class="p">,</span> <span class="n">ConversationNode</span><span class="p">,</span> <span class="n">Engines</span><span class="p">,</span> <span class="n">ToolHandler</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">openai.types.chat.chat_completion_message</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatCompletionMessage</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+<div class="viewcode-block" id="OpenAINode">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.OpenAINode">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OpenAINode</span><span class="p">(</span><span class="n">ConversationNode</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A conversation node implementation specific to OpenAI&#39;s chat format.</span>
+
+<span class="sd">    Use when you need to manage conversation history in a format compatible with OpenAI&#39;s chat API.</span>
+<span class="sd">    Handles proper formatting of messages, tool calls, and tool results in the conversation tree.</span>
+
+<span class="sd">    Inherits from:</span>
+<span class="sd">        ConversationNode: Base class for conversation tree nodes</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        content (str): The message content for this node</span>
+<span class="sd">        role (str): The role of the message sender (&#39;user&#39;, &#39;assistant&#39;, or &#39;tool&#39;)</span>
+<span class="sd">        parent (Optional[ConversationNode]): Reference to the parent node in conversation tree</span>
+<span class="sd">        children (List[ConversationNode]): List of child nodes in conversation tree</span>
+<span class="sd">        tool_calls (Optional[List[Dict]]): List of tool calls made in this node</span>
+<span class="sd">        tool_results (Optional[List[Dict]]): List of results from tool executions</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="OpenAINode.__init__">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.OpenAINode.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize an OpenAINode.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            **kwargs: Arbitrary keyword arguments passed to parent class</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OpenAINode._build_messages">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.OpenAINode._build_messages">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build message list for OpenAI API, properly handling empty nodes and tool calls.</span>
+
+<span class="sd">        Use when you need to convert the conversation tree into OpenAI&#39;s expected message format.</span>
+<span class="sd">        Traverses the conversation tree from current node to root, building a properly formatted</span>
+<span class="sd">        message list that includes all relevant context, tool calls, and tool results.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[Dict[str, Any]]: List of messages in OpenAI chat format, where each message is a</span>
+<span class="sd">            dictionary containing &#39;role&#39; and &#39;content&#39; keys, and optionally &#39;tool_calls&#39; for</span>
+<span class="sd">            assistant messages or &#39;tool_call_id&#39; for tool response messages.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">node</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="n">conversation_dict</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">while</span> <span class="n">node</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">_is_empty</span><span class="p">():</span>
+                <span class="n">node</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">parent</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">role</span> <span class="o">==</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span>
+                <span class="n">conversation_dict</span> <span class="o">=</span> <span class="p">[{</span><span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="s1">&#39;user&#39;</span><span class="p">,</span> <span class="s1">&#39;content&#39;</span><span class="p">:</span> <span class="n">node</span><span class="o">.</span><span class="n">content</span><span class="p">}]</span> <span class="o">+</span> <span class="n">conversation_dict</span>
+            
+            <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">role</span> <span class="o">==</span> <span class="s1">&#39;assistant&#39;</span><span class="p">:</span>
+                
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">tool_calls</span> <span class="ow">or</span> <span class="n">node</span><span class="o">.</span><span class="n">tool_results</span><span class="p">):</span>
+                    <span class="n">assistant_msg</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="s1">&#39;assistant&#39;</span><span class="p">,</span> <span class="s1">&#39;content&#39;</span><span class="p">:</span> <span class="n">node</span><span class="o">.</span><span class="n">content</span><span class="p">}</span>
+                    <span class="n">conversation_dict</span> <span class="o">=</span> <span class="p">[</span><span class="n">assistant_msg</span><span class="p">]</span> <span class="o">+</span> <span class="n">conversation_dict</span>
+                    <span class="n">node</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">parent</span>
+                    <span class="k">continue</span>
+                
+                <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">tool_results</span><span class="p">:</span>
+                    <span class="n">conversation_dict</span> <span class="o">=</span> <span class="p">[</span><span class="n">result</span><span class="p">]</span> <span class="o">+</span> <span class="n">conversation_dict</span>
+
+                <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">:</span>
+                    <span class="n">assistant_msg</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="s1">&#39;assistant&#39;</span><span class="p">,</span> <span class="s1">&#39;content&#39;</span><span class="p">:</span> <span class="n">node</span><span class="o">.</span><span class="n">content</span><span class="p">,</span> <span class="s1">&#39;tool_calls&#39;</span><span class="p">:</span> <span class="n">node</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">}</span>
+                    <span class="n">conversation_dict</span> <span class="o">=</span> <span class="p">[</span><span class="n">assistant_msg</span><span class="p">]</span> <span class="o">+</span> <span class="n">conversation_dict</span>
+
+            <span class="n">node</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">parent</span>
+        <span class="k">return</span> <span class="n">conversation_dict</span></div>
+</div>
+
+
+<div class="viewcode-block" id="OpenAIToolHandler">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.OpenAIToolHandler">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OpenAIToolHandler</span><span class="p">(</span><span class="n">ToolHandler</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tool handler implementation specific to OpenAI&#39;s function calling format.</span>
+
+<span class="sd">    Use when you need to manage tool/function definitions and executions for OpenAI chat models.</span>
+<span class="sd">    Handles conversion between Python functions and OpenAI&#39;s function calling schema, including</span>
+<span class="sd">    proper formatting of function definitions, calls, and results.</span>
+
+<span class="sd">    Inherits from:</span>
+<span class="sd">        ToolHandler: Base class for managing tool operations</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        tools (List[Dict[str, Any]]): List of tool definitions in OpenAI function format</span>
+<span class="sd">        requests (List[Dict[str, Any]]): Current list of pending tool/function calls</span>
+<span class="sd">        results (List[Dict[str, Any]]): Results from the most recent tool executions</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="OpenAIToolHandler.generate_tool_schema">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.OpenAIToolHandler.generate_tool_schema">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_tool_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate OpenAI-compatible function definitions from Python functions.</span>
+
+<span class="sd">        Use when you need to convert a Python function into OpenAI&#39;s function definition format.</span>
+<span class="sd">        Extracts function name, docstring, and signature to create a schema that OpenAI can</span>
+<span class="sd">        understand and use for function calling.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            func (Callable): The Python function to convert into a tool schema. Should have</span>
+<span class="sd">                           a proper docstring and type hints for best results.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, Any]: OpenAI-compatible function definition containing:</span>
+<span class="sd">                - type: Always &#39;function&#39;</span>
+<span class="sd">                - function: Dict containing:</span>
+<span class="sd">                    - name: The function name</span>
+<span class="sd">                    - description: Function&#39;s docstring or default text</span>
+<span class="sd">                    - parameters: Object describing required and optional parameters</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">schema</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;function&#39;</span><span class="p">,</span> <span class="s1">&#39;function&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">func</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="s1">&#39;No description provided.&#39;</span><span class="p">,</span> <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;object&#39;</span><span class="p">,</span> <span class="s1">&#39;properties&#39;</span><span class="p">:</span> <span class="p">{},</span> <span class="s1">&#39;required&#39;</span><span class="p">:</span> <span class="p">[]}}}</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">schema</span><span class="p">[</span><span class="s1">&#39;function&#39;</span><span class="p">][</span><span class="s1">&#39;parameters&#39;</span><span class="p">][</span><span class="s1">&#39;properties&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;string&#39;</span><span class="p">,</span> <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;Parameter: </span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">}</span>
+            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">default</span> <span class="o">==</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="n">schema</span><span class="p">[</span><span class="s1">&#39;function&#39;</span><span class="p">][</span><span class="s1">&#39;parameters&#39;</span><span class="p">][</span><span class="s1">&#39;required&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">param_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">schema</span></div>
+
+
+<div class="viewcode-block" id="OpenAIToolHandler.generate_request_schema">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.OpenAIToolHandler.generate_request_schema">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_request_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract tool calls from OpenAI API responses.</span>
+
+<span class="sd">        Use when you need to parse tool/function calls from an OpenAI chat completion response.</span>
+<span class="sd">        Handles both single and multiple function calls in the response.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            response (Any): The raw response from OpenAI&#39;s chat completion API, typically</span>
+<span class="sd">                          containing a &#39;choices&#39; field with message and potential tool calls</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[Dict[str, Any]]: List of tool calls, each containing:</span>
+<span class="sd">                - id: The unique tool call ID</span>
+<span class="sd">                - type: The type of tool call (typically &#39;function&#39;)</span>
+<span class="sd">                - function: Dict containing:</span>
+<span class="sd">                    - name: The function name to call</span>
+<span class="sd">                    - arguments: JSON string of function arguments</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="p">,</span> <span class="s1">&#39;tool_calls&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">response</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[{</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">tool_call</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">tool_call</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="s1">&#39;function&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">tool_call</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;arguments&#39;</span><span class="p">:</span> <span class="n">tool_call</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">arguments</span><span class="p">}}</span> <span class="k">for</span> <span class="n">tool_call</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[]</span></div>
+
+
+<div class="viewcode-block" id="OpenAIToolHandler.tool_name_and_input">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.OpenAIToolHandler.tool_name_and_input">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tool_name_and_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_schema</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse OpenAI&#39;s function call format into tool name and arguments.</span>
+
+<span class="sd">        Use when you need to extract the function name and arguments from an OpenAI function call.</span>
+<span class="sd">        Handles JSON parsing of the arguments string into a Python dictionary.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            request_schema (Dict[str, Any]): The function call schema from OpenAI, containing</span>
+<span class="sd">                                           function name and arguments as a JSON string</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[str, Dict[str, Any]]: A tuple containing:</span>
+<span class="sd">                - The function name (str)</span>
+<span class="sd">                - Dictionary of parsed arguments (Dict[str, Any])</span>
+<span class="sd">                Returns (None, None) if request_schema is empty</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">request_schema</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">request_schema</span><span class="p">[</span><span class="s1">&#39;function&#39;</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">],</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">request_schema</span><span class="p">[</span><span class="s1">&#39;function&#39;</span><span class="p">][</span><span class="s1">&#39;arguments&#39;</span><span class="p">]))</span></div>
+
+
+<div class="viewcode-block" id="OpenAIToolHandler.generate_response_schema">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.OpenAIToolHandler.generate_response_schema">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_response_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">tool_output_kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Format tool execution results for OpenAI&#39;s expected format.</span>
+
+<span class="sd">        Use when you need to format a tool&#39;s output for OpenAI&#39;s function calling API.</span>
+<span class="sd">        Converts Python function outputs into the message format OpenAI expects for tool results.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            request (Dict[str, Any]): The original function call request containing the tool_call_id</span>
+<span class="sd">            tool_output_kwargs (Dict[str, Any]): The output from the tool execution</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, Any]: OpenAI-compatible tool response containing:</span>
+<span class="sd">                - role: Always &#39;tool&#39;</span>
+<span class="sd">                - content: String representation of the tool output</span>
+<span class="sd">                - tool_call_id: ID from the original request</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="s1">&#39;tool&#39;</span><span class="p">,</span> <span class="s1">&#39;content&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">tool_output_kwargs</span><span class="p">),</span> <span class="s1">&#39;tool_call_id&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]}</span></div>
+
+
+<div class="viewcode-block" id="OpenAIToolHandler.generate_error_schema">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.OpenAIToolHandler.generate_error_schema">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_error_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_schema</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">error_msg</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate an error response in OpenAI&#39;s expected format.</span>
+
+<span class="sd">        Use when you need to format an error that occurred during tool execution.</span>
+<span class="sd">        Creates a properly formatted error message that can be included in the conversation.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            request_schema (Optional[Dict[str, Any]]): The original request that caused the error,</span>
+<span class="sd">                                                     containing the tool_call_id if available</span>
+<span class="sd">            error_msg (str): The error message to include in the response</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, Any]: OpenAI-compatible error response containing:</span>
+<span class="sd">                - role: Always &#39;tool&#39;</span>
+<span class="sd">                - content: The error message</span>
+<span class="sd">                - tool_call_id: ID from the original request or &#39;unknown&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="s1">&#39;tool&#39;</span><span class="p">,</span> <span class="s1">&#39;content&#39;</span><span class="p">:</span> <span class="n">error_msg</span><span class="p">,</span> <span class="s1">&#39;tool_call_id&#39;</span><span class="p">:</span> <span class="n">request_schema</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">request_schema</span> <span class="k">else</span> <span class="s1">&#39;unknown&#39;</span><span class="p">}</span></div>
+</div>
+
+
+<div class="viewcode-block" id="OpenAIMailbox">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.OpenAIMailbox">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OpenAIMailbox</span><span class="p">(</span><span class="n">Mailbox</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mailbox implementation for handling OpenAI API communication.</span>
+
+<span class="sd">    Use when you need to manage message sending and receiving with OpenAI&#39;s chat completion API.</span>
+<span class="sd">    Handles API key management, message formatting, and response processing including tool calls.</span>
+<span class="sd">    Provides logging of API interactions for debugging purposes.</span>
+
+<span class="sd">    Inherits from:</span>
+<span class="sd">        Mailbox: Base class for API communication</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        api_key (str): OpenAI API key used for authentication</span>
+<span class="sd">        client (OpenAI): Initialized OpenAI client instance for API calls</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="OpenAIMailbox.__init__">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.OpenAIMailbox.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize OpenAI API client.</span>
+
+<span class="sd">        Use when you need to create a new OpenAI API communication channel.</span>
+<span class="sd">        Handles API key validation and client initialization.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            api_key (Optional[str]): OpenAI API key. If not provided, attempts to read from </span>
+<span class="sd">                                   OPENAI_API_KEY environment variable.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If no API key is provided and none is found in environment variables.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span> <span class="o">=</span> <span class="n">api_key</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;OPENAI_API_KEY&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;OpenAI API key not provided.&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OpenAIMailbox.send_message">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.OpenAIMailbox.send_message">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">send_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bot</span><span class="p">:</span> <span class="n">Bot</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a message to OpenAI&#39;s chat completion API.</span>
+
+<span class="sd">        Use when you need to send a conversation to OpenAI and get a completion response.</span>
+<span class="sd">        Handles message formatting, system messages, tool definitions, and API parameters.</span>
+<span class="sd">        Includes logging of both outgoing messages and incoming responses.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            bot (Bot): The bot instance containing:</span>
+<span class="sd">                - conversation history</span>
+<span class="sd">                - system message</span>
+<span class="sd">                - tool definitions</span>
+<span class="sd">                - model configuration (engine, tokens, temperature)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, Any]: Raw response from OpenAI&#39;s chat completion API containing:</span>
+<span class="sd">                - choices: List of completion choices</span>
+<span class="sd">                - usage: Token usage statistics</span>
+<span class="sd">                - model: Model used for completion</span>
+<span class="sd">                - id: Response ID</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception: Any error from the OpenAI API is re-raised for proper handling</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">system_message</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">system_message</span>
+        <span class="n">messages</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">conversation</span><span class="o">.</span><span class="n">_build_messages</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_message</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s1">&#39;messages&#39;</span><span class="p">:</span> <span class="n">messages</span><span class="p">},</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span> <span class="s1">&#39;OUTGOING&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">if</span> <span class="n">system_message</span><span class="p">:</span>
+            <span class="n">messages</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="s1">&#39;system&#39;</span><span class="p">,</span> <span class="s1">&#39;content&#39;</span><span class="p">:</span> <span class="n">system_message</span><span class="p">})</span>
+        <span class="n">tools</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">tool_handler</span><span class="o">.</span><span class="n">tools</span> <span class="k">if</span> <span class="n">bot</span><span class="o">.</span><span class="n">tool_handler</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">model_engine</span>
+        <span class="n">max_tokens</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">max_tokens</span>
+        <span class="n">temperature</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">temperature</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">tools</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">messages</span><span class="o">=</span><span class="n">messages</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="n">max_tokens</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="n">temperature</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">,</span> <span class="n">tool_choice</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">messages</span><span class="o">=</span><span class="n">messages</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="n">max_tokens</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="n">temperature</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_log_message</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s1">&#39;response&#39;</span><span class="p">:</span> <span class="n">response</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()},</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span> <span class="s1">&#39;INCOMING&#39;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">return</span> <span class="n">response</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">e</span></div>
+
+
+<div class="viewcode-block" id="OpenAIMailbox.process_response">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.OpenAIMailbox.process_response">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">bot</span><span class="p">:</span> <span class="n">Bot</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process OpenAI&#39;s response and handle any tool calls recursively.</span>
+
+<span class="sd">        Use when you need to extract the final response content after handling any tool calls.</span>
+<span class="sd">        Manages the recursive process of executing tool calls and getting follow-up responses</span>
+<span class="sd">        until a final text response is received.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            response (Dict[str, Any]): Raw response from OpenAI&#39;s chat completion API containing</span>
+<span class="sd">                                     the message content and any tool calls</span>
+<span class="sd">            bot (Bot): The bot instance for handling tool calls and maintaining conversation state</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[str, str, Dict[str, Any]]: A tuple containing:</span>
+<span class="sd">                - The final response content (str)</span>
+<span class="sd">                - The role of the message (str)</span>
+<span class="sd">                - Additional metadata dictionary (Dict[str, Any])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">message</span><span class="p">:</span> <span class="n">ChatCompletionMessage</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">:</span> <span class="c1"># base case</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">content</span> <span class="ow">or</span> <span class="s1">&#39;~&#39;</span><span class="p">,</span> <span class="n">message</span><span class="o">.</span><span class="n">role</span><span class="p">,</span> <span class="p">{})</span>
+        
+        <span class="k">while</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">:</span> <span class="c1"># recursive case</span>
+            <span class="n">bot</span><span class="o">.</span><span class="n">conversation</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">conversation</span><span class="o">.</span><span class="n">_add_reply</span><span class="p">(</span><span class="n">role</span><span class="o">=</span><span class="s1">&#39;assistant&#39;</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="n">message</span><span class="o">.</span><span class="n">content</span> <span class="ow">or</span> <span class="s1">&#39;~&#39;</span><span class="p">)</span>
+            <span class="n">bot</span><span class="o">.</span><span class="n">conversation</span><span class="o">.</span><span class="n">_add_tool_calls</span><span class="p">(</span><span class="n">calls</span><span class="o">=</span><span class="n">bot</span><span class="o">.</span><span class="n">tool_handler</span><span class="o">.</span><span class="n">requests</span><span class="p">)</span>
+            <span class="n">bot</span><span class="o">.</span><span class="n">conversation</span><span class="o">.</span><span class="n">_add_tool_results</span><span class="p">(</span><span class="n">results</span><span class="o">=</span><span class="n">bot</span><span class="o">.</span><span class="n">tool_handler</span><span class="o">.</span><span class="n">exec_requests</span><span class="p">())</span>
+            <span class="n">bot</span><span class="o">.</span><span class="n">tool_handler</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_response</span><span class="p">(</span><span class="n">bot</span><span class="o">.</span><span class="n">mailbox</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span><span class="n">bot</span><span class="p">),</span> <span class="n">bot</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="ChatGPT_Bot">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.ChatGPT_Bot">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ChatGPT_Bot</span><span class="p">(</span><span class="n">Bot</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A bot implementation using the OpenAI GPT API.</span>
+
+<span class="sd">    Use when you need to create a bot that interfaces with OpenAI&#39;s chat completion models.</span>
+<span class="sd">    Provides a complete implementation with OpenAI-specific conversation management,</span>
+<span class="sd">    tool handling, and message processing. Supports both simple chat interactions and</span>
+<span class="sd">    complex tool-using conversations.</span>
+
+<span class="sd">    Inherits from:</span>
+<span class="sd">        Bot: Base class for all bot implementations, providing core conversation and tool management</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        api_key (str): OpenAI API key for authentication</span>
+<span class="sd">        model_engine (Engines): The OpenAI model being used (e.g., GPT4)</span>
+<span class="sd">        max_tokens (int): Maximum tokens allowed in completion responses</span>
+<span class="sd">        temperature (float): Response randomness factor (0-1)</span>
+<span class="sd">        name (str): Instance name for identification</span>
+<span class="sd">        role (str): Bot&#39;s role identifier</span>
+<span class="sd">        role_description (str): Detailed description of bot&#39;s role/personality</span>
+<span class="sd">        system_message (str): System-level instructions for the bot</span>
+<span class="sd">        tool_handler (OpenAIToolHandler): Manages function calling capabilities</span>
+<span class="sd">        conversation (OpenAINode): Manages conversation history</span>
+<span class="sd">        mailbox (OpenAIMailbox): Handles API communication</span>
+<span class="sd">        autosave (bool): Whether to automatically save state after responses</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        ```python</span>
+<span class="sd">        # Create a documentation expert bot</span>
+<span class="sd">        bot = ChatGPT_Bot(</span>
+<span class="sd">            model_engine=Engines.GPT4,</span>
+<span class="sd">            temperature=0.3,</span>
+<span class="sd">            role_description=&quot;a Python documentation expert&quot;</span>
+<span class="sd">        )</span>
+
+<span class="sd">        # Add tools and use the bot</span>
+<span class="sd">        bot.add_tool(my_function)</span>
+<span class="sd">        response = bot.respond(&quot;Please help document this code.&quot;)</span>
+
+<span class="sd">        # Save the bot&#39;s state for later use</span>
+<span class="sd">        bot.save(&quot;doc_expert.bot&quot;)</span>
+<span class="sd">        ```</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ChatGPT_Bot.__init__">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.ChatGPT_Bot.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">model_engine</span><span class="p">:</span> <span class="n">Engines</span><span class="o">=</span><span class="n">Engines</span><span class="o">.</span><span class="n">GPT4</span><span class="p">,</span> <span class="n">max_tokens</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span> <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;bot&#39;</span><span class="p">,</span> <span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;assistant&#39;</span><span class="p">,</span> <span class="n">role_description</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;a friendly AI assistant&#39;</span><span class="p">,</span> <span class="n">autosave</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a ChatGPT bot with OpenAI-specific components.</span>
+
+<span class="sd">        Use when you need to create a new OpenAI-based bot instance with specific configuration.</span>
+<span class="sd">        Sets up all necessary components for OpenAI interaction including conversation management,</span>
+<span class="sd">        tool handling, and API communication.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            api_key (Optional[str]): OpenAI API key. If not provided, attempts to read from </span>
+<span class="sd">                                   OPENAI_API_KEY environment variable</span>
+<span class="sd">            model_engine (Engines): The OpenAI model to use, defaults to GPT-4. Determines</span>
+<span class="sd">                                  capabilities and pricing</span>
+<span class="sd">            max_tokens (int): Maximum tokens in completion response, defaults to 4096. Affects</span>
+<span class="sd">                            response length and API costs</span>
+<span class="sd">            temperature (float): Response randomness (0-1), defaults to 0.3. Higher values make</span>
+<span class="sd">                               responses more creative but less focused</span>
+<span class="sd">            name (str): Name of the bot instance, defaults to &#39;bot&#39;. Used for identification</span>
+<span class="sd">                       in logs and saved states</span>
+<span class="sd">            role (str): Role identifier for the bot, defaults to &#39;assistant&#39;. Used in message</span>
+<span class="sd">                       formatting</span>
+<span class="sd">            role_description (str): Description of the bot&#39;s role/personality, defaults to</span>
+<span class="sd">                                  &#39;a friendly AI assistant&#39;. Guides bot behavior</span>
+<span class="sd">            autosave (bool): Whether to automatically save conversation state, defaults to True.</span>
+<span class="sd">                           Enables conversation recovery</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            The bot is initialized with OpenAI-specific implementations of:</span>
+<span class="sd">            - OpenAIToolHandler for function calling</span>
+<span class="sd">            - OpenAINode for conversation management</span>
+<span class="sd">            - OpenAIMailbox for API communication</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">api_key</span><span class="p">,</span> <span class="n">model_engine</span><span class="o">=</span><span class="n">model_engine</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="n">max_tokens</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="n">temperature</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="n">role</span><span class="p">,</span> <span class="n">role_description</span><span class="o">=</span><span class="n">role_description</span><span class="p">,</span> <span class="n">tool_handler</span><span class="o">=</span><span class="n">OpenAIToolHandler</span><span class="p">(),</span> <span class="n">conversation</span><span class="o">=</span><span class="n">OpenAINode</span><span class="o">.</span><span class="n">_create_empty</span><span class="p">(</span><span class="n">OpenAINode</span><span class="p">),</span> <span class="n">mailbox</span><span class="o">=</span><span class="n">OpenAIMailbox</span><span class="p">(),</span> <span class="n">autosave</span><span class="o">=</span><span class="n">autosave</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, benbuzz790.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

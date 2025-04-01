@@ -1,0 +1,509 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bots.tools.code_tools &mdash; bots 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            bots
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">bots</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">bots.tools.code_tools</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for bots.tools.code_tools</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">textwrap</span>
+
+<div class="viewcode-block" id="view">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.code_tools.view">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">view</span><span class="p">(</span><span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_lines</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2500</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Display the contents of a file with line numbers.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    - file_path (str): The path to the file to be viewed.</span>
+<span class="sd">    - max_lines (int, optional): Maximum number of lines to display. Defaults to 2500.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    A string containing the file contents with line numbers.</span>
+
+<span class="sd">    cost: varies</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">encodings</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;utf-8&#39;</span><span class="p">,</span> <span class="s1">&#39;utf-16&#39;</span><span class="p">,</span> <span class="s1">&#39;utf-16le&#39;</span><span class="p">,</span> <span class="s1">&#39;ascii&#39;</span><span class="p">,</span> <span class="s1">&#39;cp1252&#39;</span><span class="p">,</span> <span class="s1">&#39;iso-8859-1&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">encoding</span> <span class="ow">in</span> <span class="n">encodings</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+                <span class="n">lines</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">max_lines</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;Error: File has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span><span class="si">}</span><span class="s1"> lines, which exceeds the maximum of </span><span class="si">{</span><span class="n">max_lines</span><span class="si">}</span><span class="s1"> lines.&#39;</span>
+                <span class="n">numbered_lines</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">:</span><span class="si">{</span><span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">)]</span>
+                <span class="k">return</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">numbered_lines</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">UnicodeDecodeError</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;Error: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Error: Unable to read file with any of the attempted encodings: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">encodings</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="view_dir">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.code_tools.view_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">view_dir</span><span class="p">(</span><span class="n">start_path</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">output_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">target_extensions</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s2">&quot;[&#39;py&#39;, &#39;txt&#39;, &#39;.md&#39;]&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a summary of the directory structure starting from the given path, writing only files </span>
+<span class="sd">    with specified extensions and showing venv directories without their contents.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    - start_path (str): The root directory to start scanning from.</span>
+<span class="sd">    - output_file (str): The name of the file to optionally write the directory structure to.</span>
+<span class="sd">    - target_extensions (str): String representation of a list of file extensions (e.g. &quot;[&#39;py&#39;, &#39;txt&#39;]&quot;).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    str: A formatted string containing the directory structure, with each directory and file properly indented.</span>
+
+<span class="sd">    Example output:</span>
+<span class="sd">    my_project/</span>
+<span class="sd">        venv/</span>
+<span class="sd">        module1/</span>
+<span class="sd">            script.py</span>
+<span class="sd">            README.md</span>
+<span class="sd">        module2/</span>
+<span class="sd">            utils.py</span>
+<span class="sd">    </span>
+<span class="sd">    cost: low</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">extensions_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">ext</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\&#39;</span><span class="s1">&quot;&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="n">target_extensions</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;[]&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)]</span>
+    <span class="n">extensions_list</span> <span class="o">=</span> <span class="p">[(</span><span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="n">ext</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">ext</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="n">ext</span><span class="p">)</span> <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="n">extensions_list</span><span class="p">]</span>
+    <span class="n">output_text</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">root</span><span class="p">,</span> <span class="n">dirs</span><span class="p">,</span> <span class="n">files</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="n">start_path</span><span class="p">):</span>
+        <span class="n">level</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">start_path</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">sep</span><span class="p">)</span>
+        <span class="n">indent</span> <span class="o">=</span> <span class="s1">&#39;    &#39;</span> <span class="o">*</span> <span class="n">level</span>
+        <span class="n">basename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+
+        <span class="c1"># Check if current directory is a venv</span>
+        <span class="n">is_venv</span> <span class="o">=</span> <span class="n">basename</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;venv&#39;</span><span class="p">,</span> <span class="s1">&#39;env&#39;</span><span class="p">,</span> <span class="s1">&#39;.env&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="s1">&#39;pyvenv.cfg&#39;</span> <span class="ow">in</span> <span class="n">files</span>
+
+        <span class="k">if</span> <span class="n">is_venv</span><span class="p">:</span>
+            <span class="c1"># Add venv directory without scanning its contents</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">indent</span><span class="si">}{</span><span class="n">basename</span><span class="si">}</span><span class="s1">/&#39;</span>
+            <span class="n">output_text</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="n">dirs</span><span class="p">[:]</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># Skip processing contents of venv</span>
+            <span class="k">continue</span>
+
+        <span class="n">has_relevant_files</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">fs</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="n">root</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">extensions_list</span><span class="p">))</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fs</span><span class="p">):</span>
+                <span class="n">has_relevant_files</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">break</span>
+
+        <span class="k">if</span> <span class="n">has_relevant_files</span><span class="p">:</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">indent</span><span class="si">}{</span><span class="n">basename</span><span class="si">}</span><span class="s1">/&#39;</span>
+            <span class="n">output_text</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="n">subindent</span> <span class="o">=</span> <span class="s1">&#39;    &#39;</span> <span class="o">*</span> <span class="p">(</span><span class="n">level</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">extensions_list</span><span class="p">)):</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">subindent</span><span class="si">}{</span><span class="n">file</span><span class="si">}</span><span class="s1">&#39;</span>
+                    <span class="n">output_text</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">output_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_text</span><span class="p">))</span>
+            
+    <span class="k">return</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_text</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="diff_edit">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.code_tools.diff_edit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">diff_edit</span><span class="p">(</span><span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">diff_spec</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Diff spec editing with flexible matching.</span>
+
+<span class="sd">    Use when you need to make precision changes in text files.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    - file_path (str): Path to the file to modify</span>
+<span class="sd">    - diff_spec (str): Diff-style specification of changes. </span>
+<span class="sd">    Input lines beginning with &#39;-&#39; are removed, and input lines </span>
+<span class="sd">    beginning with &#39;+&#39; are added at the starting index of the </span>
+<span class="sd">    removed lines. All lines must start with + or -, and white</span>
+<span class="sd">    space must be matched exactly.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    str: Description of changes made/to be made or error message with context</span>
+
+<span class="sd">    ex) diff_spec:</span>
+<span class="sd">    -import numpy</span>
+<span class="sd">    +import scipy</span>
+
+<span class="sd">    cost: medium</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ignore_indentation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">context_lines</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">encodings</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;utf-8&#39;</span><span class="p">,</span> <span class="s1">&#39;utf-16&#39;</span><span class="p">,</span> <span class="s1">&#39;utf-16le&#39;</span><span class="p">,</span> <span class="s1">&#39;ascii&#39;</span><span class="p">,</span> <span class="s1">&#39;cp1252&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;iso-8859-1&#39;</span><span class="p">]</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">used_encoding</span> <span class="o">=</span> <span class="s1">&#39;utf-8&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="n">used_encoding</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+                <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">encoding</span> <span class="ow">in</span> <span class="n">encodings</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+                        <span class="n">content</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+                        <span class="n">used_encoding</span> <span class="o">=</span> <span class="n">encoding</span>
+                        <span class="k">break</span>
+                <span class="k">except</span> <span class="ne">UnicodeDecodeError</span><span class="p">:</span>
+                    <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">content</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Error: Unable to read file with any of the attempted encodings: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">encodings</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">diff_spec</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+            <span class="k">return</span> <span class="s1">&#39;Error: No changes specified&#39;</span>
+        <span class="n">changes</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="n">_parse_diff_spec</span><span class="p">(</span><span class="n">diff_spec</span><span class="o">=</span><span class="n">diff_spec</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;Error parsing:&#39;</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span>
+        <span class="n">original_lines</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+        <span class="n">current_lines</span> <span class="o">=</span> <span class="n">original_lines</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">matched_changes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">unmatched_changes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">remove</span><span class="p">,</span> <span class="n">add</span> <span class="ow">in</span> <span class="n">changes</span><span class="p">:</span>
+            <span class="n">match_found</span><span class="p">,</span> <span class="n">line_num</span><span class="p">,</span> <span class="n">prev_indent</span><span class="p">,</span> <span class="n">match_score</span><span class="p">,</span> <span class="n">best_index</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">_find_matching_block</span><span class="p">(</span><span class="n">current_lines</span><span class="p">,</span> <span class="n">remove</span><span class="p">,</span> <span class="n">ignore_indentation</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">match_found</span><span class="p">:</span>
+                <span class="n">indented_add</span> <span class="o">=</span> <span class="n">_adjust_indentation</span><span class="p">(</span><span class="n">add</span><span class="p">,</span> <span class="n">prev_indent</span><span class="p">)</span>
+                <span class="n">current_lines</span><span class="p">[</span><span class="n">line_num</span><span class="p">:</span><span class="n">line_num</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">remove</span><span class="p">)]</span> <span class="o">=</span> <span class="n">indented_add</span>
+                <span class="n">matched_changes</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">remove</span><span class="p">),</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                    <span class="n">indented_add</span><span class="p">)))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">failure_context</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+                <span class="k">if</span> <span class="n">match_score</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">context</span> <span class="o">=</span> <span class="n">_get_context</span><span class="p">(</span><span class="n">current_lines</span><span class="p">,</span> <span class="n">best_index</span><span class="p">,</span>
+                        <span class="n">context_lines</span><span class="p">)</span>
+                    <span class="n">failure_context</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Nearest partial match found around:</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">context</span><span class="p">)</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span><span class="se">\n\n</span><span class="s2">Match score: </span><span class="si">{</span><span class="n">match_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;&quot;&quot;</span>
+                <span class="n">unmatched_changes</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">remove</span><span class="p">),</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">add</span><span class="p">),</span> <span class="n">failure_context</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">matched_changes</span><span class="p">:</span>
+            <span class="n">new_content</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">current_lines</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">new_content</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">):</span>
+                <span class="n">new_content</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="n">used_encoding</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+                <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">new_content</span><span class="p">)</span>
+        <span class="n">report</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Changes made:&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matched_changes</span><span class="p">:</span>
+            <span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Successfully applied </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">matched_changes</span><span class="p">)</span><span class="si">}</span><span class="s1"> changes:&#39;</span><span class="p">)</span>
+            <span class="c1">#for old, new in matched_changes:</span>
+                <span class="c1">#report.append(f&#39;\nChanged:\n{old}\nTo:\n{new}&#39;)</span>
+        <span class="k">if</span> <span class="n">unmatched_changes</span><span class="p">:</span>
+            <span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Failed to apply </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">unmatched_changes</span><span class="p">)</span><span class="si">}</span><span class="s1"> changes:&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">old</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">context</span> <span class="ow">in</span> <span class="n">unmatched_changes</span><span class="p">:</span>
+                <span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Could not find:</span><span class="se">\n</span><span class="si">{</span><span class="n">old</span><span class="si">}</span><span class="se">\n\n</span><span class="si">{</span><span class="n">context</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">report</span><span class="p">)</span> <span class="k">if</span> <span class="n">report</span> <span class="k">else</span> <span class="s1">&#39;No changes were applied&#39;</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;Error: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span><span class="si">}</span><span class="s1">&#39;</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_diff_spec</span><span class="p">(</span><span class="n">diff_spec</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="n">changes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">remove</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">add</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">last_prefix</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">diff_spec</span> <span class="o">=</span> <span class="n">textwrap</span><span class="o">.</span><span class="n">dedent</span><span class="p">(</span><span class="n">diff_spec</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">diff_spec</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">add</span><span class="p">:</span>
+                <span class="n">changes</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">remove</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">add</span><span class="o">.</span><span class="n">copy</span><span class="p">()))</span>
+                <span class="n">remove</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+                <span class="n">add</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+                <span class="n">last_prefix</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">):</span>
+            <span class="n">last_prefix</span> <span class="o">=</span> <span class="s1">&#39;-&#39;</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;+&#39;</span><span class="p">):</span>
+            <span class="n">last_prefix</span> <span class="o">=</span> <span class="s1">&#39;+&#39;</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">elif</span> <span class="n">last_prefix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="n">line</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Error: &quot;</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s1">&quot; does not start with + or -. All lines must start with + or -.&#39;</span>
+                <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">last_prefix</span> <span class="o">==</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>
+            <span class="n">remove</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">last_prefix</span> <span class="o">==</span> <span class="s1">&#39;+&#39;</span><span class="p">:</span>
+            <span class="n">add</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">remove</span> <span class="ow">or</span> <span class="n">add</span><span class="p">:</span>
+        <span class="n">changes</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">remove</span><span class="p">,</span> <span class="n">add</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">changes</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">errors</span><span class="p">:</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Error: No valid changes found in diff spec&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">changes</span><span class="p">,</span> <span class="n">errors</span>
+
+
+<div class="viewcode-block" id="_find_matching_block">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.code_tools._find_matching_block">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">_find_matching_block</span><span class="p">(</span><span class="n">current_lines</span><span class="p">,</span> <span class="n">remove_lines</span><span class="p">,</span> <span class="n">ignore_indentation</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Find where a block of lines matches in the current file content.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        current_lines: List of strings representing current file content</span>
+<span class="sd">        remove_lines: List of strings to find in the file</span>
+<span class="sd">        ignore_indentation: Whether to ignore leading whitespace when matching</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple (match_found: bool, line_num: int, indent: str, match_score: float, best_index: int)</span>
+<span class="sd">        where:</span>
+<span class="sd">        - match_found indicates if an exact match was found</span>
+<span class="sd">        - line_num is the line where the match starts (or best partial match)</span>
+<span class="sd">        - indent is the indentation to preserve</span>
+<span class="sd">        - match_score indicates quality of best partial match (0-1)</span>
+<span class="sd">        - best_index is the line number of best partial match</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">remove_lines</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_lines</span><span class="p">),</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_lines</span><span class="p">)</span>
+    
+    <span class="c1"># Filter out empty lines for matching</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">filter_empty_lines</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">line</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span> <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+    
+    <span class="n">filtered_current</span> <span class="o">=</span> <span class="n">filter_empty_lines</span><span class="p">(</span><span class="n">current_lines</span><span class="p">)</span>
+    <span class="n">filtered_remove</span> <span class="o">=</span> <span class="n">filter_empty_lines</span><span class="p">(</span><span class="n">remove_lines</span><span class="p">)</span>
+    
+    <span class="c1"># Build index mapping from filtered to original lines</span>
+    <span class="n">current_map</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">current_lines</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+            <span class="n">current_map</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">filtered_remove</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">filtered_current</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mi">0</span>
+        
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">filtered_current</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">filtered_remove</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">current_block</span> <span class="o">=</span> <span class="n">filtered_current</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">filtered_remove</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">ignore_indentation</span><span class="p">:</span>
+            <span class="n">match</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="n">o</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">current_block</span><span class="p">,</span> <span class="n">filtered_remove</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">match</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="n">o</span> <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">current_block</span><span class="p">,</span> <span class="n">filtered_remove</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+            <span class="c1"># Map back to original line number</span>
+            <span class="n">orig_index</span> <span class="o">=</span> <span class="n">current_map</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="c1"># Find the span of lines to remove including empty lines</span>
+            <span class="n">end_index</span> <span class="o">=</span> <span class="n">current_map</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">filtered_remove</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">orig_index</span><span class="p">,</span> <span class="n">_get_indentation</span><span class="p">(</span><span class="n">current_lines</span><span class="p">[</span><span class="n">orig_index</span><span class="p">]),</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">orig_index</span>
+            
+    <span class="n">best_match_score</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">best_match_index</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">filtered_current</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">filtered_remove</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">current_block</span> <span class="o">=</span> <span class="n">filtered_current</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">filtered_remove</span><span class="p">)]</span>
+        <span class="n">match_score</span> <span class="o">=</span> <span class="n">_calculate_block_match_score</span><span class="p">(</span><span class="n">current_block</span><span class="p">,</span> <span class="n">filtered_remove</span><span class="p">,</span> <span class="n">ignore_indentation</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">match_score</span> <span class="o">&gt;</span> <span class="n">best_match_score</span><span class="p">:</span>
+            <span class="n">best_match_score</span> <span class="o">=</span> <span class="n">match_score</span>
+            <span class="n">best_match_index</span> <span class="o">=</span> <span class="n">current_map</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="n">best_match_index</span><span class="p">,</span> <span class="n">_get_indentation</span><span class="p">(</span><span class="n">current_lines</span><span class="p">[</span><span class="n">best_match_index</span><span class="p">]),</span> <span class="n">best_match_score</span><span class="p">,</span> <span class="n">best_match_index</span></div>
+
+
+
+<div class="viewcode-block" id="_get_indentation">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.code_tools._get_indentation">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_indentation</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract the leading whitespace from a line.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">line</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">lstrip</span><span class="p">())]</span></div>
+
+
+
+<div class="viewcode-block" id="_adjust_indentation">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.code_tools._adjust_indentation">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">_adjust_indentation</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">target_indent</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Adjust indentation of a block of lines to match target_indent.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">lines</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">lines</span>
+    <span class="n">non_empty_lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">l</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lines</span> <span class="k">if</span> <span class="n">l</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">non_empty_lines</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">lines</span>
+    <span class="n">min_indent</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">_get_indentation</span><span class="p">(</span><span class="n">l</span><span class="p">))</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">non_empty_lines</span><span class="p">)</span>
+    <span class="n">adjusted</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+            <span class="n">adjusted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">stripped</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="n">min_indent</span><span class="p">:]</span>
+            <span class="n">adjusted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">target_indent</span> <span class="o">+</span> <span class="n">stripped</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">adjusted</span></div>
+
+
+
+<div class="viewcode-block" id="_get_context">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.code_tools._get_context">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_context</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">center_idx</span><span class="p">,</span> <span class="n">context_size</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get context lines around an index with line numbers.&quot;&quot;&quot;</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">center_idx</span> <span class="o">-</span> <span class="n">context_size</span><span class="p">)</span>
+    <span class="n">end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">),</span> <span class="n">center_idx</span> <span class="o">+</span> <span class="n">context_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">],</span>
+        <span class="n">start</span><span class="p">)]</span></div>
+
+
+
+<div class="viewcode-block" id="_calculate_block_match_score">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.code_tools._calculate_block_match_score">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">_calculate_block_match_score</span><span class="p">(</span><span class="n">current_block</span><span class="p">,</span> <span class="n">old_lines</span><span class="p">,</span> <span class="n">ignore_indentation</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate how well two blocks match, returning a score and matching line indices.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">ignore_indentation</span><span class="p">:</span>
+        <span class="n">current_joined</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">l</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">current_block</span><span class="p">)</span>
+        <span class="n">old_joined</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">l</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">old_lines</span><span class="p">)</span>
+        <span class="n">current_stripped</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">current_block</span><span class="p">]</span>
+        <span class="n">old_stripped</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">old_lines</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">current_joined</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">current_block</span><span class="p">)</span>
+        <span class="n">old_joined</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">old_lines</span><span class="p">)</span>
+        <span class="n">current_stripped</span> <span class="o">=</span> <span class="n">current_block</span>
+        <span class="n">old_stripped</span> <span class="o">=</span> <span class="n">old_lines</span>
+    <span class="n">exact_matches</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">current_stripped</span><span class="p">,</span> <span class="n">old_stripped</span><span class="p">)</span> <span class="k">if</span>
+        <span class="n">c</span> <span class="o">==</span> <span class="n">o</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">current_joined</span> <span class="o">==</span> <span class="n">old_joined</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_block</span><span class="p">)</span> <span class="o">*</span> <span class="mi">3</span>
+    <span class="n">c_words</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">current_joined</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+    <span class="n">o_words</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">old_joined</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+    <span class="n">word_matches</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">c_words</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">o_words</span><span class="p">))</span>
+    <span class="n">partial_score</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">word_matches</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">partial_score</span> <span class="o">=</span> <span class="n">word_matches</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">c_words</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">o_words</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">word_matches</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">c_words</span><span class="p">)</span> <span class="ow">and</span> <span class="n">word_matches</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">o_words</span><span class="p">):</span>
+            <span class="n">partial_score</span> <span class="o">*=</span> <span class="mi">2</span>
+    <span class="n">total_score</span> <span class="o">=</span> <span class="n">exact_matches</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">partial_score</span>
+    <span class="k">return</span> <span class="n">total_score</span></div>
+
+
+
+<div class="viewcode-block" id="_has_line_number_prefix">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.code_tools._has_line_number_prefix">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">_has_line_number_prefix</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span><span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if a string starts with a line number format (e.g., &#39;123:&#39; or &#39;  123:&#39;)</span>
+<span class="sd">    Args:</span>
+<span class="sd">        line (str): The line to check</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        bool: True if the line starts with a number followed by a colon</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">stripped</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="s1">&#39;:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">stripped</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="nb">int</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="_strip_line_number">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.code_tools._strip_line_number">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">_strip_line_number</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span><span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove line number prefix if present (e.g., &#39;123:content&#39; or &#39;  123:content&#39; becomes &#39;content&#39;)</span>
+<span class="sd">    Preserves any leading whitespace before the line number.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        line (str): The line to process</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        str: The line with any line number prefix removed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_has_line_number_prefix</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">line</span>
+    <span class="n">whitespace</span> <span class="o">=</span> <span class="n">line</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">lstrip</span><span class="p">())]</span>
+    <span class="n">stripped</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">whitespace</span> <span class="o">+</span> <span class="n">content</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, benbuzz790.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

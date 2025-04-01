@@ -1,0 +1,763 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bots.foundation.anthropic_bots &mdash; bots 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            bots
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">bots</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">bots.foundation.anthropic_bots</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for bots.foundation.anthropic_bots</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Anthropic-specific bot implementation for the bots framework.</span>
+
+<span class="sd">This module provides the necessary classes to interact with Anthropic&#39;s Claude models,</span>
+<span class="sd">implementing the base bot interfaces with Anthropic-specific handling for:</span>
+<span class="sd">- Message formatting and conversation management</span>
+<span class="sd">- Tool integration and execution</span>
+<span class="sd">- Cache control for optimal context window usage</span>
+<span class="sd">- API communication with retry logic</span>
+
+<span class="sd">The main class is AnthropicBot, which provides a complete implementation ready for</span>
+<span class="sd">use with Anthropic&#39;s API. Supporting classes handle specific aspects of the</span>
+<span class="sd">Anthropic integration while maintaining the framework&#39;s abstractions.</span>
+
+<span class="sd">Classes:</span>
+<span class="sd">    AnthropicNode: Conversation node implementation for Anthropic&#39;s message format</span>
+<span class="sd">    AnthropicToolHandler: Tool management for Anthropic&#39;s function calling format</span>
+<span class="sd">    AnthropicMailbox: API communication handler with Anthropic-specific retry logic</span>
+<span class="sd">    AnthropicBot: Main bot implementation for Anthropic&#39;s Claude models</span>
+<span class="sd">    CacheController: Manages conversation history caching for context optimization</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">bots.foundation.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Bot</span><span class="p">,</span> <span class="n">Mailbox</span><span class="p">,</span> <span class="n">ConversationNode</span><span class="p">,</span> <span class="n">Engines</span><span class="p">,</span> <span class="n">ToolHandler</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">anthropic</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+<div class="viewcode-block" id="AnthropicNode">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicNode">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AnthropicNode</span><span class="p">(</span><span class="n">ConversationNode</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A conversation node implementation specific to Anthropic&#39;s API requirements.</span>
+
+<span class="sd">    This class extends ConversationNode to handle Anthropic-specific message formatting,</span>
+<span class="sd">    including proper handling of tool calls and results in the conversation tree.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        Inherits all attributes from ConversationNode</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AnthropicNode.__init__">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicNode.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize an AnthropicNode.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            **kwargs: Arbitrary keyword arguments passed to parent class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AnthropicNode._add_tool_results">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicNode._add_tool_results">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add_tool_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add tool execution results to the conversation node.</span>
+
+<span class="sd">        For Anthropic bots, tool results need to be propagated to the replies or stored as</span>
+<span class="sd">        pending to be moved to the replies when a reply is added.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            results: List of tool execution result dictionaries</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">replies</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">replies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tool_results</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">replies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">_sync_tool_context</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pending_results</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">results</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AnthropicNode._build_messages">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicNode._build_messages">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build message list for Anthropic API.</span>
+
+<span class="sd">        Constructs the message history in Anthropic&#39;s expected format, properly handling</span>
+<span class="sd">        empty nodes and tool calls. Empty nodes are preserved in the structure but</span>
+<span class="sd">        filtered from API messages.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of message dictionaries formatted for Anthropic&#39;s API</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">node</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="n">conversation_dict</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">while</span> <span class="n">node</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">node</span><span class="o">.</span><span class="n">_is_empty</span><span class="p">():</span>
+                <span class="n">entry</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="n">node</span><span class="o">.</span><span class="n">role</span><span class="p">}</span>
+                <span class="n">content_list</span> <span class="o">=</span> <span class="p">[{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="n">node</span><span class="o">.</span><span class="n">content</span><span class="p">}]</span>
+                <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">:</span>
+                        <span class="n">sub_entry</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;tool_use&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">call</span><span class="p">}</span>
+                        <span class="n">content_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sub_entry</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">tool_results</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">tool_results</span><span class="p">:</span>
+                        <span class="n">sub_entry</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;tool_result&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">result</span><span class="p">}</span>
+                        <span class="n">content_list</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">sub_entry</span><span class="p">)</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">_sync_tool_context</span><span class="p">()</span>
+                <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;content&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">content_list</span>
+                <span class="n">conversation_dict</span> <span class="o">=</span> <span class="p">[</span><span class="n">entry</span><span class="p">]</span> <span class="o">+</span> <span class="n">conversation_dict</span>
+            <span class="n">node</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">parent</span>
+        <span class="k">return</span> <span class="n">conversation_dict</span></div>
+</div>
+
+
+<div class="viewcode-block" id="AnthropicToolHandler">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicToolHandler">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AnthropicToolHandler</span><span class="p">(</span><span class="n">ToolHandler</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tool handler implementation specific to Anthropic&#39;s API requirements.</span>
+
+<span class="sd">    This class manages the conversion between Python functions and Anthropic&#39;s tool format,</span>
+<span class="sd">    handling schema generation, request/response formatting, and error handling.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AnthropicToolHandler.__init__">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicToolHandler.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize an AnthropicToolHandler.&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="AnthropicToolHandler.generate_tool_schema">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicToolHandler.generate_tool_schema">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_tool_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate Anthropic-compatible tool schema from a Python function.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            func: The Python function to convert into a tool schema</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary containing the tool schema in Anthropic&#39;s format with:</span>
+<span class="sd">                - name: The function name</span>
+<span class="sd">                - description: The function&#39;s docstring</span>
+<span class="sd">                - input_schema: Object describing expected parameters</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sig</span><span class="p">:</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Signature</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="n">doc</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getdoc</span><span class="p">(</span><span class="n">func</span><span class="p">)</span> <span class="ow">or</span> <span class="s1">&#39;No description provided.&#39;</span>
+        <span class="n">tool</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">doc</span><span class="p">,</span> <span class="s1">&#39;input_schema&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;object&#39;</span><span class="p">,</span> <span class="s1">&#39;properties&#39;</span><span class="p">:</span> <span class="p">{},</span> <span class="s1">&#39;required&#39;</span><span class="p">:</span> <span class="p">[]}}</span>
+        <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">tool</span><span class="p">[</span><span class="s1">&#39;input_schema&#39;</span><span class="p">][</span><span class="s1">&#39;properties&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;string&#39;</span><span class="p">}</span>
+            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">default</span> <span class="o">==</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="n">tool</span><span class="p">[</span><span class="s1">&#39;input_schema&#39;</span><span class="p">][</span><span class="s1">&#39;required&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">param_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tool</span></div>
+
+
+<div class="viewcode-block" id="AnthropicToolHandler.generate_request_schema">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicToolHandler.generate_request_schema">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_request_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate request schema from an Anthropic API response.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            response: The raw response from Anthropic&#39;s API</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of request schemas (multiple requests may be in one message)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">requests</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;tool_use&#39;</span><span class="p">:</span>
+                <span class="n">request</span> <span class="o">=</span> <span class="p">{</span><span class="n">attr</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span> <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">,</span> <span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;input&#39;</span><span class="p">]}</span>
+                <span class="n">requests</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">requests</span></div>
+
+
+<div class="viewcode-block" id="AnthropicToolHandler.tool_name_and_input">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicToolHandler.tool_name_and_input">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tool_name_and_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_schema</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract tool name and input parameters from a request schema.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request_schema: The request schema to parse</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple containing:</span>
+<span class="sd">                - tool name (str)</span>
+<span class="sd">                - tool input parameters (dict)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tool_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">request_schema</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span>
+        <span class="n">tool_input</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">request_schema</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">tool_name</span><span class="p">,</span> <span class="n">tool_input</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AnthropicToolHandler.generate_response_schema">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicToolHandler.generate_response_schema">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_response_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">tool_output_kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate response schema for tool execution results.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: The original tool request</span>
+<span class="sd">            tool_output_kwargs: The tool&#39;s execution results</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary containing the response in Anthropic&#39;s expected format</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">response</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;tool_result&#39;</span><span class="p">,</span> <span class="s1">&#39;tool_use_id&#39;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown id&#39;</span><span class="p">),</span> <span class="s1">&#39;content&#39;</span><span class="p">:</span> <span class="n">tool_output_kwargs</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">response</span></div>
+
+
+<div class="viewcode-block" id="AnthropicToolHandler.generate_error_schema">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicToolHandler.generate_error_schema">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_error_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_schema</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">error_msg</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate an error response schema in Anthropic&#39;s format.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request_schema: Optional original request schema that caused the error</span>
+<span class="sd">            error_msg: The error message to include</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary containing the error in Anthropic&#39;s expected format</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;tool_result&#39;</span><span class="p">,</span> <span class="s1">&#39;tool_use_id&#39;</span><span class="p">:</span> <span class="n">request_schema</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown id&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">request_schema</span> <span class="k">else</span> <span class="s1">&#39;unknown id&#39;</span><span class="p">,</span> <span class="s1">&#39;content&#39;</span><span class="p">:</span> <span class="n">error_msg</span><span class="p">}</span></div>
+</div>
+
+
+<div class="viewcode-block" id="AnthropicMailbox">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicMailbox">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AnthropicMailbox</span><span class="p">(</span><span class="n">Mailbox</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Handles communication with Anthropic&#39;s API.</span>
+
+<span class="sd">    This class manages message sending and response processing for Anthropic models,</span>
+<span class="sd">    including retry logic for API errors and handling of incomplete responses.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        last_message: Optional[Dict[str, Any]] - The last message sent/received</span>
+<span class="sd">        client: Optional[anthropic.Anthropic] - The Anthropic API client instance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AnthropicMailbox.__init__">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicMailbox.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize an AnthropicMailbox.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            verbose: Whether to enable verbose logging (default: False)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_message</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">anthropic</span><span class="o">.</span><span class="n">Anthropic</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="AnthropicMailbox.send_message">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicMailbox.send_message">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">send_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bot</span><span class="p">:</span> <span class="s1">&#39;AnthropicBot&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sends a message using the Anthropic API.</span>
+
+<span class="sd">        Handles API key setup, message formatting, and implements exponential backoff</span>
+<span class="sd">        retry logic for API errors.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            bot: The AnthropicBot instance making the request</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The API response dictionary</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If no API key is found</span>
+<span class="sd">            Exception: If max retries are reached</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">api_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">api_key</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">api_key</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;ANTHROPIC_API_KEY&#39;</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Anthropic API key not found. Set up &#39;ANTHROPIC_API_KEY&#39; environment variable.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">anthropic</span><span class="o">.</span><span class="n">Anthropic</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">api_key</span><span class="p">)</span>
+        <span class="n">conversation</span><span class="p">:</span> <span class="n">AnthropicNode</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">conversation</span>
+        <span class="n">tools</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">bot</span><span class="o">.</span><span class="n">tool_handler</span> <span class="ow">and</span> <span class="n">bot</span><span class="o">.</span><span class="n">tool_handler</span><span class="o">.</span><span class="n">tools</span><span class="p">:</span>
+            <span class="n">tools</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">tool_handler</span><span class="o">.</span><span class="n">tools</span>
+            <span class="n">tools</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;cache_control&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;ephemeral&#39;</span><span class="p">}</span>
+        <span class="n">messages</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">conversation</span><span class="o">.</span><span class="n">_build_messages</span><span class="p">()</span>
+        <span class="n">cc</span> <span class="o">=</span> <span class="n">CacheController</span><span class="p">()</span>
+        <span class="n">messages</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="n">manage_cache_controls</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+        <span class="n">create_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">system_message</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">system_message</span>
+        <span class="k">if</span> <span class="n">tools</span><span class="p">:</span>
+            <span class="n">create_dict</span><span class="p">[</span><span class="s1">&#39;tools&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tools</span>
+        <span class="k">if</span> <span class="n">system_message</span><span class="p">:</span>
+            <span class="n">create_dict</span><span class="p">[</span><span class="s1">&#39;system&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">system_message</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">Engines</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">model_engine</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">max_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">max_tokens</span>
+        <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">temperature</span>
+        <span class="n">non_optional</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;model&#39;</span><span class="p">:</span> <span class="n">model</span><span class="p">,</span> <span class="s1">&#39;max_tokens&#39;</span><span class="p">:</span> <span class="n">max_tokens</span><span class="p">,</span> <span class="s1">&#39;temperature&#39;</span><span class="p">:</span> <span class="n">temperature</span><span class="p">,</span> <span class="s1">&#39;messages&#39;</span><span class="p">:</span> <span class="n">messages</span><span class="p">}</span>
+        <span class="n">create_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="o">**</span><span class="n">non_optional</span><span class="p">)</span>
+        <span class="n">max_retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">25</span>
+        <span class="n">base_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">messages</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="o">**</span><span class="n">create_dict</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">response</span>
+            <span class="k">except</span> <span class="p">(</span><span class="n">anthropic</span><span class="o">.</span><span class="n">InternalServerError</span><span class="p">,</span> <span class="n">anthropic</span><span class="o">.</span><span class="n">RateLimitError</span><span class="p">,</span> <span class="n">anthropic</span><span class="o">.</span><span class="n">APIConnectionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">attempt</span> <span class="o">==</span> <span class="n">max_retries</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n\n\n</span><span class="s1"> ---debug---</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">create_dict</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">---debug---</span><span class="se">\n\n\n</span><span class="s1">&#39;</span><span class="p">)</span>
+                    <span class="k">raise</span> <span class="n">e</span>
+                <span class="n">delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">base_delay</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">attempt</span> <span class="o">+</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Attempt </span><span class="si">{</span><span class="n">attempt</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1"> failed with </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s1">. Retrying in </span><span class="si">{</span><span class="n">delay</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1"> seconds...&#39;</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Max retries reached. Unable to send message.&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AnthropicMailbox.process_response">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicMailbox.process_response">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">bot</span><span class="p">:</span> <span class="s1">&#39;AnthropicBot&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process the API response and handle incomplete responses.</span>
+
+<span class="sd">        Manages continuation of responses that hit the max_tokens limit and</span>
+<span class="sd">        extracts the relevant text and role information.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            response: The API response to process</span>
+<span class="sd">            bot: The AnthropicBot instance that made the request</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple containing:</span>
+<span class="sd">                - response text (str)</span>
+<span class="sd">                - response role (str)</span>
+<span class="sd">                - additional metadata (dict)</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            anthropic.BadRequestError: If the API returns a 400 error</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">should_continue</span><span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;Determine if response continuation is needed.</span>
+
+<span class="sd">                Args:</span>
+<span class="sd">                    response: The Anthropic API response object</span>
+
+<span class="sd">                Returns:</span>
+<span class="sd">                    bool: True if the response was truncated and contains no tool calls</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+                <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">stop_reason</span> <span class="o">==</span> <span class="s1">&#39;max_tokens&#39;</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="s1">&#39;tool_calls&#39;</span> <span class="ow">in</span> <span class="n">response</span><span class="p">)</span>
+            <span class="k">while</span> <span class="n">should_continue</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">bot</span><span class="o">.</span><span class="n">conversation</span><span class="o">.</span><span class="n">role</span> <span class="o">==</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="c1"># base case</span>
+                    <span class="n">bot</span><span class="o">.</span><span class="n">conversation</span><span class="o">.</span><span class="n">_add_reply</span><span class="p">(</span><span class="n">role</span><span class="o">=</span><span class="s1">&#39;assistant&#39;</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">bot</span><span class="o">.</span><span class="n">conversation</span><span class="o">.</span><span class="n">role</span> <span class="o">==</span> <span class="s1">&#39;assistant&#39;</span><span class="p">:</span> <span class="c1"># recursive case</span>
+                    <span class="n">bot</span><span class="o">.</span><span class="n">conversation</span><span class="o">.</span><span class="n">content</span> <span class="o">+=</span> <span class="n">response</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span><span class="n">bot</span><span class="p">)</span>
+            
+            <span class="c1"># process the complete response</span>
+            <span class="n">response_role</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">role</span>
+            <span class="n">response_text</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="s1">&#39;~&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">anthropic</span><span class="o">.</span><span class="n">BadRequestError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">400</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">raise</span> <span class="n">e</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">response_text</span><span class="p">,</span> <span class="n">response_role</span><span class="p">,</span> <span class="p">{})</span></div>
+</div>
+
+
+<div class="viewcode-block" id="AnthropicBot">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicBot">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AnthropicBot</span><span class="p">(</span><span class="n">Bot</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A bot implementation using the Anthropic API.</span>
+
+<span class="sd">    Use when you need to create a bot that interfaces with Anthropic&#39;s chat completion models.</span>
+<span class="sd">    Provides a complete implementation with Anthropic-specific conversation management,</span>
+<span class="sd">    tool handling, and message processing. Supports both simple chat interactions and</span>
+<span class="sd">    complex tool-using conversations.</span>
+
+<span class="sd">    Inherits from:</span>
+<span class="sd">        Bot: Base class for all bot implementations, providing core conversation and tool management</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        api_key (str): Anthropic API key for authentication</span>
+<span class="sd">        model_engine (Engines): The Anthropic model being used (e.g., GPT4)</span>
+<span class="sd">        max_tokens (int): Maximum tokens allowed in completion responses</span>
+<span class="sd">        temperature (float): Response randomness factor (0-1)</span>
+<span class="sd">        name (str): Instance name for identification</span>
+<span class="sd">        role (str): Bot&#39;s role identifier</span>
+<span class="sd">        role_description (str): Detailed description of bot&#39;s role/personality (for humans to read, not used in api)</span>
+<span class="sd">        system_message (str): System-level instructions for the bot</span>
+<span class="sd">        tool_handler (AnthropicToolHandler): Manages function calling capabilities</span>
+<span class="sd">        conversation (AnthropicNode): Manages conversation history</span>
+<span class="sd">        mailbox (AnthropicMailbox): Handles API communication</span>
+<span class="sd">        autosave (bool): Whether to automatically save state after responses</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        ```python</span>
+<span class="sd">        # Create a documentation expert bot</span>
+<span class="sd">        bot = ChatGPT_Bot(</span>
+<span class="sd">            model_engine=Engines.GPT4,</span>
+<span class="sd">            temperature=0.3,</span>
+<span class="sd">            role_description=&quot;a Python documentation expert&quot;</span>
+<span class="sd">        )</span>
+
+<span class="sd">        # Add tools and use the bot</span>
+<span class="sd">        bot.add_tool(my_function)</span>
+<span class="sd">        response = bot.respond(&quot;Please help document this code.&quot;)</span>
+
+<span class="sd">        # Save the bot&#39;s state for later use</span>
+<span class="sd">        bot.save(&quot;doc_expert.bot&quot;)</span>
+<span class="sd">        ```</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AnthropicBot.__init__">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.AnthropicBot.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">api_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">model_engine</span><span class="p">:</span> <span class="n">Engines</span> <span class="o">=</span> <span class="n">Engines</span><span class="o">.</span><span class="n">CLAUDE37_SONNET_20250219</span><span class="p">,</span>
+        <span class="n">max_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4096</span><span class="p">,</span>
+        <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;Claude&#39;</span><span class="p">,</span>
+        <span class="n">role</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;assistant&#39;</span><span class="p">,</span>
+        <span class="n">role_description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;a friendly AI assistant&#39;</span><span class="p">,</span>
+        <span class="n">autosave</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize an AnthropicBot.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            api_key: Optional API key (will use ANTHROPIC_API_KEY env var if not provided)</span>
+<span class="sd">            model_engine: The Anthropic model to use (default: CLAUDE37_SONNET_20250219)</span>
+<span class="sd">            max_tokens: Maximum tokens per response (default: 4096)</span>
+<span class="sd">            temperature: Response randomness, 0-1 (default: 0.3)</span>
+<span class="sd">            name: Bot&#39;s name (default: &#39;Claude&#39;)</span>
+<span class="sd">            role: Bot&#39;s role (default: &#39;assistant&#39;)</span>
+<span class="sd">            role_description: Description of bot&#39;s role (default: &#39;a friendly AI assistant&#39;)</span>
+<span class="sd">            autosave: Whether to autosave state after responses (default: True, saves to cwd)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">api_key</span><span class="p">,</span> <span class="n">model_engine</span><span class="p">,</span> <span class="n">max_tokens</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">role</span><span class="p">,</span> <span class="n">role_description</span><span class="p">,</span> <span class="n">conversation</span><span class="o">=</span><span class="n">AnthropicNode</span><span class="o">.</span><span class="n">_create_empty</span><span class="p">(</span><span class="n">AnthropicNode</span><span class="p">),</span> <span class="n">tool_handler</span><span class="o">=</span><span class="n">AnthropicToolHandler</span><span class="p">(),</span> <span class="n">mailbox</span><span class="o">=</span><span class="n">AnthropicMailbox</span><span class="p">(),</span> <span class="n">autosave</span><span class="o">=</span><span class="n">autosave</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="CacheController">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.CacheController">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CacheController</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manages cache control directives in Anthropic message histories.</span>
+
+<span class="sd">    This class handles the placement and management of cache control markers in the</span>
+<span class="sd">    conversation history to optimize context window usage. It ensures that cache</span>
+<span class="sd">    control directives are properly placed and don&#39;t interfere with tool operations.</span>
+
+<span class="sd">    The controller maintains a balance between preserving important context and</span>
+<span class="sd">    allowing older messages to be cached or dropped when the context window fills up.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="CacheController.find_cache_control_positions">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.CacheController.find_cache_control_positions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">find_cache_control_positions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Find positions of all cache control directives in the message history.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            messages: List of message dictionaries to search</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of indices where cache control directives are found</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">positions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">msg</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">messages</span><span class="p">):</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;content&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;cache_control&#39;</span> <span class="ow">in</span> <span class="n">item</span><span class="p">:</span>
+                        <span class="n">positions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+                        <span class="k">break</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;cache_control&#39;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+                <span class="n">positions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+            <span class="n">tool_calls</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;tool_calls&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">tool_calls</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">tool_call</span> <span class="ow">in</span> <span class="n">tool_calls</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tool_call</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">tool_call</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cache_control&#39;</span><span class="p">):</span>
+                        <span class="n">positions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+                        <span class="k">break</span>
+        <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">positions</span><span class="p">)))</span></div>
+
+
+<div class="viewcode-block" id="CacheController.should_add_cache_control">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.CacheController.should_add_cache_control">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">should_add_cache_control</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">total_messages</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">last_control_pos</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determine if a new cache control directive should be added.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            total_messages: Total number of messages in history</span>
+<span class="sd">            last_control_pos: Position of the last cache control directive</span>
+<span class="sd">            threshold: Growth factor for determining new control placement (default: 5.0)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if a new cache control directive should be added</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">required_length</span> <span class="o">=</span> <span class="n">last_control_pos</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">threshold</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">total_messages</span> <span class="o">&gt;=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">required_length</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CacheController.shift_cache_control_out_of_tool_block">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.CacheController.shift_cache_control_out_of_tool_block">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shift_cache_control_out_of_tool_block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">position</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Move cache control directives out of tool-related message blocks.</span>
+
+<span class="sd">        Cache controls should not be placed within tool call or result blocks as this</span>
+<span class="sd">        can interfere with tool operation. This method finds the nearest safe position</span>
+<span class="sd">        to move the cache control directive to.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            messages: List of messages to modify</span>
+<span class="sd">            position: Current position of the cache control directive</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            New position where the cache control directive was moved to</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">position</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">messages</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">position</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">messages</span><span class="p">[</span><span class="n">position</span><span class="p">]</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;content&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">has_tool_block</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;tool_call&#39;</span><span class="p">,</span> <span class="s1">&#39;tool_result&#39;</span><span class="p">]:</span>
+                    <span class="n">has_tool_block</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">break</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">content</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;tool_call&#39;</span><span class="p">,</span> <span class="s1">&#39;tool_result&#39;</span><span class="p">]:</span>
+            <span class="n">has_tool_block</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">has_tool_block</span><span class="p">:</span>
+            <span class="n">new_position</span> <span class="o">=</span> <span class="n">position</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="k">while</span> <span class="n">new_position</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">messages</span><span class="p">):</span>
+                <span class="n">next_content</span> <span class="o">=</span> <span class="n">messages</span><span class="p">[</span><span class="n">new_position</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;content&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">is_tool</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">next_content</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                    <span class="n">is_tool</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;tool_call&#39;</span><span class="p">,</span> <span class="s1">&#39;tool_result&#39;</span><span class="p">]</span>
+                                 <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">next_content</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">next_content</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                    <span class="n">is_tool</span> <span class="o">=</span> <span class="n">next_content</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;tool_call&#39;</span><span class="p">,</span> <span class="s1">&#39;tool_result&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">is_tool</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">remove_cache_control_at_position</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">position</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">insert_cache_control</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">new_position</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">new_position</span>
+                <span class="n">new_position</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">new_position</span> <span class="o">=</span> <span class="n">position</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">while</span> <span class="n">new_position</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">prev_content</span> <span class="o">=</span> <span class="n">messages</span><span class="p">[</span><span class="n">new_position</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;content&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">is_tool</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">prev_content</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                    <span class="n">is_tool</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;tool_call&#39;</span><span class="p">,</span> <span class="s1">&#39;tool_result&#39;</span><span class="p">]</span>
+                                 <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">prev_content</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">prev_content</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                    <span class="n">is_tool</span> <span class="o">=</span> <span class="n">prev_content</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;tool_call&#39;</span><span class="p">,</span> <span class="s1">&#39;tool_result&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">is_tool</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">remove_cache_control_at_position</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">position</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">insert_cache_control</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">new_position</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">new_position</span>
+                <span class="n">new_position</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">position</span></div>
+
+
+<div class="viewcode-block" id="CacheController.insert_cache_control">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.CacheController.insert_cache_control">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_cache_control</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">position</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert a cache control directive at the specified position.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            messages: List of messages to modify</span>
+<span class="sd">            position: Position where the cache control should be inserted</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">position</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">position</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">messages</span><span class="p">):</span>
+            <span class="n">position</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">messages</span><span class="p">[</span><span class="n">position</span><span class="p">]</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;content&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">msg</span><span class="p">[</span><span class="s1">&#39;content&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="n">content</span><span class="p">,</span> <span class="s1">&#39;cache_control&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;ephemeral&#39;</span><span class="p">}}]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">((</span><span class="s1">&#39;cache_control&#39;</span> <span class="ow">in</span> <span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">content</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">dict</span><span class="p">))):</span>
+                <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;type&#39;</span> <span class="ow">in</span> <span class="n">item</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;tool_call&#39;</span><span class="p">,</span> <span class="s1">&#39;tool_result&#39;</span><span class="p">]:</span>
+                            <span class="n">item</span><span class="p">[</span><span class="s1">&#39;cache_control&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;ephemeral&#39;</span><span class="p">}</span>
+                            <span class="k">break</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;cache_control&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">content</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;tool_call&#39;</span><span class="p">,</span> <span class="s1">&#39;tool_result&#39;</span><span class="p">]:</span>
+                <span class="n">content</span><span class="p">[</span><span class="s1">&#39;cache_control&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;ephemeral&#39;</span><span class="p">}</span>
+        <span class="n">tool_calls</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;tool_calls&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">tool_calls</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">tool_call</span> <span class="ow">in</span> <span class="n">tool_calls</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tool_call</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                    <span class="n">tool_call</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;cache_control&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CacheController.remove_cache_control_at_position">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.CacheController.remove_cache_control_at_position">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">remove_cache_control_at_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">position</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove cache control directive at the specified position.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            messages: List of messages to modify</span>
+<span class="sd">            position: Position of the cache control to remove</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">position</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">position</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">messages</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">messages</span><span class="p">[</span><span class="n">position</span><span class="p">]</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;content&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;cache_control&#39;</span> <span class="ow">in</span> <span class="n">item</span><span class="p">:</span>
+                    <span class="k">del</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;cache_control&#39;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;cache_control&#39;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">content</span><span class="p">[</span><span class="s1">&#39;cache_control&#39;</span><span class="p">]</span>
+        <span class="n">tool_calls</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;tool_calls&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">tool_calls</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">tool_call</span> <span class="ow">in</span> <span class="n">tool_calls</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tool_call</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;cache_control&#39;</span> <span class="ow">in</span> <span class="n">tool_call</span><span class="p">:</span>
+                    <span class="k">del</span> <span class="n">tool_call</span><span class="p">[</span><span class="s1">&#39;cache_control&#39;</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="CacheController.manage_cache_controls">
+<a class="viewcode-back" href="../../../source/bots.foundation.html#bots.CacheController.manage_cache_controls">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">manage_cache_controls</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Manage cache control directives across the entire message history.</span>
+
+<span class="sd">        Use when you need to optimize the conversation context window by managing which</span>
+<span class="sd">        parts of the conversation history can be cached or dropped.</span>
+
+<span class="sd">        This method ensures proper placement and maintenance of cache control directives:</span>
+<span class="sd">        - Prevents interference with tool operations</span>
+<span class="sd">        - Limits the total number of cache controls</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            messages: List of messages to manage</span>
+<span class="sd">            threshold: Growth factor for cache control placement (default: 5.0)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Modified list of messages with properly managed cache controls</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cache_control_positions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_cache_control_positions</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cache_control_positions</span><span class="p">:</span>
+            <span class="n">initial_position</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.75</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">insert_cache_control</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">initial_position</span><span class="p">)</span>
+            <span class="n">initial_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shift_cache_control_out_of_tool_block</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">initial_position</span><span class="p">)</span>
+            <span class="n">cache_control_positions</span> <span class="o">=</span> <span class="p">[</span><span class="n">initial_position</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">cache_control_positions</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">last_control_pos</span> <span class="o">=</span> <span class="n">cache_control_positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">new_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shift_cache_control_out_of_tool_block</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">last_control_pos</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">new_pos</span> <span class="o">!=</span> <span class="n">last_control_pos</span><span class="p">:</span>
+                <span class="n">last_control_pos</span> <span class="o">=</span> <span class="n">new_pos</span>
+                <span class="n">cache_control_positions</span> <span class="o">=</span> <span class="p">[</span><span class="n">new_pos</span><span class="p">]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">should_add_cache_control</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">messages</span><span class="p">),</span> <span class="n">last_control_pos</span><span class="p">,</span> <span class="n">threshold</span><span class="p">):</span>
+                <span class="n">new_position</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span> <span class="o">*</span> <span class="n">threshold</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">insert_cache_control</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">new_position</span><span class="p">)</span>
+                <span class="n">new_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shift_cache_control_out_of_tool_block</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">new_position</span><span class="p">)</span>
+                <span class="n">cache_control_positions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_position</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">updated_positions</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">cache_control_positions</span><span class="p">:</span>
+                <span class="n">new_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shift_cache_control_out_of_tool_block</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">pos</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">new_pos</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">updated_positions</span><span class="p">:</span>
+                    <span class="n">updated_positions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_pos</span><span class="p">)</span>
+            <span class="n">cache_control_positions</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">updated_positions</span><span class="p">)</span>
+            <span class="n">last_control_pos</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">cache_control_positions</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">should_add_cache_control</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">messages</span><span class="p">),</span> <span class="n">last_control_pos</span><span class="p">,</span> <span class="n">threshold</span><span class="p">):</span>
+                <span class="n">new_position</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span> <span class="o">*</span> <span class="n">threshold</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">insert_cache_control</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">new_position</span><span class="p">)</span>
+                <span class="n">new_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shift_cache_control_out_of_tool_block</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">new_position</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">cache_control_positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">remove_cache_control_at_position</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">cache_control_positions</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">insert_cache_control</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">shift_cache_control_out_of_tool_block</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">cache_control_positions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_cache_control_positions</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cache_control_positions</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">cache_control_positions</span><span class="p">[</span><span class="mi">2</span><span class="p">:]:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">remove_cache_control_at_position</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">pos</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">messages</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, benbuzz790.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
