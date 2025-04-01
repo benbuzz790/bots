@@ -70,7 +70,7 @@ CLASSIFIERS: List[str] = [
 
 setup(
     name='bots',
-    version='0.1',
+    version='1.0.1',
     author='Ben Rinauto',
     author_email='ben.rinauto@gmail.com',
     description='A framework for LLM tool use',
