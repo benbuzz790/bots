@@ -39,7 +39,7 @@ Example:
     ... ])
 """
 
-from typing import List, Callable, Any, Tuple, Optional
+from typing import List, Callable, Any, Tuple, Optional, Union
 from bots.foundation.base import Bot
 from bots.foundation.base import ConversationNode
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -53,10 +53,18 @@ PromptNode = ConversationNode  # A conversation node containing a prompt
 ResponseNode = ConversationNode  # A conversation node containing a response
 Condition = Callable[[Bot], bool]  # A function that evaluates a bot's state and returns True/False
 DynamicPrompt = Callable[[Any], Prompt]  # A function that generates a prompt from some input
+
 RecombinatorFunction = Callable[
     [List[Response], List[ResponseNode]], 
     Tuple[Response, ResponseNode]
 ]  # A function that combines multiple responses into a single response
+
+FunctionalPrompt = Callable[
+    [Bot, Any], 
+    Union [ Tuple[Response, ResponseNode], 
+            Tuple[List[Response], List[ResponseNode]]
+          ]
+] # A function that acts on a Bot and returns a response or set of responses in the form of a tuple.
 
 
 class conditions:
