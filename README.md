@@ -83,10 +83,32 @@ The core of the Bots library is built on a robust foundation:
 4. **Lazy Decorator (bots.lazy)**
    - Runtime code generation via LLM
    - Context-aware implementations
+
    ```python
-   @lazy("Sort using a funny algorithm. Name variables as though you're a clown.")
-   def sort(arr: list[int]) -> list[int]:
-       pass
+   from bots import lazy
+   # Using the smart decorator for functions
+   @lazy("Sort using a divide-and-conquer approach with O(n log n) complexity")
+   def mergesort(arr: list[int]) -> list[int]:
+       pass  # Will be implemented by LLM on first call
+   
+   # Using the smart decorator for classes
+   @lazy("Implement a key-value store with LRU eviction policy")
+   class Cache:
+       pass  # Will be implemented by LLM on first instantiation
+   ```
+   - Customizable context levels for better implementations:
+     - None: No additional context
+     - low: Minimal context (class or module)
+     - medium: Entire current file
+     - high: Current file plus interfaces of other files
+     - very high: All Python files in directory
+   - Customized bots can be used
+
+   ```python
+   # Using the smart with all options
+   @lazy("Implement a key-value store with LRU eviction policy", bot=bots.load('mybot.bot'), context='medium')
+   class Cache:
+       pass  # Will be implemented by LLM on first instantiation
    ```
 
 ## Installation
@@ -163,9 +185,7 @@ fp.prompt_while(
 )
 ```
 
-## Advanced Usage
-
-### Tool Development
+## Tool Development
 
 Tools must follow these patterns for reliability:
 
