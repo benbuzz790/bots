@@ -2,7 +2,7 @@ import os
 import traceback
 import textwrap
 
-def view(file_path: str, max_lines: int = 2500):
+def view(file_path: str, max_lines: str = 2500):
     """
     Display the contents of a file with line numbers.
 
@@ -15,6 +15,7 @@ def view(file_path: str, max_lines: int = 2500):
 
     cost: varies
     """
+    max_lines = int(max_lines)
     encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
     for encoding in encodings:
         try:
@@ -31,7 +32,7 @@ def view(file_path: str, max_lines: int = 2500):
     return f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
 
 
-def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py', 'txt', '.md']"):
+def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py', 'txt', 'md']"):
     """
     Creates a summary of the directory structure starting from the given path, writing only files 
     with specified extensions and showing venv directories without their contents.
@@ -103,7 +104,7 @@ def diff_edit(file_path: str, diff_spec: str):
     Parameters:
     - file_path (str): Path to the file to modify
     - diff_spec (str): Diff-style specification of changes. 
-    Input lines beginning with '-' are removed, and input lines 
+    Lines beginning with '-' are removed, and lines 
     beginning with '+' are added at the starting index of the 
     removed lines. All lines must start with + or -, and white
     space must be matched exactly.
@@ -115,7 +116,17 @@ def diff_edit(file_path: str, diff_spec: str):
     -import numpy
     +import scipy
 
-    cost: medium
+    ex) diff_spec:
+    -    def mergesort():
+    -        pass
+    +    def mergesort(arr:List) -> List
+    +        if len(arr) <= 1:
+    +            return arr
+    +        # Divide the array into two halves
+    +        mid = len(arr) // 2
+    (etc)
+
+    cost: low
     """
     ignore_indentation: bool = True
     context_lines: int = 2
