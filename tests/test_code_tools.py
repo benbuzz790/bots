@@ -2,8 +2,7 @@ import unittest
 import textwrap
 import os
 import tempfile
-from bots.tools.code_tools import view, diff_edit
-
+from bots.tools.code_tools import view, diff_edit, view_dir
 
 def create_temp_file(content):
     """Helper function to create a temporary file with given content."""
@@ -12,7 +11,6 @@ def create_temp_file(content):
     with open(path, 'w', encoding='utf-8') as f:
         f.write(content)
     return path
-
 
 class TestCodeTools(unittest.TestCase):
 
@@ -35,167 +33,68 @@ class TestCodeTools(unittest.TestCase):
 
     def test_basic_replacement(self):
         """Test basic single-line replacement."""
-        initial_content = textwrap.dedent(
-            """
-        def hello():
-            print("Hello")
-            return True
-    """
-            ).lstrip()
-        diff_spec = textwrap.dedent(
-            """
-        -    print("Hello")
-        +    print("Hello, World!")
-    """
-            ).lstrip()
+        initial_content = textwrap.dedent('\n        def hello():\n            print("Hello")\n            return True\n    ').lstrip()
+        diff_spec = textwrap.dedent('\n        -    print("Hello")\n        +    print("Hello, World!")\n    ').lstrip()
         file_path = create_temp_file(initial_content)
         try:
             result = diff_edit(file_path, diff_spec)
             self.assertIn('Successfully', result)
             with open(file_path, 'r', encoding='utf-8') as f:
                 new_content = f.read()
-            expected = textwrap.dedent(
-                """
-            def hello():
-                print("Hello, World!")
-                return True
-        """
-                ).lstrip()
+            expected = textwrap.dedent('\n            def hello():\n                print("Hello, World!")\n                return True\n        ').lstrip()
             self.assertEqual(new_content, expected)
         finally:
             os.remove(file_path)
 
     def test_multi_line_replacement(self):
         """Test replacing multiple consecutive lines."""
-        initial_content = textwrap.dedent(
-            """
-        def complex_function():
-            x = 1
-            y = 2
-            z = 3
-            return x + y + z
-    """
-            ).lstrip()
-        diff_spec = textwrap.dedent(
-            """
-        -    x = 1
-        -    y = 2
-        -    z = 3
-        +    total = 6
-    """
-            ).lstrip()
+        initial_content = textwrap.dedent('\n        def complex_function():\n            x = 1\n            y = 2\n            z = 3\n            return x + y + z\n    ').lstrip()
+        diff_spec = textwrap.dedent('\n        -    x = 1\n        -    y = 2\n        -    z = 3\n        +    total = 6\n    ').lstrip()
         file_path = create_temp_file(initial_content)
         try:
             result = diff_edit(file_path, diff_spec)
             self.assertIn('Successfully', result)
             with open(file_path, 'r', encoding='utf-8') as f:
                 new_content = f.read()
-            expected = textwrap.dedent(
-                """
-            def complex_function():
-                total = 6
-                return x + y + z
-        """
-                ).lstrip()
+            expected = textwrap.dedent('\n            def complex_function():\n                total = 6\n                return x + y + z\n        ').lstrip()
             self.assertEqual(new_content, expected)
         finally:
             os.remove(file_path)
 
     def test_indentation_preservation(self):
         """Test that indentation is properly preserved."""
-        initial_content = textwrap.dedent(
-            """
-        class MyClass:
-            def method(self):
-                if True:
-                    print("old")
-                    return None
-    """
-            ).lstrip()
-        diff_spec = textwrap.dedent(
-            """
-        -            print("old")
-        +            print("new")
-    """
-            ).lstrip()
+        initial_content = textwrap.dedent('\n        class MyClass:\n            def method(self):\n                if True:\n                    print("old")\n                    return None\n    ').lstrip()
+        diff_spec = textwrap.dedent('\n        -            print("old")\n        +            print("new")\n    ').lstrip()
         file_path = create_temp_file(initial_content)
         try:
             result = diff_edit(file_path, diff_spec)
             self.assertIn('Successfully', result)
             with open(file_path, 'r', encoding='utf-8') as f:
                 new_content = f.read()
-            expected = textwrap.dedent(
-                """
-            class MyClass:
-                def method(self):
-                    if True:
-                        print("new")
-                        return None
-        """
-                ).lstrip()
+            expected = textwrap.dedent('\n            class MyClass:\n                def method(self):\n                    if True:\n                        print("new")\n                        return None\n        ').lstrip()
             self.assertEqual(new_content, expected)
         finally:
             os.remove(file_path)
 
     def test_multiple_changes(self):
         """Test multiple separate changes in the same file."""
-        initial_content = textwrap.dedent(
-            """
-        def first():
-            return 1
-
-        def second():
-            return 2
-
-        def third():
-            return 3
-    """
-            ).lstrip()
-        diff_spec = textwrap.dedent(
-            """
-        -    return 1
-        +    return "one"
-
-        -    return 2
-        +    return "two"
-    """
-            ).lstrip()
+        initial_content = textwrap.dedent('\n        def first():\n            return 1\n\n        def second():\n            return 2\n\n        def third():\n            return 3\n    ').lstrip()
+        diff_spec = textwrap.dedent('\n        -    return 1\n        +    return "one"\n\n        -    return 2\n        +    return "two"\n    ').lstrip()
         file_path = create_temp_file(initial_content)
         try:
             result = diff_edit(file_path, diff_spec)
             self.assertIn('Successfully', result)
             with open(file_path, 'r', encoding='utf-8') as f:
                 new_content = f.read()
-            expected = textwrap.dedent(
-                """
-            def first():
-                return "one"
-
-            def second():
-                return "two"
-
-            def third():
-                return 3
-        """
-                ).lstrip()
+            expected = textwrap.dedent('\n            def first():\n                return "one"\n\n            def second():\n                return "two"\n\n            def third():\n                return 3\n        ').lstrip()
             self.assertEqual(new_content, expected)
         finally:
             os.remove(file_path)
 
     def test_no_match(self):
         """Test handling of changes that don't match the file content."""
-        initial_content = textwrap.dedent(
-            """
-        def hello():
-            print("Hello")
-    """
-            ).lstrip()
-        diff_spec = textwrap.dedent(
-            """
-        -    print("Nonexistent")
-        +    print("New")
-    """
-            ).lstrip()
+        initial_content = textwrap.dedent('\n        def hello():\n            print("Hello")\n    ').lstrip()
+        diff_spec = textwrap.dedent('\n        -    print("Nonexistent")\n        +    print("New")\n    ').lstrip()
         file_path = create_temp_file(initial_content)
         try:
             result = diff_edit(file_path, diff_spec)
@@ -225,24 +124,14 @@ class TestCodeTools(unittest.TestCase):
         new_file = os.path.join(self.temp_dir, 'new_file.py')
         if os.path.exists(new_file):
             os.remove(new_file)
-        diff_spec = textwrap.dedent(
-            """
-        +def hello():
-        +    print("Hello, World!")
-    """
-            ).lstrip()
+        diff_spec = textwrap.dedent('\n        +def hello():\n        +    print("Hello, World!")\n    ').lstrip()
         try:
             result = diff_edit(new_file, diff_spec)
             self.assertIn('Successfully', result)
             self.assertTrue(os.path.exists(new_file))
             with open(new_file, 'r', encoding='utf-8') as f:
                 content = f.read()
-            expected = textwrap.dedent(
-                """
-            def hello():
-                print("Hello, World!")
-        """
-                ).lstrip()
+            expected = textwrap.dedent('\n            def hello():\n                print("Hello, World!")\n        ').lstrip()
             self.assertEqual(content, expected)
         finally:
             if os.path.exists(new_file):
@@ -269,33 +158,56 @@ class TestCodeTools(unittest.TestCase):
         new_file = os.path.join(self.temp_dir, 'multi_change_file.py')
         if os.path.exists(new_file):
             os.remove(new_file)
-        diff_spec = textwrap.dedent(
-            """
-            +def add(a, b):
-            +    return a + b
-
-            +def subtract(a, b):
-            +    return a - b
-            """)
+        diff_spec = textwrap.dedent('\n            +def add(a, b):\n            +    return a + b\n\n            +def subtract(a, b):\n            +    return a - b\n            ')
         try:
             result = diff_edit(new_file, diff_spec)
             self.assertIn('Successfully', result)
             self.assertTrue(os.path.exists(new_file))
             with open(new_file, 'r', encoding='utf-8') as f:
                 content = f.read()
-            expected = textwrap.dedent(
-                """
-            def add(a, b):
-                return a + b
-            def subtract(a, b):
-                return a - b
-        """
-                ).lstrip()
+            expected = textwrap.dedent('\n            def add(a, b):\n                return a + b\n            def subtract(a, b):\n                return a - b\n        ').lstrip()
             self.assertEqual(content, expected)
         finally:
             if os.path.exists(new_file):
                 os.remove(new_file)
-
-
 if __name__ == '__main__':
     unittest.main()
+
+class TestViewDir(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = os.path.join('benbuzz790', 'private_tests', 'view_dir_test')
+        os.makedirs(self.temp_dir, exist_ok=True)
+        self.files = {'test1.py': 'print("test1")', 'test2.txt': 'test2 content', 'test3.md': '# test3 header', 'test4.json': '{"test": 4}', 'test5.pyc': 'compiled python', 'subdir/test6.py': 'print("test6")'}
+        for path, content in self.files.items():
+            full_path = os.path.join(self.temp_dir, path)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def test_specific_extensions(self):
+        """Test view_dir with specific file extensions"""
+        result = view_dir(self.temp_dir, target_extensions="['py', 'txt']")
+        self.assertIn('test1.py', result)
+        self.assertIn('test2.txt', result)
+        self.assertNotIn('test3.md', result)
+        self.assertNotIn('test4.json', result)
+
+    def test_wildcard_all(self):
+        """Test view_dir with wildcard '*' to show all files"""
+        result = view_dir(self.temp_dir, target_extensions="['*']")
+        print(f"\nDirectory contents:\n{result}")  # Debug output
+        for filename in ['test1.py', 'test2.txt', 'test3.md', 'test4.json', 'test5.pyc']:
+            self.assertIn(filename, result)
+
+    def test_wildcard_pattern(self):
+        """Test view_dir with wildcard pattern '*.py'"""
+        result = view_dir(self.temp_dir, target_extensions="['*.py']")
+        self.assertIn('test1.py', result)
+        self.assertIn('test6.py', result)
+        self.assertNotIn('test2.txt', result)
+        self.assertNotIn('test5.pyc', result)

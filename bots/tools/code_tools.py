@@ -2,7 +2,7 @@ import os
 import traceback
 import textwrap
 
-def view(file_path: str, max_lines: str = 2500):
+def view(file_path: str, max_lines: str=2500):
     """
     Display the contents of a file with line numbers.
 
@@ -31,16 +31,22 @@ def view(file_path: str, max_lines: str = 2500):
             return f'Error: {str(e)}'
     return f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
 
-
 def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py', 'txt', 'md']"):
-    """
-    Creates a summary of the directory structure starting from the given path, writing only files 
-    with specified extensions and showing venv directories without their contents.
+    """Creates a summary of the directory structure starting from the given path.
+
+    Use when you need to:
+    - Get an overview of a directory's structure
+    - Filter files by extension
+    - Handle venv directories specially
 
     Parameters:
     - start_path (str): The root directory to start scanning from.
     - output_file (str): The name of the file to optionally write the directory structure to.
-    - target_extensions (str): String representation of a list of file extensions (e.g. "['py', 'txt']").
+    - target_extensions (str): String representation of a list of file extensions or patterns.
+        Supports:
+        - Specific extensions: "['py', 'txt']"
+        - Wildcard for all files: "['*']"
+        - Extension patterns: "['*.py']"
 
     Returns:
     str: A formatted string containing the directory structure, with each directory and file properly indented.
@@ -53,47 +59,57 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
             README.md
         module2/
             utils.py
-    
+
     cost: low
     """
+    import fnmatch
     extensions_list = [ext.strip().strip('\'"') for ext in target_extensions.strip('[]').split(',')]
-    extensions_list = [('.' + ext if not ext.startswith('.') else ext) for ext in extensions_list]
-    output_text = []
+    show_all = '*' in extensions_list
+    extensions_list = ['.' + ext if not ext.startswith('.') and (not ext.startswith('*.')) else ext for ext in extensions_list]
 
+    def matches_pattern(filename, patterns):
+        """Check if filename matches any of the patterns"""
+        if show_all:
+            return True
+        for pattern in patterns:
+            if pattern.startswith('*.'):
+                if fnmatch.fnmatch(filename, pattern):
+                    return True
+            elif filename.endswith(pattern):
+                return True
+        return False
+    output_text = []
+    start_path = os.path.abspath(start_path)
     for root, dirs, files in os.walk(start_path):
         level = root.replace(start_path, '').count(os.sep)
         indent = '    ' * level
-        basename = os.path.basename(root)
-
-        # Check if current directory is a venv
+        basename = os.path.basename(root) or os.path.basename(start_path)
         is_venv = basename in ['venv', 'env', '.env'] or 'pyvenv.cfg' in files
-
         if is_venv:
-            # Add venv directory without scanning its contents
             line = f'{indent}{basename}/'
             output_text.append(line)
-            dirs[:] = []  # Skip processing contents of venv
+            dirs[:] = []
             continue
-
         has_relevant_files = False
-        for _, _, fs in os.walk(root):
-            if any(f.endswith(tuple(extensions_list)) for f in fs):
-                has_relevant_files = True
-                break
-
+        if show_all:
+            has_relevant_files = bool(files)
+        else:
+            for _, _, fs in os.walk(root):
+                if any((matches_pattern(f, extensions_list) for f in fs)):
+                    has_relevant_files = True
+                    break
         if has_relevant_files:
-            line = f'{indent}{basename}/'
-            output_text.append(line)
+            if root != start_path:
+                line = f'{indent}{basename}/'
+                output_text.append(line)
             subindent = '    ' * (level + 1)
-            for file in files:
-                if file.endswith(tuple(extensions_list)):
+            for file in sorted(files):
+                if matches_pattern(file, extensions_list):
                     line = f'{subindent}{file}'
                     output_text.append(line)
-
     if output_file is not None:
         with open(output_file, 'w') as file:
             file.write('\n'.join(output_text))
-            
     return '\n'.join(output_text)
 
 def diff_edit(file_path: str, diff_spec: str):
@@ -131,8 +147,7 @@ def diff_edit(file_path: str, diff_spec: str):
     ignore_indentation: bool = True
     context_lines: int = 2
     try:
-        encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252',
-            'iso-8859-1']
+        encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
         content = None
         used_encoding = 'utf-8'
         if not os.path.exists(file_path):
@@ -149,9 +164,7 @@ def diff_edit(file_path: str, diff_spec: str):
                 except UnicodeDecodeError:
                     continue
         if content is None:
-            return (
-                f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
-                )
+            return f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
         if not diff_spec.strip():
             return 'Error: No changes specified'
         changes, errors = _parse_diff_spec(diff_spec=diff_spec)
@@ -162,20 +175,16 @@ def diff_edit(file_path: str, diff_spec: str):
         matched_changes = []
         unmatched_changes = []
         for remove, add in changes:
-            match_found, line_num, prev_indent, match_score, best_index = (
-                _find_matching_block(current_lines, remove, ignore_indentation)
-                )
+            match_found, line_num, prev_indent, match_score, best_index = _find_matching_block(current_lines, remove, ignore_indentation)
             if match_found:
                 indented_add = _adjust_indentation(add, prev_indent)
                 current_lines[line_num:line_num + len(remove)] = indented_add
-                matched_changes.append(('\n'.join(remove), '\n'.join(
-                    indented_add)))
+                matched_changes.append(('\n'.join(remove), '\n'.join(indented_add)))
             else:
                 failure_context = ''
                 if match_score > 0:
-                    context = _get_context(current_lines, best_index,
-                        context_lines)
-                    failure_context = '\nNearest partial match found around:\n' + '\n'.join(context) + f"""\n\nMatch score: {match_score:.2f}"""
+                    context = _get_context(current_lines, best_index, context_lines)
+                    failure_context = '\nNearest partial match found around:\n' + '\n'.join(context) + f'\n\nMatch score: {match_score:.2f}'
                 unmatched_changes.append(('\n'.join(remove), '\n'.join(add), failure_context))
         if matched_changes:
             new_content = '\n'.join(current_lines)
@@ -186,19 +195,14 @@ def diff_edit(file_path: str, diff_spec: str):
         report = []
         report.append('Changes made:')
         if matched_changes:
-            report.append(
-                f'\nSuccessfully applied {len(matched_changes)} changes:')
-            #for old, new in matched_changes:
-                #report.append(f'\nChanged:\n{old}\nTo:\n{new}')
+            report.append(f'\nSuccessfully applied {len(matched_changes)} changes:')
         if unmatched_changes:
-            report.append(
-                f'\nFailed to apply {len(unmatched_changes)} changes:')
+            report.append(f'\nFailed to apply {len(unmatched_changes)} changes:')
             for old, new, context in unmatched_changes:
                 report.append(f'\nCould not find:\n{old}\n\n{context}')
         return '\n'.join(report) if report else 'No changes were applied'
     except Exception as e:
         return f'Error: {str(e)}\n{traceback.format_exc()}'
-
 
 def _parse_diff_spec(diff_spec: str):
     changes = []
@@ -224,9 +228,7 @@ def _parse_diff_spec(diff_spec: str):
         elif last_prefix is not None:
             content = line
         else:
-            errors.append(
-                f'Error: "{line}" does not start with + or -. All lines must start with + or -.'
-                )
+            errors.append(f'Error: "{line}" does not start with + or -. All lines must start with + or -.')
             continue
         if last_prefix == '-':
             remove.append(content)
@@ -234,10 +236,9 @@ def _parse_diff_spec(diff_spec: str):
             add.append(content)
     if remove or add:
         changes.append((remove, add))
-    if not changes and not errors:
+    if not changes and (not errors):
         errors.append('Error: No valid changes found in diff spec')
-    return changes, errors
-
+    return (changes, errors)
 
 def _find_matching_block(current_lines, remove_lines, ignore_indentation):
     """Find where a block of lines matches in the current file content.
@@ -257,37 +258,28 @@ def _find_matching_block(current_lines, remove_lines, ignore_indentation):
         - best_index is the line number of best partial match
     """
     if not remove_lines:
-        return True, len(current_lines), '', 1.0, len(current_lines)
-    
-    # Filter out empty lines for matching
+        return (True, len(current_lines), '', 1.0, len(current_lines))
+
     def filter_empty_lines(lines):
         return [line for line in lines if line.strip()]
-    
     filtered_current = filter_empty_lines(current_lines)
     filtered_remove = filter_empty_lines(remove_lines)
-    
-    # Build index mapping from filtered to original lines
     current_map = []
     for i, line in enumerate(current_lines):
         if line.strip():
             current_map.append(i)
-    
     if len(filtered_remove) > len(filtered_current):
-        return False, 0, '', 0.0, 0
-        
+        return (False, 0, '', 0.0, 0)
     for i in range(len(filtered_current) - len(filtered_remove) + 1):
         current_block = filtered_current[i:i + len(filtered_remove)]
         if ignore_indentation:
-            match = all(c.strip() == o.strip() for c, o in zip(current_block, filtered_remove))
+            match = all((c.strip() == o.strip() for c, o in zip(current_block, filtered_remove)))
         else:
-            match = all(c == o for c, o in zip(current_block, filtered_remove))
+            match = all((c == o for c, o in zip(current_block, filtered_remove)))
         if match:
-            # Map back to original line number
             orig_index = current_map[i]
-            # Find the span of lines to remove including empty lines
             end_index = current_map[i + len(filtered_remove) - 1]
-            return True, orig_index, _get_indentation(current_lines[orig_index]), 1.0, orig_index
-            
+            return (True, orig_index, _get_indentation(current_lines[orig_index]), 1.0, orig_index)
     best_match_score = 0
     best_match_index = 0
     for i in range(len(filtered_current) - len(filtered_remove) + 1):
@@ -296,13 +288,11 @@ def _find_matching_block(current_lines, remove_lines, ignore_indentation):
         if match_score > best_match_score:
             best_match_score = match_score
             best_match_index = current_map[i]
-    return False, best_match_index, _get_indentation(current_lines[best_match_index]), best_match_score, best_match_index
-
+    return (False, best_match_index, _get_indentation(current_lines[best_match_index]), best_match_score, best_match_index)
 
 def _get_indentation(line):
     """Extract the leading whitespace from a line."""
     return line[:len(line) - len(line.lstrip())]
-
 
 def _adjust_indentation(lines, target_indent):
     """Adjust indentation of a block of lines to match target_indent."""
@@ -311,7 +301,7 @@ def _adjust_indentation(lines, target_indent):
     non_empty_lines = [l for l in lines if l.strip()]
     if not non_empty_lines:
         return lines
-    min_indent = min(len(_get_indentation(l)) for l in non_empty_lines)
+    min_indent = min((len(_get_indentation(l)) for l in non_empty_lines))
     adjusted = []
     for line in lines:
         if not line.strip():
@@ -321,20 +311,17 @@ def _adjust_indentation(lines, target_indent):
             adjusted.append(target_indent + stripped)
     return adjusted
 
-
 def _get_context(lines, center_idx, context_size):
     """Get context lines around an index with line numbers."""
     start = max(0, center_idx - context_size)
     end = min(len(lines), center_idx + context_size + 1)
-    return [f'{i + 1}: {line}' for i, line in enumerate(lines[start:end],
-        start)]
-
+    return [f'{i + 1}: {line}' for i, line in enumerate(lines[start:end], start)]
 
 def _calculate_block_match_score(current_block, old_lines, ignore_indentation):
     """Calculate how well two blocks match, returning a score and matching line indices."""
     if ignore_indentation:
-        current_joined = ' '.join(l.strip() for l in current_block)
-        old_joined = ' '.join(l.strip() for l in old_lines)
+        current_joined = ' '.join((l.strip() for l in current_block))
+        old_joined = ' '.join((l.strip() for l in old_lines))
         current_stripped = [c.strip() for c in current_block]
         old_stripped = [o.strip() for o in old_lines]
     else:
@@ -342,8 +329,7 @@ def _calculate_block_match_score(current_block, old_lines, ignore_indentation):
         old_joined = ' '.join(old_lines)
         current_stripped = current_block
         old_stripped = old_lines
-    exact_matches = sum(1 for c, o in zip(current_stripped, old_stripped) if
-        c == o)
+    exact_matches = sum((1 for c, o in zip(current_stripped, old_stripped) if c == o))
     if current_joined == old_joined:
         return len(current_block) * 3
     c_words = set(current_joined.split())
@@ -357,8 +343,7 @@ def _calculate_block_match_score(current_block, old_lines, ignore_indentation):
     total_score = exact_matches * 2 + partial_score
     return total_score
 
-
-def _has_line_number_prefix(line: str) ->bool:
+def _has_line_number_prefix(line: str) -> bool:
     """Check if a string starts with a line number format (e.g., '123:' or '  123:')
     Args:
         line (str): The line to check
@@ -375,8 +360,7 @@ def _has_line_number_prefix(line: str) ->bool:
     except ValueError:
         return False
 
-
-def _strip_line_number(line: str) ->str:
+def _strip_line_number(line: str) -> str:
     """Remove line number prefix if present (e.g., '123:content' or '  123:content' becomes 'content')
     Preserves any leading whitespace before the line number.
     Args:
