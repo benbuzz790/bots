@@ -6,24 +6,49 @@
 
 The bots library provides a structured interface for working with such agents, aiming to make LLM tools more convenient, accessible, and sharable for developers and researchers.
 
-## Foundation (bots.foundation)
+## Core Elements
 
-The core of the Bots library is built on a robust foundation:
+1. **The 'bot' Abstraction**
+   - Simple primary interface: `bot.respond()`, with supporting operations `add_tool(s)`, `save()`, `load()`, and `chat()`
+   - Abstract base classes for wrapping LLM API interfaces into a unified 'bot' interface
+   - Pre-built implementations for ChatGPT and Anthropic bots
+   - Complete bot portability - save and share bots with their full context and tools
 
-- Tool handling capabilities - any well-structured Python function can be used by a bot
-- Simple primary interface: `bot.respond()`, with supporting operations `add_tool(s)`, `save()`, `load()`, and `chat()`
-- Tree-based conversation management:
-  - Implements a linked tree structure for conversation histories
-  - Allows branching conversations and exploring multiple dialogue paths
-  - Efficiently manages context by only sending path to root
-  - Enables saving and loading specific conversation states
-- Abstract base classes for wrapping LLM API interfaces into a unified 'bot' interface
-- Pre-built implementations for ChatGPT and Anthropic bots
-- Complete bot portability - save and share bots with their full context and tools
+2. **Automatic Function to Tool Conversion**
+   - Tool handling capabilities - any well-structured Python function can be used by a bot
+   - Standardized tool requirements:
+     - Clear docstrings with usage instructions
+     - Consistent error handling
+     - Predictable return formats
+     - Self-contained with explicit dependencies
+
+3. **Tree-based Conversations**
+   - Implements a linked tree structure for conversation histories
+   - Allows branching conversations and exploring multiple dialogue paths
+   - Efficiently manages context by only sending path to root
+   - Enables saving and loading specific conversation states
+
+4. **Functional Prompting**
+   - Core operations: chain(), branch(), tree_of_thought()
+   - Composable patterns for complex tasks
+   - Iteration control (prompt_while, chain_while)
+   - Support for parallel exploration
+   - Parallel execution functions:
+     - par_branch() - Like branch() but processes in parallel
+     - par_branch_while() - Like branch_while() but processes in parallel
+     - par_dispatch() - Run any functional prompt across multiple bots in parallel
 
 ## Key Features
 
-1. **Auto Terminal (bots.dev.auto_terminal)**
+1. **Pre-built Code Tools**
+   - Built-in tools for:
+     - File operations (read, write, modify)
+     - Code manipulation
+     - GitHub integration
+     - Terminal operations
+   - Tool portability and preservation
+
+2. **Auto Terminal**
    ```bash
    python -m bots.dev.auto_terminal
    ```
@@ -34,56 +59,9 @@ The core of the Bots library is built on a robust foundation:
    - Save/load bot states for different tasks
    - Integrated Python and PowerShell execution
 
-2. **Tool System (bots.tools)**
-   - Standardized tool requirements:
-     - Clear docstrings with usage instructions
-     - Consistent error handling
-     - Predictable return formats
-     - Self-contained with explicit dependencies
-   - Built-in tools for:
-     - File operations (read, write, modify)
-     - Code manipulation
-     - GitHub integration
-     - Terminal operations
-   - Tool portability and preservation
-
-3. **Functional Prompts (bots.flows.functional_prompts)**
-   - Core operations: chain(), branch(), tree_of_thought()
-   - Composable patterns for complex tasks
-   - Iteration control (prompt_while, chain_while)
-   - Support for parallel exploration
-   - Parallel execution functions:
-     - par_branch() - Like branch() but processes in parallel
-     - par_branch_while() - Like branch_while() but processes in parallel
-     - par_dispatch() - Run any functional prompt across multiple bots in parallel
-   ```python
-   # Example: Parallel analysis using branch()
-   responses, nodes = fp.branch(bot, [
-       "Technical perspective",
-       "User perspective",
-       "Business perspective"
-   ])
-
-   # Example: Parallel processing with par_branch()
-   responses, nodes = fp.par_branch(bot, [
-       "Analyze code structure",
-       "Review documentation",
-       "Check test coverage",
-       "Audit dependencies"
-   ])
-
-   # Example: Parallel dispatch across multiple bots
-   results = fp.par_dispatch(
-       bot_list=[bot1, bot2, bot3],
-       functional_prompt=fp.chain,
-       prompts=["Analyze this component", "Suggest improvements"]
-   )
-   ```
-
-4. **Lazy Decorator (bots.lazy)**
+3. **Lazy Decorator**
    - Runtime code generation via LLM
    - Context-aware implementations
-
    ```python
    from bots import lazy
    # Using the smart decorator for functions
