@@ -2,7 +2,7 @@
 
 ## Overview
 
-**bots** (bɒts), ***n.pl.*** : Language Models which are instruct-tuned, have the ability to use tools, and are encapsulated with model parameters, metadata, and conversation history.
+**bots** (bɒts), ***n.pl.*** : Language Models which are instruct-tuned, have the ability to use tools, and are encapsulated with model parameters, metadata, tools, and conversation history.
 
 The bots library provides a structured interface for working with such agents, aiming to make LLM tools more convenient, accessible, and sharable for developers and researchers.
 
@@ -11,21 +11,21 @@ The bots library provides a structured interface for working with such agents, a
 1. **The 'bot' Abstraction**
    The bot abstraction provides a unified interface for working with different LLM services (like OpenAI and Anthropic), 
    handling all the complexity of tool management, conversation history, and state preservation. When you save a bot, 
-   it preserves not just the conversation history but also all added tools and their context, allowing complete portability 
-   and sharing between developers.
+   it preserves not just the conversation history and model parameters, but also all added tools and their context, 
+   allowing complete portability and sharing between developers.
    
    Core functions:
-   - `respond(prompt)`: Send a message to the bot and get its response. Automatically handles any tool usage
-   - `add_tools(tools)`: Add Python functions as tools the bot can use. Tools are preserved when the bot is saved
+   - `respond(prompt)`: Send a message to the bot and get its response.
+   - `add_tools(tools)`: Add Python functions, modules, or files as tools the bot can use.
    - `save(filename)`: Save the complete bot state including conversation history and tools
    - `load(filename)`: Restore a previously saved bot with all its context
-   - `chat()`: Start an interactive terminal session with the bot
+   - `chat()`: Start an interactive chat in a terminal with the bot
 
 2. **Automatic Function to Tool Conversion**
    - Tool handling capabilities - any well-structured Python function can be used by a bot
-   - Standardized tool requirements with clear docstrings, consistent error handling, and predictable return formats
-   - Self-contained with explicit dependencies
-   - Tool portability and preservation - tools are saved with the bot and can be shared
+   - Standardized tool requirements: clear docstrings, consistent error handling, and predictable return formats
+   - Added tools become self-contained by the bot with explicit dependencies
+   - Tool portability and preservation - tools are saved with the bot.
 
 3. **Tree-based Conversations**
    - Implements a linked tree structure for conversation histories
@@ -35,17 +35,17 @@ The bots library provides a structured interface for working with such agents, a
    Example of using conversation branching:
    ```python
    # Start a conversation
-   response = bot.respond("Analyze this code base")
+   response = bot.respond("Read this code")
    
    # Save current conversation point
-   security_start = bot.conversation
+   context_complete = bot.conversation
    
    # Branch 1: Security Analysis
-   bot.conversation = security_start
+   bot.conversation = context_complete
    security_response = bot.respond("Focus on security issues")
    
    # Branch 2: Performance Analysis
-   bot.conversation = security_start
+   bot.conversation = context_complete
    performance_response = bot.respond("Focus on performance issues")
    ```
 
@@ -61,34 +61,10 @@ The bots library provides a structured interface for working with such agents, a
    responses, nodes = prompt_while(
        bot,
        "Analyze this codebase and fix any issues you find",
-       continue_prompt="Continue analysis",
+       continue_prompt="ok",
        stop_condition=conditions.tool_not_used
    )
    ```
-
-2. **Automatic Function to Tool Conversion**
-   - Tool handling capabilities - any well-structured Python function can be used by a bot
-   - Standardized tool requirements:
-     - Clear docstrings with usage instructions
-     - Consistent error handling
-     - Predictable return formats
-     - Self-contained with explicit dependencies
-
-3. **Tree-based Conversations**
-   - Implements a linked tree structure for conversation histories
-   - Allows branching conversations and exploring multiple dialogue paths
-   - Efficiently manages context by only sending path to root
-   - Enables saving and loading specific conversation states
-
-4. **Functional Prompting**
-   - Core operations: chain(), branch(), tree_of_thought()
-   - Composable patterns for complex tasks
-   - Iteration control (prompt_while, chain_while)
-   - Support for parallel exploration
-   - Parallel execution functions:
-     - par_branch() - Like branch() but processes in parallel
-     - par_branch_while() - Like branch_while() but processes in parallel
-     - par_dispatch() - Run any functional prompt across multiple bots in parallel
 
 ## Key Features
 
@@ -119,13 +95,11 @@ The bots library provides a structured interface for working with such agents, a
    - Execute Python and PowerShell commands directly
 
 3. **Lazy Decorator**
-   The Lazy Decorator enables runtime code generation using LLMs. When applied to a function or class,
+   The Lazy Decorator enables *runtime code generation* using LLMs. When applied to a function or class,
    it defers implementation until the first time that code is actually called. At runtime, the decorator
    sends relevant context to the LLM and uses its response to create the implementation. The context
    levels control how much information about your codebase is sent to help generate better implementations.
 
-   - Runtime code generation via LLM
-   - Context-aware implementations
    ```python
    from bots import lazy
    # Using the smart decorator for functions
@@ -144,10 +118,10 @@ The bots library provides a structured interface for working with such agents, a
      - medium: Entire current file
      - high: Current file plus interfaces of other files
      - very high: All Python files in directory
-   - Customized bots can be used
+   - Saved bots can be used
 
    ```python
-   # Using the smart with all options
+   # Using the decorator with all options
    @lazy("Implement a key-value store with LRU eviction policy", bot=bots.load('mybot.bot'), context='medium')
    class Cache:
        pass  # Will be implemented by LLM on first instantiation
@@ -183,20 +157,17 @@ bot.chat()
 
 3. Save/Load Bot States:
 ```python
+import bots
+from bots.flows import functional_prompts as fp
 # Create a bot with repository context
 bot = AnthropicBot()
 bot.add_tools(code_tools)
-bot.chat()
-  ...
-  "Read and understand our repository structure"
-  ...
-  Tools used...
-  ...
-  /save
+fp.prompt_while(bot, "Read and understand our repo structure")
+bot.save("repo.bot")
 
 # Later use
 import bots
-review_bot = bots.load("repo_context.bot", autosave=False)
+review_bot = bots.load("repo.bot", autosave=False)
 review_bot.respond("Review PR #123")
 ```
 
@@ -235,7 +206,7 @@ Tools must follow these specific requirements for reliability and compatibility:
    - Must be top-level functions (not nested in classes or other functions)
    - Must not start with an underscore
    - Generally should be grouped in a single file
-   - Should prefer string inputs and outputs for better token efficiency
+   - Should prefer string inputs and outputs for reliability
    - Must catch all errors and return error messages as strings
 
 2. **Documentation Requirements**
@@ -268,7 +239,7 @@ def analyze_code(file_path: str, max_lines: str = "1000") -> str:
     try:
         # Perform analysis
         result = perform_analysis(file_path, int(max_lines))
-        return json.dumps(result)  # Complex returns should use json
+        return result
     except Exception as e:
         return f'Error analyzing {file_path}: {str(e)}'
 ```
@@ -277,8 +248,6 @@ def analyze_code(file_path: str, max_lines: str = "1000") -> str:
    - Keep tools focused and single-purpose
    - Handle all edge cases gracefully
    - Return helpful error messages
-   - Use JSON for complex return values
-   - Include examples in docstrings when helpful
 
 ## Contributing
 
