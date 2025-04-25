@@ -9,10 +9,62 @@ The bots library provides a structured interface for working with such agents, a
 ## Core Elements
 
 1. **The 'bot' Abstraction**
-   - Simple primary interface: `bot.respond()`, with supporting operations `add_tool(s)`, `save()`, `load()`, and `chat()`
-   - Abstract base classes for wrapping LLM API interfaces into a unified 'bot' interface
-   - Pre-built implementations for ChatGPT and Anthropic bots
-   - Complete bot portability - save and share bots with their full context and tools
+   The bot abstraction provides a unified interface for working with different LLM services (like OpenAI and Anthropic), 
+   handling all the complexity of tool management, conversation history, and state preservation. When you save a bot, 
+   it preserves not just the conversation history but also all added tools and their context, allowing complete portability 
+   and sharing between developers.
+   
+   Core functions:
+   - `respond(prompt)`: Send a message to the bot and get its response. Automatically handles any tool usage
+   - `add_tools(tools)`: Add Python functions as tools the bot can use. Tools are preserved when the bot is saved
+   - `save(filename)`: Save the complete bot state including conversation history and tools
+   - `load(filename)`: Restore a previously saved bot with all its context
+   - `chat()`: Start an interactive terminal session with the bot
+
+2. **Automatic Function to Tool Conversion**
+   - Tool handling capabilities - any well-structured Python function can be used by a bot
+   - Standardized tool requirements with clear docstrings, consistent error handling, and predictable return formats
+   - Self-contained with explicit dependencies
+   - Tool portability and preservation - tools are saved with the bot and can be shared
+
+3. **Tree-based Conversations**
+   - Implements a linked tree structure for conversation histories
+   - Allows branching conversations and exploring multiple dialogue paths
+   - Efficiently manages context by only sending path to root
+
+   Example of using conversation branching:
+   ```python
+   # Start a conversation
+   response = bot.respond("Analyze this code base")
+   
+   # Save current conversation point
+   security_start = bot.conversation
+   
+   # Branch 1: Security Analysis
+   bot.conversation = security_start
+   security_response = bot.respond("Focus on security issues")
+   
+   # Branch 2: Performance Analysis
+   bot.conversation = security_start
+   performance_response = bot.respond("Focus on performance issues")
+   ```
+
+4. **Functional Prompting**
+   - Core operations: chain(), branch(), prompt_while()
+   - Composable patterns for complex tasks
+   - Iteration control (prompt_while, chain_while)
+   - Support for parallel exploration with par_branch() and par_dispatch()
+
+   Example of using prompt_while:
+   ```python
+   # Continue analyzing until no more tools are used
+   responses, nodes = prompt_while(
+       bot,
+       "Analyze this codebase and fix any issues you find",
+       continue_prompt="Continue analysis",
+       stop_condition=conditions.tool_not_used
+   )
+   ```
 
 2. **Automatic Function to Tool Conversion**
    - Tool handling capabilities - any well-structured Python function can be used by a bot
@@ -43,23 +95,35 @@ The bots library provides a structured interface for working with such agents, a
 1. **Pre-built Code Tools**
    - Built-in tools for:
      - File operations (read, write, modify)
-     - Code manipulation
-     - GitHub integration
-     - Terminal operations
-   - Tool portability and preservation
+     - Code manipulation and analysis
+     - Terminal operations (PowerShell execution)
+   - Tool state preservation: When tools are added to a bot and the bot is saved, all tool context 
+     (including source code and dependencies) is preserved, allowing the bot to be shared with others 
+     who can use the same tools without additional setup
 
 2. **Auto Terminal**
+   The Auto Terminal provides an advanced interface for working with bots interactively. It allows you to
+   navigate through conversation history like a tree, moving up to previous points in the conversation and
+   exploring different branches. The terminal also features an autonomous mode where the bot will continue
+   working on a task until it completes (indicated by no further tool usage).
+
    ```bash
    python -m bots.dev.auto_terminal
    ```
-   - Advanced terminal interface for autonomous coding
-   - Full conversation tree navigation (/up, /down, /left, /right)
-   - Autonomous mode (/auto) - bot works until task completion
-   - Tool usage visibility controls (/verbose, /quiet)
-   - Save/load bot states for different tasks
-   - Integrated Python and PowerShell execution
+
+   Key capabilities:
+   - Navigate conversation history with /up, /down, /left, /right commands
+   - Enable autonomous operation with /auto command
+   - Control tool output visibility with /verbose and /quiet
+   - Save and load conversation states
+   - Execute Python and PowerShell commands directly
 
 3. **Lazy Decorator**
+   The Lazy Decorator enables runtime code generation using LLMs. When applied to a function or class,
+   it defers implementation until the first time that code is actually called. At runtime, the decorator
+   sends relevant context to the LLM and uses its response to create the implementation. The context
+   levels control how much information about your codebase is sent to help generate better implementations.
+
    - Runtime code generation via LLM
    - Context-aware implementations
    ```python
@@ -165,26 +229,56 @@ fp.prompt_while(
 
 ## Tool Development
 
-Tools must follow these patterns for reliability:
+Tools must follow these specific requirements for reliability and compatibility:
+
+1. **Function Requirements**
+   - Must be top-level functions (not nested in classes or other functions)
+   - Must not start with an underscore
+   - Generally should be grouped in a single file
+   - Should prefer string inputs and outputs for better token efficiency
+   - Must catch all errors and return error messages as strings
+
+2. **Documentation Requirements**
+   - Clear docstring describing what the tool does
+   - Explicit "Use when..." section explaining when to use the tool
+   - All parameters documented with types and descriptions
+   - Return format clearly specified
+   - Cost indication (low, medium, high) if relevant
+
+Example of a well-structured tool:
 
 ```python
-def my_tool(param: type) -> str:
-    """Clear description of what the tool does.
-    
-    Use when you need to [specific use case].
-    
+def analyze_code(file_path: str, max_lines: str = "1000") -> str:
+    """Analyze a Python file and return findings.
+
+    Use when you need to:
+    - Understand code structure
+    - Find potential issues
+    - Get an overview of a file
+
     Parameters:
-    - param (type): Parameter description
-    
+    - file_path (str): Path to the Python file to analyze
+    - max_lines (str): Maximum number of lines to process
+
     Returns:
-    str: Description of return format
+    str: Analysis results or error message
+
+    cost: medium
     """
     try:
-        result = do_operation()
-        return json.dumps(result)  # For complex returns
+        # Perform analysis
+        result = perform_analysis(file_path, int(max_lines))
+        return json.dumps(result)  # Complex returns should use json
     except Exception as e:
-        return f'Error: {str(e)}'
+        return f'Error analyzing {file_path}: {str(e)}'
 ```
+
+3. **Best Practices**
+   - Keep tools focused and single-purpose
+   - Handle all edge cases gracefully
+   - Return helpful error messages
+   - Use JSON for complex return values
+   - Include examples in docstrings when helpful
 
 ## Contributing
 
