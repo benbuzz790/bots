@@ -45,7 +45,7 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
     - target_extensions (str): String representation of a list of file extensions or patterns.
         Supports:
         - Specific extensions: "['py', 'txt']"
-        - Wildcard for all files: "['*']"
+        - Wildcard for all files: "['*']" (USE SPARINGLY - HIDDEN FILES CLOG CONTEXT)
         - Extension patterns: "['*.py']"
 
     Returns:
@@ -112,40 +112,58 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
             file.write('\n'.join(output_text))
     return '\n'.join(output_text)
 
-def diff_edit(file_path: str, diff_spec: str):
-    """Diff spec editing with flexible matching.
+# TODO: Add pydiff_edit() function that maintains Python compilability
+# This function would:
+# 1. Make changes using diff_edit
+# 2. Verify the resulting file compiles
+# 3. Roll back changes if compilation fails
+# This would help prevent AST tools from failing when files become temporarily uncompilable
 
-    Use when you need to make precision changes in text files.
+def diff_edit(file_path: str, diff_spec: str):
+    """Diff spec editing with flexible matching and git-style diff support.
+
+    Use when you need to make precision changes in text files. Accepts both strict +/- format
+    and git-style diffs with context lines and @@ headers.
 
     Parameters:
     - file_path (str): Path to the file to modify
-    - diff_spec (str): Diff-style specification of changes. 
-    Lines beginning with '-' are removed, and lines 
-    beginning with '+' are added at the starting index of the 
-    removed lines. All lines must start with + or -, and white
-    space must be matched exactly.
+    - diff_spec (str): Diff-style specification of changes.
+        Supports:
+        - Lines beginning with '-' for removal
+        - Lines beginning with '+' for addition
+        - Git-style context lines (ignored)
+        - @@ headers (ignored)
+        - Continued lines from previous +/- prefix
+        Whitespace must match exactly in the content after +/-.
 
     Returns:
     str: Description of changes made/to be made or error message with context
 
-    ex) diff_spec:
-    -import numpy
-    +import scipy
+    Examples:
+    1. Simple change:
+        -import numpy
+        +import scipy
 
-    ex) diff_spec:
-    -    def mergesort():
-    -        pass
-    +    def mergesort(arr:List) -> List
-    +        if len(arr) <= 1:
-    +            return arr
-    +        # Divide the array into two halves
-    +        mid = len(arr) // 2
-    (etc)
+    2. Git-style diff (context ignored):
+        @@ -1,3 +1,3 @@
+         import os
+        -import numpy
+        +import scipy
+         import pandas
+
+    3. Function replacement:
+        -    def old_function():
+        +    def new_function():
+        +        # New implementation
+        +        return True
+
+    Note: While git-style context lines are accepted, exact whitespace matching
+    is still required for the actual content being changed.
 
     cost: low
     """
     ignore_indentation: bool = True
-    context_lines: int = 2
+    context_lines: int = int((diff_spec.count('\n') + 1) / 2)
     try:
         encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
         content = None
@@ -205,6 +223,14 @@ def diff_edit(file_path: str, diff_spec: str):
         return f'Error: {str(e)}\n{traceback.format_exc()}'
 
 def _parse_diff_spec(diff_spec: str):
+    """Parse a diff specification, accepting both strict +/- format and git-style diffs.
+
+    Handles:
+    - Standard +/- prefixed lines
+    - Git-style @@ headers (ignored)
+    - Context lines (ignored)
+    - Continued lines from previous +/- prefix
+    """
     changes = []
     remove = []
     add = []
@@ -212,31 +238,43 @@ def _parse_diff_spec(diff_spec: str):
     last_prefix = None
     diff_spec = textwrap.dedent(diff_spec)
     for line in diff_spec.splitlines():
-        if not line:
-            if add:
+        if not line or line.startswith('@@'):
+            if remove or add:
                 changes.append((remove.copy(), add.copy()))
                 remove.clear()
                 add.clear()
                 last_prefix = None
             continue
         if line.startswith('-'):
+            if remove or add:
+                changes.append((remove.copy(), add.copy()))
+                remove.clear()
+                add.clear()
             last_prefix = '-'
             content = line[1:]
+            remove.append(content)
         elif line.startswith('+'):
             last_prefix = '+'
             content = line[1:]
+            add.append(content)
+        elif line.startswith(' '):
+            if remove or add:
+                changes.append((remove.copy(), add.copy()))
+                remove.clear()
+                add.clear()
+                last_prefix = None
+            continue
         elif last_prefix is not None:
             content = line
+            if last_prefix == '-':
+                remove.append(content)
+            else:
+                add.append(content)
         else:
-            errors.append(f'Error: "{line}" does not start with + or -. All lines must start with + or -.')
             continue
-        if last_prefix == '-':
-            remove.append(content)
-        elif last_prefix == '+':
-            add.append(content)
     if remove or add:
         changes.append((remove, add))
-    if not changes and (not errors):
+    if not changes:
         errors.append('Error: No valid changes found in diff spec')
     return (changes, errors)
 
