@@ -70,18 +70,15 @@ class DiffProgress:
 @dataclass
 class IndentationContext:
     """Handles indentation for diff blocks using textwrap.
-
     Process:
-    1. textwrap.dedent the add block to normalize structure
-    2. determine target indentation from match location
-    3. textwrap.indent to match the target level
+    1. dedent the entire block to normalize its internal structure
+    2. indent the whole block to match target location
     """
     match_indent: str = ''
 
     @staticmethod
     def from_diff_lines(lines: List[str], match_location_indent: str='') -> 'IndentationContext':
         """Create indentation context from diff spec lines.
-
         Args:
             lines: The lines from the diff spec (+ or - stripped)
             match_location_indent: Where the block was found in original file
@@ -91,16 +88,15 @@ class IndentationContext:
         return ctx
 
     def adjust_lines(self, lines: List[str]) -> List[str]:
-        """Adjust indentation of lines to match target location.
-
-        1. Dedents the block to normalize structure
-        2. Indents entire block to match target location
+        """Adjust indentation of a block of lines.
+        Preserves relative indentation while aligning to match location.
         """
         if not lines:
             return lines
-        dedented = textwrap.dedent('\n'.join(lines)).splitlines()
-        indented = [self.match_indent + line if line.strip() else line for line in dedented]
-        return indented
+        block = '\n'.join(lines)
+        dedented = textwrap.dedent(block)
+        indented = textwrap.indent(dedented, self.match_indent)
+        return indented.splitlines()
 
 def _determine_next_state(line: str, current_state: DiffState) -> DiffState:
     """Determine the next state based on the current line and state."""
@@ -227,10 +223,6 @@ def _process_state_transition(progress: DiffProgress, file_lines: List[str]) -> 
     print(f'Pending remove: {progress.pending_remove}')
     print(f'Pending add: {progress.pending_add}')
     print(f'Last match position: {progress.last_match_position}')
-    if hasattr(progress, 'lines_added'):
-        print(f'Lines added: {progress.lines_added}')
-    if hasattr(progress, 'next_insert_position'):
-        print(f'Next insert position: {progress.next_insert_position}')
     if not progress.current_block:
         print('No current block')
         return None
@@ -242,40 +234,31 @@ def _process_state_transition(progress: DiffProgress, file_lines: List[str]) -> 
         print('Processing REMOVE state')
         if progress.pending_remove is None:
             progress.pending_remove = []
-            progress.lines_added = 0
         progress.pending_remove.extend(progress.current_block)
         print(f'Accumulated remove lines: {progress.pending_remove}')
     elif progress.state == DiffState.ADD:
         print('Processing ADD state')
+        if progress.pending_add is None:
+            progress.pending_add = []
+        progress.pending_add.extend(progress.current_block)
+        print(f'Accumulated add lines: {progress.pending_add}')
         if progress.pending_remove:
-            print('First addition after removal')
-            progress.pending_add = progress.current_block.copy()
+            print('Processing block replacement')
             match_pos, ctx = _find_matching_block(file_lines, progress)
             if match_pos < 0:
                 return progress.format_error_message()
             progress.last_match_position = match_pos
             progress.last_match_context = ctx
-            lines_removed = len(progress.pending_remove)
             adjusted_lines = ctx.adjust_lines(progress.pending_add)
-            lines_added = len(adjusted_lines)
-            net_change = lines_added - lines_removed
-            print(f'Lines removed: {lines_removed}, Lines added: {lines_added}, Net change: {net_change}')
-            file_lines[match_pos:match_pos + lines_removed] = adjusted_lines
+            file_lines[match_pos:match_pos + len(progress.pending_remove)] = adjusted_lines
             progress.pending_remove = None
-            progress.lines_added = net_change
-            progress.next_insert_position = match_pos + len(adjusted_lines)
-        else:
-            print('Subsequent addition')
-            if hasattr(progress, 'next_insert_position'):
-                insert_pos = progress.next_insert_position
-                adjusted_lines = progress.last_match_context.adjust_lines(progress.current_block)
-                file_lines[insert_pos:insert_pos] = adjusted_lines
-                progress.lines_added += len(adjusted_lines)
-                progress.next_insert_position += len(adjusted_lines)
-                print(f'Updated lines_added: {progress.lines_added}')
-                print(f'Next insert position: {progress.next_insert_position}')
-            else:
-                return 'Cannot add lines without previous match position'
+            progress.pending_add = None
+        elif progress.pending_add and hasattr(progress, 'last_match_position'):
+            print('Processing block insertion')
+            adjusted_lines = progress.last_match_context.adjust_lines(progress.pending_add)
+            insert_pos = progress.last_match_position + 1
+            file_lines[insert_pos:insert_pos] = adjusted_lines
+            progress.pending_add = None
     progress.current_block = []
     return None
 

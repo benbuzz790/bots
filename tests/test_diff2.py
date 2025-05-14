@@ -122,17 +122,24 @@ def test_inexact_indentation_single_line(temp_file: str) -> None:
 
 def test_inexact_indentation_multiline(temp_file: str) -> None:
     """Test flexible indentation matching for multiline blocks.
-
     Verifies that diff_edit can:
     - Match blocks regardless of absolute indentation in diff
     - Preserve indentation from the original location
     - Handle nested code structures correctly
     """
     initial = 'class TestClass:\n    def test_method():\n        if True:\n            print("hello")\n            print("world")\n'
-    diff = '-    if True:\n-        print("hello")\n-        print("world")\n+        if False:\n+            print("goodbye")\n+            if True:\n+                print("nested")'
+    diff = '-if True:\n-    print("hello")\n-    print("world")\n+if False:\n+    print("goodbye")\n+    if True:\n+        print("nested")'
     write_and_edit(temp_file, initial, diff)
     result = read_file(temp_file)
     expected = 'class TestClass:\n    def test_method():\n        if False:\n            print("goodbye")\n            if True:\n                print("nested")\n'
+    print('\nInitial:')
+    print(initial)
+    print('\nDiff:')
+    print(diff)
+    print('\nResult:')
+    print(result)
+    print('\nExpected:')
+    print(expected)
     result_lines = result.splitlines()
     expected_lines = expected.splitlines()
     for i, (r, e) in enumerate(zip(result_lines, expected_lines)):
@@ -638,3 +645,70 @@ def test_find_matching_block_disambiguation():
     print(f'Error type: {progress2.error_type}')
     assert match_pos2 == 3, f'Should find correct match at position 3, got {match_pos2}'
     assert progress2.error_type == DiffErrorType.NONE, 'Should not have any errors with sufficient context'
+
+def test_indentation_matching_simple():
+    """Test that IndentationContext correctly matches target indentation level."""
+    from bots.tools.code_tools import IndentationContext
+    ctx = IndentationContext.from_diff_lines(['print("hello")'], '    ')
+    result = ctx.adjust_lines(['print("hello")'])
+    assert result == ['    print("hello")']
+
+def test_indentation_relative_single():
+    """Test that relative indentation is preserved within a single line."""
+    from bots.tools.code_tools import IndentationContext
+    ctx = IndentationContext.from_diff_lines(['    print("hello")'], '        ')
+    result = ctx.adjust_lines(['    print("hello")'])
+    assert result == ['        print("hello")']
+
+def test_indentation_relative_multiple():
+    """Test that relative indentation is preserved between multiple lines."""
+    from bots.tools.code_tools import IndentationContext
+    input_lines = ['if True:', '    print("hello")']
+    ctx = IndentationContext.from_diff_lines(input_lines, '    ')
+    result = ctx.adjust_lines(input_lines)
+    assert result == ['    if True:', '        print("hello")']
+
+def test_indentation_nested_block():
+    """Test that nested block structure is preserved."""
+    from bots.tools.code_tools import IndentationContext
+    input_lines = ['if True:', '    if False:', '        print("nested")']
+    ctx = IndentationContext.from_diff_lines(input_lines, '    ')
+    result = ctx.adjust_lines(input_lines)
+    assert result == ['    if True:', '        if False:', '            print("nested")']
+
+def test_process_state_indentation():
+    """Test that _process_state_transition maintains indentation through state changes."""
+    from bots.tools.code_tools import DiffProgress, DiffState
+    progress = DiffProgress()
+    file_lines = ['def test():', '    if True:', '        print("hello")', '    print("world")']
+    progress.state = DiffState.REMOVE
+    progress.current_block = ['    if True:', '        print("hello")']
+    error = _process_state_transition(progress, file_lines)
+    assert error is None
+    progress.state = DiffState.ADD
+    progress.current_block = ['    if False:', '        print("goodbye")']
+    error = _process_state_transition(progress, file_lines)
+    assert error is None
+    assert file_lines == ['def test():', '    if False:', '        print("goodbye")', '    print("world")']
+
+def test_sequential_additions_indentation():
+    """Test that sequential additions maintain correct relative indentation.
+    This test mimics the specific case from test_inexact_indentation_multiline
+    but breaks it down into explicit steps.
+    """
+    from bots.tools.code_tools import DiffProgress, DiffState, _process_state_transition
+    file_lines = ['def test():', '    if True:', '        print("hello")']
+    progress = DiffProgress()
+    progress.state = DiffState.REMOVE
+    progress.current_block = ['    if True:', '        print("hello")']
+    error = _process_state_transition(progress, file_lines)
+    assert error is None
+    progress.state = DiffState.ADD
+    additions = ['    if False:', '        print("goodbye")', '        if True:', '            print("nested")']
+    progress.current_block = additions
+    error = _process_state_transition(progress, file_lines)
+    assert error is None
+    print('\nFinal result:')
+    print('\n'.join(file_lines))
+    expected = ['def test():', '    if False:', '        print("goodbye")', '        if True:', '            print("nested")']
+    assert file_lines == expected, f'Expected:\n{expected}\n\nGot:\n{file_lines}'
