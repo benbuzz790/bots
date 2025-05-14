@@ -1,6 +1,8 @@
 import pytest
 import textwrap
 from bots.tools.code_tools import diff_edit
+from bots.tools.code_tools import IndentationContext, DiffProgress, DiffState, _get_indentation, _find_matching_block
+from bots.tools.code_tools import _determine_next_state, _process_line
 
 @pytest.fixture
 def temp_file(tmp_path) -> str:
@@ -114,16 +116,16 @@ def test_inexact_indentation_single_line(temp_file: str) -> None:
 def test_inexact_indentation_multiline(temp_file: str) -> None:
     """Test flexible indentation matching for multiline blocks.
 
-                                            Verifies that diff_edit can:
-                                            - Match blocks regardless of absolute indentation in diff
-                                            - Preserve indentation from the diff spec
-                                            - Handle nested code structures correctly
-                                            """
+    Verifies that diff_edit can:
+    - Match blocks regardless of absolute indentation in diff
+    - Preserve indentation from the original location
+    - Handle nested code structures correctly
+    """
     initial = 'class TestClass:\n    def test_method():\n        if True:\n            print("hello")\n            print("world")\n'
     diff = '-    if True:\n-        print("hello")\n-        print("world")\n+        if False:\n+            print("goodbye")\n+            if True:\n+                print("nested")'
     write_and_edit(temp_file, initial, diff)
     result = read_file(temp_file)
-    expected = 'class TestClass:\n    def test_method():\n            if False:\n                print("goodbye")\n                if True:\n                    print("nested")\n'
+    expected = 'class TestClass:\n    def test_method():\n        if False:\n            print("goodbye")\n            if True:\n                print("nested")\n'
     result_lines = result.splitlines()
     expected_lines = expected.splitlines()
     for i, (r, e) in enumerate(zip(result_lines, expected_lines)):
@@ -147,17 +149,26 @@ def test_mixed_indentation_multiline(temp_file: str) -> None:
 
 def test_newline_insensitive_matching(temp_file):
     """Test matching of function blocks with varying newline spacing.
+
     Verifies that diff_edit can:
     - Match function blocks regardless of blank line count
     - Preserve docstring additions in replacements
     - Maintain class structure and method organization
     - Handle multi-function replacements in a single operation
     """
-    initial = textwrap.dedent('    class Calculator:\n        def add(self, a, b):\n            return a + b\n\n\n\n        def multiply(self, x, y):\n            return x * y\n\n\n\n        def divide(self, a, b):\n            if b == 0:\n                raise ValueError("Cannot divide by zero")\n            return a / b\n    ')
-    diff = textwrap.dedent('    -def add(self, a, b):\n    -    return a + b\n    -\n    -def multiply(self, x, y):\n    -    return x * y\n    -\n    -def divide(self, a, b):\n    -    if b == 0:\n    -        raise ValueError("Cannot divide by zero")\n    -    return a / b\n    +def add(self, a, b):\n    +    \'\'\'Adds two numbers\'\'\'\n    +    return a + b\n    +\n    +def multiply(self, x, y):\n    +    \'\'\'Multiplies two numbers\'\'\'\n    +    return x * y\n    +\n    +def divide(self, a, b):\n    +    \'\'\'Divides two numbers\'\'\'\n    +    if b == 0:\n    +        raise ValueError("Cannot divide by zero")\n    +    return a / b').strip()
+    initial = textwrap.dedent('\n        class Calculator:\n            def add(self, a, b):\n                return a + b\n\n\n\n            def multiply(self, x, y):\n                return x * y\n\n\n\n            def divide(self, a, b):\n                if b == 0:\n                    raise ValueError("Cannot divide by zero")\n                return a / b\n    ')
+    diff = textwrap.dedent('\n        -    def add(self, a, b):\n        -        return a + b\n        -\n        -    def multiply(self, x, y):\n        -        return x * y\n        -\n        -    def divide(self, a, b):\n        -        if b == 0:\n        -            raise ValueError("Cannot divide by zero")\n        -        return a / b\n        +    def add(self, a, b):\n        +        """Adds two numbers"""\n        +        return a + b\n        +\n        +    def multiply(self, x, y):\n        +        """Multiplies two numbers"""\n        +        return x * y\n        +\n        +    def divide(self, a, b):\n        +        """Divides two numbers"""\n        +        if b == 0:\n        +            raise ValueError("Cannot divide by zero")\n        +        return a / b\n    ').strip()
     write_and_edit(temp_file, initial, diff)
     result = read_file(temp_file)
-    assert 'Divides two numbers' in result
+    assert 'Adds two numbers' in result, 'First docstring missing'
+    assert 'Multiplies two numbers' in result, 'Second docstring missing'
+    assert 'Divides two numbers' in result, 'Third docstring missing'
+    result_lines = result.splitlines()
+    for line in result_lines:
+        if 'def' in line:
+            assert len(_get_indentation(line)) == 4, f'Method indentation wrong: {line}'
+        elif '"""' in line:
+            assert len(_get_indentation(line)) == 8, f'Docstring indentation wrong: {line}'
 
 def test_git_style_headers(temp_file: str) -> None:
     """Test handling of git-style diff headers.
@@ -208,3 +219,383 @@ def test_mixed_style_diff(temp_file: str) -> None:
     for i, (r, e) in enumerate(zip(result_lines, expected_lines)):
         assert r == e, f'Line {i + 1} differs:\nExpected: {repr(e)}\nGot:      {repr(r)}'
     assert len(result_lines) == len(expected_lines), f'Different number of lines: Expected {len(expected_lines)}, got {len(result_lines)}'
+
+def test_context_aware_matching(temp_file: str) -> None:
+    """Test that context lines are used for matching location.
+
+    Verifies that diff_edit:
+    - Uses context lines to find correct location
+    - Only applies changes where context matches
+    - Reports failure when context doesn't match
+    """
+    initial = textwrap.dedent('\n        def first_func():\n            # First block\n            x = 1\n            y = 2\n            z = x + y\n\n        def second_func():\n            # Second block\n            x = 1\n            y = 2\n            z = x + y\n    ').strip()
+    diff = textwrap.dedent('\n         # Second block\n         x = 1\n        -y = 2\n        -z = x + y\n        +y = 20\n        +z = x * y\n    ').strip()
+    write_and_edit(temp_file, initial, diff)
+    result = read_file(temp_file)
+    expected = textwrap.dedent('\n        def first_func():\n            # First block\n            x = 1\n            y = 2\n            z = x + y\n\n        def second_func():\n            # Second block\n            x = 1\n            y = 20\n            z = x * y\n    ').strip()
+    assert result == expected
+
+def test_context_aware_failure(temp_file: str) -> None:
+    """Test that changes are not applied when context doesn't match.
+
+    Verifies that diff_edit:
+    - Refuses to apply changes when context doesn't match
+    - Preserves file content when context check fails
+    - Reports context mismatch in error message
+    """
+    initial = textwrap.dedent('\n        def calculate():\n            # Add numbers\n            x = 1\n            y = 2\n            return x + y\n    ').strip()
+    diff = textwrap.dedent('\n         # Multiply numbers\n         x = 1\n        -y = 2\n        +y = 10\n         return x + y\n    ').strip()
+    result = write_and_edit(temp_file, initial, diff)
+    file_content = read_file(temp_file)
+    assert file_content == initial
+    assert 'Required pre-context not found' in result
+
+def test_multiple_context_blocks(temp_file: str) -> None:
+    """Test handling of multiple changes with different contexts.
+
+    Verifies that diff_edit can:
+    - Handle multiple change blocks with different contexts
+    - Apply only changes where context matches
+    - Report success/failure for each block separately
+    """
+    initial = textwrap.dedent('\n        x = 1\n        # First calculation\n        y = x + 2\n        z = y * 3\n\n        # Second calculation\n        a = x * 2\n        b = a + 3\n\n        # Third calculation\n        p = x + 5\n        q = p * 2\n    ').strip()
+    diff = textwrap.dedent('\n         # First calculation\n         y = x + 2\n        -z = y * 3\n        +z = y * 30\n\n         # Second calculation\n         a = x * 2\n        -b = a + 3\n        +b = a + 30\n\n         # Wrong context\n         p = x + 5\n        -q = p * 2\n        +q = p * 20\n    ').strip()
+    result = write_and_edit(temp_file, initial, diff)
+    file_content = read_file(temp_file)
+    expected = textwrap.dedent('\n        x = 1\n        # First calculation\n        y = x + 2\n        z = y * 30\n\n        # Second calculation\n        a = x * 2\n        b = a + 30\n\n        # Third calculation\n        p = x + 5\n        q = p * 2\n    ').strip()
+    assert file_content == expected
+    assert 'Successfully applied 2 changes' in result
+    assert 'Failed to apply 1 changes' in result
+
+def test_indentation_dedent():
+    """Test that textwrap.dedent correctly normalizes indentation structure."""
+    input_block = "    if True:\n        print('hello')\n            print('world')\n"
+    expected = "if True:\n    print('hello')\n        print('world')\n"
+    result = textwrap.dedent(input_block)
+    assert result == expected, f'Dedent failed:\nExpected:\n{expected}\nGot:\n{result}'
+
+def test_match_location_indent():
+    """Test that we correctly identify the indentation at the match location."""
+    file_content = 'def outer():\n    if True:\n        x = 1\n        y = 2\n'
+    match_line = '        x = 1'
+    indent = _get_indentation(match_line)
+    assert len(indent) == 8, f'Expected 8 spaces, got {len(indent)}'
+    assert indent == '        ', f'Expected spaces, got {repr(indent)}'
+
+def test_relative_structure_preservation():
+    """Test that relative indentation structure is preserved after adjustment."""
+    original = "    if test:\n        print('a')\n            print('b')\n"
+    target_indent = '        '
+    ctx = IndentationContext.from_diff_lines(original.splitlines(), target_indent)
+    adjusted = ctx.adjust_lines(textwrap.dedent(original).splitlines())
+    expected = ['        if test:', "            print('a')", "                print('b')"]
+    assert adjusted == expected, f'Structure not preserved:\nExpected:\n{expected}\nGot:\n{adjusted}'
+
+def test_context_matching():
+    """Test that context lines are correctly used to find match location."""
+    file_content = ['def first():', '    # Block A', '    x = 1', '    y = 2', '', 'def second():', '    # Block A', '    x = 1', '    y = 2']
+    context_lines = ['    # Block A', '    x = 1']
+    progress = DiffProgress()
+    progress.context_lines = context_lines
+    progress.pending_remove = ['    y = 2']
+    match_pos, ctx = _find_matching_block(file_content, progress)
+    assert match_pos == 8, f'Matched wrong position: {match_pos}'
+
+def test_block_replacement():
+    """Test that block replacement maintains correct line count."""
+    file_lines = ['def test():', '    old_line1', '    old_line2', '    old_line3', 'end']
+    remove_block = ['    old_line1', '    old_line2', '    old_line3']
+    add_block = ['    new_line1', '    new_line2']
+    match_pos = 1
+    file_lines[match_pos:match_pos + len(remove_block)] = add_block
+    expected = ['def test:', '    new_line1', '    new_line2', 'end']
+    assert len(file_lines) == len(expected), f'Line count mismatch: {len(file_lines)} vs {len(expected)}'
+
+def test_indentation_context_basic():
+    """Test basic indentation preservation."""
+    original = textwrap.dedent('\n        def test():\n            x = 1\n            y = 2\n    ').strip()
+    match_indent = '        '
+    ctx = IndentationContext.from_diff_lines(original.splitlines(), match_indent)
+    result = ctx.adjust_lines(textwrap.dedent('\n        def test():\n            a = 3\n            b = 4\n    ').strip().splitlines())
+    expected = ['        def test():', '            a = 3', '            b = 4']
+    assert result == expected, f'Basic indentation failed:\nExpected:\n{expected}\nGot:\n{result}'
+
+def test_indentation_context_nested():
+    """Test preservation of nested indentation structure."""
+    original = textwrap.dedent('\n        if True:\n            if nested:\n                deep = True\n    ').strip()
+    match_indent = '        '
+    ctx = IndentationContext.from_diff_lines(original.splitlines(), match_indent)
+    result = ctx.adjust_lines(original.splitlines())
+    expected = ['        if True:', '            if nested:', '                deep = True']
+    assert result == expected, f'Nested indentation failed:\nExpected:\n{expected}\nGot:\n{result}'
+
+def test_indentation_context_mixed():
+    """Test handling of mixed indentation levels."""
+    original = textwrap.dedent('\n        def test():\n                extra_indent = True\n            normal_indent = True\n                    very_deep = True\n    ').strip()
+    match_indent = '        '
+    ctx = IndentationContext.from_diff_lines(original.splitlines(), match_indent)
+    result = ctx.adjust_lines(original.splitlines())
+    expected = ['        def test():', '                extra_indent = True', '            normal_indent = True', '                    very_deep = True']
+    assert result == expected, f'Mixed indentation failed:\nExpected:\n{expected}\nGot:\n{result}'
+
+def test_indentation_context_empty_lines():
+    """Test handling of empty lines in indentation."""
+    original = textwrap.dedent('\n        def test():\n            x = 1\n\n            y = 2\n    ').strip()
+    match_indent = '        '
+    ctx = IndentationContext.from_diff_lines(original.splitlines(), match_indent)
+    result = ctx.adjust_lines(original.splitlines())
+    expected = ['        def test():', '            x = 1', '', '            y = 2']
+    assert result == expected, f'Empty line handling failed:\nExpected:\n{expected}\nGot:\n{result}'
+
+def test_indentation_context_relative_preservation():
+    """Test that relative indentation relationships are preserved."""
+    original = textwrap.dedent('\n        if True:\n            print("hello")\n            print("world")\n    ').strip()
+    match_indent = '        '
+    ctx = IndentationContext.from_diff_lines(original.splitlines(), match_indent)
+    new_block = textwrap.dedent('\n        if False:\n            print("goodbye")\n            if True:\n                print("nested")\n    ').strip().splitlines()
+    result = ctx.adjust_lines(new_block)
+    expected = ['        if False:', '            print("goodbye")', '            if True:', '                print("nested")']
+    assert result == expected, f'Relative indentation preservation failed:\nExpected:\n{expected}\nGot:\n{result}'
+
+def test_diff_block_extraction():
+    """Test extraction of remove/add blocks from diff spec."""
+    diff = textwrap.dedent('\n        -    if True:\n        -        print("hello")\n        -        print("world")\n        +        if False:\n        +            print("goodbye")\n        +            if True:\n        +                print("nested")\n    ').strip()
+    progress = DiffProgress()
+    for line in diff.splitlines():
+        next_state = _determine_next_state(line, progress.state)
+        if next_state != progress.state:
+            if progress.current_block:
+                if progress.state == DiffState.REMOVE:
+                    remove_block = progress.current_block.copy()
+                    assert remove_block == ['    if True:', '        print("hello")', '        print("world")'], f'Remove block incorrect: {remove_block}'
+            progress.state = next_state
+            progress.current_block = []
+        processed_line = _process_line(line, progress)
+        if next_state != DiffState.HEADER:
+            progress.current_block.append(processed_line)
+    assert progress.current_block == ['        if False:', '            print("goodbye")', '            if True:', '                print("nested")'], f'Add block incorrect: {progress.current_block}'
+
+def test_find_matching_location():
+    """Test finding the correct location in file content."""
+    file_content = textwrap.dedent('\n        class TestClass:\n            def test_method():\n                if True:\n                    print("hello")\n                    print("world")\n    ').strip().splitlines()
+    progress = DiffProgress()
+    progress.pending_remove = ['    if True:', '        print("hello")', '        print("world")']
+    match_pos, ctx = _find_matching_block(file_content, progress)
+    assert match_pos == 2, f'Wrong match position: {match_pos}'
+    assert len(ctx.match_indent) == 8, f'Wrong indentation length: {len(ctx.match_indent)}'
+
+def test_match_to_add_conversion():
+    """Test conversion from match location to add block indentation."""
+    match_indent = ' ' * 8
+    add_block = ['        if False:', '            print("goodbye")', '            if True:', '                print("nested")']
+    ctx = IndentationContext.from_diff_lines(add_block, match_indent)
+    result = ctx.adjust_lines(add_block)
+    expected = ['        if False:', '            print("goodbye")', '            if True:', '                print("nested")']
+    assert result == expected, f'Wrong indentation adjustment:\nExpected: {expected}\nGot: {result}'
+
+def test_complete_indentation_pipeline():
+    """Test the complete indentation pipeline in a controlled way.
+
+    The key rules are:
+    1. Match blocks by content, ignoring indentation
+    2. Use the indentation from where we found the match as our base
+    3. Preserve relative indentation structure from there
+    """
+    file_lines = ['class TestClass:', '    def test_method():', '        if True:', '            print("hello")', '            print("world")']
+    diff = textwrap.dedent('\n        -    if True:\n        -        print("hello")\n        -        print("world")\n        +        if False:\n        +            print("goodbye")\n        +            if True:\n        +                print("nested")\n    ').strip()
+    progress = DiffProgress()
+    remove_block = []
+    add_block = []
+    current_block = []
+    for line in diff.splitlines():
+        next_state = _determine_next_state(line, progress.state)
+        if next_state != progress.state:
+            if current_block:
+                if progress.state == DiffState.REMOVE:
+                    remove_block = current_block.copy()
+                elif progress.state == DiffState.ADD:
+                    add_block = current_block.copy()
+            current_block = []
+        progress.state = next_state
+        if next_state != DiffState.HEADER:
+            current_block.append(_process_line(line, progress))
+    if current_block:
+        add_block = current_block.copy()
+    assert remove_block == ['    if True:', '        print("hello")', '        print("world")'], f'Remove block incorrect: {remove_block}'
+    assert add_block == ['        if False:', '            print("goodbye")', '            if True:', '                print("nested")'], f'Add block incorrect: {add_block}'
+    progress.pending_remove = remove_block
+    match_pos, ctx = _find_matching_block(file_lines, progress)
+    assert match_pos == 2, f'Wrong match position: {match_pos}'
+    match_line = file_lines[match_pos]
+    match_indent = _get_indentation(match_line)
+    assert len(match_indent) == 8, f'Match indent wrong length: {len(match_indent)}'
+    adjusted_lines = ctx.adjust_lines(add_block)
+    assert len(_get_indentation(adjusted_lines[0])) == 8, f'First line wrong indent: {len(_get_indentation(adjusted_lines[0]))}'
+    assert len(_get_indentation(adjusted_lines[1])) == 12, f'Second line wrong indent: {len(_get_indentation(adjusted_lines[1]))}'
+    file_lines[match_pos:match_pos + len(remove_block)] = adjusted_lines
+    expected = ['class TestClass:', '    def test_method():', '        if False:', '            print("goodbye")', '            if True:', '                print("nested")']
+    assert file_lines == expected, f'Pipeline result incorrect:\nExpected:\n{expected}\nGot:\n{file_lines}'
+
+def test_indentation_level_determination():
+    """Test how we determine the base indentation level for replacements.
+
+    When replacing a block inside a method:
+    - The block might have its own indentation in the diff spec
+    - But we need to place it at the method's indentation level
+    - Plus any additional relative indentation
+    """
+    file_lines = ['class TestClass:', '    def test_method():', '        if True:', '            print("hello")', '            print("world")']
+    match_line = '        if True:'
+    base_indent = _get_indentation(match_line)
+    assert len(base_indent) == 8, f'Base indent should be 8 spaces, got {len(base_indent)}'
+    new_block = ['        if False:', '            print("goodbye")', '            if True:', '                print("nested")']
+    ctx = IndentationContext.from_diff_lines(new_block, base_indent)
+    result = ctx.adjust_lines(new_block)
+    expected = ['        if False:', '            print("goodbye")', '            if True:', '                print("nested")']
+    for i, (result_line, expected_line) in enumerate(zip(result, expected)):
+        result_indent = len(_get_indentation(result_line))
+        expected_indent = len(_get_indentation(expected_line))
+        assert result_indent == expected_indent, f'Line {i} has wrong indentation: expected {expected_indent}, got {result_indent}'
+
+def test_context_matching_first_block():
+    """Test that we can explicitly match the first occurrence of a block.
+
+    This test verifies that when we have identical blocks and want the first one,
+    we can match it correctly using preceding context.
+    """
+    file_content = ['def setup():', '    # Initialize', '    x = 1', '    y = 2', '', 'def first():', '    # Block A', '    x = 1', '    y = 2', '', 'def second():', '    # Block A', '    x = 1', '    y = 2']
+    context_lines = ['def first():', '    # Block A', '    x = 1']
+    progress = DiffProgress()
+    progress.context_lines = context_lines
+    progress.pending_remove = ['    y = 2']
+    match_pos, ctx = _find_matching_block(file_content, progress)
+    assert match_pos == 8, f'Matched wrong position: {match_pos} (should be 8 for first block)'
+
+def test_context_matching_second_block():
+    """Test that we can explicitly match the second occurrence of a block.
+
+    This test verifies that when we have identical blocks and want the second one,
+    we can match it correctly using preceding context.
+    """
+    file_content = ['def setup():', '    # Initialize', '    x = 1', '    y = 2', '', 'def first():', '    # Block A', '    x = 1', '    y = 2', '', 'def second():', '    # Block A', '    x = 1', '    y = 2']
+    context_lines = ['def second():', '    # Block A', '    x = 1']
+    progress = DiffProgress()
+    progress.context_lines = context_lines
+    progress.pending_remove = ['    y = 2']
+    match_pos, ctx = _find_matching_block(file_content, progress)
+    assert match_pos == 13, f'Matched wrong position: {match_pos} (should be 13 for second block)'
+
+def test_ambiguous_match_error(temp_file: str) -> None:
+    """Test that ambiguous matches result in a clear error message.
+
+    Verifies that when multiple identical blocks are found:
+    - No changes are made to the file
+    - An error message lists all match locations
+    - The error message is clear and actionable
+    """
+    initial = textwrap.dedent('\n        def first_block():\n            # Common block\n            x = 1\n            y = 2\n            z = 3\n\n        def second_block():\n            # Common block\n            x = 1\n            y = 2\n            z = 3\n\n        def third_block():\n            # Different block\n            x = 1\n            y = 2\n            z = 4\n    ').strip()
+    diff = textwrap.dedent('\n        -    x = 1\n        -    y = 2\n        -    z = 3\n        +    x = 10\n        +    y = 20\n        +    z = 30\n    ').strip()
+    result = write_and_edit(temp_file, initial, diff)
+    file_content = read_file(temp_file)
+    assert file_content == initial, 'File was modified despite ambiguous match'
+    assert 'more than one match found' in result.lower(), 'Error message should indicate multiple matches'
+    assert 'first_block' in result, 'Error should mention first match location'
+    assert 'second_block' in result, 'Error should mention second match location'
+    assert 'third_block' not in result, 'Error should not mention non-matching block'
+
+def test_find_matching_block_basic():
+    """Test basic block matching with different whitespace"""
+    file_content = ['def test():', '    x = 1', '    y = 2']
+    progress = DiffProgress()
+    progress.context_lines = ['x = 1']
+    progress.pending_remove = ['    y = 2']
+    match_pos, ctx = _find_matching_block(file_content, progress)
+    assert match_pos == 2, f'Basic match failed. Expected pos 2, got {match_pos}'
+
+def test_find_matching_block_multiple_context():
+    """Test matching with multiple context lines and varying whitespace"""
+
+    def normalize_line(line: str) -> str:
+        """Strip whitespace for content comparison"""
+        return line.strip()
+    file_content = ['def first():', '    # Comment', '    x = 1', '    y = 2', '', 'def second():', '    # Comment', '    x = 1', '    y = 2']
+    progress = DiffProgress()
+    progress.context_lines = ['# Comment', 'x = 1']
+    progress.pending_remove = ['    y = 2']
+    print('\nDebug context matching:')
+    for i in range(len(file_content)):
+        if i < len(file_content) - 1:
+            test_lines = file_content[i:i + 2]
+            print(f'Testing at pos {i}:')
+            print(f'  File lines: {test_lines}')
+            print(f'  Context lines: {progress.context_lines}')
+            print(f'  Normalized file: {[l.strip() for l in test_lines]}')
+            print(f'  Normalized context: {[l.strip() for l in progress.context_lines]}')
+            if i <= len(file_content) - 2:
+                matches = all((normalize_line(a) == normalize_line(b) for a, b in zip(file_content[i:i + 2], progress.context_lines)))
+                print(f'  Would match: {matches}')
+    print('\nDebug remove block matching:')
+    remove_pos = 3
+    remove_block = file_content[remove_pos:remove_pos + 1]
+    print(f'Looking for remove block at pos {remove_pos}:')
+    print(f'  File block: {remove_block}')
+    print(f'  Remove lines: {progress.pending_remove}')
+    print(f'  Normalized file: {[l.strip() for l in remove_block]}')
+    print(f'  Normalized remove: {[l.strip() for l in progress.pending_remove]}')
+    match_pos, ctx = _find_matching_block(file_content, progress)
+    print(f'\nMatch result: {match_pos}')
+    print(f'Progress state:')
+    print(f'  error_type: {progress.error_type}')
+    print(f'  last_match_position: {progress.last_match_position}')
+    print(f"  context_match_position: {getattr(progress, 'context_match_position', 'not set')}")
+    print(f'  error_context: {progress.error_context}')
+    assert match_pos == 3, f'First match position wrong. Expected 3, got {match_pos}'
+
+def test_find_matching_block_whitespace_variants():
+    """Test matching with various whitespace patterns"""
+    file_content = ['def test():', '    x = 1', '        y = 2', '            z = 3']
+    progress = DiffProgress()
+    test_cases = [('x = 1', 2), ('    x = 1', 2), ('\tx = 1', 2), ('        x = 1', 2)]
+    for context, expected_pos in test_cases:
+        progress.context_lines = [context]
+        progress.pending_remove = ['        y = 2']
+        match_pos, ctx = _find_matching_block(file_content, progress)
+        assert match_pos == expected_pos, f'Failed for context "{context}". Expected {expected_pos}, got {match_pos}'
+        assert progress.context_match_position == 1, f'Context position wrong for "{context}". Expected 1, got {progress.context_match_position}'
+
+def test_determine_next_state():
+    """Test state transitions in diff parsing.
+    Verifies that _determine_next_state correctly identifies:
+    - Headers (@@)
+    - Removals (-)
+    - Additions (+)
+    - Context lines
+    """
+    from bots.tools.code_tools import _determine_next_state, DiffState
+    assert _determine_next_state('@@ -1,3 +1,3 @@', DiffState.CONTEXT) == DiffState.HEADER
+    assert _determine_next_state('-    print("hello")', DiffState.CONTEXT) == DiffState.REMOVE
+    assert _determine_next_state('-print("hello")', DiffState.HEADER) == DiffState.REMOVE
+    assert _determine_next_state('+    print("goodbye")', DiffState.REMOVE) == DiffState.ADD
+    assert _determine_next_state('+print("goodbye")', DiffState.CONTEXT) == DiffState.ADD
+    assert _determine_next_state('    print("unchanged")', DiffState.ADD) == DiffState.CONTEXT
+    assert _determine_next_state('print("unchanged")', DiffState.REMOVE) == DiffState.CONTEXT
+    assert _determine_next_state('', DiffState.ADD) == DiffState.CONTEXT
+
+def test_process_line():
+    """Test line processing in diff parsing.
+    Verifies that _process_line correctly:
+    - Strips diff markers (+ and -)
+    - Preserves indentation
+    - Updates progress state
+    - Handles empty lines
+    """
+    from bots.tools.code_tools import _process_line, DiffProgress, DiffState
+    progress = DiffProgress()
+    assert _process_line('-    print("hello")', progress) == '    print("hello")'
+    assert _process_line('-print("hello")', progress) == 'print("hello")'
+    assert _process_line('+    print("goodbye")', progress) == '    print("goodbye")'
+    assert _process_line('+print("goodbye")', progress) == 'print("goodbye")'
+    assert _process_line('    print("unchanged")', progress) == '    print("unchanged")'
+    assert _process_line('print("unchanged")', progress) == 'print("unchanged")'
+    assert _process_line('', progress) == ''
+    assert _process_line('    ', progress) == '    '

@@ -1,6 +1,239 @@
 import os
 import traceback
 import textwrap
+from dataclasses import dataclass
+from enum import Enum, auto
+from typing import Optional, List, Dict, Tuple
+
+class DiffState(Enum):
+    HEADER = auto()
+    CONTEXT = auto()
+    REMOVE = auto()
+    ADD = auto()
+
+class DiffErrorType(Enum):
+    """Types of errors that can occur during diff application"""
+    NONE = auto()
+    CONTEXT_NOT_FOUND = auto()
+    NO_MATCH = auto()
+    AMBIGUOUS_MATCH = auto()
+
+@dataclass
+class DiffProgress:
+    state: DiffState = DiffState.CONTEXT
+    line_number: int = 0
+    context_lines: List[str] = None
+    context_line_numbers: List[int] = None
+    current_block: List[str] = None
+    block_start_line: int = 0
+    pending_remove: Optional[List[str]] = None
+    pending_add: Optional[List[str]] = None
+    last_match_position: int = 0
+    last_match_score: float = 0.0
+    error_type: DiffErrorType = DiffErrorType.NONE
+    error_context: List[str] = None
+
+    def __post_init__(self):
+        self.context_lines = []
+        self.context_line_numbers = []
+        self.current_block = []
+        self.error_context = []
+
+    def format_error_message(self) -> str:
+        """Generate detailed error message based on current state"""
+        if self.error_type == DiffErrorType.CONTEXT_NOT_FOUND:
+            return 'Required pre-context not found'
+        elif self.error_type == DiffErrorType.NO_MATCH:
+            return f'Could not find lines to remove at line {self.line_number}'
+        elif self.error_type == DiffErrorType.AMBIGUOUS_MATCH:
+            return '\n'.join(self.error_context)
+        return f'Failed to apply changes at line {self.line_number}'
+    error_type: DiffErrorType = DiffErrorType.NONE
+    error_context: List[str] = None
+
+    def __post_init__(self):
+        self.context_lines = []
+        self.context_line_numbers = []
+        self.current_block = []
+        self.error_context = []
+
+    def format_error_message(self) -> str:
+        """Generate detailed error message based on current state"""
+        if self.error_type == DiffErrorType.CONTEXT_NOT_FOUND:
+            return 'Required pre-context not found'
+        elif self.error_type == DiffErrorType.NO_MATCH:
+            return f'Could not find lines to remove at line {self.line_number}'
+        elif self.error_type == DiffErrorType.AMBIGUOUS_MATCH:
+            return '\n'.join(self.error_context)
+        return f'Failed to apply changes at line {self.line_number}'
+
+@dataclass
+class IndentationContext:
+    """Handles indentation for diff blocks using textwrap.
+
+    Process:
+    1. textwrap.dedent the add block to normalize structure
+    2. determine target indentation from match location
+    3. textwrap.indent to match the target level
+    """
+    match_indent: str = ''
+
+    @staticmethod
+    def from_diff_lines(lines: List[str], match_location_indent: str='') -> 'IndentationContext':
+        """Create indentation context from diff spec lines.
+
+        Args:
+            lines: The lines from the diff spec (+ or - stripped)
+            match_location_indent: Where the block was found in original file
+        """
+        ctx = IndentationContext()
+        ctx.match_indent = match_location_indent
+        return ctx
+
+    def adjust_lines(self, lines: List[str]) -> List[str]:
+        """Adjust indentation of lines to match target location.
+
+        1. Dedents the block to normalize structure
+        2. Indents entire block to match target location
+        """
+        if not lines:
+            return lines
+        dedented = textwrap.dedent('\n'.join(lines)).splitlines()
+        indented = [self.match_indent + line if line.strip() else line for line in dedented]
+        return indented
+
+def _determine_next_state(line: str, current_state: DiffState) -> DiffState:
+    """Determine the next state based on the current line and state."""
+    if line.startswith('@@'):
+        return DiffState.HEADER
+    elif line.startswith('-'):
+        return DiffState.REMOVE
+    elif line.startswith('+'):
+        return DiffState.ADD
+    else:
+        return DiffState.CONTEXT
+
+def _process_line(line: str, progress: DiffProgress) -> str:
+    """Process a single line from the diff spec and update state."""
+    if line.startswith(('-', '+')):
+        return line[1:]
+    return line
+
+def _find_matching_block(file_lines: List[str], progress: DiffProgress) -> tuple[int, IndentationContext]:
+    """Find the position where a block matches in the file content."""
+    if not progress.pending_remove:
+        ctx = IndentationContext()
+        if file_lines:
+            ctx.match_indent = _get_indentation(file_lines[-1])
+        return (len(file_lines), ctx)
+
+    def normalize_line(line: str) -> str:
+        """Strip whitespace for content comparison"""
+        return line.strip()
+    all_matches = []
+    if progress.context_lines:
+        context_len = len(progress.context_lines)
+        remove_len = len(progress.pending_remove)
+        context_matches = []
+        for i in range(len(file_lines) - context_len + 1):
+            if all((normalize_line(a) == normalize_line(b) for a, b in zip(file_lines[i:i + context_len], progress.context_lines))):
+                context_matches.append(i)
+        for context_pos in context_matches:
+            max_search = len(file_lines) - remove_len + 1
+            for remove_start in range(context_pos + context_len, max_search):
+                remove_block = file_lines[remove_start:remove_start + remove_len]
+                if all((normalize_line(a) == normalize_line(b) for a, b in zip(remove_block, progress.pending_remove))):
+                    match_indent = _get_indentation(file_lines[remove_start])
+                    context_start = max(0, context_pos - 1)
+                    context_end = min(len(file_lines), remove_start + remove_len + 1)
+                    match_info = {'position': context_pos, 'remove_position': remove_start, 'indent': match_indent, 'context': '\n'.join(file_lines[context_start:context_end])}
+                    all_matches.append(match_info)
+                    break
+        if not all_matches and context_matches:
+            best_pos = context_matches[-1]
+            progress.last_match_score = 1.0
+            progress.last_match_position = best_pos
+            progress.context_match_position = best_pos
+            progress.error_context = file_lines[best_pos:best_pos + context_len + 2]
+            progress.error_type = DiffErrorType.CONTEXT_NOT_FOUND
+            return (-1, IndentationContext())
+        elif not all_matches:
+            best_score = 0
+            best_pos = 0
+            for i in range(len(file_lines) - context_len + 1):
+                score = sum((1 for a, b in zip(file_lines[i:i + context_len], progress.context_lines) if normalize_line(a) == normalize_line(b))) / context_len
+                if score > best_score:
+                    best_score = score
+                    best_pos = i
+            progress.last_match_score = best_score
+            progress.last_match_position = best_pos
+            progress.context_match_position = best_pos
+            progress.error_context = file_lines[best_pos:best_pos + context_len + 2]
+            progress.error_type = DiffErrorType.CONTEXT_NOT_FOUND
+            return (-1, IndentationContext())
+    else:
+        for i in range(len(file_lines) - len(progress.pending_remove) + 1):
+            block = file_lines[i:i + len(progress.pending_remove)]
+            if all((normalize_line(a) == normalize_line(b) for a, b in zip(block, progress.pending_remove))):
+                match_indent = _get_indentation(file_lines[i])
+                context_start = max(0, i - 1)
+                context_end = min(len(file_lines), i + len(progress.pending_remove) + 1)
+                match_info = {'position': i, 'remove_position': i, 'indent': match_indent, 'context': '\n'.join(file_lines[context_start:context_end])}
+                all_matches.append(match_info)
+    if len(all_matches) == 0:
+        progress.last_match_score = 0
+        progress.error_context = []
+        progress.error_type = DiffErrorType.NO_MATCH
+        return (-1, IndentationContext())
+    elif len(all_matches) == 1:
+        match = all_matches[0]
+        ctx = IndentationContext.from_diff_lines(progress.pending_add, match['indent'])
+        progress.error_type = DiffErrorType.NONE
+        progress.last_match_position = match['remove_position']
+        progress.context_match_position = match['position']
+        return (match['remove_position'], ctx)
+    else:
+        unique_contexts = {m['context'] for m in all_matches}
+        if len(unique_contexts) == 1:
+            match_details = [f"Match {i + 1}:\n{m['context']}" for i, m in enumerate(all_matches)]
+            progress.error_context = ['More than one match found:', 'Please provide more context to disambiguate between:', *match_details]
+            progress.error_type = DiffErrorType.AMBIGUOUS_MATCH
+            progress.last_match_score = 1.0
+            return (-1, IndentationContext())
+        else:
+            match = all_matches[0]
+            ctx = IndentationContext.from_diff_lines(progress.pending_add, match['indent'])
+            progress.error_type = DiffErrorType.NONE
+            progress.last_match_position = match['remove_position']
+            progress.context_match_position = match['position']
+            return (match['remove_position'], ctx)
+
+def _process_state_transition(progress: DiffProgress, file_lines: List[str]) -> Optional[str]:
+    """Handle state transitions and return error message if any.
+
+    Preserves indentation structure from the diff spec, adjusted to match
+    the nesting level where we found the block in the original file.
+    """
+    if not progress.current_block:
+        return None
+    if progress.state == DiffState.CONTEXT:
+        progress.context_lines = [line for line in progress.current_block if line.strip()]
+        progress.context_line_numbers = list(range(progress.block_start_line, progress.block_start_line + len(progress.current_block)))
+    elif progress.state == DiffState.REMOVE:
+        progress.pending_remove = progress.current_block.copy()
+        progress.pending_add = None
+    elif progress.state == DiffState.ADD:
+        progress.pending_add = progress.current_block.copy()
+        if progress.pending_remove:
+            match_pos, ctx = _find_matching_block(file_lines, progress)
+            if match_pos < 0:
+                return progress.format_error_message()
+            adjusted_lines = ctx.adjust_lines(progress.pending_add)
+            file_lines[match_pos:match_pos + len(progress.pending_remove)] = adjusted_lines
+            progress.pending_remove = None
+            progress.pending_add = None
+    progress.current_block = []
+    return None
 
 def view(file_path: str, max_lines: str=2500):
     """
@@ -45,7 +278,7 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
     - target_extensions (str): String representation of a list of file extensions or patterns.
         Supports:
         - Specific extensions: "['py', 'txt']"
-        - Wildcard for all files: "['*']" (USE SPARINGLY - HIDDEN FILES CLOG CONTEXT)
+        - Wildcard for all files: "['*']"
         - Extension patterns: "['*.py']"
 
     Returns:
@@ -112,13 +345,6 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
             file.write('\n'.join(output_text))
     return '\n'.join(output_text)
 
-# TODO: Add pydiff_edit() function that maintains Python compilability
-# This function would:
-# 1. Make changes using diff_edit
-# 2. Verify the resulting file compiles
-# 3. Roll back changes if compilation fails
-# This would help prevent AST tools from failing when files become temporarily uncompilable
-
 def diff_edit(file_path: str, diff_spec: str):
     """Diff spec editing with flexible matching and git-style diff support.
 
@@ -131,9 +357,8 @@ def diff_edit(file_path: str, diff_spec: str):
         Supports:
         - Lines beginning with '-' for removal
         - Lines beginning with '+' for addition
-        - Git-style context lines (ignored)
+        - Git-style context lines (used for location matching)
         - @@ headers (ignored)
-        - Continued lines from previous +/- prefix
         Whitespace must match exactly in the content after +/-.
 
     Returns:
@@ -144,7 +369,7 @@ def diff_edit(file_path: str, diff_spec: str):
         -import numpy
         +import scipy
 
-    2. Git-style diff (context ignored):
+    2. Git-style diff with context:
         @@ -1,3 +1,3 @@
          import os
         -import numpy
@@ -157,14 +382,10 @@ def diff_edit(file_path: str, diff_spec: str):
         +        # New implementation
         +        return True
 
-    Note: While git-style context lines are accepted, exact whitespace matching
-    is still required for the actual content being changed.
-
     cost: low
     """
-    ignore_indentation: bool = True
-    context_lines: int = int((diff_spec.count('\n') + 1) / 2)
     try:
+        progress = DiffProgress()
         encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
         content = None
         used_encoding = 'utf-8'
@@ -185,201 +406,60 @@ def diff_edit(file_path: str, diff_spec: str):
             return f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
         if not diff_spec.strip():
             return 'Error: No changes specified'
-        changes, errors = _parse_diff_spec(diff_spec=diff_spec)
-        if errors:
-            return 'Error parsing:' + '\n'.join(errors)
-        original_lines = content.splitlines()
-        current_lines = original_lines.copy()
-        matched_changes = []
-        unmatched_changes = []
-        for remove, add in changes:
-            match_found, line_num, prev_indent, match_score, best_index = _find_matching_block(current_lines, remove, ignore_indentation)
-            if match_found:
-                indented_add = _adjust_indentation(add, prev_indent)
-                current_lines[line_num:line_num + len(remove)] = indented_add
-                matched_changes.append(('\n'.join(remove), '\n'.join(indented_add)))
-            else:
-                failure_context = ''
-                if match_score > 0:
-                    context = _get_context(current_lines, best_index, context_lines)
-                    failure_context = '\nNearest partial match found around:\n' + '\n'.join(context) + f'\n\nMatch score: {match_score:.2f}'
-                unmatched_changes.append(('\n'.join(remove), '\n'.join(add), failure_context))
-        if matched_changes:
-            new_content = '\n'.join(current_lines)
+        file_lines = content.splitlines()
+        changes_applied = 0
+        changes_failed = 0
+        error_messages = []
+        diff_spec = textwrap.dedent(diff_spec)
+        for line in diff_spec.splitlines():
+            if not line.strip():
+                continue
+            next_state = _determine_next_state(line, progress.state)
+            if next_state != progress.state:
+                error = _process_state_transition(progress, file_lines)
+                if error:
+                    error_messages.append(error)
+                    changes_failed += 1
+                elif progress.state == DiffState.ADD:
+                    changes_applied += 1
+                progress.state = next_state
+                progress.block_start_line = progress.line_number
+            processed_line = _process_line(line, progress)
+            if next_state != DiffState.HEADER:
+                progress.current_block.append(processed_line)
+            progress.line_number += 1
+        if progress.current_block:
+            error = _process_state_transition(progress, file_lines)
+            if error:
+                error_messages.append(error)
+                changes_failed += 1
+            elif progress.state == DiffState.ADD:
+                changes_applied += 1
+        if changes_applied > 0:
+            new_content = '\n'.join(file_lines)
             if not new_content.endswith('\n'):
                 new_content += '\n'
             with open(file_path, 'w', encoding=used_encoding) as file:
                 file.write(new_content)
-        report = []
-        report.append('Changes made:')
-        if matched_changes:
-            report.append(f'\nSuccessfully applied {len(matched_changes)} changes:')
-        if unmatched_changes:
-            report.append(f'\nFailed to apply {len(unmatched_changes)} changes:')
-            for old, new, context in unmatched_changes:
-                report.append(f'\nCould not find:\n{old}\n\n{context}')
-        return '\n'.join(report) if report else 'No changes were applied'
+        report = ['Changes made:']
+        if changes_applied > 0:
+            report.append(f'\nSuccessfully applied {changes_applied} changes')
+        if changes_failed > 0:
+            report.append(f'\nFailed to apply {changes_failed} changes:')
+            report.extend(error_messages)
+        return '\n'.join(report) if len(report) > 1 else 'No changes were applied'
     except Exception as e:
         return f'Error: {str(e)}\n{traceback.format_exc()}'
-
-def _parse_diff_spec(diff_spec: str):
-    """Parse a diff specification, accepting both strict +/- format and git-style diffs.
-
-    Handles:
-    - Standard +/- prefixed lines
-    - Git-style @@ headers (ignored)
-    - Context lines (ignored)
-    - Continued lines from previous +/- prefix
-    """
-    changes = []
-    remove = []
-    add = []
-    errors = []
-    last_prefix = None
-    diff_spec = textwrap.dedent(diff_spec)
-    for line in diff_spec.splitlines():
-        if not line or line.startswith('@@'):
-            if remove or add:
-                changes.append((remove.copy(), add.copy()))
-                remove.clear()
-                add.clear()
-                last_prefix = None
-            continue
-        if line.startswith('-'):
-            if remove or add:
-                changes.append((remove.copy(), add.copy()))
-                remove.clear()
-                add.clear()
-            last_prefix = '-'
-            content = line[1:]
-            remove.append(content)
-        elif line.startswith('+'):
-            last_prefix = '+'
-            content = line[1:]
-            add.append(content)
-        elif line.startswith(' '):
-            if remove or add:
-                changes.append((remove.copy(), add.copy()))
-                remove.clear()
-                add.clear()
-                last_prefix = None
-            continue
-        elif last_prefix is not None:
-            content = line
-            if last_prefix == '-':
-                remove.append(content)
-            else:
-                add.append(content)
-        else:
-            continue
-    if remove or add:
-        changes.append((remove, add))
-    if not changes:
-        errors.append('Error: No valid changes found in diff spec')
-    return (changes, errors)
-
-def _find_matching_block(current_lines, remove_lines, ignore_indentation):
-    """Find where a block of lines matches in the current file content.
-
-    Args:
-        current_lines: List of strings representing current file content
-        remove_lines: List of strings to find in the file
-        ignore_indentation: Whether to ignore leading whitespace when matching
-
-    Returns:
-        tuple (match_found: bool, line_num: int, indent: str, match_score: float, best_index: int)
-        where:
-        - match_found indicates if an exact match was found
-        - line_num is the line where the match starts (or best partial match)
-        - indent is the indentation to preserve
-        - match_score indicates quality of best partial match (0-1)
-        - best_index is the line number of best partial match
-    """
-    if not remove_lines:
-        return (True, len(current_lines), '', 1.0, len(current_lines))
-
-    def filter_empty_lines(lines):
-        return [line for line in lines if line.strip()]
-    filtered_current = filter_empty_lines(current_lines)
-    filtered_remove = filter_empty_lines(remove_lines)
-    current_map = []
-    for i, line in enumerate(current_lines):
-        if line.strip():
-            current_map.append(i)
-    if len(filtered_remove) > len(filtered_current):
-        return (False, 0, '', 0.0, 0)
-    for i in range(len(filtered_current) - len(filtered_remove) + 1):
-        current_block = filtered_current[i:i + len(filtered_remove)]
-        if ignore_indentation:
-            match = all((c.strip() == o.strip() for c, o in zip(current_block, filtered_remove)))
-        else:
-            match = all((c == o for c, o in zip(current_block, filtered_remove)))
-        if match:
-            orig_index = current_map[i]
-            end_index = current_map[i + len(filtered_remove) - 1]
-            return (True, orig_index, _get_indentation(current_lines[orig_index]), 1.0, orig_index)
-    best_match_score = 0
-    best_match_index = 0
-    for i in range(len(filtered_current) - len(filtered_remove) + 1):
-        current_block = filtered_current[i:i + len(filtered_remove)]
-        match_score = _calculate_block_match_score(current_block, filtered_remove, ignore_indentation)
-        if match_score > best_match_score:
-            best_match_score = match_score
-            best_match_index = current_map[i]
-    return (False, best_match_index, _get_indentation(current_lines[best_match_index]), best_match_score, best_match_index)
 
 def _get_indentation(line):
     """Extract the leading whitespace from a line."""
     return line[:len(line) - len(line.lstrip())]
-
-def _adjust_indentation(lines, target_indent):
-    """Adjust indentation of a block of lines to match target_indent."""
-    if not lines:
-        return lines
-    non_empty_lines = [l for l in lines if l.strip()]
-    if not non_empty_lines:
-        return lines
-    min_indent = min((len(_get_indentation(l)) for l in non_empty_lines))
-    adjusted = []
-    for line in lines:
-        if not line.strip():
-            adjusted.append(line)
-        else:
-            stripped = line[min_indent:]
-            adjusted.append(target_indent + stripped)
-    return adjusted
 
 def _get_context(lines, center_idx, context_size):
     """Get context lines around an index with line numbers."""
     start = max(0, center_idx - context_size)
     end = min(len(lines), center_idx + context_size + 1)
     return [f'{i + 1}: {line}' for i, line in enumerate(lines[start:end], start)]
-
-def _calculate_block_match_score(current_block, old_lines, ignore_indentation):
-    """Calculate how well two blocks match, returning a score and matching line indices."""
-    if ignore_indentation:
-        current_joined = ' '.join((l.strip() for l in current_block))
-        old_joined = ' '.join((l.strip() for l in old_lines))
-        current_stripped = [c.strip() for c in current_block]
-        old_stripped = [o.strip() for o in old_lines]
-    else:
-        current_joined = ' '.join(current_block)
-        old_joined = ' '.join(old_lines)
-        current_stripped = current_block
-        old_stripped = old_lines
-    exact_matches = sum((1 for c, o in zip(current_stripped, old_stripped) if c == o))
-    if current_joined == old_joined:
-        return len(current_block) * 3
-    c_words = set(current_joined.split())
-    o_words = set(old_joined.split())
-    word_matches = len(c_words.intersection(o_words))
-    partial_score = 0
-    if word_matches > 0:
-        partial_score = word_matches / max(len(c_words), len(o_words))
-        if word_matches == len(c_words) and word_matches == len(o_words):
-            partial_score *= 2
-    total_score = exact_matches * 2 + partial_score
-    return total_score
 
 def _has_line_number_prefix(line: str) -> bool:
     """Check if a string starts with a line number format (e.g., '123:' or '  123:')
@@ -412,3 +492,61 @@ def _strip_line_number(line: str) -> str:
     stripped = line.lstrip()
     content = stripped.split(':', 1)[1]
     return whitespace + content
+
+def _document_indentation_rules():
+    """Indentation Rules for diff_edit
+
+    The diff_edit function follows these rules for indentation:
+
+    1. Block Matching:
+       - Blocks are matched ignoring indentation differences
+       - e.g., "    if True:" matches "if True:" in the diff spec
+
+    2. Indentation Preservation:
+       - The absolute indentation level of the matched block sets the base level
+       - e.g., if we match a block at 8 spaces, the replacement starts at 8 spaces
+
+    3. Relative Indentation:
+       - Lines within the new block maintain their relative indentation
+       - e.g., if new content has a 4-space indent from its base, it becomes base+4
+
+    Examples:
+
+    Original:
+        class MyClass:
+            def method():
+                if True:
+                    print("hello")
+                    print("world")
+
+    Diff spec:
+        -    if True:
+        -        print("hello")
+        -        print("world")
+        +    if False:
+        +        print("goodbye")
+        +        if True:
+        +            print("nested")
+
+    Result:
+        class MyClass:
+            def method():
+                if False:           # Maintains original 8-space level
+                    print("goodbye")  # 12 spaces (base + 4)
+                    if True:         # 12 spaces
+                        print("nested") # 16 spaces (base + 8)
+
+    Key Points:
+    1. The indentation in the diff spec is used only for relative relationships
+    2. The absolute indentation level is determined by the matched block
+    3. All new lines are adjusted relative to the base indentation
+    4. Empty lines and comments maintain their position in the structure
+    """
+    pass
+
+class DiffErrorType(Enum):
+    """Types of errors that can occur during diff application"""
+    NONE = auto()
+    CONTEXT_NOT_FOUND = auto()
+    NO_MATCH = auto()
+    AMBIGUOUS_MATCH = auto()
