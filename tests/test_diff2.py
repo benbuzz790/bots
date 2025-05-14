@@ -3,6 +3,7 @@ import textwrap
 from bots.tools.code_tools import diff_edit
 from bots.tools.code_tools import IndentationContext, DiffProgress, DiffState, _get_indentation, _find_matching_block
 from bots.tools.code_tools import _determine_next_state, _process_line
+from bots.tools.code_tools import DiffErrorType
 
 @pytest.fixture
 def temp_file(tmp_path) -> str:
@@ -54,18 +55,24 @@ def read_file(file_path: str) -> str:
         return f.read()
 
 def test_basic_replacement(temp_file: str) -> None:
-    """Test basic single-line replacement with strict indentation matching.
-
-    Verifies that diff_edit can replace a single line while preserving:
-    - Exact indentation level
-    - Surrounding context
-    - File structure
-    """
-    initial = textwrap.dedent('    def test_function():\n        print("hello")\n        print("world")\n    ')
-    diff = '-    print("hello")\n+    print("goodbye")'
-    write_and_edit(temp_file, initial, diff)
-    result = read_file(temp_file)
-    expected = textwrap.dedent('    def test_function():\n        print("goodbye")\n        print("world")\n    ')
+    """Test basic single-line replacement with strict indentation matching."""
+    from bots.tools.code_tools import DiffProgress, DiffState, _process_state_transition, diff_edit
+    initial = 'def test_function():\n    print("hello")\n    print("world")\n'
+    diff = ' def test_function():\n-    print("hello")\n+    print("goodbye")'
+    with open(temp_file, 'w') as f:
+        f.write(initial)
+    print('\nInitial file:')
+    with open(temp_file, 'r') as f:
+        print(f.read())
+    print('\nApplying diff:')
+    print(diff)
+    result_msg = diff_edit(temp_file, diff)
+    print('\nDiff edit result:', result_msg)
+    print('\nFinal file:')
+    with open(temp_file, 'r') as f:
+        result = f.read()
+    print(result)
+    expected = 'def test_function():\n    print("goodbye")\n    print("world")\n'
     assert result == expected
 
 def test_different_line_counts_expand(temp_file: str) -> None:
@@ -599,3 +606,35 @@ def test_process_line():
     assert _process_line('print("unchanged")', progress) == 'print("unchanged")'
     assert _process_line('', progress) == ''
     assert _process_line('    ', progress) == '    '
+
+def test_find_matching_block_disambiguation():
+    """Test that _find_matching_block correctly uses context to disambiguate between multiple matches.
+
+    The test file contains two identical blocks, but the context lines should help identify
+    the correct one based on the surrounding code structure.
+    """
+    from bots.tools.code_tools import _find_matching_block, DiffProgress, DiffErrorType
+    file_content = ['def first():', '    # Comment', '    x = 1', '    y = 2', '', 'def second():', '    # Comment', '    x = 1', '    y = 2']
+    progress1 = DiffProgress()
+    progress1.context_lines = ['x = 1']
+    progress1.pending_remove = ['    y = 2']
+    match_pos1, ctx1 = _find_matching_block(file_content, progress1)
+    print(f'\nTest Case 1 - Minimal Context')
+    print(f'Context lines: {progress1.context_lines}')
+    print(f'Looking to remove: {progress1.pending_remove}')
+    print(f'Match position: {match_pos1}')
+    print(f'Error type: {progress1.error_type}')
+    print(f'Error context: {progress1.error_context}')
+    assert match_pos1 == -1, 'Should return -1 for ambiguous match'
+    assert progress1.error_type == DiffErrorType.AMBIGUOUS_MATCH, 'Should detect ambiguous match with minimal context'
+    progress2 = DiffProgress()
+    progress2.context_lines = ['def first():', '    # Comment', '    x = 1']
+    progress2.pending_remove = ['    y = 2']
+    match_pos2, ctx2 = _find_matching_block(file_content, progress2)
+    print(f'\nTest Case 2 - Full Context')
+    print(f'Context lines: {progress2.context_lines}')
+    print(f'Looking to remove: {progress2.pending_remove}')
+    print(f'Match position: {match_pos2}')
+    print(f'Error type: {progress2.error_type}')
+    assert match_pos2 == 3, f'Should find correct match at position 3, got {match_pos2}'
+    assert progress2.error_type == DiffErrorType.NONE, 'Should not have any errors with sufficient context'
