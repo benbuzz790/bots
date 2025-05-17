@@ -34,7 +34,7 @@ def view(file_path: str, max_lines: str=2500):
 
 def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py', 'txt', 'md']"):
     """
-    Creates a summary of the directory structure starting from the given path, writing only files 
+    Creates a summary of the directory structure starting from the given path, writing only files
     with specified extensions and showing venv directories without their contents.
 
     Parameters:
@@ -53,7 +53,7 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
             README.md
         module2/
             utils.py
-    
+
     cost: low
     """
     extensions_list = [ext.strip().strip('\'"') for ext in target_extensions.strip('[]').split(',')]
@@ -90,9 +90,10 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
 def apply_git_patch(file_path: str, patch_content: str):
     """
     Apply a git-style unified diff patch to a file.
+    Creates the file if it doesn't exist.
 
     Parameters:
-    - file_path (str): Path to the file to modify
+    - file_path (str): Path to the file to modify (supports both / and \\ separators)
     - patch_content (str): Unified diff format patch content
 
     Returns:
@@ -101,12 +102,14 @@ def apply_git_patch(file_path: str, patch_content: str):
     cost: low
     """
     try:
+        file_path = _normalize_path(file_path)
         encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
         content = None
         used_encoding = 'utf-8'
+        dir_path = os.path.dirname(file_path)
+        if dir_path:
+            os.makedirs(dir_path, exist_ok=True)
         if not os.path.exists(file_path):
-            with open(file_path, 'w', encoding=used_encoding) as file:
-                file.write('')
             content = ''
         else:
             for encoding in encodings:
@@ -117,17 +120,17 @@ def apply_git_patch(file_path: str, patch_content: str):
                         break
                 except UnicodeDecodeError:
                     continue
-        if content is None:
-            return f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
+        if content is None and os.path.exists(file_path):
+            return f"Error: Unable to read existing file with any of the attempted encodings: {', '.join(encodings)}"
         if not patch_content.strip():
-            return 'Error: No valid patch hunks found'
-        original_lines = content.splitlines()
+            return 'Error: patch_content is empty.'
+        original_lines = content.splitlines() if content else []
         current_lines = original_lines.copy()
         changes_made = []
         line_offset = 0
         hunks = patch_content.split('\n@@')[1:]
         if not hunks:
-            return 'Error: No valid patch hunks found'
+            return 'Error: No valid patch hunks found. (No instances of "\\n@@")'
         for hunk in hunks:
             hunk = hunk.strip()
             if not hunk:
@@ -140,7 +143,7 @@ def apply_git_patch(file_path: str, patch_content: str):
                 old_range, new_range = header.rstrip(' @').split(' +')
                 old_start = int(old_range.split(',')[0].lstrip('- '))
                 new_start = int(new_range.split(',')[0])
-                hunk_lines = hunk[header_end:].splitlines()[1:]
+                hunk_lines = _normalize_header_lines(hunk[header_end:].splitlines()[1:])
             except (ValueError, IndexError) as e:
                 return f'Error parsing hunk header: {str(e)}\nHeader: {header}'
             context_before = []
@@ -150,15 +153,17 @@ def apply_git_patch(file_path: str, patch_content: str):
             for line in hunk_lines:
                 if not line:
                     continue
-                if line.startswith(' '):
+                if not (line.startswith('+') or line.startswith('-')):
                     if not removals and (not additions):
-                        context_before.append(line[1:])
+                        context_before.append(line)
                     else:
-                        context_after.append(line[1:])
+                        context_after.append(line)
                 elif line.startswith('-'):
                     removals.append(line[1:])
                 elif line.startswith('+'):
                     additions.append(line[1:])
+            if not removals and (not additions):
+                continue
             if len(current_lines) == 0 and old_start == 0 and (not context_before) and (not removals):
                 current_lines.extend(additions)
                 changes_made.append('Applied changes to new file')
@@ -197,25 +202,24 @@ def apply_git_patch(file_path: str, patch_content: str):
                     match_line = whitespace_matches[0]
                     changes_made.append(f'Note: Applied hunk at line {match_line} (ignoring whitespace)')
                     found = True
-            if not found:
+            if not found and context_before:
                 _, best_line, match_quality, _ = _find_block_in_content(current_lines, context_before, ignore_whitespace=True)
                 if match_quality > 0.8:
                     context = _get_context(current_lines, best_line - 1, 2)
                     return f'Error: Found similar but not exact match at line {best_line}\nContext:\n{context}\nMatch quality: {match_quality:.2f}'
                 else:
-                    context = _get_context(current_lines, old_start - 1, 2)
+                    context = _get_context(current_lines, old_start - 1, 2) if old_start > 0 else []
                     return f'Error: Could not find matching content anywhere in file.\nExpected:\n{context_before}\nFound:\n{context}'
-            pos = match_line - 1
+            pos = match_line - 1 + len(context_before)
             original_indent = ''
             if len(current_lines) > 0:
-                if pos + len(context_before) < len(current_lines):
+                if pos < len(current_lines):
                     if removals:
-                        original_indent = _get_line_indentation(current_lines[pos + len(context_before)])
+                        original_indent = _get_line_indentation(current_lines[pos])
                     else:
-                        original_indent = _get_line_indentation(current_lines[pos + len(context_before) - 1])
+                        original_indent = _get_line_indentation(current_lines[pos - 1]) if pos > 0 else ''
                 elif pos > 0:
                     original_indent = _get_line_indentation(current_lines[pos - 1])
-            pos += len(context_before)
             indented_additions = [original_indent + line.lstrip() for line in additions]
             if removals:
                 current_lines[pos:pos + len(removals)] = indented_additions
@@ -274,12 +278,17 @@ def _check_match_type(content_lines: list, start_pos: int, context_lines: list, 
     Check if there's a match at the given position.
     Returns (found_match, was_whitespace_match)
     """
+    print(f'\nDEBUG _check_match_type:')
+    print(f'  start_pos: {start_pos}')
+    print(f'  context_lines: {context_lines}')
+    print(f"  content at pos: {(content_lines[start_pos - 1] if start_pos - 1 < len(content_lines) else 'out of range')}")
     if start_pos - 1 + len(context_lines) > len(content_lines):
         return (False, False)
     context_exact = True
     context_whitespace = True
     for i, ctx_line in enumerate(context_lines):
         content_line = content_lines[start_pos - 1 + i]
+        print(f"  comparing: '{content_line}' with '{ctx_line}'")
         if content_line != ctx_line:
             context_exact = False
         if content_line.strip() != ctx_line.strip():
@@ -296,9 +305,8 @@ def _check_match_type(content_lines: list, start_pos: int, context_lines: list, 
                 context_exact = False
             if content_line.strip() != rem_line.strip():
                 return (False, False)
+    print(f'  Match found! exact={context_exact}, whitespace={not context_exact}')
     return (True, not context_exact)
-
-### Legacy Tools ###
 
 def _patch(file_path: str, patch_content: str):
     """
@@ -410,15 +418,15 @@ def _patch(file_path: str, patch_content: str):
 def _diff_edit(file_path: str, diff_spec: str):
     """
     Obsolete - kept for internal reference
-    Diff spec editing with flexible matching. 
+    Diff spec editing with flexible matching.
 
     Use when you need to make precision changes in text files.
 
     Parameters:
     - file_path (str): Path to the file to modify
-    - diff_spec (str): Diff-style specification of changes. 
-    Lines beginning with '-' are removed, and lines 
-    beginning with '+' are added at the starting index of the 
+    - diff_spec (str): Diff-style specification of changes.
+    Lines beginning with '-' are removed, and lines
+    beginning with '+' are added at the starting index of the
     removed lines. All lines must start with + or -, and white
     space must be matched exactly.
 
@@ -501,8 +509,6 @@ def _diff_edit(file_path: str, diff_spec: str):
     except Exception as e:
         return f'Error: {str(e)}\n{traceback.format_exc()}'
 
-
-
 def _preserve_indentation(original_line: str, new_line: str) -> str:
     """Preserve indentation from original line when replacing with new line."""
     original_indent = _get_line_indentation(original_line)
@@ -520,7 +526,6 @@ def _check_whitespace_match(content_lines: list, start_pos: int, context_lines: 
         return False
     return all((content_lines[start_pos - 1 + i].strip() == line.strip() for i, line in enumerate(context_lines)))
 
-
 def _strip_line_number(line: str) -> str:
     """Remove line number prefix if present (e.g., '123:content' or '  123:content' becomes 'content')
     Preserves any leading whitespace before the line number.
@@ -535,7 +540,6 @@ def _strip_line_number(line: str) -> str:
     stripped = line.lstrip()
     content = stripped.split(':', 1)[1]
     return whitespace + content
-
 
 def _adjust_indentation(lines, target_indent):
     """Adjust indentation of a block of lines to match target_indent."""
@@ -553,7 +557,6 @@ def _adjust_indentation(lines, target_indent):
             stripped = line[min_indent:]
             adjusted.append(target_indent + stripped)
     return adjusted
-
 
 def _parse_diff_spec(diff_spec: str):
     changes = []
@@ -687,3 +690,39 @@ def _calculate_block_match_score(current_block, old_lines, ignore_indentation):
 def _get_indentation(line):
     """Extract the leading whitespace from a line."""
     return line[:len(line) - len(line.lstrip())]
+
+def _normalize_path(file_path: str) -> str:
+    """
+    Normalize file path to use consistent separators and handle both / and \\.
+
+    Args:
+        file_path (str): The file path to normalize
+
+    Returns:
+        str: Normalized path using os.path.sep
+    """
+    return os.path.normpath(file_path.replace('\\', '/').replace('//', '/'))
+
+def _normalize_header_lines(lines):
+    """
+    Normalize only the hunk headers (@@ lines) in a patch.
+    Leaves all other lines unchanged.
+
+    Args:
+        lines (list[str]): List of patch lines
+
+    Returns:
+        list[str]: Lines with normalized hunk headers
+    """
+    normalized = []
+    for line in lines:
+        if not line:
+            normalized.append(line)
+            continue
+        if line.startswith('@@'):
+            parts = line.split('@@')
+            if len(parts) >= 2:
+                ranges = parts[1].strip()
+                line = f'@@ {ranges} @@'
+        normalized.append(line)
+    return normalized
