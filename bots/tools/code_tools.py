@@ -142,8 +142,8 @@ def apply_git_patch(file_path: str, patch_content: str):
                 if not header.endswith('@@'):
                     header = header + ' @@'
                 old_range, new_range = header.rstrip(' @').split(' +')
-                old_start = int(old_range.split(',')[0].lstrip('- '))
-                new_start = int(new_range.split(',')[0])
+                old_start = int(old_range.split(',')[0].lstrip('- ')) - 1  # Convert to 0-based
+                new_start = int(new_range.split(',')[0]) - 1  # Convert to 0-based
                 hunk_lines = _normalize_header_lines(hunk[header_end:].splitlines()[1:])
             except (ValueError, IndexError) as e:
                 return f'Error parsing hunk header: {str(e)}\nHeader: {header}'

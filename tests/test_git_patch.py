@@ -18,6 +18,7 @@ class TestGitPatch(unittest.TestCase):
         patch = textwrap.dedent('\n        @@ -2,2 +2,3 @@\n         line 2\n        +new line\n         line 3')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
+        self.assertNotIn('ignoring whitespace', result, "Expected exact match but got whitespace-ignored match")
         with open(self.test_file, 'r') as f:
             content = f.read()
         self.assertEqual(content, 'line 1\nline 2\nnew line\nline 3\nline 4\nline 5\n')
@@ -26,6 +27,7 @@ class TestGitPatch(unittest.TestCase):
         patch = textwrap.dedent('\n        @@ -2,3 +2,2 @@\n         line 2\n        -line 3\n         line 4')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
+        self.assertNotIn('ignoring whitespace', result, "Expected exact match but got whitespace-ignored match")
         with open(self.test_file, 'r') as f:
             content = f.read()
         self.assertEqual(content, 'line 1\nline 2\nline 4\nline 5\n')
