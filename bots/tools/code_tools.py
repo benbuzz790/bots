@@ -101,6 +101,8 @@ def apply_git_patch(file_path: str, patch_content: str):
     cost: low
     """
     try:
+        if patch_content.startswith('@@'):
+            patch_content = '\n' + patch_content
         file_path = _normalize_path(file_path)
         encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
         content = None
@@ -170,9 +172,11 @@ def apply_git_patch(file_path: str, patch_content: str):
             adjusted_start = old_start + line_offset
             found = False
             match_line = adjusted_start
+            exact_match = False
             if adjusted_start <= len(current_lines):
                 found, was_whitespace = _check_match_type(current_lines, adjusted_start, context_before)
                 if found:
+                    exact_match = not was_whitespace
                     if was_whitespace:
                         changes_made.append(f'Note: Applied hunk at line {adjusted_start} (ignoring whitespace)')
                     else:
@@ -187,6 +191,7 @@ def apply_git_patch(file_path: str, patch_content: str):
                             whitespace_matches.append(i)
                         else:
                             matches.append(i)
+                            exact_match = True
                 if matches:
                     if len(matches) > 1:
                         match_locations = '\n'.join((f'- at line {m}' for m in matches))
@@ -210,16 +215,19 @@ def apply_git_patch(file_path: str, patch_content: str):
                     context = _get_context(current_lines, old_start - 1, 2) if old_start > 0 else []
                     return f'Error: Could not find matching content anywhere in file.\nExpected:\n{context_before}\nFound:\n{context}'
             pos = match_line - 1 + len(context_before)
-            original_indent = ''
-            if len(current_lines) > 0:
-                if pos < len(current_lines):
-                    if removals:
-                        original_indent = _get_line_indentation(current_lines[pos])
-                    else:
-                        original_indent = _get_line_indentation(current_lines[pos - 1]) if pos > 0 else ''
-                elif pos > 0:
-                    original_indent = _get_line_indentation(current_lines[pos - 1])
-            indented_additions = [original_indent + line.lstrip() for line in additions]
+            if exact_match:
+                indented_additions = additions
+            else:
+                target_indent = ''
+                if len(current_lines) > 0:
+                    if pos < len(current_lines):
+                        if removals:
+                            target_indent = _get_line_indentation(current_lines[pos])
+                        else:
+                            target_indent = _get_line_indentation(current_lines[pos - 1]) if pos > 0 else ''
+                    elif pos > 0:
+                        target_indent = _get_line_indentation(current_lines[pos - 1])
+                indented_additions = _adjust_indentation(additions, target_indent)
             if removals:
                 current_lines[pos:pos + len(removals)] = indented_additions
             else:
@@ -336,3 +344,35 @@ def _normalize_header_lines(lines):
                 line = f'@@ {ranges} @@'
         normalized.append(line)
     return normalized
+
+def _adjust_indentation(lines: list, target_indent: str) -> list:
+    """
+    Adjust indentation of a block of lines to match target indent while preserving relative indentation.
+    First applies target indentation to all lines, then preserves additional relative indentation.
+
+    Args:
+        lines (list[str]): Lines to adjust
+        target_indent (str): Target base indentation
+
+    Returns:
+        list[str]: Lines with adjusted indentation
+    """
+    if not lines:
+        return lines
+    base_indent = None
+    for line in lines:
+        if line.strip():
+            base_indent = _get_line_indentation(line)
+            break
+    if base_indent is None:
+        return lines
+    adjusted_lines = []
+    for line in lines:
+        if not line.strip():
+            adjusted_lines.append('')
+            continue
+        current_indent = _get_line_indentation(line)
+        relative_indent = len(current_indent) - len(base_indent)
+        new_indent = target_indent + ' ' * max(0, relative_indent)
+        adjusted_lines.append(new_indent + line.lstrip())
+    return adjusted_lines

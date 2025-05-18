@@ -241,6 +241,51 @@ class TestGitPatch(unittest.TestCase):
                     import shutil
                     shutil.rmtree(os.path.dirname(os.path.dirname(full_path)))
 
+    def test_class_indentation_preservation(self):
+        """Test that class and method indentation is properly preserved when applying patches"""
+        with open(self.test_file, 'w') as f:
+            f.write('class MyClass:\n    def method1(self):\n        return "original"\n\n    def method2(self):\n        return "test"\n')
+        patch = textwrap.dedent('\n        @@ -1,6 +1,6 @@\n         class MyClass:\n             def method1(self):\n        -        return "original"\n        +        return "modified"\n\n             def method2(self):\n                 return "test"')
+        result = apply_git_patch(self.test_file, patch)
+        self.assertIn('Successfully', result)
+        with open(self.test_file, 'r') as f:
+            content = f.read()
+        expected = 'class MyClass:\n    def method1(self):\n        return "modified"\n\n    def method2(self):\n        return "test"\n'
+        self.assertEqual(content, expected, f'Indentation was not preserved.\nExpected:\n{repr(expected)}\nGot:\n{repr(content)}')
+
+    def test_adding_to_import_only_file(self):
+        """Test that adding content to a file with only imports preserves indentation"""
+        with open(self.test_file, 'w') as f:
+            f.write('import numpy as np\nimport time\nfrom typing import List, Tuple\n')
+        patch = '@@ -1,3 +1,54 @@\nimport numpy as np\nimport time\nfrom typing import List, Tuple\n+\n+class GameOfLife:\n+    def __init__(self, size: Tuple[int, int]):\n+        self.size = size\n+        self.grid = np.random.choice([0, 1], size=size, p=[0.85, 0.15])\n+    \n+    def get_neighbors(self, pos: Tuple[int, int]) -> int:\n+        """Count live neighbors for a given cell position."""\n+        row, col = pos\n+        count = 0\n+        for i in [-1, 0, 1]:\n+            for j in [-1, 0, 1]:\n+                if i == 0 and j == 0:\n+                    continue\n+                r = (row + i) % self.size[0]\n+                c = (col + j) % self.size[1]\n+                count += self.grid[r, c]\n+        return count\n+    \n+    def step(self) -> None:\n+        """Advance the game by one generation."""\n+        new_grid = np.copy(self.grid)\n+        for i in range(self.size[0]):\n+            for j in range(self.size[1]):\n+                neighbors = self.get_neighbors((i, j))\n+                if self.grid[i, j] == 1:\n+                    if neighbors < 2 or neighbors > 3:\n+                        new_grid[i, j] = 0\n+                else:\n+                    if neighbors == 3:\n+                        new_grid[i, j] = 1\n+        self.grid = new_grid\n+    \n+    def display(self) -> None:\n+        """Display the current state of the game."""\n+        for row in self.grid:\n+            print(\'\'.join([\'■\' if cell else \'□\' for cell in row]))\n+\n+def main():\n+    # Initialize game with a 20x40 grid\n+    game = GameOfLife((20, 40))\n+    \n+    # Run for 100 generations\n+    for _ in range(100):\n+        print("\\033[2J\\033[H")  # Clear screen\n+        game.display()\n+        game.step()\n+        time.sleep(0.1)\n+\n+if __name__ == "__main__":\n+    main()'
+        result = apply_git_patch(self.test_file, patch)
+        self.assertIn('Successfully', result)
+        with open(self.test_file, 'r') as f:
+            content = f.read()
+        expected = 'import numpy as np\nimport time\nfrom typing import List, Tuple\n\nclass GameOfLife:\n    def __init__(self, size: Tuple[int, int]):\n        self.size = size\n        self.grid = np.random.choice([0, 1], size=size, p=[0.85, 0.15])\n\n    def get_neighbors(self, pos: Tuple[int, int]) -> int:\n        """Count live neighbors for a given cell position."""\n        row, col = pos\n        count = 0\n        for i in [-1, 0, 1]:\n            for j in [-1, 0, 1]:\n                if i == 0 and j == 0:\n                    continue\n                r = (row + i) % self.size[0]\n                c = (col + j) % self.size[1]\n                count += self.grid[r, c]\n        return count\n\n    def step(self) -> None:\n        """Advance the game by one generation."""\n        new_grid = np.copy(self.grid)\n        for i in range(self.size[0]):\n            for j in range(self.size[1]):\n                neighbors = self.get_neighbors((i, j))\n                if self.grid[i, j] == 1:\n                    if neighbors < 2 or neighbors > 3:\n                        new_grid[i, j] = 0\n                else:\n                    if neighbors == 3:\n                        new_grid[i, j] = 1\n        self.grid = new_grid\n\n    def display(self) -> None:\n        """Display the current state of the game."""\n        for row in self.grid:\n            print(\'\'.join([\'■\' if cell else \'□\' for cell in row]))\n\ndef main():\n    # Initialize game with a 20x40 grid\n    game = GameOfLife((20, 40))\n\n    # Run for 100 generations\n    for _ in range(100):\n        print("\\033[2J\\033[H")  # Clear screen\n        game.display()\n        game.step()\n        time.sleep(0.1)\n\nif __name__ == "__main__":\n    main()\n'
+        self.assertEqual(content, expected, f'Content or indentation mismatch.\nExpected:\n{repr(expected)}\nGot:\n{repr(content)}')
+
+    def test_relative_indentation_preservation(self):
+        """Test that relative indentation between lines is preserved while adjusting to target indent"""
+        with open(self.test_file, 'w') as f:
+            f.write('line 1\nbase indent\nline 3\n')
+        patch = '@@ -2,1 +2,4 @@\nbase indent\n+    indented:\n+        double indented\n+            triple indented'
+        result = apply_git_patch(self.test_file, patch)
+        self.assertIn('Successfully', result)
+        with open(self.test_file, 'r') as f:
+            content = f.read()
+        expected = 'line 1\nbase indent\n    indented:\n        double indented\n            triple indented\nline 3\n'
+        self.assertEqual(content, expected, f'Relative indentation not preserved.\nExpected:\n{repr(expected)}\nGot:\n{repr(content)}')
+        with open(self.test_file, 'w') as f:
+            f.write('line 1\n    indented line\nline 3\n')
+        patch = '@@ -2,1 +2,4 @@\n    indented line\n+    same level\n+        more indented\n+            most indented'
+        result = apply_git_patch(self.test_file, patch)
+        self.assertIn('Successfully', result)
+        with open(self.test_file, 'r') as f:
+            content = f.read()
+        expected = 'line 1\n    indented line\n    same level\n        more indented\n            most indented\nline 3\n'
+        self.assertEqual(content, expected, f'Relative indentation not preserved when adding to indented line.\nExpected:\n{repr(expected)}\nGot:\n{repr(content)}')
+
 class TestGitPatchHunkParsing(unittest.TestCase):
 
     def setUp(self):
