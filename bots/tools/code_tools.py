@@ -277,17 +277,12 @@ def _check_match_type(content_lines: list, start_pos: int, context_lines: list, 
     Check if there's a match at the given position.
     Returns (found_match, was_whitespace_match)
     """
-    print(f'\nDEBUG _check_match_type:')
-    print(f'  start_pos: {start_pos}')
-    print(f'  context_lines: {context_lines}')
-    print(f"  content at pos: {(content_lines[start_pos - 1] if start_pos - 1 < len(content_lines) else 'out of range')}")
     if start_pos - 1 + len(context_lines) > len(content_lines):
         return (False, False)
     context_exact = True
     context_whitespace = True
     for i, ctx_line in enumerate(context_lines):
         content_line = content_lines[start_pos - 1 + i]
-        print(f"  comparing: '{content_line}' with '{ctx_line}'")
         if content_line != ctx_line:
             context_exact = False
         if content_line.strip() != ctx_line.strip():
@@ -304,7 +299,6 @@ def _check_match_type(content_lines: list, start_pos: int, context_lines: list, 
                 context_exact = False
             if content_line.strip() != rem_line.strip():
                 return (False, False)
-    print(f'  Match found! exact={context_exact}, whitespace={not context_exact}')
     return (True, not context_exact)
 
 def _normalize_path(file_path: str) -> str:
