@@ -15,25 +15,25 @@ class TestGitPatch(unittest.TestCase):
             os.remove(self.test_file)
 
     def test_simple_addition(self):
-        patch = textwrap.dedent('\n        @@ -2,2 +2,3 @@\n         line 2\n        +new line\n         line 3')
+        patch = textwrap.dedent('\n@@ -2,2 +2,3 @@\nline 2\n+new line\nline 3')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
-        self.assertNotIn('ignoring whitespace', result, "Expected exact match but got whitespace-ignored match")
+        self.assertNotIn('ignoring whitespace', result, 'Expected exact match but got whitespace-ignored match')
         with open(self.test_file, 'r') as f:
             content = f.read()
         self.assertEqual(content, 'line 1\nline 2\nnew line\nline 3\nline 4\nline 5\n')
 
     def test_simple_deletion(self):
-        patch = textwrap.dedent('\n        @@ -2,3 +2,2 @@\n         line 2\n        -line 3\n         line 4')
+        patch = textwrap.dedent('\n@@ -2,3 +2,2 @@\nline 2\n-line 3\nline 4')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
-        self.assertNotIn('ignoring whitespace', result, "Expected exact match but got whitespace-ignored match")
+        self.assertNotIn('ignoring whitespace', result, 'Expected exact match but got whitespace-ignored match')
         with open(self.test_file, 'r') as f:
             content = f.read()
         self.assertEqual(content, 'line 1\nline 2\nline 4\nline 5\n')
 
     def test_replacement(self):
-        patch = textwrap.dedent('\n        @@ -2,3 +2,3 @@\n         line 2\n        -line 3\n        +modified line 3\n         line 4')
+        patch = textwrap.dedent('\n@@ -2,3 +2,3 @@\nline 2\n-line 3\n+modified line 3\nline 4')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
         with open(self.test_file, 'r') as f:
@@ -41,7 +41,7 @@ class TestGitPatch(unittest.TestCase):
         self.assertEqual(content, 'line 1\nline 2\nmodified line 3\nline 4\nline 5\n')
 
     def test_multiple_hunks(self):
-        patch = textwrap.dedent('\n        @@ -1,2 +1,3 @@\n         line 1\n        +inserted at start\n         line 2\n        @@ -4,2 +5,3 @@\n         line 4\n        +inserted at end\n         line 5')
+        patch = textwrap.dedent('\n@@ -1,2 +1,3 @@\nline 1\n+inserted at start\nline 2\n@@ -4,2 +5,3 @@\nline 4\n+inserted at end\nline 5')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
         with open(self.test_file, 'r') as f:
@@ -55,7 +55,7 @@ class TestGitPatch(unittest.TestCase):
         self.assertIn('No valid patch hunks', result)
 
     def test_context_mismatch(self):
-        patch = textwrap.dedent('\n        @@ -2,3 +2,3 @@\n         wrong context\n        -line 3\n        +modified line 3\n         line 4')
+        patch = textwrap.dedent('\n@@ -2,3 +2,3 @@\nwrong context\n-line 3\n+modified line 3\nline 4')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Error', result)
         self.assertIn('Could not find matching content', result)
@@ -70,7 +70,7 @@ class TestGitPatch(unittest.TestCase):
         new_file = 'new_test_file.txt'
         if os.path.exists(new_file):
             os.remove(new_file)
-        patch = textwrap.dedent('\n        @@ -0,0 +1,3 @@\n        +first line\n        +second line\n        +third line')
+        patch = textwrap.dedent('\n@@ -0,0 +1,3 @@\n+first line\n+second line\n+third line')
         try:
             result = apply_git_patch(new_file, patch)
             self.assertIn('Successfully', result)
@@ -85,7 +85,7 @@ class TestGitPatch(unittest.TestCase):
         """Test that content is matched even if line numbers don't match"""
         with open(self.test_file, 'w') as f:
             f.write('header\nline 1\nline 2\nline 3\nline 4\nline 5\n')
-        patch = textwrap.dedent('\n        @@ -2,2 +2,2 @@\n         line 2\n        -line 3\n        +modified line 3')
+        patch = textwrap.dedent('\n@@ -2,2 +2,2 @@\nline 2\n-line 3\n+modified line 3')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
         self.assertIn('Note: Applied hunk at line', result)
@@ -94,7 +94,7 @@ class TestGitPatch(unittest.TestCase):
         """Test that content is matched even with different indentation"""
         with open(self.test_file, 'w') as f:
             f.write('def test():\n    line 1\n    line 2\n        line 3\n    line 4\n')
-        patch = textwrap.dedent('\n        @@ -2,2 +2,2 @@\n        line 2\n        -line 3\n        +modified line 3')
+        patch = textwrap.dedent('\n@@ -2,2 +2,2 @@\nline 2\n-line 3\n+modified line 3')
         print('\nFile content:')
         with open(self.test_file, 'r') as f:
             print(repr(f.read()))
@@ -112,7 +112,7 @@ class TestGitPatch(unittest.TestCase):
         """Test that similar but not exact matches are reported"""
         with open(self.test_file, 'w') as f:
             f.write('line 1\nline two\nline 3\nline 4\n')
-        patch = textwrap.dedent('\n        @@ -2,2 +2,2 @@\n         line 2\n        -line 3\n        +modified line 3')
+        patch = textwrap.dedent('\n@@ -2,2 +2,2 @@\nline 2\n-line 3\n+modified line 3')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Error', result)
         self.assertIn('Could not find matching content', result)
@@ -130,7 +130,7 @@ class TestGitPatch(unittest.TestCase):
         """Test matching when only whitespace differs"""
         with open(self.test_file, 'w') as f:
             f.write('    line 1\n        line 2\n    line 3\n')
-        patch = textwrap.dedent('\n        @@ -1,3 +1,3 @@\n         line 1\n        -line 2\n        +modified line 2\n         line 3')
+        patch = textwrap.dedent('\n@@ -1,3 +1,3 @@\nline 1\n-line 2\n+modified line 2\nline 3')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
         self.assertIn('ignoring whitespace', result)
@@ -142,7 +142,7 @@ class TestGitPatch(unittest.TestCase):
         """Test that existing indentation is preserved on modified lines"""
         with open(self.test_file, 'w') as f:
             f.write('line 1\n    indented line\n        double indented\n')
-        patch = textwrap.dedent('\n        @@ -2,1 +2,1 @@\n             indented line\n        -        double indented\n        +        modified line')
+        patch = textwrap.dedent('\n@@ -2,1 +2,1 @@\nindented line\n-double indented\n+modified line')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
         with open(self.test_file, 'r') as f:
@@ -153,7 +153,7 @@ class TestGitPatch(unittest.TestCase):
         """Test finding a block with surrounding context"""
         with open(self.test_file, 'w') as f:
             f.write('header\n    block start\n    target line\n    block end\nfooter\n')
-        patch = textwrap.dedent('\n        @@ -2,3 +2,3 @@\n             block start\n        -    target line\n        +    modified line\n             block end')
+        patch = textwrap.dedent('\n@@ -2,3 +2,3 @@\nblock start\n-target line\n+modified line\nblock end')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
         with open(self.test_file, 'r') as f:
@@ -164,7 +164,7 @@ class TestGitPatch(unittest.TestCase):
         """Debug version to see what's happening with whitespace matching"""
         with open(self.test_file, 'w') as f:
             f.write('def test():\n    line 1\n    line 2\n        line 3\n    line 4\n')
-        patch = textwrap.dedent('\n        @@ -2,2 +2,2 @@\n        line 2\n        -line 3\n        +modified line 3')
+        patch = textwrap.dedent('\n@@ -2,2 +2,2 @@\nline 2\n-line 3\n+modified line 3')
         print('\nFile content:')
         with open(self.test_file, 'r') as f:
             print(repr(f.read()))
@@ -180,7 +180,7 @@ class TestGitPatch(unittest.TestCase):
         """Test behavior when multiple potential matches exist"""
         with open(self.test_file, 'w') as f:
             f.write('def test1():\n    line 1\n    line 2\ndef test2():\n    line 1\n    line 2\n')
-        patch = textwrap.dedent('\n        @@ -2,2 +2,2 @@\n             line 1\n        -    line 2\n        +    modified line')
+        patch = textwrap.dedent('\n@@ -2,2 +2,2 @@\nline 1\n-line 2\n+modified line')
         result = apply_git_patch(self.test_file, patch)
         if 'multiple' in result.lower() or 'ambiguous' in result.lower():
             self.assertTrue(True)
@@ -193,7 +193,7 @@ class TestGitPatch(unittest.TestCase):
         """Test creating a file in a directory that doesn't exist yet"""
         new_dir = os.path.join(self.test_file + '_newdir', 'subdir', 'deeperdir')
         new_file = os.path.join(new_dir, 'newfile.txt')
-        patch = textwrap.dedent('\n        @@ -0,0 +1,3 @@\n        +line 1\n        +line 2\n        +line 3\n        ')
+        patch = textwrap.dedent('\n@@ -0,0 +1,3 @@\n+line 1\n+line 2\n+line 3')
         try:
             self.assertFalse(os.path.exists(new_dir))
             result = apply_git_patch(new_file, patch)
@@ -210,7 +210,7 @@ class TestGitPatch(unittest.TestCase):
     def test_double_slash_handling(self):
         """Test that double slashes in paths are handled correctly"""
         test_path = 'test//path//file.txt'
-        patch = textwrap.dedent('\n        @@ -0,0 +1,1 @@\n        +test content\n        ')
+        patch = textwrap.dedent('\n@@ -0,0 +1,1 @@\n+test content')
         full_path = os.path.join(self.test_file + '_dir', test_path)
         try:
             result = apply_git_patch(full_path, patch)
@@ -228,7 +228,7 @@ class TestGitPatch(unittest.TestCase):
     def test_path_normalization(self):
         """Test that both forward and backward slashes work in paths"""
         test_paths = ['test/path/file.txt', 'test\\path\\file.txt', 'test/path\\mixed/slashes\\file.txt']
-        patch = textwrap.dedent('\n        @@ -0,0 +1,1 @@\n        +test content\n        ')
+        patch = textwrap.dedent('\n@@ -0,0 +1,1 @@\n+test content')
         for path in test_paths:
             full_path = os.path.join(self.test_file + '_dir', path)
             try:
@@ -247,7 +247,7 @@ class TestGitPatch(unittest.TestCase):
         """Test that class and method indentation is properly preserved when applying patches"""
         with open(self.test_file, 'w') as f:
             f.write('class MyClass:\n    def method1(self):\n        return "original"\n\n    def method2(self):\n        return "test"\n')
-        patch = textwrap.dedent('\n        @@ -1,6 +1,6 @@\n         class MyClass:\n             def method1(self):\n        -        return "original"\n        +        return "modified"\n\n             def method2(self):\n                 return "test"')
+        patch = textwrap.dedent('\n@@ -1,6 +1,6 @@\nclass MyClass:\n    def method1(self):\n-        return "original"\n+        return "modified"\n\n    def method2(self):\n        return "test"')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
         with open(self.test_file, 'r') as f:
@@ -271,7 +271,7 @@ class TestGitPatch(unittest.TestCase):
         """Test that relative indentation between lines is preserved while adjusting to target indent"""
         with open(self.test_file, 'w') as f:
             f.write('line 1\nbase indent\nline 3\n')
-        patch = '@@ -2,1 +2,4 @@\nbase indent\n+    indented:\n+        double indented\n+            triple indented'
+        patch = textwrap.dedent('\n@@ -2,1 +2,4 @@\nbase indent\n+    indented:\n+        double indented\n+            triple indented')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
         with open(self.test_file, 'r') as f:
@@ -280,7 +280,7 @@ class TestGitPatch(unittest.TestCase):
         self.assertEqual(content, expected, f'Relative indentation not preserved.\nExpected:\n{repr(expected)}\nGot:\n{repr(content)}')
         with open(self.test_file, 'w') as f:
             f.write('line 1\n    indented line\nline 3\n')
-        patch = '@@ -2,1 +2,4 @@\n    indented line\n+    same level\n+        more indented\n+            most indented'
+        patch = textwrap.dedent('\n@@ -2,1 +2,4 @@\n    indented line\n+    same level\n+        more indented\n+            most indented')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
         with open(self.test_file, 'r') as f:
@@ -315,13 +315,13 @@ class TestGitPatchHunkParsing(unittest.TestCase):
 
     def test_empty_lines_in_hunk(self):
         """Test hunks with empty lines in various positions"""
-        patch = textwrap.dedent('\n            @@ -2,4 +2,4 @@\n             line 2\n\n            -line 3\n            +modified line 3\n             line 4')
+        patch = textwrap.dedent('\n@@ -2,4 +2,4 @@\nline 2\n\n-line 3\n+modified line 3\nline 4')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
 
     def test_missing_context_lines(self):
         """Test hunks with no context lines"""
-        patch = textwrap.dedent('\n            @@ -2,1 +2,1 @@\n            -line 2\n            +modified line 2')
+        patch = textwrap.dedent('\n@@ -2,1 +2,1 @@\n-line 2\n+modified line 2')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
         with open(self.test_file, 'r') as f:
@@ -337,13 +337,13 @@ class TestGitPatchHunkParsing(unittest.TestCase):
 
     def test_hunk_with_no_changes(self):
         """Test hunks that only contain context lines"""
-        patch = textwrap.dedent('\n            @@ -2,2 +2,2 @@\n             line 2\n             line 3')
+        patch = textwrap.dedent('\n@@ -2,2 +2,2 @@\nline 2\nline 3')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('No changes were applied', result)
 
     def test_multiple_hunks_with_empty_lines_between(self):
         """Test multiple hunks separated by varying numbers of empty lines"""
-        patch = textwrap.dedent('\n            @@ -1,2 +1,2 @@\n             line 1\n            -line 2\n            +modified line 2\n\n            @@ -4,2 +4,2 @@\n             line 4\n            -line 5\n            +modified line 5')
+        patch = textwrap.dedent('\n@@ -1,2 +1,2 @@\nline 1\n-line 2\n+modified line 2\n\n@@ -4,2 +4,2 @@\nline 4\n-line 5\n+modified line 5')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
         with open(self.test_file, 'r') as f:
@@ -352,7 +352,7 @@ class TestGitPatchHunkParsing(unittest.TestCase):
 
     def test_hunk_with_no_newline_markers(self):
         """Test hunks with '\\ No newline at end of file' markers"""
-        patch = textwrap.dedent('\n            @@ -2,2 +2,2 @@\n             line 2\n            -line 3\n            \\ No newline at end of file\n            +modified line 3\n            \\ No newline at end of file')
+        patch = textwrap.dedent('\n@@ -2,2 +2,2 @@\nline 2\n-line 3\n\\ No newline at end of file\n+modified line 3\n\\ No newline at end of file')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
 
@@ -360,7 +360,7 @@ class TestGitPatchHunkParsing(unittest.TestCase):
         """Test handling of spaces after patch line markers (space, +, -)"""
         with open(self.test_file, 'w') as f:
             f.write('    line 1\n    line 2\n        line 3\n    line 4\n')
-        patches = [textwrap.dedent('\n                @@ -2,2 +2,2 @@\n                line 2\n                -line 3\n                +modified line 3'), textwrap.dedent('\n                @@ -2,2 +2,2 @@\n                 line 2\n                -line 3\n                +modified line 3'), textwrap.dedent('\n                @@ -2,2 +2,2 @@\n                  line 2\n                -  line 3\n                +  modified line 3')]
+        patches = [textwrap.dedent('\n@@ -2,2 +2,2 @@\nline 2\n-line 3\n+modified line 3'), textwrap.dedent('\n@@ -2,2 +2,2 @@\n line 2\n-line 3\n+modified line 3'), textwrap.dedent('\n@@ -2,2 +2,2 @@\n  line 2\n-  line 3\n+  modified line 3')]
         result1 = apply_git_patch(self.test_file, patches[0])
         print('\nNo spaces result:', result1)
         with open(self.test_file, 'w') as f:
@@ -377,7 +377,7 @@ class TestGitPatchHunkParsing(unittest.TestCase):
         """Test that context lines are properly recognized with correct spacing"""
         with open(self.test_file, 'w') as f:
             f.write('    line 1\n    line 2\n        line 3\n    line 4\n')
-        patch = textwrap.dedent('\n            @@ -2,2 +2,2 @@\n             line 2\n            -line 3\n            +modified line 3')
+        patch = textwrap.dedent('\n@@ -2,2 +2,2 @@\nline 2\n-line 3\n+modified line 3')
         result = apply_git_patch(self.test_file, patch)
         print('\nContext recognition result:', result)
         with open(self.test_file, 'r') as f:
