@@ -18,7 +18,7 @@ class TestGitPatch(unittest.TestCase):
         patch = textwrap.dedent('\n@@ -2,2 +2,3 @@\nline 2\n+new line\nline 3')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
-        self.assertNotIn('ignoring whitespace', result, 'Expected exact match but got whitespace-ignored match')
+        self.assertNotIn('ignore whitespace', result, 'Expected exact match but got whitespace-ignored match')
         with open(self.test_file, 'r') as f:
             content = f.read()
         self.assertEqual(content, 'line 1\nline 2\nnew line\nline 3\nline 4\nline 5\n')
@@ -27,7 +27,7 @@ class TestGitPatch(unittest.TestCase):
         patch = textwrap.dedent('\n@@ -2,3 +2,2 @@\nline 2\n-line 3\nline 4')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
-        self.assertNotIn('ignoring whitespace', result, 'Expected exact match but got whitespace-ignored match')
+        self.assertNotIn('ignore whitespace', result, 'Expected exact match but got whitespace-ignored match')
         with open(self.test_file, 'r') as f:
             content = f.read()
         self.assertEqual(content, 'line 1\nline 2\nline 4\nline 5\n')
@@ -58,7 +58,7 @@ class TestGitPatch(unittest.TestCase):
         patch = textwrap.dedent('\n@@ -2,3 +2,3 @@\nwrong context\n-line 3\n+modified line 3\nline 4')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Error', result)
-        self.assertIn('Could not find matching content', result)
+        self.assertIn('Could not find match', result)
 
     def test_empty_patch(self):
         patch = ''
@@ -88,7 +88,7 @@ class TestGitPatch(unittest.TestCase):
         patch = textwrap.dedent('\n@@ -2,2 +2,2 @@\nline 2\n-line 3\n+modified line 3')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
-        self.assertIn('Note: Applied hunk at line', result)
+        self.assertIn('(different from specified line', result)
 
     def test_match_with_different_whitespace(self):
         """Test that content is matched even with different indentation"""
@@ -106,7 +106,7 @@ class TestGitPatch(unittest.TestCase):
             print('\nFinal content:')
             print(repr(f.read()))
         self.assertIn('Successfully', result)
-        self.assertIn('ignoring whitespace', result)
+        self.assertIn('ignore whitespace', result)
 
     def test_similar_but_not_exact_match(self):
         """Test that similar but not exact matches are reported"""
@@ -115,7 +115,7 @@ class TestGitPatch(unittest.TestCase):
         patch = textwrap.dedent('\n@@ -2,2 +2,2 @@\nline 2\n-line 3\n+modified line 3')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Error', result)
-        self.assertIn('Could not find matching content', result)
+        self.assertIn('Could not find match', result)
 
     def test_no_match_found(self):
         """Test that appropriate error is returned when no match is found"""
@@ -124,7 +124,7 @@ class TestGitPatch(unittest.TestCase):
         patch = textwrap.dedent('\n        @@ -2,2 +2,2 @@\n         line 2\n        -line 3\n        +modified line 3')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Error', result)
-        self.assertTrue('Could not find matching content anywhere in file' in result or 'Context mismatch' in result, f'Expected error message about missing content, got: {result}')
+        self.assertTrue('Could not find match' in result or 'Context mismatch' in result, f'Expected error message about missing content, got: {result}')
 
     def test_whitespace_only_difference(self):
         """Test matching when only whitespace differs"""
@@ -133,7 +133,7 @@ class TestGitPatch(unittest.TestCase):
         patch = textwrap.dedent('\n@@ -1,3 +1,3 @@\nline 1\n-line 2\n+modified line 2\nline 3')
         result = apply_git_patch(self.test_file, patch)
         self.assertIn('Successfully', result)
-        self.assertIn('ignoring whitespace', result)
+        self.assertIn('ignore whitespace', result)
         with open(self.test_file, 'r') as f:
             content = f.read()
         self.assertEqual(content, '    line 1\n        modified line 2\n    line 3\n')
@@ -288,6 +288,56 @@ class TestGitPatch(unittest.TestCase):
         expected = 'line 1\n    indented line\n    same level\n        more indented\n            most indented\nline 3\n'
         self.assertEqual(content, expected, f'Relative indentation not preserved when adding to indented line.\nExpected:\n{repr(expected)}\nGot:\n{repr(content)}')
 
+    def test_replacement_context_matching(self):
+        """Test that replacement works when line numbers are wrong but context matches.
+    This tests the fallback to context matching when exact line matching fails."""
+        with open(self.test_file, 'w') as f:
+            f.write('line 1\nline 2\nline 3\nline 4\nline 5\n')
+        patch = '@@ -4,3 +4,3 @@\nline 2\n-line 3\n+modified line 3\nline 4'
+        result = apply_git_patch(self.test_file, patch)
+        self.assertIn('Successfully', result)
+        self.assertIn('(different from specified line', result)
+        with open(self.test_file, 'r') as f:
+            content = f.read()
+        self.assertEqual(content, 'line 1\nline 2\nmodified line 3\nline 4\nline 5\n')
+
+    def test_single_line_no_context(self):
+        """Test the most basic case: single line replacement with no context lines.
+    This is the simplest possible case and should work based purely on line number."""
+        with open(self.test_file, 'w') as f:
+            f.write('line 1\nline 2\nline 3\nline 4\nline 5\n')
+        patch = '@@ -2,1 +2,1 @@\n-line 2\n+modified line 2'
+        result = apply_git_patch(self.test_file, patch)
+        self.assertIn('Successfully', result)
+        with open(self.test_file, 'r') as f:
+            content = f.read()
+        self.assertEqual(content, 'line 1\nmodified line 2\nline 3\nline 4\nline 5\n', 'Failed to handle simple replacement without context lines')
+
+    def test_line_number_accuracy(self):
+        """Test exact line number handling without context lines.
+    This explicitly tests for off-by-one errors in line targeting."""
+        initial = 'line 1\nline 2\nline 3\nline 4\nline 5\nline 6\n'
+        failures = []
+        test_cases = [(1, '@@ -1,1 +1,1 @@\n-line 1\n+modified line 1', 'modified line 1\nline 2\nline 3\nline 4\nline 5\nline 6\n', 'Replace first line'), (2, '@@ -2,1 +2,1 @@\n-line 2\n+modified line 2', 'line 1\nmodified line 2\nline 3\nline 4\nline 5\nline 6\n', 'Replace line 2'), (3, '@@ -3,1 +3,1 @@\n-line 3\n+modified line 3', 'line 1\nline 2\nmodified line 3\nline 4\nline 5\nline 6\n', 'Replace line 3'), (4, '@@ -4,1 +4,1 @@\n-line 4\n+modified line 4', 'line 1\nline 2\nline 3\nmodified line 4\nline 5\nline 6\n', 'Replace line 4'), (5, '@@ -5,1 +5,1 @@\n-line 5\n+modified line 5', 'line 1\nline 2\nline 3\nline 4\nmodified line 5\nline 6\n', 'Replace line 5'), (6, '@@ -6,1 +6,1 @@\n-line 6\n+modified line 6', 'line 1\nline 2\nline 3\nline 4\nline 5\nmodified line 6\n', 'Replace last line')]
+        for line_num, patch, expected, desc in test_cases:
+            try:
+                with open(self.test_file, 'w') as f:
+                    f.write(initial)
+                result = apply_git_patch(self.test_file, patch)
+                with open(self.test_file, 'r') as f:
+                    content = f.read()
+                print(f'\nTest case: {desc} (line {line_num})')
+                print('Got:')
+                print(content)
+                print('Expected:')
+                print(expected)
+                if content != expected:
+                    failures.append(f'Line {line_num}: Got content:\n{content}\nExpected:\n{expected}')
+            except Exception as e:
+                failures.append(f'Line {line_num}: Exception: {str(e)}')
+        if failures:
+            self.fail('Failures:\n' + '\n\n'.join(failures))
+
 class TestGitPatchHunkParsing(unittest.TestCase):
 
     def setUp(self):
@@ -339,7 +389,7 @@ class TestGitPatchHunkParsing(unittest.TestCase):
         """Test hunks that only contain context lines"""
         patch = textwrap.dedent('\n@@ -2,2 +2,2 @@\nline 2\nline 3')
         result = apply_git_patch(self.test_file, patch)
-        self.assertIn('No changes were applied', result)
+        self.assertIn('Error: No additons or removals found', result)
 
     def test_multiple_hunks_with_empty_lines_between(self):
         """Test multiple hunks separated by varying numbers of empty lines"""

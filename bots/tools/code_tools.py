@@ -131,7 +131,7 @@ def apply_git_patch(file_path: str, patch_content: str):
         line_offset = 0
         hunks = patch_content.split('\n@@')[1:]
         if not hunks:
-            return 'Error: No valid patch hunks found. (No instances of "\\n@@")'
+            return 'Error: No valid patch hunks found. (No instances of "\\n@@". If the patch started with @@, try starting with \\n@@ instead)'
         for hunk in hunks:
             hunk = hunk.strip()
             if not hunk:
@@ -143,7 +143,7 @@ def apply_git_patch(file_path: str, patch_content: str):
                     header = header + ' @@'
                 old_range, new_range = header.rstrip(' @').split(' +')
                 old_start = int(old_range.split(',')[0].lstrip('- ')) - 1  # Convert to 0-based
-                new_start = int(new_range.split(',')[0]) - 1  # Convert to 0-based
+                #new_start = int(new_range.split(',')[0]) - 1  # Convert to 0-based, unused
                 hunk_lines = _normalize_header_lines(hunk[header_end:].splitlines()[1:])
             except (ValueError, IndexError) as e:
                 return f'Error parsing hunk header: {str(e)}\nHeader: {header}'
@@ -164,23 +164,32 @@ def apply_git_patch(file_path: str, patch_content: str):
                 elif line.startswith('+'):
                     additions.append(line[1:])
             if not removals and (not additions):
+                return f'Error: No additons or removals found in hunk starting with {hunk_lines[0][0:20]}'
                 continue
+
+            # Create a new file if appropriate
             if len(current_lines) == 0 and old_start == 0 and (not context_before) and (not removals):
                 current_lines.extend(additions)
                 changes_made.append('Applied changes to new file')
                 continue
+
+
             adjusted_start = old_start + line_offset
             found = False
             match_line = adjusted_start
             exact_match = False
+
+            # Try to match at expected position with or without whitespace
             if adjusted_start <= len(current_lines):
                 found, was_whitespace = _check_match_type(current_lines, adjusted_start, context_before)
                 if found:
                     exact_match = not was_whitespace
                     if was_whitespace:
-                        changes_made.append(f'Note: Applied hunk at line {adjusted_start} (ignoring whitespace)')
+                        changes_made.append(f'Note: Applied hunk starting with {hunk_lines[0][0:20]}, but had to ignore whitespace to find match')
                     else:
-                        changes_made.append(f'Applied hunk at line {adjusted_start}')
+                        changes_made.append(f'Applied hunk starting with {hunk_lines[0][0:20]} with exact match')
+
+            # Try to match at any position with or without whitespace
             if not found:
                 matches = []
                 whitespace_matches = []
@@ -192,29 +201,40 @@ def apply_git_patch(file_path: str, patch_content: str):
                         else:
                             matches.append(i)
                             exact_match = True
+                
+                # Apply exact match if exactly one is found
                 if matches:
-                    if len(matches) > 1:
+                    if len(matches) > 1: # If we find more than one match, we don't attempt to disambiguate
                         match_locations = '\n'.join((f'- at line {m}' for m in matches))
-                        return f'Error: Multiple possible matches found:\n{match_locations}\nPlease provide more context to disambiguate.'
+                        return f'Error: Multiple possible matches found:\n{match_locations} for hunk starting with {hunk_lines[0][0:20]}\nPlease provide more context to disambiguate.'
                     match_line = matches[0]
-                    changes_made.append(f'Note: Applied hunk at line {match_line} (different from specified line {old_start})')
+                    changes_made.append(f'Note: Applied hunk starting with {hunk_lines[0][0:20]} at line {match_line} (different from specified line {old_start})')
                     found = True
+                
+                # Apply whitespace match if exactly one is found (and no exact match found)
                 elif whitespace_matches:
                     if len(whitespace_matches) > 1:
                         match_locations = '\n'.join((f'- at line {m}' for m in whitespace_matches))
                         return f'Error: Multiple possible matches found:\n{match_locations}\nPlease provide more context to disambiguate.'
                     match_line = whitespace_matches[0]
-                    changes_made.append(f'Note: Applied hunk at line {match_line} (ignoring whitespace)')
+                    changes_made.append(f'Note: Applied hunk starting with {hunk_lines[0][0:20]} at line {match_line} (different from specified line {old_start}), and had to ignore whitespace to find match')
                     found = True
+            
+            # If no match found ignoring position and whitespace, send error with best match.
             if not found and context_before:
                 _, best_line, match_quality, _ = _find_block_in_content(current_lines, context_before, ignore_whitespace=True)
-                if match_quality > 0.8:
+                if match_quality > 0.05:
                     context = _get_context(current_lines, best_line - 1, 2)
-                    return f'Error: Found similar but not exact match at line {best_line}\nContext:\n{context}\nMatch quality: {match_quality:.2f}'
+                    return f'Error: Could not find match. Best potential match: {best_line}\nContext:\n{context}\nMatch quality: {match_quality:.2f}'
                 else:
                     context = _get_context(current_lines, old_start - 1, 2) if old_start > 0 else []
-                    return f'Error: Could not find matching content anywhere in file.\nExpected:\n{context_before}\nFound:\n{context}'
-            pos = match_line - 1 + len(context_before)
+                    return f'Error: Could not find match or close match.\nExpected:\n{context_before}\nFound:\n{context}'
+                
+            # Apply changes
+            if len(context_before) == 0:
+                pos = match_line + len(context_before) # I hate that I have to do this but I mixed up 0 / 1 based indexing somewhere and I can't find it.
+            else:
+                pos = match_line + len(context_before) -1
             if exact_match:
                 indented_additions = additions
             else:
@@ -298,7 +318,7 @@ def _check_match_type(content_lines: list, start_pos: int, context_lines: list, 
     if not context_whitespace:
         return (False, False)
     if removal_lines:
-        pos = start_pos - 1 + len(context_lines)
+        pos = start_pos -1 + len(context_lines)
         if pos + len(removal_lines) > len(content_lines):
             return (False, False)
         for i, rem_line in enumerate(removal_lines):
