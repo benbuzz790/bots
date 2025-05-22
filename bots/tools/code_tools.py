@@ -280,7 +280,7 @@ def _get_context(lines, center_idx, context_size):
     """Get context lines around an index with line numbers."""
     start = max(0, center_idx - context_size)
     end = min(len(lines), center_idx + context_size + 1)
-    return [f'{i + 1}: {line}' for i, line in enumerate(lines[start:end], start)]
+    return [f'{i + 1}:{line}' for i, line in enumerate(lines[start:end], start)]
 
 def _find_block_in_content(content_lines: list, block_lines: list, ignore_whitespace: bool=False) -> tuple[bool, int, float, bool]:
     """Helper function to find a block of lines anywhere in the content.
