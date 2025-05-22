@@ -1,13 +1,18 @@
 import os
 import pytest
 from textwrap import dedent
-from bots.tools.python_editing_tools import python_edit
+from bots.tools.python_edit import python_edit
 
 def setup_test_file(tmp_path, content):
     """Helper to create a test file with given content"""
-    test_file = tmp_path / 'test_file.py'
-    test_file.write_text(dedent(content))
-    return str(test_file)
+    if isinstance(tmp_path, str):
+        os.makedirs(tmp_path, exist_ok=True)
+        test_file = os.path.join(tmp_path, 'test_file.py')
+    else:
+        test_file = os.path.join(str(tmp_path), 'test_file.py')
+    with open(test_file, 'w', encoding='utf-8') as f:
+        f.write(dedent(content))
+    return test_file
 
 @pytest.fixture
 def test_file(tmp_path):
@@ -63,6 +68,9 @@ def test_insert_after_line(test_file):
     """Test inserting after specific line"""
     new_code = 'x = 42'
     result = python_edit(f'{test_file}::OuterClass::another_method', new_code, insert_after='# Insert here')
+    with open(test_file) as f:
+        print(f'\nDEBUG - File content:\n{f.read()}')
+    print(f'\nDEBUG - Result: {result}')
     assert 'inserted after' in result
     with open(test_file) as f:
         content = f.read()
@@ -152,3 +160,109 @@ def test_multiline_imports(test_file):
         content = f.read()
     assert 'Union' in content
     assert content.index('Union') < content.index('x = 42')
+
+def test_line_comment_preservation(tmp_path):
+    """Test that comments are preserved when inserting after them"""
+    content = '\n    def my_func():\n        # First comment\n        x = 1\n        # Target comment\n        y = 2\n    '
+    test_file = setup_test_file(tmp_path, content)
+    result = python_edit(f'{test_file}::my_func', 'z = 3', insert_after='# Target comment')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - Result content:\n{content}')
+    assert '# Target comment' in content
+    assert 'z = 3' in content
+    assert content.index('# Target comment') < content.index('z = 3')
+    assert content.index('z = 3') < content.index('y = 2')
+
+def test_import_at_file_start(tmp_path):
+    """Test that imports are added at the start of the file"""
+    content = '\n    x = 1\n    y = 2\n    '
+    test_file = setup_test_file(tmp_path, content)
+    result = python_edit(test_file, 'import sys\nz = 3')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - Result content:\n{content}')
+    assert 'import sys' in content
+    assert content.index('import sys') < content.index('x = 1')
+
+def test_nested_scope_insertion(tmp_path):
+    """Test inserting into deeply nested scopes"""
+    content = '\n    class Outer:\n        class Inner:\n            def method(self):\n                x = 1\n    '
+    test_file = setup_test_file(tmp_path, content)
+    result = python_edit(f'{test_file}::Outer::Inner::method', 'y = 2', insert_after='x = 1')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - Result content:\n{content}')
+    assert 'y = 2' in content
+    assert content.index('x = 1') < content.index('y = 2')
+
+def test_indentation_in_class(tmp_path):
+    """Test that proper indentation is maintained in class methods"""
+    content = '\n    class MyClass:\n        def method_one(self):\n            pass\n    '
+    test_file = setup_test_file(tmp_path, content)
+    new_method = '\n    def method_two(self):\n        if True:\n            x = 1\n    '
+    result = python_edit(f'{test_file}::MyClass', new_method, insert_after='MyClass::method_one')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - Result content:\n{content}')
+    assert '    def method_two(self):' in content
+    assert '        if True:' in content
+    assert '            x = 1' in content
+
+def test_scope_path_matching(tmp_path):
+    """Test that scope paths are correctly matched"""
+    content = '\n    class ClassA:\n        def method(self): pass\n    class ClassB:\n        def method(self): pass\n    '
+    test_file = setup_test_file(tmp_path, content)
+    result = python_edit(f'{test_file}::ClassB::method', 'x = 1', insert_after='pass')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - Result content:\n{content}')
+    lines = content.split('\n')
+    classA_method = next((i for i, line in enumerate(lines) if 'ClassA' in line))
+    classB_method = next((i for i, line in enumerate(lines) if 'ClassB' in line))
+    x_equals_1 = next((i for i, line in enumerate(lines) if 'x = 1' in line))
+    assert classA_method < classB_method < x_equals_1
+
+def test_file_start_insertion_empty():
+    """Test inserting at start of empty file"""
+    test_file = setup_test_file('tmp', '')
+    result = python_edit(test_file, 'import sys', insert_after='__FILE_START__')
+    with open(test_file) as f:
+        content = f.read()
+    assert content.strip() == 'import sys'
+
+def test_file_start_insertion_with_imports():
+    """Test inserting at start of file that already has imports"""
+    content = '\n    import os\n    from typing import List\n\n    x = 1\n    '
+    test_file = setup_test_file('tmp', content)
+    result = python_edit(test_file, 'import sys', insert_after='__FILE_START__')
+    with open(test_file) as f:
+        lines = f.readlines()
+    print(f'DEBUG - File lines: {lines}')
+    assert 'import sys\n' == lines[0]
+    assert 'import os\n' in lines[1:]
+    assert 'x = 1' in lines[-1]
+
+def test_file_start_insertion_with_code():
+    """Test inserting at start of file that has no imports"""
+    content = '\n    x = 1\n    y = 2\n    '
+    test_file = setup_test_file('tmp', content)
+    result = python_edit(test_file, 'import sys', insert_after='__FILE_START__')
+    with open(test_file) as f:
+        lines = f.readlines()
+    print(f'DEBUG - File lines: {lines}')
+    assert 'import sys\n' == lines[0]
+    assert 'x = 1' in lines[1]
+
+def test_file_start_insertion_multiple():
+    """Test multiple insertions at file start come in correct order"""
+    content = 'x = 1'
+    test_file = setup_test_file('tmp', content)
+    python_edit(test_file, 'import sys', insert_after='__FILE_START__')
+    python_edit(test_file, 'import os', insert_after='__FILE_START__')
+    with open(test_file) as f:
+        lines = f.readlines()
+    print(f'DEBUG - File lines: {lines}')
+    assert 'import os\n' == lines[0]
+    assert 'import sys\n' == lines[1]
+    assert 'x = 1' in lines[-1]
