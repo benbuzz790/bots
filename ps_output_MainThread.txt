@@ -1,0 +1,233 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.9, pytest-7.3.1, pluggy-1.5.0 -- C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\benbu\Code\llm-utilities-git\bots
+configfile: pytest.ini
+plugins: anyio-4.8.0, langsmith-0.3.8, cov-6.0.0
+collecting ... collected 1 item
+tests/test_git_patch.py::TestGitPatch::test_line_number_accuracy FAILED  [100%]
+================================== FAILURES ===================================
+___________________ TestGitPatch.test_line_number_accuracy ____________________
+self = <tests.test_git_patch.TestGitPatch testMethod=test_line_number_accuracy>
+    def test_line_number_accuracy(self):
+        """Test exact line number handling without context lines.
+    This explicitly tests for off-by-one errors in line targeting."""
+        initial = 'line 1\nline 2\nline 3\nline 4\nline 5\nline 6\n'
+        failures = []
+        test_cases = [(1, '@@ -1,1 +1,1 @@\n-line 1\n+modified line 1', 'modified line 1\nline 2\nline 3\nline 4\nline 5\nline 6\n', 'Replace first line'), (2, '@@ -2,1 +2,1 @@\n-line 2\n+modified line 2', 'line 1\nmodified line 2\nline 3\nline 4\nline 5\nline 6\n', 'Replace line 2'), (3, '@@ -3,1 +3,1 @@\n-line 3\n+modified line 3', 'line 1\nline 2\nmodified line 3\nline 4\nline 5\nline 6\n', 'Replace line 3'), (4, '@@ -4,1 +4,1 @@\n-line 4\n+modified line 4', 'line 1\nline 2\nline 3\nmodified line 4\nline 5\nline 6\n', 'Replace line 4'), (5, '@@ -5,1 +5,1 @@\n-line 5\n+modified line 5', 'line 1\nline 2\nline 3\nline 4\nmodified line 5\nline 6\n', 'Replace line 5'), (6, '@@ -6,1 +6,1 @@\n-line 6\n+modified line 6', 'line 1\nline 2\nline 3\nline 4\nline 5\nmodified line 6\n', 'Replace last line')]
+        for line_num, patch, expected, desc in test_cases:
+            try:
+                with open(self.test_file, 'w') as f:
+                    f.write(initial)
+                result = apply_git_patch(self.test_file, patch)
+                with open(self.test_file, 'r') as f:
+                    content = f.read()
+                print(f'\nTest case: {desc} (line {line_num})')
+                print('Got:')
+                print(content)
+                print('Expected:')
+                print(expected)
+                if content != expected:
+                    failures.append(f'Line {line_num}: Got content:\n{content}\nExpected:\n{expected}')
+            except Exception as e:
+                failures.append(f'Line {line_num}: Exception: {str(e)}')
+        if failures:
+>           self.fail('Failures:\n' + '\n\n'.join(failures))
+E           AssertionError: Failures:
+E           Line 1: Got content:
+E           line 1
+E           line 2
+E           line 3
+E           line 4
+E           line 5
+E           modified line 1
+E           line 6
+E           
+E           Expected:
+E           modified line 1
+E           line 2
+E           line 3
+E           line 4
+E           line 5
+E           line 6
+E           
+E           
+E           Line 2: Got content:
+E           modified line 2
+E           line 2
+E           line 3
+E           line 4
+E           line 5
+E           line 6
+E           
+E           Expected:
+E           line 1
+E           modified line 2
+E           line 3
+E           line 4
+E           line 5
+E           line 6
+E           
+E           
+E           Line 3: Got content:
+E           line 1
+E           modified line 3
+E           line 3
+E           line 4
+E           line 5
+E           line 6
+E           
+E           Expected:
+E           line 1
+E           line 2
+E           modified line 3
+E           line 4
+E           line 5
+E           line 6
+E           
+E           
+E           Line 4: Got content:
+E           line 1
+E           line 2
+E           modified line 4
+E           line 4
+E           line 5
+E           line 6
+E           
+E           Expected:
+E           line 1
+E           line 2
+E           line 3
+E           modified line 4
+E           line 5
+E           line 6
+E           
+E           
+E           Line 5: Got content:
+E           line 1
+E           line 2
+E           line 3
+E           modified line 5
+E           line 5
+E           line 6
+E           
+E           Expected:
+E           line 1
+E           line 2
+E           line 3
+E           line 4
+E           modified line 5
+E           line 6
+E           
+E           
+E           Line 6: Got content:
+E           line 1
+E           line 2
+E           line 3
+E           line 4
+E           modified line 6
+E           line 6
+E           
+E           Expected:
+E           line 1
+E           line 2
+E           line 3
+E           line 4
+E           line 5
+E           modified line 6
+tests\test_git_patch.py:339: AssertionError
+---------------------------- Captured stdout call -----------------------------
+Test case: Replace first line (line 1)
+Got:
+line 1
+line 2
+line 3
+line 4
+line 5
+modified line 1
+line 6
+Expected:
+modified line 1
+line 2
+line 3
+line 4
+line 5
+line 6
+Test case: Replace line 2 (line 2)
+Got:
+modified line 2
+line 2
+line 3
+line 4
+line 5
+line 6
+Expected:
+line 1
+modified line 2
+line 3
+line 4
+line 5
+line 6
+Test case: Replace line 3 (line 3)
+Got:
+line 1
+modified line 3
+line 3
+line 4
+line 5
+line 6
+Expected:
+line 1
+line 2
+modified line 3
+line 4
+line 5
+line 6
+Test case: Replace line 4 (line 4)
+Got:
+line 1
+line 2
+modified line 4
+line 4
+line 5
+line 6
+Expected:
+line 1
+line 2
+line 3
+modified line 4
+line 5
+line 6
+Test case: Replace line 5 (line 5)
+Got:
+line 1
+line 2
+line 3
+modified line 5
+line 5
+line 6
+Expected:
+line 1
+line 2
+line 3
+line 4
+modified line 5
+line 6
+Test case: Replace last line (line 6)
+Got:
+line 1
+line 2
+line 3
+line 4
+modified line 6
+line 6
+Expected:
+line 1
+line 2
+line 3
+line 4
+line 5
+modified line 6
+=========================== short test summary info ===========================
+FAILED tests/test_git_patch.py::TestGitPatch::test_line_number_accuracy - Ass...
+============================== 1 failed in 1.23s ==============================

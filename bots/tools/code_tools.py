@@ -1,5 +1,6 @@
 import os
 import traceback
+import textwrap
 import difflib
 
 def view(file_path: str, max_lines: str=2500):
@@ -86,13 +87,20 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
             file.write('\n'.join(output_text))
     return '\n'.join(output_text)
 
-def apply_git_patch(file_path: str, patch_content: str):
+def patch_edit(file_path: str, patch_content: str):
     """
     Apply a git-style unified diff patch to a file.
-    Creates the file if it doesn't exist.
+
+    Use when you need to make a precise change to a file
+
+    Tips:
+    - Small, focused changes work best
+    - Exact content matching is important
+    - Including surrounding context helps matching
+    - Whitespace in the target lines matters
 
     Parameters:
-    - file_path (str): Path to the file to modify (supports both / and \\ separators)
+    - file_path (str): Path to the file to modify
     - patch_content (str): Unified diff format patch content
 
     Returns:
@@ -101,8 +109,6 @@ def apply_git_patch(file_path: str, patch_content: str):
     cost: low
     """
     try:
-        if patch_content.startswith('@@'):
-            patch_content = '\n' + patch_content
         file_path = _normalize_path(file_path)
         encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
         content = None
@@ -129,9 +135,15 @@ def apply_git_patch(file_path: str, patch_content: str):
         current_lines = original_lines.copy()
         changes_made = []
         line_offset = 0
+
+        # Clean up to prevent some common errors.
+        patch_content = textwrap.dedent(patch_content)
+        patch_content = '\n' + patch_content
+        
+        
         hunks = patch_content.split('\n@@')[1:]
         if not hunks:
-            return 'Error: No valid patch hunks found. (No instances of "\\n@@". If the patch started with @@, try starting with \\n@@ instead)'
+            return 'Error: No valid patch hunks found. (No instances of "\\n@@". If the patch started with @@, try adding a newline)'
         for hunk in hunks:
             hunk = hunk.strip()
             if not hunk:
@@ -396,3 +408,4 @@ def _adjust_indentation(lines: list, target_indent: str) -> list:
         new_indent = target_indent + ' ' * max(0, relative_indent)
         adjusted_lines.append(new_indent + line.lstrip())
     return adjusted_lines
+
