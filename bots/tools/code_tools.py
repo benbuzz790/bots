@@ -143,7 +143,7 @@ def patch_edit(file_path: str, patch_content: str):
         
         hunks = patch_content.split('\n@@')[1:]
         if not hunks:
-            return 'Error: No valid patch hunks found. (No instances of "\\n@@". If the patch started with @@, try adding a newline)'
+            return 'Error: No valid patch hunks found. (No instances of "\\n@@". Did you accidentally indent the headers?)'
         for hunk in hunks:
             hunk = hunk.strip()
             if not hunk:
