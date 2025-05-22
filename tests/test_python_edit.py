@@ -2,6 +2,7 @@ import os
 import pytest
 from textwrap import dedent
 from bots.tools.python_edit import python_edit
+from bots.tools.python_edit import tokenize_source, detokenize_source
 
 def setup_test_file(tmp_path, content):
     """Helper to create a test file with given content"""
@@ -407,3 +408,38 @@ def test_file_level_preservation():
     expected = '\n    # Top level comment\n    import os  # os import\n\n    z = 3\n\n    # Another comment\n    x = 1  # first assignment\n\n    # Final comment\n    y = 2  # second assignment\n    '.strip()
     print(f'DEBUG - Expected:\n{expected}')
     assert content.strip() == expected
+
+def test_tokenize_basic():
+    """Test basic tokenization of comments and strings"""
+    source = '\n    # Header comment\n    x = "string literal"  # Inline comment\n    y = 1\n    '
+    tokenized, token_map = tokenize_source(source)
+    assert '# Header comment' not in tokenized
+    assert '"string literal"' not in tokenized
+    assert '# Inline comment' not in tokenized
+    # Verify tokens are present
+    assert ';;;TOKEN__' in tokenized
+    # Verify detokenization works
+    assert detokenize_source(tokenized, token_map) == source
+    restored = detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_tokenize_multiline():
+    """Test tokenization of multiline strings and nested structures"""
+    source = '\n    def func():\n        """\n        Multiline\n        docstring\n        """\n        # Comment\n        if True:\n            # Nested comment\n            x = 1\n    '
+    tokenized, token_map = tokenize_source(source)
+    assert '"""' not in tokenized
+    assert '# Comment' not in tokenized
+    assert '# Nested comment' not in tokenized
+    restored = detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_tokenize_edge_cases():
+    """Test tokenization of edge cases"""
+    source = '\n    x = 1; y = 2  # Multiple statements\n    # Comment with ; semicolon\n    s = "String # with hash"\n    q = \'String ; with semicolon\'\n    """\n    Multiline string\n    # with comment\n    ; with semicolon\n    """\n    '
+    tokenized, token_map = tokenize_source(source)
+    # Verify tokens are present
+    assert ';;;TOKEN__' in tokenized
+    # Verify detokenization works
+    assert detokenize_source(tokenized, token_map) == source
+    restored = detokenize_source(tokenized, token_map)
+    assert restored == source

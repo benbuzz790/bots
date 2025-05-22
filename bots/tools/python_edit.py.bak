@@ -1,15 +1,7 @@
 import ast
 import os
 import textwrap
-
-# Token delimiters - easy to change if needed
-TOKEN_START = ";;;"
-TOKEN_END = ";;;"
 from bots.utils.helpers import _process_error, _clean, _py_ast_to_source
-import hashlib
-import re
-from typing import Dict, Tuple
-from typing import Dict, Tuple, Union
 
 def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
     """
@@ -242,23 +234,28 @@ class ScopeTransformer(ast.NodeTransformer):
                     except Exception:
                         pass
         return node
-
+    
     def _handle_insertion(self, node):
         """Handle inserting nodes after a specific point."""
         if isinstance(self.insert_after, str) and '::' not in self.insert_after:
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 return node
+            # Handle one-line functions
             if node.lineno == node.end_lineno:
                 return self._handle_one_line_function(node, self.file_lines[node.lineno - 1])
+            # Get the original source lines including comments
             func_lines = self.file_lines[node.lineno - 1:node.end_lineno]
             if not func_lines:
                 return node
+            # Find the target line while preserving exact whitespace
             target = self.insert_after.strip()
             for i, line in enumerate(func_lines):
                 if line.strip() == target:
                     self.line_match_count += 1
                     if self.line_match_count == 1:
+                        # Get exact indentation from the target line
                         current_indent = len(line) - len(line.lstrip())
+                        # Create properly indented insertion lines
                         insertion = []
                         for new_node in self.new_nodes:
                             node_lines = _py_ast_to_source(new_node).split('\n')
@@ -266,7 +263,9 @@ class ScopeTransformer(ast.NodeTransformer):
                                 if nl.strip():
                                     insertion.append(' ' * current_indent + nl.lstrip())
                                 else:
+                                    # Preserve blank line indentation
                                     insertion.append(' ' * current_indent)
+                        # Insert after the target line, preserving the target
                         func_lines[i:i + 1] = [func_lines[i]] + insertion
                         self.success = True
                         break
@@ -274,14 +273,16 @@ class ScopeTransformer(ast.NodeTransformer):
                 return node
             elif self.line_match_count > 1:
                 raise ValueError(f'Ambiguous insert_after - found {self.line_match_count} matches for: {self.insert_after}')
+            # Store the modified source on the node
             node._source = '\n'.join(func_lines)
             self.success = True
             return node
         else:
+            # Handle scope-based insertion
             if self.insert_after:
                 target_path = self.insert_after.split('::')
                 current_path = self.current_path
-                if len(current_path) == len(target_path) and all((c == t for c, t in zip(current_path, target_path))):
+                if len(current_path) == len(target_path) and all(c == t for c, t in zip(current_path, target_path)):
                     self.success = True
                     if isinstance(node, ast.ClassDef):
                         node.body.extend(self.new_nodes)
@@ -289,126 +290,9 @@ class ScopeTransformer(ast.NodeTransformer):
                         for new_node in self.new_nodes:
                             node.body.append(new_node)
             return node
-
     def _preserve_node_source(self, node):
         """Get the original source of a node, preserving comments and formatting"""
         if hasattr(node, 'lineno') and hasattr(node, 'end_lineno'):
             lines = self.file_lines[node.lineno - 1:node.end_lineno]
             return '\n'.join(lines)
         return _py_ast_to_source(node)
-
-def create_token(content: str, index: int, current_hash: str) -> str:
-    """Create a token with our specific pattern"""
-    hex_content = content.encode('utf-8').hex()
-    token_name = f'TOKEN__{current_hash}_{index}'
-    return (token_name, hex_content)
-
-def get_file_hash(content: str) -> str:
-    """Create a short hash of file content"""
-    return hashlib.sha256(content.encode()).hexdigest()[:8]
-
-def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
-    """
-    Tokenize source code, preserving exact formatting.
-
-    Returns:
-    - tokenized_source: Source with tokens inserted
-    - token_map: Mapping of tokens to original content
-    """
-
-    def contains_token(s: str) -> bool:
-        return TOKEN_START + 'TOKEN__' in s
-
-    def make_token_ref(name: str) -> str:
-        """Create a reference to a token"""
-        return f'{TOKEN_START}{name}{TOKEN_END}'
-    token_map = {}
-    current_hash = get_file_hash(source)
-    token_counter = 0
-    lines = source.split('\n')
-    leading_empty = []
-    while lines and (not lines[0].strip()):
-        leading_empty.append(lines.pop(0))
-    processed_lines = []
-    for line in lines:
-        if contains_token(line):
-            processed_lines.append(line)
-            continue
-        indent = len(line) - len(line.lstrip())
-        indentation = ' ' * indent
-        content = line[indent:]
-        if not content.strip():
-            processed_lines.append(line)
-            continue
-        if content.strip().startswith('#'):
-            token_name, hex_val = create_token(content, token_counter, current_hash)
-            token_map[token_name] = content
-            processed_lines.append(indentation + make_token_ref(token_name))
-            token_counter += 1
-            continue
-        processed_line = content
-        string_patterns = ['"""(?:[^"\\\\]|\\\\.)*"""', "'''(?:[^'\\\\]|\\\\.)*'''", '"(?:[^"\\\\]|\\\\.)*"', "'(?:[^'\\\\]|\\\\.)*'"]
-        for pattern in string_patterns:
-            matches = list(re.finditer(pattern, processed_line))
-            offset = 0
-            for match in matches:
-                start, end = match.span()
-                start += offset
-                end += offset
-                string_content = processed_line[start:end]
-                token_name, hex_val = create_token(string_content, token_counter, current_hash)
-                token_map[token_name] = string_content
-                processed_line = processed_line[:start] + make_token_ref(token_name) + processed_line[end:]
-                offset += len(make_token_ref(token_name)) - len(string_content)
-                token_counter += 1
-        if '#' in processed_line and (not any((token in processed_line.split('#', 1)[1] for token in token_map))):
-            comment_start = processed_line.index('#')
-            code = processed_line[:comment_start]
-            comment = processed_line[comment_start:]
-            token_name, hex_val = create_token(comment, token_counter, current_hash)
-            token_map[token_name] = comment
-            processed_line = code + make_token_ref(token_name)
-            token_counter += 1
-        processed_lines.append(indentation + processed_line)
-    final_lines = leading_empty + processed_lines
-    return ('\n'.join(final_lines), token_map)
-
-def detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
-    """
-    Restore original source from tokenized version.
-
-    Handles proper indentation of multiline content.
-    """
-    result = tokenized_source
-    for token_name, original in token_map.items():
-        token_pattern = f'{TOKEN_START}{token_name}{TOKEN_END}'
-        if '\n' in original:
-            for match in re.finditer(re.escape(token_pattern), result):
-                indent = get_indentation_at_position(result, match.start())
-                indented = indent_multiline_content(original, indent)
-                result = result[:match.start()] + indented + result[match.end():]
-        else:
-            result = result.replace(token_pattern, original)
-    return result
-
-def get_indentation_at_position(source: str, pos: int) -> str:
-    """Get the indentation level at a given position in source"""
-    line_start = source.rfind('\n', 0, pos) + 1
-    return source[line_start:pos].replace(source[line_start:pos].lstrip(), '')
-
-def indent_multiline_content(content: str, indent: str) -> str:
-    """Indent multiline content while preserving internal formatting"""
-    if not content.strip():
-        return content
-    lines = content.split('\n')
-    if len(lines) == 1:
-        return content
-    if all((line.startswith(' ') for line in lines[1:] if line.strip())):
-        return content
-    result = [lines[0]]
-    for line in lines[1:]:
-        if line.strip():
-            result.append(indent + line)
-        else:
-            result.append(line)
-    return '\n'.join(result)
