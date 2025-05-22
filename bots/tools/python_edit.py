@@ -330,17 +330,16 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
     tokenized = source
     triple_quote_patterns = ['"""(?:[^"\\\\]|\\\\.)*?"""', "'''(?:[^'\\\\]|\\\\.)*?'''"]
     for pattern in triple_quote_patterns:
-        matches = list(re.finditer(pattern, tokenized))
-        offset = 0
-        for match in matches:
-            start, end = match.span()
-            start += offset
-            end += offset
-            string_content = tokenized[start:end]
+        while True:
+            match = re.search(pattern, tokenized)
+            if not match:
+                break
+            string_content = match.group()
+            if contains_token(string_content):
+                continue
             token_name, hex_val = create_token(string_content, token_counter, current_hash)
-            token_map[token_name] = string_content
-            tokenized = tokenized[:start] + hex_val + tokenized[end:]
-            offset += len(hex_val) - len(string_content)
+            token_map[hex_val] = string_content
+            tokenized = tokenized[:match.start()] + hex_val + tokenized[match.end():]
             token_counter += 1
     lines = tokenized.split('\n')
     processed_lines = []
@@ -351,33 +350,35 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
         indent = len(line) - len(line.lstrip())
         indentation = ' ' * indent
         content = line[indent:]
+        if contains_token(content):
+            processed_lines.append(line)
+            continue
         if content.strip().startswith('#'):
             token_name, hex_val = create_token(content, token_counter, current_hash)
-            token_map[token_name] = content
+            token_map[hex_val] = content
             processed_lines.append(indentation + hex_val)
             token_counter += 1
             continue
         processed_line = content
         string_patterns = ['"(?:[^"\\\\]|\\\\.)*?"', "'(?:[^'\\\\]|\\\\.)*?'"]
         for pattern in string_patterns:
-            matches = list(re.finditer(pattern, processed_line))
-            offset = 0
-            for match in matches:
-                start, end = match.span()
-                start += offset
-                end += offset
-                string_content = processed_line[start:end]
+            while True:
+                match = re.search(pattern, processed_line)
+                if not match:
+                    break
+                string_content = match.group()
+                if contains_token(string_content):
+                    continue
                 token_name, hex_val = create_token(string_content, token_counter, current_hash)
-                token_map[token_name] = string_content
-                processed_line = processed_line[:start] + hex_val + processed_line[end:]
-                offset += len(hex_val) - len(string_content)
+                token_map[hex_val] = string_content
+                processed_line = processed_line[:match.start()] + hex_val + processed_line[match.end():]
                 token_counter += 1
-        if '#' in processed_line:
+        if '#' in processed_line and (not contains_token(processed_line)):
             comment_start = processed_line.index('#')
             code = processed_line[:comment_start]
             comment = processed_line[comment_start:]
             token_name, hex_val = create_token(comment, token_counter, current_hash)
-            token_map[token_name] = comment
+            token_map[hex_val] = comment
             processed_line = code.rstrip() + ' ' + hex_val
             token_counter += 1
         processed_lines.append(indentation + processed_line)
@@ -390,16 +391,17 @@ def detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
     Handles proper indentation of multiline content.
     """
     result = tokenized_source
-    for token_name, original in token_map.items():
-        hex_pattern = f"'__TOKEN__.*?__'"
-        for match in re.finditer(hex_pattern, result):
-            token_str = match.group()
+    for token_name, original in sorted(token_map.items(), key=lambda x: len(x[0]), reverse=True):
+        while True:
+            start = result.find(token_name)
+            if start == -1:
+                break
             if '\n' in original:
-                indent = get_indentation_at_position(result, match.start())
+                indent = get_indentation_at_position(result, start)
                 indented = indent_multiline_content(original, indent)
-                result = result.replace(token_str, indented)
+                result = result[:start] + indented + result[start + len(token_name):]
             else:
-                result = result.replace(token_str, original)
+                result = result[:start] + original + result[start + len(token_name):]
     return result
 
 def get_indentation_at_position(source: str, pos: int) -> str:
