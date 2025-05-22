@@ -266,3 +266,144 @@ def test_file_start_insertion_multiple():
     assert 'import os\n' == lines[0]
     assert 'import sys\n' == lines[1]
     assert 'x = 1' in lines[-1]
+
+def test_line_insert_basic():
+    """Test inserting after a simple line in a function"""
+    content = '\n    def test_func():\n        x = 1\n        # marker\n        z = 3\n    '
+    test_file = setup_test_file('tmp', content)
+    result = python_edit(f'{test_file}::test_func', 'y = 2', insert_after='# marker')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - Result content:\n{content}')
+    assert '# marker\n' in content
+    assert 'y = 2' in content
+    assert content.index('# marker') < content.index('y = 2')
+    assert content.index('y = 2') < content.index('z = 3')
+
+def test_line_insert_indentation():
+    """Test that inserted code maintains proper indentation"""
+    content = '\n    def test_func():\n        if True:\n            x = 1\n            # marker\n            z = 3\n    '
+    test_file = setup_test_file('tmp', content)
+    result = python_edit(f'{test_file}::test_func', 'y = 2', insert_after='# marker')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - Result content:\n{content}')
+    lines = content.split('\n')
+    marker_line = next((i for i, line in enumerate(lines) if '# marker' in line))
+    y_line = next((i for i, line in enumerate(lines) if 'y = 2' in line))
+    assert marker_line < y_line
+    assert len(lines[marker_line]) - len(lines[marker_line].lstrip()) == len(lines[y_line]) - len(lines[y_line].lstrip())
+
+def test_line_insert_preservation():
+    """Test that the line we insert after is preserved"""
+    content = '\n    def simple():\n        # keep me\n        pass\n    '
+    test_file = setup_test_file('tmp', content)
+    result = python_edit(f'{test_file}::simple', 'x = 1', insert_after='# keep me')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - File content:\n{content}')
+    print(f'DEBUG - Result: {result}')
+    lines = [l.strip() for l in content.split('\n') if l.strip()]
+    print(f'DEBUG - Stripped lines: {lines}')
+    assert lines == ['def simple():', '# keep me', 'x = 1', 'pass']
+
+def test_line_insert_ast_handling():
+    """Test that comments and non-AST lines are preserved during insertion"""
+    content = '\n    def func():\n        x = 1  # comment one\n        # standalone comment\n        y = 2  # comment two\n    '
+    test_file = setup_test_file('tmp', content)
+    result = python_edit(f'{test_file}::func', 'z = 3', insert_after='# standalone comment')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - File content:\n{content}')
+    lines = [l.strip() for l in content.split('\n') if l.strip()]
+    print(f'DEBUG - Stripped lines: {lines}')
+    assert 'comment one' in content
+    assert '# standalone comment' in content
+    assert 'comment two' in content
+    assert lines.index('# standalone comment') < lines.index('z = 3')
+    assert lines.index('z = 3') < lines.index('y = 2  # comment two')
+
+def test_line_insert_function_body():
+    """Test that we correctly handle function body when inserting lines"""
+    content = '\n    def example():\n        """Docstring."""\n        # First comment\n        x = 1  # Inline comment\n\n        # Marker\n        y = 2\n    '
+    test_file = setup_test_file('tmp', content)
+    result = python_edit(f'{test_file}::example', 'z = 3', insert_after='# Marker')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - File content:\n{content}')
+    assert '"""Docstring."""' in content
+    assert '# First comment' in content
+    assert 'Inline comment' in content
+    assert '# Marker' in content
+    lines = [l.strip() for l in content.split('\n') if l.strip()]
+    print(f'DEBUG - Stripped lines: {lines}')
+    marker_idx = lines.index('# Marker')
+    z_idx = lines.index('z = 3')
+    y_idx = lines.index('y = 2')
+    assert marker_idx < z_idx < y_idx, 'Lines should be in correct order'
+
+def test_line_insert_exact_preservation():
+    """Test that lines are preserved exactly as they appear in the source"""
+    content = '\n    def func():\n        x = 1  # comment one\n\n        # marker with spaces around\n\n        y = 2  # comment two\n    '
+    test_file = setup_test_file('tmp', content)
+    result = python_edit(f'{test_file}::func', 'z = 3', insert_after='# marker with spaces around')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - File content:\n{content}')
+    assert 'x = 1  # comment one' in content
+    assert '# marker with spaces around' in content
+    assert 'y = 2  # comment two' in content
+    lines = content.split('\n')
+    marker_idx = next((i for i, line in enumerate(lines) if '# marker with spaces around' in line))
+    assert lines[marker_idx - 1].strip() == '', 'Should preserve blank line before marker'
+    assert lines[marker_idx + 1].strip() == '', 'Should preserve blank line after marker'
+
+def test_source_preservation():
+    """Test that source lines are preserved exactly when modifying a function"""
+    content = '\n    def example():\n        """This is a docstring."""\n\n        # First we do x\n        x = 1  # comment about x\n\n        # Then we do y\n        y = 2  # comment about y\n    '
+    test_file = setup_test_file('tmp', content)
+    result = python_edit(f'{test_file}::example', 'z = 3', insert_after='# Then we do y')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - File content:\n{content}')
+    assert '"""This is a docstring."""' in content
+    assert '# First we do x' in content
+    assert 'x = 1  # comment about x' in content
+    assert '# Then we do y' in content
+    assert 'z = 3' in content
+    assert 'y = 2  # comment about y' in content
+    lines = content.split('\n')
+
+    def line_number(text):
+        return next((i for i, line in enumerate(lines) if text in line))
+    assert line_number('# Then we do y') < line_number('z = 3') < line_number('y = 2')
+
+def test_ast_tree_preservation():
+    """Test that source preservation works through AST tree reconstruction"""
+    content = '\n    # Top level comment\n    import os  # os import\n\n    def example():  # example function\n        """Docstring."""\n\n        # First we do x\n        x = 1  # comment about x\n\n        # Then we do y\n        y = 2  # comment about y\n    '
+    test_file = setup_test_file('tmp', content)
+    result = python_edit(f'{test_file}::example', 'z = 3', insert_after='# Then we do y')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - File content:\n{content}')
+    assert '# Top level comment' in content
+    assert 'import os  # os import' in content
+    assert 'def example():  # example function' in content
+    assert '"""Docstring."""' in content
+    assert '# First we do x' in content
+    assert 'x = 1  # comment about x' in content
+    assert '# Then we do y' in content
+    assert 'z = 3' in content
+    assert 'y = 2  # comment about y' in content
+
+def test_file_level_preservation():
+    """Test that file-level operations preserve formatting"""
+    content = '\n    # Top level comment\n    import os  # os import\n\n    # Another comment\n    x = 1  # first assignment\n\n    # Final comment\n    y = 2  # second assignment\n    '
+    test_file = setup_test_file('tmp', content)
+    result = python_edit(test_file, 'z = 3', insert_after='__FILE_START__')
+    with open(test_file) as f:
+        content = f.read()
+    print(f'DEBUG - File content:\n{content}')
+    expected = '\n    # Top level comment\n    import os  # os import\n\n    z = 3\n\n    # Another comment\n    x = 1  # first assignment\n\n    # Final comment\n    y = 2  # second assignment\n    '.strip()
+    print(f'DEBUG - Expected:\n{expected}')
+    assert content.strip() == expected

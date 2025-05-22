@@ -4,230 +4,360 @@ cachedir: .pytest_cache
 rootdir: C:\Users\benbu\Code\llm-utilities-git\bots
 configfile: pytest.ini
 plugins: anyio-4.8.0, langsmith-0.3.8, cov-6.0.0
-collecting ... collected 1 item
-tests/test_git_patch.py::TestGitPatch::test_line_number_accuracy FAILED  [100%]
+collecting ... collected 34 items
+tests/test_python_edit.py::test_basic_file_level_edit PASSED             [  2%]
+tests/test_python_edit.py::test_file_start_insertion PASSED              [  5%]
+tests/test_python_edit.py::test_class_replacement PASSED                 [  8%]
+tests/test_python_edit.py::test_nested_class_method PASSED               [ 11%]
+tests/test_python_edit.py::test_nested_function PASSED                   [ 14%]
+tests/test_python_edit.py::test_insert_after_line FAILED                 [ 17%]
+tests/test_python_edit.py::test_insert_after_scope FAILED                [ 20%]
+tests/test_python_edit.py::test_import_handling PASSED                   [ 23%]
+tests/test_python_edit.py::test_decorated_method PASSED                  [ 26%]
+tests/test_python_edit.py::test_error_invalid_scope PASSED               [ 29%]
+tests/test_python_edit.py::test_error_ambiguous_insert PASSED            [ 32%]
+tests/test_python_edit.py::test_error_invalid_code PASSED                [ 35%]
+tests/test_python_edit.py::test_async_function PASSED                    [ 38%]
+tests/test_python_edit.py::test_indentation_preservation FAILED          [ 41%]
+tests/test_python_edit.py::test_empty_file PASSED                        [ 44%]
+tests/test_python_edit.py::test_multiline_imports PASSED                 [ 47%]
+tests/test_python_edit.py::test_line_comment_preservation FAILED         [ 50%]
+tests/test_python_edit.py::test_import_at_file_start PASSED              [ 52%]
+tests/test_python_edit.py::test_nested_scope_insertion FAILED            [ 55%]
+tests/test_python_edit.py::test_indentation_in_class FAILED              [ 58%]
+tests/test_python_edit.py::test_scope_path_matching PASSED               [ 61%]
+tests/test_python_edit.py::test_file_start_insertion_empty PASSED        [ 64%]
+tests/test_python_edit.py::test_file_start_insertion_with_imports PASSED [ 67%]
+tests/test_python_edit.py::test_file_start_insertion_with_code PASSED    [ 70%]
+tests/test_python_edit.py::test_file_start_insertion_multiple PASSED     [ 73%]
+tests/test_python_edit.py::test_line_insert_basic FAILED                 [ 76%]
+tests/test_python_edit.py::test_line_insert_indentation FAILED           [ 79%]
+tests/test_python_edit.py::test_line_insert_preservation FAILED          [ 82%]
+tests/test_python_edit.py::test_line_insert_ast_handling FAILED          [ 85%]
+tests/test_python_edit.py::test_line_insert_function_body FAILED         [ 88%]
+tests/test_python_edit.py::test_line_insert_exact_preservation FAILED    [ 91%]
+tests/test_python_edit.py::test_source_preservation FAILED               [ 94%]
+tests/test_python_edit.py::test_ast_tree_preservation FAILED             [ 97%]
+tests/test_python_edit.py::test_file_level_preservation FAILED           [100%]
 ================================== FAILURES ===================================
-___________________ TestGitPatch.test_line_number_accuracy ____________________
-self = <tests.test_git_patch.TestGitPatch testMethod=test_line_number_accuracy>
-    def test_line_number_accuracy(self):
-        """Test exact line number handling without context lines.
-    This explicitly tests for off-by-one errors in line targeting."""
-        initial = 'line 1\nline 2\nline 3\nline 4\nline 5\nline 6\n'
-        failures = []
-        test_cases = [(1, '@@ -1,1 +1,1 @@\n-line 1\n+modified line 1', 'modified line 1\nline 2\nline 3\nline 4\nline 5\nline 6\n', 'Replace first line'), (2, '@@ -2,1 +2,1 @@\n-line 2\n+modified line 2', 'line 1\nmodified line 2\nline 3\nline 4\nline 5\nline 6\n', 'Replace line 2'), (3, '@@ -3,1 +3,1 @@\n-line 3\n+modified line 3', 'line 1\nline 2\nmodified line 3\nline 4\nline 5\nline 6\n', 'Replace line 3'), (4, '@@ -4,1 +4,1 @@\n-line 4\n+modified line 4', 'line 1\nline 2\nline 3\nmodified line 4\nline 5\nline 6\n', 'Replace line 4'), (5, '@@ -5,1 +5,1 @@\n-line 5\n+modified line 5', 'line 1\nline 2\nline 3\nline 4\nmodified line 5\nline 6\n', 'Replace line 5'), (6, '@@ -6,1 +6,1 @@\n-line 6\n+modified line 6', 'line 1\nline 2\nline 3\nline 4\nline 5\nmodified line 6\n', 'Replace last line')]
-        for line_num, patch, expected, desc in test_cases:
-            try:
-                with open(self.test_file, 'w') as f:
-                    f.write(initial)
-                result = apply_git_patch(self.test_file, patch)
-                with open(self.test_file, 'r') as f:
-                    content = f.read()
-                print(f'\nTest case: {desc} (line {line_num})')
-                print('Got:')
-                print(content)
-                print('Expected:')
-                print(expected)
-                if content != expected:
-                    failures.append(f'Line {line_num}: Got content:\n{content}\nExpected:\n{expected}')
-            except Exception as e:
-                failures.append(f'Line {line_num}: Exception: {str(e)}')
-        if failures:
->           self.fail('Failures:\n' + '\n\n'.join(failures))
-E           AssertionError: Failures:
-E           Line 1: Got content:
-E           line 1
-E           line 2
-E           line 3
-E           line 4
-E           line 5
-E           modified line 1
-E           line 6
-E           
-E           Expected:
-E           modified line 1
-E           line 2
-E           line 3
-E           line 4
-E           line 5
-E           line 6
-E           
-E           
-E           Line 2: Got content:
-E           modified line 2
-E           line 2
-E           line 3
-E           line 4
-E           line 5
-E           line 6
-E           
-E           Expected:
-E           line 1
-E           modified line 2
-E           line 3
-E           line 4
-E           line 5
-E           line 6
-E           
-E           
-E           Line 3: Got content:
-E           line 1
-E           modified line 3
-E           line 3
-E           line 4
-E           line 5
-E           line 6
-E           
-E           Expected:
-E           line 1
-E           line 2
-E           modified line 3
-E           line 4
-E           line 5
-E           line 6
-E           
-E           
-E           Line 4: Got content:
-E           line 1
-E           line 2
-E           modified line 4
-E           line 4
-E           line 5
-E           line 6
-E           
-E           Expected:
-E           line 1
-E           line 2
-E           line 3
-E           modified line 4
-E           line 5
-E           line 6
-E           
-E           
-E           Line 5: Got content:
-E           line 1
-E           line 2
-E           line 3
-E           modified line 5
-E           line 5
-E           line 6
-E           
-E           Expected:
-E           line 1
-E           line 2
-E           line 3
-E           line 4
-E           modified line 5
-E           line 6
-E           
-E           
-E           Line 6: Got content:
-E           line 1
-E           line 2
-E           line 3
-E           line 4
-E           modified line 6
-E           line 6
-E           
-E           Expected:
-E           line 1
-E           line 2
-E           line 3
-E           line 4
-E           line 5
-E           modified line 6
-tests\test_git_patch.py:339: AssertionError
+___________________________ test_insert_after_line ____________________________
+test_file = 'C:\\Users\\benbu\\AppData\\Local\\Temp\\pytest-of-benbu\\pytest-207\\test_insert_after_line0\\test_file.py'
+    def test_insert_after_line(test_file):
+        """Test inserting after specific line"""
+        new_code = 'x = 42'
+        result = python_edit(f'{test_file}::OuterClass::another_method', new_code, insert_after='# Insert here')
+        with open(test_file) as f:
+            print(f'\nDEBUG - File content:\n{f.read()}')
+        print(f'\nDEBUG - Result: {result}')
+        assert 'inserted after' in result
+        with open(test_file) as f:
+            content = f.read()
+>       assert '# Insert here\n' in content
+E       AssertionError: assert '# Insert here\n' in 'import os\nfrom typing import List, Optional\n\ndef outer_func():\n\n    def inner_func():\n        pass\n    return inner_func\n\nclass OuterClass:\n\n    def method(self):\n        pass\n\n    class InnerClass:\n\n        @staticmethod\n        def static_method():\n            pass\n\n        async def async_method(self):\n            pass\n\n    def another_method(self):\n        pass'
+tests\test_python_edit.py:77: AssertionError
 ---------------------------- Captured stdout call -----------------------------
-Test case: Replace first line (line 1)
-Got:
-line 1
-line 2
-line 3
-line 4
-line 5
-modified line 1
-line 6
-Expected:
-modified line 1
-line 2
-line 3
-line 4
-line 5
-line 6
-Test case: Replace line 2 (line 2)
-Got:
-modified line 2
-line 2
-line 3
-line 4
-line 5
-line 6
-Expected:
-line 1
-modified line 2
-line 3
-line 4
-line 5
-line 6
-Test case: Replace line 3 (line 3)
-Got:
-line 1
-modified line 3
-line 3
-line 4
-line 5
-line 6
-Expected:
-line 1
-line 2
-modified line 3
-line 4
-line 5
-line 6
-Test case: Replace line 4 (line 4)
-Got:
-line 1
-line 2
-modified line 4
-line 4
-line 5
-line 6
-Expected:
-line 1
-line 2
-line 3
-modified line 4
-line 5
-line 6
-Test case: Replace line 5 (line 5)
-Got:
-line 1
-line 2
-line 3
-modified line 5
-line 5
-line 6
-Expected:
-line 1
-line 2
-line 3
-line 4
-modified line 5
-line 6
-Test case: Replace last line (line 6)
-Got:
-line 1
-line 2
-line 3
-line 4
-modified line 6
-line 6
-Expected:
-line 1
-line 2
-line 3
-line 4
-line 5
-modified line 6
+DEBUG - File content:
+import os
+from typing import List, Optional
+def outer_func():
+    def inner_func():
+        pass
+    return inner_func
+class OuterClass:
+    def method(self):
+        pass
+    class InnerClass:
+        @staticmethod
+        def static_method():
+            pass
+        async def async_method(self):
+            pass
+    def another_method(self):
+        pass
+DEBUG - Result: Code inserted after OuterClass::another_method in 'C:\Users\benbu\AppData\Local\Temp\pytest-of-benbu\pytest-207\test_insert_after_line0\test_file.py'.
+___________________________ test_insert_after_scope ___________________________
+test_file = 'C:\\Users\\benbu\\AppData\\Local\\Temp\\pytest-of-benbu\\pytest-207\\test_insert_after_scope0\\test_file.py'
+    def test_insert_after_scope(test_file):
+        """Test inserting after a scope"""
+        new_method = '\n    def extra_method(self):\n        pass\n    '
+        result = python_edit(f'{test_file}::OuterClass', new_method, insert_after='OuterClass::another_method')
+>       assert 'inserted after' in result
+E       AssertionError: assert 'inserted after' in 'Tool Failed: Insert point not found: OuterClass::another_method\nTraceback:\n'
+tests\test_python_edit.py:84: AssertionError
+________________________ test_indentation_preservation ________________________
+test_file = 'C:\\Users\\benbu\\AppData\\Local\\Temp\\pytest-of-benbu\\pytest-207\\test_indentation_preservation0\\test_file.py'
+    def test_indentation_preservation(test_file):
+        """Test proper indentation is maintained"""
+        new_method = '\n    def indented_method(self):\n        if True:\n            x = 1\n            if True:\n                y = 2\n    '
+        result = python_edit(f'{test_file}::OuterClass', new_method, insert_after='OuterClass::method')
+        with open(test_file) as f:
+            content = f.read()
+>       assert '    def indented_method' in content
+E       AssertionError: assert '    def indented_method' in '\nimport os\nfrom typing import List, Optional\n\ndef outer_func():\n    def inner_func():\n        pass\n    return inner_func\n\nclass OuterClass:\n    def method(self):\n        pass\n\n    class InnerClass:\n        @staticmethod\n        def static_method():\n            pass\n\n        async def async_method(self):\n            pass\n\n    def another_method(self):\n        # Insert here\n        pass\n'
+tests\test_python_edit.py:142: AssertionError
+_______________________ test_line_comment_preservation ________________________
+tmp_path = WindowsPath('C:/Users/benbu/AppData/Local/Temp/pytest-of-benbu/pytest-207/test_line_comment_preservation0')
+    def test_line_comment_preservation(tmp_path):
+        """Test that comments are preserved when inserting after them"""
+        content = '\n    def my_func():\n        # First comment\n        x = 1\n        # Target comment\n        y = 2\n    '
+        test_file = setup_test_file(tmp_path, content)
+        result = python_edit(f'{test_file}::my_func', 'z = 3', insert_after='# Target comment')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - Result content:\n{content}')
+>       assert '# Target comment' in content
+E       AssertionError: assert '# Target comment' in 'def my_func():\n    x = 1\n    y = 2'
+tests\test_python_edit.py:172: AssertionError
+---------------------------- Captured stdout call -----------------------------
+DEBUG - Result content:
+def my_func():
+    x = 1
+    y = 2
+_________________________ test_nested_scope_insertion _________________________
+tmp_path = WindowsPath('C:/Users/benbu/AppData/Local/Temp/pytest-of-benbu/pytest-207/test_nested_scope_insertion0')
+    def test_nested_scope_insertion(tmp_path):
+        """Test inserting into deeply nested scopes"""
+        content = '\n    class Outer:\n        class Inner:\n            def method(self):\n                x = 1\n    '
+        test_file = setup_test_file(tmp_path, content)
+        result = python_edit(f'{test_file}::Outer::Inner::method', 'y = 2', insert_after='x = 1')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - Result content:\n{content}')
+>       assert 'y = 2' in content
+E       AssertionError: assert 'y = 2' in 'class Outer:\n\n    class Inner:\n\n        def method(self):\n            x = 1'
+tests\test_python_edit.py:196: AssertionError
+---------------------------- Captured stdout call -----------------------------
+DEBUG - Result content:
+class Outer:
+    class Inner:
+        def method(self):
+            x = 1
+__________________________ test_indentation_in_class __________________________
+tmp_path = WindowsPath('C:/Users/benbu/AppData/Local/Temp/pytest-of-benbu/pytest-207/test_indentation_in_class0')
+    def test_indentation_in_class(tmp_path):
+        """Test that proper indentation is maintained in class methods"""
+        content = '\n    class MyClass:\n        def method_one(self):\n            pass\n    '
+        test_file = setup_test_file(tmp_path, content)
+        new_method = '\n    def method_two(self):\n        if True:\n            x = 1\n    '
+        result = python_edit(f'{test_file}::MyClass', new_method, insert_after='MyClass::method_one')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - Result content:\n{content}')
+>       assert '    def method_two(self):' in content
+E       AssertionError: assert '    def method_two(self):' in '\nclass MyClass:\n    def method_one(self):\n        pass\n'
+tests\test_python_edit.py:208: AssertionError
+---------------------------- Captured stdout call -----------------------------
+DEBUG - Result content:
+class MyClass:
+    def method_one(self):
+        pass
+___________________________ test_line_insert_basic ____________________________
+    def test_line_insert_basic():
+        """Test inserting after a simple line in a function"""
+        content = '\n    def test_func():\n        x = 1\n        # marker\n        z = 3\n    '
+        test_file = setup_test_file('tmp', content)
+        result = python_edit(f'{test_file}::test_func', 'y = 2', insert_after='# marker')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - Result content:\n{content}')
+>       assert '# marker\n' in content
+E       AssertionError: assert '# marker\n' in 'def test_func():\n    x = 1\n    z = 3'
+tests\test_python_edit.py:278: AssertionError
+---------------------------- Captured stdout call -----------------------------
+DEBUG - Result content:
+def test_func():
+    x = 1
+    z = 3
+________________________ test_line_insert_indentation _________________________
+    def test_line_insert_indentation():
+        """Test that inserted code maintains proper indentation"""
+        content = '\n    def test_func():\n        if True:\n            x = 1\n            # marker\n            z = 3\n    '
+        test_file = setup_test_file('tmp', content)
+        result = python_edit(f'{test_file}::test_func', 'y = 2', insert_after='# marker')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - Result content:\n{content}')
+        lines = content.split('\n')
+>       marker_line = next((i for i, line in enumerate(lines) if '# marker' in line))
+E       StopIteration
+tests\test_python_edit.py:292: StopIteration
+---------------------------- Captured stdout call -----------------------------
+DEBUG - Result content:
+def test_func():
+    if True:
+        x = 1
+        z = 3
+________________________ test_line_insert_preservation ________________________
+    def test_line_insert_preservation():
+        """Test that the line we insert after is preserved"""
+        content = '\n    def simple():\n        # keep me\n        pass\n    '
+        test_file = setup_test_file('tmp', content)
+        result = python_edit(f'{test_file}::simple', 'x = 1', insert_after='# keep me')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - File content:\n{content}')
+        print(f'DEBUG - Result: {result}')
+        lines = [l.strip() for l in content.split('\n') if l.strip()]
+        print(f'DEBUG - Stripped lines: {lines}')
+>       assert lines == ['def simple():', '# keep me', 'x = 1', 'pass']
+E       AssertionError: assert ['def simple():', 'pass'] == ['def simple(... = 1', 'pass']
+E         At index 1 diff: 'pass' != '# keep me'
+E         Right contains 2 more items, first extra item: 'x = 1'
+E         Full diff:
+E         - ['def simple():', '# keep me', 'x = 1', 'pass']
+E         + ['def simple():', 'pass']
+tests\test_python_edit.py:308: AssertionError
+---------------------------- Captured stdout call -----------------------------
+DEBUG - File content:
+def simple():
+    pass
+DEBUG - Result: Code inserted after simple in 'C:\Users\benbu\Code\llm-utilities-git\bots\tmp\test_file.py'.
+DEBUG - Stripped lines: ['def simple():', 'pass']
+________________________ test_line_insert_ast_handling ________________________
+    def test_line_insert_ast_handling():
+        """Test that comments and non-AST lines are preserved during insertion"""
+        content = '\n    def func():\n        x = 1  # comment one\n        # standalone comment\n        y = 2  # comment two\n    '
+        test_file = setup_test_file('tmp', content)
+        result = python_edit(f'{test_file}::func', 'z = 3', insert_after='# standalone comment')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - File content:\n{content}')
+        lines = [l.strip() for l in content.split('\n') if l.strip()]
+        print(f'DEBUG - Stripped lines: {lines}')
+>       assert 'comment one' in content
+E       AssertionError: assert 'comment one' in 'def func():\n    x = 1\n    y = 2'
+tests\test_python_edit.py:320: AssertionError
+---------------------------- Captured stdout call -----------------------------
+DEBUG - File content:
+def func():
+    x = 1
+    y = 2
+DEBUG - Stripped lines: ['def func():', 'x = 1', 'y = 2']
+_______________________ test_line_insert_function_body ________________________
+    def test_line_insert_function_body():
+        """Test that we correctly handle function body when inserting lines"""
+        content = '\n    def example():\n        """Docstring."""\n        # First comment\n        x = 1  # Inline comment\n\n        # Marker\n        y = 2\n    '
+        test_file = setup_test_file('tmp', content)
+        result = python_edit(f'{test_file}::example', 'z = 3', insert_after='# Marker')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - File content:\n{content}')
+        assert '"""Docstring."""' in content
+>       assert '# First comment' in content
+E       assert '# First comment' in 'def example():\n    """Docstring."""\n    x = 1\n    y = 2'
+tests\test_python_edit.py:335: AssertionError
+---------------------------- Captured stdout call -----------------------------
+DEBUG - File content:
+def example():
+    """Docstring."""
+    x = 1
+    y = 2
+_____________________ test_line_insert_exact_preservation _____________________
+    def test_line_insert_exact_preservation():
+        """Test that lines are preserved exactly as they appear in the source"""
+        content = '\n    def func():\n        x = 1  # comment one\n\n        # marker with spaces around\n\n        y = 2  # comment two\n    '
+        test_file = setup_test_file('tmp', content)
+        result = python_edit(f'{test_file}::func', 'z = 3', insert_after='# marker with spaces around')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - File content:\n{content}')
+>       assert 'x = 1  # comment one' in content
+E       AssertionError: assert 'x = 1  # comment one' in 'def func():\n    x = 1\n    y = 2'
+tests\test_python_edit.py:353: AssertionError
+---------------------------- Captured stdout call -----------------------------
+DEBUG - File content:
+def func():
+    x = 1
+    y = 2
+__________________________ test_source_preservation ___________________________
+    def test_source_preservation():
+        """Test that source lines are preserved exactly when modifying a function"""
+        content = '\n    def example():\n        """This is a docstring."""\n\n        # First we do x\n        x = 1  # comment about x\n\n        # Then we do y\n        y = 2  # comment about y\n    '
+        test_file = setup_test_file('tmp', content)
+        result = python_edit(f'{test_file}::example', 'z = 3', insert_after='# Then we do y')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - File content:\n{content}')
+        assert '"""This is a docstring."""' in content
+>       assert '# First we do x' in content
+E       assert '# First we do x' in 'def example():\n    """This is a docstring."""\n    x = 1\n    y = 2'
+tests\test_python_edit.py:370: AssertionError
+---------------------------- Captured stdout call -----------------------------
+DEBUG - File content:
+def example():
+    """This is a docstring."""
+    x = 1
+    y = 2
+_________________________ test_ast_tree_preservation __________________________
+    def test_ast_tree_preservation():
+        """Test that source preservation works through AST tree reconstruction"""
+        content = '\n    # Top level comment\n    import os  # os import\n\n    def example():  # example function\n        """Docstring."""\n\n        # First we do x\n        x = 1  # comment about x\n\n        # Then we do y\n        y = 2  # comment about y\n    '
+        test_file = setup_test_file('tmp', content)
+        result = python_edit(f'{test_file}::example', 'z = 3', insert_after='# Then we do y')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - File content:\n{content}')
+>       assert '# Top level comment' in content
+E       assert '# Top level comment' in 'import os\n\ndef example():\n    """Docstring."""\n    x = 1\n    y = 2'
+tests\test_python_edit.py:389: AssertionError
+---------------------------- Captured stdout call -----------------------------
+DEBUG - File content:
+import os
+def example():
+    """Docstring."""
+    x = 1
+    y = 2
+________________________ test_file_level_preservation _________________________
+    def test_file_level_preservation():
+        """Test that file-level operations preserve formatting"""
+        content = '\n    # Top level comment\n    import os  # os import\n\n    # Another comment\n    x = 1  # first assignment\n\n    # Final comment\n    y = 2  # second assignment\n    '
+        test_file = setup_test_file('tmp', content)
+        result = python_edit(test_file, 'z = 3', insert_after='__FILE_START__')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - File content:\n{content}')
+        expected = '\n    # Top level comment\n    import os  # os import\n\n    z = 3\n\n    # Another comment\n    x = 1  # first assignment\n\n    # Final comment\n    y = 2  # second assignment\n    '.strip()
+        print(f'DEBUG - Expected:\n{expected}')
+>       assert content.strip() == expected
+E       AssertionError: assert 'z = 3\nimpor...nx = 1\ny = 2' == '# Top level ...nd assignment'
+E         - # Top level comment
+E         -     import os  # os import
+E         - 
+E         -     z = 3
+E         ? ----
+E         + z = 3
+E         + import os...
+E         
+E         ...Full output truncated (8 lines hidden), use '-vv' to show
+tests\test_python_edit.py:409: AssertionError
+---------------------------- Captured stdout call -----------------------------
+DEBUG - File content:
+z = 3
+import os
+x = 1
+y = 2
+DEBUG - Expected:
+# Top level comment
+    import os  # os import
+    z = 3
+    # Another comment
+    x = 1  # first assignment
+    # Final comment
+    y = 2  # second assignment
 =========================== short test summary info ===========================
-FAILED tests/test_git_patch.py::TestGitPatch::test_line_number_accuracy - Ass...
-============================== 1 failed in 1.23s ==============================
+FAILED tests/test_python_edit.py::test_insert_after_line - AssertionError: as...
+FAILED tests/test_python_edit.py::test_insert_after_scope - AssertionError: a...
+FAILED tests/test_python_edit.py::test_indentation_preservation - AssertionEr...
+FAILED tests/test_python_edit.py::test_line_comment_preservation - AssertionE...
+FAILED tests/test_python_edit.py::test_nested_scope_insertion - AssertionErro...
+FAILED tests/test_python_edit.py::test_indentation_in_class - AssertionError:...
+FAILED tests/test_python_edit.py::test_line_insert_basic - AssertionError: as...
+FAILED tests/test_python_edit.py::test_line_insert_indentation - StopIteration
+FAILED tests/test_python_edit.py::test_line_insert_preservation - AssertionEr...
+FAILED tests/test_python_edit.py::test_line_insert_ast_handling - AssertionEr...
+FAILED tests/test_python_edit.py::test_line_insert_function_body - assert '# ...
+FAILED tests/test_python_edit.py::test_line_insert_exact_preservation - Asser...
+FAILED tests/test_python_edit.py::test_source_preservation - assert '# First ...
+FAILED tests/test_python_edit.py::test_ast_tree_preservation - assert '# Top ...
+FAILED tests/test_python_edit.py::test_file_level_preservation - AssertionErr...
+======================== 15 failed, 19 passed in 2.01s ========================

@@ -234,57 +234,55 @@ class ScopeTransformer(ast.NodeTransformer):
                     except Exception:
                         pass
         return node
-
+    
     def _handle_insertion(self, node):
         """Handle inserting nodes after a specific point."""
         if isinstance(self.insert_after, str) and '::' not in self.insert_after:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                if node.lineno == node.end_lineno:
-                    line = self.file_lines[node.lineno - 1]
-                    return self._handle_one_line_function(node, line)
-                orig_source = self._preserve_node_source(node)
-                lines = orig_source.split('\n')
-                def_line = lines[0]
-                body_lines = lines[1:]
-                base_indent = len(def_line) - len(def_line.lstrip())
-                body_indent = base_indent + 4
-                target = self.insert_after.strip()
-                for i, line in enumerate(body_lines):
-                    line = line.rstrip()
-                    if line.strip() == target:
-                        self.line_match_count += 1
-                        if self.line_match_count == 1:
-                            insertion = []
-                            for new_node in self.new_nodes:
-                                node_lines = _py_ast_to_source(new_node).split('\n')
-                                for nl in node_lines:
-                                    if nl.strip():
-                                        insertion.append(' ' * body_indent + nl.lstrip())
-                                    else:
-                                        insertion.append('')
-                            body_lines[i:i + 1] = [body_lines[i]] + insertion
-                            self.success = True
-                            break
-                if self.line_match_count == 0:
-                    return node
-                elif self.line_match_count > 1:
-                    raise ValueError(f'Ambiguous insert_after - found {self.line_match_count} matches for: {self.insert_after}')
-                new_source = def_line + '\n' + '\n'.join((l for l in body_lines if l is not None))
-                try:
-                    new_node = ast.parse(new_source).body[0]
-                    for attr in ['lineno', 'col_offset', 'end_lineno', 'end_col_offset']:
-                        if hasattr(node, attr):
-                            setattr(new_node, attr, getattr(node, attr))
-                    new_node._source = orig_source
-                    return new_node
-                except Exception:
-                    return node
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                return node
+            # Handle one-line functions
+            if node.lineno == node.end_lineno:
+                return self._handle_one_line_function(node, self.file_lines[node.lineno - 1])
+            # Get the original source lines including comments
+            func_lines = self.file_lines[node.lineno - 1:node.end_lineno]
+            if not func_lines:
+                return node
+            # Find the target line while preserving exact whitespace
+            target = self.insert_after.strip()
+            for i, line in enumerate(func_lines):
+                if line.strip() == target:
+                    self.line_match_count += 1
+                    if self.line_match_count == 1:
+                        # Get exact indentation from the target line
+                        current_indent = len(line) - len(line.lstrip())
+                        # Create properly indented insertion lines
+                        insertion = []
+                        for new_node in self.new_nodes:
+                            node_lines = _py_ast_to_source(new_node).split('\n')
+                            for nl in node_lines:
+                                if nl.strip():
+                                    insertion.append(' ' * current_indent + nl.lstrip())
+                                else:
+                                    # Preserve blank line indentation
+                                    insertion.append(' ' * current_indent)
+                        # Insert after the target line, preserving the target
+                        func_lines[i:i + 1] = [func_lines[i]] + insertion
+                        self.success = True
+                        break
+            if self.line_match_count == 0:
+                return node
+            elif self.line_match_count > 1:
+                raise ValueError(f'Ambiguous insert_after - found {self.line_match_count} matches for: {self.insert_after}')
+            # Store the modified source on the node
+            node._source = '\n'.join(func_lines)
+            self.success = True
             return node
         else:
+            # Handle scope-based insertion
             if self.insert_after:
                 target_path = self.insert_after.split('::')
                 current_path = self.current_path
-                if len(current_path) == len(target_path) and all((c == t for c, t in zip(current_path, target_path))):
+                if len(current_path) == len(target_path) and all(c == t for c, t in zip(current_path, target_path)):
                     self.success = True
                     if isinstance(node, ast.ClassDef):
                         node.body.extend(self.new_nodes)
@@ -292,7 +290,6 @@ class ScopeTransformer(ast.NodeTransformer):
                         for new_node in self.new_nodes:
                             node.body.append(new_node)
             return node
-
     def _preserve_node_source(self, node):
         """Get the original source of a node, preserving comments and formatting"""
         if hasattr(node, 'lineno') and hasattr(node, 'end_lineno'):

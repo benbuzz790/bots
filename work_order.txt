@@ -1,0 +1,24 @@
+﻿Work Order for python_edit.py Implementation
+Status:
+- Fixed _handle_insertion method indentation and logic
+- 19 tests passing, 15 failing
+- File-level operations partially working (basic operations pass)
+Priority Issues to Fix:
+1. Source preservation not working:
+   - Comments being lost (see test_line_comment_preservation)
+   - Indentation not preserved (test_indentation_preservation)
+   - Leading/trailing blank lines lost (test_line_insert_exact_preservation)
+2. Line-based insertion issues:
+   - Target lines not found (test_insert_after_line)
+   - Incorrect indentation in nested scopes (test_nested_scope_insertion)
+   - One-line function handling needs review (test_line_insert_basic)
+3. File-level formatting:
+   - Comments and spacing lost in file-level operations
+   - Import ordering needs preservation
+   - Need to respect original file formatting
+Next Steps:
+1. Modify _py_ast_to_source usage to preserve original formatting
+2. Implement proper source preservation at all levels (file/class/function)
+3. Fix line-based insertion indentation handling
+4. Add more granular tests for specific failure cases
+Note: Focus on source preservation first as it affects multiple test cases.
