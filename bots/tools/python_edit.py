@@ -1,10 +1,8 @@
 import ast
 import os
 import textwrap
-
-# Token delimiters - easy to change if needed
-TOKEN_START = ";;;"
-TOKEN_END = ";;;"
+TOKEN_START = ';;;'
+TOKEN_END = ';;;'
 from bots.utils.helpers import _process_error, _clean, _py_ast_to_source
 import hashlib
 import re
@@ -50,8 +48,10 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
             if not element.isidentifier():
                 return _process_error(ValueError(f'Invalid identifier in path: {element}'))
         abs_path = _make_file(file_path)
+        cleaned_code = _clean(code)
+        tokenized_code, new_code_tokens = tokenize_source(cleaned_code)
         try:
-            new_tree = ast.parse(_clean(code))
+            new_tree = ast.parse(tokenized_code)
             import_nodes = []
             code_nodes = []
             for node in new_tree.body:
@@ -64,8 +64,12 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
         try:
             with open(abs_path, 'r', encoding='utf-8') as file:
                 content = file.read()
-            file_lines = content.split('\n')
-            tree = ast.parse(content) if content.strip() else ast.Module(body=[], type_ignores=[])
+            tokenized_content, file_tokens = tokenize_source(content) if content.strip() else ('', {})
+            file_lines = tokenized_content.split('\n')
+            print(f'DEBUG - Tokenized content:\n{tokenized_content}')
+            print(f'DEBUG - File tokens:\n{file_tokens}')
+            print(f'DEBUG - File lines:\n{file_lines}')
+            tree = ast.parse(tokenized_content) if content.strip() else ast.Module(body=[], type_ignores=[])
         except Exception as e:
             return _process_error(ValueError(f'Error reading/parsing file {abs_path}: {str(e)}'))
         existing_imports = []
@@ -79,8 +83,10 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
             tree.body = import_nodes + code_nodes + existing_imports + non_imports
             try:
                 updated_content = _py_ast_to_source(tree)
+                all_tokens = {**file_tokens, **new_code_tokens}
+                final_content = detokenize_source(updated_content, all_tokens)
                 with open(abs_path, 'w', encoding='utf-8') as file:
-                    file.write(updated_content)
+                    file.write(final_content)
                 return f"Code inserted at start of '{abs_path}'."
             except Exception as e:
                 return _process_error(e)
@@ -88,13 +94,15 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
             tree.body = existing_imports + import_nodes + non_imports + code_nodes
             try:
                 updated_content = _py_ast_to_source(tree)
+                all_tokens = {**file_tokens, **new_code_tokens}
+                final_content = detokenize_source(updated_content, all_tokens)
                 with open(abs_path, 'w', encoding='utf-8') as file:
-                    file.write(updated_content)
+                    file.write(final_content)
                 return f"Code added at file level in '{abs_path}'."
             except Exception as e:
                 return _process_error(e)
         tree.body = existing_imports + import_nodes + non_imports
-        transformer = ScopeTransformer(path_elements, code_nodes, insert_after, file_lines)
+        transformer = ScopeTransformer(path_elements, code_nodes, insert_after, file_lines, file_tokens, new_code_tokens)
         modified_tree = transformer.visit(tree)
         if not transformer.success:
             if insert_after:
@@ -103,13 +111,15 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 return _process_error(ValueError(f'Target scope not found: {target_scope}'))
         try:
             updated_content = _py_ast_to_source(modified_tree)
+            all_tokens = {**file_tokens, **new_code_tokens}
+            final_content = detokenize_source(updated_content, all_tokens)
             with open(abs_path, 'w', encoding='utf-8') as file:
-                file.write(updated_content)
+                file.write(final_content)
+            action = 'inserted after' if insert_after else 'replaced at'
+            scope_str = '::'.join(path_elements) if path_elements else 'file level'
+            return f"Code {action} {scope_str} in '{abs_path}'."
         except Exception as e:
             return _process_error(e)
-        action = 'inserted after' if insert_after else 'replaced at'
-        scope_str = '::'.join(path_elements) if path_elements else 'file level'
-        return f"Code {action} {scope_str} in '{abs_path}'."
     except Exception as e:
         return _process_error(e)
 
@@ -148,14 +158,17 @@ def _make_file(file_path: str) -> str:
 class ScopeTransformer(ast.NodeTransformer):
     """AST transformer that handles scope-based Python code modifications."""
 
-    def __init__(self, path_elements, new_nodes, insert_after=None, file_lines=None):
+    def __init__(self, path_elements, new_nodes, insert_after=None, file_lines=None, file_tokens=None, new_tokens=None):
         self.original_path = path_elements
         self.new_nodes = new_nodes
         self.insert_after = insert_after
         self.file_lines = file_lines
+        self.file_tokens = file_tokens or {}
+        self.new_tokens = new_tokens or {}
         self.current_path = []
         self.success = False
         self.line_match_count = 0
+        self.all_tokens = {**self.file_tokens, **self.new_tokens}
 
     def visit_ClassDef(self, node):
         """Visit a class definition node."""
@@ -290,18 +303,11 @@ class ScopeTransformer(ast.NodeTransformer):
                             node.body.append(new_node)
             return node
 
-    def _preserve_node_source(self, node):
-        """Get the original source of a node, preserving comments and formatting"""
-        if hasattr(node, 'lineno') and hasattr(node, 'end_lineno'):
-            lines = self.file_lines[node.lineno - 1:node.end_lineno]
-            return '\n'.join(lines)
-        return _py_ast_to_source(node)
-
 def create_token(content: str, index: int, current_hash: str) -> str:
     """Create a token with our specific pattern"""
     hex_content = content.encode('utf-8').hex()
     token_name = f'TOKEN__{current_hash}_{index}'
-    return (token_name, hex_content)
+    return (token_name, f"'__TOKEN__{hex_content}__'")
 
 def get_file_hash(content: str) -> str:
     """Create a short hash of file content"""
@@ -317,37 +323,42 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
     """
 
     def contains_token(s: str) -> bool:
-        return TOKEN_START + 'TOKEN__' in s
-
-    def make_token_ref(name: str) -> str:
-        """Create a reference to a token"""
-        return f'{TOKEN_START}{name}{TOKEN_END}'
+        return '__TOKEN__' in s
     token_map = {}
     current_hash = get_file_hash(source)
     token_counter = 0
-    lines = source.split('\n')
-    leading_empty = []
-    while lines and (not lines[0].strip()):
-        leading_empty.append(lines.pop(0))
+    tokenized = source
+    triple_quote_patterns = ['"""(?:[^"\\\\]|\\\\.)*?"""', "'''(?:[^'\\\\]|\\\\.)*?'''"]
+    for pattern in triple_quote_patterns:
+        matches = list(re.finditer(pattern, tokenized))
+        offset = 0
+        for match in matches:
+            start, end = match.span()
+            start += offset
+            end += offset
+            string_content = tokenized[start:end]
+            token_name, hex_val = create_token(string_content, token_counter, current_hash)
+            token_map[token_name] = string_content
+            tokenized = tokenized[:start] + hex_val + tokenized[end:]
+            offset += len(hex_val) - len(string_content)
+            token_counter += 1
+    lines = tokenized.split('\n')
     processed_lines = []
     for line in lines:
-        if contains_token(line):
+        if not line.strip():
             processed_lines.append(line)
             continue
         indent = len(line) - len(line.lstrip())
         indentation = ' ' * indent
         content = line[indent:]
-        if not content.strip():
-            processed_lines.append(line)
-            continue
         if content.strip().startswith('#'):
             token_name, hex_val = create_token(content, token_counter, current_hash)
             token_map[token_name] = content
-            processed_lines.append(indentation + make_token_ref(token_name))
+            processed_lines.append(indentation + hex_val)
             token_counter += 1
             continue
         processed_line = content
-        string_patterns = ['"""(?:[^"\\\\]|\\\\.)*"""', "'''(?:[^'\\\\]|\\\\.)*'''", '"(?:[^"\\\\]|\\\\.)*"', "'(?:[^'\\\\]|\\\\.)*'"]
+        string_patterns = ['"(?:[^"\\\\]|\\\\.)*?"', "'(?:[^'\\\\]|\\\\.)*?'"]
         for pattern in string_patterns:
             matches = list(re.finditer(pattern, processed_line))
             offset = 0
@@ -358,20 +369,19 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
                 string_content = processed_line[start:end]
                 token_name, hex_val = create_token(string_content, token_counter, current_hash)
                 token_map[token_name] = string_content
-                processed_line = processed_line[:start] + make_token_ref(token_name) + processed_line[end:]
-                offset += len(make_token_ref(token_name)) - len(string_content)
+                processed_line = processed_line[:start] + hex_val + processed_line[end:]
+                offset += len(hex_val) - len(string_content)
                 token_counter += 1
-        if '#' in processed_line and (not any((token in processed_line.split('#', 1)[1] for token in token_map))):
+        if '#' in processed_line:
             comment_start = processed_line.index('#')
             code = processed_line[:comment_start]
             comment = processed_line[comment_start:]
             token_name, hex_val = create_token(comment, token_counter, current_hash)
             token_map[token_name] = comment
-            processed_line = code + make_token_ref(token_name)
+            processed_line = code.rstrip() + ' ' + hex_val
             token_counter += 1
         processed_lines.append(indentation + processed_line)
-    final_lines = leading_empty + processed_lines
-    return ('\n'.join(final_lines), token_map)
+    return ('\n'.join(processed_lines), token_map)
 
 def detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
     """
@@ -381,14 +391,15 @@ def detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
     """
     result = tokenized_source
     for token_name, original in token_map.items():
-        token_pattern = f'{TOKEN_START}{token_name}{TOKEN_END}'
-        if '\n' in original:
-            for match in re.finditer(re.escape(token_pattern), result):
+        hex_pattern = f"'__TOKEN__.*?__'"
+        for match in re.finditer(hex_pattern, result):
+            token_str = match.group()
+            if '\n' in original:
                 indent = get_indentation_at_position(result, match.start())
                 indented = indent_multiline_content(original, indent)
-                result = result[:match.start()] + indented + result[match.end():]
-        else:
-            result = result.replace(token_pattern, original)
+                result = result.replace(token_str, indented)
+            else:
+                result = result.replace(token_str, original)
     return result
 
 def get_indentation_at_position(source: str, pos: int) -> str:
