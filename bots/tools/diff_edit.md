@@ -1,4 +1,4 @@
-﻿
+
 # diff_edit Investigation Memo
 
 ## Context

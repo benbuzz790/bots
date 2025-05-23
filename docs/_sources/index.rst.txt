@@ -1,4 +1,4 @@
-﻿bots: Making LLM Tool Use Convenient and Powerful
+bots: Making LLM Tool Use Convenient and Powerful
 ===============================================
 Overview
 --------

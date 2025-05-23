@@ -1,4 +1,4 @@
-import ast
+﻿import ast
 import os
 import textwrap
 TOKEN_START = ';;;'
@@ -375,15 +375,16 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
                 token_map[hex_val] = string_content
                 processed_line = processed_line[:match.start()] + hex_val + processed_line[match.end():]
                 token_counter += 1
-        if '#' in processed_line and (not contains_token(processed_line)):
+        # Handle inline comments - check for # that's not inside a token
+        if '#' in processed_line:
             comment_start = processed_line.index('#')
-            elif '#' in processed_line:
-            comment_start = processed_line.find('#')
             code = processed_line[:comment_start]
             comment = processed_line[comment_start:]
             token_name, hex_val = create_token(comment, token_counter, current_hash)
             token_map[hex_val] = comment
-            processed_line = code.rstrip() + ' ' + hex_val
+            # Preserve exact spacing between code and comment
+            processed_line = code + hex_val
+            token_counter += 1
             token_counter += 1
         processed_lines.append(indentation + processed_line)
     return ('\n'.join(processed_lines), token_map)

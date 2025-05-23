@@ -1,4 +1,4 @@
-﻿from bots.tools.python_edit import tokenize_source
+from bots.tools.python_edit import tokenize_source
 import time
 source = '''
     # Header comment

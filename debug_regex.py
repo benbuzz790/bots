@@ -1,4 +1,4 @@
-﻿import re
+import re
 import time
 # Test the regex patterns
 test_string = '    x = "string literal"  # Inline comment'
