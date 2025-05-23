@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import os
 import textwrap
 TOKEN_START = ';;;'
@@ -267,10 +267,8 @@ class ScopeTransformer(ast.NodeTransformer):
             if not func_lines:
                 return node
             target = self.insert_after.strip()
-            # Find the target line
             target_line_idx = None
             for i, line in enumerate(func_lines):
-                # Detokenize the line for comparison
                 detokenized_line = detokenize_source(line, self.all_tokens)
                 if detokenized_line.strip() == target:
                     self.line_match_count += 1
@@ -280,27 +278,40 @@ class ScopeTransformer(ast.NodeTransformer):
                 return node
             elif self.line_match_count > 1:
                 raise ValueError(f'Ambiguous insert_after - found {self.line_match_count} matches for: {self.insert_after}')
-            # Find which AST node corresponds to the line after our target
             target_absolute_line = node.lineno + target_line_idx
-            insert_index = len(node.body)  # Default to end
-            for idx, child in enumerate(node.body):
-                if hasattr(child, 'lineno') and child.lineno > target_absolute_line:
-                    insert_index = idx
-                    break
-            # Insert the new nodes at the correct position
-            if insert_index == len(node.body):
-                # Append to end
-                node.body.extend(self.new_nodes)
+            containing_node = self._find_containing_node(node, target_absolute_line)
+            if containing_node and containing_node is not node:
+                self._insert_into_node(containing_node, target_absolute_line)
             else:
-                # Insert at specific position
-                for i, new_node in enumerate(self.new_nodes):
-                    node.body.insert(insert_index + i, new_node)
+                insert_index = len(node.body)
+                for idx, child in enumerate(node.body):
+                    if hasattr(child, 'lineno') and child.lineno > target_absolute_line:
+                        insert_index = idx
+                        break
+                if insert_index == len(node.body):
+                    node.body.extend(self.new_nodes)
+                else:
+                    for i, new_node in enumerate(self.new_nodes):
+                        node.body.insert(insert_index + i, new_node)
             self.success = True
             return node
         else:
             if self.insert_after:
                 target_path = self.insert_after.split('::')
                 current_path = self.current_path
+                if len(target_path) > 1 and len(current_path) == len(target_path) - 1:
+                    if all((c == t for c, t in zip(current_path, target_path[:len(current_path)]))):
+                        target_name = target_path[-1]
+                        insert_index = None
+                        for idx, child in enumerate(node.body):
+                            if hasattr(child, 'name') and child.name == target_name:
+                                insert_index = idx + 1
+                                break
+                        if insert_index is not None:
+                            for i, new_node in enumerate(self.new_nodes):
+                                node.body.insert(insert_index + i, new_node)
+                            self.success = True
+                            return node
                 if len(current_path) == len(target_path) and all((c == t for c, t in zip(current_path, target_path))):
                     self.success = True
                     if isinstance(node, ast.ClassDef):
@@ -310,11 +321,44 @@ class ScopeTransformer(ast.NodeTransformer):
                             node.body.append(new_node)
             return node
 
+    def _find_containing_node(self, node, target_line):
+        """Find the deepest AST node with a body that contains the target line."""
+        if not (hasattr(node, 'lineno') and hasattr(node, 'end_lineno')):
+            return None
+        if not node.lineno <= target_line <= node.end_lineno:
+            return None
+        deepest_with_body = node if hasattr(node, 'body') else None
+        if hasattr(node, 'body'):
+            for child in node.body:
+                deeper_node = self._find_containing_node(child, target_line)
+                if deeper_node:
+                    return deeper_node
+        if hasattr(node, 'orelse'):
+            for child in node.orelse:
+                deeper_node = self._find_containing_node(child, target_line)
+                if deeper_node:
+                    return deeper_node
+        if deepest_with_body:
+            return deepest_with_body
+        return None
+
+    def _insert_into_node(self, node, target_line):
+        """Insert new nodes into the given node after the target line."""
+        if not hasattr(node, 'body'):
+            return
+        insert_index = len(node.body)
+        for idx, child in enumerate(node.body):
+            if hasattr(child, 'lineno') and child.lineno > target_line:
+                insert_index = idx
+                break
+        for i, new_node in enumerate(self.new_nodes):
+            node.body.insert(insert_index + i, new_node)
+
 def create_token(content: str, index: int, current_hash: str) -> str:
     """Create a token with our specific pattern"""
     hex_content = content.encode('utf-8').hex()
     token_name = f'TOKEN__{current_hash}_{index}'
-    return (token_name, f"__TOKEN__{hex_content}__")
+    return (token_name, f'__TOKEN__{hex_content}__')
 
 def get_file_hash(content: str) -> str:
     """Create a short hash of file content"""
@@ -335,7 +379,7 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
     current_hash = get_file_hash(source)
     token_counter = 0
     tokenized = source
-    triple_quote_patterns = [r'"""[^"\\]*(?:(?:\\.|"(?!""))[^"\\]*)*"""', r"'''[^'\\]*(?:(?:\\.|'(?!''))[^'\\]*)*'''"]
+    triple_quote_patterns = ['"""[^"\\\\]*(?:(?:\\\\.|"(?!""))[^"\\\\]*)*"""', "'''[^'\\\\]*(?:(?:\\\\.|'(?!''))[^'\\\\]*)*'''"]
     for pattern in triple_quote_patterns:
         while True:
             match = re.search(pattern, tokenized)
@@ -367,9 +411,7 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
             token_counter += 1
             continue
         processed_line = content
-        # Use simpler patterns to avoid catastrophic backtracking
-        # Match strings but avoid catastrophic backtracking by using possessive quantifiers
-        string_patterns = [r'"[^"\\]*(?:\\.[^"\\]*)*"', r"'[^'\\]*(?:\\.[^'\\]*)*'"]
+        string_patterns = ['"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"', "'[^'\\\\]*(?:\\\\.[^'\\\\]*)*'"]
         for pattern in string_patterns:
             while True:
                 match = re.search(pattern, processed_line)
@@ -382,14 +424,12 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
                 token_map[hex_val] = string_content
                 processed_line = processed_line[:match.start()] + hex_val + processed_line[match.end():]
                 token_counter += 1
-        # Handle inline comments - check for # that's not inside a token
         if '#' in processed_line:
             comment_start = processed_line.index('#')
             code = processed_line[:comment_start]
             comment = processed_line[comment_start:]
             token_name, hex_val = create_token(comment, token_counter, current_hash)
             token_map[hex_val] = comment
-            # Preserve exact spacing between code and comment
             processed_line = code + hex_val
             token_counter += 1
             token_counter += 1
