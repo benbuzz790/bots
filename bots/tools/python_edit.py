@@ -66,9 +66,6 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 content = file.read()
             tokenized_content, file_tokens = tokenize_source(content) if content.strip() else ('', {})
             file_lines = tokenized_content.split('\n')
-            print(f'DEBUG - Tokenized content:\n{tokenized_content}')
-            print(f'DEBUG - File tokens:\n{file_tokens}')
-            print(f'DEBUG - File lines:\n{file_lines}')
             tree = ast.parse(tokenized_content) if content.strip() else ast.Module(body=[], type_ignores=[])
         except Exception as e:
             return _process_error(ValueError(f'Error reading/parsing file {abs_path}: {str(e)}'))
@@ -358,7 +355,7 @@ def create_token(content: str, index: int, current_hash: str) -> str:
     """Create a token with our specific pattern"""
     hex_content = content.encode('utf-8').hex()
     token_name = f'TOKEN__{current_hash}_{index}'
-    return (token_name, f'__TOKEN__{hex_content}__')
+    return (token_name, f';"""{hex_content}"""')
 
 def get_file_hash(content: str) -> str:
     """Create a short hash of file content"""
@@ -374,7 +371,7 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
     """
 
     def contains_token(s: str) -> bool:
-        return '__TOKEN__' in s
+        return ';"""' in s and '"""' in s
     token_map = {}
     current_hash = get_file_hash(source)
     token_counter = 0
@@ -407,7 +404,7 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
         if content.strip().startswith('#'):
             token_name, hex_val = create_token(content, token_counter, current_hash)
             token_map[hex_val] = content
-            processed_lines.append(indentation + hex_val)
+            processed_lines.append(indentation + 'pass' + hex_val)
             token_counter += 1
             continue
         processed_line = content
@@ -426,12 +423,11 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
                 token_counter += 1
         if '#' in processed_line:
             comment_start = processed_line.index('#')
-            code = processed_line[:comment_start]
+            code = processed_line[:comment_start].rstrip()
             comment = processed_line[comment_start:]
             token_name, hex_val = create_token(comment, token_counter, current_hash)
             token_map[hex_val] = comment
             processed_line = code + hex_val
-            token_counter += 1
             token_counter += 1
         processed_lines.append(indentation + processed_line)
     return ('\n'.join(processed_lines), token_map)
@@ -443,8 +439,31 @@ def detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
     Handles proper indentation of multiline content.
     """
     result = tokenized_source
+    for token_name, original in token_map.items():
+        if token_name.startswith(';"""') and token_name.endswith('"""'):
+            hex_content = token_name[4:-3]
+            patterns = [f"'{hex_content}'", f'"{hex_content}"']
+            for pattern in patterns:
+                while pattern in result:
+                    lines = result.split('\n')
+                    for i, line in enumerate(lines):
+                        if line.strip() == pattern:
+                            indent = len(line) - len(line.lstrip())
+                            lines[i] = ' ' * indent + original
+                            result = '\n'.join(lines)
+                            break
+                        elif pattern in line and line.strip() != pattern:
+                            if 'pass' in line and line.index('pass') < line.index(pattern):
+                                indent = len(line) - len(line.lstrip())
+                                lines[i] = ' ' * indent + original
+                            else:
+                                lines[i] = line.replace(pattern, '  ' + original)
+                            result = '\n'.join(lines)
+                            break
+                    else:
+                        break
     for token_name, original in sorted(token_map.items(), key=lambda x: len(x[0]), reverse=True):
-        while True:
+        while token_name in result:
             start = result.find(token_name)
             if start == -1:
                 break

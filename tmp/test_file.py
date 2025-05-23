@@ -1,9 +1,8 @@
 
-# Top level comment
-import os  # os import
+def example():
+    """Docstring."""
+    # First comment
+    x = 1  # Inline comment
 
-# Another comment
-x = 1  # first assignment
-
-# Final comment
-y = 2  # second assignment
+    # Marker
+    y = 2

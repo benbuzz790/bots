@@ -1,42 +1,58 @@
-                Work Order for python_edit.py Implementation
-                Files:
-                - bots/tools/python_edit.py: Main implementation
-                - tests/test_python_edit.py: Test suite
-                Current Status:
-                - Fixed infinite loop in tokenize_source that was causing test timeouts
-                  - Issue was tokens being created with quotes, causing regex to match them again
-                  - Fixed by removing quotes from token format in create_token()
-                - Fixed tokenization of inline comments
-                  - Removed condition that prevented tokenizing comments on lines with tokens
-                  - Preserved exact spacing between code and inline comments
-                - All tokenization tests now passing (test_tokenize_basic, test_tokenize_multiline, etc.)
-                - 29 tests passing, 14 tests failing
-                Completed:
-                - Basic tokenization system working correctly
-                - Token system uses hex-encoded content with format: '__TOKEN__hexcontent__'
-                - Successfully handles:
-                  - Basic expressions
-                  - Comments (inline and standalone)
-                  - String literals (single and multi-line)
-                  - Nested structures
-                  - Complex indentation
-                Remaining Issues:
-                1. Line insertion tests failing (test_insert_after_line, etc.)
-                   - Issue appears to be with how tokenized lines are handled in ScopeTransformer
-                   - The _handle_insertion method needs to work with tokenized content
-                2. Source preservation tests failing
-                   - AST reconstruction is not preserving original formatting
-                   - Need to ensure detokenization happens at the right time
-                3. File-level operations not preserving structure correctly
-                   - test_file_level_preservation shows imports being moved incorrectly
-                Next Steps:
-                1. Fix line insertion functionality:
-                   - Update ScopeTransformer._handle_insertion to handle tokenized lines
-                   - Ensure line matching works with tokenized content
-                2. Fix source preservation:
-                   - Ensure proper detokenization after AST modifications
-                   - Preserve blank lines and indentation
-                3. Debug file-level operations:
-                   - Track why imports are being reordered
-                   - Ensure tokenization doesn't interfere with AST structure
-                Priority: Focus on fixing line insertion tests first, as many other tests depend on this functionality."    
+Work Order for python_edit.py Implementation
+Files:
+- bots/tools/python_edit.py: Main implementation
+- tests/test_python_edit.py: Test suite
+Current Status:
+- Fixed infinite loop in tokenize_source that was causing test timeouts
+- Issue was tokens being created with quotes, causing regex to match them again
+- Fixed by removing quotes from token format in create_token()
+- Fixed tokenization of inline comments
+- Removed condition that prevented tokenizing comments on lines with tokens
+- Preserved exact spacing between code and inline comments
+- Fixed line insertion functionality
+- Updated _handle_insertion to detokenize lines before comparison
+- Correctly insert new AST nodes at the right position in the function body
+- Fixed scope-based insertion (test_insert_after_scope)
+- Added logic to handle inserting after a child scope when at parent level
+- Fixed nested indentation for line insertion (test_line_insert_indentation)
+- Added _find_containing_node and _insert_into_node helper methods
+- Now correctly finds the deepest AST node with a body that contains the target line
+- 38 tests passing (up from 37), 5 tests failing (down from 6)
+Completed:
+- Basic tokenization system working correctly
+- Token system uses hex-encoded content with format: '__TOKEN__hexcontent__'
+- Successfully handles:
+- Basic expressions
+- Comments (inline and standalone)
+- String literals (single and multi-line)
+- Nested structures
+- Complex indentation
+- Line insertion after specific lines now works
+- Can insert code after comments
+- Preserves indentation at function level
+- Handles tokenized content correctly
+- NOW WORKS: Correctly maintains indentation in nested blocks (if/for/while)
+- Scope-based insertion now works
+- Can insert after 'OuterClass::another_method' when editing 'OuterClass'
+- Properly finds child nodes and inserts after them
+Remaining Issues:
+1. Source preservation tests failing (5 tests)
+   - AST reconstruction is not preserving original formatting
+   - Comments and blank lines being lost in some cases
+   - Fundamental limitation: AST doesn't include comments, so reconstruction loses original structure       
+   - Affected tests:
+   - test_line_insert_ast_handling
+   - test_line_insert_function_body
+   - test_source_preservation
+   - test_ast_tree_preservation
+   - test_file_level_preservation
+2. File-level operations not preserving structure correctly
+   - test_file_level_preservation shows comments being reordered
+   - When using __FILE_START__, comments that appear before imports get moved after
+   - Related to AST reconstruction issue
+Next Steps:
+1. For source preservation: Consider alternative approaches:
+   - Use a different parsing strategy that preserves comments (e.g., lib2to3, parso)
+   - Implement a hybrid approach using both AST and line-based editing
+   - Accept limitations and document them
+Priority: Document current capabilities and limitations. The tool works well for many use cases including nested indentation, but has known limitations with comment preservation during AST reconstruction."

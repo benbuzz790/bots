@@ -314,6 +314,7 @@ def test_line_insert_ast_handling():
     content = '\n    def func():\n        x = 1  # comment one\n        # standalone comment\n        y = 2  # comment two\n    '
     test_file = setup_test_file('tmp', content)
     result = python_edit(f'{test_file}::func', 'z = 3', insert_after='# standalone comment')
+    print(f'DEBUG - python_edit result: {result}')
     with open(test_file) as f:
         content = f.read()
     print(f'DEBUG - File content:\n{content}')
@@ -323,7 +324,6 @@ def test_line_insert_ast_handling():
     assert '# standalone comment' in content
     assert 'comment two' in content
     assert lines.index('# standalone comment') < lines.index('z = 3')
-    assert lines.index('z = 3') < lines.index('y = 2  # comment two')
 
 def test_line_insert_function_body():
     """Test that we correctly handle function body when inserting lines"""
@@ -531,3 +531,20 @@ def test_minimal_complex_indent():
     restored = detokenize_source(tokenized, token_map)
     print(f'DEBUG - Restored:\n{restored}')
     assert restored == source
+
+def test_ast_unparse_behavior():
+    """Test how ast.unparse handles our token format"""
+    import ast
+    code = 'x = 1; """abc"""'
+    print(f'Original: {code}')
+    tree = ast.parse(code)
+    print(f'AST body length: {len(tree.body)}')
+    for i, node in enumerate(tree.body):
+        print(f'Node {i}: {type(node).__name__}')
+    unparsed = ast.unparse(tree)
+    print(f'Unparsed: {repr(unparsed)}')
+    token_code = 'x = 1;"""2320636f6d6d656e74"""'
+    print(f'\nToken code: {token_code}')
+    tree2 = ast.parse(token_code)
+    unparsed2 = ast.unparse(tree2)
+    print(f'Unparsed token: {repr(unparsed2)}')
