@@ -267,27 +267,34 @@ class ScopeTransformer(ast.NodeTransformer):
             if not func_lines:
                 return node
             target = self.insert_after.strip()
+            # Find the target line
+            target_line_idx = None
             for i, line in enumerate(func_lines):
-                if line.strip() == target:
+                # Detokenize the line for comparison
+                detokenized_line = detokenize_source(line, self.all_tokens)
+                if detokenized_line.strip() == target:
                     self.line_match_count += 1
                     if self.line_match_count == 1:
-                        current_indent = len(line) - len(line.lstrip())
-                        insertion = []
-                        for new_node in self.new_nodes:
-                            node_lines = _py_ast_to_source(new_node).split('\n')
-                            for nl in node_lines:
-                                if nl.strip():
-                                    insertion.append(' ' * current_indent + nl.lstrip())
-                                else:
-                                    insertion.append(' ' * current_indent)
-                        func_lines[i:i + 1] = [func_lines[i]] + insertion
-                        self.success = True
-                        break
+                        target_line_idx = i
             if self.line_match_count == 0:
                 return node
             elif self.line_match_count > 1:
                 raise ValueError(f'Ambiguous insert_after - found {self.line_match_count} matches for: {self.insert_after}')
-            node._source = '\n'.join(func_lines)
+            # Find which AST node corresponds to the line after our target
+            target_absolute_line = node.lineno + target_line_idx
+            insert_index = len(node.body)  # Default to end
+            for idx, child in enumerate(node.body):
+                if hasattr(child, 'lineno') and child.lineno > target_absolute_line:
+                    insert_index = idx
+                    break
+            # Insert the new nodes at the correct position
+            if insert_index == len(node.body):
+                # Append to end
+                node.body.extend(self.new_nodes)
+            else:
+                # Insert at specific position
+                for i, new_node in enumerate(self.new_nodes):
+                    node.body.insert(insert_index + i, new_node)
             self.success = True
             return node
         else:

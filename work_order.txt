@@ -1,38 +1,42 @@
-Work Order for python_edit.py Implementation
-Files:
-- bots/tools/python_edit.py: Main implementation
-- tests/test_python_edit.py: Test suite
-Current Status:
-- Working tokenization system with all minimal tests passing
-- Token system uses hex-encoded content with format: '__TOKEN__hexcontent__'
-- Token map uses hex values as keys for reliable lookup
-- Successfully handles:
-  - Basic expressions
-  - Comments (inline and standalone)
-  - String literals (single and multi-line)
-  - Nested structures
-  - Complex indentation
-Next Steps:
-1. Integrate tokenization with main python_edit function:
-   - Tokenize source before AST parsing
-   - Tokenize new code being inserted
-   - Pass token maps through ScopeTransformer
-   - Detokenize after AST modifications
-2. Fix remaining test failures:
-   - test_insert_after_line
-   - test_insert_after_scope
-   - test_indentation_preservation
-   - test_line_comment_preservation
-   - test_nested_scope_insertion
-   - test_line_insert_basic
-   - And others (see test output)
-3. Verify source preservation:
-   - Comments
-   - Indentation
-   - Blank lines
-   - String literal formats
-4. Add tests for:
-   - Token system edge cases
-   - Complex nested modifications
-   - Multi-step edits
-Priority: Focus on integrating tokenization with python_edit first, then address test failures one category at a time.
+                Work Order for python_edit.py Implementation
+                Files:
+                - bots/tools/python_edit.py: Main implementation
+                - tests/test_python_edit.py: Test suite
+                Current Status:
+                - Fixed infinite loop in tokenize_source that was causing test timeouts
+                  - Issue was tokens being created with quotes, causing regex to match them again
+                  - Fixed by removing quotes from token format in create_token()
+                - Fixed tokenization of inline comments
+                  - Removed condition that prevented tokenizing comments on lines with tokens
+                  - Preserved exact spacing between code and inline comments
+                - All tokenization tests now passing (test_tokenize_basic, test_tokenize_multiline, etc.)
+                - 29 tests passing, 14 tests failing
+                Completed:
+                - Basic tokenization system working correctly
+                - Token system uses hex-encoded content with format: '__TOKEN__hexcontent__'
+                - Successfully handles:
+                  - Basic expressions
+                  - Comments (inline and standalone)
+                  - String literals (single and multi-line)
+                  - Nested structures
+                  - Complex indentation
+                Remaining Issues:
+                1. Line insertion tests failing (test_insert_after_line, etc.)
+                   - Issue appears to be with how tokenized lines are handled in ScopeTransformer
+                   - The _handle_insertion method needs to work with tokenized content
+                2. Source preservation tests failing
+                   - AST reconstruction is not preserving original formatting
+                   - Need to ensure detokenization happens at the right time
+                3. File-level operations not preserving structure correctly
+                   - test_file_level_preservation shows imports being moved incorrectly
+                Next Steps:
+                1. Fix line insertion functionality:
+                   - Update ScopeTransformer._handle_insertion to handle tokenized lines
+                   - Ensure line matching works with tokenized content
+                2. Fix source preservation:
+                   - Ensure proper detokenization after AST modifications
+                   - Preserve blank lines and indentation
+                3. Debug file-level operations:
+                   - Track why imports are being reordered
+                   - Ensure tokenization doesn't interfere with AST structure
+                Priority: Focus on fixing line insertion tests first, as many other tests depend on this functionality."    

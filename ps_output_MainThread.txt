@@ -4,16 +4,13 @@ cachedir: .pytest_cache
 rootdir: C:\Users\benbu\Code\llm-utilities-git\bots
 configfile: pytest.ini
 plugins: anyio-4.8.0, langsmith-0.3.8, cov-6.0.0, timeout-2.4.0
-timeout: 10.0s
-timeout method: thread
-timeout func_only: False
 collecting ... collected 43 items
 tests/test_python_edit.py::test_basic_file_level_edit PASSED             [  2%]
 tests/test_python_edit.py::test_file_start_insertion PASSED              [  4%]
 tests/test_python_edit.py::test_class_replacement PASSED                 [  6%]
 tests/test_python_edit.py::test_nested_class_method PASSED               [  9%]
 tests/test_python_edit.py::test_nested_function PASSED                   [ 11%]
-tests/test_python_edit.py::test_insert_after_line FAILED                 [ 13%]
+tests/test_python_edit.py::test_insert_after_line PASSED                 [ 13%]
 tests/test_python_edit.py::test_insert_after_scope FAILED                [ 16%]
 tests/test_python_edit.py::test_import_handling PASSED                   [ 18%]
 tests/test_python_edit.py::test_decorated_method PASSED                  [ 20%]
@@ -24,18 +21,18 @@ tests/test_python_edit.py::test_async_function PASSED                    [ 30%]
 tests/test_python_edit.py::test_indentation_preservation FAILED          [ 32%]
 tests/test_python_edit.py::test_empty_file PASSED                        [ 34%]
 tests/test_python_edit.py::test_multiline_imports PASSED                 [ 37%]
-tests/test_python_edit.py::test_line_comment_preservation FAILED         [ 39%]
+tests/test_python_edit.py::test_line_comment_preservation PASSED         [ 39%]
 tests/test_python_edit.py::test_import_at_file_start PASSED              [ 41%]
-tests/test_python_edit.py::test_nested_scope_insertion FAILED            [ 44%]
+tests/test_python_edit.py::test_nested_scope_insertion PASSED            [ 44%]
 tests/test_python_edit.py::test_indentation_in_class FAILED              [ 46%]
 tests/test_python_edit.py::test_scope_path_matching PASSED               [ 48%]
 tests/test_python_edit.py::test_file_start_insertion_empty PASSED        [ 51%]
 tests/test_python_edit.py::test_file_start_insertion_with_imports PASSED [ 53%]
 tests/test_python_edit.py::test_file_start_insertion_with_code PASSED    [ 55%]
 tests/test_python_edit.py::test_file_start_insertion_multiple PASSED     [ 58%]
-tests/test_python_edit.py::test_line_insert_basic FAILED                 [ 60%]
+tests/test_python_edit.py::test_line_insert_basic PASSED                 [ 60%]
 tests/test_python_edit.py::test_line_insert_indentation FAILED           [ 62%]
-tests/test_python_edit.py::test_line_insert_preservation FAILED          [ 65%]
+tests/test_python_edit.py::test_line_insert_preservation PASSED          [ 65%]
 tests/test_python_edit.py::test_line_insert_ast_handling FAILED          [ 67%]
 tests/test_python_edit.py::test_line_insert_function_body FAILED         [ 69%]
 tests/test_python_edit.py::test_line_insert_exact_preservation PASSED    [ 72%]
@@ -52,65 +49,8 @@ tests/test_python_edit.py::test_minimal_multiline PASSED                 [ 95%]
 tests/test_python_edit.py::test_minimal_nested_multiline PASSED          [ 97%]
 tests/test_python_edit.py::test_minimal_complex_indent PASSED            [100%]
 ================================== FAILURES ===================================
-___________________________ test_insert_after_line ____________________________
-test_file = 'C:\\Users\\benbu\\AppData\\Local\\Temp\\pytest-of-benbu\\pytest-251\\test_insert_after_line0\\test_file.py'
-    def test_insert_after_line(test_file):
-        """Test inserting after specific line"""
-        new_code = 'x = 42'
-        result = python_edit(f'{test_file}::OuterClass::another_method', new_code, insert_after='# Insert here')
-        with open(test_file) as f:
-            print(f'\nDEBUG - File content:\n{f.read()}')
-        print(f'\nDEBUG - Result: {result}')
->       assert 'inserted after' in result
-E       AssertionError: assert 'inserted after' in 'Tool Failed: Insert point not found: # Insert here\nTraceback:\n'
-tests\test_python_edit.py:76: AssertionError
----------------------------- Captured stdout call -----------------------------
-DEBUG - Tokenized content:
-import os
-from typing import List, Optional
-def outer_func():
-    def inner_func():
-        pass
-    return inner_func
-class OuterClass:
-    def method(self):
-        pass
-    class InnerClass:
-        @staticmethod
-        def static_method():
-            pass
-        async def async_method(self):
-            pass
-    def another_method(self):
-        __TOKEN__2320496e736572742068657265__
-        pass
-DEBUG - File tokens:
-{'__TOKEN__2320496e736572742068657265__': '# Insert here'}
-DEBUG - File lines:
-['', 'import os', 'from typing import List, Optional', '', 'def outer_func():', '    def inner_func():', '        pass', '    return inner_func', '', 'class OuterClass:', '    def method(self):', '        pass', '', '    class InnerClass:', '        @staticmethod', '        def static_method():', '            pass', '', '        async def async_method(self):', '            pass', '', '    def another_method(self):', '        __TOKEN__2320496e736572742068657265__', '        pass', '']
-DEBUG - File content:
-import os
-from typing import List, Optional
-def outer_func():
-    def inner_func():
-        pass
-    return inner_func
-class OuterClass:
-    def method(self):
-        pass
-    class InnerClass:
-        @staticmethod
-        def static_method():
-            pass
-        async def async_method(self):
-            pass
-    def another_method(self):
-        # Insert here
-        pass
-DEBUG - Result: Tool Failed: Insert point not found: # Insert here
-Traceback:
 ___________________________ test_insert_after_scope ___________________________
-test_file = 'C:\\Users\\benbu\\AppData\\Local\\Temp\\pytest-of-benbu\\pytest-251\\test_insert_after_scope0\\test_file.py'
+test_file = 'C:\\Users\\benbu\\AppData\\Local\\Temp\\pytest-of-benbu\\pytest-256\\test_insert_after_scope0\\test_file.py'
     def test_insert_after_scope(test_file):
         """Test inserting after a scope"""
         new_method = '\n    def extra_method(self):\n        pass\n    '
@@ -143,7 +83,7 @@ DEBUG - File tokens:
 DEBUG - File lines:
 ['', 'import os', 'from typing import List, Optional', '', 'def outer_func():', '    def inner_func():', '        pass', '    return inner_func', '', 'class OuterClass:', '    def method(self):', '        pass', '', '    class InnerClass:', '        @staticmethod', '        def static_method():', '            pass', '', '        async def async_method(self):', '            pass', '', '    def another_method(self):', '        __TOKEN__2320496e736572742068657265__', '        pass', '']
 ________________________ test_indentation_preservation ________________________
-test_file = 'C:\\Users\\benbu\\AppData\\Local\\Temp\\pytest-of-benbu\\pytest-251\\test_indentation_preservation0\\test_file.py'
+test_file = 'C:\\Users\\benbu\\AppData\\Local\\Temp\\pytest-of-benbu\\pytest-256\\test_indentation_preservation0\\test_file.py'
     def test_indentation_preservation(test_file):
         """Test proper indentation is maintained"""
         new_method = '\n    def indented_method(self):\n        if True:\n            x = 1\n            if True:\n                y = 2\n    '
@@ -177,67 +117,8 @@ DEBUG - File tokens:
 {'__TOKEN__2320496e736572742068657265__': '# Insert here'}
 DEBUG - File lines:
 ['', 'import os', 'from typing import List, Optional', '', 'def outer_func():', '    def inner_func():', '        pass', '    return inner_func', '', 'class OuterClass:', '    def method(self):', '        pass', '', '    class InnerClass:', '        @staticmethod', '        def static_method():', '            pass', '', '        async def async_method(self):', '            pass', '', '    def another_method(self):', '        __TOKEN__2320496e736572742068657265__', '        pass', '']
-_______________________ test_line_comment_preservation ________________________
-tmp_path = WindowsPath('C:/Users/benbu/AppData/Local/Temp/pytest-of-benbu/pytest-251/test_line_comment_preservation0')
-    def test_line_comment_preservation(tmp_path):
-        """Test that comments are preserved when inserting after them"""
-        content = '\n    def my_func():\n        # First comment\n        x = 1\n        # Target comment\n        y = 2\n    '
-        test_file = setup_test_file(tmp_path, content)
-        result = python_edit(f'{test_file}::my_func', 'z = 3', insert_after='# Target comment')
-        with open(test_file) as f:
-            content = f.read()
-        print(f'DEBUG - Result content:\n{content}')
-        assert '# Target comment' in content
->       assert 'z = 3' in content
-E       AssertionError: assert 'z = 3' in '\ndef my_func():\n    # First comment\n    x = 1\n    # Target comment\n    y = 2\n'
-tests\test_python_edit.py:175: AssertionError
----------------------------- Captured stdout call -----------------------------
-DEBUG - Tokenized content:
-def my_func():
-    __TOKEN__2320466972737420636f6d6d656e74__
-    x = 1
-    __TOKEN__232054617267657420636f6d6d656e74__
-    y = 2
-DEBUG - File tokens:
-{'__TOKEN__2320466972737420636f6d6d656e74__': '# First comment', '__TOKEN__232054617267657420636f6d6d656e74__': '# Target comment'}
-DEBUG - File lines:
-['', 'def my_func():', '    __TOKEN__2320466972737420636f6d6d656e74__', '    x = 1', '    __TOKEN__232054617267657420636f6d6d656e74__', '    y = 2', '']
-DEBUG - Result content:
-def my_func():
-    # First comment
-    x = 1
-    # Target comment
-    y = 2
-_________________________ test_nested_scope_insertion _________________________
-tmp_path = WindowsPath('C:/Users/benbu/AppData/Local/Temp/pytest-of-benbu/pytest-251/test_nested_scope_insertion0')
-    def test_nested_scope_insertion(tmp_path):
-        """Test inserting into deeply nested scopes"""
-        content = '\n    class Outer:\n        class Inner:\n            def method(self):\n                x = 1\n    '
-        test_file = setup_test_file(tmp_path, content)
-        result = python_edit(f'{test_file}::Outer::Inner::method', 'y = 2', insert_after='x = 1')
-        with open(test_file) as f:
-            content = f.read()
-        print(f'DEBUG - Result content:\n{content}')
->       assert 'y = 2' in content
-E       AssertionError: assert 'y = 2' in 'class Outer:\n\n    class Inner:\n\n        def method(self):\n            x = 1'
-tests\test_python_edit.py:198: AssertionError
----------------------------- Captured stdout call -----------------------------
-DEBUG - Tokenized content:
-class Outer:
-    class Inner:
-        def method(self):
-            x = 1
-DEBUG - File tokens:
-{}
-DEBUG - File lines:
-['', 'class Outer:', '    class Inner:', '        def method(self):', '            x = 1', '']
-DEBUG - Result content:
-class Outer:
-    class Inner:
-        def method(self):
-            x = 1
 __________________________ test_indentation_in_class __________________________
-tmp_path = WindowsPath('C:/Users/benbu/AppData/Local/Temp/pytest-of-benbu/pytest-251/test_indentation_in_class0')
+tmp_path = WindowsPath('C:/Users/benbu/AppData/Local/Temp/pytest-of-benbu/pytest-256/test_indentation_in_class0')
     def test_indentation_in_class(tmp_path):
         """Test that proper indentation is maintained in class methods"""
         content = '\n    class MyClass:\n        def method_one(self):\n            pass\n    '
@@ -263,34 +144,6 @@ DEBUG - Result content:
 class MyClass:
     def method_one(self):
         pass
-___________________________ test_line_insert_basic ____________________________
-    def test_line_insert_basic():
-        """Test inserting after a simple line in a function"""
-        content = '\n    def test_func():\n        x = 1\n        # marker\n        z = 3\n    '
-        test_file = setup_test_file('tmp', content)
-        result = python_edit(f'{test_file}::test_func', 'y = 2', insert_after='# marker')
-        with open(test_file) as f:
-            content = f.read()
-        print(f'DEBUG - Result content:\n{content}')
-        assert '# marker\n' in content
->       assert 'y = 2' in content
-E       AssertionError: assert 'y = 2' in '\ndef test_func():\n    x = 1\n    # marker\n    z = 3\n'
-tests\test_python_edit.py:281: AssertionError
----------------------------- Captured stdout call -----------------------------
-DEBUG - Tokenized content:
-def test_func():
-    x = 1
-    __TOKEN__23206d61726b6572__
-    z = 3
-DEBUG - File tokens:
-{'__TOKEN__23206d61726b6572__': '# marker'}
-DEBUG - File lines:
-['', 'def test_func():', '    x = 1', '    __TOKEN__23206d61726b6572__', '    z = 3', '']
-DEBUG - Result content:
-def test_func():
-    x = 1
-    # marker
-    z = 3
 ________________________ test_line_insert_indentation _________________________
     def test_line_insert_indentation():
         """Test that inserted code maintains proper indentation"""
@@ -302,9 +155,19 @@ ________________________ test_line_insert_indentation _________________________
         print(f'DEBUG - Result content:\n{content}')
         lines = content.split('\n')
         marker_line = next((i for i, line in enumerate(lines) if '# marker' in line))
->       y_line = next((i for i, line in enumerate(lines) if 'y = 2' in line))
-E       StopIteration
-tests\test_python_edit.py:295: StopIteration
+        y_line = next((i for i, line in enumerate(lines) if 'y = 2' in line))
+        assert marker_line < y_line
+>       assert len(lines[marker_line]) - len(lines[marker_line].lstrip()) == len(lines[y_line]) - len(lines[y_line].lstrip())
+E       AssertionError: assert (16 - 8) == (9 - 5)
+E        +  where 16 = len('        # marker')
+E        +  and   8 = len('# marker')
+E        +    where '# marker' = <built-in method lstrip of str object at 0x000002DF2ACF15B0>()
+E        +      where <built-in method lstrip of str object at 0x000002DF2ACF15B0> = '        # marker'.lstrip
+E        +  and   9 = len('    y = 2')
+E        +  and   5 = len('y = 2')
+E        +    where 'y = 2' = <built-in method lstrip of str object at 0x000002DF2ACF1470>()
+E        +      where <built-in method lstrip of str object at 0x000002DF2ACF1470> = '    y = 2'.lstrip
+tests\test_python_edit.py:297: AssertionError
 ---------------------------- Captured stdout call -----------------------------
 DEBUG - Tokenized content:
 def test_func():
@@ -322,43 +185,7 @@ def test_func():
         x = 1
         # marker
         z = 3
-________________________ test_line_insert_preservation ________________________
-    def test_line_insert_preservation():
-        """Test that the line we insert after is preserved"""
-        content = '\n    def simple():\n        # keep me\n        pass\n    '
-        test_file = setup_test_file('tmp', content)
-        result = python_edit(f'{test_file}::simple', 'x = 1', insert_after='# keep me')
-        with open(test_file) as f:
-            content = f.read()
-        print(f'DEBUG - File content:\n{content}')
-        print(f'DEBUG - Result: {result}')
-        lines = [l.strip() for l in content.split('\n') if l.strip()]
-        print(f'DEBUG - Stripped lines: {lines}')
->       assert lines == ['def simple():', '# keep me', 'x = 1', 'pass']
-E       AssertionError: assert ['def simple(...p me', 'pass'] == ['def simple(... = 1', 'pass']
-E         At index 2 diff: 'pass' != 'x = 1'
-E         Right contains one more item: 'pass'
-E         Full diff:
-E         - ['def simple():', '# keep me', 'x = 1', 'pass']
-E         ?                               ---------
-E         + ['def simple():', '# keep me', 'pass']
-tests\test_python_edit.py:310: AssertionError
----------------------------- Captured stdout call -----------------------------
-DEBUG - Tokenized content:
-def simple():
-    __TOKEN__23206b656570206d65__
-    pass
-DEBUG - File tokens:
-{'__TOKEN__23206b656570206d65__': '# keep me'}
-DEBUG - File lines:
-['', 'def simple():', '    __TOKEN__23206b656570206d65__', '    pass', '']
-DEBUG - File content:
-def simple():
-    # keep me
-    pass
-DEBUG - Result: Tool Failed: Insert point not found: # keep me
-Traceback:
-DEBUG - Stripped lines: ['def simple():', '# keep me', 'pass']
+    y = 2
 ________________________ test_line_insert_ast_handling ________________________
     def test_line_insert_ast_handling():
         """Test that comments and non-AST lines are preserved during insertion"""
@@ -559,18 +386,13 @@ DEBUG - Expected:
     # Final comment
     y = 2  # second assignment
 =========================== short test summary info ===========================
-FAILED tests/test_python_edit.py::test_insert_after_line - AssertionError: as...
 FAILED tests/test_python_edit.py::test_insert_after_scope - AssertionError: a...
 FAILED tests/test_python_edit.py::test_indentation_preservation - AssertionEr...
-FAILED tests/test_python_edit.py::test_line_comment_preservation - AssertionE...
-FAILED tests/test_python_edit.py::test_nested_scope_insertion - AssertionErro...
 FAILED tests/test_python_edit.py::test_indentation_in_class - AssertionError:...
-FAILED tests/test_python_edit.py::test_line_insert_basic - AssertionError: as...
-FAILED tests/test_python_edit.py::test_line_insert_indentation - StopIteration
-FAILED tests/test_python_edit.py::test_line_insert_preservation - AssertionEr...
+FAILED tests/test_python_edit.py::test_line_insert_indentation - AssertionErr...
 FAILED tests/test_python_edit.py::test_line_insert_ast_handling - ValueError:...
 FAILED tests/test_python_edit.py::test_line_insert_function_body - ValueError...
 FAILED tests/test_python_edit.py::test_source_preservation - assert 'z = 3' i...
 FAILED tests/test_python_edit.py::test_ast_tree_preservation - assert 'z = 3'...
 FAILED tests/test_python_edit.py::test_file_level_preservation - AssertionErr...
-======================== 14 failed, 29 passed in 1.11s ========================
+======================== 9 failed, 34 passed in 0.94s =========================
