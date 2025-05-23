@@ -3,7 +3,7 @@ import traceback
 import textwrap
 import difflib
 
-def view(file_path: str, max_lines: str=2500):
+def view(file_path: str, max_lines: str = 2500):
     """
     Display the contents of a file with line numbers.
 
@@ -12,19 +12,18 @@ def view(file_path: str, max_lines: str=2500):
     - max_lines (int, optional): Maximum number of lines to display. Defaults to 2500.
 
     Returns:
-    A string containing the file contents with line numbers.
-
-    cost: varies
+    A string containing the file contents with line numbers, 
+    limited to the specified maximum number of lines.
     """
-    max_lines = int(max_lines)
     encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
+    max_lines = int(max_lines)
     for encoding in encodings:
         try:
             with open(file_path, 'r', encoding=encoding) as file:
                 lines = file.readlines()
-                if len(lines) > max_lines:
-                    return f'Error: File has {len(lines)} lines, which exceeds the maximum of {max_lines} lines.'
-                numbered_lines = [f'{i + 1}:{line.rstrip()}' for i, line in enumerate(lines)]
+                # Slice the lines to max_lines
+                truncated_lines = lines[:max_lines] if max_lines < len(lines)-1 else lines
+                numbered_lines = [f'{i + 1}:{line.rstrip()}' for i, line in enumerate(truncated_lines)]
                 return '\n'.join(numbered_lines)
         except UnicodeDecodeError:
             continue
@@ -193,7 +192,7 @@ def patch_edit(file_path: str, patch_content: str):
 
             # Try to match at expected position with or without whitespace
             if adjusted_start <= len(current_lines):
-                found, was_whitespace = _check_match_type(current_lines, adjusted_start, context_before)
+                found, was_whitespace = _check_match_type(current_lines, adjusted_start-1, context_before) #please forgive me for my off by one errors
                 if found:
                     exact_match = not was_whitespace
                     if was_whitespace:

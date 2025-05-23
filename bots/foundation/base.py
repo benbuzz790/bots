@@ -77,6 +77,8 @@ class Engines(str, Enum):
     CLAUDE35_SONNET_20240620 = 'claude-3-5-sonnet-20240620'
     CLAUDE35_SONNET_20241022 = 'claude-3-5-sonnet-20241022'
     CLAUDE37_SONNET_20250219 = 'claude-3-7-sonnet-20250219'
+    CLAUDE4_OPUS = 'claude-opus-4-20250514'
+    CLAUDE4_SONNET = 'claude-sonnet-4-20250514'
 
     @staticmethod
     def get(name: str) -> Optional['Engines']:

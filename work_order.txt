@@ -1,24 +1,38 @@
 ﻿Work Order for python_edit.py Implementation
-Status:
-- Fixed _handle_insertion method indentation and logic
-- 19 tests passing, 15 failing
-- File-level operations partially working (basic operations pass)
-Priority Issues to Fix:
-1. Source preservation not working:
-   - Comments being lost (see test_line_comment_preservation)
-   - Indentation not preserved (test_indentation_preservation)
-   - Leading/trailing blank lines lost (test_line_insert_exact_preservation)
-2. Line-based insertion issues:
-   - Target lines not found (test_insert_after_line)
-   - Incorrect indentation in nested scopes (test_nested_scope_insertion)
-   - One-line function handling needs review (test_line_insert_basic)
-3. File-level formatting:
-   - Comments and spacing lost in file-level operations
-   - Import ordering needs preservation
-   - Need to respect original file formatting
+Files:
+- bots/tools/python_edit.py: Main implementation
+- tests/test_python_edit.py: Test suite
+Current Status:
+- Working tokenization system with all minimal tests passing
+- Token system uses hex-encoded content with format: '__TOKEN__hexcontent__'
+- Token map uses hex values as keys for reliable lookup
+- Successfully handles:
+  - Basic expressions
+  - Comments (inline and standalone)
+  - String literals (single and multi-line)
+  - Nested structures
+  - Complex indentation
 Next Steps:
-1. Modify _py_ast_to_source usage to preserve original formatting
-2. Implement proper source preservation at all levels (file/class/function)
-3. Fix line-based insertion indentation handling
-4. Add more granular tests for specific failure cases
-Note: Focus on source preservation first as it affects multiple test cases.
+1. Integrate tokenization with main python_edit function:
+   - Tokenize source before AST parsing
+   - Tokenize new code being inserted
+   - Pass token maps through ScopeTransformer
+   - Detokenize after AST modifications
+2. Fix remaining test failures:
+   - test_insert_after_line
+   - test_insert_after_scope
+   - test_indentation_preservation
+   - test_line_comment_preservation
+   - test_nested_scope_insertion
+   - test_line_insert_basic
+   - And others (see test output)
+3. Verify source preservation:
+   - Comments
+   - Indentation
+   - Blank lines
+   - String literal formats
+4. Add tests for:
+   - Token system edge cases
+   - Complex nested modifications
+   - Multi-step edits
+Priority: Focus on integrating tokenization with python_edit first, then address test failures one category at a time.

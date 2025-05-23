@@ -120,7 +120,7 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
     if anthropic_key:
         try:
             bot = AnthropicBot(name='Claude', 
-                               model_engine=bots.foundation.base.Engines.CLAUDE35_SONNET_20241022)
+                               model_engine=bots.foundation.base.Engines.CLAUDE4_OPUS)
         except Exception as e:
             pretty(f"Failed to initialize Anthropic bot: {e}", "System")
     elif openai_key:

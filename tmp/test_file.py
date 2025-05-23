@@ -1,4 +1,9 @@
-z = 3
-import os
-x = 1
-y = 2
+
+# Top level comment
+import os  # os import
+
+# Another comment
+x = 1  # first assignment
+
+# Final comment
+y = 2  # second assignment

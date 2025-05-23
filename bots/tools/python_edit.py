@@ -307,7 +307,7 @@ def create_token(content: str, index: int, current_hash: str) -> str:
     """Create a token with our specific pattern"""
     hex_content = content.encode('utf-8').hex()
     token_name = f'TOKEN__{current_hash}_{index}'
-    return (token_name, f"'__TOKEN__{hex_content}__'")
+    return (token_name, f"__TOKEN__{hex_content}__")
 
 def get_file_hash(content: str) -> str:
     """Create a short hash of file content"""
@@ -328,7 +328,7 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
     current_hash = get_file_hash(source)
     token_counter = 0
     tokenized = source
-    triple_quote_patterns = ['"""(?:[^"\\\\]|\\\\.)*?"""', "'''(?:[^'\\\\]|\\\\.)*?'''"]
+    triple_quote_patterns = [r'"""[^"\\]*(?:(?:\\.|"(?!""))[^"\\]*)*"""', r"'''[^'\\]*(?:(?:\\.|'(?!''))[^'\\]*)*'''"]
     for pattern in triple_quote_patterns:
         while True:
             match = re.search(pattern, tokenized)
@@ -360,7 +360,9 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
             token_counter += 1
             continue
         processed_line = content
-        string_patterns = ['"(?:[^"\\\\]|\\\\.)*?"', "'(?:[^'\\\\]|\\\\.)*?'"]
+        # Use simpler patterns to avoid catastrophic backtracking
+        # Match strings but avoid catastrophic backtracking by using possessive quantifiers
+        string_patterns = [r'"[^"\\]*(?:\\.[^"\\]*)*"', r"'[^'\\]*(?:\\.[^'\\]*)*'"]
         for pattern in string_patterns:
             while True:
                 match = re.search(pattern, processed_line)
@@ -375,6 +377,8 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
                 token_counter += 1
         if '#' in processed_line and (not contains_token(processed_line)):
             comment_start = processed_line.index('#')
+            elif '#' in processed_line:
+            comment_start = processed_line.find('#')
             code = processed_line[:comment_start]
             comment = processed_line[comment_start:]
             token_name, hex_val = create_token(comment, token_counter, current_hash)

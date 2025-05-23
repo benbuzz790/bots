@@ -446,7 +446,7 @@ def test_tokenize_basic():
     assert '# Header comment' not in tokenized
     assert '"string literal"' not in tokenized
     assert '# Inline comment' not in tokenized
-    assert ';;;TOKEN__' in tokenized
+    assert '__TOKEN__' in tokenized
     assert detokenize_source(tokenized, token_map) == source
     restored = detokenize_source(tokenized, token_map)
     assert restored == source
@@ -465,7 +465,7 @@ def test_tokenize_edge_cases():
     """Test tokenization of edge cases"""
     source = '\n    x = 1; y = 2  # Multiple statements\n    # Comment with ; semicolon\n    s = "String # with hash"\n    q = \'String ; with semicolon\'\n    """\n    Multiline string\n    # with comment\n    ; with semicolon\n    """\n    '
     tokenized, token_map = tokenize_source(source)
-    assert ';;;TOKEN__' in tokenized
+    assert '__TOKEN__' in tokenized
     assert detokenize_source(tokenized, token_map) == source
     restored = detokenize_source(tokenized, token_map)
     assert restored == source
