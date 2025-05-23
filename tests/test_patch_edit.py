@@ -281,7 +281,7 @@ class TestGitPatch(unittest.TestCase):
     This tests the fallback to context matching when exact line matching fails."""
         with open(self.test_file, 'w') as f:
             f.write('line 1\nline 2\nline 3\nline 4\nline 5\n')
-        patch = '@@ -4,3 +4,3 @@\nline 2\n-line 3\n+modified line 3\nline 4'
+        patch = '@@ -6,3 +6,3 @@\nline 2\n-line 3\n+modified line 3\nline 4'
         result = patch_edit(self.test_file, patch)
         self.assertIn('Successfully', result)
         self.assertIn('(different from specified line', result)
