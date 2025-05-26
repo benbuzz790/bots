@@ -1,10 +1,12 @@
-z = 3
-import os
+
 # Top level comment
-# os import
-# Another comment
-x = 1
-# first assignment
-# Final comment
-y = 2
-# second assignment
+import os  # os import
+
+def example():  # example function
+    """Docstring."""
+
+    # First we do x
+    x = 1  # comment about x
+
+    # Then we do y
+    y = 2  # comment about y

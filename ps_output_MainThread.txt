@@ -42,26 +42,18 @@ test_python_edit.py::test_file_level_preservation FAILED                 [ 77%]
 test_python_edit.py::test_minimal_tokenize PASSED                        [ 79%]
 test_python_edit.py::test_minimal_tokenize_with_comment PASSED           [ 81%]
 test_python_edit.py::test_minimal_edit PASSED                            [ 84%]
-test_python_edit.py::test_tokenize_basic FAILED                          [ 86%]
-test_python_edit.py::test_tokenize_multiline FAILED                      [ 88%]
-test_python_edit.py::test_tokenize_edge_cases FAILED                     [ 90%]
+test_python_edit.py::test_tokenize_basic PASSED                          [ 86%]
+test_python_edit.py::test_tokenize_multiline PASSED                      [ 88%]
+test_python_edit.py::test_tokenize_edge_cases PASSED                     [ 90%]
 test_python_edit.py::test_minimal_multiline PASSED                       [ 93%]
 test_python_edit.py::test_minimal_nested_multiline PASSED                [ 95%]
 test_python_edit.py::test_minimal_complex_indent PASSED                  [ 97%]
 test_python_edit.py::test_ast_unparse_behavior PASSED                    [100%]
 ================================== FAILURES ===================================
 _____________________ test_line_insert_exact_preservation _____________________
-    def test_line_insert_exact_preservation():
-        """Test that lines are preserved exactly as they appear in the source"""
-        content = '\n    def func():\n        x = 1  # comment one\n\n        # marker with spaces around\n\n        y = 2  # comment two\n    '
-        test_file = setup_test_file('tmp', content)
-        result = python_edit(f'{test_file}::func', 'z = 3', insert_after='# marker with spaces around')
-        with open(test_file) as f:
-            content = f.read()
-        print(f'DEBUG - File content:\n{content}')
->       assert 'x = 1  # comment one' in content
-E       AssertionError: assert 'x = 1  # comment one' in 'def func():\n    x = 1\n    # comment one\n    # marker with spaces around\n    z = 3\n    y = 2\n    # comment two'
-test_python_edit.py:355: AssertionError
+test_python_edit.py:355: in test_line_insert_exact_preservation
+    assert 'x = 1  # comment one' in content
+E   AssertionError: assert 'x = 1  # comment one' in 'def func():\n    x = 1\n    # comment one\n    # marker with spaces around\n    z = 3\n    y = 2\n    # comment two'
 ---------------------------- Captured stdout call -----------------------------
 DEBUG - File content:
 def func():
@@ -72,19 +64,9 @@ def func():
     y = 2
     # comment two
 __________________________ test_source_preservation ___________________________
-    def test_source_preservation():
-        """Test that source lines are preserved exactly when modifying a function"""
-        content = '\n    def example():\n        """This is a docstring."""\n\n        # First we do x\n        x = 1  # comment about x\n\n        # Then we do y\n        y = 2  # comment about y\n    '
-        test_file = setup_test_file('tmp', content)
-        result = python_edit(f'{test_file}::example', 'z = 3', insert_after='# Then we do y')
-        with open(test_file) as f:
-            content = f.read()
-        print(f'DEBUG - File content:\n{content}')
-        assert '"""This is a docstring."""' in content
-        assert '# First we do x' in content
->       assert 'x = 1  # comment about x' in content
-E       assert 'x = 1  # comment about x' in 'def example():\n    """This is a docstring."""\n    # First we do x\n    x = 1\n    # comment about x\n    # Then we do y\n    z = 3\n    y = 2\n    # comment about y'
-test_python_edit.py:373: AssertionError
+test_python_edit.py:373: in test_source_preservation
+    assert 'x = 1  # comment about x' in content
+E   assert 'x = 1  # comment about x' in 'def example():\n    """This is a docstring."""\n    # First we do x\n    x = 1\n    # comment about x\n    # Then we do y\n    z = 3\n    y = 2\n    # comment about y'
 ---------------------------- Captured stdout call -----------------------------
 DEBUG - File content:
 def example():
@@ -97,24 +79,9 @@ def example():
     y = 2
     # comment about y
 _________________________ test_ast_tree_preservation __________________________
-    def test_ast_tree_preservation():
-        """Test that source preservation works through AST tree reconstruction"""
-        content = '\n    # Top level comment\n    import os  # os import\n\n    def example():  # example function\n        """Docstring."""\n\n        # First we do x\n        x = 1  # comment about x\n\n        # Then we do y\n        y = 2  # comment about y\n    '
-        test_file = setup_test_file('tmp', content)
-        result = python_edit(f'{test_file}::example', 'z = 3', insert_after='# Then we do y')
-        with open(test_file) as f:
-            content = f.read()
-        print(f'DEBUG - File content:\n{content}')
-        assert '# Top level comment' in content
-        assert 'import os  # os import' in content
-        assert 'def example():  # example function' in content
-        assert '"""Docstring."""' in content
-        assert '# First we do x' in content
-        assert 'x = 1  # comment about x' in content
-        assert '# Then we do y' in content
->       assert 'z = 3' in content
-E       assert 'z = 3' in '\n# Top level comment\nimport os  # os import\n\ndef example():  # example function\n    """Docstring."""\n\n    # First we do x\n    x = 1  # comment about x\n\n    # Then we do y\n    y = 2  # comment about y\n'
-test_python_edit.py:398: AssertionError
+test_python_edit.py:398: in test_ast_tree_preservation
+    assert 'z = 3' in content
+E   assert 'z = 3' in '\n# Top level comment\nimport os  # os import\n\ndef example():  # example function\n    """Docstring."""\n\n    # First we do x\n    x = 1  # comment about x\n\n    # Then we do y\n    y = 2  # comment about y\n'
 ---------------------------- Captured stdout call -----------------------------
 DEBUG - File content:
 # Top level comment
@@ -126,28 +93,18 @@ def example():  # example function
     # Then we do y
     y = 2  # comment about y
 ________________________ test_file_level_preservation _________________________
-    def test_file_level_preservation():
-        """Test that file-level operations preserve formatting"""
-        content = '\n    # Top level comment\n    import os  # os import\n\n    # Another comment\n    x = 1  # first assignment\n\n    # Final comment\n    y = 2  # second assignment\n    '
-        test_file = setup_test_file('tmp', content)
-        result = python_edit(test_file, 'z = 3', insert_after='__FILE_START__')
-        with open(test_file) as f:
-            content = f.read()
-        print(f'DEBUG - File content:\n{content}')
-        expected = '\n    # Top level comment\n    import os  # os import\n\n    z = 3\n\n    # Another comment\n    x = 1  # first assignment\n\n    # Final comment\n    y = 2  # second assignment\n    '.strip()
-        print(f'DEBUG - Expected:\n{expected}')
->       assert content.strip() == expected
-E       AssertionError: assert 'z = 3\nimpor...nd assignment' == '# Top level ...nd assignment'
-E         + z = 3
-E         + import os
-E           # Top level comment
-E         + # os import
-E         -     import os  # os import
-E         - 
-E         -     z = 3...
-E         
-E         ...Full output truncated (16 lines hidden), use '-vv' to show
-test_python_edit.py:411: AssertionError
+test_python_edit.py:411: in test_file_level_preservation
+    assert content.strip() == expected
+E   AssertionError: assert 'z = 3\nimpor...nd assignment' == '# Top level ...nd assignment'
+E     + z = 3
+E     + import os
+E       # Top level comment
+E     + # os import
+E     -     import os  # os import
+E     - 
+E     -     z = 3...
+E     
+E     ...Full output truncated (16 lines hidden), use '-vv' to show
 ---------------------------- Captured stdout call -----------------------------
 DEBUG - File content:
 z = 3
@@ -168,52 +125,9 @@ DEBUG - Expected:
     x = 1  # first assignment
     # Final comment
     y = 2  # second assignment
-_____________________________ test_tokenize_basic _____________________________
-    def test_tokenize_basic():
-        """Test basic tokenization of comments and strings"""
-        source = '\n    # Header comment\n    x = "string literal"  # Inline comment\n    y = 1\n    '
-        tokenized, token_map = _tokenize_source(source)
-        assert '# Header comment' not in tokenized
->       assert '"string literal"' not in tokenized
-E       assert '"string literal"' not in '\n    """TO... y = 1\n    '
-E         '"string literal"' is contained here:
-E           
-E               """TOKEN_1b0d354e_0"""
-E               x = "string literal"; TOKEN_1b0d354e_1
-E         ?         ++++++++++++++++
-E               y = 1
-test_python_edit.py:447: AssertionError
-___________________________ test_tokenize_multiline ___________________________
-    def test_tokenize_multiline():
-        """Test tokenization of multiline strings and nested structures"""
-        source = '\n    def func():\n        """\n        Multiline\n        docstring\n        """\n        # Comment\n        if True:\n            # Nested comment\n            x = 1\n    '
-        tokenized, token_map = _tokenize_source(source)
->       assert '"""' not in tokenized
-E       assert '"""' not in '\n    def f... x = 1\n    '
-E         '"""' is contained here:
-E           
-E               def func():
-E                   TOKEN_b61e2fc5_0
-E                   """TOKEN_b61e2fc5_1"""
-E         ?         +++
-E                   if True:...
-E         
-E         ...Full output truncated (3 lines hidden), use '-vv' to show
-test_python_edit.py:458: AssertionError
-__________________________ test_tokenize_edge_cases ___________________________
-    def test_tokenize_edge_cases():
-        """Test tokenization of edge cases"""
-        source = '\n    x = 1; y = 2  # Multiple statements\n    # Comment with ; semicolon\n    s = "String # with hash"\n    q = \'String ; with semicolon\'\n    """\n    Multiline string\n    # with comment\n    ; with semicolon\n    """\n    '
-        tokenized, token_map = _tokenize_source(source)
->       assert '__TOKEN__' in tokenized
-E       assert '__TOKEN__' in '\n    x = 1; y = 2; TOKEN_8b23220a_1\n    """TOKEN_8b23220a_2"""\n    s = "String; TOKEN_8b23220a_3\n    q = TOKEN_8b23220a_4\n    TOKEN_8b23220a_0\n    '
-test_python_edit.py:468: AssertionError
 =========================== short test summary info ===========================
 FAILED test_python_edit.py::test_line_insert_exact_preservation - AssertionEr...
 FAILED test_python_edit.py::test_source_preservation - assert 'x = 1  # comme...
 FAILED test_python_edit.py::test_ast_tree_preservation - assert 'z = 3' in '\...
 FAILED test_python_edit.py::test_file_level_preservation - AssertionError: as...
-FAILED test_python_edit.py::test_tokenize_basic - assert '"string literal"' n...
-FAILED test_python_edit.py::test_tokenize_multiline - assert '"""' not in '\n...
-FAILED test_python_edit.py::test_tokenize_edge_cases - assert '__TOKEN__' in ...
-======================== 7 failed, 37 passed in 2.40s =========================
+======================== 4 failed, 40 passed in 1.64s =========================

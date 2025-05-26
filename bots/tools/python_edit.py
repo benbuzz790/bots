@@ -446,7 +446,7 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
                                 end += 2
                             else:
                                 end += 1
-                        break
+                    break
         if '#' in processed_line:
             comment_start = processed_line.index('#')
             code = processed_line[:comment_start]
@@ -454,8 +454,19 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
             spacing_and_comment = processed_line[code_end:]
             token_name, hex_val = _create_token(spacing_and_comment, token_counter, current_hash)
             token_map[hex_val] = spacing_and_comment
-            processed_line = code.rstrip() + '; ' + hex_val
-            token_counter += 1
+            code_stripped = code.rstrip()
+            compound_patterns = ['def ', 'class ', 'if ', 'elif ', 'for ', 'while ', 'with ', 'async def ']
+            is_compound_with_colon = any((code_stripped.startswith(pattern) for pattern in compound_patterns)) and code_stripped.endswith(':')
+            is_standalone_colon = code_stripped in ['else:', 'try:', 'finally:']
+            is_compound = is_compound_with_colon or is_standalone_colon
+            if is_compound:
+                processed_lines.append(indentation + code_stripped)
+                processed_lines.append(indentation + f'# {hex_val}')
+                token_counter += 1
+                continue
+            else:
+                processed_line = code.rstrip() + '; ' + hex_val
+                token_counter += 1
         processed_lines.append(indentation + processed_line)
     return ('\n'.join(processed_lines), token_map)
 
@@ -477,6 +488,13 @@ def _detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
                 line_end = len(result)
             line = result[line_start:line_end]
             line_stripped = line.strip()
+            if line_stripped.startswith('# ') and line_stripped[2:] == token_value:
+                prev_line_start = result.rfind('\n', 0, line_start - 1) + 1
+                prev_line = result[prev_line_start:line_start - 1]
+                if prev_line.strip():
+                    reunited = prev_line + original
+                    result = result[:prev_line_start] + reunited + result[line_end:]
+                    continue
             is_standalone_comment = line_stripped == token_value or line_stripped == f"'{token_value}'" or line_stripped == f'"{token_value}"'
             if is_standalone_comment:
                 indent = line[:len(line) - len(line.lstrip())]
