@@ -537,7 +537,7 @@ def _reunite_inline_comments(source: str, token_map: Dict[str, str]) -> str:
 def _should_reunite_comment(code_line: str, comment_line: str, token_map: Dict[str, str]) -> bool:
     """
     Determine if a comment line should be reunited with the previous code line.
-    Only reunite comments that were originally inline (had non-whitespace code before #).
+    Only reunite comments that were originally inline (have leading spaces before #).
     """
     if not comment_line.strip().startswith('#'):
         return False
@@ -546,10 +546,9 @@ def _should_reunite_comment(code_line: str, comment_line: str, token_map: Dict[s
         return False
     for original in token_map.values():
         if isinstance(original, str) and original.strip() == comment_line.strip():
-            hash_pos = original.find('#')
-            if hash_pos > 0:
-                before_hash = original[:hash_pos]
-                return before_hash.strip() != ''
+            stripped_original = original.lstrip()
+            if stripped_original.startswith('#') and len(original) > len(stripped_original):
+                return True
     return False
 
 def _code_parts_match(current_code: str, stored_code: str) -> bool:
