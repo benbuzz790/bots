@@ -26,6 +26,7 @@ Type your messages normally to chat.
 from bots.foundation.openai_bots import ChatGPT_Bot
 from bots.foundation.anthropic_bots import AnthropicBot
 import sys
+import bots.tools.python_edit
 import bots.tools.python_editing_tools
 import bots.tools.terminal_tools
 import bots.tools.code_tools
@@ -120,7 +121,7 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
     if anthropic_key:
         try:
             bot = AnthropicBot(name='Claude', 
-                               model_engine=bots.foundation.base.Engines.CLAUDE4_OPUS)
+                               model_engine=bots.foundation.base.Engines.CLAUDE4_SONNET)
         except Exception as e:
             pretty(f"Failed to initialize Anthropic bot: {e}", "System")
     elif openai_key:
@@ -131,6 +132,7 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
     else:
         raise ValueError('No OpenAI or Anthropic API keys found. Set up your key')
     
+    #bot.add_tools(bots.tools.python_edit)
     bot.add_tools(bots.tools.python_editing_tools)
     bot.add_tools(bots.tools.code_tools)
     bot.add_tools(bots.tools.terminal_tools)

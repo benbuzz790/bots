@@ -3,20 +3,19 @@ import traceback
 import textwrap
 import difflib
 
-def view(file_path: str, max_lines: str = 2500):
+def read_file(file_path: str):
     """
     Display the contents of a file with line numbers.
 
     Parameters:
     - file_path (str): The path to the file to be viewed.
-    - max_lines (int, optional): Maximum number of lines to display. Defaults to 2500.
 
     Returns:
     A string containing the file contents with line numbers, 
     limited to the specified maximum number of lines.
     """
     encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
-    max_lines = int(max_lines)
+    max_lines = 2500
     for encoding in encodings:
         try:
             with open(file_path, 'r', encoding=encoding) as file:

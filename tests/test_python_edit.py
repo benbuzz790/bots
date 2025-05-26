@@ -2,7 +2,7 @@ import os
 import pytest
 from textwrap import dedent
 from bots.tools.python_edit import python_edit
-from bots.tools.python_edit import tokenize_source, detokenize_source
+from bots.tools.python_edit import _tokenize_source, _detokenize_source
 import ast
 
 def setup_test_file(tmp_path, content):
@@ -410,83 +410,83 @@ def test_file_level_preservation():
     print(f'DEBUG - Expected:\n{expected}')
     assert content.strip() == expected
 
-    def test_minimal_tokenize():
-        """Test tokenization of minimal valid Python"""
-        source = 'x = 1'
-        tokenized, token_map = tokenize_source(source)
-        print(f'DEBUG - Tokenized: {tokenized}')
-        print(f'DEBUG - Token map: {token_map}')
-        ast.parse(tokenized)
-        assert detokenize_source(tokenized, token_map) == source
+def test_minimal_tokenize():
+    """Test tokenization of minimal valid Python"""
+    source = 'x = 1'
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    print(f'DEBUG - Token map: {token_map}')
+    ast.parse(tokenized)
+    assert _detokenize_source(tokenized, token_map) == source
 
-    def test_minimal_tokenize_with_comment():
-        """Test tokenization with just a comment"""
-        source = '# A comment'
-        tokenized, token_map = tokenize_source(source)
-        print(f'DEBUG - Tokenized: {tokenized}')
-        print(f'DEBUG - Token map: {token_map}')
-        ast.parse(tokenized)
-        assert detokenize_source(tokenized, token_map) == source
+def test_minimal_tokenize_with_comment():
+    """Test tokenization with just a comment"""
+    source = '# A comment'
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    print(f'DEBUG - Token map: {token_map}')
+    ast.parse(tokenized)
+    assert _detokenize_source(tokenized, token_map) == source
 
-    def test_minimal_edit():
-        """Test the most basic possible edit"""
-        with open('minimal.py', 'w') as f:
-            f.write('# Empty\n')
-        result = python_edit('minimal.py', 'x = 1')
-        print(f'DEBUG - Result: {result}')
-        with open('minimal.py') as f:
-            content = f.read()
-        print(f'DEBUG - Content: {content}')
-        assert 'file level' in result
+def test_minimal_edit():
+    """Test the most basic possible edit"""
+    with open('minimal.py', 'w') as f:
+        f.write('# Empty\n')
+    result = python_edit('minimal.py', 'x = 1')
+    print(f'DEBUG - Result: {result}')
+    with open('minimal.py') as f:
+        content = f.read()
+    print(f'DEBUG - Content: {content}')
+    assert 'file level' in result
 
 def test_tokenize_basic():
     """Test basic tokenization of comments and strings"""
     source = '\n    # Header comment\n    x = "string literal"  # Inline comment\n    y = 1\n    '
-    tokenized, token_map = tokenize_source(source)
+    tokenized, token_map = _tokenize_source(source)
     assert '# Header comment' not in tokenized
     assert '"string literal"' not in tokenized
     assert '# Inline comment' not in tokenized
     assert '__TOKEN__' in tokenized
-    assert detokenize_source(tokenized, token_map) == source
-    restored = detokenize_source(tokenized, token_map)
+    assert _detokenize_source(tokenized, token_map) == source
+    restored = _detokenize_source(tokenized, token_map)
     assert restored == source
 
 def test_tokenize_multiline():
     """Test tokenization of multiline strings and nested structures"""
     source = '\n    def func():\n        """\n        Multiline\n        docstring\n        """\n        # Comment\n        if True:\n            # Nested comment\n            x = 1\n    '
-    tokenized, token_map = tokenize_source(source)
+    tokenized, token_map = _tokenize_source(source)
     assert '"""' not in tokenized
     assert '# Comment' not in tokenized
     assert '# Nested comment' not in tokenized
-    restored = detokenize_source(tokenized, token_map)
+    restored = _detokenize_source(tokenized, token_map)
     assert restored == source
 
 def test_tokenize_edge_cases():
     """Test tokenization of edge cases"""
     source = '\n    x = 1; y = 2  # Multiple statements\n    # Comment with ; semicolon\n    s = "String # with hash"\n    q = \'String ; with semicolon\'\n    """\n    Multiline string\n    # with comment\n    ; with semicolon\n    """\n    '
-    tokenized, token_map = tokenize_source(source)
+    tokenized, token_map = _tokenize_source(source)
     assert '__TOKEN__' in tokenized
-    assert detokenize_source(tokenized, token_map) == source
-    restored = detokenize_source(tokenized, token_map)
+    assert _detokenize_source(tokenized, token_map) == source
+    restored = _detokenize_source(tokenized, token_map)
     assert restored == source
 
 def test_minimal_tokenize():
     """Test tokenization of minimal valid Python"""
     source = 'x = 1'
-    tokenized, token_map = tokenize_source(source)
+    tokenized, token_map = _tokenize_source(source)
     print(f'DEBUG - Tokenized: {tokenized}')
     print(f'DEBUG - Token map: {token_map}')
     ast.parse(tokenized)
-    assert detokenize_source(tokenized, token_map) == source
+    assert _detokenize_source(tokenized, token_map) == source
 
 def test_minimal_tokenize_with_comment():
     """Test tokenization with just a comment"""
     source = '# A comment'
-    tokenized, token_map = tokenize_source(source)
+    tokenized, token_map = _tokenize_source(source)
     print(f'DEBUG - Tokenized: {tokenized}')
     print(f'DEBUG - Token map: {token_map}')
     ast.parse(tokenized)
-    assert detokenize_source(tokenized, token_map) == source
+    assert _detokenize_source(tokenized, token_map) == source
 
 def test_minimal_edit():
     """Test the most basic possible edit"""
@@ -502,33 +502,33 @@ def test_minimal_edit():
 def test_minimal_multiline():
     """Test tokenization of multiline content"""
     source = 'def test():\n        """\n        Docstring\n        with lines\n        """\n        pass'
-    tokenized, token_map = tokenize_source(source)
+    tokenized, token_map = _tokenize_source(source)
     print(f'DEBUG - Tokenized:\n{tokenized}')
     print(f'DEBUG - Token map:\n{token_map}')
     ast.parse(tokenized)
-    restored = detokenize_source(tokenized, token_map)
+    restored = _detokenize_source(tokenized, token_map)
     print(f'DEBUG - Restored:\n{restored}')
     assert restored == source
 
 def test_minimal_nested_multiline():
     """Test tokenization of nested multiline content"""
     source = 'def outer():\n        """Outer docstring"""\n        def inner():\n            """\n            Inner\n            docstring\n            """\n            pass'
-    tokenized, token_map = tokenize_source(source)
+    tokenized, token_map = _tokenize_source(source)
     print(f'DEBUG - Tokenized:\n{tokenized}')
     print(f'DEBUG - Token map:\n{token_map}')
     ast.parse(tokenized)
-    restored = detokenize_source(tokenized, token_map)
+    restored = _detokenize_source(tokenized, token_map)
     print(f'DEBUG - Restored:\n{restored}')
     assert restored == source
 
 def test_minimal_complex_indent():
     """Test tokenization with complex indentation patterns"""
     source = 'def test():\n        # Comment at level 1\n        if True:\n            # Comment at level 2\n            if True:\n                """\n                Docstring at\n                level 3\n                """\n                # Comment at level 3\n                pass'
-    tokenized, token_map = tokenize_source(source)
+    tokenized, token_map = _tokenize_source(source)
     print(f'DEBUG - Tokenized:\n{tokenized}')
     print(f'DEBUG - Token map:\n{token_map}')
     ast.parse(tokenized)
-    restored = detokenize_source(tokenized, token_map)
+    restored = _detokenize_source(tokenized, token_map)
     print(f'DEBUG - Restored:\n{restored}')
     assert restored == source
 

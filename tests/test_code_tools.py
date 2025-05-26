@@ -2,7 +2,7 @@ import unittest
 import textwrap
 import os
 import tempfile
-from bots.tools.code_tools import view, diff_edit, view_dir
+from bots.tools.code_tools import read_file, diff_edit, view_dir
 
 def create_temp_file(content):
     """Helper function to create a temporary file with given content."""
@@ -27,7 +27,7 @@ class TestCodeTools(unittest.TestCase):
         os.rmdir(self.temp_dir)
 
     def test_view(self):
-        result = view(self.temp_file)
+        result = read_file(self.temp_file)
         expected = '1:Line 1\n2:Line 2\n3:Line 3\n4:Line 4\n5:Line 5'
         self.assertEqual(result, expected)
 

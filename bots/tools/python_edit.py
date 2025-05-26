@@ -12,6 +12,7 @@ from typing import Dict, Tuple, Union
 def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
     """
     Edit Python code using pytest-style scope syntax.
+    Default behavior: Replace entire target scope.
 
     Parameters:
     ----------
@@ -32,7 +33,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
         Where to insert the code. Can be either:
         - "__FILE_START__" (special token for file beginning)
         - A scope ("MyClass::method")
-        - An exact line match
+        - An exact line match (like a context line in git patches)
         If not specified, replaces the node at target_scope.
 
     Returns:
@@ -49,7 +50,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 return _process_error(ValueError(f'Invalid identifier in path: {element}'))
         abs_path = _make_file(file_path)
         cleaned_code = _clean(code)
-        tokenized_code, new_code_tokens = tokenize_source(cleaned_code)
+        tokenized_code, new_code_tokens = _tokenize_source(cleaned_code)
         try:
             new_tree = ast.parse(tokenized_code)
             import_nodes = []
@@ -64,7 +65,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
         try:
             with open(abs_path, 'r', encoding='utf-8') as file:
                 content = file.read()
-            tokenized_content, file_tokens = tokenize_source(content) if content.strip() else ('', {})
+            tokenized_content, file_tokens = _tokenize_source(content) if content.strip() else ('', {})
             file_lines = tokenized_content.split('\n')
             tree = ast.parse(tokenized_content) if content.strip() else ast.Module(body=[], type_ignores=[])
         except Exception as e:
@@ -81,7 +82,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
             try:
                 updated_content = _py_ast_to_source(tree)
                 all_tokens = {**file_tokens, **new_code_tokens}
-                final_content = detokenize_source(updated_content, all_tokens)
+                final_content = _detokenize_source(updated_content, all_tokens)
                 with open(abs_path, 'w', encoding='utf-8') as file:
                     file.write(final_content)
                 return f"Code inserted at start of '{abs_path}'."
@@ -92,7 +93,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
             try:
                 updated_content = _py_ast_to_source(tree)
                 all_tokens = {**file_tokens, **new_code_tokens}
-                final_content = detokenize_source(updated_content, all_tokens)
+                final_content = _detokenize_source(updated_content, all_tokens)
                 with open(abs_path, 'w', encoding='utf-8') as file:
                     file.write(final_content)
                 return f"Code added at file level in '{abs_path}'."
@@ -109,7 +110,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
         try:
             updated_content = _py_ast_to_source(modified_tree)
             all_tokens = {**file_tokens, **new_code_tokens}
-            final_content = detokenize_source(updated_content, all_tokens)
+            final_content = _detokenize_source(updated_content, all_tokens)
             with open(abs_path, 'w', encoding='utf-8') as file:
                 file.write(final_content)
             action = 'inserted after' if insert_after else 'replaced at'
@@ -266,7 +267,7 @@ class ScopeTransformer(ast.NodeTransformer):
             target = self.insert_after.strip()
             target_line_idx = None
             for i, line in enumerate(func_lines):
-                detokenized_line = detokenize_source(line, self.all_tokens)
+                detokenized_line = _detokenize_source(line, self.all_tokens)
                 if detokenized_line.strip() == target:
                     self.line_match_count += 1
                     if self.line_match_count == 1:
@@ -351,17 +352,17 @@ class ScopeTransformer(ast.NodeTransformer):
         for i, new_node in enumerate(self.new_nodes):
             node.body.insert(insert_index + i, new_node)
 
-def create_token(content: str, index: int, current_hash: str) -> str:
+def _create_token(content: str, index: int, current_hash: str) -> str:
     """Create a token with our specific pattern"""
+    token_name = f'__TOKEN__{current_hash}_{index}__'
     hex_content = content.encode('utf-8').hex()
-    token_name = f'TOKEN__{current_hash}_{index}'
-    return (token_name, f';"""{hex_content}"""')
+    return (token_name, token_name)
 
-def get_file_hash(content: str) -> str:
+def _get_file_hash(content: str) -> str:
     """Create a short hash of file content"""
     return hashlib.sha256(content.encode()).hexdigest()[:8]
 
-def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
+def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
     """
     Tokenize source code, preserving exact formatting.
 
@@ -371,24 +372,43 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
     """
 
     def contains_token(s: str) -> bool:
-        return ';"""' in s and '"""' in s
+        return '__TOKEN__' in s
     token_map = {}
-    current_hash = get_file_hash(source)
+    current_hash = _get_file_hash(source)
     token_counter = 0
     tokenized = source
-    triple_quote_patterns = ['"""[^"\\\\]*(?:(?:\\\\.|"(?!""))[^"\\\\]*)*"""', "'''[^'\\\\]*(?:(?:\\\\.|'(?!''))[^'\\\\]*)*'''"]
-    for pattern in triple_quote_patterns:
-        while True:
-            match = re.search(pattern, tokenized)
-            if not match:
-                break
-            string_content = match.group()
-            if contains_token(string_content):
+
+    def find_complete_triple_quote(text, start_pos=0):
+        """Find complete triple-quoted strings manually"""
+        for quote_type in ['"""', "'''"]:
+            open_pos = text.find(quote_type, start_pos)
+            if open_pos == -1:
                 continue
-            token_name, hex_val = create_token(string_content, token_counter, current_hash)
-            token_map[hex_val] = string_content
-            tokenized = tokenized[:match.start()] + hex_val + tokenized[match.end():]
-            token_counter += 1
+            close_pos = text.find(quote_type, open_pos + 3)
+            if close_pos == -1:
+                continue
+            complete_string = text[open_pos:close_pos + 3]
+            if not contains_token(complete_string):
+                return (open_pos, close_pos + 3, complete_string)
+        return (None, None, None)
+    processed_positions = set()
+    iteration_count = 0
+    MAX_ITERATIONS = 10
+    while iteration_count < MAX_ITERATIONS:
+        iteration_count += 1
+        old_tokenized = tokenized
+        start_pos, end_pos, string_content = find_complete_triple_quote(tokenized)
+        if start_pos is None:
+            break
+        if start_pos in processed_positions or len(string_content) > 1000:
+            break
+        processed_positions.add(start_pos)
+        token_name, hex_val = _create_token(string_content, token_counter, current_hash)
+        token_map[hex_val] = string_content
+        tokenized = tokenized[:start_pos] + hex_val + tokenized[end_pos:]
+        token_counter += 1
+        if tokenized == old_tokenized:
+            break
     lines = tokenized.split('\n')
     processed_lines = []
     for line in lines:
@@ -402,85 +422,91 @@ def tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
             processed_lines.append(line)
             continue
         if content.strip().startswith('#'):
-            token_name, hex_val = create_token(content, token_counter, current_hash)
-            token_map[hex_val] = content
-            processed_lines.append(indentation + 'pass' + hex_val)
+            token_name, hex_val = _create_token(content.strip(), token_counter, current_hash)
+            token_map[hex_val] = content.strip()
+            processed_lines.append(indentation + f'"""{hex_val}"""')
             token_counter += 1
             continue
         processed_line = content
-        string_patterns = ['"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"', "'[^'\\\\]*(?:\\\\.[^'\\\\]*)*'"]
-        for pattern in string_patterns:
-            while True:
-                match = re.search(pattern, processed_line)
-                if not match:
-                    break
-                string_content = match.group()
-                if contains_token(string_content):
-                    continue
-                token_name, hex_val = create_token(string_content, token_counter, current_hash)
-                token_map[hex_val] = string_content
-                processed_line = processed_line[:match.start()] + hex_val + processed_line[match.end():]
-                token_counter += 1
         if '#' in processed_line:
             comment_start = processed_line.index('#')
-            code = processed_line[:comment_start].rstrip()
+            code = processed_line[:comment_start]
             comment = processed_line[comment_start:]
-            token_name, hex_val = create_token(comment, token_counter, current_hash)
+            token_name, hex_val = _create_token(comment, token_counter, current_hash)
             token_map[hex_val] = comment
-            processed_line = code + hex_val
+            processed_line = code + f'; """{hex_val}"""'
             token_counter += 1
+        if not contains_token(processed_line):
+            for quote_char in ['"', "'"]:
+                if quote_char in processed_line:
+                    start = processed_line.find(quote_char)
+                    if start != -1:
+                        end = start + 1
+                        while end < len(processed_line):
+                            if processed_line[end] == quote_char:
+                                string_content = processed_line[start:end + 1]
+                                token_name, hex_val = _create_token(string_content, token_counter, current_hash)
+                                token_map[hex_val] = string_content
+                                processed_line = processed_line[:start] + hex_val + processed_line[end + 1:]
+                                token_counter += 1
+                                break
+                            elif processed_line[end] == '\\' and end + 1 < len(processed_line):
+                                end += 2
+                            else:
+                                end += 1
+                    break
         processed_lines.append(indentation + processed_line)
     return ('\n'.join(processed_lines), token_map)
 
-def detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
+def _detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
     """
     Restore original source from tokenized version.
 
     Handles proper indentation of multiline content.
     """
     result = tokenized_source
-    for token_name, original in token_map.items():
-        if token_name.startswith(';"""') and token_name.endswith('"""'):
-            hex_content = token_name[4:-3]
-            patterns = [f"'{hex_content}'", f'"{hex_content}"']
-            for pattern in patterns:
-                while pattern in result:
-                    lines = result.split('\n')
-                    for i, line in enumerate(lines):
-                        if line.strip() == pattern:
-                            indent = len(line) - len(line.lstrip())
-                            lines[i] = ' ' * indent + original
-                            result = '\n'.join(lines)
-                            break
-                        elif pattern in line and line.strip() != pattern:
-                            if 'pass' in line and line.index('pass') < line.index(pattern):
-                                indent = len(line) - len(line.lstrip())
-                                lines[i] = ' ' * indent + original
-                            else:
-                                lines[i] = line.replace(pattern, '  ' + original)
-                            result = '\n'.join(lines)
-                            break
-                    else:
-                        break
-    for token_name, original in sorted(token_map.items(), key=lambda x: len(x[0]), reverse=True):
-        while token_name in result:
-            start = result.find(token_name)
+    for token_value, original in token_map.items():
+        while token_value in result:
+            start = result.find(token_value)
             if start == -1:
                 break
-            if '\n' in original:
-                indent = get_indentation_at_position(result, start)
-                indented = indent_multiline_content(original, indent)
-                result = result[:start] + indented + result[start + len(token_name):]
+            line_start = result.rfind('\n', 0, start) + 1
+            line_end = result.find('\n', start)
+            if line_end == -1:
+                line_end = len(result)
+            line = result[line_start:line_end]
+            line_stripped = line.strip()
+            is_standalone_comment = line_stripped == f'"""{token_value}"""' or line_stripped == f"'{token_value}'" or line_stripped == f'"{token_value}"'
+            is_inline_comment = line_stripped.endswith(f'; """{token_value}"""') or line_stripped.endswith(f"; '{token_value}'") or line_stripped.endswith(f'; "{token_value}"')
+            if is_standalone_comment:
+                indent = line[:len(line) - len(line.lstrip())]
+                replacement = indent + original
+                result = result[:line_start] + replacement + result[line_end:]
+            elif is_inline_comment:
+                semicolon_pos = result.rfind(';', line_start, start)
+                if semicolon_pos != -1:
+                    token_end = start + len(token_value)
+                    if result[token_end:token_end + 3] == '"""':
+                        token_end += 3
+                    elif result[token_end:token_end + 1] in ["'", '"']:
+                        token_end += 1
+                    result = result[:semicolon_pos] + original + result[token_end:]
+                else:
+                    result = result[:start] + original + result[start + len(token_value):]
+            elif '\n' in original:
+                indent = _get_indentation_at_position(result, start)
+                indented = _indent_multiline_content(original, indent)
+                result = result[:start] + indented + result[start + len(token_value):]
             else:
-                result = result[:start] + original + result[start + len(token_name):]
+                result = result[:start] + original + result[start + len(token_value):]
     return result
 
-def get_indentation_at_position(source: str, pos: int) -> str:
+def _get_indentation_at_position(source: str, pos: int) -> str:
     """Get the indentation level at a given position in source"""
     line_start = source.rfind('\n', 0, pos) + 1
     return source[line_start:pos].replace(source[line_start:pos].lstrip(), '')
 
-def indent_multiline_content(content: str, indent: str) -> str:
+def _indent_multiline_content(content: str, indent: str) -> str:
     """Indent multiline content while preserving internal formatting"""
     if not content.strip():
         return content

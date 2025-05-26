@@ -4,6 +4,7 @@ from . import meta_tools
 from . import terminal_tools
 from . import self_tools
 from . import code_tools
+from . import python_edit
 
 __all__ = [
     'python_editing_tools',
@@ -11,5 +12,6 @@ __all__ = [
     'meta_tools',
     'terminal_tools',
     'self_tools',
-    'code_tools'
+    'code_tools',
+    'python_edit',
 ]
