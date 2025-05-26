@@ -166,3 +166,31 @@ def debug_complete_inline_flow():
     print(f'Original == Final: {content == final}')
 if __name__ == '__main__':
     debug_complete_inline_flow()
+
+def debug_token_format():
+    """Debug the actual token format being created"""
+    from bots.tools.python_edit import _create_token, _get_file_hash
+    content = '# comment one'
+    current_hash = _get_file_hash('test')
+    token_counter = 0
+    token_name, hex_val = _create_token(content, token_counter, current_hash)
+    print(f'Token name: {repr(token_name)}')
+    print(f'Hex val: {repr(hex_val)}')
+    import ast
+    test_code = f'x = 1  {hex_val}'
+    print(f'Test code: {repr(test_code)}')
+    try:
+        ast.parse(test_code)
+        print('✅ Valid Python syntax')
+    except Exception as e:
+        print(f'❌ Invalid Python syntax: {e}')
+    simple_token = f'TOKEN_{current_hash}_{token_counter}'
+    test_code2 = f'x = 1  # {simple_token}'
+    print(f'Alternative test: {repr(test_code2)}')
+    try:
+        ast.parse(test_code2)
+        print('✅ Alternative valid')
+    except Exception as e:
+        print(f'❌ Alternative invalid: {e}')
+if __name__ == '__main__':
+    debug_token_format()

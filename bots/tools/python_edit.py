@@ -354,7 +354,7 @@ class ScopeTransformer(ast.NodeTransformer):
 
 def _create_token(content: str, index: int, current_hash: str) -> str:
     """Create a token with our specific pattern"""
-    token_name = f'__TOKEN__{current_hash}_{index}__'
+    token_name = f'TOKEN_{current_hash}_{index}'
     hex_content = content.encode('utf-8').hex()
     return (token_name, token_name)
 
@@ -372,7 +372,7 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
     """
 
     def contains_token(s: str) -> bool:
-        return '__TOKEN__' in s
+        return 'TOKEN_' in s
     token_map = {}
     current_hash = _get_file_hash(source)
     token_counter = 0
@@ -434,7 +434,7 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
             comment = processed_line[comment_start:]
             token_name, hex_val = _create_token(comment, token_counter, current_hash)
             token_map[hex_val] = comment
-            processed_line = code + f'; """{hex_val}"""'
+            processed_line = code.rstrip() + '; ' + hex_val
             token_counter += 1
         if not contains_token(processed_line):
             for quote_char in ['"', "'"]:
@@ -454,7 +454,7 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
                                 end += 2
                             else:
                                 end += 1
-                    break
+                        break
         processed_lines.append(indentation + processed_line)
     return ('\n'.join(processed_lines), token_map)
 
@@ -477,22 +477,10 @@ def _detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
             line = result[line_start:line_end]
             line_stripped = line.strip()
             is_standalone_comment = line_stripped == f'"""{token_value}"""' or line_stripped == f"'{token_value}'" or line_stripped == f'"{token_value}"'
-            is_inline_comment = line_stripped.endswith(f'; """{token_value}"""') or line_stripped.endswith(f"; '{token_value}'") or line_stripped.endswith(f'; "{token_value}"')
             if is_standalone_comment:
                 indent = line[:len(line) - len(line.lstrip())]
                 replacement = indent + original
                 result = result[:line_start] + replacement + result[line_end:]
-            elif is_inline_comment:
-                semicolon_pos = result.rfind(';', line_start, start)
-                if semicolon_pos != -1:
-                    token_end = start + len(token_value)
-                    if result[token_end:token_end + 3] == '"""':
-                        token_end += 3
-                    elif result[token_end:token_end + 1] in ["'", '"']:
-                        token_end += 1
-                    result = result[:semicolon_pos] + original + result[token_end:]
-                else:
-                    result = result[:start] + original + result[start + len(token_value):]
             elif '\n' in original:
                 indent = _get_indentation_at_position(result, start)
                 indented = _indent_multiline_content(original, indent)
@@ -522,3 +510,52 @@ def _indent_multiline_content(content: str, indent: str) -> str:
         else:
             result.append(line)
     return '\n'.join(result)
+
+def _reunite_inline_comments(source: str, token_map: Dict[str, str]) -> str:
+    """
+    Post-process to reunite inline comments that were separated during AST processing.
+    """
+    lines = source.split('\n')
+    result_lines = []
+    i = 0
+    while i < len(lines):
+        current_line = lines[i]
+        if i + 1 < len(lines):
+            next_line = lines[i + 1]
+            next_line_stripped = next_line.strip()
+            if _should_reunite_comment(current_line, next_line_stripped, token_map):
+                reunited = current_line.rstrip() + '  ' + next_line_stripped
+                result_lines.append(reunited)
+                i += 2
+                continue
+        result_lines.append(current_line)
+        i += 1
+    return '\n'.join(result_lines)
+
+def _should_reunite_comment(code_line: str, comment_line: str, token_map: Dict[str, str]) -> bool:
+    """
+    Determine if a comment line should be reunited with the previous code line.
+    """
+    if not comment_line.startswith('#'):
+        return False
+    code_stripped = code_line.strip()
+    if not code_stripped or code_stripped.startswith('#'):
+        return False
+    for token_data in token_map.values():
+        if isinstance(token_data, dict):
+            if token_data.get('type') == 'inline_comment' and token_data.get('content') == comment_line:
+                stored_code_part = token_data.get('code_part', '').strip()
+                if stored_code_part:
+                    if _code_parts_match(code_stripped, stored_code_part):
+                        return True
+                else:
+                    return True
+    return False
+
+def _code_parts_match(current_code: str, stored_code: str) -> bool:
+    """
+    Check if two code parts match, accounting for AST reformatting.
+    """
+    current_normalized = ' '.join(current_code.split())
+    stored_normalized = ' '.join(stored_code.split())
+    return stored_normalized in current_normalized or current_normalized in stored_normalized
