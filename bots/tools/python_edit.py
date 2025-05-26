@@ -352,23 +352,23 @@ class ScopeTransformer(ast.NodeTransformer):
         for i, new_node in enumerate(self.new_nodes):
             node.body.insert(insert_index + i, new_node)
 
-def _create_token(content: str, index: int, current_hash: str) -> str:
-    """Create a token with our specific pattern"""
+def _create_token(content: str, index: int, current_hash: str, metadata: dict=None) -> Tuple[str, Dict]:
+    """Create a token with our specific pattern and metadata"""
     token_name = f'TOKEN_{current_hash}_{index}'
-    hex_content = content.encode('utf-8').hex()
-    return (token_name, token_name)
+    token_data = {'content': content, 'metadata': metadata or {}}
+    return (token_name, token_data)
 
 def _get_file_hash(content: str) -> str:
     """Create a short hash of file content"""
     return hashlib.sha256(content.encode()).hexdigest()[:8]
 
-def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
+def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
     """
     Tokenize source code, preserving exact formatting.
 
     Returns:
     - tokenized_source: Source with tokens inserted
-    - token_map: Mapping of tokens to original content
+    - token_map: Mapping of token names to token data {'content': str, 'metadata': dict}
     """
 
     def contains_token(s: str) -> bool:
@@ -403,9 +403,9 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
         if start_pos in processed_positions or len(string_content) > 1000:
             break
         processed_positions.add(start_pos)
-        token_name, hex_val = _create_token(string_content, token_counter, current_hash)
-        token_map[hex_val] = string_content
-        tokenized = tokenized[:start_pos] + hex_val + tokenized[end_pos:]
+        token_name, token_data = _create_token(string_content, token_counter, current_hash, {'type': 'multiline_string'})
+        token_map[token_name] = token_data
+        tokenized = tokenized[:start_pos] + token_name + tokenized[end_pos:]
         token_counter += 1
         if tokenized == old_tokenized:
             break
@@ -422,9 +422,9 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
             processed_lines.append(line)
             continue
         if content.strip().startswith('#'):
-            token_name, hex_val = _create_token(content.strip(), token_counter, current_hash)
-            token_map[hex_val] = content.strip()
-            processed_lines.append(indentation + f'{hex_val}')
+            token_name, token_data = _create_token(content.strip(), token_counter, current_hash, {'type': 'standalone_comment'})
+            token_map[token_name] = token_data
+            processed_lines.append(indentation + f'{token_name}')
             token_counter += 1
             continue
         processed_line = content
@@ -437,9 +437,9 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
                         while end < len(processed_line):
                             if processed_line[end] == quote_char:
                                 string_content = processed_line[start:end + 1]
-                                token_name, hex_val = _create_token(string_content, token_counter, current_hash)
-                                token_map[hex_val] = string_content
-                                processed_line = processed_line[:start] + hex_val + processed_line[end + 1:]
+                                token_name, token_data = _create_token(string_content, token_counter, current_hash, {'type': 'string_literal'})
+                                token_map[token_name] = token_data
+                                processed_line = processed_line[:start] + token_name + processed_line[end + 1:]
                                 token_counter += 1
                                 break
                             elif processed_line[end] == '\\' and end + 1 < len(processed_line):
@@ -452,34 +452,37 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
             code = processed_line[:comment_start]
             code_end = len(code.rstrip())
             spacing_and_comment = processed_line[code_end:]
-            token_name, hex_val = _create_token(spacing_and_comment, token_counter, current_hash)
-            token_map[hex_val] = spacing_and_comment
             code_stripped = code.rstrip()
             compound_patterns = ['def ', 'class ', 'if ', 'elif ', 'for ', 'while ', 'with ', 'async def ']
             is_compound_with_colon = any((code_stripped.startswith(pattern) for pattern in compound_patterns)) and code_stripped.endswith(':')
             is_standalone_colon = code_stripped in ['else:', 'try:', 'finally:']
             is_compound = is_compound_with_colon or is_standalone_colon
             if is_compound:
+                token_name, token_data = _create_token(spacing_and_comment, token_counter, current_hash, {'type': 'compound_comment'})
+                token_map[token_name] = token_data
                 processed_lines.append(indentation + code_stripped)
-                processed_lines.append(indentation + f'# {hex_val}')
+                processed_lines.append(indentation + f'# {token_name}')
                 token_counter += 1
                 continue
             else:
-                processed_line = code.rstrip() + '; ' + hex_val
+                token_name, token_data = _create_token(spacing_and_comment, token_counter, current_hash, {'type': 'inline_comment'})
+                token_map[token_name] = token_data
+                processed_line = code.rstrip() + '; ' + token_name
                 token_counter += 1
         processed_lines.append(indentation + processed_line)
     return ('\n'.join(processed_lines), token_map)
 
-def _detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
+def _detokenize_source(tokenized_source: str, token_map: Dict[str, Dict]) -> str:
     """
     Restore original source from tokenized version.
 
     Handles proper indentation of multiline content.
     """
     result = tokenized_source
-    for token_value, original in token_map.items():
-        while token_value in result:
-            start = result.find(token_value)
+    for token_name, token_data in token_map.items():
+        original = token_data['content']
+        while token_name in result:
+            start = result.find(token_name)
             if start == -1:
                 break
             line_start = result.rfind('\n', 0, start) + 1
@@ -488,14 +491,14 @@ def _detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
                 line_end = len(result)
             line = result[line_start:line_end]
             line_stripped = line.strip()
-            if line_stripped.startswith('# ') and line_stripped[2:] == token_value:
+            if line_stripped.startswith('# ') and line_stripped[2:] == token_name:
                 prev_line_start = result.rfind('\n', 0, line_start - 1) + 1
                 prev_line = result[prev_line_start:line_start - 1]
                 if prev_line.strip():
                     reunited = prev_line + original
                     result = result[:prev_line_start] + reunited + result[line_end:]
                     continue
-            is_standalone_comment = line_stripped == token_value or line_stripped == f"'{token_value}'" or line_stripped == f'"{token_value}"'
+            is_standalone_comment = line_stripped == token_name or line_stripped == f"'{token_name}'" or line_stripped == f'"{token_name}"'
             if is_standalone_comment:
                 indent = line[:len(line) - len(line.lstrip())]
                 replacement = indent + original
@@ -503,9 +506,9 @@ def _detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
             elif '\n' in original:
                 indent = _get_indentation_at_position(result, start)
                 indented = _indent_multiline_content(original, indent)
-                result = result[:start] + indented + result[start + len(token_value):]
+                result = result[:start] + indented + result[start + len(token_name):]
             else:
-                result = result[:start] + original + result[start + len(token_value):]
+                result = result[:start] + original + result[start + len(token_name):]
     result = _reunite_inline_comments(result, token_map)
     return result
 
@@ -531,7 +534,7 @@ def _indent_multiline_content(content: str, indent: str) -> str:
             result.append(line)
     return '\n'.join(result)
 
-def _reunite_inline_comments(source: str, token_map: Dict[str, str]) -> str:
+def _reunite_inline_comments(source: str, token_map: Dict[str, Dict]) -> str:
     """
     Post-process to reunite inline comments that were separated during AST processing.
     """
@@ -552,7 +555,7 @@ def _reunite_inline_comments(source: str, token_map: Dict[str, str]) -> str:
         i += 1
     return '\n'.join(result_lines)
 
-def _should_reunite_comment(code_line: str, comment_line: str, token_map: Dict[str, str]) -> bool:
+def _should_reunite_comment(code_line: str, comment_line: str, token_map: Dict[str, Dict]) -> bool:
     """
     Determine if a comment line should be reunited with the previous code line.
     Only reunite comments that were originally inline (have leading spaces before #).
@@ -562,7 +565,8 @@ def _should_reunite_comment(code_line: str, comment_line: str, token_map: Dict[s
     code_stripped = code_line.strip()
     if not code_stripped or code_stripped.startswith('#'):
         return False
-    for original in token_map.values():
+    for token_data in token_map.values():
+        original = token_data['content']
         if isinstance(original, str) and original.strip() == comment_line.strip():
             stripped_original = original.lstrip()
             if stripped_original.startswith('#') and len(original) > len(stripped_original):
