@@ -368,7 +368,7 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
 
     Returns:
     - tokenized_source: Source with tokens inserted
-    - token_map: Mapping of token names to token data {'content': str, 'metadata': dict}
+    - token_map: Mapping of tokens to {'content': str, 'metadata': dict}
     """
 
     def contains_token(s: str) -> bool:
@@ -403,7 +403,7 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
         if start_pos in processed_positions or len(string_content) > 1000:
             break
         processed_positions.add(start_pos)
-        token_name, token_data = _create_token(string_content, token_counter, current_hash, {'type': 'multiline_string'})
+        token_name, token_data = _create_token(string_content, token_counter, current_hash)
         token_map[token_name] = token_data
         tokenized = tokenized[:start_pos] + token_name + tokenized[end_pos:]
         token_counter += 1
@@ -422,7 +422,7 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
             processed_lines.append(line)
             continue
         if content.strip().startswith('#'):
-            token_name, token_data = _create_token(content.strip(), token_counter, current_hash, {'type': 'standalone_comment'})
+            token_name, token_data = _create_token(content.strip(), token_counter, current_hash)
             token_map[token_name] = token_data
             processed_lines.append(indentation + f'{token_name}')
             token_counter += 1
@@ -437,7 +437,7 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
                         while end < len(processed_line):
                             if processed_line[end] == quote_char:
                                 string_content = processed_line[start:end + 1]
-                                token_name, token_data = _create_token(string_content, token_counter, current_hash, {'type': 'string_literal'})
+                                token_name, token_data = _create_token(string_content, token_counter, current_hash)
                                 token_map[token_name] = token_data
                                 processed_line = processed_line[:start] + token_name + processed_line[end + 1:]
                                 token_counter += 1
@@ -452,21 +452,21 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
             code = processed_line[:comment_start]
             code_end = len(code.rstrip())
             spacing_and_comment = processed_line[code_end:]
+            has_code_before = code.strip()
+            metadata = {'type': 'inline_comment'} if has_code_before else {}
+            token_name, token_data = _create_token(spacing_and_comment, token_counter, current_hash, metadata)
+            token_map[token_name] = token_data
             code_stripped = code.rstrip()
             compound_patterns = ['def ', 'class ', 'if ', 'elif ', 'for ', 'while ', 'with ', 'async def ']
             is_compound_with_colon = any((code_stripped.startswith(pattern) for pattern in compound_patterns)) and code_stripped.endswith(':')
             is_standalone_colon = code_stripped in ['else:', 'try:', 'finally:']
             is_compound = is_compound_with_colon or is_standalone_colon
             if is_compound:
-                token_name, token_data = _create_token(spacing_and_comment, token_counter, current_hash, {'type': 'compound_comment'})
-                token_map[token_name] = token_data
                 processed_lines.append(indentation + code_stripped)
                 processed_lines.append(indentation + f'# {token_name}')
                 token_counter += 1
                 continue
             else:
-                token_name, token_data = _create_token(spacing_and_comment, token_counter, current_hash, {'type': 'inline_comment'})
-                token_map[token_name] = token_data
                 processed_line = code.rstrip() + '; ' + token_name
                 token_counter += 1
         processed_lines.append(indentation + processed_line)
