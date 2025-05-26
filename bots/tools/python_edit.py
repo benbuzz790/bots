@@ -455,11 +455,12 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
             code = processed_line[:comment_start]
             code_end = len(code.rstrip())
             spacing_and_comment = processed_line[code_end:]
-            has_code_before = code.strip()
-            metadata = {'type': 'inline_comment'} if has_code_before else {}
+            metadata = {}
+            code_stripped = code.rstrip()
+            if code_stripped.startswith(('import ', 'from ')):
+                metadata = {'type': 'import_comment', 'import_statement': code_stripped}
             token_name, token_data = _create_token(spacing_and_comment, token_counter, current_hash, metadata)
             token_map[token_name] = token_data
-            code_stripped = code.rstrip()
             compound_patterns = ['def ', 'class ', 'if ', 'elif ', 'for ', 'while ', 'with ', 'async def ']
             is_compound_with_colon = any((code_stripped.startswith(pattern) for pattern in compound_patterns)) and code_stripped.endswith(':')
             is_standalone_colon = code_stripped in ['else:', 'try:', 'finally:']
@@ -540,21 +541,44 @@ def _indent_multiline_content(content: str, indent: str) -> str:
 def _reunite_inline_comments(source: str, token_map: Dict[str, Dict]) -> str:
     """
     Post-process to reunite inline comments that were separated during AST processing.
+    Uses metadata to specifically handle import comments.
     """
     lines = source.split('\n')
     result_lines = []
     i = 0
     while i < len(lines):
         current_line = lines[i]
-        if i + 1 < len(lines):
-            next_line = lines[i + 1]
-            next_line_stripped = next_line.strip()
-            if _should_reunite_comment(current_line, next_line_stripped, token_map):
-                reunited = current_line.rstrip() + '  ' + next_line_stripped
-                result_lines.append(reunited)
-                i += 2
-                continue
-        result_lines.append(current_line)
+        current_line_stripped = current_line.strip()
+        if current_line_stripped.startswith(('import ', 'from ')):
+            comment_found = False
+            search_range = range(max(0, i - 3), min(len(lines), i + 5))
+            for j in search_range:
+                if j != i:
+                    next_line = lines[j]
+                    for token_name, token_data in token_map.items():
+                        if token_data.get('metadata', {}).get('type') == 'import_comment' and token_data.get('metadata', {}).get('import_statement') == current_line_stripped:
+                            comment_content = token_data['content']
+                            if next_line.strip() == comment_content.strip() or next_line == comment_content or next_line.strip() == comment_content:
+                                reunited_line = current_line.rstrip() + comment_content
+                                result_lines.append(reunited_line)
+                                lines[j] = '__REMOVE_THIS_LINE__'
+                                comment_found = True
+                                break
+                    if comment_found:
+                        break
+            if not comment_found:
+                result_lines.append(current_line)
+        else:
+            if i + 1 < len(lines):
+                next_line = lines[i + 1]
+                next_line_stripped = next_line.strip()
+                if _should_reunite_comment(current_line, next_line_stripped, token_map):
+                    reunited = current_line.rstrip() + '  ' + next_line_stripped
+                    result_lines.append(reunited)
+                    i += 2
+                    continue
+            if current_line != '__REMOVE_THIS_LINE__':
+                result_lines.append(current_line)
         i += 1
     return '\n'.join(result_lines)
 
