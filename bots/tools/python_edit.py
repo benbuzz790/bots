@@ -424,18 +424,11 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
         if content.strip().startswith('#'):
             token_name, hex_val = _create_token(content.strip(), token_counter, current_hash)
             token_map[hex_val] = content.strip()
-            processed_lines.append(indentation + f'"""{hex_val}"""')
+            processed_lines.append(indentation + f'{hex_val}')
             token_counter += 1
             continue
         processed_line = content
-        if '#' in processed_line:
-            comment_start = processed_line.index('#')
-            code = processed_line[:comment_start]
-            comment = processed_line[comment_start:]
-            token_name, hex_val = _create_token(comment, token_counter, current_hash)
-            token_map[hex_val] = comment
-            processed_line = code.rstrip() + '; ' + hex_val
-            token_counter += 1
+        # Process strings BEFORE processing inline comments
         if not contains_token(processed_line):
             for quote_char in ['"', "'"]:
                 if quote_char in processed_line:
@@ -455,6 +448,15 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
                             else:
                                 end += 1
                         break
+        # Process inline comments AFTER strings
+        if '#' in processed_line:
+            comment_start = processed_line.index('#')
+            code = processed_line[:comment_start]
+            comment = processed_line[comment_start:]
+            token_name, hex_val = _create_token(comment, token_counter, current_hash)
+            token_map[hex_val] = comment
+            processed_line = code.rstrip() + '; ' + hex_val
+            token_counter += 1
         processed_lines.append(indentation + processed_line)
     return ('\n'.join(processed_lines), token_map)
 
@@ -476,7 +478,7 @@ def _detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
                 line_end = len(result)
             line = result[line_start:line_end]
             line_stripped = line.strip()
-            is_standalone_comment = line_stripped == f'"""{token_value}"""' or line_stripped == f"'{token_value}'" or line_stripped == f'"{token_value}"'
+            is_standalone_comment = line_stripped == token_value or line_stripped == f"'{token_value}'" or line_stripped == f'"{token_value}"'
             if is_standalone_comment:
                 indent = line[:len(line) - len(line.lstrip())]
                 replacement = indent + original

@@ -4,16 +4,13 @@ cachedir: .pytest_cache
 rootdir: C:\Users\benbu\Code\llm-utilities-git\bots
 configfile: pytest.ini
 plugins: anyio-4.8.0, langsmith-0.3.8, cov-6.0.0, forked-1.6.0, timeout-2.4.0
-timeout: 60.0s
-timeout method: thread
-timeout func_only: True
 collecting ... collected 44 items
 test_python_edit.py::test_basic_file_level_edit PASSED                   [  2%]
 test_python_edit.py::test_file_start_insertion PASSED                    [  4%]
 test_python_edit.py::test_class_replacement PASSED                       [  6%]
 test_python_edit.py::test_nested_class_method PASSED                     [  9%]
 test_python_edit.py::test_nested_function PASSED                         [ 11%]
-test_python_edit.py::test_insert_after_line FAILED                       [ 13%]
+test_python_edit.py::test_insert_after_line PASSED                       [ 13%]
 test_python_edit.py::test_insert_after_scope PASSED                      [ 15%]
 test_python_edit.py::test_import_handling PASSED                         [ 18%]
 test_python_edit.py::test_decorated_method PASSED                        [ 20%]
@@ -24,7 +21,7 @@ test_python_edit.py::test_async_function PASSED                          [ 29%]
 test_python_edit.py::test_indentation_preservation PASSED                [ 31%]
 test_python_edit.py::test_empty_file PASSED                              [ 34%]
 test_python_edit.py::test_multiline_imports PASSED                       [ 36%]
-test_python_edit.py::test_line_comment_preservation FAILED               [ 38%]
+test_python_edit.py::test_line_comment_preservation PASSED               [ 38%]
 test_python_edit.py::test_import_at_file_start PASSED                    [ 40%]
 test_python_edit.py::test_nested_scope_insertion PASSED                  [ 43%]
 test_python_edit.py::test_indentation_in_class PASSED                    [ 45%]
@@ -33,136 +30,136 @@ test_python_edit.py::test_file_start_insertion_empty PASSED              [ 50%]
 test_python_edit.py::test_file_start_insertion_with_imports PASSED       [ 52%]
 test_python_edit.py::test_file_start_insertion_with_code PASSED          [ 54%]
 test_python_edit.py::test_file_start_insertion_multiple PASSED           [ 56%]
-test_python_edit.py::test_line_insert_basic FAILED                       [ 59%]
-test_python_edit.py::test_line_insert_indentation FAILED                 [ 61%]
-test_python_edit.py::test_line_insert_preservation FAILED                [ 63%]
-test_python_edit.py::test_line_insert_ast_handling FAILED                [ 65%]
-test_python_edit.py::test_line_insert_function_body SKIPPED (uncondi...) [ 68%]
-test_python_edit.py::test_line_insert_exact_preservation PASSED          [ 70%]
-test_python_edit.py::test_source_preservation SKIPPED (unconditional...) [ 72%]
-test_python_edit.py::test_ast_tree_preservation SKIPPED (uncondition...) [ 75%]
+test_python_edit.py::test_line_insert_basic PASSED                       [ 59%]
+test_python_edit.py::test_line_insert_indentation PASSED                 [ 61%]
+test_python_edit.py::test_line_insert_preservation PASSED                [ 63%]
+test_python_edit.py::test_line_insert_ast_handling PASSED                [ 65%]
+test_python_edit.py::test_line_insert_function_body PASSED               [ 68%]
+test_python_edit.py::test_line_insert_exact_preservation FAILED          [ 70%]
+test_python_edit.py::test_source_preservation FAILED                     [ 72%]
+test_python_edit.py::test_ast_tree_preservation FAILED                   [ 75%]
 test_python_edit.py::test_file_level_preservation FAILED                 [ 77%]
-test_python_edit.py::test_tokenize_basic SKIPPED (unconditional skip)    [ 79%]
-test_python_edit.py::test_tokenize_multiline SKIPPED (unconditional ...) [ 81%]
-test_python_edit.py::test_tokenize_edge_cases SKIPPED (unconditional...) [ 84%]
-test_python_edit.py::test_minimal_tokenize PASSED                        [ 86%]
-test_python_edit.py::test_minimal_tokenize_with_comment FAILED           [ 88%]
-test_python_edit.py::test_minimal_edit PASSED                            [ 90%]
+test_python_edit.py::test_minimal_tokenize PASSED                        [ 79%]
+test_python_edit.py::test_minimal_tokenize_with_comment PASSED           [ 81%]
+test_python_edit.py::test_minimal_edit PASSED                            [ 84%]
+test_python_edit.py::test_tokenize_basic FAILED                          [ 86%]
+test_python_edit.py::test_tokenize_multiline FAILED                      [ 88%]
+test_python_edit.py::test_tokenize_edge_cases FAILED                     [ 90%]
 test_python_edit.py::test_minimal_multiline PASSED                       [ 93%]
 test_python_edit.py::test_minimal_nested_multiline PASSED                [ 95%]
-test_python_edit.py::test_minimal_complex_indent FAILED                  [ 97%]
+test_python_edit.py::test_minimal_complex_indent PASSED                  [ 97%]
 test_python_edit.py::test_ast_unparse_behavior PASSED                    [100%]
 ================================== FAILURES ===================================
-___________________________ test_insert_after_line ____________________________
-test_python_edit.py:76: in test_insert_after_line
-    assert 'inserted after' in result
-E   AssertionError: assert 'inserted after' in 'Tool Failed: Insert point not found: # Insert here\nTraceback:\n'
+_____________________ test_line_insert_exact_preservation _____________________
+    def test_line_insert_exact_preservation():
+        """Test that lines are preserved exactly as they appear in the source"""
+        content = '\n    def func():\n        x = 1  # comment one\n\n        # marker with spaces around\n\n        y = 2  # comment two\n    '
+        test_file = setup_test_file('tmp', content)
+        result = python_edit(f'{test_file}::func', 'z = 3', insert_after='# marker with spaces around')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - File content:\n{content}')
+>       assert 'x = 1  # comment one' in content
+E       AssertionError: assert 'x = 1  # comment one' in 'def func():\n    x = 1\n    # comment one\n    # marker with spaces around\n    z = 3\n    y = 2\n    # comment two'
+test_python_edit.py:355: AssertionError
 ---------------------------- Captured stdout call -----------------------------
-DEBUG - File content:
-import os
-from typing import List, Optional
-def outer_func():
-    def inner_func():
-        pass
-    return inner_func
-class OuterClass:
-    def method(self):
-        pass
-    class InnerClass:
-        @staticmethod
-        def static_method():
-            pass
-        async def async_method(self):
-            pass
-    def another_method(self):
-        # Insert here
-        pass
-DEBUG - Result: Tool Failed: Insert point not found: # Insert here
-Traceback:
-_______________________ test_line_comment_preservation ________________________
-test_python_edit.py:175: in test_line_comment_preservation
-    assert 'z = 3' in content
-E   AssertionError: assert 'z = 3' in '\ndef my_func():\n    # First comment\n    x = 1\n    # Target comment\n    y = 2\n'
----------------------------- Captured stdout call -----------------------------
-DEBUG - Result content:
-def my_func():
-    # First comment
-    x = 1
-    # Target comment
-    y = 2
-___________________________ test_line_insert_basic ____________________________
-test_python_edit.py:281: in test_line_insert_basic
-    assert 'y = 2' in content
-E   AssertionError: assert 'y = 2' in '\ndef test_func():\n    x = 1\n    # marker\n    z = 3\n'
----------------------------- Captured stdout call -----------------------------
-DEBUG - Result content:
-def test_func():
-    x = 1
-    # marker
-    z = 3
-________________________ test_line_insert_indentation _________________________
-test_python_edit.py:295: in test_line_insert_indentation
-    y_line = next((i for i, line in enumerate(lines) if 'y = 2' in line))
-E   StopIteration
----------------------------- Captured stdout call -----------------------------
-DEBUG - Result content:
-def test_func():
-    if True:
-        x = 1
-        # marker
-        z = 3
-________________________ test_line_insert_preservation ________________________
-test_python_edit.py:310: in test_line_insert_preservation
-    assert lines == ['def simple():', '# keep me', 'x = 1', 'pass']
-E   AssertionError: assert ['def simple(...p me', 'pass'] == ['def simple(... = 1', 'pass']
-E     At index 2 diff: 'pass' != 'x = 1'
-E     Right contains one more item: 'pass'
-E     Full diff:
-E     - ['def simple():', '# keep me', 'x = 1', 'pass']
-E     ?                               ---------
-E     + ['def simple():', '# keep me', 'pass']
----------------------------- Captured stdout call -----------------------------
-DEBUG - File content:
-def simple():
-    # keep me
-    pass
-DEBUG - Result: Tool Failed: Insert point not found: # keep me
-Traceback:
-DEBUG - Stripped lines: ['def simple():', '# keep me', 'pass']
-________________________ test_line_insert_ast_handling ________________________
-test_python_edit.py:326: in test_line_insert_ast_handling
-    assert lines.index('# standalone comment') < lines.index('z = 3')
-E   ValueError: 'z = 3' is not in list
----------------------------- Captured stdout call -----------------------------
-DEBUG - python_edit result: Tool Failed: Error reading/parsing file C:\Users\benbu\Code\llm-utilities-git\bots\tests\tmp\test_file.py: invalid decimal literal (<unknown>, line 3)
-Traceback:
 DEBUG - File content:
 def func():
-    x = 1  # comment one
-    # standalone comment
-    y = 2  # comment two
-DEBUG - Stripped lines: ['def func():', 'x = 1  # comment one', '# standalone comment', 'y = 2  # comment two']
-________________________ test_file_level_preservation _________________________
-test_python_edit.py:414: in test_file_level_preservation
-    assert content.strip() == expected
-E   AssertionError: assert '# Top level ...nd assignment' == '# Top level ...nd assignment'
-E       # Top level comment
-E     -     import os  # os import
-E     ? ----
-E     + import os  # os import
-E       
-E     -     z = 3
-E     + # Another comment...
-E     
-E     ...Full output truncated (11 lines hidden), use '-vv' to show
+    x = 1
+    # comment one
+    # marker with spaces around
+    z = 3
+    y = 2
+    # comment two
+__________________________ test_source_preservation ___________________________
+    def test_source_preservation():
+        """Test that source lines are preserved exactly when modifying a function"""
+        content = '\n    def example():\n        """This is a docstring."""\n\n        # First we do x\n        x = 1  # comment about x\n\n        # Then we do y\n        y = 2  # comment about y\n    '
+        test_file = setup_test_file('tmp', content)
+        result = python_edit(f'{test_file}::example', 'z = 3', insert_after='# Then we do y')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - File content:\n{content}')
+        assert '"""This is a docstring."""' in content
+        assert '# First we do x' in content
+>       assert 'x = 1  # comment about x' in content
+E       assert 'x = 1  # comment about x' in 'def example():\n    """This is a docstring."""\n    # First we do x\n    x = 1\n    # comment about x\n    # Then we do y\n    z = 3\n    y = 2\n    # comment about y'
+test_python_edit.py:373: AssertionError
+---------------------------- Captured stdout call -----------------------------
+DEBUG - File content:
+def example():
+    """This is a docstring."""
+    # First we do x
+    x = 1
+    # comment about x
+    # Then we do y
+    z = 3
+    y = 2
+    # comment about y
+_________________________ test_ast_tree_preservation __________________________
+    def test_ast_tree_preservation():
+        """Test that source preservation works through AST tree reconstruction"""
+        content = '\n    # Top level comment\n    import os  # os import\n\n    def example():  # example function\n        """Docstring."""\n\n        # First we do x\n        x = 1  # comment about x\n\n        # Then we do y\n        y = 2  # comment about y\n    '
+        test_file = setup_test_file('tmp', content)
+        result = python_edit(f'{test_file}::example', 'z = 3', insert_after='# Then we do y')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - File content:\n{content}')
+        assert '# Top level comment' in content
+        assert 'import os  # os import' in content
+        assert 'def example():  # example function' in content
+        assert '"""Docstring."""' in content
+        assert '# First we do x' in content
+        assert 'x = 1  # comment about x' in content
+        assert '# Then we do y' in content
+>       assert 'z = 3' in content
+E       assert 'z = 3' in '\n# Top level comment\nimport os  # os import\n\ndef example():  # example function\n    """Docstring."""\n\n    # First we do x\n    x = 1  # comment about x\n\n    # Then we do y\n    y = 2  # comment about y\n'
+test_python_edit.py:398: AssertionError
 ---------------------------- Captured stdout call -----------------------------
 DEBUG - File content:
 # Top level comment
 import os  # os import
+def example():  # example function
+    """Docstring."""
+    # First we do x
+    x = 1  # comment about x
+    # Then we do y
+    y = 2  # comment about y
+________________________ test_file_level_preservation _________________________
+    def test_file_level_preservation():
+        """Test that file-level operations preserve formatting"""
+        content = '\n    # Top level comment\n    import os  # os import\n\n    # Another comment\n    x = 1  # first assignment\n\n    # Final comment\n    y = 2  # second assignment\n    '
+        test_file = setup_test_file('tmp', content)
+        result = python_edit(test_file, 'z = 3', insert_after='__FILE_START__')
+        with open(test_file) as f:
+            content = f.read()
+        print(f'DEBUG - File content:\n{content}')
+        expected = '\n    # Top level comment\n    import os  # os import\n\n    z = 3\n\n    # Another comment\n    x = 1  # first assignment\n\n    # Final comment\n    y = 2  # second assignment\n    '.strip()
+        print(f'DEBUG - Expected:\n{expected}')
+>       assert content.strip() == expected
+E       AssertionError: assert 'z = 3\nimpor...nd assignment' == '# Top level ...nd assignment'
+E         + z = 3
+E         + import os
+E           # Top level comment
+E         + # os import
+E         -     import os  # os import
+E         - 
+E         -     z = 3...
+E         
+E         ...Full output truncated (16 lines hidden), use '-vv' to show
+test_python_edit.py:411: AssertionError
+---------------------------- Captured stdout call -----------------------------
+DEBUG - File content:
+z = 3
+import os
+# Top level comment
+# os import
 # Another comment
-x = 1  # first assignment
+x = 1
+# first assignment
 # Final comment
-y = 2  # second assignment
+y = 2
+# second assignment
 DEBUG - Expected:
 # Top level comment
     import os  # os import
@@ -171,61 +168,52 @@ DEBUG - Expected:
     x = 1  # first assignment
     # Final comment
     y = 2  # second assignment
-_____________________ test_minimal_tokenize_with_comment ______________________
-test_python_edit.py:495: in test_minimal_tokenize_with_comment
-    assert _detokenize_source(tokenized, token_map) == source
-E   AssertionError: assert 'pass# A comment' == '# A comment'
-E     - # A comment
-E     + pass# A comment
-E     ? ++++
----------------------------- Captured stdout call -----------------------------
-DEBUG - Tokenized: pass__TOKEN__ab04c8ea_0__
-DEBUG - Token map: {'__TOKEN__ab04c8ea_0__': '# A comment'}
-_________________________ test_minimal_complex_indent _________________________
-test_python_edit.py:539: in test_minimal_complex_indent
-    assert restored == source
-E   AssertionError: assert 'def test():\...         pass' == 'def test():\...         pass'
-E       def test():
-E     -         # Comment at level 1
-E     +         pass# Comment at level 1
-E     ?         ++++
-E               if True:
-E     -             # Comment at level 2
-E     +             pass# Comment at level 2...
-E     
-E     ...Full output truncated (10 lines hidden), use '-vv' to show
----------------------------- Captured stdout call -----------------------------
-DEBUG - Tokenized:
-def test():
-        pass__TOKEN__bbd422bc_1__
-        if True:
-            pass__TOKEN__bbd422bc_2__
-            if True:
-                __TOKEN__bbd422bc_0__
-                pass__TOKEN__bbd422bc_3__
-                pass
-DEBUG - Token map:
-{'__TOKEN__bbd422bc_0__': '"""\n                Docstring at\n                level 3\n                """', '__TOKEN__bbd422bc_1__': '# Comment at level 1', '__TOKEN__bbd422bc_2__': '# Comment at level 2', '__TOKEN__bbd422bc_3__': '# Comment at level 3'}
-DEBUG - Restored:
-def test():
-        pass# Comment at level 1
-        if True:
-            pass# Comment at level 2
-            if True:
-                """
-                Docstring at
-                level 3
-                """
-                pass# Comment at level 3
-                pass
+_____________________________ test_tokenize_basic _____________________________
+    def test_tokenize_basic():
+        """Test basic tokenization of comments and strings"""
+        source = '\n    # Header comment\n    x = "string literal"  # Inline comment\n    y = 1\n    '
+        tokenized, token_map = _tokenize_source(source)
+        assert '# Header comment' not in tokenized
+>       assert '"string literal"' not in tokenized
+E       assert '"string literal"' not in '\n    """TO... y = 1\n    '
+E         '"string literal"' is contained here:
+E           
+E               """TOKEN_1b0d354e_0"""
+E               x = "string literal"; TOKEN_1b0d354e_1
+E         ?         ++++++++++++++++
+E               y = 1
+test_python_edit.py:447: AssertionError
+___________________________ test_tokenize_multiline ___________________________
+    def test_tokenize_multiline():
+        """Test tokenization of multiline strings and nested structures"""
+        source = '\n    def func():\n        """\n        Multiline\n        docstring\n        """\n        # Comment\n        if True:\n            # Nested comment\n            x = 1\n    '
+        tokenized, token_map = _tokenize_source(source)
+>       assert '"""' not in tokenized
+E       assert '"""' not in '\n    def f... x = 1\n    '
+E         '"""' is contained here:
+E           
+E               def func():
+E                   TOKEN_b61e2fc5_0
+E                   """TOKEN_b61e2fc5_1"""
+E         ?         +++
+E                   if True:...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+test_python_edit.py:458: AssertionError
+__________________________ test_tokenize_edge_cases ___________________________
+    def test_tokenize_edge_cases():
+        """Test tokenization of edge cases"""
+        source = '\n    x = 1; y = 2  # Multiple statements\n    # Comment with ; semicolon\n    s = "String # with hash"\n    q = \'String ; with semicolon\'\n    """\n    Multiline string\n    # with comment\n    ; with semicolon\n    """\n    '
+        tokenized, token_map = _tokenize_source(source)
+>       assert '__TOKEN__' in tokenized
+E       assert '__TOKEN__' in '\n    x = 1; y = 2; TOKEN_8b23220a_1\n    """TOKEN_8b23220a_2"""\n    s = "String; TOKEN_8b23220a_3\n    q = TOKEN_8b23220a_4\n    TOKEN_8b23220a_0\n    '
+test_python_edit.py:468: AssertionError
 =========================== short test summary info ===========================
-FAILED test_python_edit.py::test_insert_after_line - AssertionError: assert '...
-FAILED test_python_edit.py::test_line_comment_preservation - AssertionError: ...
-FAILED test_python_edit.py::test_line_insert_basic - AssertionError: assert '...
-FAILED test_python_edit.py::test_line_insert_indentation - StopIteration
-FAILED test_python_edit.py::test_line_insert_preservation - AssertionError: a...
-FAILED test_python_edit.py::test_line_insert_ast_handling - ValueError: 'z = ...
+FAILED test_python_edit.py::test_line_insert_exact_preservation - AssertionEr...
+FAILED test_python_edit.py::test_source_preservation - assert 'x = 1  # comme...
+FAILED test_python_edit.py::test_ast_tree_preservation - assert 'z = 3' in '\...
 FAILED test_python_edit.py::test_file_level_preservation - AssertionError: as...
-FAILED test_python_edit.py::test_minimal_tokenize_with_comment - AssertionErr...
-FAILED test_python_edit.py::test_minimal_complex_indent - AssertionError: ass...
-=================== 9 failed, 29 passed, 6 skipped in 1.28s ===================
+FAILED test_python_edit.py::test_tokenize_basic - assert '"string literal"' n...
+FAILED test_python_edit.py::test_tokenize_multiline - assert '"""' not in '\n...
+FAILED test_python_edit.py::test_tokenize_edge_cases - assert '__TOKEN__' in ...
+======================== 7 failed, 37 passed in 2.40s =========================

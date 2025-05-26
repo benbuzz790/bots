@@ -1,2 +1,2 @@
-pass# Empty
+# Empty
 x = 1
