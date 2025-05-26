@@ -6,8 +6,17 @@ import hashlib
 import re
 from typing import Dict, Tuple
 from typing import Dict, Tuple, Union
-TOKEN_START = ';;;'
-TOKEN_END = ';;;'
+from enum import Enum
+
+
+class TokenType(Enum):
+    """Types of tokens for metadata-driven processing"""
+    STANDALONE_COMMENT = 'standalone_comment'
+    INLINE_COMMENT = 'inline_comment'
+    IMPORT_COMMENT = 'import_comment'
+    COMPOUND_COMMENT = 'compound_comment'
+    STRING_LITERAL = 'string_literal'
+    MULTILINE_STRING = 'multiline_string'
 
 def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
     """
@@ -66,6 +75,12 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
             with open(abs_path, 'r', encoding='utf-8') as file:
                 original_content = file.read()
             tokenized_content, file_tokens = _tokenize_source(original_content) if original_content.strip() else ('', {})
+            print(f'DEBUG TOKENIZATION:')
+            print(f'Original content:\n{repr(original_content)}')
+            print(f'Tokenized content:\n{repr(tokenized_content)}')
+            print(f'Token map keys: {list(file_tokens.keys())}')
+            for token_name, token_data in file_tokens.items():
+                print(f'  {token_name}: {repr(token_data)}')
             file_lines = tokenized_content.split('\n')
             tree = ast.parse(tokenized_content) if original_content.strip() else ast.Module(body=[], type_ignores=[])
         except Exception as e:
@@ -111,8 +126,10 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 return _process_error(ValueError(f'Target scope not found: {target_scope}'))
         try:
             updated_content = _py_ast_to_source(modified_tree)
+            print(f'DEBUG AST updated content:\n{repr(updated_content)}')
             all_tokens = {**file_tokens, **new_code_tokens}
             final_content = _detokenize_source(updated_content, all_tokens)
+            print(f'DEBUG final content after detokenization:\n{repr(final_content)}')
             final_content = _preserve_blank_lines(final_content, original_content)
             with open(abs_path, 'w', encoding='utf-8') as file:
                 file.write(final_content)
@@ -355,10 +372,13 @@ class ScopeTransformer(ast.NodeTransformer):
         for i, new_node in enumerate(self.new_nodes):
             node.body.insert(insert_index + i, new_node)
 
-def _create_token(content: str, index: int, current_hash: str, metadata: dict=None) -> Tuple[str, Dict]:
+def _create_token(content: str, index: int, current_hash: str, token_type: TokenType=None, extra_metadata: dict=None) -> Tuple[str, Dict]:
     """Create a token with our specific pattern and metadata"""
     token_name = f'TOKEN_{current_hash}_{index}'
-    token_data = {'content': content, 'metadata': metadata or {}}
+    metadata = extra_metadata or {}
+    if token_type:
+        metadata['type'] = token_type.value
+    token_data = {'content': content, 'metadata': metadata}
     return (token_name, token_data)
 
 def _get_file_hash(content: str) -> str:
@@ -406,7 +426,7 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
         if start_pos in processed_positions or len(string_content) > 1000:
             break
         processed_positions.add(start_pos)
-        token_name, token_data = _create_token(string_content, token_counter, current_hash)
+        token_name, token_data = _create_token(string_content, token_counter, current_hash, TokenType.MULTILINE_STRING)
         token_map[token_name] = token_data
         tokenized = tokenized[:start_pos] + token_name + tokenized[end_pos:]
         token_counter += 1
@@ -425,7 +445,7 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
             processed_lines.append(line)
             continue
         if content.strip().startswith('#'):
-            token_name, token_data = _create_token(content.strip(), token_counter, current_hash)
+            token_name, token_data = _create_token(content.strip(), token_counter, current_hash, TokenType.STANDALONE_COMMENT)
             token_map[token_name] = token_data
             processed_lines.append(indentation + f'{token_name}')
             token_counter += 1
@@ -440,7 +460,7 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
                         while end < len(processed_line):
                             if processed_line[end] == quote_char:
                                 string_content = processed_line[start:end + 1]
-                                token_name, token_data = _create_token(string_content, token_counter, current_hash)
+                                token_name, token_data = _create_token(string_content, token_counter, current_hash, TokenType.STRING_LITERAL)
                                 token_map[token_name] = token_data
                                 processed_line = processed_line[:start] + token_name + processed_line[end + 1:]
                                 token_counter += 1
@@ -449,23 +469,28 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
                                 end += 2
                             else:
                                 end += 1
-                    break
+                break
         if '#' in processed_line:
             comment_start = processed_line.index('#')
             code = processed_line[:comment_start]
             code_end = len(code.rstrip())
             spacing_and_comment = processed_line[code_end:]
-            metadata = {}
             code_stripped = code.rstrip()
             if code_stripped.startswith(('import ', 'from ')):
-                metadata = {'type': 'import_comment', 'import_statement': code_stripped}
-            token_name, token_data = _create_token(spacing_and_comment, token_counter, current_hash, metadata)
+                token_type = TokenType.IMPORT_COMMENT
+                extra_metadata = {'import_statement': code_stripped}
+            else:
+                token_type = TokenType.INLINE_COMMENT
+                extra_metadata = {}
+            token_name, token_data = _create_token(spacing_and_comment, token_counter, current_hash, token_type, extra_metadata)
             token_map[token_name] = token_data
             compound_patterns = ['def ', 'class ', 'if ', 'elif ', 'for ', 'while ', 'with ', 'async def ']
             is_compound_with_colon = any((code_stripped.startswith(pattern) for pattern in compound_patterns)) and code_stripped.endswith(':')
             is_standalone_colon = code_stripped in ['else:', 'try:', 'finally:']
             is_compound = is_compound_with_colon or is_standalone_colon
             if is_compound:
+                token_data['metadata']['type'] = TokenType.COMPOUND_COMMENT.value
+                token_data['metadata']['statement'] = code_stripped
                 processed_lines.append(indentation + code_stripped)
                 processed_lines.append(indentation + f'# {token_name}')
                 token_counter += 1
@@ -478,42 +503,31 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
 
 def _detokenize_source(tokenized_source: str, token_map: Dict[str, Dict]) -> str:
     """
-    Restore original source from tokenized version.
-
-    Handles proper indentation of multiline content.
+    Restore original source from tokenized version using metadata-driven processing.
     """
     result = tokenized_source
     for token_name, token_data in token_map.items():
-        original = token_data['content']
+        content = token_data['content']
+        metadata = token_data['metadata']
+        token_type = metadata.get('type')
         while token_name in result:
             start = result.find(token_name)
             if start == -1:
                 break
-            line_start = result.rfind('\n', 0, start) + 1
-            line_end = result.find('\n', start)
-            if line_end == -1:
-                line_end = len(result)
-            line = result[line_start:line_end]
-            line_stripped = line.strip()
-            if line_stripped.startswith('# ') and line_stripped[2:] == token_name:
-                prev_line_start = result.rfind('\n', 0, line_start - 1) + 1
-                prev_line = result[prev_line_start:line_start - 1]
-                if prev_line.strip():
-                    reunited = prev_line + original
-                    result = result[:prev_line_start] + reunited + result[line_end:]
-                    continue
-            is_standalone_comment = line_stripped == token_name or line_stripped == f"'{token_name}'" or line_stripped == f'"{token_name}"'
-            if is_standalone_comment:
-                indent = line[:len(line) - len(line.lstrip())]
-                replacement = indent + original
-                result = result[:line_start] + replacement + result[line_end:]
-            elif '\n' in original:
-                indent = _get_indentation_at_position(result, start)
-                indented = _indent_multiline_content(original, indent)
-                result = result[:start] + indented + result[start + len(token_name):]
+            if token_type == TokenType.COMPOUND_COMMENT.value:
+                result = _handle_compound_comment(result, token_name, content, start)
+            elif token_type == TokenType.IMPORT_COMMENT.value:
+                result = _handle_import_comment(result, token_name, content, start, metadata)
+            elif token_type == TokenType.INLINE_COMMENT.value:
+                result = _handle_inline_comment(result, token_name, content, start)
+            elif token_type == TokenType.STANDALONE_COMMENT.value:
+                result = _handle_standalone_comment(result, token_name, content, start)
+            elif token_type == TokenType.MULTILINE_STRING.value:
+                result = _handle_multiline_string(result, token_name, content, start)
+            elif token_type == TokenType.STRING_LITERAL.value:
+                result = _handle_string_literal(result, token_name, content, start)
             else:
-                result = result[:start] + original + result[start + len(token_name):]
-    result = _reunite_inline_comments(result, token_map)
+                result = _handle_default_token(result, token_name, content, start)
     return result
 
 def _get_indentation_at_position(source: str, pos: int) -> str:
@@ -600,14 +614,6 @@ def _should_reunite_comment(code_line: str, comment_line: str, token_map: Dict[s
                 return True
     return False
 
-def _code_parts_match(current_code: str, stored_code: str) -> bool:
-    """
-    Check if two code parts match, accounting for AST reformatting.
-    """
-    current_normalized = ' '.join(current_code.split())
-    stored_normalized = ' '.join(stored_code.split())
-    return stored_normalized in current_normalized or current_normalized in stored_normalized
-
 def _preserve_blank_lines(result: str, original_source: str) -> str:
     """
     Restore blank lines around comments that had them in the original source.
@@ -641,3 +647,73 @@ def _preserve_blank_lines(result: str, original_source: str) -> str:
             new_result_lines.append(line)
         i += 1
     return '\n'.join(new_result_lines)
+
+def _handle_compound_comment(result: str, token_name: str, content: str, start: int) -> str:
+    """Handle compound statement comments (def, class, if, etc.)"""
+    line_start = result.rfind('\n', 0, start) + 1
+    line_end = result.find('\n', start)
+    if line_end == -1:
+        line_end = len(result)
+    line = result[line_start:line_end]
+    line_stripped = line.strip()
+    if line_stripped.startswith('# ') and line_stripped[2:] == token_name:
+        prev_line_start = result.rfind('\n', 0, line_start - 1) + 1
+        prev_line = result[prev_line_start:line_start - 1]
+        if prev_line.strip():
+            reunited = prev_line + content
+            return result[:prev_line_start] + reunited + result[line_end:]
+    return result[:start] + content + result[start + len(token_name):]
+
+def _handle_import_comment(result: str, token_name: str, content: str, start: int, metadata: dict) -> str:
+    """Handle import statement comments with metadata-driven reunification"""
+    import_statement = metadata.get('import_statement')
+    if not import_statement:
+        return result[:start] + content + result[start + len(token_name):]
+    lines = result.split('\n')
+    token_line_idx = None
+    for i, line in enumerate(lines):
+        if token_name in line:
+            token_line_idx = i
+            break
+    if token_line_idx is None:
+        return result[:start] + content + result[start + len(token_name):]
+    search_range = range(max(0, token_line_idx - 3), min(len(lines), token_line_idx + 3))
+    for i in search_range:
+        if i != token_line_idx and lines[i].strip() == import_statement:
+            lines[i] = lines[i].rstrip() + content
+            lines[token_line_idx] = '__REMOVE_THIS_LINE__'
+            new_lines = [line for line in lines if line != '__REMOVE_THIS_LINE__']
+            return '\n'.join(new_lines)
+    return result[:start] + content + result[start + len(token_name):]
+
+def _handle_inline_comment(result: str, token_name: str, content: str, start: int) -> str:
+    """Handle inline comments (non-import, non-compound)"""
+    return result[:start] + content + result[start + len(token_name):]
+
+def _handle_standalone_comment(result: str, token_name: str, content: str, start: int) -> str:
+    """Handle standalone comment lines"""
+    line_start = result.rfind('\n', 0, start) + 1
+    line_end = result.find('\n', start)
+    if line_end == -1:
+        line_end = len(result)
+    line = result[line_start:line_end]
+    indent = line[:len(line) - len(line.lstrip())]
+    replacement = indent + content
+    return result[:line_start] + replacement + result[line_end:]
+
+def _handle_multiline_string(result: str, token_name: str, content: str, start: int) -> str:
+    """Handle multiline strings with proper indentation"""
+    if '\n' in content:
+        indent = _get_indentation_at_position(result, start)
+        indented = _indent_multiline_content(content, indent)
+        return result[:start] + indented + result[start + len(token_name):]
+    else:
+        return result[:start] + content + result[start + len(token_name):]
+
+def _handle_string_literal(result: str, token_name: str, content: str, start: int) -> str:
+    """Handle simple string literals"""
+    return result[:start] + content + result[start + len(token_name):]
+
+def _handle_default_token(result: str, token_name: str, content: str, start: int) -> str:
+    """Handle tokens without specific type metadata"""
+    return result[:start] + content + result[start + len(token_name):]
