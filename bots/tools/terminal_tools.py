@@ -4,7 +4,7 @@ from threading import Thread, Lock, local
 from typing import Dict, Generator
 from datetime import datetime
 
-def execute_powershell(command: str, output_length_limit: str='120') -> str:
+def execute_powershell(command: str, output_length_limit: str='200', timeout: str = '60') -> str:
     """
     Executes PowerShell commands in a stateful environment
 
@@ -20,13 +20,13 @@ def execute_powershell(command: str, output_length_limit: str='120') -> str:
     Parameters:
     - command (str): PowerShell command to execute.
     - output_length_limit (int, optional): Maximum number of lines in the output.
-      If set, output exceeding this limit will be truncated. Default 120.
+      If set, output exceeding this limit will be truncated. Default 200.
 
     Returns:
         str: The complete output from the command execution
     """
     manager = PowerShellManager.get_instance()
-    output = ''.join(manager.execute(command, output_length_limit))
+    output = ''.join(manager.execute(command, int(output_length_limit), float(timeout)))
     return output
 
 class PowerShellSession:
@@ -37,7 +37,7 @@ class PowerShellSession:
     environment variables, or activating virtual environments.
     """
 
-    def __init__(self):
+    def __init__(self, timeout: float = 300):
         self._process = None
         self._command_counter = 0
         self._output_queue = Queue()
@@ -84,7 +84,7 @@ class PowerShellSession:
                 self._error_queue = Queue()
                 self._reader_threads = []
 
-    def execute(self, code: str, timeout: float=300) -> str:
+    def execute(self, code: str, timeout: float = 60) -> str:
         """
         Execute PowerShell code and return its complete output.
 
@@ -231,7 +231,7 @@ class PowerShellManager:
             print(f'Session validation failed: {str(e)}')
             return False
 
-    def execute(self, code: str, output_length_limit: str='60') -> Generator[str, None, None]:
+    def execute(self, code: str, output_length_limit: str='60', timeout: float = 60) -> Generator[str, None, None]:
         """
         Execute PowerShell code in the session with automatic recovery.
 
@@ -242,7 +242,7 @@ class PowerShellManager:
         Yields:
             Command output as strings
         """
-        max_retries = 1
+        max_retries = 0
         retry_count = 0
 
         def _process_error(error):
@@ -252,7 +252,7 @@ class PowerShellManager:
         while retry_count <= max_retries:
             try:
                 processed_code = _process_commands(code)
-                output = self.session.execute(processed_code)
+                output = self.session.execute(processed_code, timeout)
                 if output_length_limit is not None and output:
                     output_length_limit_int = int(output_length_limit)
                     lines = output.splitlines()
