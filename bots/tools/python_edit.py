@@ -428,7 +428,6 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
             token_counter += 1
             continue
         processed_line = content
-        # Process strings BEFORE processing inline comments
         if not contains_token(processed_line):
             for quote_char in ['"', "'"]:
                 if quote_char in processed_line:
@@ -448,13 +447,13 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, str]]:
                             else:
                                 end += 1
                         break
-        # Process inline comments AFTER strings
         if '#' in processed_line:
             comment_start = processed_line.index('#')
             code = processed_line[:comment_start]
-            comment = processed_line[comment_start:]
-            token_name, hex_val = _create_token(comment, token_counter, current_hash)
-            token_map[hex_val] = comment
+            code_end = len(code.rstrip())
+            spacing_and_comment = processed_line[code_end:]
+            token_name, hex_val = _create_token(spacing_and_comment, token_counter, current_hash)
+            token_map[hex_val] = spacing_and_comment
             processed_line = code.rstrip() + '; ' + hex_val
             token_counter += 1
         processed_lines.append(indentation + processed_line)
@@ -489,6 +488,7 @@ def _detokenize_source(tokenized_source: str, token_map: Dict[str, str]) -> str:
                 result = result[:start] + indented + result[start + len(token_value):]
             else:
                 result = result[:start] + original + result[start + len(token_value):]
+    result = _reunite_inline_comments(result, token_map)
     return result
 
 def _get_indentation_at_position(source: str, pos: int) -> str:
@@ -537,21 +537,19 @@ def _reunite_inline_comments(source: str, token_map: Dict[str, str]) -> str:
 def _should_reunite_comment(code_line: str, comment_line: str, token_map: Dict[str, str]) -> bool:
     """
     Determine if a comment line should be reunited with the previous code line.
+    Only reunite comments that were originally inline (had non-whitespace code before #).
     """
-    if not comment_line.startswith('#'):
+    if not comment_line.strip().startswith('#'):
         return False
     code_stripped = code_line.strip()
     if not code_stripped or code_stripped.startswith('#'):
         return False
-    for token_data in token_map.values():
-        if isinstance(token_data, dict):
-            if token_data.get('type') == 'inline_comment' and token_data.get('content') == comment_line:
-                stored_code_part = token_data.get('code_part', '').strip()
-                if stored_code_part:
-                    if _code_parts_match(code_stripped, stored_code_part):
-                        return True
-                else:
-                    return True
+    for original in token_map.values():
+        if isinstance(original, str) and original.strip() == comment_line.strip():
+            hash_pos = original.find('#')
+            if hash_pos > 0:
+                before_hash = original[:hash_pos]
+                return before_hash.strip() != ''
     return False
 
 def _code_parts_match(current_code: str, stored_code: str) -> bool:
