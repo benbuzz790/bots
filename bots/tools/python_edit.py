@@ -1,13 +1,13 @@
 import ast
 import os
 import textwrap
-TOKEN_START = ';;;'
-TOKEN_END = ';;;'
 from bots.utils.helpers import _process_error, _clean, _py_ast_to_source
 import hashlib
 import re
 from typing import Dict, Tuple
 from typing import Dict, Tuple, Union
+TOKEN_START = ';;;'
+TOKEN_END = ';;;'
 
 def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
     """
@@ -64,10 +64,10 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
             return _process_error(ValueError(f'Error parsing new code: {str(e)}'))
         try:
             with open(abs_path, 'r', encoding='utf-8') as file:
-                content = file.read()
-            tokenized_content, file_tokens = _tokenize_source(content) if content.strip() else ('', {})
+                original_content = file.read()
+            tokenized_content, file_tokens = _tokenize_source(original_content) if original_content.strip() else ('', {})
             file_lines = tokenized_content.split('\n')
-            tree = ast.parse(tokenized_content) if content.strip() else ast.Module(body=[], type_ignores=[])
+            tree = ast.parse(tokenized_content) if original_content.strip() else ast.Module(body=[], type_ignores=[])
         except Exception as e:
             return _process_error(ValueError(f'Error reading/parsing file {abs_path}: {str(e)}'))
         existing_imports = []
@@ -83,6 +83,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 updated_content = _py_ast_to_source(tree)
                 all_tokens = {**file_tokens, **new_code_tokens}
                 final_content = _detokenize_source(updated_content, all_tokens)
+                final_content = _preserve_blank_lines(final_content, original_content)
                 with open(abs_path, 'w', encoding='utf-8') as file:
                     file.write(final_content)
                 return f"Code inserted at start of '{abs_path}'."
@@ -94,6 +95,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 updated_content = _py_ast_to_source(tree)
                 all_tokens = {**file_tokens, **new_code_tokens}
                 final_content = _detokenize_source(updated_content, all_tokens)
+                final_content = _preserve_blank_lines(final_content, original_content)
                 with open(abs_path, 'w', encoding='utf-8') as file:
                     file.write(final_content)
                 return f"Code added at file level in '{abs_path}'."
@@ -111,6 +113,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
             updated_content = _py_ast_to_source(modified_tree)
             all_tokens = {**file_tokens, **new_code_tokens}
             final_content = _detokenize_source(updated_content, all_tokens)
+            final_content = _preserve_blank_lines(final_content, original_content)
             with open(abs_path, 'w', encoding='utf-8') as file:
                 file.write(final_content)
             action = 'inserted after' if insert_after else 'replaced at'
@@ -580,3 +583,37 @@ def _code_parts_match(current_code: str, stored_code: str) -> bool:
     current_normalized = ' '.join(current_code.split())
     stored_normalized = ' '.join(stored_code.split())
     return stored_normalized in current_normalized or current_normalized in stored_normalized
+
+def _preserve_blank_lines(result: str, original_source: str) -> str:
+    """
+    Restore blank lines around comments that had them in the original source.
+    """
+    original_lines = original_source.split('\n')
+    result_lines = result.split('\n')
+    comments_with_blanks = {}
+    for i, line in enumerate(original_lines):
+        if line.strip().startswith('#') and 'marker' in line.lower():
+            blank_before = i > 0 and (not original_lines[i - 1].strip())
+            blank_after = i < len(original_lines) - 1 and (not original_lines[i + 1].strip())
+            if blank_before or blank_after:
+                comments_with_blanks[line.strip()] = {'blank_before': blank_before, 'blank_after': blank_after}
+    if not comments_with_blanks:
+        return result
+    new_result_lines = []
+    i = 0
+    while i < len(result_lines):
+        line = result_lines[i]
+        line_stripped = line.strip()
+        if line_stripped in comments_with_blanks:
+            info = comments_with_blanks[line_stripped]
+            if info['blank_before']:
+                if i > 0 and new_result_lines[-1].strip():
+                    new_result_lines.append('')
+            new_result_lines.append(line)
+            if info['blank_after']:
+                if i < len(result_lines) - 1 and result_lines[i + 1].strip():
+                    new_result_lines.append('')
+        else:
+            new_result_lines.append(line)
+        i += 1
+    return '\n'.join(new_result_lines)
