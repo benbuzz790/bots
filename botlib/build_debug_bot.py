@@ -39,7 +39,7 @@ import textwrap
 # Configuration constants
 BOT_NAME: Final[str] = 'Deb'
 BOT_ROLE: Final[str] = 'Debugger'
-BOT_SAVE_PATH: Final[str] = 'botlib/Deb@7Feb2025'
+BOT_SAVE_PATH: Final[str] = 'botlib/Deb@27May2025'
 
 # System message defining bot's behavior and methodology
 SYSTEM_MESSAGE: Final[str] = textwrap.dedent("""
@@ -65,7 +65,7 @@ bot.set_system_message(SYSTEM_MESSAGE)
 # Add required tool sets
 bot.add_tools(bots.tools.code_tools)
 bot.add_tools(bots.tools.terminal_tools)
-bot.add_tools(bots.tools.python_editing_tools)
+bot.add_tools(bots.tools.python_edit)
 
 # Save the configured bot
 bot.save(BOT_SAVE_PATH)

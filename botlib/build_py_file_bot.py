@@ -65,7 +65,7 @@ SYSTEM_MESSAGE: str = textwrap.dedent("""
 
 BOT_NAME: Final[str] = 'Codey'
 BOT_ROLE: Final[str] = 'File Writer'
-BOT_SAVE_PATH: Final[str] = 'botlib/Codey@8Feb2025'
+BOT_SAVE_PATH: Final[str] = 'botlib/Codey@27May2025'
 
 def create_file_writer_bot(autosave: bool = False) -> Bot:
     """Factory function that creates and configures a specialized Python file writer bot.
@@ -101,9 +101,12 @@ def create_file_writer_bot(autosave: bool = False) -> Bot:
     # Add required tool sets
     bot.add_tools(bots.tools.code_tools)
     bot.add_tools(bots.tools.terminal_tools)
-    bot.add_tools(bots.tools.python_editing_tools)
+    bot.add_tools(bots.tools.python_edit)
     
     # Save initial state
     bot.save(BOT_SAVE_PATH)
     
     return bot
+
+if __name__ == '__main__':
+    create_file_writer_bot()
