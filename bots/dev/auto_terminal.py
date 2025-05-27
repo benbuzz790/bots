@@ -33,7 +33,6 @@ from bots.foundation.openai_bots import ChatGPT_Bot
 from bots.foundation.anthropic_bots import AnthropicBot
 import sys
 import bots.tools.python_edit
-import bots.tools.python_editing_tools
 import bots.tools.terminal_tools
 import bots.tools.code_tools
 import textwrap
@@ -138,8 +137,7 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
     else:
         raise ValueError('No OpenAI or Anthropic API keys found. Set up your key')
     
-    #bot.add_tools(bots.tools.python_edit)
-    bot.add_tools(bots.tools.python_editing_tools)
+    bot.add_tools(bots.tools.python_edit)
     bot.add_tools(bots.tools.code_tools)
     bot.add_tools(bots.tools.terminal_tools)
 
