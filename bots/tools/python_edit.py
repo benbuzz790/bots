@@ -540,14 +540,17 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
     )
     token_map[token_name] = token_data
     
-    # For compound comments, put token on separate line for later reunification
+    # For compound comments, put token on separate line with proper indentation
     if token_type == TokenType.COMPOUND_COMMENT:
-        processed_line = f"{code.rstrip()}\n{token_name}"
+        # Get the base indentation of the current line
+        base_indent = len(line) - len(line.lstrip())
+        # Add 4 spaces for the expected function/class body indentation
+        token_indent = ' ' * (base_indent + 4)
+        processed_line = f"{code.rstrip()}\n{token_indent}{token_name}"
     else:
         processed_line = f"{code.rstrip()}; {token_name}"
     
     return processed_line, token_counter + 1
-
 
 def _determine_comment_type(code_stripped: str) -> Tuple[TokenType, dict]:
     """Determine the type of comment based on the preceding code."""
