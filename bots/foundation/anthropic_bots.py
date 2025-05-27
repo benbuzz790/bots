@@ -292,6 +292,7 @@ class AnthropicMailbox(Mailbox):
                 return response.stop_reason == 'max_tokens' and (not 'tool_calls' in response)
             while should_continue(response):
                 if bot.conversation.role == 'user': # base case
+                    # TODO: Sometimes Claude responds without a text block, and content[0] is a tool use block. Need to check for this case and avoid it.
                     bot.conversation._add_reply(role='assistant', content=response.content[0].text)
                 elif bot.conversation.role == 'assistant': # recursive case
                     bot.conversation.content += response

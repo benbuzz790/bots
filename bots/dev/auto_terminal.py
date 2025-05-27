@@ -23,6 +23,12 @@ Available commands:
 Type your messages normally to chat.
 """
 
+
+## TODO ##
+# Add '/showlabels'
+# Save labels to conversation nodes so they are saved in the bot file
+
+
 from bots.foundation.openai_bots import ChatGPT_Bot
 from bots.foundation.anthropic_bots import AnthropicBot
 import sys
