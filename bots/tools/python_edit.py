@@ -650,7 +650,7 @@ def _preserve_blank_lines(result: str, original_source: str) -> str:
     return '\n'.join(new_result_lines)
 
 def _handle_compound_comment(result: str, token_name: str, content: str, start: int) -> str:
-    """Handle compound statement comments (def, class, if, etc.)"""
+    """Handle compound statement comments (def, class, if, etc.) with smart reunification"""
     line_start = result.rfind('\n', 0, start) + 1
     line_end = result.find('\n', start)
     if line_end == -1:
@@ -663,6 +663,17 @@ def _handle_compound_comment(result: str, token_name: str, content: str, start: 
         if prev_line.strip():
             reunited = prev_line + content
             return result[:prev_line_start] + reunited + result[line_end:]
+    elif line_stripped == token_name:
+        search_start = line_start - 1
+        while search_start > 0:
+            prev_line_start = result.rfind('\n', 0, search_start) + 1
+            prev_line = result[prev_line_start:search_start]
+            if prev_line.strip():
+                if prev_line.strip().endswith(':'):
+                    reunited = prev_line.rstrip() + content
+                    return result[:prev_line_start] + reunited + result[line_end:]
+                break
+            search_start = prev_line_start - 1
     return result[:start] + content + result[start + len(token_name):]
 
 def _handle_import_comment(result: str, token_name: str, content: str, start: int, metadata: dict) -> str:
@@ -688,7 +699,22 @@ def _handle_import_comment(result: str, token_name: str, content: str, start: in
     return result[:start] + content + result[start + len(token_name):]
 
 def _handle_inline_comment(result: str, token_name: str, content: str, start: int) -> str:
-    """Handle inline comments (non-import, non-compound)"""
+    """Handle inline comments (non-import, non-compound) with smart reunification"""
+    line_start = result.rfind('\n', 0, start) + 1
+    line_end = result.find('\n', start)
+    if line_end == -1:
+        line_end = len(result)
+    line = result[line_start:line_end]
+    line_stripped = line.strip()
+    if line_stripped == token_name:
+        search_start = line_start - 1
+        while search_start > 0:
+            prev_line_start = result.rfind('\n', 0, search_start) + 1
+            prev_line = result[prev_line_start:search_start]
+            if prev_line.strip():
+                reunited = prev_line.rstrip() + content
+                return result[:prev_line_start] + reunited + result[line_end:]
+            search_start = prev_line_start - 1
     return result[:start] + content + result[start + len(token_name):]
 
 def _handle_standalone_comment(result: str, token_name: str, content: str, start: int) -> str:
