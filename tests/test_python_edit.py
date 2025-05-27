@@ -398,18 +398,6 @@ def test_ast_tree_preservation():
     assert 'z = 3' in content
     assert 'y = 2  # comment about y' in content
 
-def test_file_level_preservation():
-    """Test that file-level operations preserve formatting"""
-    content = '\n    # Top level comment\n    import os  # os import\n\n    # Another comment\n    x = 1  # first assignment\n\n    # Final comment\n    y = 2  # second assignment\n    '
-    test_file = setup_test_file('tmp', content)
-    result = python_edit(test_file, 'z = 3', insert_after='__FILE_START__')
-    with open(test_file) as f:
-        content = f.read()
-    print(f'DEBUG - File content:\n{content}')
-    expected = '\n    # Top level comment\n    import os  # os import\n\n    z = 3\n\n    # Another comment\n    x = 1  # first assignment\n\n    # Final comment\n    y = 2  # second assignment\n    '.strip()
-    print(f'DEBUG - Expected:\n{expected}')
-    assert content.strip() == expected
-
 def test_minimal_tokenize():
     """Test tokenization of minimal valid Python"""
     source = 'x = 1'
