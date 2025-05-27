@@ -8,7 +8,6 @@ from typing import Dict, Tuple
 from typing import Dict, Tuple, Union
 from enum import Enum
 
-
 class TokenType(Enum):
     """Types of tokens for metadata-driven processing"""
     STANDALONE_COMMENT = 'standalone_comment'
@@ -480,17 +479,19 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
                 token_type = TokenType.IMPORT_COMMENT
                 extra_metadata = {'import_statement': code_stripped}
             else:
-                token_type = TokenType.INLINE_COMMENT
-                extra_metadata = {}
+                compound_patterns = ['def ', 'class ', 'if ', 'elif ', 'for ', 'while ', 'with ', 'async def ']
+                is_compound_with_colon = any((code_stripped.startswith(pattern) for pattern in compound_patterns)) and code_stripped.endswith(':')
+                is_standalone_colon = code_stripped in ['else:', 'try:', 'finally:']
+                is_compound = is_compound_with_colon or is_standalone_colon
+                if is_compound:
+                    token_type = TokenType.COMPOUND_COMMENT
+                    extra_metadata = {'statement': code_stripped}
+                else:
+                    token_type = TokenType.INLINE_COMMENT
+                    extra_metadata = {}
             token_name, token_data = _create_token(spacing_and_comment, token_counter, current_hash, token_type, extra_metadata)
             token_map[token_name] = token_data
-            compound_patterns = ['def ', 'class ', 'if ', 'elif ', 'for ', 'while ', 'with ', 'async def ']
-            is_compound_with_colon = any((code_stripped.startswith(pattern) for pattern in compound_patterns)) and code_stripped.endswith(':')
-            is_standalone_colon = code_stripped in ['else:', 'try:', 'finally:']
-            is_compound = is_compound_with_colon or is_standalone_colon
-            if is_compound:
-                token_data['metadata']['type'] = TokenType.COMPOUND_COMMENT.value
-                token_data['metadata']['statement'] = code_stripped
+            if token_type == TokenType.COMPOUND_COMMENT:
                 processed_lines.append(indentation + code_stripped)
                 processed_lines.append(indentation + f'# {token_name}')
                 token_counter += 1
