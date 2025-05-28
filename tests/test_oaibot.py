@@ -12,7 +12,7 @@ import tempfile
 import shutil
 from bots import ChatGPT_Bot
 from bots.foundation.base import Engines
-from bots.tools.code_tools import read_file
+from bots.tools.code_tools import view
 
 class TestGPTBot(unittest.TestCase):
     """Test suite for ChatGPT_Bot functionality.
@@ -33,7 +33,7 @@ class TestGPTBot(unittest.TestCase):
         """
         self.temp_dir = tempfile.mkdtemp()
         self.bot = ChatGPT_Bot(model_engine=Engines.GPT4TURBO, max_tokens=1000, temperature=0.7, name='TestBot')
-        self.bot.add_tools(read_file)
+        self.bot.add_tools(view)
         self.test_file_path = os.path.join(self.temp_dir, 'test_file.txt')
         self.test_content = 'This is a test file content.'
         with open(self.test_file_path, 'w') as f:
