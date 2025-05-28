@@ -3,31 +3,81 @@ import traceback
 import textwrap
 import difflib
 
-def read_file(file_path: str):
+def view(file_path: str, start_line: int = None, end_line: int = None, 
+         around_str_match: str = None, dist_from_match: int = 10):
     """
     Display the contents of a file with line numbers.
 
     Parameters:
     - file_path (str): The path to the file to be viewed.
+    - start_line (int, optional): Starting line number (1-indexed). If None, starts from beginning.
+    - end_line (int, optional): Ending line number (1-indexed). If None, goes to end of file.
+    - around_str_match (str, optional): String to search for. If provided, shows lines around matches.
+    - dist_from_match (int, optional): Number of lines to show before and after each match. Defaults to 10.
 
     Returns:
     A string containing the file contents with line numbers, 
-    limited to the specified maximum number of lines.
+    filtered according to the specified parameters.
     """
     encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
-    max_lines = 2500
+    
     for encoding in encodings:
         try:
             with open(file_path, 'r', encoding=encoding) as file:
                 lines = file.readlines()
-                # Slice the lines to max_lines
-                truncated_lines = lines[:max_lines] if max_lines < len(lines)-1 else lines
-                numbered_lines = [f'{i + 1}:{line.rstrip()}' for i, line in enumerate(truncated_lines)]
+                
+            # If searching for a string match
+            if around_str_match:
+                matching_line_numbers = []
+                for i, line in enumerate(lines):
+                    if around_str_match in line:
+                        matching_line_numbers.append(i)
+                
+                if not matching_line_numbers:
+                    return f"No matches found for '{around_str_match}'"
+                
+                # Collect line ranges around matches
+                line_ranges = set()
+                for match_line in matching_line_numbers:
+                    start = max(0, match_line - dist_from_match)
+                    end = min(len(lines), match_line + dist_from_match + 1)
+                    for line_num in range(start, end):
+                        line_ranges.add(line_num)
+                
+                # Sort and create output
+                sorted_lines = sorted(line_ranges)
+                numbered_lines = []
+                prev_line = None  # To detect gaps
+                
+                for line_num in sorted_lines:
+                    if prev_line is not None and line_num > prev_line + 1:
+                        numbered_lines.append("...")  # Add separator for gaps
+                    numbered_lines.append(f'{line_num + 1}:{lines[line_num].rstrip()}')
+                    prev_line = line_num
+                
                 return '\n'.join(numbered_lines)
+            
+            # If using start_line and end_line parameters
+            else:
+                start_idx = (start_line - 1) if start_line else 0
+                end_idx = end_line if end_line else len(lines)
+                
+                # Validate line numbers
+                start_idx = max(0, start_idx)
+                end_idx = min(len(lines), end_idx)
+                
+                if start_idx >= len(lines):
+                    return f"Error: start_line ({start_line}) exceeds file length ({len(lines)} lines)"
+                
+                selected_lines = lines[start_idx:end_idx]
+                numbered_lines = [f'{i + start_idx + 1}:{line.rstrip()}' for i, line in enumerate(selected_lines)]
+                return '\n'.join(numbered_lines)
+                
         except UnicodeDecodeError:
             continue
         except Exception as e:
             return f'Error: {str(e)}'
+    
     return f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
 
 def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py', 'txt', 'md']"):
@@ -138,7 +188,6 @@ def patch_edit(file_path: str, patch_content: str):
         patch_content = textwrap.dedent(patch_content)
         patch_content = '\n' + patch_content
         
-        
         hunks = patch_content.split('\n@@')[1:]
         if not hunks:
             return 'Error: No valid patch hunks found. (No instances of "\\n@@". Did you accidentally indent the headers?)'
@@ -153,7 +202,7 @@ def patch_edit(file_path: str, patch_content: str):
                     header = header + ' @@'
                 old_range, new_range = header.rstrip(' @').split(' +')
                 old_start = int(old_range.split(',')[0].lstrip('- ')) - 1  # Convert to 0-based
-                #new_start = int(new_range.split(',')[0]) - 1  # Convert to 0-based, unused
+                # new_start = int(new_range.split(',')[0]) - 1  # Unused, also would be 0-based
                 hunk_lines = _normalize_header_lines(hunk[header_end:].splitlines()[1:])
             except (ValueError, IndexError) as e:
                 return f'Error parsing hunk header: {str(e)}\nHeader: {header}'
@@ -183,15 +232,14 @@ def patch_edit(file_path: str, patch_content: str):
                 changes_made.append('Applied changes to new file')
                 continue
 
-
             adjusted_start = old_start + line_offset
             found = False
             match_line = adjusted_start
             exact_match = False
 
-            # Try to match at expected position with or without whitespace
+            # Try to match at expected position with or without whitespace (0-based)
             if adjusted_start <= len(current_lines):
-                found, was_whitespace = _check_match_type(current_lines, adjusted_start-1, context_before) #please forgive me for my off by one errors
+                found, was_whitespace = _check_match_type(current_lines, adjusted_start, context_before)
                 if found:
                     exact_match = not was_whitespace
                     if was_whitespace:
@@ -203,7 +251,7 @@ def patch_edit(file_path: str, patch_content: str):
             if not found:
                 matches = []
                 whitespace_matches = []
-                for i in range(1, len(current_lines) - len(context_before) + 2):
+                for i in range(0, len(current_lines) - len(context_before) + 1):  # start at 0!
                     found, was_whitespace = _check_match_type(current_lines, i, context_before)
                     if found:
                         if was_whitespace:
@@ -211,25 +259,25 @@ def patch_edit(file_path: str, patch_content: str):
                         else:
                             matches.append(i)
                             exact_match = True
-                
+
                 # Apply exact match if exactly one is found
                 if matches:
-                    if len(matches) > 1: # If we find more than one match, we don't attempt to disambiguate
-                        match_locations = '\n'.join((f'- at line {m}' for m in matches))
+                    if len(matches) > 1:
+                        match_locations = '\n'.join((f'- at line {m + 1}' for m in matches))
                         return f'Error: Multiple possible matches found:\n{match_locations} for hunk starting with {hunk_lines[0][0:20]}\nPlease provide more context to disambiguate.'
                     match_line = matches[0]
-                    changes_made.append(f'Note: Applied hunk starting with {hunk_lines[0][0:20]} at line {match_line} (different from specified line {old_start})')
+                    changes_made.append(f'Note: Applied hunk starting with {hunk_lines[0][0:20]} at line {match_line + 1} (different from specified line {old_start + 1})')
                     found = True
-                
+
                 # Apply whitespace match if exactly one is found (and no exact match found)
                 elif whitespace_matches:
                     if len(whitespace_matches) > 1:
-                        match_locations = '\n'.join((f'- at line {m}' for m in whitespace_matches))
+                        match_locations = '\n'.join((f'- at line {m + 1}' for m in whitespace_matches))
                         return f'Error: Multiple possible matches found:\n{match_locations}\nPlease provide more context to disambiguate.'
                     match_line = whitespace_matches[0]
-                    changes_made.append(f'Note: Applied hunk starting with {hunk_lines[0][0:20]} at line {match_line} (different from specified line {old_start}), and had to ignore whitespace to find match')
+                    changes_made.append(f'Note: Applied hunk starting with {hunk_lines[0][0:20]} at line {match_line + 1} (different from specified line {old_start + 1}), and had to ignore whitespace to find match')
                     found = True
-            
+
             # If no match found ignoring position and whitespace, send error with best match.
             if not found and context_before:
                 _, best_line, match_quality, _ = _find_block_in_content(current_lines, context_before, ignore_whitespace=True)
@@ -237,14 +285,11 @@ def patch_edit(file_path: str, patch_content: str):
                     context = _get_context(current_lines, best_line - 1, 2)
                     return f'Error: Could not find match. Best potential match: {best_line}\nContext:\n{context}\nMatch quality: {match_quality:.2f}'
                 else:
-                    context = _get_context(current_lines, old_start - 1, 2) if old_start > 0 else []
+                    context = _get_context(current_lines, old_start, 2) if old_start >= 0 else []
                     return f'Error: Could not find match or close match.\nExpected:\n{context_before}\nFound:\n{context}'
-                
+
             # Apply changes
-            if len(context_before) == 0:
-                pos = match_line + len(context_before) # I hate that I have to do this but I mixed up 0 / 1 based indexing somewhere and I can't find it.
-            else:
-                pos = match_line + len(context_before) -1
+            pos = match_line + len(context_before)
             if exact_match:
                 indented_additions = additions
             else:
@@ -312,15 +357,15 @@ def _get_line_indentation(line: str) -> str:
 
 def _check_match_type(content_lines: list, start_pos: int, context_lines: list, removal_lines: list=None) -> tuple[bool, bool]:
     """
-    Check if there's a match at the given position.
+    Check if there's a match at the given position (0-based).
     Returns (found_match, was_whitespace_match)
     """
-    if start_pos - 1 + len(context_lines) > len(content_lines):
+    if start_pos + len(context_lines) > len(content_lines):
         return (False, False)
     context_exact = True
     context_whitespace = True
     for i, ctx_line in enumerate(context_lines):
-        content_line = content_lines[start_pos - 1 + i]
+        content_line = content_lines[start_pos + i]
         if content_line != ctx_line:
             context_exact = False
         if content_line.strip() != ctx_line.strip():
@@ -328,7 +373,7 @@ def _check_match_type(content_lines: list, start_pos: int, context_lines: list, 
     if not context_whitespace:
         return (False, False)
     if removal_lines:
-        pos = start_pos -1 + len(context_lines)
+        pos = start_pos + len(context_lines)
         if pos + len(removal_lines) > len(content_lines):
             return (False, False)
         for i, rem_line in enumerate(removal_lines):
@@ -406,4 +451,3 @@ def _adjust_indentation(lines: list, target_indent: str) -> list:
         new_indent = target_indent + ' ' * max(0, relative_indent)
         adjusted_lines.append(new_indent + line.lstrip())
     return adjusted_lines
-

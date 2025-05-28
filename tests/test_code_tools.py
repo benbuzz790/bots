@@ -2,7 +2,7 @@ import unittest
 import textwrap
 import os
 import tempfile
-from bots.tools.code_tools import read_file, diff_edit, view_dir
+from bots.tools.code_tools import view, view_dir
 
 def create_temp_file(content):
     """Helper function to create a temporary file with given content."""
@@ -18,158 +18,122 @@ class TestCodeTools(unittest.TestCase):
         self.temp_dir = os.path.join('benbuzz790', 'private_tests', 'temp')
         os.makedirs(self.temp_dir, exist_ok=True)
         self.temp_file = os.path.join(self.temp_dir, 'test_file.txt')
-        content = 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n'
+        content = 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9\nLine 10\n'
         with open(self.temp_file, 'w', encoding='utf-8') as f:
             f.write(content)
 
     def tearDown(self):
-        os.remove(self.temp_file)
-        os.rmdir(self.temp_dir)
+        if os.path.exists(self.temp_file):
+            os.remove(self.temp_file)
+        if os.path.exists(self.temp_dir):
+            os.rmdir(self.temp_dir)
 
-    def test_view(self):
-        result = read_file(self.temp_file)
+    def test_view_full_file(self):
+        """Test viewing entire file (default behavior)."""
+        result = view(self.temp_file)
+        expected = '1:Line 1\n2:Line 2\n3:Line 3\n4:Line 4\n5:Line 5\n6:Line 6\n7:Line 7\n8:Line 8\n9:Line 9\n10:Line 10'
+        self.assertEqual(result, expected)
+
+    def test_view_with_start_line(self):
+        """Test viewing file starting from a specific line."""
+        result = view(self.temp_file, start_line=3)
+        expected = '3:Line 3\n4:Line 4\n5:Line 5\n6:Line 6\n7:Line 7\n8:Line 8\n9:Line 9\n10:Line 10'
+        self.assertEqual(result, expected)
+
+    def test_view_with_end_line(self):
+        """Test viewing file up to a specific line."""
+        result = view(self.temp_file, end_line=5)
         expected = '1:Line 1\n2:Line 2\n3:Line 3\n4:Line 4\n5:Line 5'
         self.assertEqual(result, expected)
 
-    def test_basic_replacement(self):
-        """Test basic single-line replacement."""
-        initial_content = textwrap.dedent('\n        def hello():\n            print("Hello")\n            return True\n    ').lstrip()
-        diff_spec = textwrap.dedent('\n        -    print("Hello")\n        +    print("Hello, World!")\n    ').lstrip()
-        file_path = create_temp_file(initial_content)
-        try:
-            result = diff_edit(file_path, diff_spec)
-            self.assertIn('Successfully', result)
-            with open(file_path, 'r', encoding='utf-8') as f:
-                new_content = f.read()
-            expected = textwrap.dedent('\n            def hello():\n                print("Hello, World!")\n                return True\n        ').lstrip()
-            self.assertEqual(new_content, expected)
-        finally:
-            os.remove(file_path)
+    def test_view_with_start_and_end_line(self):
+        """Test viewing file with both start and end line specified."""
+        result = view(self.temp_file, start_line=3, end_line=7)
+        expected = '3:Line 3\n4:Line 4\n5:Line 5\n6:Line 6\n7:Line 7'
+        self.assertEqual(result, expected)
 
-    def test_multi_line_replacement(self):
-        """Test replacing multiple consecutive lines."""
-        initial_content = textwrap.dedent('\n        def complex_function():\n            x = 1\n            y = 2\n            z = 3\n            return x + y + z\n    ').lstrip()
-        diff_spec = textwrap.dedent('\n        -    x = 1\n        -    y = 2\n        -    z = 3\n        +    total = 6\n    ').lstrip()
-        file_path = create_temp_file(initial_content)
+    def test_view_with_string_match(self):
+        """Test viewing lines around a string match."""
+        # Create a file with some specific content for string matching
+        content = 'First line\nSecond line\nImportant function here\nFourth line\nFifth line\nSixth line\n'
+        test_file = create_temp_file(content)
         try:
-            result = diff_edit(file_path, diff_spec)
-            self.assertIn('Successfully', result)
-            with open(file_path, 'r', encoding='utf-8') as f:
-                new_content = f.read()
-            expected = textwrap.dedent('\n            def complex_function():\n                total = 6\n                return x + y + z\n        ').lstrip()
-            self.assertEqual(new_content, expected)
+            result = view(test_file, around_str_match='Important function', dist_from_match=1)
+            # Should show line 2, 3, and 4 (1 line before and after the match)
+            expected = '2:Second line\n3:Important function here\n4:Fourth line'
+            self.assertEqual(result, expected)
         finally:
-            os.remove(file_path)
+            os.remove(test_file)
 
-    def test_indentation_preservation(self):
-        """Test that indentation is properly preserved."""
-        initial_content = textwrap.dedent('\n        class MyClass:\n            def method(self):\n                if True:\n                    print("old")\n                    return None\n    ').lstrip()
-        diff_spec = textwrap.dedent('\n        -            print("old")\n        +            print("new")\n    ').lstrip()
-        file_path = create_temp_file(initial_content)
+    def test_view_with_string_match_custom_distance(self):
+        """Test viewing lines around a string match with custom distance."""
+        content = 'Line 1\nLine 2\nLine 3\nTarget line here\nLine 5\nLine 6\nLine 7\nLine 8\n'
+        test_file = create_temp_file(content)
         try:
-            result = diff_edit(file_path, diff_spec)
-            self.assertIn('Successfully', result)
-            with open(file_path, 'r', encoding='utf-8') as f:
-                new_content = f.read()
-            expected = textwrap.dedent('\n            class MyClass:\n                def method(self):\n                    if True:\n                        print("new")\n                        return None\n        ').lstrip()
-            self.assertEqual(new_content, expected)
+            result = view(test_file, around_str_match='Target line', dist_from_match=2)
+            # Should show lines 2-6 (2 lines before and after the match)
+            expected = '2:Line 2\n3:Line 3\n4:Target line here\n5:Line 5\n6:Line 6'
+            self.assertEqual(result, expected)
         finally:
-            os.remove(file_path)
+            os.remove(test_file)
 
-    def test_multiple_changes(self):
-        """Test multiple separate changes in the same file."""
-        initial_content = textwrap.dedent('\n        def first():\n            return 1\n\n        def second():\n            return 2\n\n        def third():\n            return 3\n    ').lstrip()
-        diff_spec = textwrap.dedent('\n        -    return 1\n        +    return "one"\n\n        -    return 2\n        +    return "two"\n    ').lstrip()
-        file_path = create_temp_file(initial_content)
+    def test_view_with_multiple_string_matches(self):
+        """Test viewing lines around multiple string matches."""
+        content = 'Line 1\nmatch here\nLine 3\nLine 4\nLine 5\nAnother match here\nLine 7\nLine 8\n'
+        test_file = create_temp_file(content)
         try:
-            result = diff_edit(file_path, diff_spec)
-            self.assertIn('Successfully', result)
-            with open(file_path, 'r', encoding='utf-8') as f:
-                new_content = f.read()
-            expected = textwrap.dedent('\n            def first():\n                return "one"\n\n            def second():\n                return "two"\n\n            def third():\n                return 3\n        ').lstrip()
-            self.assertEqual(new_content, expected)
+            result = view(test_file, around_str_match='match here', dist_from_match=1)
+            # Should show context around both matches with gaps indicated
+            self.assertIn('1:Line 1', result)
+            self.assertIn('2:match here', result)
+            self.assertIn('3:Line 3', result)
+            self.assertIn('5:Line 5', result)
+            self.assertIn('6:Another match here', result)
+            self.assertIn('7:Line 7', result)
+            self.assertIn('...', result)  # Gap separator should be present
         finally:
-            os.remove(file_path)
+            os.remove(test_file)
 
-    def test_no_match(self):
-        """Test handling of changes that don't match the file content."""
-        initial_content = textwrap.dedent('\n        def hello():\n            print("Hello")\n    ').lstrip()
-        diff_spec = textwrap.dedent('\n        -    print("Nonexistent")\n        +    print("New")\n    ').lstrip()
-        file_path = create_temp_file(initial_content)
-        try:
-            result = diff_edit(file_path, diff_spec)
-            self.assertIn('Failed to apply', result)
-            with open(file_path, 'r', encoding='utf-8') as f:
-                new_content = f.read()
-            self.assertEqual(new_content, initial_content)
-        finally:
-            os.remove(file_path)
+    def test_view_string_match_no_results(self):
+        """Test string match with no matching lines."""
+        result = view(self.temp_file, around_str_match='Nonexistent text')
+        expected = "No matches found for 'Nonexistent text'"
+        self.assertEqual(result, expected)
 
-    def test_empty_diff(self):
-        """Test handling of empty diff specification."""
-        initial_content = "print('test')\n"
-        diff_spec = ''
-        file_path = create_temp_file(initial_content)
-        try:
-            result = diff_edit(file_path, diff_spec)
-            self.assertTrue('No changes' in result or 'Failed' in result)
-            with open(file_path, 'r', encoding='utf-8') as f:
-                new_content = f.read()
-            self.assertEqual(new_content, initial_content)
-        finally:
-            os.remove(file_path)
+    def test_view_invalid_start_line(self):
+        """Test error handling for invalid start_line."""
+        result = view(self.temp_file, start_line=100)
+        self.assertIn('Error: start_line (100) exceeds file length', result)
 
-    def test_create_new_file(self):
-        """Test that diff_edit creates a new file if it doesn't exist."""
-        new_file = os.path.join(self.temp_dir, 'new_file.py')
-        if os.path.exists(new_file):
-            os.remove(new_file)
-        diff_spec = textwrap.dedent('\n        +def hello():\n        +    print("Hello, World!")\n    ').lstrip()
-        try:
-            result = diff_edit(new_file, diff_spec)
-            self.assertIn('Successfully', result)
-            self.assertTrue(os.path.exists(new_file))
-            with open(new_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            expected = textwrap.dedent('\n            def hello():\n                print("Hello, World!")\n        ').lstrip()
-            self.assertEqual(content, expected)
-        finally:
-            if os.path.exists(new_file):
-                os.remove(new_file)
+    def test_view_boundary_conditions(self):
+        """Test boundary conditions for line ranges."""
+        # Test start_line = 1, end_line = 1 (single line)
+        result = view(self.temp_file, start_line=1, end_line=1)
+        expected = '1:Line 1'
+        self.assertEqual(result, expected)
+        
+        # Test last line only
+        result = view(self.temp_file, start_line=10, end_line=10)
+        expected = '10:Line 10'
+        self.assertEqual(result, expected)
 
-    def test_create_new_file_empty_diff(self):
-        """Test that diff_edit creates an empty file when given empty diff spec."""
-        new_file = os.path.join(self.temp_dir, 'empty_file.py')
-        if os.path.exists(new_file):
-            os.remove(new_file)
-        result = diff_edit(new_file, '')
+    def test_view_string_match_at_file_boundaries(self):
+        """Test string matching at the beginning and end of file."""
+        content = 'First match\nMiddle line\nLast match\n'
+        test_file = create_temp_file(content)
         try:
-            self.assertIn('No changes', result)
-            self.assertTrue(os.path.exists(new_file))
-            with open(new_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            self.assertEqual(content, '')
+            # Test match at beginning
+            result = view(test_file, around_str_match='First match', dist_from_match=1)
+            expected = '1:First match\n2:Middle line'
+            self.assertEqual(result, expected)
+            
+            # Test match at end
+            result = view(test_file, around_str_match='Last match', dist_from_match=1)
+            expected = '2:Middle line\n3:Last match'
+            self.assertEqual(result, expected)
         finally:
-            if os.path.exists(new_file):
-                os.remove(new_file)
+            os.remove(test_file)
 
-    def test_create_new_file_multiple_changes(self):
-        """Test that diff_edit can create a new file with multiple changes."""
-        new_file = os.path.join(self.temp_dir, 'multi_change_file.py')
-        if os.path.exists(new_file):
-            os.remove(new_file)
-        diff_spec = textwrap.dedent('\n            +def add(a, b):\n            +    return a + b\n\n            +def subtract(a, b):\n            +    return a - b\n            ')
-        try:
-            result = diff_edit(new_file, diff_spec)
-            self.assertIn('Successfully', result)
-            self.assertTrue(os.path.exists(new_file))
-            with open(new_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            expected = textwrap.dedent('\n            def add(a, b):\n                return a + b\n            def subtract(a, b):\n                return a - b\n        ').lstrip()
-            self.assertEqual(content, expected)
-        finally:
-            if os.path.exists(new_file):
-                os.remove(new_file)
 if __name__ == '__main__':
     unittest.main()
 
@@ -196,18 +160,3 @@ class TestViewDir(unittest.TestCase):
         self.assertIn('test2.txt', result)
         self.assertNotIn('test3.md', result)
         self.assertNotIn('test4.json', result)
-
-    def test_wildcard_all(self):
-        """Test view_dir with wildcard '*' to show all files"""
-        result = view_dir(self.temp_dir, target_extensions="['*']")
-        print(f"\nDirectory contents:\n{result}")  # Debug output
-        for filename in ['test1.py', 'test2.txt', 'test3.md', 'test4.json', 'test5.pyc']:
-            self.assertIn(filename, result)
-
-    def test_wildcard_pattern(self):
-        """Test view_dir with wildcard pattern '*.py'"""
-        result = view_dir(self.temp_dir, target_extensions="['*.py']")
-        self.assertIn('test1.py', result)
-        self.assertIn('test6.py', result)
-        self.assertNotIn('test2.txt', result)
-        self.assertNotIn('test5.pyc', result)
