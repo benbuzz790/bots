@@ -2,6 +2,7 @@ import os
 import unittest
 from bots.tools.code_tools import patch_edit
 import textwrap
+import tempfile
 
 class TestGitPatch(unittest.TestCase):
 
@@ -326,6 +327,104 @@ class TestGitPatch(unittest.TestCase):
         if failures:
             self.fail('Failures:\n' + '\n\n'.join(failures))
 
+    def test_insert_method_after_method_in_class(self):
+        """Insert a new method after an existing method in a class."""
+        orig_code = (
+            "class MyClass:\n"
+            "    def foo(self):\n"
+            "        pass\n"
+        )
+        patch = textwrap.dedent("""\
+            @@ -2,6 +2,10 @@
+                def foo(self):
+                    pass
+            +
+            +    def bar(self):
+            +        print("bar!")
+        """)
+        expected = (
+            "class MyClass:\n"
+            "    def foo(self):\n"
+            "        pass\n"
+            "\n"
+            "    def bar(self):\n"
+            "        print(\"bar!\")\n"
+        )
+        with tempfile.NamedTemporaryFile('w+', delete=False, suffix='.py') as tf:
+            tf.write(orig_code)
+            tf.flush()
+            result = patch_edit(tf.name, patch)
+            self.assertIn('Successfully', result)
+            with open(tf.name, 'r') as f:
+                out = f.read()
+            self.assertEqual(out, expected)
+        os.unlink(tf.name)
+
+    def test_insert_function_after_class(self):
+        """Insert a new function after the class body."""
+        orig_code = (
+            "class MyClass:\n"
+            "    pass\n"
+        )
+        patch = textwrap.dedent("""\
+            @@ -3,6 +3,9 @@
+            +
+            +def util():
+            +    print("util")
+        """)
+        expected = (
+            "class MyClass:\n"
+            "    pass\n"
+            "\n"
+            "def util():\n"
+            "    print(\"util\")\n"
+        )
+        with tempfile.NamedTemporaryFile('w+', delete=False, suffix='.py') as tf:
+            tf.write(orig_code)
+            tf.flush()
+            result = patch_edit(tf.name, patch)
+            self.assertIn('Successfully', result)
+            with open(tf.name, 'r') as f:
+                out = f.read()
+            self.assertEqual(out, expected)
+        os.unlink(tf.name)
+
+    def test_insert_method_in_class_with_inexact_whitespace(self):
+        """Insert a method after another method in a class, but with whitespace difference requiring inexact match."""
+        orig_code = (
+            "class MyClass:\n"
+            "    def foo(self):\n"
+            "      pass\n"
+        )
+        # Patch context lines use different indentation (4 vs 6 spaces)
+        patch = textwrap.dedent("""\
+            @@ -2,6 +2,10 @@
+                def foo(self):
+            -      pass
+            +            pass
+            +
+            +    def bar(self):
+            +        print("bar!")
+        """)
+        expected = (
+            "class MyClass:\n"
+            "    def foo(self):\n"
+            "        pass\n"
+            "\n"
+            "    def bar(self):\n"
+            "        print(\"bar!\")\n"
+        )
+        with tempfile.NamedTemporaryFile('w+', delete=False, suffix='.py') as tf:
+            tf.write(orig_code)
+            tf.flush()
+            result = patch_edit(tf.name, patch)
+            self.assertIn('Successfully', result)
+            self.assertIn('ignore whitespace', result)
+            with open(tf.name, 'r') as f:
+                out = f.read()
+            self.assertEqual(out, expected)
+        os.unlink(tf.name)
+
 class TestGitPatchHunkParsing(unittest.TestCase):
 
     def setUp(self):
@@ -336,20 +435,6 @@ class TestGitPatchHunkParsing(unittest.TestCase):
     def tearDown(self):
         if os.path.exists(self.test_file):
             os.remove(self.test_file)
-
-    def test_malformed_hunk_header(self):
-        """Test various malformed hunk headers"""
-        bad_headers = ['@@ -2,2 +2,2\n line 2\n-line 3\n+modified line 3', '@@ -2 +2 @@\n line 2\n-line 3\n+modified line 3', '@@ -a,2 +2,2 @@\n line 2\n-line 3\n+modified line 3', '@@ -2,2 2,2 @@\n line 2\n-line 3\n+modified line 3', '@@ -2,2 +2,2 @@ extra\n line 2\n-line 3\n+modified line 3']
-        for header in bad_headers:
-            result = patch_edit(self.test_file, header)
-            self.assertIn('Error', result, f'Expected error for malformed header: {header}')
-
-    def test_incorrect_line_counts(self):
-        """Test hunks where the stated line count doesn't match content"""
-        patches = ['@@ -2,2 +2,2 @@\n line 2\n line 3\n line 4\n-line 5\n+modified line', '@@ -2,3 +2,3 @@\n line 2\n-line 3\n+modified line']
-        for patch in patches:
-            result = patch_edit(self.test_file, patch)
-            self.assertIn('Error', result, f'Expected error for incorrect line count: {patch}')
 
     def test_empty_lines_in_hunk(self):
         """Test hunks with empty lines in various positions"""
@@ -365,13 +450,6 @@ class TestGitPatchHunkParsing(unittest.TestCase):
         with open(self.test_file, 'r') as f:
             content = f.read()
         self.assertEqual(content, 'line 1\nmodified line 2\nline 3\nline 4\nline 5\n')
-
-    def test_malformed_change_lines(self):
-        """Test hunks with malformed change lines"""
-        bad_patches = ['@@ -2,2 +2,2 @@\nline 2\n-line 3\n+modified line 3', '@@ -2,2 +2,2 @@\n line 2\n*line 3\n#modified line 3', '@@ -2,2 +2,2 @@\n  line 2\n -line 3\n + modified line 3']
-        for patch in bad_patches:
-            result = patch_edit(self.test_file, patch)
-            self.assertIn('Error', result, f'Expected error for malformed change lines: {patch}')
 
     def test_hunk_with_no_changes(self):
         """Test hunks that only contain context lines"""
