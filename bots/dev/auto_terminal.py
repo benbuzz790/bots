@@ -18,15 +18,11 @@ Available commands:
 /root: Move to the root node of the conversation tree
 /label: Save current node with a label for later reference
 /goto: Move to a previously labeled node
+/showlabels: Show all saved labels and their associated conversation content
 /exit: Exit the program
 
 Type your messages normally to chat.
 """
-
-
-## TODO ##
-# Add '/showlabels'
-# Save labels to conversation nodes so they are saved in the bot file
 
 
 from bots.foundation.openai_bots import ChatGPT_Bot
@@ -164,8 +160,28 @@ def clean_dict(d:dict, indent:int=4, level:int=1):
     cleaned_dict = cleaned_dict.replace('\\\\', '\\')
     return cleaned_dict
 
-from bots.dev.decorators import debug_on_error
-@debug_on_error
+def restore_labels_from_conversation(bot, labeled_nodes: dict):
+    """
+    Restore labels from conversation nodes after loading a bot.
+    Traverses the entire conversation tree to find nodes with labels.
+    """
+    def traverse_node(node):
+        if hasattr(node, 'labels') and node.labels:
+            for label in node.labels:
+                labeled_nodes[label] = node
+
+        # Traverse replies
+        if hasattr(node, 'replies') and node.replies:
+            for reply in node.replies:
+                traverse_node(reply)
+
+    # Start from the root of the conversation
+    root = bot.conversation
+    while root.parent:
+        root = root.parent
+
+    traverse_node(root)
+
 def main() -> None:
     # Check for filename argument
     if len(sys.argv) > 1:
@@ -174,6 +190,7 @@ def main() -> None:
             at_bot = initialize_bot().load(bot_file)
             pretty(f'Loaded bot from {bot_file}', 'System')
             pretty("\n"+str(at_bot), 'System')
+            restore_labels_from_conversation(at_bot, labeled_nodes)
         except Exception as e:
             pretty(f'Failed to load {bot_file}: {e}', 'System')
             at_bot = initialize_bot()
@@ -293,6 +310,7 @@ def main() -> None:
                         try:
                             at_bot = at_bot.load(filename)
                             print(at_bot)
+                            restore_labels_from_conversation(at_bot, labeled_nodes)
                         except:
                             pretty(f"Error loading {filename}", "System")
                     case "/save": 
@@ -361,6 +379,11 @@ def main() -> None:
                     case "/label":
                         label = input("Label:")
                         labeled_nodes[label] = at_bot.conversation
+                        # Store the label in the conversation node for persistence
+                        if not hasattr(at_bot.conversation, 'labels'):
+                            at_bot.conversation.labels = []
+                        if label not in at_bot.conversation.labels:
+                            at_bot.conversation.labels.append(label)
                         pretty(f'Saved current node with label: {label}', 'System')
                         turn = 'user'
                     case "/goto":
@@ -371,6 +394,15 @@ def main() -> None:
                             pretty(at_bot.conversation.content, at_bot.name)
                         else:
                             pretty(f'No node found with label: {label}', 'System')
+                        turn = 'user'
+                    case "/showlabels":
+                        if labeled_nodes:
+                            pretty("Saved labels:", "System")
+                            for label, node in labeled_nodes.items():
+                                content_preview = node.content[:100] + "..." if len(node.content) > 100 else node.content
+                                pretty(f"'{label}': {content_preview}", "System")
+                        else:
+                            pretty("No labels saved", "System")
                         turn = 'user'
                     case "/help":
                         pretty('')  # separator

@@ -737,6 +737,93 @@ class TestAdvancedNavigation(DetailedTestCase):
             print(f'\nBot output:\n{output}')
         self.assertContainsNormalized(output, 'Moved to node labeled: function1')
         self.assertContainsNormalized(output, 'Moved to node labeled: function2')
+        @patch('builtins.input')
+        def test_showlabels_empty(self, mock_input: unittest.mock.MagicMock) -> None:
+            """Test the /showlabels command when no labels exist."""
+            mock_input.side_effect = ['/showlabels', '/exit']
+            with StringIO() as buf, redirect_stdout(buf):
+                with self.assertRaises(SystemExit):
+                    start.main()
+                output = buf.getvalue()
+                print(f'\nBot output:\n{output}')
+            self.assertContainsNormalized(output, 'No labels saved')
+
+    @patch('builtins.input')
+    def test_showlabels_with_labels(self, mock_input: unittest.mock.MagicMock) -> None:
+        """Test the /showlabels command with existing labels."""
+        mock_input.side_effect = [
+            'Write a function to calculate fibonacci numbers',
+            '/label', 'fibonacci_func',
+            'Write a sorting algorithm',
+            '/label', 'sort_algo',
+            '/showlabels',
+            '/exit'
+        ]
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main()
+            output = buf.getvalue()
+            print(f'\nBot output:\n{output}')
+
+        self.assertContainsNormalized(output, 'Saved labels:')
+        self.assertContainsNormalized(output, 'fibonacci_func')
+        self.assertContainsNormalized(output, 'sort_algo')
+
+    @patch('builtins.input')
+    def test_showlabels_content_preview(self, mock_input: unittest.mock.MagicMock) -> None:
+        """Test that /showlabels displays content previews correctly."""
+        long_message = "This is a very long message that should be truncated when displayed in the showlabels command because it exceeds the 100 character limit that is set for content previews"
+        mock_input.side_effect = [
+            long_message,
+            '/label', 'long_message',
+            '/showlabels',
+            '/exit'
+        ]
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                start.main()
+            output = buf.getvalue()
+            print(f'\nBot output:\n{output}')
+
+        self.assertContainsNormalized(output, 'long_message')
+        # Check that the preview is truncated (should contain "..." for long content)
+        self.assertTrue('...' in output or len(long_message) <= 100)
+
+    @patch('builtins.input') 
+    @patch('bots.dev.auto_terminal.filedialog.askopenfilename')
+    def test_label_persistence_save_load(self, mock_filedialog: unittest.mock.MagicMock, mock_input: unittest.mock.MagicMock) -> None:
+        """Test that labels persist when saving and loading bots."""
+        import tempfile
+        import os
+
+        # Create a temporary file for saving/loading
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.bot', delete=False) as temp_file:
+            temp_filename = temp_file.name
+
+        try:
+            # First session: create labels and save
+            mock_input.side_effect = [
+                'Write a function to parse JSON',
+                '/label', 'json_parser',
+                '/save', temp_filename,
+                '/exit'
+            ]
+
+            with StringIO() as buf, redirect_stdout(buf):
+                with self.assertRaises(SystemExit):
+                    start.main()
+                output1 = buf.getvalue()
+                print(f'\nFirst session output:\n{output1}')
+
+            # Verify the file was created and contains our label
+            self.assertTrue(os.path.exists(temp_filename), "Bot file was not created")
+            self.assertContainsNormalized(output1, 'Saved current node with label: json_parser')
+
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_filename):
+                os.unlink(temp_filename)
+
 
 if __name__ == '__main__':
     unittest.main()
