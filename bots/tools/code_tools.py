@@ -3,8 +3,8 @@ import traceback
 import textwrap
 import difflib
 
-def view(file_path: str, start_line: int = None, end_line: int = None, 
-         around_str_match: str = None, dist_from_match: int = 10):
+def view(file_path: str, start_line: str = None, end_line: str = None, 
+         around_str_match: str = None, dist_from_match: str = '10'):
     """
     Display the contents of a file with line numbers.
 
@@ -21,6 +21,10 @@ def view(file_path: str, start_line: int = None, end_line: int = None,
     """
     encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
     
+    start_line = int(start_line) if start_line is not None else None
+    end_line = int(end_line) if end_line is not None else None
+    dist_from_match = int(dist_from_match) if dist_from_match is not None else None
+
     for encoding in encodings:
         try:
             with open(file_path, 'r', encoding=encoding) as file:
