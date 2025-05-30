@@ -65,7 +65,7 @@ class TestAnthropicBot(unittest.TestCase):
             AssertionError: If any default parameter doesn't match expected value
         """
         self.assertIsInstance(self.bot, AnthropicBot)
-        self.assertEqual(self.bot.model_engine, Engines.CLAUDE37_SONNET_20250219)
+        self.assertEqual(self.bot.model_engine, Engines.CLAUDE4_SONNET)
         self.assertEqual(self.bot.max_tokens, 4096)
         self.assertEqual(self.bot.temperature, 0.3)
         self.assertEqual(self.bot.name, 'Claude')
