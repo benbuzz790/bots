@@ -449,16 +449,65 @@ def test_tokenize_multiline():
     restored = _detokenize_source(tokenized, token_map)
     assert restored == source
 
-def test_tokenize_edge_cases():
-    """Test tokenization of edge cases"""
-    source = '\n    x = 1; y = 2  # Multiple statements\n    # Comment with ; semicolon\n    s = "String # with hash"\n    q = \'String ; with semicolon\'\n    """\n    Multiline string\n    # with comment\n    ; with semicolon\n    """\n    '
-    tokenized, token_map = _tokenize_source(source)
+def test_tokenize_contains_tokens():
+    """Ensure tokenization produces token markers"""
+    source = '''
+    x = 1; y = 2  # Multiple statements
+    # Comment with ; semicolon
+    s = "String # with hash"
+    q = 'String ; with semicolon'
+    """
+    Multiline string
+    # with comment
+    ; with semicolon
+    """
+    '''
+    tokenized, _ = _tokenize_source(source)
     assert 'TOKEN_' in tokenized
-    # Note: Inline comment spacing changes from "  #" to "; #" due to tokenization approach
+
+def test_tokenize_preserves_comments():
+    """Ensure comments are preserved in restored source"""
+    source = '''
+    x = 1; y = 2  # Multiple statements
+    # Comment with ; semicolon
+    s = "String # with hash"
+    q = 'String ; with semicolon'
+    """
+    Multiline string
+    # with comment
+    ; with semicolon
+    """
+    '''
+    tokenized, token_map = _tokenize_source(source)
     restored = _detokenize_source(tokenized, token_map)
-    # Verify all content is preserved even if spacing changes
-    assert 'Multiple statements' in restored and 'Comment with ; semicolon' in restored
-    assert 'String # with hash' in restored and 'String ; with semicolon' in restored
+    assert 'Multiple statements' in restored
+    assert 'Comment with ; semicolon' in restored
+
+def test_tokenize_preserves_string_literals():
+    """Ensure string literals are unchanged after round trip"""
+    source = '''
+    s = "String # with hash"
+    q = 'String ; with semicolon'
+    '''
+    tokenized, token_map = _tokenize_source(source)
+    restored = _detokenize_source(tokenized, token_map)
+    assert 'String # with hash' in restored
+    assert 'String ; with semicolon' in restored
+
+def test_tokenize_preserves_multiline_strings():
+    """Ensure multiline strings are preserved intact"""
+    source = '''
+    """
+    Multiline string
+    # with comment
+    ; with semicolon
+    """
+    '''
+    tokenized, token_map = _tokenize_source(source)
+    restored = _detokenize_source(tokenized, token_map)
+    assert 'Multiline string' in restored
+    assert '# with comment' in restored
+    assert '; with semicolon' in restored
 
 def test_minimal_tokenize():
     """Test tokenization of minimal valid Python"""
@@ -538,3 +587,428 @@ def test_ast_unparse_behavior():
     tree2 = ast.parse(token_code)
     unparsed2 = ast.unparse(tree2)
     print(f'Unparsed token: {repr(unparsed2)}')
+    
+# F-STRING TESTS
+def test_fstring_basic():
+    """Test basic f-string tokenization and preservation"""
+    source = 'name = "Alice"\ngreeting = f"Hello, {name}!"'
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    print(f'DEBUG - Token map: {token_map}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_fstring_nested_quotes():
+    """Test f-strings with nested quotes"""
+    source = '''user = {"name": "Alice", "age": 30}
+message = f"User {user['name']} is {user['age']} years old"'''
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_fstring_complex_expressions():
+    """Test f-strings with complex expressions"""
+    source = '''def format_data(items):
+    return f"Total: {sum(item['value'] for item in items if item['active'])}"'''
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_fstring_escaped_braces():
+    """Test f-strings with escaped braces"""
+    source = 'template = f"{{item}} costs ${price:.2f}"'
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_fstring_with_format_specs():
+    """Test f-strings with format specifications"""
+    source = '''price = 19.99
+formatted = f"Price: ${price:.2f} ({price:>10.2f})"'''
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_fstring_multiline():
+    """Test multiline f-strings"""
+    source = '''name = "Alice"
+age = 30
+bio = f"""
+Name: {name}
+Age: {age}
+Status: {'Active' if age < 65 else 'Retired'}
+"""'''
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_fstring_prefixes():
+    """Test various f-string prefixes (rf, fr, etc.)"""
+    source = '''pattern = rf"Hello {name}\n"
+raw_fstring = fr"Path: {path}\\"'''
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_fstring_edit_integration():
+    """Test editing code that contains f-strings"""
+    content = '''
+    def greet(name):
+        return f"Hello, {name}!"
+    '''
+    test_file = setup_test_file('tmp', content)
+    
+    new_func = '''
+    def greet(name, title=""):
+        greeting = f"Hello, {title + ' ' if title else ''}{name}!"
+        return greeting.upper()
+    '''
+    
+    result = python_edit(f'{test_file}::greet', new_func)
+    print(f'DEBUG - Result: {result}')
+    
+    with open(test_file) as f:
+        final_content = f.read()
+    print(f'DEBUG - Final content: {final_content}')
+    
+    # Should contain the f-string
+    assert 'f"Hello, {title' in final_content
+    assert '.upper()' in final_content
+
+# EDGE CASE TESTS
+def test_mixed_quote_types():
+    """Test mixing single and double quotes"""
+    source = '''message = "He said 'Hello'"
+other = 'She replied "Hi there"'
+fstring = f"Mixed: {'single'} and {"double"}"'''
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_string_concatenation():
+    """Test string concatenation edge cases"""
+    source = '''long_string = ("This is a very long string "
+               "that spans multiple lines "
+               f"with an f-string {variable}")'''
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_regex_strings():
+    """Test regex strings that might confuse tokenization"""
+    source = r'''import re
+pattern = r"(\d+)-(\d+)-(\d+)"
+fstring_pattern = rf"User-{user_id}-\d+"
+complex_regex = r"(?P<name>[a-zA-Z]+):\s*(?P<value>['\"].*?['\"])"'''
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_comments_with_quotes():
+    """Test comments containing quote characters"""
+    source = '''x = 1  # This comment has "quotes" and 'apostrophes'
+y = 2  # Even f-string-like {syntax} in comments
+# Standalone comment with "mixed" quotes and {braces}'''
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly (accounting for tokenization changes)
+    restored = _detokenize_source(tokenized, token_map)
+    # Content should be preserved even if formatting changes slightly
+    assert '"quotes"' in restored
+    assert "'apostrophes'" in restored
+    assert '{syntax}' in restored
+
+def test_docstring_edge_cases():
+    """Test various docstring formats"""
+    source = '''def func():
+    """Single line docstring with 'quotes' and {braces}."""
+    pass
+
+class MyClass:
+    """
+    Multi-line docstring with:
+    - "Double quotes"
+    - 'Single quotes'  
+    - f-string-like {syntax}
+    - Even some "nested 'quotes'"
+    """
+    pass'''
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+# ERROR HANDLING TESTS
+def test_unterminated_fstring():
+    """Test handling of malformed f-strings that might cause errors"""
+    # This should be caught by our enhanced tokenizer
+    source = 'x = f"Hello {name'  # Missing closing quote and brace
+    
+    try:
+        tokenized, token_map = _tokenize_source(source)
+        print(f'DEBUG - Tokenized malformed: {tokenized}')
+        # If tokenization succeeds, AST parsing should catch the error
+        ast.parse(tokenized)
+        assert False, "Should have caught malformed f-string"
+    except SyntaxError:
+        # Expected - malformed f-string should be caught
+        pass
+
+def test_nested_fstring_depth():
+    """Test deeply nested f-string expressions"""
+    source = '''data = {"users": [{"name": "Alice", "prefs": {"theme": "dark"}}]}
+message = f"User {data['users'][0]['name']} likes {data['users'][0]['prefs']['theme']} theme"'''
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+# REAL-WORLD SCENARIO TESTS
+def test_data_processing_code():
+    """Test tokenizing realistic data processing code with f-strings"""
+    source = '''import json
+from typing import Dict, List
+
+def process_users(users: List[Dict]) -> str:
+    """Process user data and return formatted summary."""
+    active_users = [u for u in users if u.get('active', False)]
+    
+    summary = f"""
+    User Summary:
+    - Total users: {len(users)}
+    - Active users: {len(active_users)}
+    - Percentage active: {len(active_users)/len(users)*100:.1f}%
+    """
+    
+    details = []
+    for user in active_users[:5]:  # Top 5
+        name = user['name']
+        email = user.get('email', 'No email')
+        last_login = user.get('last_login', 'Never')
+        details.append(f"- {name} ({email}) - Last: {last_login}")
+    
+    if details:
+        summary += f"\\n\\nTop Active Users:\\n" + "\\n".join(details)
+    
+    return summary.strip()'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized length: {len(tokenized)}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_edit_fstring_function():
+    """Test editing a function that uses f-strings"""
+    content = '''
+    def format_price(price, currency="USD"):
+        return f"${price:.2f} {currency}"
+    '''
+    test_file = setup_test_file('tmp', content)
+    
+    # Add logging to the function
+    new_code = '''
+    import logging
+    
+    def format_price(price, currency="USD"):
+        logging.debug(f"Formatting price: {price} {currency}")
+        if price < 0:
+            return f"Invalid price: ${abs(price):.2f} {currency}"
+        return f"${price:.2f} {currency}"
+    '''
+    
+    result = python_edit(f'{test_file}::format_price', new_code)
+    print(f'DEBUG - Edit result: {result}')
+    
+    with open(test_file) as f:
+        final_content = f.read()
+    print(f'DEBUG - Final content: {final_content}')
+    
+    # Verify f-strings are preserved
+    assert 'f"Formatting price: {price} {currency}"' in final_content
+    assert 'f"Invalid price: ${abs(price):.2f} {currency}"' in final_content
+    assert 'logging.debug' in final_content
+
+def test_class_with_fstring_methods():
+    """Test editing classes that contain f-string methods"""
+    content = '''
+    class User:
+        def __init__(self, name, age):
+            self.name = name
+            self.age = age
+        
+        def greet(self):
+            return f"Hi, I'm {self.name}"
+    '''
+    test_file = setup_test_file('tmp', content)
+    
+    # Add a new method with complex f-strings
+    new_method = '''
+    def describe(self):
+        status = "adult" if self.age >= 18 else "minor"
+        return f"User: {self.name} ({self.age} years old, {status})"
+    '''
+    
+    result = python_edit(f'{test_file}::User', new_method, insert_after='User::greet')
+    print(f'DEBUG - Edit result: {result}')
+    
+    with open(test_file) as f:
+        final_content = f.read()
+    print(f'DEBUG - Final content: {final_content}')
+    
+    # Verify both f-strings are preserved
+    assert 'f"Hi, I\'m {self.name}"' in final_content
+    assert 'f"User: {self.name} ({self.age} years old, {status})"' in final_content
+
+# PERFORMANCE AND STRESS TESTS
+def test_large_fstring_file():
+    """Test handling a file with many f-strings"""
+    lines = ['import math']
+    for i in range(50):
+        lines.append(f'result_{i} = f"Item {{i}}: {{math.sqrt({i})}}"')
+    
+    source = '\n'.join(lines)
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Token count: {len(token_map)}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+def test_mixed_content_stress():
+    """Test file with mixed strings, f-strings, comments, and code"""
+    source = '''#!/usr/bin/env python3
+"""
+Module for data processing with f-strings.
+Contains "quotes" and {braces} in docstring.
+"""
+
+import os  # Standard library
+from typing import Dict, List  # Type hints
+
+# Configuration with f-string
+CONFIG_PATH = f"{os.path.expanduser('~')}/.config/app.json"
+
+class DataProcessor:
+    """Process data with various string formats."""
+    
+    def __init__(self, config_path: str = CONFIG_PATH):
+        self.config_path = config_path  # Store path
+        self.data = {}  # Initialize empty
+    
+    def load_config(self) -> Dict:
+        """Load configuration from file."""
+        if not os.path.exists(self.config_path):
+            raise FileNotFoundError(f"Config not found: {self.config_path}")
+        
+        # Read and parse config
+        with open(self.config_path, 'r') as f:
+            content = f.read()  # Regular string method
+        
+        return json.loads(content)  # Parse JSON
+    
+    def format_output(self, data: List[Dict]) -> str:
+        """Format data for output."""
+        lines = [f"Processing {len(data)} items..."]  # F-string with len()
+        
+        for i, item in enumerate(data):
+            name = item.get('name', 'Unknown')
+            value = item.get('value', 0)
+            # Complex f-string with formatting
+            line = f"  {i+1:2d}. {name:<20} = {value:>8.2f} ({value/100:.1%})"
+            lines.append(line)
+        
+        summary = f"\\nSummary: {len(data)} items processed"
+        return "\\n".join(lines) + summary'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Token count: {len(token_map)}')
+    print(f'DEBUG - Tokenized length: {len(tokenized)}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    # Allow for minor whitespace differences in restoration
+    assert restored.replace(' ', '').replace('\n', '') == source.replace(' ', '').replace('\n', '')
