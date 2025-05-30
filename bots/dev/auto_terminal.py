@@ -24,7 +24,6 @@ Available commands:
 Type your messages normally to chat.
 """
 
-
 from bots.foundation.openai_bots import ChatGPT_Bot
 from bots.foundation.anthropic_bots import AnthropicBot
 import sys
@@ -183,6 +182,13 @@ def restore_labels_from_conversation(bot, labeled_nodes: dict):
     traverse_node(root)
 
 def main() -> None:
+
+    verbose: bool = True
+    turn: str = 'user'
+    auto_mode: bool = False
+    old_settings = None
+    labeled_nodes = {}
+
     # Check for filename argument
     if len(sys.argv) > 1:
         bot_file = sys.argv[1]
@@ -197,12 +203,6 @@ def main() -> None:
     else:
         at_bot = initialize_bot()
         pretty('Bot initialized', 'System')
-    
-    verbose: bool = True
-    turn: str = 'user'
-    auto_mode: bool = False
-    old_settings = None
-    labeled_nodes = {}
 
     try:
         while True:
