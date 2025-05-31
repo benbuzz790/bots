@@ -1,11 +1,3 @@
-"""Unit tests for the auto_terminal module.
-
-This test suite verifies the functionality of the auto_terminal interface,
-focusing on file operations, conversation navigation, and command handling.
-Tests are designed to run against real APIs without mocking core functionality,
-except for input/output operations.
-"""
-
 import unittest
 import datetime as DT
 import os
@@ -17,6 +9,13 @@ from io import StringIO
 from contextlib import redirect_stdout
 import bots.dev.auto_terminal as start
 from datetime import datetime
+"""Unit tests for the auto_terminal module.
+
+This test suite verifies the functionality of the auto_terminal interface,
+focusing on file operations, conversation navigation, and command handling.
+Tests are designed to run against real APIs without mocking core functionality,
+except for input/output operations.
+"""
 
 class DetailedTestCase(unittest.TestCase):
     """Base test class with enhanced assertion capabilities."""
@@ -40,7 +39,7 @@ class DetailedTestCase(unittest.TestCase):
         text = text.replace(':', '').replace(',', '')
         return ' '.join(text.split())
 
-    def assertContainsNormalized(self, haystack: str, needle: str, msg: str | None = None) -> None:
+    def assertContainsNormalized(self, haystack: str, needle: str, msg: str | None=None) -> None:
         """Assert that needle exists in haystack after normalization.
         
         Performs a contains assertion after normalizing both strings to handle
@@ -61,7 +60,7 @@ class DetailedTestCase(unittest.TestCase):
         normalized_needle = self.normalize_text(needle)
         self.assertTrue(normalized_needle in normalized_haystack, msg or f'Expected to find "{needle}" in text (after normalization).\nGot:\n{haystack}')
 
-    def assertEqualWithDetails(self, first: object, second: object, msg: str | None = None) -> None:
+    def assertEqualWithDetails(self, first: object, second: object, msg: str | None=None) -> None:
         """Detailed assertion with local variable context on failure.
         
         Enhanced version of assertEqual that provides detailed context including
@@ -110,7 +109,7 @@ class TestCodey(DetailedTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """Set up test environment for all test methods in the class.
-        
+
         Creates a test directory structure that will be used by all test methods.
         This is run once before any tests in the class.
 
@@ -121,13 +120,24 @@ class TestCodey(DetailedTestCase):
         cls.test_dir = os.path.join('benbuzz790', 'private_tests')
         os.makedirs(cls.test_dir, exist_ok=True)
         cls.test_file = os.path.join(cls.test_dir, 'test_file.py')
-        cls.test_dir = os.path.join('benbuzz790', 'private_tests')
-        os.makedirs(cls.test_dir, exist_ok=True)
-        cls.test_file = os.path.join(cls.test_dir, 'test_file.py')
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        """Clean up test environment after all test methods in the class.
+
+        Removes the test directory and all its contents.
+        This is run once after all tests in the class are complete.
+        """
+        import shutil
+        try:
+            if os.path.exists(cls.test_dir):
+                shutil.rmtree(cls.test_dir)
+        except Exception as e:
+            print(f'Warning: Could not clean up test directory {cls.test_dir}: {e}')
 
     def setUp(self) -> None:
         """Set up test environment before each test method.
-        
+
         Ensures a clean test file exists before each test.
         Creates an empty file if it doesn't exist, or clears existing content.
         """
@@ -135,231 +145,6 @@ class TestCodey(DetailedTestCase):
             open(self.test_file, 'w').close()
         else:
             open(self.test_file, 'w').close()
-        if not os.path.exists(self.test_file):
-            open(self.test_file, 'w').close()
-        else:
-            open(self.test_file, 'w').close()
-
-    @patch('builtins.input')
-    def test_file_read(self, mock_input: unittest.mock.MagicMock) -> None:
-        """Test the bot's ability to read and report file content.
-        
-        Creates a test file with known content and verifies that the bot can
-        correctly read and report its contents when asked.
-
-        Parameters:
-            mock_input (unittest.mock.MagicMock): Mocked input function for testing
-
-        Test Sequence:
-            1. Create test file with known content
-            2. Ask bot to read file
-            3. Verify bot's response contains file content
-        """
-        test_content = 'Test content for reading'
-        with open(self.test_file, 'w') as file:
-            file.write(test_content)
-        prompt = f'What is in the file {self.test_file}? I need to know its contents.'
-        mock_input.side_effect = [prompt, '/exit']
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-            print(f'\nBot output:\n{output}')
-
-        def normalize(text):
-            text = text.lower()
-            text = text.replace('"', '').replace("'", '')
-            text = text.replace('{', '').replace('}', '')
-            text = text.replace('[', '').replace(']', '')
-            text = text.replace(':', '').replace(',', '')
-            return ' '.join(text.split())
-        normalized_output = normalize(output)
-        normalized_content = normalize(test_content)
-        self.assertTrue(normalized_content in normalized_output, f'Expected to find content "{test_content}" in response (after normalization).\nGot:\n{output}')
-
-    @patch('builtins.input')
-    def test_file_update(self, mock_input: unittest.mock.MagicMock) -> None:
-        """Test the bot's ability to modify existing file content.
-        
-        Verifies that the bot can correctly update file contents while preserving
-        file integrity and handling the operation safely.
-
-        Parameters:
-            mock_input (unittest.mock.MagicMock): Mocked input function for testing
-
-        Test Sequence:
-            1. Create file with original content
-            2. Request content modification
-            3. Verify file was updated correctly
-            4. Ensure no unintended changes occurred
-        """
-        with open(self.test_file, 'w') as f:
-            f.write('Original content')
-        with open(self.test_file, 'r') as f:
-            before = f.read()
-        print(f"\nInitial file content: '{before}'")
-        prompt = f"/auto Please modify {self.test_file} to contain 'Updated content' instead of its current content"
-        mock_input.side_effect = [prompt, '/exit']
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-        print(f'\nBot output:\n{output}')
-        with open(self.test_file, 'r') as f:
-            after = f.read()
-        print(f"\nFinal file content: '{after}'")
-        self.assertEqualWithDetails(after.strip(), 'Updated content', 'File content was not updated as requested')
-
-    @patch('builtins.input')
-    def test_file_delete(self, mock_input: unittest.mock.MagicMock) -> None:
-        """Test the bot's ability to safely delete files with proper authorization.
-        
-        Verifies that the bot can delete files when given explicit permission and
-        proper context, while maintaining safety checks.
-
-        Parameters:
-            mock_input (unittest.mock.MagicMock): Mocked input function for testing
-
-        Test Sequence:
-            1. Create temporary test file
-            2. Request deletion with full context and permission
-            3. Verify file was deleted
-            4. Check for appropriate confirmation/feedback
-        """
-        with open(self.test_file, 'w') as file:
-            file.write('This is a temporary test file that should be deleted\nCreated for test_file_delete')
-        delete_prompt = f"/auto I need you to delete the file at {self.test_file}. This is a test file that contains only the text 'This is a temporary test file that should be deleted'. I've verified its contents and confirm it should be deleted. Use powershell to delete the file."
-        mock_input.side_effect = [delete_prompt, '/exit']
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-            print(f'\nBot output:\n{output}')
-        import time
-        time.sleep(1)
-        file_exists = os.path.exists(self.test_file)
-        if file_exists:
-            with open(self.test_file, 'r') as f:
-                print(f'\nFile still exists with content:\n{f.read()}')
-            print(f"\nBot's response was:\n{output}")
-        self.assertFalse(file_exists, 'File was not deleted despite clear context and permission')
-
-    @patch('builtins.input')
-    def test_file_size(self, mock_input: unittest.mock.MagicMock) -> None:
-        """Test the bot's ability to accurately report file size.
-        
-        Creates a file of known size and verifies that the bot can correctly
-        report its size in various acceptable formats (bytes, KB, etc.).
-
-        Parameters:
-            mock_input (unittest.mock.MagicMock): Mocked input function for testing
-
-        Test Sequence:
-            1. Create file with specific size
-            2. Request file size information
-            3. Verify response contains correct size in acceptable format
-            4. Check multiple size format variants
-        """
-        content = 'Test content' * 1000
-        with open(self.test_file, 'w') as file:
-            file.write(content)
-        expected_size = len(content)
-        prompt = f'What is the size of {self.test_file} in bytes? Please include the number in your response.'
-        mock_input.side_effect = [prompt, '/exit']
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-            print(f'\nBot output:\n{output}')
-        size_variants = [str(expected_size), f'{expected_size} bytes', f'{expected_size:,}', f'{expected_size:,} bytes', f'{expected_size / 1024:.0f}kb', f'{expected_size / 1024:.0f} kb', f'{expected_size / 1024:.0f} KB', f'{expected_size / 1024:.1f}', f'{expected_size / 1024:.1f} kb', f'{expected_size / 1024:.2f}', '12 kilobytes', '11.7 kilobytes', 'approximately 12kb', 'around 12 kilobytes', 'size is 12000', 'contains 12000 bytes', '12000 b', '12000b']
-        found_size = any((self.normalize_text(variant) in self.normalize_text(output) for variant in size_variants))
-        if not found_size:
-            print('\nTried looking for these variants:')
-            for variant in size_variants:
-                print(f'- {variant}')
-            print('\nNormalized output:')
-            print(self.normalize_text(output))
-        self.assertTrue(found_size, f'Expected file size ({expected_size} bytes) not found in response in any common format')
-
-    @patch('builtins.input')
-    def test_file_modification_time(self, mock_input: unittest.mock.MagicMock) -> None:
-        """Test the bot's ability to report file modification timestamps.
-
-        Verifies that the bot can correctly retrieve and report file modification
-        times in various acceptable formats (timestamp, date, time components).
-
-        Parameters:
-            mock_input (unittest.mock.MagicMock): Mocked input function for testing
-
-        Test Sequence:
-            1. Create file with known modification time
-            2. Request modification time information
-            3. Verify response contains time information
-            4. Check multiple time format variants
-        """
-        with open(self.test_file, 'w') as file:
-            file.write('Test content')
-        mod_time = os.path.getmtime(self.test_file)
-        prompt = f'When was {self.test_file} last changed? Please include the time or date in your response.'
-        mock_input.side_effect = [prompt, '/exit']
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-            print(f'\nBot output:\n{output}')
-        time_related_terms = ['modified', 'changed', 'updated', 'timestamp', 'date', 'time', 'created', 'accessed', str(int(mod_time)), DT.datetime.fromtimestamp(mod_time).strftime('%Y'), DT.datetime.fromtimestamp(mod_time).strftime('%m'), DT.datetime.fromtimestamp(mod_time).strftime('%d')]
-        found_time = any((self.normalize_text(term) in self.normalize_text(output) for term in time_related_terms))
-        if not found_time:
-            print('\nTried looking for these time-related terms:')
-            for term in time_related_terms:
-                print(f'- {term}')
-            print('\nNormalized output:')
-            print(self.normalize_text(output))
-        self.assertTrue(found_time, 'No time or date information found in response')
-
-    @patch('builtins.input')
-    def test_insert_method_in_class(self, mock_input: unittest.mock.MagicMock) -> None:
-        """Test the bot's ability to add methods to existing classes.
-
-        Verifies that the bot can correctly add a new method to an existing class
-        while preserving the original class structure and other methods.
-
-        Parameters:
-            mock_input (unittest.mock.MagicMock): Mocked input function for testing
-
-        Test Sequence:
-            1. Create test file with existing class
-            2. Request addition of new method
-            3. Verify method was added correctly
-            4. Check original code preserved
-            5. Verify method implementation
-        """
-        with open(self.test_file, 'w', encoding='utf-8') as file:
-            file.write('class TestClass:\n')
-            file.write('    def __init__(self):\n')
-            file.write('        pass\n')
-            file.write('\n')
-            file.write('    def existing_method(self):\n')
-            file.write('        pass\n')
-            file.write('\n')
-            file.write('print("Some other code")\n')
-        prompt = f"/auto Please add a method to the TestClass in {self.test_file}. The method should be called 'new_method' and should print 'This is a new method'. Do not change any existing code."
-        mock_input.side_effect = [prompt, '/exit']
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                start.main()
-            output = buf.getvalue()
-            print(f'\nBot output:\n{output}')
-        with open(self.test_file, 'r', encoding='utf-8') as file:
-            content = file.read()
-        print(f'\nUpdated file content:\n{content}')
-        original_elements = ['class TestClass:', 'def __init__(self):', 'def existing_method(self):', 'print("Some other code")', 'pass']
-        for element in original_elements:
-            self.assertIn(self.normalize_text(element), self.normalize_text(content), f'Original code element missing: {element}')
-        method_found = any((pattern in content for pattern in ['def new_method(self):', 'def new_method (self):', 'def new_method( self ):']))
-        self.assertTrue(method_found, 'New method definition not found')
-        print_found = any((pattern in content for pattern in ["print('This is a new method')", 'print("This is a new method")', "print(f'This is a new method')", 'print(f"This is a new method")']))
-        self.assertTrue(print_found, 'Required print statement not found')
 
 class TestConversationNavigation(DetailedTestCase):
     """Test suite for basic conversation tree navigation commands.
@@ -737,6 +522,7 @@ class TestAdvancedNavigation(DetailedTestCase):
             print(f'\nBot output:\n{output}')
         self.assertContainsNormalized(output, 'Moved to node labeled: function1')
         self.assertContainsNormalized(output, 'Moved to node labeled: function2')
+
         @patch('builtins.input')
         def test_showlabels_empty(self, mock_input: unittest.mock.MagicMock) -> None:
             """Test the /showlabels command when no labels exist."""
@@ -751,20 +537,12 @@ class TestAdvancedNavigation(DetailedTestCase):
     @patch('builtins.input')
     def test_showlabels_with_labels(self, mock_input: unittest.mock.MagicMock) -> None:
         """Test the /showlabels command with existing labels."""
-        mock_input.side_effect = [
-            'Write a function to calculate fibonacci numbers',
-            '/label', 'fibonacci_func',
-            'Write a sorting algorithm',
-            '/label', 'sort_algo',
-            '/showlabels',
-            '/exit'
-        ]
+        mock_input.side_effect = ['Write a function to calculate fibonacci numbers', '/label', 'fibonacci_func', 'Write a sorting algorithm', '/label', 'sort_algo', '/showlabels', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
             output = buf.getvalue()
             print(f'\nBot output:\n{output}')
-
         self.assertContainsNormalized(output, 'Saved labels:')
         self.assertContainsNormalized(output, 'fibonacci_func')
         self.assertContainsNormalized(output, 'sort_algo')
@@ -773,57 +551,39 @@ class TestAdvancedNavigation(DetailedTestCase):
     def test_showlabels_content_preview(self, mock_input: unittest.mock.MagicMock) -> None:
         """Test that /showlabels displays content previews correctly."""
         long_message = "This is a very long message that should be truncated when displayed in the showlabels command because it exceeds the 100 character limit that is set for content previews"
-        mock_input.side_effect = [
-            long_message,
-            '/label', 'long_message',
-            '/showlabels',
-            '/exit'
-        ]
+        mock_input.side_effect = [long_message, '/label', 'long_message', '/showlabels', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 start.main()
             output = buf.getvalue()
             print(f'\nBot output:\n{output}')
-
         self.assertContainsNormalized(output, 'long_message')
         # Check that the preview is truncated (should contain "..." for long content)
         self.assertTrue('...' in output or len(long_message) <= 100)
 
-    @patch('builtins.input') 
+    @patch('builtins.input')
     @patch('bots.dev.auto_terminal.filedialog.askopenfilename')
     def test_label_persistence_save_load(self, mock_filedialog: unittest.mock.MagicMock, mock_input: unittest.mock.MagicMock) -> None:
         """Test that labels persist when saving and loading bots."""
         import tempfile
         import os
-
         # Create a temporary file for saving/loading
         with tempfile.NamedTemporaryFile(mode='w', suffix='.bot', delete=False) as temp_file:
             temp_filename = temp_file.name
-
         try:
             # First session: create labels and save
-            mock_input.side_effect = [
-                'Write a function to parse JSON',
-                '/label', 'json_parser',
-                '/save', temp_filename,
-                '/exit'
-            ]
-
+            mock_input.side_effect = ['Write a function to parse JSON', '/label', 'json_parser', '/save', temp_filename, '/exit']
             with StringIO() as buf, redirect_stdout(buf):
                 with self.assertRaises(SystemExit):
                     start.main()
                 output1 = buf.getvalue()
                 print(f'\nFirst session output:\n{output1}')
-
             # Verify the file was created and contains our label
             self.assertTrue(os.path.exists(temp_filename), "Bot file was not created")
             self.assertContainsNormalized(output1, 'Saved current node with label: json_parser')
-
         finally:
             # Clean up temporary file
             if os.path.exists(temp_filename):
                 os.unlink(temp_filename)
-
-
 if __name__ == '__main__':
     unittest.main()

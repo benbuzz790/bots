@@ -1,5 +1,6 @@
 import os
 import unittest
+import shutil
 from bots.tools.code_tools import patch_edit
 import textwrap
 import tempfile
@@ -213,6 +214,7 @@ class TestGitPatch(unittest.TestCase):
         test_path = 'test//path//file.txt'
         patch = textwrap.dedent('\n@@ -0,0 +1,1 @@\n+test content')
         full_path = os.path.join(self.test_file + '_dir', test_path)
+        cleanup_root = self.test_file + '_dir'
         try:
             result = patch_edit(full_path, patch)
             self.assertIn('Successfully', result)
@@ -222,14 +224,14 @@ class TestGitPatch(unittest.TestCase):
                 content = f.read()
             self.assertEqual(content.strip(), 'test content')
         finally:
-            if os.path.exists(os.path.dirname(full_path)):
-                import shutil
-                shutil.rmtree(os.path.dirname(os.path.dirname(full_path)))
+            if os.path.exists(cleanup_root):
+                shutil.rmtree(cleanup_root)
 
     def test_path_normalization(self):
         """Test that both forward and backward slashes work in paths"""
         test_paths = ['test/path/file.txt', 'test\\path\\file.txt', 'test/path\\mixed/slashes\\file.txt']
         patch = textwrap.dedent('\n@@ -0,0 +1,1 @@\n+test content')
+        cleanup_root = self.test_file + '_dir'
         for path in test_paths:
             full_path = os.path.join(self.test_file + '_dir', path)
             try:
@@ -240,8 +242,8 @@ class TestGitPatch(unittest.TestCase):
                     content = f.read()
                 self.assertEqual(content.strip(), 'test content')
             finally:
-                if os.path.exists(os.path.dirname(full_path)):
-                    import shutil
+                if os.path.exists(cleanup_root):
+                    shutil.rmtree(cleanup_root)
                     shutil.rmtree(os.path.dirname(os.path.dirname(full_path)))
 
     def test_class_indentation_preservation(self):

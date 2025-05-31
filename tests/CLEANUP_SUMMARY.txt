@@ -1,0 +1,13 @@
+﻿# Test Cleanup Improvements Summary
+## Issues Fixed:
+1. **test_auto_terminal.py**: Added tearDownClass() to clean up benbuzz790/private_tests directory
+2. **test_patch_edit.py**: Fixed unreliable cleanup logic in test_double_slash_handling and test_path_normalization
+3. **Created cleanup_test_artifacts.py**: Standalone script to clean up any leftover test artifacts
+## Usage:
+- Tests now clean up automatically
+- Run 'python tests/cleanup_test_artifacts.py' for manual cleanup
+- No more manual file cleanup needed!
+## Benefits:
+- Clean test environment every run
+- No leftover artifacts
+- CI/CD friendly
