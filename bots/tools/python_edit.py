@@ -400,13 +400,14 @@ def _contains_token(s: str) -> bool:
     return 'TOKEN_' in s
 
 def _find_string_end(line, start_pos, quote_char):
-    """Find the end position of a quoted string, handling escape sequences."""
+    """Find the end position of a quoted string, handling escape sequences properly."""
     pos = start_pos + 1
     while pos < len(line):
-        if line[pos] == quote_char:
+        if line[pos] == '\\' and pos + 1 < len(line):
+            # Skip the backslash and the escaped character
+            pos += 2
+        elif line[pos] == quote_char:
             return pos
-        elif line[pos] == '\\' and pos + 1 < len(line):
-            pos += 2  # Skip escaped character
         else:
             pos += 1
     return -1  # No closing quote found
@@ -595,15 +596,15 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
     current_hash = _get_file_hash(source)
     token_counter = 0
     
-    # First pass: handle multi-line strings BEFORE splitting into lines
+    # First pass: handle multi-line strings BEFORE any other processing
     tokenized = _process_multiline_strings(source, token_map, token_counter, current_hash)
     token_counter = len(token_map)
     
-    # Second pass: process the entire source for string literals
-    # This must happen before line splitting to handle strings with \n
-    tokenized, token_counter = _process_string_literals(tokenized, token_map, token_counter, current_hash)
+    # Second pass: process ALL string literals in the entire source at once
+    # CRITICAL: Do this BEFORE splitting into lines to preserve escape sequences
+    tokenized, token_counter = _process_all_string_literals(tokenized, token_map, token_counter, current_hash)
     
-    # Third pass: process line by line for comments
+    # Third pass: process line by line for comments ONLY after string processing is complete
     lines = tokenized.split('\n')
     processed_lines = []
     
@@ -765,92 +766,406 @@ def _process_multiline_strings(source: str, token_map: dict, token_counter: int,
     
     return tokenized
 
-def _process_string_literals(processed_line, token_map, token_counter, current_hash):
-    """Enhanced version that properly handles f-strings and string concatenation."""
+def _process_all_string_literals(source, token_map, token_counter, current_hash):
+    """Process all string literals in the entire source at once, preserving escape sequences."""
     
-    if _contains_token(processed_line):
-        return processed_line, token_counter
+    if _contains_token(source):
+        # If source already contains tokens, we need to be more careful
+        # Process line by line to avoid conflicts with existing tokens
+        lines = source.split('\n')
+        processed_lines = []
+        
+        for line in lines:
+            processed_line, token_counter = _process_string_literals(line, token_map, token_counter, current_hash)
+            processed_lines.append(processed_line)
+        
+        return '\n'.join(processed_lines), token_counter
+    
+    # Step 1: Identify ALL string positions in the entire source
+    string_locations = _find_all_string_locations_in_source(source)
+    
+    if not string_locations:
+        return source, token_counter
+    
+    # Step 2: Process strings from right to left to avoid position shifts
+    # Sort by start position in descending order
+    string_locations.sort(key=lambda x: x['start'], reverse=True)
+    
+    result = source
+    
+    # Step 3: Replace each string with its token
+    for string_info in string_locations:
+        start = string_info['start']
+        end = string_info['end']
+        string_content = string_info['content']
+        is_fstring = string_info['is_fstring']
+        is_raw = string_info['is_raw']
+        paren_depth = string_info['paren_depth']
+        quote_char = string_info['quote_char']
+        
+        # Create token with proper metadata
+        metadata = {'is_fstring': is_fstring, 'is_raw': is_raw, 'in_parens': paren_depth > 0}
+        if paren_depth > 0:
+            metadata['quote_char'] = quote_char
+        
+        token_name, token_data = _create_token(
+            string_content, token_counter, current_hash, TokenType.STRING_LITERAL, metadata
+        )
+        token_map[token_name] = token_data
+        
+        # Determine replacement text
+        if paren_depth > 0:
+            replacement = f'{quote_char}{token_name}{quote_char}'
+        else:
+            replacement = token_name
+        
+        # Replace in result (working right-to-left so positions stay valid)
+        result = result[:start] + replacement + result[end + 1:]
+        token_counter += 1
+    
+    return result, token_counter
 
-    # Track if we're inside parentheses for concatenation
+
+def _find_all_string_locations_in_source(source):
+    """Find all string literal locations in the entire source, preserving escape sequences."""
+    locations = []
     paren_depth = 0
     pos = 0
-    result_parts = []
-    last_pos = 0
     
-    while pos < len(processed_line):
-        char = processed_line[pos]
+    while pos < len(source):
+        char = source[pos]
         
-        # Track parentheses
+        # Track parentheses depth
         if char == '(':
             paren_depth += 1
-            result_parts.append(processed_line[last_pos:pos + 1])
-            last_pos = pos + 1
             pos += 1
             continue
         elif char == ')':
             paren_depth -= 1
-            result_parts.append(processed_line[last_pos:pos + 1])
-            last_pos = pos + 1
             pos += 1
             continue
         
-        # Look for quote characters
+        # Look for string starts
         if char in ['"', "'"]:
-            # Check if this is an f-string
-            is_fstring, is_raw = _is_fstring_start(processed_line, pos)
-            
-            if is_fstring:
-                # Find the actual start of the f-string prefix
-                string_start = pos
-                for prefix in ['rf', 'Rf', 'rF', 'RF', 'fr', 'Fr', 'fR', 'FR', 'f', 'F']:
-                    prefix_start = pos - len(prefix)
-                    if (prefix_start >= 0 and 
-                        processed_line[prefix_start:pos] == prefix and
-                        (prefix_start == 0 or not processed_line[prefix_start-1].isalnum())):
-                        string_start = prefix_start
-                        break
-                
-                end_pos = _find_fstring_end(processed_line, pos, char, is_raw)
+            string_info = _analyze_string_at_position_in_source(source, pos, paren_depth)
+            if string_info:
+                locations.append(string_info)
+                pos = string_info['end'] + 1  # Skip past this string
             else:
-                string_start = pos
-                end_pos = _find_string_end(processed_line, pos, char)
-            
-            if end_pos == -1:
-                # Unterminated string
                 pos += 1
-                continue
-            
-            # Extract string content
-            string_content = processed_line[string_start:end_pos + 1]
-            
-            # Add the part before the string
-            result_parts.append(processed_line[last_pos:string_start])
-            
-            # Create token
-            token_type = TokenType.STRING_LITERAL
-            token_name, token_data = _create_token(
-                string_content, token_counter, current_hash, token_type,
-                {'is_fstring': is_fstring, 'is_raw': is_raw, 'in_parens': paren_depth > 0} if is_fstring else {'in_parens': paren_depth > 0}
-            )
-            token_map[token_name] = token_data
-            
-            # For string concatenation, ALL tokens need to be quoted
-            if paren_depth > 0:
-                result_parts.append(f'"{token_name}"')
-            else:
-                result_parts.append(token_name)
-            
-            # Update positions
-            last_pos = end_pos + 1
-            pos = end_pos + 1
-            token_counter += 1
         else:
             pos += 1
     
-    # Add any remaining content
-    result_parts.append(processed_line[last_pos:])
+    return locations
+
+
+def _analyze_string_at_position_in_source(source, pos, paren_depth):
+    """Analyze a potential string starting at the given position in the full source."""
+    char = source[pos]
     
-    return ''.join(result_parts), token_counter
+    # Check if this is an f-string
+    is_fstring, is_raw = _is_fstring_start(source, pos)
+    
+    if is_fstring:
+        # Find the actual start of the f-string prefix
+        string_start = pos
+        for prefix in ['rf', 'Rf', 'rF', 'RF', 'fr', 'Fr', 'fR', 'FR', 'f', 'F']:
+            prefix_start = pos - len(prefix)
+            if (prefix_start >= 0 and 
+                source[prefix_start:pos] == prefix and
+                (prefix_start == 0 or not source[prefix_start-1].isalnum())):
+                string_start = prefix_start
+                break
+        
+        end_pos = _find_fstring_end(source, pos, char, is_raw)
+    else:
+        string_start = pos
+        end_pos = _find_string_end(source, pos, char)
+    
+    if end_pos == -1:
+        # Invalid/unterminated string
+        return None
+    
+    # Extract the complete string content
+    string_content = source[string_start:end_pos + 1]
+    
+    # Validate the string
+    if len(string_content) < 2:
+        return None
+    
+    return {
+        'start': string_start,
+        'end': end_pos,
+        'content': string_content,
+        'is_fstring': is_fstring,
+        'is_raw': is_raw,
+        'paren_depth': paren_depth,
+        'quote_char': char
+    }
+
+
+def _process_string_literals(processed_line, token_map, token_counter, current_hash):
+    """Process all strings in a line at once - fallback for when source already has tokens."""
+    
+    if _contains_token(processed_line):
+        return processed_line, token_counter
+
+    # Step 1: Identify ALL string positions in the line
+    string_locations = _find_all_string_locations(processed_line)
+    
+    if not string_locations:
+        return processed_line, token_counter
+    
+    # Step 2: Process strings from right to left to avoid position shifts
+    # Sort by start position in descending order
+    string_locations.sort(key=lambda x: x['start'], reverse=True)
+    
+    result = processed_line
+    
+    # Step 3: Replace each string with its token
+    for string_info in string_locations:
+        start = string_info['start']
+        end = string_info['end']
+        string_content = string_info['content']
+        is_fstring = string_info['is_fstring']
+        is_raw = string_info['is_raw']
+        paren_depth = string_info['paren_depth']
+        quote_char = string_info['quote_char']
+        
+        # Create token with proper metadata
+        metadata = {'is_fstring': is_fstring, 'is_raw': is_raw, 'in_parens': paren_depth > 0}
+        if paren_depth > 0:
+            metadata['quote_char'] = quote_char
+        
+        token_name, token_data = _create_token(
+            string_content, token_counter, current_hash, TokenType.STRING_LITERAL, metadata
+        )
+        token_map[token_name] = token_data
+        
+        # Determine replacement text
+        if paren_depth > 0:
+            replacement = f'{quote_char}{token_name}{quote_char}'
+        else:
+            replacement = token_name
+        
+        # Replace in result (working right-to-left so positions stay valid)
+        result = result[:start] + replacement + result[end + 1:]
+        token_counter += 1
+    
+    return result, token_counter
+
+
+def _find_all_string_locations(line):
+    """Find all string literal locations in a line without tokenizing."""
+    locations = []
+    paren_depth = 0
+    pos = 0
+    
+    while pos < len(line):
+        char = line[pos]
+        
+        # Track parentheses depth
+        if char == '(':
+            paren_depth += 1
+            pos += 1
+            continue
+        elif char == ')':
+            paren_depth -= 1
+            pos += 1
+            continue
+        
+        # Look for string starts
+        if char in ['"', "'"]:
+            string_info = _analyze_string_at_position(line, pos, paren_depth)
+            if string_info:
+                locations.append(string_info)
+                pos = string_info['end'] + 1  # Skip past this string
+            else:
+                pos += 1
+        else:
+            pos += 1
+    
+    return locations
+
+
+def _analyze_string_at_position(line, pos, paren_depth):
+    """Analyze a potential string starting at the given position."""
+    char = line[pos]
+    
+    # Check if this is an f-string
+    is_fstring, is_raw = _is_fstring_start(line, pos)
+    
+    if is_fstring:
+        # Find the actual start of the f-string prefix
+        string_start = pos
+        for prefix in ['rf', 'Rf', 'rF', 'RF', 'fr', 'Fr', 'fR', 'FR', 'f', 'F']:
+            prefix_start = pos - len(prefix)
+            if (prefix_start >= 0 and 
+                line[prefix_start:pos] == prefix and
+                (prefix_start == 0 or not line[prefix_start-1].isalnum())):
+                string_start = prefix_start
+                break
+        
+        end_pos = _find_fstring_end(line, pos, char, is_raw)
+    else:
+        string_start = pos
+        end_pos = _find_string_end(line, pos, char)
+    
+    if end_pos == -1:
+        # Invalid/unterminated string
+        return None
+    
+    # Extract the complete string content
+    string_content = line[string_start:end_pos + 1]
+    
+    # Validate the string
+    if len(string_content) < 2:
+        return None
+    
+    return {
+        'start': string_start,
+        'end': end_pos,
+        'content': string_content,
+        'is_fstring': is_fstring,
+        'is_raw': is_raw,
+        'paren_depth': paren_depth,
+        'quote_char': char
+    }
+    """Process all string literals in the entire source at once, preserving escape sequences."""
+    
+    if _contains_token(source):
+        # If source already contains tokens, we need to be more careful
+        # Process line by line to avoid conflicts with existing tokens
+        lines = source.split('\n')
+        processed_lines = []
+        
+        for line in lines:
+            processed_line, token_counter = _process_string_literals(line, token_map, token_counter, current_hash)
+            processed_lines.append(processed_line)
+        
+        return '\n'.join(processed_lines), token_counter
+    
+    # Step 1: Identify ALL string positions in the entire source
+    string_locations = _find_all_string_locations_in_source(source)
+    
+    if not string_locations:
+        return source, token_counter
+    
+    # Step 2: Process strings from right to left to avoid position shifts
+    # Sort by start position in descending order
+    string_locations.sort(key=lambda x: x['start'], reverse=True)
+    
+    result = source
+    
+    # Step 3: Replace each string with its token
+    for string_info in string_locations:
+        start = string_info['start']
+        end = string_info['end']
+        string_content = string_info['content']
+        is_fstring = string_info['is_fstring']
+        is_raw = string_info['is_raw']
+        paren_depth = string_info['paren_depth']
+        quote_char = string_info['quote_char']
+        
+        # Create token with proper metadata
+        metadata = {'is_fstring': is_fstring, 'is_raw': is_raw, 'in_parens': paren_depth > 0}
+        if paren_depth > 0:
+            metadata['quote_char'] = quote_char
+        
+        token_name, token_data = _create_token(
+            string_content, token_counter, current_hash, TokenType.STRING_LITERAL, metadata
+        )
+        token_map[token_name] = token_data
+        
+        # Determine replacement text
+        if paren_depth > 0:
+            replacement = f'{quote_char}{token_name}{quote_char}'
+        else:
+            replacement = token_name
+        
+        # Replace in result (working right-to-left so positions stay valid)
+        result = result[:start] + replacement + result[end + 1:]
+        token_counter += 1
+    
+    return result, token_counter
+
+
+def _find_all_string_locations_in_source(source):
+    """Find all string literal locations in the entire source, preserving escape sequences."""
+    locations = []
+    paren_depth = 0
+    pos = 0
+    
+    while pos < len(source):
+        char = source[pos]
+        
+        # Track parentheses depth
+        if char == '(':
+            paren_depth += 1
+            pos += 1
+            continue
+        elif char == ')':
+            paren_depth -= 1
+            pos += 1
+            continue
+        
+        # Look for string starts
+        if char in ['"', "'"]:
+            string_info = _analyze_string_at_position_in_source(source, pos, paren_depth)
+            if string_info:
+                locations.append(string_info)
+                pos = string_info['end'] + 1  # Skip past this string
+            else:
+                pos += 1
+        else:
+            pos += 1
+    
+    return locations
+
+
+def _analyze_string_at_position_in_source(source, pos, paren_depth):
+    """Analyze a potential string starting at the given position in the full source."""
+    char = source[pos]
+    
+    # Check if this is an f-string
+    is_fstring, is_raw = _is_fstring_start(source, pos)
+    
+    if is_fstring:
+        # Find the actual start of the f-string prefix
+        string_start = pos
+        for prefix in ['rf', 'Rf', 'rF', 'RF', 'fr', 'Fr', 'fR', 'FR', 'f', 'F']:
+            prefix_start = pos - len(prefix)
+            if (prefix_start >= 0 and 
+                source[prefix_start:pos] == prefix and
+                (prefix_start == 0 or not source[prefix_start-1].isalnum())):
+                string_start = prefix_start
+                break
+        
+        end_pos = _find_fstring_end(source, pos, char, is_raw)
+    else:
+        string_start = pos
+        end_pos = _find_string_end(source, pos, char)
+    
+    if end_pos == -1:
+        # Invalid/unterminated string
+        return None
+    
+    # Extract the complete string content
+    string_content = source[string_start:end_pos + 1]
+    
+    # Validate the string
+    if len(string_content) < 2:
+        return None
+    
+    return {
+        'start': string_start,
+        'end': end_pos,
+        'content': string_content,
+        'is_fstring': is_fstring,
+        'is_raw': is_raw,
+        'paren_depth': paren_depth,
+        'quote_char': char
+    }
 
 
 def _process_inline_comment(line: str, token_map: dict, token_counter: int, current_hash: str) -> Tuple[str, int]:
@@ -985,10 +1300,28 @@ def _process_single_token(result: str, token_name: str, token_data: Dict) -> str
     
     # Replace all occurrences of this token
     while token_name in result:
-        # For tokens in string concatenation, remove the quotes around them
-        if f'"{token_name}"' in result:
-            result = result.replace(f'"{token_name}"', content)
-            continue
+        # Handle string concatenation patterns first
+        if token_type == TokenType.STRING_LITERAL.value:
+            # Check for concatenation patterns - use the stored quote character
+            if metadata.get('in_parens', False):
+                quote_char = metadata.get('quote_char', '"')
+                pattern = f'{quote_char}{token_name}{quote_char}'
+                if pattern in result:
+                    result = result.replace(pattern, content)
+                    continue
+            
+            # Fallback: check both quote types if quote_char not stored
+            quote_patterns = [f'"{token_name}"', f"'{token_name}'"]
+            found_pattern = False
+            
+            for pattern in quote_patterns:
+                if pattern in result:
+                    result = result.replace(pattern, content)
+                    found_pattern = True
+                    break
+            
+            if found_pattern:
+                continue
             
         start = result.find(token_name)
         if start == -1:

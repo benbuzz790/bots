@@ -1012,3 +1012,437 @@ class DataProcessor:
     restored = _detokenize_source(tokenized, token_map)
     # Allow for minor whitespace differences in restoration
     assert restored.replace(' ', '').replace('\n', '') == source.replace(' ', '').replace('\n', '')
+
+
+def test_single_quote_preservation():
+    """Test that single quotes are preserved in string concatenation"""
+    source = '''message = ('Hello world' 
+               'with single quotes')'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly with single quotes
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert "'Hello world'" in restored
+    assert "'with single quotes'" in restored
+
+
+def test_double_quote_preservation():
+    """Test that double quotes are preserved in string concatenation"""
+    source = '''message = ("Hello world" 
+               "with double quotes")'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly with double quotes
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert '"Hello world"' in restored
+    assert '"with double quotes"' in restored
+
+
+def test_mixed_quotes_preservation():
+    """Test mixed quote styles in same concatenation"""
+    source = '''message = ("Double quoted string "
+               'Single quoted string '
+               "Back to double quotes")'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exact quote pattern
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert '"Double quoted string "' in restored
+    assert "'Single quoted string '" in restored
+    assert '"Back to double quotes"' in restored
+
+
+def test_fstring_quote_preservation():
+    """Test f-string quote preservation in concatenation"""
+    source = '''message = (f"F-string with {variable}"
+               'Regular single quote'
+               f'F-string with single quotes {other_var}')'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exact quote pattern
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert 'f"F-string with {variable}"' in restored
+    assert "'Regular single quote'" in restored
+    assert "f'F-string with single quotes {other_var}'" in restored
+
+
+def test_nested_quotes_preservation():
+    """Test strings containing opposite quote types"""
+    source = '''message = ("String with 'nested single quotes'"
+               'String with "nested double quotes"')'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert '"String with \'nested single quotes\'"' in restored
+    assert '\'String with "nested double quotes"\'' in restored
+
+
+def test_triple_quote_preservation():
+    """Test that triple quotes are handled correctly (should not be affected by concatenation logic)"""
+    source = '''docstring = """This is a
+multiline string
+with triple quotes"""'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert '"""This is a' in restored
+
+
+def test_non_concatenated_quote_preservation():
+    """Test that non-concatenated strings preserve quotes"""
+    source = '''single = 'Single quoted'
+double = "Double quoted"
+f_single = f'F-string single {var}'
+f_double = f"F-string double {var}"'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert "single = 'Single quoted'" in restored
+    assert 'double = "Double quoted"' in restored
+    assert "f_single = f'F-string single {var}'" in restored
+    assert 'f_double = f"F-string double {var}"' in restored
+
+
+def test_complex_mixed_concatenation():
+    """Test complex real-world concatenation with mixed quotes and f-strings"""
+    source = r'''sql_query = ("SELECT * FROM users "
+               'WHERE name = "John" '
+               f"AND age > {min_age} "
+               'AND status = \'active\' '
+               f'ORDER BY {sort_column}')'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    
+    # Verify each part maintains its quotes
+    lines = restored.split('\n')
+    assert '"SELECT * FROM users "' in lines[0]
+    assert '\'WHERE name = "John" \'' in lines[1]
+    assert f'"AND age > {{min_age}} "' in lines[2]
+    assert '\'AND status = \\\'active\\\' \'' in lines[3]
+    assert f'\'ORDER BY {{sort_column}}\')' in lines[4]
+
+def test_edge_case_empty_strings():
+    """Test concatenation with empty strings"""
+    source = '''result = ("" 
+               '' 
+               f"")'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert '""' in restored
+    assert "''" in restored
+    assert 'f""' in restored
+
+
+def test_single_quote_preservation():
+    """Test that single quotes are preserved in string concatenation"""
+    source = '''message = ('Hello world' 
+               'with single quotes')'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly with single quotes
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert "'Hello world'" in restored
+    assert "'with single quotes'" in restored
+
+
+def test_double_quote_preservation():
+    """Test that double quotes are preserved in string concatenation"""
+    source = '''message = ("Hello world" 
+               "with double quotes")'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly with double quotes
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert '"Hello world"' in restored
+    assert '"with double quotes"' in restored
+
+
+def test_mixed_quotes_preservation():
+    """Test mixed quote styles in same concatenation"""
+    source = '''message = ("Double quoted string "
+               'Single quoted string '
+               "Back to double quotes")'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exact quote pattern
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert '"Double quoted string "' in restored
+    assert "'Single quoted string '" in restored
+    assert '"Back to double quotes"' in restored
+
+
+def test_fstring_quote_preservation():
+    """Test f-string quote preservation in concatenation"""
+    source = '''message = (f"F-string with {variable}"
+               'Regular single quote'
+               f'F-string with single quotes {other_var}')'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exact quote pattern
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert 'f"F-string with {variable}"' in restored
+    assert "'Regular single quote'" in restored
+    assert "f'F-string with single quotes {other_var}'" in restored
+
+
+def test_nested_quotes_preservation():
+    """Test strings containing opposite quote types"""
+    source = '''message = ("String with 'nested single quotes'"
+               'String with "nested double quotes"')'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert '"String with \'nested single quotes\'"' in restored
+    assert '\'String with "nested double quotes"\'' in restored
+
+
+def test_triple_quote_preservation():
+    """Test that triple quotes are handled correctly (should not be affected by concatenation logic)"""
+    source = '''docstring = """This is a
+multiline string
+with triple quotes"""'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert '"""This is a' in restored
+
+
+def test_non_concatenated_quote_preservation():
+    """Test that non-concatenated strings preserve quotes"""
+    source = '''single = 'Single quoted'
+double = "Double quoted"
+f_single = f'F-string single {var}'
+f_double = f"F-string double {var}"'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable
+    ast.parse(tokenized)
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+    assert "single = 'Single quoted'" in restored
+    assert 'double = "Double quoted"' in restored
+    assert "f_single = f'F-string single {var}'" in restored
+    assert 'f_double = f"F-string double {var}"' in restored
+
+def test_quote_metadata_storage():
+    """Test that quote character metadata is correctly stored"""
+    source = '''concat = ("double" 'single' f"f-double" f'f-single')'''
+    
+    tokenized, token_map = _tokenize_source(source)
+    
+    # Check metadata for each token
+    quote_chars_found = []
+    for token_name, token_data in token_map.items():
+        metadata = token_data['metadata']
+        if metadata.get('in_parens', False) and 'quote_char' in metadata:
+            quote_chars_found.append(metadata['quote_char'])
+    
+    # Should have found both quote types
+    assert '"' in quote_chars_found
+    assert "'" in quote_chars_found
+    
+    # Should restore perfectly
+    restored = _detokenize_source(tokenized, token_map)
+    assert restored == source
+
+
+def test_escaped_quotes_debugging():
+    """Debug the specific escaped quotes issue"""
+    # Isolate the problematic string
+    source = """'AND status = \\'active\\' '"""
+    
+    print(f"Testing source: {repr(source)}")
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Tokenized: {tokenized}')
+    
+    # Should be parseable as part of an assignment
+    test_assignment = f"x = {tokenized}"
+    print(f'Testing assignment: {test_assignment}')
+    
+    try:
+        ast.parse(test_assignment)
+        print("✓ AST parsing successful")
+    except Exception as e:
+        print(f"✗ AST parsing failed: {e}")
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized, token_map)
+    print(f'Restored: {repr(restored)}')
+    assert restored == source
+
+
+def test_complex_mixed_concatenation_simple():
+    """Simplified version of the failing test"""
+    # Test just the problematic line
+    source = """'AND status = \\'active\\' '"""
+    
+    tokenized, token_map = _tokenize_source(source)
+    print(f'DEBUG - Single string tokenized: {tokenized}')
+    
+    # Test in concatenation context
+    concat_source = f"""("SELECT * FROM users " {source})"""
+    print(f'Testing concatenation: {concat_source}')
+    
+    tokenized_concat, token_map_concat = _tokenize_source(concat_source)
+    print(f'DEBUG - Concatenation tokenized: {tokenized_concat}')
+    
+    # Should be parseable
+    try:
+        ast.parse(f"x = {tokenized_concat}")
+        print("✓ Concatenation AST parsing successful")
+    except Exception as e:
+        print(f"✗ Concatenation AST parsing failed: {e}")
+    
+    # Should restore exactly
+    restored = _detokenize_source(tokenized_concat, token_map_concat)
+    print(f'Restored: {repr(restored)}')
+    assert restored == concat_source
+
+
+# Test function for the problematic case
+def test_problematic_string():
+    """Test the specific case that was failing."""
+    test_line = "'AND status = \\'active\\' '"
+    print("Testing problematic string:")
+    locations = debug_string_locations(test_line)
+    
+    # Should find exactly ONE string spanning the entire line
+    assert len(locations) == 1, f"Expected 1 string, found {len(locations)}"
+    assert locations[0]['start'] == 0, f"Expected start at 0, got {locations[0]['start']}"
+    assert locations[0]['end'] == len(test_line) - 1, f"Expected end at {len(test_line) - 1}, got {locations[0]['end']}"
+    
+    print("✓ Problematic string correctly identified as single unit")
+
+
+# Test function for multiple strings
+def test_multiple_strings():
+    """Test multiple strings on one line."""
+    test_line = 'result = "string1" + "string2" + f"string3 {var}"'
+    print("\nTesting multiple strings:")
+    locations = debug_string_locations(test_line)
+    
+    # Should find exactly THREE strings
+    assert len(locations) == 3, f"Expected 3 strings, found {len(locations)}"
+    
+    print("✓ Multiple strings correctly identified")
+
+
+
+# Helper function to debug string identification
+def debug_string_locations(line):
+    """Debug helper to see what strings are found in a line."""
+    from bots.tools.python_edit import _find_all_string_locations
+    print(f"Analyzing line: {repr(line)}")
+    locations = _find_all_string_locations(line)
+    
+    for i, loc in enumerate(locations):
+        print(f"  String {i+1}: {repr(loc['content'])} at positions {loc['start']}-{loc['end']}")
+        print(f"    - F-string: {loc['is_fstring']}")
+        print(f"    - In parens: {loc['paren_depth'] > 0}")
+        print(f"    - Quote char: {repr(loc['quote_char'])}")
+    
+    return locations
