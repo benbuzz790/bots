@@ -1,0 +1,154 @@
+{
+ "name": "bot",
+ "model_engine": "gpt-4-turbo-preview",
+ "max_tokens": 1000,
+ "temperature": 0.7,
+ "role": "assistant",
+ "role_description": "a friendly AI assistant",
+ "conversation": {
+  "content": "",
+  "pending_results": [],
+  "role": "empty",
+  "tool_calls": [],
+  "tool_results": [],
+  "node_class": "OpenAINode",
+  "replies": [
+   {
+    "content": "What is 5 + 3?",
+    "pending_results": [],
+    "role": "user",
+    "tool_calls": [],
+    "tool_results": [],
+    "node_class": "OpenAINode",
+    "replies": [
+     {
+      "content": "~",
+      "pending_results": [],
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_sM3jzaPYJihj9WBFoJmMWJHO",
+        "type": "function",
+        "function": {
+         "name": "simple_addition",
+         "arguments": "{\"x\":\"5\",\"y\":\"3\"}"
+        }
+       }
+      ],
+      "tool_results": [
+       {
+        "role": "tool",
+        "content": "8",
+        "tool_call_id": "call_sM3jzaPYJihj9WBFoJmMWJHO"
+       }
+      ],
+      "node_class": "OpenAINode",
+      "replies": [
+       {
+        "content": "The result of 5 + 3 is 8.",
+        "pending_results": [],
+        "role": "assistant",
+        "tool_calls": [],
+        "tool_results": [],
+        "node_class": "OpenAINode",
+        "replies": [
+         {
+          "content": "What is 10 + 15?",
+          "pending_results": [],
+          "role": "user",
+          "tool_calls": [],
+          "tool_results": [],
+          "node_class": "OpenAINode",
+          "replies": [
+           {
+            "content": "~",
+            "pending_results": [],
+            "role": "assistant",
+            "tool_calls": [
+             {
+              "id": "call_vOodZyMwCoO0XpQuf6V9QnFh",
+              "type": "function",
+              "function": {
+               "name": "simple_addition",
+               "arguments": "{\"x\":\"10\",\"y\":\"15\"}"
+              }
+             }
+            ],
+            "tool_results": [
+             {
+              "role": "tool",
+              "content": "25",
+              "tool_call_id": "call_vOodZyMwCoO0XpQuf6V9QnFh"
+             }
+            ],
+            "node_class": "OpenAINode",
+            "replies": [
+             {
+              "content": "The result of 10 + 15 is 25.",
+              "pending_results": [],
+              "role": "assistant",
+              "tool_calls": [],
+              "tool_results": [],
+              "node_class": "OpenAINode"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "system_message": "",
+ "tool_handler": {
+  "class": "bots.foundation.openai_bots.OpenAIToolHandler",
+  "tools": [
+   {
+    "type": "function",
+    "function": {
+     "name": "simple_addition",
+     "description": "Returns x + y with appropriate type conversion.\n\n            Parameters:\n                x (str): First number as string\n                y (str): Second number as string\n\n            Returns:\n                str: Sum of x and y as string\n            ",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "x": {
+        "type": "string",
+        "description": "Parameter: x"
+       },
+       "y": {
+        "type": "string",
+        "description": "Parameter: y"
+       }
+      },
+      "required": [
+       "x",
+       "y"
+      ]
+     }
+    }
+   }
+  ],
+  "requests": [],
+  "results": [],
+  "modules": {
+   "dynamic_module_5044806648004792620": {
+    "name": "dynamic_module_-6387828552115663675",
+    "source": "def simple_addition(x: str, y: str) -> str:\n    \"\"\"Returns x + y with appropriate type conversion.\n\n    Parameters:\n        x (str): First number as string\n        y (str): Second number as string\n\n    Returns:\n        str: Sum of x and y as string\n    \"\"\"\n    return str(int(x) + int(y))",
+    "file_path": "dynamic_module_5044806648004792620",
+    "code_hash": "25d29aed9e933fda3a5704b239940f50",
+    "globals": {
+     "simple_addition": "<function simple_addition at 0x000002241567A200>"
+    }
+   }
+  },
+  "function_paths": {
+   "simple_addition": "dynamic_module_5044806648004792620"
+  }
+ },
+ "autosave": true,
+ "bot_class": "ChatGPT_Bot"
+}

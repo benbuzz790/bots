@@ -1,0 +1,109 @@
+{
+ "name": "TestGPT",
+ "model_engine": "gpt-4-turbo-preview",
+ "max_tokens": 4096,
+ "temperature": 0.3,
+ "role": "assistant",
+ "role_description": "a friendly AI assistant",
+ "conversation": {
+  "content": "",
+  "pending_results": [],
+  "role": "empty",
+  "tool_calls": [],
+  "tool_results": [],
+  "node_class": "OpenAINode",
+  "replies": [
+   {
+    "content": "What is 2 + 3?",
+    "pending_results": [],
+    "role": "user",
+    "tool_calls": [],
+    "tool_results": [],
+    "node_class": "OpenAINode",
+    "replies": [
+     {
+      "content": "~",
+      "pending_results": [],
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_WuuptHDqS6mzJSjcyYJy56wa",
+        "type": "function",
+        "function": {
+         "name": "_simple_addition",
+         "arguments": "{\"x\":\"2\",\"y\":\"3\"}"
+        }
+       }
+      ],
+      "tool_results": [
+       {
+        "role": "tool",
+        "content": "5",
+        "tool_call_id": "call_WuuptHDqS6mzJSjcyYJy56wa"
+       }
+      ],
+      "node_class": "OpenAINode",
+      "replies": [
+       {
+        "content": "2 + 3 equals 5.",
+        "pending_results": [],
+        "role": "assistant",
+        "tool_calls": [],
+        "tool_results": [],
+        "node_class": "OpenAINode"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "system_message": "",
+ "tool_handler": {
+  "class": "bots.foundation.openai_bots.OpenAIToolHandler",
+  "tools": [
+   {
+    "type": "function",
+    "function": {
+     "name": "_simple_addition",
+     "description": "Add two numbers and return the result as a string.\n\n    Use when you need to perform basic addition with string conversion handling.\n\n    Parameters:\n        x (str): First number as a string\n        y (str): Second number as a string\n\n    Returns:\n        str: The sum of x and y as a string, or error message if conversion fails\n\n    Example:\n        >>> _simple_addition(\"5\", \"3\")\n        \"8\"\n    ",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "x": {
+        "type": "string",
+        "description": "Parameter: x"
+       },
+       "y": {
+        "type": "string",
+        "description": "Parameter: y"
+       }
+      },
+      "required": [
+       "x",
+       "y"
+      ]
+     }
+    }
+   }
+  ],
+  "requests": [],
+  "results": [],
+  "modules": {
+   "dynamic_module_-3493823485365269247": {
+    "name": "dynamic_module_-7200675777669889946",
+    "source": "def _simple_addition(x: str, y: str) -> str:\n    \"\"\"Add two numbers and return the result as a string.\n\n    Use when you need to perform basic addition with string conversion handling.\n\n    Parameters:\n        x (str): First number as a string\n        y (str): Second number as a string\n\n    Returns:\n        str: The sum of x and y as a string, or error message if conversion fails\n\n    Example:\n        >>> _simple_addition(\"5\", \"3\")\n        \"8\"\n    \"\"\"\n    try:\n        return str(int(x) + int(y))\n    except (ValueError, TypeError) as e:\n        return f'Error: {str(e)}'",
+    "file_path": "dynamic_module_-3493823485365269247",
+    "code_hash": "a5f069282b37a0eabf418ed94588fc76",
+    "globals": {
+     "_simple_addition": "<function _simple_addition at 0x00000224159FB2E0>"
+    }
+   }
+  },
+  "function_paths": {
+   "_simple_addition": "dynamic_module_-3493823485365269247"
+  }
+ },
+ "autosave": true,
+ "bot_class": "ChatGPT_Bot"
+}

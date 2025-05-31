@@ -1031,63 +1031,6 @@ def _analyze_string_at_position(line, pos, paren_depth):
         'paren_depth': paren_depth,
         'quote_char': char
     }
-    """Process all string literals in the entire source at once, preserving escape sequences."""
-    
-    if _contains_token(source):
-        # If source already contains tokens, we need to be more careful
-        # Process line by line to avoid conflicts with existing tokens
-        lines = source.split('\n')
-        processed_lines = []
-        
-        for line in lines:
-            processed_line, token_counter = _process_string_literals(line, token_map, token_counter, current_hash)
-            processed_lines.append(processed_line)
-        
-        return '\n'.join(processed_lines), token_counter
-    
-    # Step 1: Identify ALL string positions in the entire source
-    string_locations = _find_all_string_locations_in_source(source)
-    
-    if not string_locations:
-        return source, token_counter
-    
-    # Step 2: Process strings from right to left to avoid position shifts
-    # Sort by start position in descending order
-    string_locations.sort(key=lambda x: x['start'], reverse=True)
-    
-    result = source
-    
-    # Step 3: Replace each string with its token
-    for string_info in string_locations:
-        start = string_info['start']
-        end = string_info['end']
-        string_content = string_info['content']
-        is_fstring = string_info['is_fstring']
-        is_raw = string_info['is_raw']
-        paren_depth = string_info['paren_depth']
-        quote_char = string_info['quote_char']
-        
-        # Create token with proper metadata
-        metadata = {'is_fstring': is_fstring, 'is_raw': is_raw, 'in_parens': paren_depth > 0}
-        if paren_depth > 0:
-            metadata['quote_char'] = quote_char
-        
-        token_name, token_data = _create_token(
-            string_content, token_counter, current_hash, TokenType.STRING_LITERAL, metadata
-        )
-        token_map[token_name] = token_data
-        
-        # Determine replacement text
-        if paren_depth > 0:
-            replacement = f'{quote_char}{token_name}{quote_char}'
-        else:
-            replacement = token_name
-        
-        # Replace in result (working right-to-left so positions stay valid)
-        result = result[:start] + replacement + result[end + 1:]
-        token_counter += 1
-    
-    return result, token_counter
 
 
 def _find_all_string_locations_in_source(source):

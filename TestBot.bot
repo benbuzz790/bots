@@ -1,0 +1,120 @@
+{
+ "name": "TestBot",
+ "model_engine": "gpt-4-turbo-preview",
+ "max_tokens": 1000,
+ "temperature": 0.7,
+ "role": "assistant",
+ "role_description": "a friendly AI assistant",
+ "conversation": {
+  "content": "",
+  "pending_results": [],
+  "role": "empty",
+  "tool_calls": [],
+  "tool_results": [],
+  "node_class": "OpenAINode",
+  "replies": [
+   {
+    "content": "Please display the contents of the file C:\\Users\\benbu\\AppData\\Local\\Temp\\tmpt3qg591b\\test_file.txt",
+    "pending_results": [],
+    "role": "user",
+    "tool_calls": [],
+    "tool_results": [],
+    "node_class": "OpenAINode",
+    "replies": [
+     {
+      "content": "~",
+      "pending_results": [],
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_DZEkR3TImBe9D5ZN2LIS1jLw",
+        "type": "function",
+        "function": {
+         "name": "view",
+         "arguments": "{\"file_path\":\"C:\\\\Users\\\\benbu\\\\AppData\\\\Local\\\\Temp\\\\tmpt3qg591b\\\\test_file.txt\"}"
+        }
+       }
+      ],
+      "tool_results": [
+       {
+        "role": "tool",
+        "content": "1:This is a test file content.",
+        "tool_call_id": "call_DZEkR3TImBe9D5ZN2LIS1jLw"
+       }
+      ],
+      "node_class": "OpenAINode",
+      "replies": [
+       {
+        "content": "The content of the file `C:\\Users\\benbu\\AppData\\Local\\Temp\\tmpt3qg591b\\test_file.txt` is:\n\n```\n1: This is a test file content.\n```",
+        "pending_results": [],
+        "role": "assistant",
+        "tool_calls": [],
+        "tool_results": [],
+        "node_class": "OpenAINode"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "system_message": "",
+ "tool_handler": {
+  "class": "bots.foundation.openai_bots.OpenAIToolHandler",
+  "tools": [
+   {
+    "type": "function",
+    "function": {
+     "name": "view",
+     "description": "\n    Display the contents of a file with line numbers.\n\n    Parameters:\n    - file_path (str): The path to the file to be viewed.\n    - start_line (int, optional): Starting line number (1-indexed). If None, starts from beginning.\n    - end_line (int, optional): Ending line number (1-indexed). If None, goes to end of file.\n    - around_str_match (str, optional): String to search for. If provided, shows lines around matches.\n    - dist_from_match (int, optional): Number of lines to show before and after each match. Defaults to 10.\n\n    Returns:\n    A string containing the file contents with line numbers, \n    filtered according to the specified parameters.\n    ",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "file_path": {
+        "type": "string",
+        "description": "Parameter: file_path"
+       },
+       "start_line": {
+        "type": "string",
+        "description": "Parameter: start_line"
+       },
+       "end_line": {
+        "type": "string",
+        "description": "Parameter: end_line"
+       },
+       "around_str_match": {
+        "type": "string",
+        "description": "Parameter: around_str_match"
+       },
+       "dist_from_match": {
+        "type": "string",
+        "description": "Parameter: dist_from_match"
+       }
+      },
+      "required": [
+       "file_path"
+      ]
+     }
+    }
+   }
+  ],
+  "requests": [],
+  "results": [],
+  "modules": {
+   "dynamic_module_6009711761979812794": {
+    "name": "dynamic_module_2727320427576335454",
+    "source": "def view(file_path: str, start_line: str = None, end_line: str = None, \n         around_str_match: str = None, dist_from_match: str = '10'):\n    \"\"\"\n    Display the contents of a file with line numbers.\n\n    Parameters:\n    - file_path (str): The path to the file to be viewed.\n    - start_line (int, optional): Starting line number (1-indexed). If None, starts from beginning.\n    - end_line (int, optional): Ending line number (1-indexed). If None, goes to end of file.\n    - around_str_match (str, optional): String to search for. If provided, shows lines around matches.\n    - dist_from_match (int, optional): Number of lines to show before and after each match. Defaults to 10.\n\n    Returns:\n    A string containing the file contents with line numbers, \n    filtered according to the specified parameters.\n    \"\"\"\n    encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']\n\n    start_line = int(start_line) if start_line is not None else None\n    end_line = int(end_line) if end_line is not None else None\n    dist_from_match = int(dist_from_match) if dist_from_match is not None else None\n\n    for encoding in encodings:\n        try:\n            with open(file_path, 'r', encoding=encoding) as file:\n                lines = file.readlines()\n\n            # If searching for a string match\n            if around_str_match:\n                matching_line_numbers = []\n                for i, line in enumerate(lines):\n                    if around_str_match in line:\n                        matching_line_numbers.append(i)\n\n                if not matching_line_numbers:\n                    return f\"No matches found for '{around_str_match}'\"\n\n                # Collect line ranges around matches\n                line_ranges = set()\n                for match_line in matching_line_numbers:\n                    start = max(0, match_line - dist_from_match)\n                    end = min(len(lines), match_line + dist_from_match + 1)\n                    for line_num in range(start, end):\n                        line_ranges.add(line_num)\n\n                # Sort and create output\n                sorted_lines = sorted(line_ranges)\n                numbered_lines = []\n                prev_line = None  # To detect gaps\n\n                for line_num in sorted_lines:\n                    if prev_line is not None and line_num > prev_line + 1:\n                        numbered_lines.append(\"...\")  # Add separator for gaps\n                    numbered_lines.append(f'{line_num + 1}:{lines[line_num].rstrip()}')\n                    prev_line = line_num\n\n                return '\\n'.join(numbered_lines)\n\n            # If using start_line and end_line parameters\n            else:\n                start_idx = (start_line - 1) if start_line else 0\n                end_idx = end_line if end_line else len(lines)\n\n                # Validate line numbers\n                start_idx = max(0, start_idx)\n                end_idx = min(len(lines), end_idx)\n\n                if start_idx >= len(lines):\n                    return f\"Error: start_line ({start_line}) exceeds file length ({len(lines)} lines)\"\n\n                selected_lines = lines[start_idx:end_idx]\n                numbered_lines = [f'{i + start_idx + 1}:{line.rstrip()}' for i, line in enumerate(selected_lines)]\n                return '\\n'.join(numbered_lines)\n\n        except UnicodeDecodeError:\n            continue\n        except Exception as e:\n            return f'Error: {str(e)}'\n\n    return f\"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}\"",
+    "file_path": "dynamic_module_6009711761979812794",
+    "code_hash": "741d60783a92763bc5a66c2761ace422",
+    "globals": {
+     "view": "<function view at 0x000002241593B920>"
+    }
+   }
+  },
+  "function_paths": {
+   "view": "dynamic_module_6009711761979812794"
+  }
+ },
+ "autosave": true,
+ "bot_class": "ChatGPT_Bot"
+}

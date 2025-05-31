@@ -1,0 +1,114 @@
+{
+ "name": "TestClaude",
+ "model_engine": "claude-3-5-sonnet-20240620",
+ "max_tokens": 4096,
+ "temperature": 0.3,
+ "role": "assistant",
+ "role_description": "a friendly AI assistant",
+ "conversation": {
+  "content": "",
+  "pending_results": [],
+  "role": "empty",
+  "tool_calls": [],
+  "tool_results": [],
+  "node_class": "AnthropicNode",
+  "replies": [
+   {
+    "content": "What is 2 + 3?",
+    "pending_results": [],
+    "role": "user",
+    "tool_calls": [],
+    "tool_results": [],
+    "node_class": "AnthropicNode",
+    "replies": [
+     {
+      "content": "To answer this question, I can use the \"simple_addition\" function that is available. This function takes two parameters, \"x\" and \"y\", and returns their sum. Let's use it to calculate 2 + 3.",
+      "pending_results": [
+       {
+        "type": "tool_result",
+        "tool_use_id": "toolu_01XobWDNTqhgYcFWLVKr4D9T",
+        "content": "5"
+       }
+      ],
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "type": "tool_use",
+        "id": "toolu_01XobWDNTqhgYcFWLVKr4D9T",
+        "name": "simple_addition",
+        "input": {
+         "x": "2",
+         "y": "3"
+        }
+       }
+      ],
+      "tool_results": [],
+      "node_class": "AnthropicNode"
+     }
+    ]
+   }
+  ]
+ },
+ "system_message": "",
+ "tool_handler": {
+  "class": "bots.foundation.anthropic_bots.AnthropicToolHandler",
+  "tools": [
+   {
+    "name": "simple_addition",
+    "description": "Returns x + y with appropriate type conversion",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "x": {
+       "type": "string"
+      },
+      "y": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "x",
+      "y"
+     ]
+    },
+    "cache_control": {
+     "type": "ephemeral"
+    }
+   }
+  ],
+  "requests": [
+   {
+    "type": "tool_use",
+    "id": "toolu_01XobWDNTqhgYcFWLVKr4D9T",
+    "name": "simple_addition",
+    "input": {
+     "x": "2",
+     "y": "3"
+    }
+   }
+  ],
+  "results": [
+   {
+    "type": "tool_result",
+    "tool_use_id": "toolu_01XobWDNTqhgYcFWLVKr4D9T",
+    "content": "5"
+   }
+  ],
+  "modules": {
+   "dynamic_module_-9149869714337923796": {
+    "name": "dynamic_module_9125178072135291133",
+    "source": "def simple_addition(x: str | int | float, y: str | int | float) -> str:\n    \"\"\"Returns x + y with appropriate type conversion\"\"\"\n    return str(int(x) + int(y))",
+    "file_path": "dynamic_module_-9149869714337923796",
+    "code_hash": "2c21dc443d40731cb83946f3445b0b2b",
+    "globals": {
+     "simple_addition": "<function simple_addition at 0x0000022415A9A160>"
+    }
+   }
+  },
+  "function_paths": {
+   "simple_addition": "dynamic_module_-9149869714337923796"
+  }
+ },
+ "autosave": true,
+ "bot_class": "AnthropicBot"
+}

@@ -1,0 +1,27 @@
+{
+ "name": "TestClaude",
+ "model_engine": "claude-3-5-sonnet-20240620",
+ "max_tokens": 4096,
+ "temperature": 0.3,
+ "role": "assistant",
+ "role_description": "a friendly AI assistant",
+ "conversation": {
+  "content": "",
+  "pending_results": [],
+  "role": "empty",
+  "tool_calls": [],
+  "tool_results": [],
+  "node_class": "AnthropicNode"
+ },
+ "system_message": "",
+ "tool_handler": {
+  "class": "bots.foundation.anthropic_bots.AnthropicToolHandler",
+  "tools": [],
+  "requests": [],
+  "results": [],
+  "modules": {},
+  "function_paths": {}
+ },
+ "autosave": true,
+ "bot_class": "AnthropicBot"
+}

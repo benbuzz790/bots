@@ -203,6 +203,9 @@ def main() -> None:
     else:
         at_bot = initialize_bot()
         pretty('Bot initialized', 'System')
+        # Initialize msg for the first iteration
+        msg = ""
+
 
     try:
         while True:
