@@ -221,6 +221,8 @@ class ScopeTransformer(ast.NodeTransformer):
 
 ### ENTRY POINT ###
 
+from bots.dev.decorators import log_errors
+@log_errors
 def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
     """
     Edit Python code using pytest-style scope syntax.
@@ -1110,7 +1112,6 @@ def _analyze_string_at_position_in_source(source, pos, paren_depth):
         'quote_char': char
     }
 
-
 def _process_inline_comment(line: str, token_map: dict, token_counter: int, current_hash: str) -> Tuple[str, int]:
     """Process inline comments, determining their type based on the preceding code."""
     # First check if the # is inside a string token
@@ -1168,14 +1169,34 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
                 print(f"DEBUG: Import comment processed to: '{processed_line}'")
                 return processed_line, token_counter + 1
             else:
-                # For regular inline comments, add semicolon
-                processed_line = f"{code.rstrip()}; {token_name}"
+                # For regular inline comments, check if we need semicolon
+                # Don't add semicolon if the code ends with certain characters
+                code_trimmed = code.rstrip()
+                
+                # Characters where semicolon is inappropriate
+                no_semicolon_endings = [',', ':', '(', '[', '{', '\\']
+                
+                if any(code_trimmed.endswith(char) for char in no_semicolon_endings):
+                    # For commas and other special endings, move comment to next line
+                    if code_trimmed.endswith(','):
+                        # Get the base indentation of the current line
+                        base_indent = len(line) - len(line.lstrip())
+                        # Use same indentation for the comment
+                        token_indent = ' ' * base_indent
+                        processed_line = f"{code_trimmed}\n{token_indent}{token_name}"
+                    else:
+                        # For other special characters, preserve spacing but replace comment with token
+                        spacing_before_comment = line[len(code_trimmed):comment_start]
+                        processed_line = f"{code_trimmed}{spacing_before_comment}{token_name}"
+                else:
+                    # Add semicolon for regular inline comments
+                    processed_line = f"{code.rstrip()}; {token_name}"
+                
                 print(f"DEBUG: Regular comment processed to: '{processed_line}'")
                 return processed_line, token_counter + 1
     
     # No comments found
     return line, token_counter
-
 
 ### DETOKENIZATION ###
 
@@ -1356,6 +1377,23 @@ def _handle_inline_comment(result: str, token_name: str, content: str, start: in
         new_line = line.replace('; ' + token_name, content)
         return result[:line_start] + new_line + result[line_end:]
     
+    # Check if this is a direct replacement (no semicolon case)
+    # This handles cases where the comment was after comma, colon, etc.
+    if token_name in line:
+        # Find the position of the token in the line
+        token_pos_in_line = line.find(token_name)
+        
+        # Check what comes before the token
+        before_token = line[:token_pos_in_line].rstrip()
+        
+        # Characters that indicate we should do direct replacement (no semicolon was added)
+        no_semicolon_endings = [',', ':', '(', '[', '{', '\\']
+        
+        if any(before_token.endswith(char) for char in no_semicolon_endings):
+            # Direct replacement - the comment was processed without semicolon
+            new_line = line.replace(token_name, content)
+            return result[:line_start] + new_line + result[line_end:]
+    
     # Check if token is on its own line (moved during compound comment processing)
     line_stripped = line.strip()
     if line_stripped == token_name:
@@ -1368,9 +1406,8 @@ def _handle_inline_comment(result: str, token_name: str, content: str, start: in
                 return result[:prev_line_start] + reunited + result[line_end:]
             search_start = prev_line_start - 1
     
-    # Default replacement
+    # Default replacement (fallback case)
     return result[:start] + content + result[start + len(token_name):]
-
 
 def _handle_standalone_comment(result: str, token_name: str, content: str, start: int) -> str:
     """Handle standalone comment lines"""
