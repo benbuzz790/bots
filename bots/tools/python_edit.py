@@ -1,4 +1,4 @@
-import ast
+﻿import ast
 import os
 import textwrap
 from bots.utils.helpers import _process_error, _clean, _py_ast_to_source
@@ -221,8 +221,8 @@ class ScopeTransformer(ast.NodeTransformer):
 
 ### ENTRY POINT ###
 
-from bots.dev.decorators import log_errors
-@log_errors
+from bots.dev.decorators import handle_errors
+@handle_errors
 def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
     """
     Edit Python code using pytest-style scope syntax.
@@ -495,14 +495,11 @@ def _find_fstring_end(line, start_pos, quote_char, is_raw=False):
 
 def _determine_comment_type(code_stripped: str) -> Tuple[TokenType, dict]:
     """Determine the type of comment based on the preceding code."""
-    print(f"DEBUG: _determine_comment_type called with: '{code_stripped}'")
     
     # Strip indentation for pattern matching
     code_no_indent = code_stripped.lstrip()
-    print(f"DEBUG: Code without indentation: '{code_no_indent}'")
     
     if code_no_indent.startswith(('import ', 'from ')):
-        print(f"DEBUG: Detected IMPORT_COMMENT")
         return TokenType.IMPORT_COMMENT, {'import_statement': code_stripped}
     
     compound_patterns = [
@@ -516,16 +513,9 @@ def _determine_comment_type(code_stripped: str) -> Tuple[TokenType, dict]:
         and code_stripped.endswith(':')
     ) or code_stripped.strip() in ['else:', 'try:', 'finally:']
     
-    print(f"DEBUG: Checking compound patterns...")
-    print(f"DEBUG: Starts with compound pattern: {any(code_no_indent.startswith(pattern) for pattern in compound_patterns)}")
-    print(f"DEBUG: Ends with colon: {code_stripped.endswith(':')}")
-    print(f"DEBUG: Is compound: {is_compound}")
-    
     if is_compound:
-        print(f"DEBUG: Detected COMPOUND_COMMENT")
         return TokenType.COMPOUND_COMMENT, {'statement': code_stripped}
     
-    print(f"DEBUG: Detected INLINE_COMMENT")
     return TokenType.INLINE_COMMENT, {}
 
 def _get_indentation_at_position(source: str, pos: int) -> str:
@@ -583,6 +573,185 @@ def _preserve_blank_lines(result: str, original_source: str) -> str:
             new_result_lines.append(line)
         i += 1
     return '\n'.join(new_result_lines)
+
+
+def _analyze_string_at_position_in_source(source, pos, paren_depth):
+    """
+    Analyze a potential string starting at the given position in the full source.
+    Enhanced with better bounds checking and comment awareness.
+    """
+    if pos >= len(source):
+        return None
+        
+    char = source[pos]
+    if char not in ['"', "'"]:
+        return None
+    
+    # Check if this is an f-string
+    is_fstring, is_raw = _is_fstring_start(source, pos)
+    
+    if is_fstring:
+        # Find the actual start of the f-string prefix
+        string_start = pos
+        for prefix in ['rf', 'Rf', 'rF', 'RF', 'fr', 'Fr', 'fR', 'FR', 'f', 'F']:
+            prefix_start = pos - len(prefix)
+            if (prefix_start >= 0 and 
+                source[prefix_start:pos] == prefix and
+                (prefix_start == 0 or not source[prefix_start-1].isalnum())):
+                string_start = prefix_start
+                break
+        
+        end_pos = _find_fstring_end(source, pos, char, is_raw)
+    else:
+        string_start = pos
+        end_pos = _find_string_end(source, pos, char)
+    
+    if end_pos == -1:
+        # Invalid/unterminated string
+        return None
+    
+    # Extract the complete string content
+    string_content = source[string_start:end_pos + 1]
+    
+    # Validate the string - additional safety checks
+    if len(string_content) < 2:
+        return None
+    
+    # Sanity check: if this is a single-quoted string, it shouldn't contain 
+    # unescaped newlines (except for triple quotes)
+    if (string_content.startswith("'") and not string_content.startswith("'''") and 
+        '\n' in string_content):
+        # This is likely an over-capture - reject it
+        return None
+    
+    if (string_content.startswith('"') and not string_content.startswith('"""') and 
+        '\n' in string_content and not is_fstring):
+        # This is likely an over-capture - reject it  
+        return None
+    
+    return {
+        'start': string_start,
+        'end': end_pos,
+        'content': string_content,
+        'is_fstring': is_fstring,
+        'is_raw': is_raw,
+        'paren_depth': paren_depth,
+        'quote_char': char
+    }
+
+def _find_string_end(line, start_pos, quote_char):
+    """
+    Find the end position of a quoted string, handling escape sequences properly.
+    Enhanced with better validation.
+    """
+    if start_pos >= len(line):
+        return -1
+        
+    pos = start_pos + 1
+    while pos < len(line):
+        if line[pos] == '\\' and pos + 1 < len(line):
+            # Skip the backslash and the escaped character
+            pos += 2
+        elif line[pos] == quote_char:
+            return pos
+        elif line[pos] == '\n' and quote_char in ['"', "'"]:
+            # Single/double quoted strings shouldn't span lines (unless escaped)
+            # This indicates we've gone too far
+            return -1
+        else:
+            pos += 1
+    return -1  # No closing quote found
+
+def _find_all_string_locations_in_source(source):
+    """
+    Find all string literal locations in the entire source, being aware of comments.
+    Skip quotes that appear inside comments to avoid over-capturing.
+    """
+    locations = []
+    paren_depth = 0
+    pos = 0
+    
+    while pos < len(source):
+        char = source[pos]
+        
+        # Track parentheses depth
+        if char == '(':
+            paren_depth += 1
+            pos += 1
+            continue
+        elif char == ')':
+            paren_depth -= 1
+            pos += 1
+            continue
+        
+        # Check for comments - if we hit a '#', skip to end of line
+        if char == '#':
+            # Skip to end of line to avoid processing quotes in comments
+            while pos < len(source) and source[pos] != '\n':
+                pos += 1
+            # pos is now at '\n' or end of source
+            continue
+        
+        # Look for string starts
+        if char in ['"', "'"]:
+            # Check if this quote is inside a comment by looking back on the current line
+            line_start = source.rfind('\n', 0, pos) + 1
+            line_before_quote = source[line_start:pos]
+            
+            # If there's a '#' in the line before this quote (and no string quotes to protect it),
+            # then this quote is inside a comment
+            if _is_quote_in_comment(line_before_quote):
+                pos += 1
+                continue
+            
+            # This is a real string quote, process it
+            string_info = _analyze_string_at_position_in_source(source, pos, paren_depth)
+            if string_info:
+                locations.append(string_info)
+                pos = string_info['end'] + 1  # Skip past this string
+            else:
+                pos += 1
+        else:
+            pos += 1
+    
+    return locations
+
+def _is_quote_in_comment(line_before_quote):
+    """
+    Determine if a quote is inside a comment by analyzing the line content before it.
+    
+    Returns True if the quote is inside a comment, False otherwise.
+    """
+    # Simple approach: look for '#' that's not inside a string
+    in_string = False
+    string_char = None
+    i = 0
+    
+    while i < len(line_before_quote):
+        char = line_before_quote[i]
+        
+        if not in_string:
+            if char == '#':
+                # Found unprotected '#' - everything after is a comment
+                return True
+            elif char in ['"', "'"]:
+                # Start of string
+                in_string = True
+                string_char = char
+        else:
+            # Inside a string
+            if char == '\\' and i + 1 < len(line_before_quote):
+                # Skip escaped character
+                i += 2
+                continue
+            elif char == string_char:
+                # End of string
+                in_string = False
+                string_char = None
+        
+        i += 1
+    
+    return False
 
 ### TOKENIZATION ###
 
@@ -1034,84 +1203,6 @@ def _analyze_string_at_position(line, pos, paren_depth):
         'quote_char': char
     }
 
-
-def _find_all_string_locations_in_source(source):
-    """Find all string literal locations in the entire source, preserving escape sequences."""
-    locations = []
-    paren_depth = 0
-    pos = 0
-    
-    while pos < len(source):
-        char = source[pos]
-        
-        # Track parentheses depth
-        if char == '(':
-            paren_depth += 1
-            pos += 1
-            continue
-        elif char == ')':
-            paren_depth -= 1
-            pos += 1
-            continue
-        
-        # Look for string starts
-        if char in ['"', "'"]:
-            string_info = _analyze_string_at_position_in_source(source, pos, paren_depth)
-            if string_info:
-                locations.append(string_info)
-                pos = string_info['end'] + 1  # Skip past this string
-            else:
-                pos += 1
-        else:
-            pos += 1
-    
-    return locations
-
-
-def _analyze_string_at_position_in_source(source, pos, paren_depth):
-    """Analyze a potential string starting at the given position in the full source."""
-    char = source[pos]
-    
-    # Check if this is an f-string
-    is_fstring, is_raw = _is_fstring_start(source, pos)
-    
-    if is_fstring:
-        # Find the actual start of the f-string prefix
-        string_start = pos
-        for prefix in ['rf', 'Rf', 'rF', 'RF', 'fr', 'Fr', 'fR', 'FR', 'f', 'F']:
-            prefix_start = pos - len(prefix)
-            if (prefix_start >= 0 and 
-                source[prefix_start:pos] == prefix and
-                (prefix_start == 0 or not source[prefix_start-1].isalnum())):
-                string_start = prefix_start
-                break
-        
-        end_pos = _find_fstring_end(source, pos, char, is_raw)
-    else:
-        string_start = pos
-        end_pos = _find_string_end(source, pos, char)
-    
-    if end_pos == -1:
-        # Invalid/unterminated string
-        return None
-    
-    # Extract the complete string content
-    string_content = source[string_start:end_pos + 1]
-    
-    # Validate the string
-    if len(string_content) < 2:
-        return None
-    
-    return {
-        'start': string_start,
-        'end': end_pos,
-        'content': string_content,
-        'is_fstring': is_fstring,
-        'is_raw': is_raw,
-        'paren_depth': paren_depth,
-        'quote_char': char
-    }
-
 def _process_inline_comment(line: str, token_map: dict, token_counter: int, current_hash: str) -> Tuple[str, int]:
     """Process inline comments, determining their type based on the preceding code."""
     # First check if the # is inside a string token
@@ -1136,16 +1227,8 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
             spacing_and_comment = line[code_end:]
             code_stripped = code.rstrip()
             
-            # DEBUG: Print what we're analyzing
-            print(f"DEBUG: Analyzing line: '{line}'")
-            print(f"DEBUG: Code part: '{code_stripped}'")
-            print(f"DEBUG: Comment part: '{spacing_and_comment}'")
-            
             # Determine comment type and metadata
-            token_type, extra_metadata = _determine_comment_type(code_stripped)
-            
-            print(f"DEBUG: Determined type: {token_type}")
-            
+            token_type, extra_metadata = _determine_comment_type(code_stripped)            
             token_name, token_data = _create_token(
                 spacing_and_comment, token_counter, current_hash, token_type, extra_metadata
             )
@@ -1158,7 +1241,6 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
                 # Add 4 spaces for the expected function/class body indentation
                 token_indent = ' ' * (base_indent + 4)
                 processed_line = f"{code.rstrip()}\n{token_indent}{token_name}"
-                print(f"DEBUG: Compound comment processed to: '{processed_line}'")
                 return processed_line, token_counter + 1
             elif token_type == TokenType.IMPORT_COMMENT:
                 # For import comments, also move to separate line (like compound comments)
@@ -1166,7 +1248,6 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
                 base_indent = len(line) - len(line.lstrip())
                 token_indent = ' ' * base_indent  # Same indentation as import
                 processed_line = f"{code.rstrip()}\n{token_indent}{token_name}"
-                print(f"DEBUG: Import comment processed to: '{processed_line}'")
                 return processed_line, token_counter + 1
             else:
                 # For regular inline comments, check if we need semicolon
@@ -1192,7 +1273,6 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
                     # Add semicolon for regular inline comments
                     processed_line = f"{code.rstrip()}; {token_name}"
                 
-                print(f"DEBUG: Regular comment processed to: '{processed_line}'")
                 return processed_line, token_counter + 1
     
     # No comments found
