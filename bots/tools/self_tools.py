@@ -1,4 +1,4 @@
-﻿from typing import Optional, List
+from typing import Optional, List
 import inspect
 from bots.foundation.base import Bot
 import json

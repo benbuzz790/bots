@@ -1,4 +1,4 @@
-﻿import textwrap, ast, os, subprocess, traceback
+import textwrap, ast, os, subprocess, traceback
 from bots.utils.helpers import _clean
 from bots.utils.helpers import _py_ast_to_source
 from bots.dev.decorators import handle_errors

@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import inspect
 from bots.tools import python_editing_tools, python_execution_tool

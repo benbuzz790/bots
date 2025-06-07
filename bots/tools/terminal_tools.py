@@ -1,4 +1,4 @@
-﻿import os, subprocess, traceback, time, threading
+import os, subprocess, traceback, time, threading
 from queue import Queue, Empty
 from threading import Thread, Lock, local
 from typing import Dict, Generator
