@@ -1,4 +1,4 @@
-help_msg: str = """
+﻿help_msg: str = """
 This program is an interactive terminal that uses Anthropic's Claude Sonnet 3.5.
 It allows you to chat with the LLM, save and load bot states, and execute various commands.
 The bot has the ability to read and write files and can execute powershell and python code directly.
@@ -133,7 +133,9 @@ def initialize_bot() -> Optional[ChatGPT_Bot | AnthropicBot]:
         raise ValueError('No OpenAI or Anthropic API keys found. Set up your key')
     
     bot.add_tools(bots.tools.python_edit)
-    bot.add_tools(bots.tools.code_tools)
+    #bot.add_tools(bots.tools.code_tools)
+    from bots.tools.code_tools import view, view_dir
+    bot.add_tools(view, view_dir)
     bot.add_tools(bots.tools.terminal_tools)
 
     return bot
@@ -181,6 +183,9 @@ def restore_labels_from_conversation(bot, labeled_nodes: dict):
 
     traverse_node(root)
 
+
+from bots.dev.decorators import debug_on_error
+@debug_on_error
 def main() -> None:
 
     verbose: bool = True
@@ -202,6 +207,7 @@ def main() -> None:
             at_bot = initialize_bot()
     else:
         at_bot = initialize_bot()
+        at_bot.allow_web_search = True
         pretty('Bot initialized', 'System')
         # Initialize msg for the first iteration
         msg = ""

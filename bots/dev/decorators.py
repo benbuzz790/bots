@@ -1,4 +1,4 @@
-"""Development decorators for enhancing bot functionality and debugging.
+﻿"""Development decorators for enhancing bot functionality and debugging.
 
 This module provides decorators and utilities for:
 - Lazy implementation using LLMs (@lazy)
@@ -59,8 +59,8 @@ import datetime
 from functools import wraps
 from typing import Any, Callable, Optional, Type
 from bots.utils.helpers import remove_code_blocks, _process_error
-from bots.foundation.base import Bot
-from bots import AnthropicBot
+# from bots.foundation.base import Bot  # Commented to fix circular import
+# from bots import AnthropicBot  # Commented to fix circular import
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -98,7 +98,7 @@ class NoHTTPFilter(logging.Filter):
 
 logger.addFilter(NoHTTPFilter())
 
-def lazy_fn(prompt: Optional[str]=None, bot: Optional[Bot]=None, context: Optional[str]=None) -> Callable:
+def lazy_fn(prompt: Optional[str]=None, bot: Optional[Any]=None, context: Optional[str]=None) -> Callable:
     """Decorator that lazily implements a function using an LLM at runtime.
 
     Use when you need to generate function implementations dynamically using an LLM.
@@ -145,7 +145,7 @@ def lazy_fn(prompt: Optional[str]=None, bot: Optional[Bot]=None, context: Option
         """
         nonlocal bot, prompt, context
         if bot is None:
-            bot = AnthropicBot(name='Claude')
+            from bots import AnthropicBot; bot = AnthropicBot(name='Claude')
         if prompt is None:
             prompt = ''
         if context is None:
@@ -240,7 +240,7 @@ def lazy_fn(prompt: Optional[str]=None, bot: Optional[Bot]=None, context: Option
         return wrapper
     return decorator
 
-def lazy_class(prompt: Optional[str]=None, bot: Optional[Bot]=None, context: Optional[str]=None) -> Callable:
+def lazy_class(prompt: Optional[str]=None, bot: Optional[Any]=None, context: Optional[str]=None) -> Callable:
     """Decorator that lazily implements a class using an LLM at runtime.
 
     Use when you need to generate class implementations dynamically using an LLM.
@@ -279,7 +279,7 @@ def lazy_class(prompt: Optional[str]=None, bot: Optional[Bot]=None, context: Opt
         """
         nonlocal bot, prompt, context
         if bot is None:
-            bot = AnthropicBot(name='Claude')
+            from bots import AnthropicBot; bot = AnthropicBot(name='Claude')
         if prompt is None:
             prompt = ''
         if context is None:
@@ -572,7 +572,7 @@ def _get_py_interface(file_path: str) -> str:
             interface += format_function(node) + '\n'
     return interface.strip()
 
-def lazy(prompt: Optional[str]=None, bot: Optional[Bot]=None, context: Optional[str]=None) -> Callable:
+def lazy(prompt: Optional[str]=None, bot: Optional[Any]=None, context: Optional[str]=None) -> Callable:
     """Smart decorator that implements a function or class using an LLM at runtime.
     
     This is a convenience decorator that automatically chooses between @lazy and
