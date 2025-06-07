@@ -4,7 +4,7 @@ import glob
 
 def cleanup_test_artifacts():
     """Clean up test artifacts that may be left behind after test runs."""
-    cleanup_patterns = ['test_patch_file.txt*', 'benbuzz790/private_tests', 'test.txt', 'lazy_*.py', '*.tmp', 'temp_*']
+    cleanup_patterns = ['test_patch_file.txt*', 'benbuzz790/private_tests', 'test.txt', 'lazy_*.py', '*.tmp', 'temp_*', '*.bot', 'ps_output*.txt', 'minimal.py', 'CICD.bot', 'Claude.bot']
     cleanup_dirs = ['test_patch_file.txt_dir', 'test_patch_file.txt_newdir']
     print("Cleaning up test artifacts...")
     # Clean up files matching patterns

@@ -1,5 +1,6 @@
 import os
 import pytest
+import tempfile
 from textwrap import dedent
 from bots.tools.python_edit import python_edit
 from bots.tools.python_edit import _tokenize_source, _detokenize_source
@@ -1430,7 +1431,198 @@ def test_multiple_strings():
     
     print("✓ Multiple strings correctly identified")
 
+def test_apostrophe_in_comments_regression():
+    """
+    Regression test for the bug where apostrophes in comments (like "that's", "doesn't") 
+    caused massive string over-capture, leading to syntax errors like 
+    "expected 'except' or 'finally' block".
+    
+    This test ensures that comments with apostrophes don't break the tokenization process.
+    """
+    # The exact problematic pattern that was causing mega-tokens
+    problematic_code = '''def main():
+    try:
+        if inbox == 'No emails found':
+            # Check if the last log entry was also "no emails"
+            try:
+                found_previous_no_emails = False
+                for line in reversed(lines):
+                    stripped = line.strip()
+                    if stripped.startswith("no emails:") or stripped == "*":
+                        found_previous_no_emails = True
+                        break
+                    elif stripped and not stripped.startswith('[') and 'Inbox contents:' not in stripped:
+                        # Found a non-timestamp, non-inbox-contents line that's not about no emails
+                        break
+                        
+                if found_previous_no_emails:
+                    with open('email_check.log', 'a') as log:
+                        log.write("*\\n")
+                else:
+                    # First time with no emails, start the counter
+                    with open('email_check.log', 'a') as log:
+                        log.write("no emails:*\\n")
+            except (FileNotFoundError, IndexError):
+                # If log file doesn't exist or is empty, start fresh
+                with open('email_check.log', 'a') as log:
+                    log.write("no emails:*\\n")
+            return
+    except Exception as e:
+        with open('email_check.log', 'a') as log:
+            log.write(f'[{timestamp}] - Error: {str(e)}\\n')
+'''
 
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write(problematic_code)
+        test_file = f.name
+    
+    try:
+        # Test that we can successfully edit this code without syntax errors
+        new_code = '''
+def helper_function():
+    """A helper function to test insertion"""
+    return "success"
+'''
+        
+        # This should work without any "expected 'except' or 'finally' block" errors
+        result = python_edit(f"{test_file}::main", new_code, insert_after="return")
+        
+        # Verify the edit was successful
+        assert "Error" not in result, f"Edit failed with error: {result}"
+        assert "Code inserted after" in result or "Code replaced at" in result, f"Unexpected result: {result}"
+        
+        # Verify the resulting file is valid Python
+        with open(test_file, 'r') as f:
+            final_content = f.read()
+        
+        # Should be able to parse without syntax errors
+        try:
+            ast.parse(final_content)
+        except SyntaxError as e:
+            pytest.fail(f"Final file has syntax error: {e}\\nContent:\\n{final_content}")
+        
+        # Should contain our new function
+        assert "def helper_function():" in final_content, "New function not found in result"
+        
+        print("✓ Apostrophe-in-comments regression test passed!")
+        
+    finally:
+        if os.path.exists(test_file):
+            os.unlink(test_file)
+
+def test_various_apostrophe_patterns():
+    """
+    Test various patterns of apostrophes in comments that previously caused issues.
+    """
+    test_cases = [
+        # Basic apostrophes in comments
+        "# This file doesn't work",
+        "# It's a simple test",
+        "# That's not correct",
+        "# We can't do this",
+        "# Won't work without this",
+        
+        # Apostrophes in comments with strings on same line
+        'result = "success"  # It\'s working',
+        'pattern = \'*.txt\'  # Won\'t match directories',
+        'x = 1  # This doesn\'t handle edge cases',
+        
+        # Complex cases with multiple quotes
+        'log.write("Error: can\'t connect")  # Server isn\'t responding',
+        'message = f"User {name} can\'t login"  # Database isn\'t available',
+    ]
+    
+    for i, test_case in enumerate(test_cases):
+        test_code = f'''
+def test_function_{i}():
+    {test_case}
+    return True
+'''
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(test_code)
+            test_file = f.name
+        
+        try:
+            # Try to add a simple line - this should not cause syntax errors
+            result = python_edit(f"{test_file}::test_function_{i}", "    pass", insert_after="return True")
+            
+            assert "Error" not in result, f"Failed on test case {i}: {test_case}\\nError: {result}"
+            
+            # Verify resulting file is still valid
+            with open(test_file, 'r') as f:
+                content = f.read()
+            
+            try:
+                ast.parse(content)
+            except SyntaxError as e:
+                pytest.fail(f"Syntax error on test case {i}: {test_case}\\nError: {e}\\nContent:\\n{content}")
+                
+        finally:
+            if os.path.exists(test_file):
+                os.unlink(test_file)
+    
+    print(f"✓ All {len(test_cases)} apostrophe pattern tests passed!")
+
+def test_tokenization_edge_cases():
+    """
+    Test edge cases in the tokenization process that were problematic.
+    """
+    edge_cases = [
+        # Nested quotes with apostrophes in comments
+        '''def test():
+    data = {"key": "value's here"}  # This isn't a problem
+    return data''',
+        
+        # F-strings with apostrophes in comments  
+        '''def test():
+    result = f"Hello {name}"  # User's name is dynamic
+    return result''',
+        
+        # Multiple quote types with apostrophes
+        '''def test():
+    single = 'text'
+    double = "text"  # Don't mix these
+    f_string = f"value: {x}"  # It's an f-string
+    return single, double, f_string''',
+        
+        # Escaped quotes with apostrophes in comments
+        '''def test():
+    message = "He said \\"Hello\\""  # User's quote is escaped
+    return message''',
+    ]
+    
+    for i, test_code in enumerate(edge_cases):
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(test_code)
+            test_file = f.name
+        
+        try:
+            # Test tokenization directly
+            from bots.tools.python_edit import _tokenize_source, _detokenize_source
+            
+            tokenized, token_map = _tokenize_source(test_code)
+            
+            # Should not have any mega-tokens (> 200 chars)
+            for token_name, token_data in token_map.items():
+                content = token_data['content']
+                assert len(content) < 200, f"Mega-token detected in edge case {i}: {token_name} = {repr(content)}"
+            
+            # Should parse successfully
+            ast.parse(tokenized)
+            
+            # Should detokenize back to valid code
+            detokenized = _detokenize_source(tokenized, token_map)
+            ast.parse(detokenized)
+            
+            # Test python_edit on this case
+            result = python_edit(f"{test_file}::test", "    # Added comment", insert_after="return")
+            assert "Error" not in result, f"python_edit failed on edge case {i}: {result}"
+            
+        finally:
+            if os.path.exists(test_file):
+                os.unlink(test_file)
+    
 
 # Helper function to debug string identification
 def debug_string_locations(line):

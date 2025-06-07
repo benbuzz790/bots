@@ -43,10 +43,7 @@ def _execute_python_code(code: str, timeout: int=300) ->str:
         return wrapper_ast
     if not isinstance(timeout, int) or timeout <= 0:
         raise ValueError('Timeout must be a positive integer')
-    try:
-        code_ast = ast.parse(_clean(code))
-    except SyntaxError as e:
-        return f'SyntaxError: {str(e)}'
+    code_ast = ast.parse(_clean(code))
     wrapper_ast = create_wrapper_ast()
     combined_ast = insert_code_into_wrapper(wrapper_ast, code_ast, timeout)
     final_code = _py_ast_to_source(combined_ast)
@@ -55,32 +52,20 @@ def _execute_python_code(code: str, timeout: int=300) ->str:
     if not os.path.exists(scripts_dir):
         os.makedirs(scripts_dir)
     temp_file_name = os.path.join(scripts_dir, f'temp_script_{os.getpid()}.py')
-    try:
-        with open(temp_file_name, 'w', encoding='utf-8') as temp_file:
-            temp_file.write(final_code)
-            temp_file.flush()
-            os.fsync(temp_file.fileno())
-        env = os.environ.copy()
-        env['PYTHONIOENCODING'] = 'utf-8'
-        process = subprocess.Popen(['python', temp_file_name], stdout=
-            subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding=
-            'utf-8', creationflags=subprocess.CREATE_NO_WINDOW if os.name ==
-            'nt' else 0, env=env)
-        try:
-            stdout, stderr = process.communicate(timeout=timeout)
-            if process.returncode != 0:
-                return stderr or 'Process failed with no error message'
-            return stdout + stderr
-        except subprocess.TimeoutExpired:
-            process.terminate()
-            try:
-                process.wait(timeout=1)
-            except subprocess.TimeoutExpired:
-                process.kill()
-            return f'Error: Code execution timed out after {timeout} seconds'
-    finally:
-        try:
-            if os.path.exists(temp_file_name):
-                os.remove(temp_file_name)
-        except Exception:
-            pass
+    with open(temp_file_name, 'w', encoding='utf-8') as temp_file:
+        temp_file.write(final_code)
+        temp_file.flush()
+        os.fsync(temp_file.fileno())
+    env = os.environ.copy()
+    env['PYTHONIOENCODING'] = 'utf-8'
+    process = subprocess.Popen(['python', temp_file_name], stdout=
+        subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding=
+        'utf-8', creationflags=subprocess.CREATE_NO_WINDOW if os.name ==
+        'nt' else 0, env=env)
+    stdout, stderr = process.communicate(timeout=timeout)
+    # Clean up temp file
+    if os.path.exists(temp_file_name):
+        os.remove(temp_file_name)
+    if process.returncode != 0:
+        return stderr or 'Process failed with no error message'
+    return stdout + stderr

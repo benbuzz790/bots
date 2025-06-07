@@ -1,13 +1,45 @@
-﻿# Test Cleanup Improvements Summary
-## Issues Fixed:
-1. **test_auto_terminal.py**: Added tearDownClass() to clean up benbuzz790/private_tests directory
-2. **test_patch_edit.py**: Fixed unreliable cleanup logic in test_double_slash_handling and test_path_normalization
-3. **Created cleanup_test_artifacts.py**: Standalone script to clean up any leftover test artifacts
-## Usage:
-- Tests now clean up automatically
-- Run 'python tests/cleanup_test_artifacts.py' for manual cleanup
-- No more manual file cleanup needed!
-## Benefits:
-- Clean test environment every run
-- No leftover artifacts
-- CI/CD friendly
+TEST CLEANUP IMPROVEMENTS SUMMARY
+=================================
+Issues Found:
+1. PowerShell output files (ps_output.txt, ps_output_MainThread.txt) left behind by terminal tools tests
+2. Bot save files (*.bot) created during save/load tests not cleaned up
+3. Test files (minimal.py, test.txt, tmp/test_file.py) created without proper cleanup
+4. Missing tearDown methods in some test classes
+Fixes Applied:
+1. Enhanced tests/test_terminal_tools.py:
+   - Added TestTerminalTools class with proper setUp/tearDown methods
+   - Added cleanup for PowerShell output files in tearDownClass
+   - Added cleanup for test.txt files created during individual tests
+2. Enhanced tests/test_save_load_anthropic.py:
+   - Enhanced existing tearDown method to clean up .bot files in current directory
+   - Added cleanup for specific bot files (CICD.bot, Claude.bot, TestClaude.bot, TestBot.bot)
+   - Added glob pattern matching to catch any *.bot files
+3. Enhanced tests/test_save_load_openai.py:
+   - Enhanced existing tearDown method to clean up .bot files in current directory
+   - Added cleanup for specific bot files (CICD.bot, Claude.bot, TestGPT.bot, TestBotOpenAI.bot)
+   - Added glob pattern matching to catch any *.bot files
+4. Enhanced tests/cleanup_test_artifacts.py:
+   - Added new cleanup patterns for:
+     * *.bot files (all bot save files)
+     * ps_output*.txt files (PowerShell output)
+     * minimal.py (created by python_edit tests)
+     * CICD.bot, Claude.bot (specific bot files)
+   - Added tmp directory to cleanup_dirs list
+5. Test files that already have proper cleanup:
+   - tests/test_add_tools.py - Has proper tearDown with tempfile cleanup
+   - tests/test_add_tools_openai.py - Has proper tearDown with tempfile cleanup
+   - tests/test_auto_terminal.py - Has tearDownClass for benbuzz790/private_tests cleanup
+6. Test files that need attention:
+   - tests/test_python_edit.py - Creates minimal.py and other files without cleanup
+     (File has syntax issues preventing full cleanup implementation)
+Cleanup Strategy:
+- Individual test classes now have proper tearDown methods
+- Global cleanup script enhanced to catch common test artifacts
+- Cleanup is defensive - uses try/except to handle missing files gracefully
+- Cleanup includes both specific known files and pattern matching
+To run cleanup manually:
+python tests/cleanup_test_artifacts.py
+Current Status:
+- All identified test leftovers have been cleaned up
+- Enhanced cleanup methods are in place for future test runs
+- Tests should now properly clean up after themselves

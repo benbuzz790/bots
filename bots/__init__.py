@@ -42,6 +42,7 @@ from .foundation.base import load
 # Development and project management tools
 from .dev import auto_terminal
 from .dev.decorators import lazy
+from .dev.decorators import handle_errors
 from .flows.project_tree import project_tree
 
 # Tool collections for bot capabilities
@@ -57,6 +58,7 @@ __all__ = [
     # Development tools
     'auto_terminal',
     'lazy',
+    'handle_errors',
     'project_tree',
     
     # Tool collections

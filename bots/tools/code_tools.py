@@ -1,8 +1,9 @@
-﻿import os
+import os
 import traceback
 import textwrap
 import difflib
 from bots.dev.decorators import handle_errors
+
 @handle_errors
 def view(file_path: str, start_line: str = None, end_line: str = None,
          around_str_match: str = None, dist_from_match: str = '10'):

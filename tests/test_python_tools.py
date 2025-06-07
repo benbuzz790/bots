@@ -1073,7 +1073,7 @@ class TestClass:
         """
             )
         result = python_execution_tool._execute_python_code(code)
-        self.assertIn('SyntaxError', result)
+        self.assertIn('Tool Failed:', result)
 
     def test_execute_python_code_runtime_error(self):
         """Test handling of runtime errors in the code"""

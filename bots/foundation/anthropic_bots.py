@@ -226,8 +226,11 @@ class AnthropicMailbox(Mailbox):
         conversation: AnthropicNode = bot.conversation
         tools: Optional[List[Dict[str, Any]]] = None
         if bot.tool_handler and bot.tool_handler.tools:
+            if bot.allow_web_search and not any(tool.get('name') == 'web_search' for tool in bot.tool_handler.tools):
+                bot.tool_handler.tools.append(AnthropicTools.web_search())
             tools = bot.tool_handler.tools
             tools[-1]['cache_control'] = {'type': 'ephemeral'}
+
         messages: List[Dict[str, Any]] = conversation._build_messages()
         cc = CacheController()
         messages = cc.manage_cache_controls(messages)
@@ -289,10 +292,17 @@ class AnthropicMailbox(Mailbox):
                 Returns:
                     bool: True if the response was truncated and contains no tool calls
                 """
-                return response.stop_reason == 'max_tokens' and (not 'tool_calls' in response)
+                return response.stop_reason == 'max_tokens' and any(isinstance(block, anthropic.types.ToolUseBlock) for block in response.content)
+            
+            # TODO: Sometimes Claude responds without a text block, and content[0] is a tool use block. Need to check for this case and add a tool use block manually.
+            if not getattr(response.content[0], 'text', None):
+                block = anthropic.types.TextBlock(text='~', type='text')
+                response.content.insert(0, block)
+                print(f"Added text block:{response}")
+
+            
             while should_continue(response):
                 if bot.conversation.role == 'user': # base case
-                    # TODO: Sometimes Claude responds without a text block, and content[0] is a tool use block. Need to check for this case and avoid it.
                     bot.conversation._add_reply(role='assistant', content=response.content[0].text)
                 elif bot.conversation.role == 'assistant': # recursive case
                     bot.conversation.content += response
@@ -355,12 +365,13 @@ class AnthropicBot(Bot):
         self,
         api_key: Optional[str] = None,
         model_engine: Engines = Engines.CLAUDE4_SONNET,
-        max_tokens: int = 4096,
+        max_tokens: int = 64000,
         temperature: float = 0.3,
         name: str = 'Claude',
         role: str = 'assistant',
         role_description: str = 'a friendly AI assistant',
-        autosave: bool = True
+        autosave: bool = True,
+        allow_web_search: bool = False
     ) -> None:
         """Initialize an AnthropicBot.
 
@@ -375,6 +386,28 @@ class AnthropicBot(Bot):
             autosave: Whether to autosave state after responses (default: True, saves to cwd)
         """
         super().__init__(api_key, model_engine, max_tokens, temperature, name, role, role_description, conversation=AnthropicNode._create_empty(AnthropicNode), tool_handler=AnthropicToolHandler(), mailbox=AnthropicMailbox(), autosave=autosave)
+        self.allow_web_search = allow_web_search
+
+
+
+class AnthropicTools:
+
+    def web_search():
+        """Returns the web search schema to be directly appended to the tools block"""
+        return {
+            "type": "web_search_20250305",
+            "name": "web_search",
+            "max_uses": 10
+        }
+
+    # def text_editor():
+    #     """Returns the text editor schema to be directly appended to the tools block"""
+    #     return {
+    #         "type": "text_editor_20250429",
+    #         "name": "str_replace_based_edit_tool"
+    #     }
+
+
 
 class CacheController:
     """Manages cache control directives in Anthropic message histories.

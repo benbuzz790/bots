@@ -1,4 +1,4 @@
-﻿
+
 import textwrap
 
 class prompts:
@@ -62,8 +62,7 @@ class prompts:
             2. Create your implementation file to meet those requirements
             3. Create a corresponding test file to test your implementation
             Remember YAGNI and KISS principles. Do not use mocking - use real integration tests instead.
-            Make sure your implementation is complete with no placeholders.
-            When finished, say "FILES_CREATED" to indicate completion.""")
+            Make sure your implementation is complete with no placeholders.""")
     def file_debug():
         return textwrap.dedent("""
             INSTRUCTION: Now debug your implementation:
@@ -71,11 +70,10 @@ class prompts:
             2. Fix any bugs or issues that arise
             3. Ensure all tests pass
             4. Make sure your implementation fully meets the requirements
-            Continue debugging until all tests pass and requirements are met.
-            When debugging is complete, say "DEBUGGING_COMPLETE".""")
+            Continue debugging until all tests pass and requirements are met.""")
     
     root_continue = 'Work until the current INSTRUCTION is complete, then say "DONE" to move on to the next INSTRUCTION'
-    file_continue = 'Continue working on the current task. Say "DEBUGGING_COMPLETE" when all tests pass and requirements are met.'
+    file_continue = 'Say "/DONE" when INSTRUCTION is done.'
     
     def message_bot_first_message(message):
         return "MESSAGE:\n\n" + message
@@ -94,7 +92,7 @@ class prompts:
         - Making a functional, testable file
         DO NOT leave any implementation incomplete
         DO NOT leave placeholders in your code
-        PREFER the python ast editing tools for python code
+        PREFER the python ast editing tool for python code
         You may
         - use external dependencies
         - install items with pip
@@ -109,6 +107,7 @@ class prompts:
         Other Rules:
         1. use assertions to validate inputs and outputs as might be seen in contract based code. Code defensively.
         2. follow all requirements in common_req.txt
+        3. "You ain't gonna need it"
         """)
     
     # Default spec for testing

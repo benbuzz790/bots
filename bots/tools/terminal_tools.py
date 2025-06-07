@@ -1,9 +1,12 @@
-import os, subprocess, traceback, time, threading
+﻿import os, subprocess, traceback, time, threading
 from queue import Queue, Empty
 from threading import Thread, Lock, local
 from typing import Dict, Generator
 from datetime import datetime
 
+from bots.dev.decorators import log_errors, handle_errors
+@log_errors
+@handle_errors
 def execute_powershell(command: str, output_length_limit: str='200', timeout: str = '60') -> str:
     """
     Executes PowerShell commands in a stateful environment
@@ -311,6 +314,7 @@ def _get_active_sessions() -> list:
                 sessions.append({'bot_id': manager.bot_id, 'thread_name': thread.name, 'created_at': manager.created_at.isoformat(), 'active': hasattr(manager._thread_local, 'session')})
     return sessions
 
+@handle_errors
 def _execute_powershell_stateless(code: str, output_length_limit: str='120'):
     """
     Executes PowerShell code in a stateless environment

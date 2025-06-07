@@ -1,3 +1,11 @@
+import json
+import os
+import shutil
+import tempfile
+import unittest
+from bots.foundation.base import Bot, Engines
+from bots.foundation.anthropic_bots import AnthropicBot
+import bots.tools.python_editing_tools as python_editing_tools
 """Test suite for AnthropicBot save and load functionality.
 
 This module contains comprehensive tests for verifying the persistence
@@ -14,16 +22,6 @@ and restoration capabilities of AnthropicBot instances. It tests:
 The test suite ensures that bots can be properly serialized and
 deserialized while maintaining their complete state and functionality.
 """
-
-import json
-import os
-import shutil
-import tempfile
-import unittest
-
-from bots.foundation.base import Bot, Engines
-from bots.foundation.anthropic_bots import AnthropicBot
-import bots.tools.python_editing_tools as python_editing_tools
 
 class TestSaveLoadAnthropic(unittest.TestCase):
     """Test suite for AnthropicBot save and load functionality.
@@ -67,23 +65,42 @@ class TestSaveLoadAnthropic(unittest.TestCase):
 
     def tearDown(self) -> None:
         """Clean up test environment after each test.
-        
-        Removes the temporary directory and all its contents created during setUp.
-        Handles cleanup errors gracefully with warning messages.
-        
-        Args:
-            self: Test class instance
-        
-        Returns:
-            None
-        
-        Note:
-            Uses shutil.rmtree with ignore_errors=True for robust cleanup
-        """
+
+    Removes the temporary directory and all its contents created during setUp.
+    Also cleans up any .bot files that might have been created in the current directory.
+    Handles cleanup errors gracefully with warning messages.
+
+    Args:
+        self: Test class instance
+
+    Returns:
+        None
+
+    Note:
+        Uses shutil.rmtree with ignore_errors=True for robust cleanup
+    """
         try:
             shutil.rmtree(self.temp_dir, ignore_errors=True)
         except Exception as e:
             print(f'Warning: Could not clean up {self.temp_dir}: {e}')
+        # Clean up any .bot files that might have been created in current directory
+        import glob
+        for bot_file in glob.glob('*.bot'):
+            try:
+                if os.path.exists(bot_file):
+                    os.unlink(bot_file)
+                    print(f"Cleaned up bot file: {bot_file}")
+            except Exception as e:
+                print(f'Warning: Could not clean up {bot_file}: {e}')
+        # Clean up any specific test files that might be created
+        cleanup_files = ['CICD.bot', 'Claude.bot', 'TestClaude.bot', 'TestBot.bot']
+        for cleanup_file in cleanup_files:
+            try:
+                if os.path.exists(cleanup_file):
+                    os.unlink(cleanup_file)
+                    print(f"Cleaned up: {cleanup_file}")
+            except Exception as e:
+                print(f'Warning: Could not clean up {cleanup_file}: {e}')
 
     def test_basic_save_load(self) -> None:
         """Test basic bot attribute persistence during save and load operations.
@@ -179,7 +196,6 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         def simple_addition(x: str | int | float, y: str | int | float) -> str:
             """Returns x + y with appropriate type conversion"""
             return str(int(x) + int(y))
-
         self.bot.add_tools(simple_addition)
         self.bot.respond('What is 2 + 3?')
         tool_results = self.bot.conversation.tool_results[0].values() if self.bot.conversation.tool_results else []
@@ -219,10 +235,10 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             Performs multiple arithmetic operations to verify both
             tool functionality and result accuracy
         """
+
         def simple_addition(x: str | int | float, y: str | int | float) -> str:
             """Returns x + y with appropriate type conversion"""
             return str(int(x) + int(y))
-
         self.bot.add_tools(simple_addition)
         interactions = ['What is 5 + 3?', 'Can you add 10 and 20?', 'Please add 7 and 15']
         for query in interactions:
@@ -608,11 +624,11 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             Combines inline functions, imported functions, and module tools
             to verify comprehensive tool persistence
         """
+
         def floor_str(x) -> str:
             """Returns floor of x as a string"""
             import math
             return str(math.floor(float(x)))
-        
         bot = self.bot
         bot.add_tools(simple_addition)
         bot.add_tools(floor_str)

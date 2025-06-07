@@ -1,4 +1,4 @@
-﻿import traceback
+import traceback
 import textwrap
 import os
 import time
@@ -63,17 +63,23 @@ def generate_project(spec: str):
             should_branch = False
         )
 
-        # Step 4: Have each file bot create their files
+        # Step 4: Have each file bot create their files in parallel
         print("----- File Bots Creating Files -----")
-        for bot_file in bot_file_list:
-            bot_name = os.path.basename(bot_file).replace('.bot', '')
-            print(f"Instructing {bot_name} to create files...")
-            # Load the bot and instruct it to create files
-            bot = load(bot_file)
-            response = bot.respond(prompts.file_create_files(bot_name))
-            print(f"{bot_name}: {response}")
+        bot_list = [AnthropicBot.load(f) for f in bot_file_list]
+        bot_names = [os.path.basename(f).replace('.bot', '') for f in bot_file_list]
+        prompt_list = [prompts.file_create_files(n) for n in bot_names]
         
-        # Step 5: Have each file bot debug their implementations
+        for (bot, prompt) in zip(bot_list, prompt_list):
+            bot.respond(prompt+"\n Do not act until after the next prompt. I'll say 'go'.")
+        
+        fp.par_dispatch(bot_list,
+                        fp.prompt_while, 
+                            first_prompt='go',
+                            continue_prompt='ok',
+                            stop_condition=fp.conditions.tool_not_used_debug)
+
+        
+        # Step 5: Have each file bot debug their implementations serially
         print("----- File Bots Debugging -----")
         for bot_file in bot_file_list:
             bot_name = os.path.basename(bot_file).replace('.bot', '')

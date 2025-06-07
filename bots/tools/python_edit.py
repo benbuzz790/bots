@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import os
 import textwrap
 from bots.utils.helpers import _process_error, _clean, _py_ast_to_source

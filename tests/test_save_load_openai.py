@@ -1,3 +1,11 @@
+import json
+import os
+import shutil
+import tempfile
+import unittest
+from bots.foundation.base import Bot, Engines
+from bots.foundation.openai_bots import ChatGPT_Bot
+import bots.tools.python_editing_tools as python_editing_tools
 """Test module for OpenAI bot persistence functionality.
 
 This module contains tests that verify the save/load capabilities of OpenAI-based bots,
@@ -14,18 +22,8 @@ The tests cover various scenarios including:
 - Error handling for corrupted saves
 - Working directory independence
 """
-
 # Standard library imports
-import json
-import os
-import shutil
-import tempfile
-import unittest
-
 # Local application imports
-from bots.foundation.base import Bot, Engines
-from bots.foundation.openai_bots import ChatGPT_Bot
-import bots.tools.python_editing_tools as python_editing_tools
 
 class TestSaveLoadOpenAI(unittest.TestCase):
 
@@ -45,19 +43,38 @@ class TestSaveLoadOpenAI(unittest.TestCase):
     def tearDown(self) -> None:
         """Clean up test environment after each test.
 
-        Removes the temporary directory and all its contents.
-        Handles potential cleanup failures gracefully by:
-        - Using ignore_errors=True with rmtree
-        - Catching and logging any exceptions that occur
-        - Continuing test execution even if cleanup fails
+    Removes the temporary directory and all its contents.
+    Also cleans up any .bot files that might have been created in the current directory.
+    Handles potential cleanup failures gracefully by:
+    - Using ignore_errors=True with rmtree
+    - Catching and logging any exceptions that occur
+    - Continuing test execution even if cleanup fails
 
-        Returns:
-            None
-        """
+    Returns:
+        None
+    """
         try:
             shutil.rmtree(self.temp_dir, ignore_errors=True)
         except Exception as e:
             print(f'Warning: Could not clean up {self.temp_dir}: {e}')
+        # Clean up any .bot files that might have been created in current directory
+        import glob
+        for bot_file in glob.glob('*.bot'):
+            try:
+                if os.path.exists(bot_file):
+                    os.unlink(bot_file)
+                    print(f"Cleaned up bot file: {bot_file}")
+            except Exception as e:
+                print(f'Warning: Could not clean up {bot_file}: {e}')
+        # Clean up any specific test files that might be created
+        cleanup_files = ['CICD.bot', 'Claude.bot', 'TestGPT.bot', 'TestBotOpenAI.bot']
+        for cleanup_file in cleanup_files:
+            try:
+                if os.path.exists(cleanup_file):
+                    os.unlink(cleanup_file)
+                    print(f"Cleaned up: {cleanup_file}")
+            except Exception as e:
+                print(f'Warning: Could not clean up {cleanup_file}: {e}')
 
     def test_basic_save_load(self) -> None:
         """Test basic bot attribute preservation during save and load operations.
@@ -106,7 +123,6 @@ class TestSaveLoadOpenAI(unittest.TestCase):
     - Results persist through save/load operations
     - Result values remain accessible and accurate
     """
-
         self.bot.add_tools(_simple_addition)
         self.bot.respond('What is 2 + 3?')
         self.assertTrue(any(('5' in str(v) for v in self.bot.conversation.parent.tool_results[0].values())) if self.bot.conversation.parent.tool_results else False)
@@ -124,7 +140,6 @@ class TestSaveLoadOpenAI(unittest.TestCase):
     - Tool results are maintained in conversation nodes
     - New tool executions work correctly after loading
     """
-
         self.bot.add_tools(_simple_addition)
         interactions = ['What is 5 + 3?', 'Can you add 10 and 20?', 'Please add 7 and 15']
         for query in interactions:
@@ -370,7 +385,6 @@ class TestSaveLoadOpenAI(unittest.TestCase):
         self.assertTrue(any(('17' in str(v) for v in loaded_bot.conversation.parent.tool_results[0].values())) if loaded_bot.conversation.parent.tool_results else False)
         loaded_bot.respond('What is the floor of 5.6?')
         self.assertTrue(any(('5' in str(v) for v in loaded_bot.conversation.parent.tool_results[0].values())) if loaded_bot.conversation.parent.tool_results else False)
-
 
 def _simple_addition(x: str, y: str) -> str:
     """Add two numbers and return the result as a string.

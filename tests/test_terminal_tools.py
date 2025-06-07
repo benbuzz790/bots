@@ -1,15 +1,46 @@
 import unittest
-import datetime as DT
 import os
-import sys
-import traceback
-import concurrent
-from unittest.mock import patch
-from io import StringIO
-from contextlib import redirect_stdout
-from datetime import datetime
+import tempfile
+import shutil
+import unittest
+
 
 class TestTerminalTools(unittest.TestCase):
+    """Test suite for terminal tools functionality"""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up test environment"""
+        cls.temp_dir = tempfile.mkdtemp()
+        cls.original_cwd = os.getcwd()
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up test environment and any leftover files"""
+        try:
+            os.chdir(cls.original_cwd)
+            if os.path.exists(cls.temp_dir):
+                shutil.rmtree(cls.temp_dir)
+        except Exception as e:
+            print(f"Warning: Could not clean up temp directory: {e}")
+        # Clean up PowerShell output files that might be created
+        cleanup_files = ['ps_output.txt', 'ps_output_MainThread.txt', 'test.txt']
+        for cleanup_file in cleanup_files:
+            try:
+                if os.path.exists(cleanup_file):
+                    os.unlink(cleanup_file)
+                    print(f"Cleaned up: {cleanup_file}")
+            except Exception as e:
+                print(f"Warning: Could not clean up {cleanup_file}: {e}")
+
+    def tearDown(self):
+        """Clean up after each test"""
+        # Clean up any test.txt files created during individual tests
+        if os.path.exists('test.txt'):
+            try:
+                os.unlink('test.txt')
+            except Exception as e:
+                print(f"Warning: Could not clean up test.txt: {e}")
 
     def normalize_text(self, text: str) -> str:
         """
