@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import inspect
 from bots.tools import python_editing_tools, python_execution_tool
@@ -903,7 +903,7 @@ def some_function():
         with open(self.test_file, 'w') as f:
             f.write(initial_content)
         result = python_editing_tools.add_imports(self.test_file, import_statements)
-        self.assertIn('Tool Failed: Error parsing import statement', result,
+        self.assertIn('Tool Failed: invalid syntax', result,
             'Invalid import statement error not detected')
         with open(self.test_file, 'r') as f:
             content = f.read()
@@ -1266,3 +1266,4 @@ import os
 
 if __name__ == '__main__':
     unittest.main()
+

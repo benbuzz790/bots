@@ -1,22 +1,17 @@
-import textwrap, ast, os, subprocess, traceback
+﻿import textwrap, ast, os, subprocess, traceback
 from bots.utils.helpers import _clean
 from bots.utils.helpers import _py_ast_to_source
-
-
-
+from bots.dev.decorators import handle_errors
+@handle_errors
 def _execute_python_code(code: str, timeout: int=300) ->str:
     """
     Executes python code in a stateless environment with cross-platform timeout handling.
-
     Parameters:
     - code (str): Syntactically correct python code
     - timeout (int): Maximum execution time in seconds (default: 300)
-
     Returns stdout or an error message.
-
     cost: varies
     """
-
     def create_wrapper_ast():
         wrapper_code = textwrap.dedent(
             """
@@ -25,15 +20,12 @@ def _execute_python_code(code: str, timeout: int=300) ->str:
             import traceback
             import time
             sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
             if sys.platform == 'win32':
                 import codecs
                 sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
                 sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
-
             def main():
                 pass  # Placeholder for user code
-
             if __name__ == '__main__':
                 try:
                     main()
@@ -44,25 +36,20 @@ def _execute_python_code(code: str, timeout: int=300) ->str:
             """
             )
         return ast.parse(wrapper_code)
-
     def insert_code_into_wrapper(wrapper_ast, code_ast, timeout_value):
         main_func = next(node for node in wrapper_ast.body if isinstance(
             node, ast.FunctionDef) and node.name == 'main')
         main_func.body = code_ast.body
         return wrapper_ast
+    if not isinstance(timeout, int) or timeout <= 0:
+        raise ValueError('Timeout must be a positive integer')
     try:
-        if not isinstance(timeout, int) or timeout <= 0:
-            return _process_error(ValueError(
-                'Timeout must be a positive integer'))
-        try:
-            code_ast = ast.parse(_clean(code))
-        except SyntaxError as e:
-            return f'SyntaxError: {str(e)}'
-        wrapper_ast = create_wrapper_ast()
-        combined_ast = insert_code_into_wrapper(wrapper_ast, code_ast, timeout)
-        final_code = _py_ast_to_source(combined_ast)
-    except Exception as e:
-        return _process_error(e)
+        code_ast = ast.parse(_clean(code))
+    except SyntaxError as e:
+        return f'SyntaxError: {str(e)}'
+    wrapper_ast = create_wrapper_ast()
+    combined_ast = insert_code_into_wrapper(wrapper_ast, code_ast, timeout)
+    final_code = _py_ast_to_source(combined_ast)
     package_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     scripts_dir = os.path.join(package_root, 'scripts')
     if not os.path.exists(scripts_dir):
@@ -91,20 +78,9 @@ def _execute_python_code(code: str, timeout: int=300) ->str:
             except subprocess.TimeoutExpired:
                 process.kill()
             return f'Error: Code execution timed out after {timeout} seconds'
-    except Exception as e:
-        return _process_error(e)
     finally:
         try:
             if os.path.exists(temp_file_name):
                 os.remove(temp_file_name)
         except Exception:
             pass
-
-
-
-def _process_error(error: Exception) ->str:
-    """Format error message with traceback."""
-    error_message = f'Tool Failed: {str(error)}\n'
-    error_message += (
-        f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}")
-    return error_message
