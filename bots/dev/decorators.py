@@ -5,6 +5,7 @@ This module provides decorators and utilities for:
 - Lazy function implementation using LLMs (@lazy_fn)
 - Lazy class implementation using LLMs (@lazy_class)
 - Post-mortem debugging on exceptions (@debug_on_error)
+- Error logging to file (@log_errors)
 - HTTP logging filters for cleaner output
 
 The primary features are:
@@ -12,7 +13,8 @@ The primary features are:
 - @lazy: Generates function implementations at runtime using LLM
 - @lazy_class: Generates class implementations at runtime using LLM
 - @debug_on_error: Launches pdb debugger on exceptions
-- NoHTTPFilter: Filters out HTTP-related logging noise
+- @log_errors: Logs exceptions and error messages to a file
+    from bots.dev.decorators import lazy_impl, lazy, lazy_class, debug_on_error, log_errors
 
 Example:
     from bots.dev.decorators import lazy_impl, lazy, lazy_class, debug_on_error
@@ -39,6 +41,11 @@ Example:
     def risky_operation():
         # Will launch debugger if this raises an exception
         process_data()
+
+    @log_errors
+    def might_error():
+        # Will log any exceptions or "Error" messages to error_log.txt
+        return "Error: Something went wrong"
 """
 
 import os
@@ -48,9 +55,10 @@ import inspect
 import logging
 import traceback
 import textwrap
+import datetime
 from functools import wraps
 from typing import Any, Callable, Optional, Type
-from bots.utils.helpers import remove_code_blocks
+from bots.utils.helpers import remove_code_blocks, _process_error
 from bots.foundation.base import Bot
 from bots import AnthropicBot
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -87,6 +95,7 @@ class NoHTTPFilter(logging.Filter):
                  False if it should be filtered out
         """
         return 'response' not in record.name.lower()
+
 logger.addFilter(NoHTTPFilter())
 
 def lazy_fn(prompt: Optional[str]=None, bot: Optional[Bot]=None, context: Optional[str]=None) -> Callable:
@@ -645,4 +654,112 @@ def debug_on_error(func: Callable) -> Callable:
             print('\n--- Entering post-mortem debugging ---')
             import pdb
             pdb.post_mortem(tb)
+    return wrapper
+
+def log_errors(func: Callable) -> Callable:
+    """Decorator that logs errors to a file when a function raises an exception or returns an error message.
+
+    This decorator captures both exceptions and return values that contain "Error" in the first few words,
+    logging them to 'error_log.txt' in the same directory as this decorators file.
+
+    Parameters:
+        func (Callable): The function to wrap with error logging capabilities
+
+    Returns:
+        Callable: A wrapped version of the function that logs errors
+
+    Example:
+        @log_errors
+        def risky_function():
+            # Any exceptions or "Error" messages will be logged
+            return "Error: Something went wrong"
+    """
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            result = func(*args, **kwargs)
+
+            # Check if result is a string that starts with "Error" (case insensitive)
+            if isinstance(result, str):
+                # Check first few words for "Error"
+                first_words = ' '.join(result.split()[:5]).lower()
+                if 'error' in first_words:
+                    _log_error_to_file(func.__name__, f"Function returned error message: {result}", args, kwargs)
+
+            return result
+
+        except Exception as e:
+            # Log the exception
+            error_msg = f"Exception in {func.__name__}: {str(e)}\nTraceback:\n{traceback.format_exc()}"
+            _log_error_to_file(func.__name__, error_msg, args, kwargs)
+            # Re-raise the exception
+            raise
+
+    return wrapper
+
+
+def _log_error_to_file(function_name: str, error_message: str, args: tuple = None, kwargs: dict = None) -> None:
+    """Helper function to log errors to the error log file.
+
+    Parameters:
+        function_name (str): Name of the function that had the error
+        error_message (str): The error message to log
+        args (tuple, optional): Positional arguments passed to the function
+        kwargs (dict, optional): Keyword arguments passed to the function
+    """
+    # Get the directory where this decorators file is located
+    decorators_dir = os.path.dirname(os.path.abspath(__file__))
+    log_file_path = os.path.join(decorators_dir, 'error_log.txt')
+
+    # Create timestamp
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    args_parts = []
+    if args:
+        args_parts.append(f"args={args}")
+    if kwargs:
+        args_parts.append(f"kwargs={kwargs}")
+    if args_parts:
+        args_str = f"\nArguments: {', '.join(args_parts)}"
+
+    # Format the log entry
+    log_entry = f"[{timestamp}] Function: {function_name}{args_str}\n{error_message}\n{'-' * 80}\n\n"
+
+    # Append to the log file
+    try:
+        with open(log_file_path, 'a', encoding='utf-8') as log_file:
+            log_file.write(log_entry)
+    except Exception as e:
+        # If we can't write to the log file, at least print to stderr
+        print(f"Failed to write to error log: {e}", file=sys.stderr)
+        print(f"Original error: {log_entry}", file=sys.stderr)
+
+def handle_errors(func: Callable) -> Callable:
+    """Decorator that catches exceptions and returns formatted error strings instead of raising.
+    Use when you want a function to return error messages as strings rather than raising
+    exceptions. This is useful for tools and APIs that need to handle errors gracefully
+    and return error information to callers.
+    The decorator uses the _process_error helper function to format exceptions into
+    detailed error messages including tracebacks.
+    Parameters:
+        func (Callable): The function to wrap with error handling
+    Returns:
+        Callable: A wrapped version of the function that returns error strings instead of raising
+    Example:
+        @handle_errors
+        def risky_operation(data):
+            # If this raises an exception, it will be caught and returned as a string
+            return process_data(data)
+        result = risky_operation(bad_data)
+        if result.startswith("Tool Failed:"):
+            print(f"Operation failed: {result}")
+    """
+    from bots.utils.helpers import _process_error
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            return _process_error(e)
     return wrapper
