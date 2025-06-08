@@ -264,6 +264,7 @@ Use '/config set <setting> <value>' to modify settings."""
             except ValueError:
                 return f"Invalid value for {setting}: {value}"
         return "Usage: /config or /config set <setting> <value>"
+    
     def auto(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Run bot autonomously until it stops using tools."""
         try:
@@ -272,15 +273,15 @@ Use '/config set <setting> <value>' to modify settings."""
             old_settings = setup_raw_mode()
             context.old_terminal_settings = old_settings
             print("Bot running autonomously. Press ESC to interrupt...")
+            final_response = None
             while True:
                 if check_for_interrupt():
                     restore_terminal(old_settings)
                     return "Autonomous execution interrupted by user"
-                response = bot.respond("")
-                if context.config.verbose and bot.tool_handler.requests:
-                    for req in bot.tool_handler.requests:
-                        pretty(f"Tool: {req.name}", "System", context.config.width, context.config.indent)
-                        pretty(f"Result: {req.result}", "System", context.config.width, context.config.indent)
+                response = bot.respond("ok")
+                final_response = response  # Keep track of the last response
+                display_tool_results(bot, context)
+                pretty(final_response, bot.name, context.config.width, context.config.indent)
                 if not bot.tool_handler.requests:
                     restore_terminal(old_settings)
                     return "Bot finished autonomous execution"
@@ -288,6 +289,7 @@ Use '/config set <setting> <value>' to modify settings."""
             if context.old_terminal_settings:
                 restore_terminal(context.old_terminal_settings)
             return f"Error during autonomous execution: {str(e)}"
+
 class FunctionalPromptHandler:
     """Handler for functional prompt commands."""
     def __init__(self):
@@ -443,6 +445,45 @@ def restore_terminal(old_settings):
     if platform.system() != 'Windows' and old_settings is not None:
         fd = sys.stdin.fileno()
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+def clean_dict(d: dict, indent: int = 4, level: int = 1):
+    """
+    Clean a dict containing recursive json dumped strings for printing
+    Returns: clean string representation of the dict
+    """
+    for k, v in d.items():
+        if isinstance(v, dict):
+            clean_dict(v, indent, level+1)
+        if isinstance(v, str) and '\n' in v:
+            lines = v.splitlines()
+            for i, line in enumerate(lines):
+                line = ' '*indent*(level+1) + line
+                if i == 0: line = '\n' + line
+                lines[i] = line
+            d[k] = '\n'.join(lines)
+    cleaned_dict = json.dumps(d, indent=indent*level)
+    cleaned_dict = re.sub(r'(?<!\\)\\n', '\n', cleaned_dict)
+    cleaned_dict = cleaned_dict.replace('\\"', '"')
+    cleaned_dict = cleaned_dict.replace('\\\\', '\\')
+    return cleaned_dict
+
+def display_tool_results(bot: Bot, context: CLIContext):
+    """Display tool requests and results in a readable format with bot message first."""
+    requests = bot.tool_handler.requests
+    results = bot.tool_handler.results
+    pretty(bot.conversation.content, bot.name, context.config.width, context.config.indent)
+    if not requests:
+        return
+    if context.config.verbose:
+        request_str = ''.join(clean_dict(r) for r in requests)
+        result_str = ''.join(clean_dict(r) for r in results)
+        pretty(f'Tool Requests\n\n{request_str}', "System", context.config.width, context.config.indent)
+        pretty(f'Tool Results\n\n{result_str}', "System", context.config.width, context.config.indent)
+    else:
+        for request in requests:
+            tool_name, _ = bot.tool_handler.tool_name_and_input(request)
+            pretty(f'{bot.name} used {tool_name}', "System", context.config.width, context.config.indent)
+
 def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: int = 4) -> None:
     """Print a string nicely formatted."""
     prefix = f"{name}: " if name is not None else ""
@@ -498,9 +539,9 @@ class CLI:
             # Initialize bot
             bot = AnthropicBot()
             bot.add_tools(
-                bots.tools.python_edit,
                 bots.tools.terminal_tools,
-                bots.tools.code_tools
+                bots.tools.code_tools.view_dir,
+                bots.tools.python_execution_tool,
             )
             print("CLI started. Type /help for commands or chat normally.")
             pretty(f"Bot initialized: {bot.name}", "System")
@@ -509,9 +550,32 @@ class CLI:
                     user_input = input(">>> ").strip()
                     if user_input == '/exit':
                                 raise SystemExit(0)
-                    if user_input.startswith('/'):
-                        self._handle_command(bot, user_input)
+                    # Parse input for commands at start or end (like auto_terminal.py)
+                    if not user_input:
+                        continue
+                    words = user_input.split()
+                    if not words:
+                        continue
+                    # Check for command at start or end
+                    command = None
+                    msg = None
+                    if words[0].startswith('/'):
+                        command = words[0]
+                        msg = ' '.join(words[1:]) if len(words) > 1 else None
+                    elif words[-1].startswith('/'):
+                        command = words[-1]
+                        msg = ' '.join(words[:-1]) if len(words) > 1 else None
                     else:
+                        msg = user_input
+                    # Handle the input
+                    if command:
+                        if msg:
+                            # Command with message - handle chat first, then command
+                            self._handle_chat(bot, msg)
+                        # Handle the command (pass the full command string for compatibility)
+                        self._handle_command(bot, command)
+                    else:
+                        # Regular chat
                         self._handle_chat(bot, user_input)
                 except KeyboardInterrupt:
                     print("\nUse /exit to quit")
@@ -545,6 +609,7 @@ class CLI:
                     pretty("Restored conversation from backup", "System")
         else:
             pretty("Unrecognized command. Try /help.", "System", self.context.config.width, self.context.config.indent)
+
     def _handle_chat(self, bot: Bot, user_input: str):
         """Handle chat input."""
         if not user_input:
@@ -554,10 +619,7 @@ class CLI:
             response = bot.respond(user_input)
             pretty(response, bot.name, self.context.config.width, self.context.config.indent)
             # Show tool output if verbose
-            if self.context.config.verbose and bot.tool_handler.requests:
-                for req in bot.tool_handler.requests:
-                    pretty(f"Tool: {req.name}", "System", self.context.config.width, self.context.config.indent)
-                    pretty(f"Result: {req.result}", "System", self.context.config.width, self.context.config.indent)
+            display_tool_results(bot, self.context)
         except Exception as e:
             pretty(f"Chat error: {str(e)}", "Error", self.context.config.width, self.context.config.indent)
             if self.context.conversation_backup:
