@@ -33,6 +33,7 @@ import bots.tools.python_edit
 import bots.tools.terminal_tools
 import bots.tools.code_tools
 import bots.flows.functional_prompts as fp
+
 def create_tool_result_callback(context):
     """Create a callback function that prints tool results immediately."""
     def tool_result_callback(responses, nodes):
@@ -48,6 +49,7 @@ def create_tool_result_callback(context):
                 if result_str.strip():
                     pretty(f'Tool Results\n\n{result_str}', "System", context.config.width, context.config.indent)
     return tool_result_callback
+
 class CLIConfig:
     """Configuration management for CLI settings."""
     def __init__(self):
@@ -348,13 +350,23 @@ class FunctionalPromptHandler:
             # Step 3: Execute functional prompt
             context.conversation_backup = bot.conversation
             print(f"\nExecuting {fp_name}...")
+            # Step 3: Create callback for immediate tool result printing
+            callback = create_tool_result_callback(context)
+            params['callback'] = callback
+            # Step 4: Execute functional prompt
             result = fp_function(bot, **params)
-            # Step 4: Handle results
+            # Step 5: Handle results and display responses
             if isinstance(result, tuple) and len(result) == 2:
                 responses, nodes = result
+                # Display the responses (callback already handled tool results)
                 if isinstance(responses, list):
+                    for i, response in enumerate(responses):
+                        if response:
+                            pretty(f"Response {i+1}: {response}", bot.name, context.config.width, context.config.indent)
                     return f"Functional prompt '{fp_name}' completed with {len(responses)} responses"
                 else:
+                    if responses:
+                        pretty(responses, bot.name, context.config.width, context.config.indent)
                     return f"Functional prompt '{fp_name}' completed"
             else:
                 return f"Functional prompt '{fp_name}' completed"
