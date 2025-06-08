@@ -535,6 +535,7 @@ class CLI:
     def run(self):
         """Main CLI loop."""
         try:
+            print("Hello, world!")
             self.context.old_terminal_settings = setup_raw_mode()
             # Initialize bot
             bot = AnthropicBot()
