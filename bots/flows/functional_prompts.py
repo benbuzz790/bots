@@ -244,6 +244,9 @@ def chain(bot: Bot, prompts: List[Prompt],
             - Reference previous steps when needed
             - Keep a clear logical flow
             - Use explicit transitions between steps
+        callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
+            A function (with arguments list[respose], list[node]) which is called 
+            after each response from the bot.
 
     Returns:
     Tuple[List[Response], List[ResponseNode]]: A tuple containing a list of response strings and a list of corresponding ConversationNodes.
@@ -254,12 +257,11 @@ def chain(bot: Bot, prompts: List[Prompt],
         response = bot.respond(prompt)
         responses.append(response)
         nodes.append(bot.conversation)
-    
-    if callback:
-        try:
-            callback(responses, nodes)
-        except Exception:
-            pass  # Don't let callback errors break the main function
+        if callback:
+            try:
+                callback([response], [bot.conversation])
+            except Exception:
+                pass  # Don't let callback errors break the main function
     return responses, nodes
 
 
@@ -287,6 +289,9 @@ def branch(bot: Bot, prompts: List[Prompt],
             - Focus each prompt on a distinct aspect
             - Be explicit about the perspective or approach
             - Maintain consistent depth across branches
+        callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
+            A function (with arguments list[respose], list[node]) which is called 
+            after each response from the bot.
 
     Returns:
         Tuple[List[Response], List[ResponseNode]]: A tuple containing:
@@ -335,17 +340,17 @@ def branch(bot: Bot, prompts: List[Prompt],
         try:
             response = bot.respond(prompt)
             node = bot.conversation
+            if callback:
+                try:
+                    callback([response], [node])
+                except Exception:
+                    pass  # Don't let callback errors break the main function
         except:
             response = None
             node = None
         finally:
             responses.append(response)
             nodes.append(node)
-    if callback:
-        try:
-            callback(responses, nodes)
-        except Exception:
-            pass  # Don't let callback errors break the main function
     return responses, nodes
 
 
@@ -474,6 +479,9 @@ def tree_of_thought(
             - Identify key insights
             - Resolve conflicts
             - Create a coherent synthesis
+        callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
+            A function (with arguments list[respose], list[node]) which is called 
+            after each response from the bot.
 
     Returns:
         Tuple[Response, ResponseNode]: A tuple containing:
@@ -527,7 +535,7 @@ def tree_of_thought(
         - Final node links to all exploration branches
         - All branch contexts are preserved for reference
     """
-    responses, nodes = branch(bot, prompts)
+    responses, nodes = branch(bot, prompts, callback=callback)
     final_response = recombine(bot, responses, nodes, recombinator_function)
     return final_response
 
@@ -574,6 +582,9 @@ def prompt_while(
             - conditions.tool_not_used (default): Stop when bot stops using tools
             - conditions.said_DONE: Stop when bot indicates completion
             - Custom conditions for specific criteria
+        callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
+            A function (with arguments list[respose], list[node]) which is called 
+            after each response from the bot.
 
     Returns:
         Tuple[List[Response], List[ResponseNode]]: A tuple containing:
@@ -629,11 +640,11 @@ def prompt_while(
         response = bot.respond(continue_prompt)
         responses.append(response)
         nodes.append(bot.conversation)
-    if callback:
-        try:
-            callback(responses, nodes)
-        except Exception:
-            pass  # Don't let callback errors break the main function
+        if callback:
+            try:
+                callback([response], [bot.conversation])
+            except Exception:
+                pass  # Don't let callback errors break the main function
     return responses, nodes
 
 def prompt_for(
@@ -661,7 +672,10 @@ def prompt_for(
               preserving independent context for each response
             - If False (default): Processes items sequentially in the same
               conversation (i.e. a chain), maintaining cumulative context
-    
+        callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
+            A function (with arguments list[respose], list[node]) which is called 
+            after each response from the bot.
+
     Returns:
         Tuple[List[Response], List[ResponseNode]]: A tuple containing:
             - responses: List[str] - Bot's responses, one per input item
@@ -696,9 +710,9 @@ def prompt_for(
     """
     prompts = [dynamic_prompt(item) for item in items]
     if should_branch:
-        return branch(bot, prompts)
+        return branch(bot, prompts, callback)
     else:
-        return chain(bot, prompts)
+        return chain(bot, prompts, callback)
 
 
 def chain_while(
@@ -744,6 +758,10 @@ def chain_while(
             - "Continue with this step..."
             - "Keep going until complete..."
             - "Any more improvements needed?"
+        callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
+            A function (with arguments list[respose], list[node]) which is called 
+            after each response from the bot.
+
 
     Returns:
         Tuple[List[Response], List[ResponseNode]]: A tuple containing:
@@ -800,11 +818,11 @@ def chain_while(
             responses.append(response)
             nodes.append(bot.conversation)
         bot.tool_handler.clear()
-    if callback:
-        try:
-            callback(responses, nodes)
-        except Exception:
-            pass  # Don't let callback errors break the main function
+        if callback:
+            try:
+                callback([response], [bot.conversation])
+            except Exception:
+                pass  # Don't let callback errors break the main function
     return responses, nodes
 
 def branch_while(
@@ -834,6 +852,9 @@ def branch_while(
         continue_prompt (str, optional): Prompt to send for each iteration
             after the first when a branch hasn't met its stop condition.
             Defaults to 'ok'
+        callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
+            A function (with arguments list[respose], list[node]) which is called 
+            after each response from the bot.
     
     Returns:
         Tuple[List[Response], List[ResponseNode]]: A tuple containing:
@@ -882,6 +903,11 @@ def branch_while(
             response = bot.respond(initial_prompt)
             while not stop_condition(bot):
                 response = bot.respond(continue_prompt)
+                if callback:
+                    try:
+                        callback([response],[bot.conversation])
+                    except Exception:
+                        pass  # Don't let callback errors break the main function
             node = bot.conversation
         except Exception as e:
             response = None
@@ -889,11 +915,6 @@ def branch_while(
         finally:
             responses.append(response)
             nodes.append(node)
-    if callback:
-        try:
-            callback(responses, nodes)
-        except Exception:
-            pass  # Don't let callback errors break the main function
     return responses, nodes
 
 
@@ -912,6 +933,9 @@ def par_branch(
     Args:
         bot (Bot): The bot to interact with
         prompts (List[Prompt]): List of prompts to process in parallel
+        callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
+            A function (with arguments list[respose], list[node]) which is called 
+            after each response from the bot.
     
     Returns:
         Tuple[List[Response], List[ResponseNode]]: A tuple containing:
@@ -952,6 +976,11 @@ def par_branch(
             new_node = branch_bot.conversation
             new_node.parent = original_conversation
             original_conversation.replies.append(new_node)
+            if callback:
+                try:
+                    callback([response], [new_node])
+                except Exception:
+                    pass  # Don't let callback errors break the main function
             return index, response, new_node
         except:
             return index, None, None
@@ -968,11 +997,6 @@ def par_branch(
         os.remove(temp_file)
     except:
         pass
-    if callback:
-        try:
-            callback(responses, nodes)
-        except Exception:
-            pass  # Don't let callback errors break the main function
     return responses, nodes
 
 
@@ -1007,6 +1031,9 @@ def par_branch_while(
         continue_prompt (str, optional): Prompt to send for each iteration
             after the first when a branch hasn't met its stop condition.
             Defaults to 'ok'
+        callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
+            A function (with arguments list[respose], list[node]) which is called 
+            after each response from the bot.
 
     Returns:
         Tuple[List[Response], List[ResponseNode]]: A tuple containing:
@@ -1066,6 +1093,11 @@ def par_branch_while(
             response = first_response
             while not stop_condition(branch_bot):
                 response = branch_bot.respond(continue_prompt)
+                if callback:
+                    try:
+                        callback([response], [bot.conversation])
+                    except Exception:
+                        pass  # Don't let callback errors break the main function
             first_node.parent = original_conversation
             original_conversation.replies.append(first_node)
             return index, response, first_node
@@ -1084,11 +1116,6 @@ def par_branch_while(
         os.remove(temp_file)
     except:
         pass
-    if callback:
-        try:
-            callback(responses, nodes)
-        except Exception:
-            pass  # Don't let callback errors break the main function
     return responses, nodes
 
 
