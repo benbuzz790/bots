@@ -1,4 +1,4 @@
-# bots: making LLM tool use convenient and powerful
+﻿# bots: making LLM tool use convenient and powerful
 
 ## Overview
 
@@ -77,14 +77,14 @@ The bots library provides a structured interface for working with such agents, a
      (including source code and dependencies) is preserved, allowing the bot to be shared with others 
      who can use the same tools without additional setup
 
-2. **Auto Terminal**
-   The Auto Terminal provides an advanced interface for working with bots interactively. It allows you to
+2. **CLI Interface**
+   The CLI interface provides an advanced interface for working with bots interactively. It allows you to
    navigate through conversation history like a tree, moving up to previous points in the conversation and
-   exploring different branches. The terminal also features an autonomous mode where the bot will continue
+   exploring different branches. The CLI also features an autonomous mode where the bot will continue
    working on a task until it completes (indicated by no further tool usage).
 
    ```bash
-   python -m bots.dev.auto_terminal
+   python -m bots.dev.cli
    ```
 
    Key capabilities:
