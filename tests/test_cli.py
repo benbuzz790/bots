@@ -314,8 +314,69 @@ class TestConfigManagement(DetailedTestCase):
             output = buf.getvalue()
             print(f'\nConfig invalid setting output:\n{output}')
         self.assertContainsNormalized(output, 'Unknown setting: invalid_setting')
+class TestWhileFunctionsInCLI(DetailedTestCase):
+    """Test the *_while functions work correctly within CLI context."""
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_bot = MagicMock()
+        self.mock_bot.name = "TestBot"
+        self.mock_bot.conversation = MagicMock()
+        self.mock_bot.conversation.content = "Test response"
+        self.mock_bot.tool_handler = MagicMock()
+        self.mock_bot.tool_handler.requests = []
+        self.mock_bot.tool_handler.results = []
+        self.mock_bot.tool_handler.clear = MagicMock()
+        self.context = cli_module.CLIContext()
+        self.context.bot_instance = self.mock_bot
+    def test_chain_while_with_multiple_prompts(self):
+        """Test chain_while processes multiple prompts sequentially."""
+        from bots.flows.functional_prompts import chain_while
+        # Mock bot responses
+        responses = ["Response 1", "Response 2", "Response 3"]
+        self.mock_bot.respond.side_effect = responses
+        # Create a stop condition that stops immediately
+        def stop_immediately(bot):
+            return True
+        prompts = ["Prompt 1", "Prompt 2", "Prompt 3"]
+        # Test chain_while
+        result_responses, result_nodes = chain_while(
+            self.mock_bot, 
+            prompts, 
+            stop_condition=stop_immediately
+        )
+        # Verify all prompts were processed
+        self.assertEqual(len(result_responses), 3)
+        self.assertEqual(self.mock_bot.respond.call_count, 3)
+        # Verify prompts were called in order
+        call_args = [call[0][0] for call in self.mock_bot.respond.call_args_list]
+        self.assertEqual(call_args, prompts)
+    def test_while_functions_empty_prompt_list(self):
+        """Test *_while functions handle empty prompt lists gracefully."""
+        from bots.flows.functional_prompts import chain_while, branch_while
+        def stop_immediately(bot):
+            return True
+        # Test chain_while with empty list
+        responses, nodes = chain_while(self.mock_bot, [], stop_condition=stop_immediately)
+        self.assertEqual(len(responses), 0)
+        self.assertEqual(len(nodes), 0)
+        # Verify bot.respond was never called
+        self.mock_bot.respond.assert_not_called()
+    def test_cli_callback_function_creation(self):
+        """Test that CLI callback function works correctly."""
+        # Test the create_tool_result_callback function
+        callback = cli_module.create_tool_result_callback(self.context)
+        # Mock tool data
+        self.mock_bot.tool_handler.requests = [{"tool": "test", "args": {}}]
+        self.mock_bot.tool_handler.results = [{"output": "test result"}]
+        self.context.config.verbose = True
+        # Test callback execution (should not raise exceptions)
+        try:
+            callback(["test response"], [self.mock_bot.conversation])
+        except Exception as e:
+            self.fail(f"Callback raised an exception: {e}")
 if __name__ == '__main__':
     # Clean up any config files before running tests
     if os.path.exists('cli_config.json'):
         os.remove('cli_config.json')
     unittest.main()
+
