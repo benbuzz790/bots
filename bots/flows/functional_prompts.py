@@ -1,4 +1,4 @@
-"""Functional patterns for structured bot interactions and complex reasoning.
+﻿"""Functional patterns for structured bot interactions and complex reasoning.
 
 This module provides a collection of higher-level functions for orchestrating bot
 interactions in common patterns like chains, branches, and trees. These patterns
@@ -220,7 +220,8 @@ def single_prompt(bot: Bot, prompt: Prompt) -> Tuple[Response, ResponseNode]:
     node = bot.conversation
     return (response, node)
 
-def chain(bot: Bot, prompts: List[Prompt]) -> Tuple[List[Response], List[ResponseNode]]:
+def chain(bot: Bot, prompts: List[Prompt],
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None) -> Tuple[List[Response], List[ResponseNode]]:
     """Execute a sequence of prompts that build on each other.
 
     Use when you need to:
@@ -253,10 +254,17 @@ def chain(bot: Bot, prompts: List[Prompt]) -> Tuple[List[Response], List[Respons
         response = bot.respond(prompt)
         responses.append(response)
         nodes.append(bot.conversation)
+    
+    if callback:
+        try:
+            callback(responses, nodes)
+        except Exception:
+            pass  # Don't let callback errors break the main function
     return responses, nodes
 
 
-def branch(bot: Bot, prompts: List[Prompt]) -> Tuple[List[Response], List[ResponseNode]]:
+def branch(bot: Bot, prompts: List[Prompt],
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None) -> Tuple[List[Response], List[ResponseNode]]:
     """Create multiple independent conversation paths from the current state.
 
     Use when you need to:
@@ -333,6 +341,11 @@ def branch(bot: Bot, prompts: List[Prompt]) -> Tuple[List[Response], List[Respon
         finally:
             responses.append(response)
             nodes.append(node)
+    if callback:
+        try:
+            callback(responses, nodes)
+        except Exception:
+            pass  # Don't let callback errors break the main function
     return responses, nodes
 
 
@@ -429,7 +442,8 @@ def recombine(
 def tree_of_thought(
     bot: Bot,
     prompts: List[Prompt],
-    recombinator_function: RecombinatorFunction
+    recombinator_function: RecombinatorFunction,
+    callback: Optional[Callable[[Response, ResponseNode], None]] = None
 ) -> Tuple[Response, ResponseNode]:
     """Implement tree-of-thought reasoning for complex problem-solving.
 
@@ -522,7 +536,8 @@ def prompt_while(
     bot: Bot,
     first_prompt: Prompt,
     continue_prompt: Prompt = 'ok',
-    stop_condition: Condition = conditions.tool_not_used
+    stop_condition: Condition = conditions.tool_not_used,
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
 ) -> Tuple[List[Response], List[ResponseNode]]:
     """Repeatedly engage a bot in a task until completion criteria are met.
 
@@ -614,13 +629,19 @@ def prompt_while(
         response = bot.respond(continue_prompt)
         responses.append(response)
         nodes.append(bot.conversation)
+    if callback:
+        try:
+            callback(responses, nodes)
+        except Exception:
+            pass  # Don't let callback errors break the main function
     return responses, nodes
 
 def prompt_for(
     bot: Bot, 
     items: List[Any], 
     dynamic_prompt: DynamicPrompt,
-    should_branch: bool = False
+    should_branch: bool = False,
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
 ) -> Tuple[List[Response], List[ResponseNode]]:
     """Generate and process prompts dynamically from a list of items.
     
@@ -684,7 +705,8 @@ def chain_while(
     bot: Bot,
     prompt_list: List[Prompt],
     stop_condition: Condition = conditions.tool_not_used,
-    continue_prompt: str = 'ok'
+    continue_prompt: str = 'ok',
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
 ) -> Tuple[List[Response], List[ResponseNode]]:
     """Execute a sequence of steps where each step can iterate until complete.
 
@@ -777,14 +799,20 @@ def chain_while(
             response = bot.respond(continue_prompt)
             responses.append(response)
             nodes.append(bot.conversation)
-    bot.tool_handler.clear()
+        bot.tool_handler.clear()
+    if callback:
+        try:
+            callback(responses, nodes)
+        except Exception:
+            pass  # Don't let callback errors break the main function
     return responses, nodes
 
 def branch_while(
     bot: Bot, 
     prompt_list: List[Prompt],
     stop_condition: Condition = conditions.tool_not_used,
-    continue_prompt: str = 'ok'
+    continue_prompt: str = 'ok',
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
 ) -> Tuple[List[Response], List[ResponseNode]]:
     """Create parallel conversation branches with independent iteration control.
     
@@ -861,12 +889,18 @@ def branch_while(
         finally:
             responses.append(response)
             nodes.append(node)
+    if callback:
+        try:
+            callback(responses, nodes)
+        except Exception:
+            pass  # Don't let callback errors break the main function
     return responses, nodes
 
 
 def par_branch(
     bot: Bot, 
-    prompts: List[Prompt]
+    prompts: List[Prompt],
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
 ) -> Tuple[List[Response], List[ResponseNode]]:
     """Create and process multiple conversation branches in parallel.
     
@@ -934,6 +968,11 @@ def par_branch(
         os.remove(temp_file)
     except:
         pass
+    if callback:
+        try:
+            callback(responses, nodes)
+        except Exception:
+            pass  # Don't let callback errors break the main function
     return responses, nodes
 
 
@@ -941,7 +980,8 @@ def par_branch_while(
     bot: Bot, 
     prompt_list: List[Prompt],
     stop_condition: Condition = conditions.tool_not_used,
-    continue_prompt: str = 'ok'
+    continue_prompt: str = 'ok',
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
 ) -> Tuple[List[Response], List[ResponseNode]]:
     """Execute multiple iterative conversation branches in parallel threads.
 
@@ -1044,6 +1084,11 @@ def par_branch_while(
         os.remove(temp_file)
     except:
         pass
+    if callback:
+        try:
+            callback(responses, nodes)
+        except Exception:
+            pass  # Don't let callback errors break the main function
     return responses, nodes
 
 
@@ -1135,3 +1180,39 @@ def par_dispatch(
             results[idx] = result
     
     return results
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
