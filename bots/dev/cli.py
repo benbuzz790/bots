@@ -77,6 +77,7 @@ class CLIContext:
 
 class ConversationHandler:
     """Handler for conversation navigation commands."""
+
     def up(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Move up in conversation tree."""
         if bot.conversation.parent and bot.conversation.parent.parent:
@@ -84,6 +85,7 @@ class ConversationHandler:
             bot.conversation = bot.conversation.parent.parent
             return f"Moved up conversation tree"
         return "At root - can't go up"
+    
     def down(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Move down in conversation tree."""
         if bot.conversation.replies:
@@ -104,6 +106,7 @@ class ConversationHandler:
                 bot.conversation = next_node
             return "Moved down conversation tree"
         return "At leaf - can't go down"
+    
     def left(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Move left to sibling in conversation tree."""
         if not bot.conversation.parent:
@@ -117,6 +120,7 @@ class ConversationHandler:
         context.conversation_backup = bot.conversation
         bot.conversation = replies[next_index]
         return "Moved left in conversation tree"
+    
     def right(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Move right to sibling in conversation tree."""
         if not bot.conversation.parent:
@@ -130,12 +134,14 @@ class ConversationHandler:
         context.conversation_backup = bot.conversation
         bot.conversation = replies[next_index]
         return "Moved right in conversation tree"
+    
     def root(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Move to root of conversation tree."""
         context.conversation_backup = bot.conversation
         while bot.conversation.parent:
             bot.conversation = bot.conversation.parent
         return "Moved to root of conversation tree"
+    
     def label(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Label current conversation node."""
         label = input("Label: ").strip()
@@ -148,6 +154,7 @@ class ConversationHandler:
         if label not in bot.conversation.labels:
             bot.conversation.labels.append(label)
         return f"Saved current node with label: {label}"
+    
     def goto(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Go to labeled conversation node."""
         label = input("Label: ").strip()
@@ -156,6 +163,7 @@ class ConversationHandler:
             bot.conversation = context.labeled_nodes[label]
             return f"Moved to node labeled: {label}"
         return f"No node found with label: {label}"
+    
     def showlabels(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Show all labeled nodes."""
         if not context.labeled_nodes:
@@ -182,6 +190,7 @@ class StateHandler:
             return "Save cancelled"
         except Exception as e:
             return f"Error saving bot: {str(e)}"
+
     def load(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Load bot state."""
         try:
@@ -198,6 +207,7 @@ class StateHandler:
             return "Load cancelled"
         except Exception as e:
             return f"Error loading bot: {str(e)}"
+
     def _rebuild_labels(self, node: ConversationNode, context: CLIContext):
         """Recursively rebuild labeled nodes from conversation tree."""
         if hasattr(node, 'labels'):
@@ -208,6 +218,7 @@ class StateHandler:
 
 class SystemHandler:
     """Handler for system and configuration commands."""
+
     def help(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Show help message."""
         return textwrap.dedent("""
@@ -303,6 +314,7 @@ class SystemHandler:
             return f"Error during autonomous execution: {str(e)}"
 
 class FunctionalPromptHandler:
+
     """Handler for functional prompt commands."""
     def __init__(self):
         self.fp_functions = {
@@ -396,6 +408,7 @@ class FunctionalPromptHandler:
             if recombinator:
                 params['recombinator_function'] = recombinator
         return params
+    
     def _collect_prompts(self) -> Optional[List[str]]:
         """Collect a list of prompts from user."""
         prompts = []
@@ -409,6 +422,7 @@ class FunctionalPromptHandler:
             print("No prompts entered")
             return None
         return prompts
+    
     def _collect_condition(self) -> Optional[Callable]:
         """Collect stop condition from user."""
         conditions = {
@@ -426,6 +440,7 @@ class FunctionalPromptHandler:
             return conditions[choice][1]
         print("Invalid condition selection")
         return None
+    
     def _collect_recombinator(self) -> Optional[Callable]:
         """Collect recombinator function (simplified for now)."""
         choice = input("Use default recombinator? (y/n): ").strip().lower()
@@ -522,7 +537,7 @@ class CLI:
         try:
             self.context.old_terminal_settings = setup_raw_mode()
             # Initialize bot
-            bot = AnthropicBot()
+            bot = AnthropicBot(allow_web_search=True)
             bot.add_tools(
                 #bots.tools.python_edit,
                 bots.tools.terminal_tools,
