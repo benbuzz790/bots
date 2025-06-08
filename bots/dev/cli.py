@@ -33,6 +33,21 @@ import bots.tools.python_edit
 import bots.tools.terminal_tools
 import bots.tools.code_tools
 import bots.flows.functional_prompts as fp
+def create_tool_result_callback(context):
+    """Create a callback function that prints tool results immediately."""
+    def tool_result_callback(responses, nodes):
+        # Print tool results for the most recent response
+        if hasattr(context, 'bot_instance') and context.bot_instance:
+            bot = context.bot_instance
+            requests = bot.tool_handler.requests
+            results = bot.tool_handler.results
+            if requests and context.config.verbose:
+                request_str = ''.join(clean_dict(r) for r in requests)
+                result_str = ''.join(clean_dict(r) for r in results)
+                pretty(f'Tool Requests\n\n{request_str}', "System", context.config.width, context.config.indent)
+                if result_str.strip():
+                    pretty(f'Tool Results\n\n{result_str}', "System", context.config.width, context.config.indent)
+    return tool_result_callback
 class CLIConfig:
     """Configuration management for CLI settings."""
     def __init__(self):
@@ -71,6 +86,7 @@ class CLIContext:
         self.labeled_nodes: Dict[str, ConversationNode] = {}
         self.conversation_backup: Optional[ConversationNode] = None
         self.old_terminal_settings = None
+        self.bot_instance = None
 class ConversationHandler:
     """Handler for conversation navigation commands."""
     def up(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -539,6 +555,7 @@ class CLI:
             self.context.old_terminal_settings = setup_raw_mode()
             # Initialize bot
             bot = AnthropicBot()
+            self.context.bot_instance = bot
             bot.add_tools(
                 bots.tools.terminal_tools,
                 bots.tools.code_tools.view_dir,
@@ -617,10 +634,13 @@ class CLI:
             return
         try:
             self.context.conversation_backup = bot.conversation
-            response = bot.respond(user_input)
-            pretty(response, bot.name, self.context.config.width, self.context.config.indent)
-            # Show tool output if verbose
-            display_tool_results(bot, self.context)
+            # Create callback for immediate tool result printing
+            callback = create_tool_result_callback(self.context)
+            # Use chain functional prompt with single prompt and callback
+            responses, nodes = fp.chain(bot, [user_input], callback=callback)
+            # Display the response (callback already handled tool results)
+            if responses:
+                pretty(responses[0], bot.name, self.context.config.width, self.context.config.indent)
         except Exception as e:
             pretty(f"Chat error: {str(e)}", "Error", self.context.config.width, self.context.config.indent)
             if self.context.conversation_backup:
@@ -632,5 +652,10 @@ def main():
     cli.run()
 if __name__ == '__main__':
     main()
+
+
+
+
+
 
 
