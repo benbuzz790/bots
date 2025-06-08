@@ -298,8 +298,6 @@ class AnthropicMailbox(Mailbox):
             if not getattr(response.content[0], 'text', None):
                 block = anthropic.types.TextBlock(text='~', type='text')
                 response.content.insert(0, block)
-                print(f"Added text block:{response}")
-
             
             while should_continue(response):
                 if bot.conversation.role == 'user': # base case
