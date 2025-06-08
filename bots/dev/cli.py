@@ -14,7 +14,6 @@ import sys
 import json
 import os
 import re
-import textwrap
 import platform
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Callable, Tuple
@@ -34,7 +33,6 @@ import bots.tools.python_edit
 import bots.tools.terminal_tools
 import bots.tools.code_tools
 import bots.flows.functional_prompts as fp
-
 class CLIConfig:
     """Configuration management for CLI settings."""
     def __init__(self):
@@ -66,7 +64,6 @@ class CLIConfig:
                 json.dump(config_data, f, indent=2)
         except Exception:
             pass  # Fail silently if config saving fails
-
 class CLIContext:
     """Shared context for CLI operations."""
     def __init__(self):
@@ -74,10 +71,8 @@ class CLIContext:
         self.labeled_nodes: Dict[str, ConversationNode] = {}
         self.conversation_backup: Optional[ConversationNode] = None
         self.old_terminal_settings = None
-
 class ConversationHandler:
     """Handler for conversation navigation commands."""
-
     def up(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Move up in conversation tree."""
         if bot.conversation.parent and bot.conversation.parent.parent:
@@ -85,7 +80,6 @@ class ConversationHandler:
             bot.conversation = bot.conversation.parent.parent
             return f"Moved up conversation tree"
         return "At root - can't go up"
-    
     def down(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Move down in conversation tree."""
         if bot.conversation.replies:
@@ -106,7 +100,6 @@ class ConversationHandler:
                 bot.conversation = next_node
             return "Moved down conversation tree"
         return "At leaf - can't go down"
-    
     def left(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Move left to sibling in conversation tree."""
         if not bot.conversation.parent:
@@ -120,7 +113,6 @@ class ConversationHandler:
         context.conversation_backup = bot.conversation
         bot.conversation = replies[next_index]
         return "Moved left in conversation tree"
-    
     def right(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Move right to sibling in conversation tree."""
         if not bot.conversation.parent:
@@ -134,14 +126,12 @@ class ConversationHandler:
         context.conversation_backup = bot.conversation
         bot.conversation = replies[next_index]
         return "Moved right in conversation tree"
-    
     def root(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Move to root of conversation tree."""
         context.conversation_backup = bot.conversation
         while bot.conversation.parent:
             bot.conversation = bot.conversation.parent
         return "Moved to root of conversation tree"
-    
     def label(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Label current conversation node."""
         label = input("Label: ").strip()
@@ -154,7 +144,6 @@ class ConversationHandler:
         if label not in bot.conversation.labels:
             bot.conversation.labels.append(label)
         return f"Saved current node with label: {label}"
-    
     def goto(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Go to labeled conversation node."""
         label = input("Label: ").strip()
@@ -163,7 +152,6 @@ class ConversationHandler:
             bot.conversation = context.labeled_nodes[label]
             return f"Moved to node labeled: {label}"
         return f"No node found with label: {label}"
-    
     def showlabels(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Show all labeled nodes."""
         if not context.labeled_nodes:
@@ -173,7 +161,6 @@ class ConversationHandler:
             content_preview = node.content[:100] + "..." if len(node.content) > 100 else node.content
             result += f"  '{label}': {content_preview}\n"
         return result.rstrip()
-    
 class StateHandler:
     """Handler for bot state management commands."""
     def save(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -190,7 +177,6 @@ class StateHandler:
             return "Save cancelled"
         except Exception as e:
             return f"Error saving bot: {str(e)}"
-
     def load(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Load bot state."""
         try:
@@ -207,7 +193,6 @@ class StateHandler:
             return "Load cancelled"
         except Exception as e:
             return f"Error loading bot: {str(e)}"
-
     def _rebuild_labels(self, node: ConversationNode, context: CLIContext):
         """Recursively rebuild labeled nodes from conversation tree."""
         if hasattr(node, 'labels'):
@@ -215,60 +200,53 @@ class StateHandler:
                 context.labeled_nodes[label] = node
         for reply in node.replies:
             self._rebuild_labels(reply, context)
-
 class SystemHandler:
     """Handler for system and configuration commands."""
-
     def help(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Show help message."""
-        return textwrap.dedent("""
-            This program is an interactive terminal that uses AI bots.
-            It allows you to chat with the LLM, save and load bot states, and execute various commands.
-            The bot has the ability to read and write files and can execute powershell and python code directly.
-            The bot also has tools to help edit python files in an accurate and token-efficient way.
-            Available commands:
-            /help: Show this help message
-            /verbose: Show tool requests and results (default on)
-            /quiet: Hide tool requests and results
-            /save: Save the current bot
-            /load: Load a previously saved bot
-            /up: "rewind" the conversation by one turn by moving up the conversation tree
-            /down: Move down the conversation tree. Requests index of reply if there are multiple.
-            /left: Move to this conversation node's left sibling
-            /right: Move to this conversation node's right sibling
-            /auto: Let the bot work autonomously until it sends a response without using any tools
-            /root: Move to the root node of the conversation tree
-            /label: Save current node with a label for later reference
-            /goto: Move to a previously labeled node
-            /showlabels: Show all saved labels and their associated conversation content
-            /fp: Execute functional prompts (chain, branch, tree_of_thought, etc.)
-            /config: Show or modify CLI configuration
-            /exit: Exit the program
-            Type your messages normally to chat.
-        """).strip()
-    
+        return """
+This program is an interactive terminal that uses AI bots.
+It allows you to chat with the LLM, save and load bot states, and execute various commands.
+The bot has the ability to read and write files and can execute powershell and python code directly.
+The bot also has tools to help edit python files in an accurate and token-efficient way.
+Available commands:
+/help: Show this help message
+/verbose: Show tool requests and results (default on)
+/quiet: Hide tool requests and results
+/save: Save the current bot
+/load: Load a previously saved bot
+/up: "rewind" the conversation by one turn by moving up the conversation tree
+/down: Move down the conversation tree. Requests index of reply if there are multiple.
+/left: Move to this conversation node's left sibling
+/right: Move to this conversation node's right sibling
+/auto: Let the bot work autonomously until it sends a response without using any tools
+/root: Move to the root node of the conversation tree
+/label: Save current node with a label for later reference
+/goto: Move to a previously labeled node
+/showlabels: Show all saved labels and their associated conversation content
+/fp: Execute functional prompts (chain, branch, tree_of_thought, etc.)
+/config: Show or modify CLI configuration
+/exit: Exit the program
+Type your messages normally to chat.
+        """.strip()
     def verbose(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Enable verbose mode."""
         context.config.verbose = True
         context.config.save_config()
         return "Tool output enabled"
-    
     def quiet(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Disable verbose mode."""
         context.config.verbose = False
         context.config.save_config()
         return "Tool output disabled"
-    
     def config(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Show or modify configuration."""
         if not args:
-            return textwrap.dedent(f"""
-                Current configuration:
-                verbose: {context.config.verbose}
-                width: {context.config.width}
-                indent: {context.config.indent}
-                Use '/config set <setting> <value>' to modify settings.
-                """.strip())
+            return f"""Current configuration:
+  verbose: {context.config.verbose}
+  width: {context.config.width}
+  indent: {context.config.indent}
+Use '/config set <setting> <value>' to modify settings."""
         if len(args) >= 3 and args[0] == 'set':
             setting = args[1]
             value = args[2]
@@ -286,7 +264,6 @@ class SystemHandler:
             except ValueError:
                 return f"Invalid value for {setting}: {value}"
         return "Usage: /config or /config set <setting> <value>"
-    
     def auto(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Run bot autonomously until it stops using tools."""
         try:
@@ -299,9 +276,8 @@ class SystemHandler:
                 if check_for_interrupt():
                     restore_terminal(old_settings)
                     return "Autonomous execution interrupted by user"
-                response = bot.respond("ok")
+                response = bot.respond("")
                 if context.config.verbose and bot.tool_handler.requests:
-                    pretty(f"Message: {response}", bot.name, context.config.width, context.config.indent)
                     for req in bot.tool_handler.requests:
                         pretty(f"Tool: {req.name}", "System", context.config.width, context.config.indent)
                         pretty(f"Result: {req.result}", "System", context.config.width, context.config.indent)
@@ -312,9 +288,7 @@ class SystemHandler:
             if context.old_terminal_settings:
                 restore_terminal(context.old_terminal_settings)
             return f"Error during autonomous execution: {str(e)}"
-
 class FunctionalPromptHandler:
-
     """Handler for functional prompt commands."""
     def __init__(self):
         self.fp_functions = {
@@ -329,7 +303,6 @@ class FunctionalPromptHandler:
             'prompt_for': fp.prompt_for,
             'par_dispatch': fp.par_dispatch
         }
-    
     def execute(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Execute functional prompt wizard."""
         try:
@@ -362,17 +335,13 @@ class FunctionalPromptHandler:
             if isinstance(result, tuple) and len(result) == 2:
                 responses, nodes = result
                 if isinstance(responses, list):
-                    for n in nodes:
-                        pretty(n.content, n.role, context.config.width, context.config.indent)
                     return f"Functional prompt '{fp_name}' completed with {len(responses)} responses"
                 else:
-                    pretty(nodes.content, nodes.role, context.config.width, context.config.indent) 
                     return f"Functional prompt '{fp_name}' completed"
             else:
                 return f"Functional prompt '{fp_name}' completed"
         except Exception as e:
             return f"Error executing functional prompt: {str(e)}"
-    
     def _collect_parameters(self, fp_name: str, fp_function: Callable) -> Optional[Dict[str, Any]]:
         """Collect parameters for the chosen functional prompt."""
         params = {}
@@ -408,7 +377,6 @@ class FunctionalPromptHandler:
             if recombinator:
                 params['recombinator_function'] = recombinator
         return params
-    
     def _collect_prompts(self) -> Optional[List[str]]:
         """Collect a list of prompts from user."""
         prompts = []
@@ -422,7 +390,6 @@ class FunctionalPromptHandler:
             print("No prompts entered")
             return None
         return prompts
-    
     def _collect_condition(self) -> Optional[Callable]:
         """Collect stop condition from user."""
         conditions = {
@@ -440,14 +407,12 @@ class FunctionalPromptHandler:
             return conditions[choice][1]
         print("Invalid condition selection")
         return None
-    
     def _collect_recombinator(self) -> Optional[Callable]:
         """Collect recombinator function (simplified for now)."""
         choice = input("Use default recombinator? (y/n): ").strip().lower()
         if choice == 'y':
             return fp.recombinators.simple_concatenate
         return None
-
 # Utility functions (from original auto_terminal.py)
 def check_for_interrupt() -> bool:
     """Check if user pressed Escape without blocking execution."""
@@ -462,7 +427,6 @@ def check_for_interrupt() -> bool:
             termios.tcflush(sys.stdin, termios.TCIOFLUSH)
             return key == '\x1b'  # ESC key
         return False
-
 def setup_raw_mode():
     """Set up terminal for raw input mode on Unix systems."""
     if platform.system() != 'Windows':
@@ -474,13 +438,11 @@ def setup_raw_mode():
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return old_settings
     return None
-
 def restore_terminal(old_settings):
     """Restore terminal settings on Unix systems."""
     if platform.system() != 'Windows' and old_settings is not None:
         fd = sys.stdin.fileno()
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-
 def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: int = 4) -> None:
     """Print a string nicely formatted."""
     prefix = f"{name}: " if name is not None else ""
@@ -502,10 +464,8 @@ def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: i
             formatted_lines.append(' ' * indent if i > 0 else prefix)
     for line in formatted_lines:
         print(line)
-
 class CLI:
     """Main CLI class that orchestrates all handlers."""
-
     def __init__(self):
         self.context = CLIContext()
         self.conversation = ConversationHandler()
@@ -531,19 +491,16 @@ class CLI:
             '/auto': self.system.auto,
             '/fp': self.fp.execute,
         }
-
     def run(self):
         """Main CLI loop."""
         try:
             self.context.old_terminal_settings = setup_raw_mode()
             # Initialize bot
-            bot = AnthropicBot(allow_web_search=True)
+            bot = AnthropicBot()
             bot.add_tools(
-                #bots.tools.python_edit,
+                bots.tools.python_edit,
                 bots.tools.terminal_tools,
-                bots.tools.code_tools.view_dir,
-                bots.tools.python_execution_tool._execute_python_code,
-                #bots.tools.code_tools
+                bots.tools.code_tools
             )
             print("CLI started. Type /help for commands or chat normally.")
             pretty(f"Bot initialized: {bot.name}", "System")
@@ -568,7 +525,6 @@ class CLI:
         finally:
             restore_terminal(self.context.old_terminal_settings)
             print("Goodbye!")
-
     def _handle_command(self, bot: Bot, user_input: str):
         """Handle command input."""
         parts = user_input.split()
@@ -589,7 +545,6 @@ class CLI:
                     pretty("Restored conversation from backup", "System")
         else:
             pretty("Unrecognized command. Try /help.", "System", self.context.config.width, self.context.config.indent)
-
     def _handle_chat(self, bot: Bot, user_input: str):
         """Handle chat input."""
         if not user_input:
@@ -608,12 +563,10 @@ class CLI:
             if self.context.conversation_backup:
                 bot.conversation = self.context.conversation_backup
                 pretty("Restored conversation from backup", "System")
-
 def main():
     """Entry point for the CLI."""
     cli = CLI()
     cli.run()
-
 if __name__ == '__main__':
     main()
 
