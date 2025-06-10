@@ -179,6 +179,7 @@ class ConversationHandler:
             content_preview = node.content[:100] + "..." if len(node.content) > 100 else node.content
             result += f"  '{label}': {content_preview}\n"
         return result.rstrip()
+
 class StateHandler:
     """Handler for bot state management commands."""
     def save(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -195,6 +196,7 @@ class StateHandler:
             return "Save cancelled"
         except Exception as e:
             return f"Error saving bot: {str(e)}"
+        
     def load(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Load bot state."""
         try:
@@ -203,14 +205,15 @@ class StateHandler:
                 filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
             )
             if filename:
-                bot.load(filename)
+                context.bot_instance = bots.load(filename)
                 # Rebuild labeled nodes from conversation tree
                 context.labeled_nodes = {}
-                self._rebuild_labels(bot.conversation, context)
+                self._rebuild_labels(context.bot_instance.conversation, context)
                 return f"Bot loaded from {filename}"
             return "Load cancelled"
         except Exception as e:
             return f"Error loading bot: {str(e)}"
+
     def _rebuild_labels(self, node: ConversationNode, context: CLIContext):
         """Recursively rebuild labeled nodes from conversation tree."""
         if hasattr(node, 'labels'):
@@ -218,6 +221,7 @@ class StateHandler:
                 context.labeled_nodes[label] = node
         for reply in node.replies:
             self._rebuild_labels(reply, context)
+
 class SystemHandler:
     """Handler for system and configuration commands."""
     def help(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -242,7 +246,7 @@ Available commands:
 /label: Save current node with a label for later reference
 /goto: Move to a previously labeled node
 /showlabels: Show all saved labels and their associated conversation content
-/fp: Execute functional prompts (chain, branch, tree_of_thought, etc.)
+/fp: Execute functional prompts (chain, branch, etc.)
 /config: Show or modify CLI configuration
 /exit: Exit the program
 Type your messages normally to chat.
@@ -319,10 +323,10 @@ class FunctionalPromptHandler:
             'branch_while': fp.branch_while,
             'par_branch': fp.par_branch,
             'par_branch_while': fp.par_branch_while,
-            'tree_of_thought': fp.tree_of_thought,
             'prompt_for': fp.prompt_for,
             'par_dispatch': fp.par_dispatch
         }
+
     def execute(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Execute functional prompt wizard."""
         try:
@@ -372,16 +376,17 @@ class FunctionalPromptHandler:
                 return f"Functional prompt '{fp_name}' completed"
         except Exception as e:
             return f"Error executing functional prompt: {str(e)}"
+
     def _collect_parameters(self, fp_name: str, fp_function: Callable) -> Optional[Dict[str, Any]]:
         """Collect parameters for the chosen functional prompt."""
         params = {}
         # Common parameters for most functions
-        if fp_name in ['chain', 'branch', 'par_branch', 'tree_of_thought']:
+        if fp_name in ['chain', 'branch', 'par_branch', 'branch_while', 'par_branch_while']:
             prompts = self._collect_prompts()
             if prompts is None:
                 return None
             params['prompts'] = prompts
-        elif fp_name in ['chain_while', 'prompt_while', 'branch_while', 'par_branch_while']:
+        elif fp_name in ['chain_while', 'prompt_while']:
             # Single prompt for while functions
             prompt = input("Enter prompt: ").strip()
             if not prompt:
@@ -395,18 +400,13 @@ class FunctionalPromptHandler:
         elif fp_name == 'prompt_for':
             # Dynamic prompt function
             print("prompt_for requires a dynamic prompt function and data.")
-            print("This is an advanced feature - implement custom logic as needed.")
+            print("This is an advanced feature - not yet implemented")
             return None
         elif fp_name == 'par_dispatch':
             print("par_dispatch requires multiple bots and a functional prompt.")
-            print("This is an advanced feature - implement custom logic as needed.")
+            print("This is an advanced feature - not yet implemented.")
             return None
-        # Additional parameters for specific functions
-        if fp_name == 'tree_of_thought':
-            recombinator = self._collect_recombinator()
-            if recombinator:
-                params['recombinator_function'] = recombinator
-        return params
+
     def _collect_prompts(self) -> Optional[List[str]]:
         """Collect a list of prompts from user."""
         prompts = []
@@ -420,15 +420,14 @@ class FunctionalPromptHandler:
             print("No prompts entered")
             return None
         return prompts
+
     def _collect_condition(self) -> Optional[Callable]:
         """Collect stop condition from user."""
         conditions = {
             '1': ('tool_used', fp.conditions.tool_used),
             '2': ('tool_not_used', fp.conditions.tool_not_used),
             '3': ('said_DONE', fp.conditions.said_DONE),
-            '4': ('said_STOP', fp.conditions.said_STOP),
-            '5': ('said_FINISHED', fp.conditions.said_FINISHED),
-        }
+            }
         print("\nAvailable stop conditions:")
         for key, (name, _) in conditions.items():
             print(f"  {key}. {name}")
@@ -443,6 +442,7 @@ class FunctionalPromptHandler:
         if choice == 'y':
             return fp.recombinators.simple_concatenate
         return None
+
 # Utility functions (from original auto_terminal.py)
 def check_for_interrupt() -> bool:
     """Check if user pressed Escape without blocking execution."""
@@ -457,6 +457,7 @@ def check_for_interrupt() -> bool:
             termios.tcflush(sys.stdin, termios.TCIOFLUSH)
             return key == '\x1b'  # ESC key
         return False
+
 def setup_raw_mode():
     """Set up terminal for raw input mode on Unix systems."""
     if platform.system() != 'Windows':
@@ -468,6 +469,7 @@ def setup_raw_mode():
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return old_settings
     return None
+
 def restore_terminal(old_settings):
     """Restore terminal settings on Unix systems."""
     if platform.system() != 'Windows' and old_settings is not None:
@@ -664,6 +666,7 @@ def main():
     cli.run()
 if __name__ == '__main__':
     main()
+
 
 
 
