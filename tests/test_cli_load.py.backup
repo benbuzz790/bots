@@ -1,0 +1,154 @@
+﻿import unittest
+import os
+import json
+import tempfile
+from unittest.mock import patch, MagicMock, mock_open
+from io import StringIO
+from contextlib import redirect_stdout
+import bots.dev.cli as cli_module
+from bots.foundation.base import Bot
+class TestCLILoad(unittest.TestCase):
+    """Test suite for CLI load functionality."""
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_bot = MagicMock()
+        self.mock_bot.name = "TestBot"
+        self.mock_bot.conversation = MagicMock()
+        self.mock_bot.conversation.content = "Original response"
+        self.mock_bot.tool_handler = MagicMock()
+        self.mock_bot.tool_handler.requests = []
+        self.mock_bot.tool_handler.results = []
+        self.context = cli_module.CLIContext()
+        self.context.bot_instance = self.mock_bot
+        self.context.labeled_nodes = {"test": "node"}
+        # Use StateHandler which contains the load function
+        self.handler = cli_module.StateHandler()
+    @patch('tkinter.filedialog.askopenfilename')
+    @patch('bots.load')
+    def test_load_success_updates_context(self, mock_bots_load, mock_filedialog):
+        """Test that load function updates context.bot_instance."""
+        # Setup mocks
+        test_filename = "test_bot.json"
+        mock_filedialog.return_value = test_filename
+        new_mock_bot = MagicMock()
+        new_mock_bot.name = "LoadedBot"
+        new_mock_bot.conversation = MagicMock()
+        new_mock_bot.conversation.content = "Loaded response"
+        mock_bots_load.return_value = new_mock_bot
+        # Store original bot reference
+        original_bot = self.context.bot_instance
+        # Call load function
+        result = self.handler.load(self.mock_bot, self.context, [])
+        # Verify the load was called
+        mock_bots_load.assert_called_once_with(test_filename)
+        # Verify context.bot_instance was updated (this should pass now)
+        self.assertNotEqual(self.context.bot_instance, original_bot, 
+                           "Context bot_instance should be updated after load")
+        self.assertEqual(self.context.bot_instance, new_mock_bot,
+                        "Context should reference the loaded bot")
+        self.assertIn("Bot loaded from test_bot.json", result)
+    @patch('tkinter.filedialog.askopenfilename')
+    @patch('bots.load')
+    def test_load_clears_labeled_nodes(self, mock_bots_load, mock_filedialog):
+        """Test that load function clears labeled nodes."""
+        # Setup mocks
+        mock_filedialog.return_value = "test_bot.json"
+        new_bot = MagicMock()
+        new_bot.conversation = MagicMock()
+        mock_bots_load.return_value = new_bot
+        # Ensure labeled_nodes has content
+        self.context.labeled_nodes = {"node1": "value1", "node2": "value2"}
+        # Call load function
+        result = self.handler.load(self.mock_bot, self.context, [])
+        # Verify labeled_nodes was cleared
+        self.assertEqual(self.context.labeled_nodes, {},
+                        "Labeled nodes should be cleared after load")
+    @patch('tkinter.filedialog.askopenfilename')
+    def test_load_cancelled_by_user(self, mock_filedialog):
+        """Test load function when user cancels file dialog."""
+        # User cancels dialog (returns empty string)
+        mock_filedialog.return_value = ""
+        original_bot = self.context.bot_instance
+        original_nodes = self.context.labeled_nodes.copy()
+        # Call load function
+        result = self.handler.load(self.mock_bot, self.context, [])
+        # Verify nothing changed
+        self.assertEqual(self.context.bot_instance, original_bot)
+        self.assertEqual(self.context.labeled_nodes, original_nodes)
+        self.assertEqual(result, "Load cancelled")
+    @patch('tkinter.filedialog.askopenfilename')
+    @patch('bots.load')
+    def test_load_file_error(self, mock_bots_load, mock_filedialog):
+        """Test load function handles file loading errors."""
+        # Setup mocks
+        mock_filedialog.return_value = "nonexistent.json"
+        mock_bots_load.side_effect = FileNotFoundError("File not found")
+        original_bot = self.context.bot_instance
+        original_nodes = self.context.labeled_nodes.copy()
+        # Call load function
+        result = self.handler.load(self.mock_bot, self.context, [])
+        # Verify error handling
+        self.assertIn("Error loading bot", result)
+        self.assertIn("File not found", result)
+        # Verify state wasn't corrupted (should remain unchanged on error)
+        self.assertEqual(self.context.bot_instance, original_bot)
+        self.assertEqual(self.context.labeled_nodes, original_nodes)
+    @patch('builtins.input')
+    @patch('tkinter.filedialog.askopenfilename')
+    @patch('bots.load')
+    def test_load_command_integration(self, mock_bots_load, mock_filedialog, mock_input):
+        """Test /load command integration in CLI."""
+        # Setup mocks
+        mock_filedialog.return_value = "test_bot.json"
+        new_bot = MagicMock()
+        new_bot.name = "LoadedBot"
+        new_bot.conversation = MagicMock()
+        new_bot.conversation.content = "Loaded conversation"
+        mock_bots_load.return_value = new_bot
+        mock_input.side_effect = ['/load', '/exit']
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                cli_module.main()
+            output = buf.getvalue()
+        # Verify load was attempted
+        mock_bots_load.assert_called_once_with("test_bot.json")
+        self.assertIn("Bot loaded from test_bot.json", output)
+    @patch('tkinter.filedialog.askopenfilename')
+    @patch('bots.load')
+    def test_load_calls_rebuild_labels(self, mock_bots_load, mock_filedialog):
+        """Test that load function calls _rebuild_labels."""
+        # Setup mocks
+        mock_filedialog.return_value = "test_bot.json"
+        new_bot = MagicMock()
+        new_bot.conversation = MagicMock()
+        mock_bots_load.return_value = new_bot
+        # Mock the _rebuild_labels method
+        self.handler._rebuild_labels = MagicMock()
+        # Call load function
+        result = self.handler.load(self.mock_bot, self.context, [])
+        # Verify _rebuild_labels was called
+        self.handler._rebuild_labels.assert_called_once_with(new_bot.conversation, self.context)
+    def test_load_function_is_fixed(self):
+        """Verify that the load function correctly updates context."""
+        # This test demonstrates that the load function has been fixed
+        # It should update context.bot_instance, not just create a local variable
+        # Create a mock scenario
+        original_bot = self.context.bot_instance
+        with patch('tkinter.filedialog.askopenfilename') as mock_dialog, \
+             patch('bots.load') as mock_load:
+            mock_dialog.return_value = "test.json"
+            new_bot = MagicMock()
+            new_bot.name = "NewBot"
+            new_bot.conversation = MagicMock()
+            mock_load.return_value = new_bot
+            # Mock _rebuild_labels to avoid AttributeError
+            self.handler._rebuild_labels = MagicMock()
+            # Call load
+            result = self.handler.load(self.mock_bot, self.context, [])
+            # Verify the fix works
+            self.assertNotEqual(self.context.bot_instance, original_bot)
+            self.assertEqual(self.context.bot_instance, new_bot)
+            self.assertEqual(self.context.labeled_nodes, {})
+            self.assertIn("Bot loaded from test.json", result)
+if __name__ == '__main__':
+    unittest.main()

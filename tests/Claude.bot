@@ -1,0 +1,182 @@
+{
+ "name": "Claude",
+ "model_engine": "claude-sonnet-4-20250514",
+ "max_tokens": 64000,
+ "temperature": 0.3,
+ "role": "assistant",
+ "role_description": "a friendly AI assistant",
+ "conversation": {
+  "content": "",
+  "pending_results": [],
+  "role": "empty",
+  "tool_calls": [],
+  "tool_results": [],
+  "node_class": "AnthropicNode",
+  "replies": [
+   {
+    "content": "set width 80",
+    "pending_results": [],
+    "role": "user",
+    "tool_calls": [],
+    "tool_results": [],
+    "node_class": "AnthropicNode",
+    "replies": [
+     {
+      "content": "I'll set the console width to 80 characters using PowerShell.",
+      "pending_results": [
+       {
+        "type": "tool_result",
+        "tool_use_id": "toolu_01FVufuNepB7wXF1PWH7y1Ui",
+        "content": ""
+       }
+      ],
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "type": "tool_use",
+        "id": "toolu_01FVufuNepB7wXF1PWH7y1Ui",
+        "name": "execute_powershell",
+        "input": {
+         "command": "$Host.UI.RawUI.WindowSize = New-Object System.Management.Automation.Host.Size(80, $Host.UI.RawUI.WindowSize.Height)"
+        }
+       }
+      ],
+      "tool_results": [],
+      "node_class": "AnthropicNode"
+     }
+    ]
+   }
+  ]
+ },
+ "system_message": "",
+ "tool_handler": {
+  "class": "bots.foundation.anthropic_bots.AnthropicToolHandler",
+  "tools": [
+   {
+    "name": "execute_powershell",
+    "description": "Executes PowerShell commands in a stateful environment\n\nUse when you need to run PowerShell commands and capture their output. If\nyou have other tools available, you should use this as a fallback when the\nother tools fail. Coerces to utf-8.\n\nPotential use cases:\n- git commands\n- gh cli\n- other cli (which you may need to install using this tool)\n\nParameters:\n- command (str): PowerShell command to execute.\n- output_length_limit (int, optional): Maximum number of lines in the output.\n  If set, output exceeding this limit will be truncated. Default 200.\n\nReturns:\n    str: The complete output from the command execution",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "command": {
+       "type": "string"
+      },
+      "output_length_limit": {
+       "type": "string"
+      },
+      "timeout": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "command"
+     ]
+    }
+   },
+   {
+    "name": "view_dir",
+    "description": "Creates a summary of the directory structure starting from the given path, writing only files\nwith specified extensions and showing venv directories without their contents.\nParameters:\n- start_path (str): The root directory to start scanning from.\n- output_file (str): The name of the file to optionally write the directory structure to.\n- target_extensions (str): String representation of a list of file extensions (e.g. \"['py', 'txt']\").\nReturns:\nstr: A formatted string containing the directory structure, with each directory and file properly indented.\nExample output:\nmy_project/\n    venv/\n    module1/\n        script.py\n        README.md\n    module2/\n        utils.py\ncost: low",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "start_path": {
+       "type": "string"
+      },
+      "output_file": {
+       "type": "string"
+      },
+      "target_extensions": {
+       "type": "string"
+      }
+     },
+     "required": []
+    },
+    "cache_control": {
+     "type": "ephemeral"
+    }
+   }
+  ],
+  "requests": [
+   {
+    "type": "tool_use",
+    "id": "toolu_01FVufuNepB7wXF1PWH7y1Ui",
+    "name": "execute_powershell",
+    "input": {
+     "command": "$Host.UI.RawUI.WindowSize = New-Object System.Management.Automation.Host.Size(80, $Host.UI.RawUI.WindowSize.Height)"
+    }
+   }
+  ],
+  "results": [
+   {
+    "type": "tool_result",
+    "tool_use_id": "toolu_01FVufuNepB7wXF1PWH7y1Ui",
+    "content": ""
+   }
+  ],
+  "modules": {
+   "C:\\Users\\benbu\\Code\\llm-utilities-git\\bots\\bots\\tools\\terminal_tools.py": {
+    "name": "dynamic_module_d64ce3a2b8cfb34ac3eb473953440645",
+    "source": "import os, subprocess, traceback, time, threading\nfrom queue import Queue, Empty\nfrom threading import Thread, Lock, local\nfrom typing import Dict, Generator\nfrom datetime import datetime\n\nfrom bots.dev.decorators import log_errors, handle_errors\n@log_errors\n@handle_errors\ndef execute_powershell(command: str, output_length_limit: str='200', timeout: str = '60') -> str:\n    \"\"\"\n    Executes PowerShell commands in a stateful environment\n\n    Use when you need to run PowerShell commands and capture their output. If\n    you have other tools available, you should use this as a fallback when the\n    other tools fail. Coerces to utf-8.\n\n    Potential use cases:\n    - git commands\n    - gh cli\n    - other cli (which you may need to install using this tool)\n\n    Parameters:\n    - command (str): PowerShell command to execute.\n    - output_length_limit (int, optional): Maximum number of lines in the output.\n      If set, output exceeding this limit will be truncated. Default 200.\n\n    Returns:\n        str: The complete output from the command execution\n    \"\"\"\n    manager = PowerShellManager.get_instance()\n    output = ''.join(manager.execute(command, int(output_length_limit), float(timeout)))\n    return output\n\nclass PowerShellSession:\n    \"\"\"\n    Manages a persistent PowerShell process for stateful command execution.\n    Maintains a single PowerShell process that persists between commands,\n    allowing for stateful operations like changing directories, setting\n    environment variables, or activating virtual environments.\n    \"\"\"\n\n    def __init__(self, timeout: float = 300):\n        self._process = None\n        self._command_counter = 0\n        self._output_queue = Queue()\n        self._error_queue = Queue()\n        self._reader_threads = []\n        self.startupinfo = None\n        if os.name == 'nt':\n            self.startupinfo = subprocess.STARTUPINFO()\n            self.startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW\n\n    def _start_reader_threads(self):\n        \"\"\"Start background threads to read stdout and stderr\"\"\"\n\n        def reader_thread(pipe, queue):\n            try:\n                for line in pipe:\n                    queue.put(line.rstrip('\\n\\r'))\n            finally:\n                queue.put(None)\n        self._reader_threads = [Thread(target=reader_thread, args=(self._process.stdout, self._output_queue), daemon=True), Thread(target=reader_thread, args=(self._process.stderr, self._error_queue), daemon=True)]\n        for thread in self._reader_threads:\n            thread.start()\n\n    def __enter__(self):\n        if not self._process:\n            self._process = subprocess.Popen(['powershell', '-NoProfile', '-NoLogo', '-NonInteractive', '-Command', '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=self.startupinfo, encoding='utf-8', errors='replace', bufsize=1)\n            self._start_reader_threads()\n            init_commands = [\"$VerbosePreference='SilentlyContinue'\", \"$DebugPreference='SilentlyContinue'\", \"$ProgressPreference='SilentlyContinue'\", \"$WarningPreference='SilentlyContinue'\", \"$ErrorActionPreference='Stop'\", \"function prompt { '' }\", \"$PSDefaultParameterValues['*:Encoding']='utf8'\", '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8', '[Console]::InputEncoding=[System.Text.Encoding]::UTF8', '$OutputEncoding=[System.Text.Encoding]::UTF8', \"$env:PYTHONIOENCODING='utf-8'\"]\n            for cmd in init_commands:\n                self._process.stdin.write(cmd + '\\n')\n            self._process.stdin.flush()\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if self._process:\n            try:\n                self._process.terminate()\n                self._process.wait(timeout=5)\n            except:\n                self._process.kill()\n            finally:\n                self._process = None\n                self._output_queue = Queue()\n                self._error_queue = Queue()\n                self._reader_threads = []\n\n    def execute(self, code: str, timeout: float = 60) -> str:\n        \"\"\"\n        Execute PowerShell code and return its complete output.\n\n        Args:\n            code: The PowerShell code to execute\n            timeout: Maximum time in seconds to wait for command completion\n\n        Returns:\n            The complete output from the command(s)\n\n        Raises:\n            Exception if the process is not running or other execution errors\n            TimeoutError if command execution exceeds timeout\n        \"\"\"\n        if not self._process:\n            raise Exception('PowerShell process is not running')\n        try:\n            self._command_counter += 1\n            delimiter = f'<<<COMMAND_{self._command_counter}_COMPLETE>>>'\n            wrapped_code = f\"\\n            $ErrorActionPreference = 'Stop'\\n            \\n            # Execute in main scope\\n            {code}\\n            \\n            # Collect output after execution\\n            $output = @()\\n            try {{\\n                if ($?) {{ \\n                    # Add any output from the last command\\n                    $output += $LASTOUTPUT\\n                }}\\n            }} catch {{\\n                Write-Error $_\\n            }}\\n            $output | ForEach-Object {{ $_ }}\\n            Write-Output '{delimiter}'\\n            \"\n            while not self._output_queue.empty():\n                self._output_queue.get_nowait()\n            while not self._error_queue.empty():\n                self._error_queue.get_nowait()\n            self._process.stdin.write(wrapped_code + '\\n')\n            self._process.stdin.flush()\n            output_lines = []\n            error_output = []\n            start_time = time.time()\n            done = False\n            while not done:\n                if time.time() - start_time > timeout:\n                    raise TimeoutError(f'Command execution timed out after {timeout} seconds')\n                if self._process.poll() is not None:\n                    raise Exception('PowerShell process unexpectedly closed')\n                try:\n                    line = self._output_queue.get(timeout=0.1)\n                    if line is None:\n                        raise Exception('PowerShell process closed stdout')\n                    if line == delimiter:\n                        done = True\n                    else:\n                        output_lines.append(line)\n                except Empty:\n                    pass\n                try:\n                    while True:\n                        line = self._error_queue.get_nowait()\n                        if line is None:\n                            raise Exception('PowerShell process closed stderr')\n                        error_output.append(line)\n                except Empty:\n                    pass\n            all_output = [line for line in output_lines if line.strip()]\n            if error_output:\n                error_lines = [line for line in error_output if line.strip()]\n                if error_lines:\n                    all_output.extend(['', 'Errors:', *error_lines])\n            return '\\n'.join(all_output)\n        except Exception as e:\n            self.__exit__(type(e), e, e.__traceback__)\n            raise\n\nclass PowerShellManager:\n    \"\"\"\n    Thread-safe PowerShell session manager that maintains separate sessions.\n    Each instance automatically gets its own unique ID and isolated PowerShell session.\n    Includes session recovery logic for lost or failed sessions.\n    \"\"\"\n    _instances: Dict[str, 'PowerShellManager'] = {}\n    _lock = Lock()\n\n    @classmethod\n    def get_instance(cls, bot_id: str=None) -> 'PowerShellManager':\n        \"\"\"\n        Get or create a PowerShell manager instance for the given bot_id.\n        If no bot_id is provided, uses the current thread name.\n        \n        Args:\n            bot_id: Optional identifier for the bot instance\n            \n        Returns:\n            The PowerShell manager instance for this bot/thread\n        \"\"\"\n        if bot_id is None:\n            bot_id = threading.current_thread().name\n        with cls._lock:\n            if bot_id not in cls._instances:\n                instance = cls.__new__(cls)\n                instance.bot_id = bot_id\n                instance._thread_local = local()\n                instance.created_at = datetime.now()\n                cls._instances[bot_id] = instance\n            return cls._instances[bot_id]\n\n    def __init__(self):\n        \"\"\"\n        Private initializer - use get_instance() instead.\n        \"\"\"\n        raise RuntimeError('Use PowerShellManager.get_instance() to create or get a PowerShell manager')\n\n    @property\n    def session(self) -> PowerShellSession:\n        \"\"\"\n        Get the PowerShell session for the current thread.\n        Creates a new session if none exists or if the current session is invalid.\n        \"\"\"\n        try:\n            if not hasattr(self._thread_local, 'session'):\n                print(f'Session not found for {self.bot_id}, starting new session')\n                self._start_new_session()\n            elif not self._is_session_valid():\n                print(f'Invalid session detected for {self.bot_id}, starting new session')\n                self.cleanup()\n                self._start_new_session()\n            return self._thread_local.session\n        except Exception as e:\n            print(f'Error accessing session: {str(e)}. Starting new session.')\n            self._start_new_session()\n            return self._thread_local.session\n\n    def _start_new_session(self):\n        \"\"\"\n        Starts a new PowerShell session for the current thread.\n        \"\"\"\n        self._thread_local.session = PowerShellSession()\n        self._thread_local.session.__enter__()\n\n    def _is_session_valid(self) -> bool:\n        \"\"\"\n        Checks if the current session is valid and responsive.\n        Returns:\n            bool: True if session is valid, False otherwise\n        \"\"\"\n        try:\n            if not hasattr(self._thread_local, 'session'):\n                return False\n            session = self._thread_local.session\n            if not session._process or session._process.poll() is not None:\n                return False\n            test_output = session.execute(\"Write-Output 'test'\", timeout=5)\n            return 'test' in test_output\n        except Exception as e:\n            print(f'Session validation failed: {str(e)}')\n            return False\n\n    def execute(self, code: str, output_length_limit: str='60', timeout: float = 60) -> Generator[str, None, None]:\n        \"\"\"\n        Execute PowerShell code in the session with automatic recovery.\n\n        Args:\n            code: PowerShell code to execute\n            output_length_limit: Maximum number of lines in output\n\n        Yields:\n            Command output as strings\n        \"\"\"\n        max_retries = 0\n        retry_count = 0\n\n        def _process_error(error):\n            error_message = f'Tool Failed: {str(error)}\\n'\n            error_message += f\"Traceback:\\n{''.join(traceback.format_tb(error.__traceback__))}\"\n            return error_message\n        while retry_count <= max_retries:\n            try:\n                processed_code = _process_commands(code)\n                output = self.session.execute(processed_code, timeout)\n                if output_length_limit is not None and output:\n                    output_length_limit_int = int(output_length_limit)\n                    lines = output.splitlines()\n                    if len(lines) > output_length_limit_int:\n                        half_limit = output_length_limit_int // 2\n                        start_lines = lines[:half_limit]\n                        end_lines = lines[-half_limit:]\n                        lines_omitted = len(lines) - output_length_limit_int\n                        truncated_output = '\\n'.join(start_lines)\n                        truncated_output += f'\\n\\n... {lines_omitted} lines omitted ...\\n\\n'\n                        truncated_output += '\\n'.join(end_lines)\n                        output_file = os.path.join(os.getcwd(), f'ps_output_{self.bot_id}.txt')\n                        with open(output_file, 'w', encoding='utf-8', errors='replace') as f:\n                            f.write(output)\n                        truncated_output += f'\\nFull output saved to {output_file}'\n                        yield truncated_output\n                    else:\n                        yield output\n                else:\n                    yield output\n                break\n            except Exception as e:\n                retry_count += 1\n                if retry_count <= max_retries:\n                    print(f'Command failed, attempt {retry_count} of {max_retries}. Starting new session...')\n                    self.cleanup()\n                else:\n                    yield _process_error(e)\n\n    def cleanup(self):\n        \"\"\"\n        Clean up the PowerShell session for the current thread.\n        Should be called when work is done or when a session needs to be reset.\n        \"\"\"\n        if hasattr(self._thread_local, 'session'):\n            try:\n                self._thread_local.session.__exit__(None, None, None)\n            except Exception as e:\n                print(f'Error during session cleanup: {str(e)}')\n            finally:\n                delattr(self._thread_local, 'session')\n\ndef _get_active_sessions() -> list:\n    \"\"\"\n    Get information about all active PowerShell sessions.\n\n    Returns:\n        List of dictionaries containing session information\n    \"\"\"\n    sessions = []\n    for thread in threading.enumerate():\n        if hasattr(thread, '_thread_local'):\n            local_dict = thread._thread_local.__dict__\n            if 'ps_manager' in local_dict:\n                manager = local_dict['ps_manager']\n                sessions.append({'bot_id': manager.bot_id, 'thread_name': thread.name, 'created_at': manager.created_at.isoformat(), 'active': hasattr(manager._thread_local, 'session')})\n    return sessions\n\n@handle_errors\ndef _execute_powershell_stateless(code: str, output_length_limit: str='120'):\n    \"\"\"\n    Executes PowerShell code in a stateless environment\n\n    Use when you need to run PowerShell commands and capture their output. If\n    you have other tools available, you should use this as a fallback when the\n    other tools fail. Coerces to utf-8 encoding.\n\n    Potential use cases:\n    - git commands\n    - gh cli\n    - other cli (which you may need to install using this tool)\n\n    Parameters:\n    - code (str): PowerShell code to execute.\n    - output_length_limit (int, optional): Maximum number of lines in the output.\n      If set, output exceeding this limit will be truncated. Default 60.\n\n    Returns command output or an error message.\n    \"\"\"\n\n    def _process_error(error):\n        error_message = f'Tool Failed: {str(error)}\\n'\n        error_message += f\"Traceback:\\n{''.join(traceback.format_tb(error.__traceback__))}\"\n        return error_message\n    output = ''\n    try:\n        processed_code = _process_commands(code)\n        setup_encoding = '\\n        $PSDefaultParameterValues[\\'*:Encoding\\'] = \\'utf8\\'\\n        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8\\n        [Console]::InputEncoding = [System.Text.Encoding]::UTF8\\n        $OutputEncoding = [System.Text.Encoding]::UTF8\\n        $env:PYTHONIOENCODING = \"utf-8\"\\n        '\n        wrapped_code = f'{setup_encoding}; {processed_code}'\n        startupinfo = None\n        if os.name == 'nt':\n            startupinfo = subprocess.STARTUPINFO()\n            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW\n        process = subprocess.Popen(['powershell', '-NoProfile', '-NonInteractive', '-Command', wrapped_code], stdout=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo, encoding='utf-8', errors='replace')\n        stdout, stderr = process.communicate(timeout=300)\n        output = stdout\n        if stderr:\n            output += stderr\n    except subprocess.TimeoutExpired as e:\n        process.kill()\n        output += 'Error: Command execution timed out after 300 seconds.'\n    except Exception as e:\n        output += _process_error(e)\n    if output_length_limit is not None and output:\n        output_length_limit = int(output_length_limit)\n        lines = output.splitlines()\n        if len(lines) > output_length_limit:\n            half_limit = output_length_limit // 2\n            start_lines = lines[:half_limit]\n            end_lines = lines[-half_limit:]\n            lines_omitted = len(lines) - output_length_limit\n            truncated_output = '\\n'.join(start_lines)\n            truncated_output += f'\\n\\n... {lines_omitted} lines omitted ...\\n\\n'\n            truncated_output += '\\n'.join(end_lines)\n            output_file = os.path.join(os.getcwd(), 'ps_output.txt')\n            with open(output_file, 'w', encoding='utf-8', errors='replace') as f:\n                f.write(output)\n            truncated_output += f'\\nFull output saved to {output_file}'\n            return truncated_output\n    return output\n\ndef _process_commands(code: str) -> str:\n    \"\"\"\n    Process PowerShell commands separated by &&, ensuring each command only runs if the previous succeeded.\n    Uses PowerShell error handling to catch both command failures and non-existent commands.\n\n    Args:\n        code (str): The original command string with && separators\n\n    Returns:\n        str: PowerShell code with proper error checking between commands\n    \"\"\"\n    commands = code.split(' && ')\n    if len(commands) == 1:\n        return code\n    processed_commands = []\n    for cmd in commands:\n        wrapped_cmd = f'$ErrorActionPreference = \"Stop\"; try {{ {cmd}; $LastSuccess = $true }} catch {{ $LastSuccess = $false; $_ }}'\n        processed_commands.append(wrapped_cmd)\n    return '; '.join([processed_commands[0]] + [f'if ($LastSuccess) {{ {cmd} }}' for cmd in processed_commands[1:]])\n",
+    "file_path": "C:\\Users\\benbu\\Code\\llm-utilities-git\\bots\\bots\\tools\\terminal_tools.py",
+    "code_hash": "c792ca20988c184c42b285ff45973c41",
+    "globals": {
+     "os": "<module 'os' (frozen)>",
+     "subprocess": "<module 'subprocess' from 'C:\\\\Users\\\\benbu\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312-arm64\\\\Lib\\\\subprocess.py'>",
+     "traceback": "<module 'traceback' from 'C:\\\\Users\\\\benbu\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312-arm64\\\\Lib\\\\traceback.py'>",
+     "time": "<module 'time' (built-in)>",
+     "threading": "<module 'threading' from 'C:\\\\Users\\\\benbu\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312-arm64\\\\Lib\\\\threading.py'>",
+     "Queue": "<class 'queue.Queue'>",
+     "Empty": "<class '_queue.Empty'>",
+     "Thread": "<class 'threading.Thread'>",
+     "Lock": "<built-in function allocate_lock>",
+     "local": "<class '_thread._local'>",
+     "Dict": "typing.Dict",
+     "Generator": "typing.Generator",
+     "datetime": "<class 'datetime.datetime'>",
+     "log_errors": "<function log_errors at 0x000001C438BD7C40>",
+     "handle_errors": "<function handle_errors at 0x000001C438BD7D80>",
+     "execute_powershell": "<function execute_powershell at 0x000001C43A55D120>",
+     "PowerShellSession": "<class 'dynamic_module_d64ce3a2b8cfb34ac3eb473953440645.PowerShellSession'>",
+     "PowerShellManager": "<class 'dynamic_module_d64ce3a2b8cfb34ac3eb473953440645.PowerShellManager'>",
+     "_get_active_sessions": "<function _get_active_sessions at 0x000001C43A55D8A0>",
+     "_execute_powershell_stateless": "<function _execute_powershell_stateless at 0x000001C43A55CAE0>",
+     "_process_commands": "<function _process_commands at 0x000001C43A55CA40>"
+    }
+   },
+   "dynamic_module_640822593540018287": {
+    "name": "dynamic_module_4526204974991232178",
+    "source": "def view_dir(start_path: str='.', output_file=None, target_extensions: str=\"['py', 'txt', 'md']\"):\n    \"\"\"\n    Creates a summary of the directory structure starting from the given path, writing only files\n    with specified extensions and showing venv directories without their contents.\n    Parameters:\n    - start_path (str): The root directory to start scanning from.\n    - output_file (str): The name of the file to optionally write the directory structure to.\n    - target_extensions (str): String representation of a list of file extensions (e.g. \"['py', 'txt']\").\n    Returns:\n    str: A formatted string containing the directory structure, with each directory and file properly indented.\n    Example output:\n    my_project/\n        venv/\n        module1/\n            script.py\n            README.md\n        module2/\n            utils.py\n    cost: low\n    \"\"\"\n    extensions_list = [ext.strip().strip('\\'\"') for ext in target_extensions.strip('[]').split(',')]\n    extensions_list = ['.' + ext if not ext.startswith('.') else ext for ext in extensions_list]\n    output_text = []\n    for root, dirs, files in os.walk(start_path):\n        level = root.replace(start_path, '').count(os.sep)\n        indent = '    ' * level\n        basename = os.path.basename(root)\n        is_venv = basename in ['venv', 'env', '.env'] or 'pyvenv.cfg' in files\n        if is_venv:\n            line = f'{indent}{basename}/'\n            output_text.append(line)\n            dirs[:] = []\n            continue\n        has_relevant_files = False\n        for _, _, fs in os.walk(root):\n            if any((f.endswith(tuple(extensions_list)) for f in fs)):\n                has_relevant_files = True\n                break\n        if has_relevant_files:\n            line = f'{indent}{basename}/'\n            output_text.append(line)\n            subindent = '    ' * (level + 1)\n            for file in files:\n                if file.endswith(tuple(extensions_list)):\n                    line = f'{subindent}{file}'\n                    output_text.append(line)\n    if output_file is not None:\n        with open(output_file, 'w') as file:\n            file.write('\\n'.join(output_text))\n    return '\\n'.join(output_text)",
+    "file_path": "dynamic_module_640822593540018287",
+    "code_hash": "86f1a4f783bb8243ea8842233218bd60",
+    "globals": {
+     "os": "<module 'os' (frozen)>",
+     "view_dir": "<function view_dir at 0x000001C43A55DA80>"
+    }
+   },
+   "C:\\Users\\benbu\\Code\\llm-utilities-git\\bots\\bots\\tools\\python_execution_tool.py": {
+    "name": "dynamic_module_3d257f167bef0dcc979d7717f29aae92",
+    "source": "import textwrap, ast, os, subprocess, traceback\nfrom bots.utils.helpers import _clean\nfrom bots.utils.helpers import _py_ast_to_source\nfrom bots.dev.decorators import handle_errors\n@handle_errors\ndef _execute_python_code(code: str, timeout: int=300) ->str:\n    \"\"\"\n    Executes python code in a stateless environment with cross-platform timeout handling.\n    Parameters:\n    - code (str): Syntactically correct python code\n    - timeout (int): Maximum execution time in seconds (default: 300)\n    Returns stdout or an error message.\n    cost: varies\n    \"\"\"\n    def create_wrapper_ast():\n        wrapper_code = textwrap.dedent(\n            \"\"\"\n            import os\n            import sys\n            import traceback\n            import time\n            sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))\n            if sys.platform == 'win32':\n                import codecs\n                sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')\n                sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')\n            def main():\n                pass  # Placeholder for user code\n            if __name__ == '__main__':\n                try:\n                    main()\n                except Exception as error:\n                    print(f\"An error occurred: {str(error)}\", file=sys.stderr)\n                    traceback.print_exc(file=sys.stderr)\n                    sys.exit(1)\n            \"\"\"\n            )\n        return ast.parse(wrapper_code)\n    def insert_code_into_wrapper(wrapper_ast, code_ast, timeout_value):\n        main_func = next(node for node in wrapper_ast.body if isinstance(\n            node, ast.FunctionDef) and node.name == 'main')\n        main_func.body = code_ast.body\n        return wrapper_ast\n    if not isinstance(timeout, int) or timeout <= 0:\n        raise ValueError('Timeout must be a positive integer')\n    code_ast = ast.parse(_clean(code))\n    wrapper_ast = create_wrapper_ast()\n    combined_ast = insert_code_into_wrapper(wrapper_ast, code_ast, timeout)\n    final_code = _py_ast_to_source(combined_ast)\n    package_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))\n    scripts_dir = os.path.join(package_root, 'scripts')\n    if not os.path.exists(scripts_dir):\n        os.makedirs(scripts_dir)\n    temp_file_name = os.path.join(scripts_dir, f'temp_script_{os.getpid()}.py')\n    with open(temp_file_name, 'w', encoding='utf-8') as temp_file:\n        temp_file.write(final_code)\n        temp_file.flush()\n        os.fsync(temp_file.fileno())\n    env = os.environ.copy()\n    env['PYTHONIOENCODING'] = 'utf-8'\n    process = subprocess.Popen(['python', temp_file_name], stdout=\n        subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding=\n        'utf-8', creationflags=subprocess.CREATE_NO_WINDOW if os.name ==\n        'nt' else 0, env=env)\n    stdout, stderr = process.communicate(timeout=timeout)\n    # Clean up temp file\n    if os.path.exists(temp_file_name):\n        os.remove(temp_file_name)\n    if process.returncode != 0:\n        return stderr or 'Process failed with no error message'\n    return stdout + stderr\n",
+    "file_path": "C:\\Users\\benbu\\Code\\llm-utilities-git\\bots\\bots\\tools\\python_execution_tool.py",
+    "code_hash": "2a2a39ff67a728456b857b57271070cd",
+    "globals": {
+     "textwrap": "<module 'textwrap' from 'C:\\\\Users\\\\benbu\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312-arm64\\\\Lib\\\\textwrap.py'>",
+     "ast": "<module 'ast' from 'C:\\\\Users\\\\benbu\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312-arm64\\\\Lib\\\\ast.py'>",
+     "os": "<module 'os' (frozen)>",
+     "subprocess": "<module 'subprocess' from 'C:\\\\Users\\\\benbu\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312-arm64\\\\Lib\\\\subprocess.py'>",
+     "traceback": "<module 'traceback' from 'C:\\\\Users\\\\benbu\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312-arm64\\\\Lib\\\\traceback.py'>",
+     "_clean": "<function _clean at 0x000001C4381AC680>",
+     "_py_ast_to_source": "<function _py_ast_to_source at 0x000001C4381AC720>",
+     "handle_errors": "<function handle_errors at 0x000001C438BD7D80>",
+     "_execute_python_code": "<function _execute_python_code at 0x000001C43A55E520>"
+    }
+   }
+  },
+  "function_paths": {
+   "execute_powershell": "C:\\Users\\benbu\\Code\\llm-utilities-git\\bots\\bots\\tools\\terminal_tools.py",
+   "view_dir": "dynamic_module_640822593540018287"
+  }
+ },
+ "autosave": true,
+ "allow_web_search": false,
+ "bot_class": "AnthropicBot"
+}

@@ -1,11 +1,33 @@
-import os
+﻿import os
 import shutil
 import glob
-
+import pytest
+from pathlib import Path
 def cleanup_test_artifacts():
     """Clean up test artifacts that may be left behind after test runs."""
-    cleanup_patterns = ['test_patch_file.txt*', 'benbuzz790/private_tests', 'test.txt', 'lazy_*.py', '*.tmp', 'temp_*', '*.bot', 'ps_output*.txt', 'minimal.py', 'CICD.bot', 'Claude.bot']
-    cleanup_dirs = ['test_patch_file.txt_dir', 'test_patch_file.txt_newdir']
+    cleanup_patterns = [
+        'test_patch_file.txt*', 
+        'benbuzz790/private_tests', 
+        'test.txt', 
+        'lazy_*.py', 
+        '*.tmp', 
+        'temp_*', 
+        '*.bot', 
+        'ps_output*.txt', 
+        'minimal.py', 
+        'CICD.bot', 
+        'Claude.bot',
+        '**/*_test_output*',
+        '**/test_workspace_*',
+        '**/*.pyc',
+        '**/__pycache__'
+    ]
+    cleanup_dirs = [
+        'test_patch_file.txt_dir', 
+        'test_patch_file.txt_newdir',
+        '.pytest_cache',
+        '__pycache__'
+    ]
     print("Cleaning up test artifacts...")
     # Clean up files matching patterns
     for pattern in cleanup_patterns:
@@ -27,13 +49,20 @@ def cleanup_test_artifacts():
                 print(f"Removed directory: {dir_path}")
         except Exception as e:
             print(f"Warning: Could not remove {dir_path}: {e}")
-    # Clean up pytest cache
-    try:
-        if os.path.exists('.pytest_cache'):
-            shutil.rmtree('.pytest_cache')
-            print("Removed .pytest_cache directory")
-    except Exception as e:
-        print(f"Warning: Could not remove .pytest_cache: {e}")
     print("Test artifact cleanup complete.")
+def pytest_sessionfinish(session, exitstatus):
+    """Pytest hook that runs after all tests complete."""
+    cleanup_test_artifacts()
+def pytest_runtest_teardown(item, nextitem):
+    """Pytest hook that runs after each test."""
+    # Quick cleanup of common LLM-generated files
+    quick_patterns = ['*.tmp', 'temp_*', 'test_output_*']
+    for pattern in quick_patterns:
+        for file_path in glob.glob(pattern):
+            try:
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+            except:
+                pass  # Ignore errors for quick cleanup
 if __name__ == '__main__':
     cleanup_test_artifacts()

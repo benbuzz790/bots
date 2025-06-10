@@ -7,7 +7,7 @@ from datetime import datetime
 from bots.dev.decorators import log_errors, handle_errors
 @log_errors
 @handle_errors
-def execute_powershell(command: str, output_length_limit: str='200', timeout: str = '60') -> str:
+def execute_powershell(command: str, output_length_limit: str='2500', timeout: str = '60') -> str:
     """
     Executes PowerShell commands in a stateful environment
 

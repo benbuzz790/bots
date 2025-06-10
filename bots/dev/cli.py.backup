@@ -17,6 +17,7 @@ import re
 import platform
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Callable, Tuple
+from tkinter import filedialog
 import textwrap
 # Import platform-specific modules
 if platform.system() == 'Windows':
@@ -32,6 +33,7 @@ import bots.tools.python_edit
 import bots.tools.terminal_tools
 import bots.tools.code_tools
 import bots.flows.functional_prompts as fp
+
 def create_tool_result_callback(context):
     """Create a callback function that prints tool results immediately."""
     def tool_result_callback(responses, nodes):
@@ -47,6 +49,7 @@ def create_tool_result_callback(context):
                 if result_str.strip():
                     pretty(f'Tool Results\n\n{result_str}', "System", context.config.width, context.config.indent)
     return tool_result_callback
+
 class CLIConfig:
     """Configuration management for CLI settings."""
     def __init__(self):
@@ -176,49 +179,41 @@ class ConversationHandler:
             content_preview = node.content[:100] + "..." if len(node.content) > 100 else node.content
             result += f"  '{label}': {content_preview}\n"
         return result.rstrip()
+
 class StateHandler:
     """Handler for bot state management commands."""
     def save(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Save bot state."""
         try:
-            filename = input("Save filename (without extension): ").strip()
-            if not filename:
-                return "Save cancelled - no filename provided"
-            if not filename.endswith('.bot'):
-                filename = filename + '.bot'
-            bot.save(filename)
-            return f"Bot saved to {filename}"
+            filename = filedialog.asksaveasfilename(
+                title="Save Bot",
+                defaultextension=".json",
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+            )
+            if filename:
+                bot.save(filename)
+                return f"Bot saved to {filename}"
+            return "Save cancelled"
         except Exception as e:
             return f"Error saving bot: {str(e)}"
+        
     def load(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Load bot state."""
         try:
-            filename = input("Load filename: ").strip()
-            if not filename:
-                return "Load cancelled - no filename provided"
-            if not os.path.exists(filename):
-                # Try adding .bot extension if file doesn't exist
-                if not filename.endswith('.bot'):
-                    filename_with_ext = filename + '.bot'
-                    if os.path.exists(filename_with_ext):
-                        filename = filename_with_ext
-                    else:
-                        return f"File not found: {filename}"
-                else:
-                    return f"File not found: {filename}"
-            # Load the new bot
-            new_bot = Bot.load(filename)
-            # Navigate to the end of the conversation (most recent message)
-            while new_bot.conversation.replies:
-                new_bot.conversation = new_bot.conversation.replies[-1]
-            # Update context to use the new bot
-            context.bot_instance = new_bot
-            # Rebuild labeled nodes from conversation tree
-            context.labeled_nodes = {}
-            self._rebuild_labels(new_bot.conversation, context)
-            return f"Bot loaded from {filename}. Conversation restored to most recent message."
+            filename = filedialog.askopenfilename(
+                title="Load Bot",
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+            )
+            if filename:
+                context.bot_instance = bots.load(filename)
+                # Rebuild labeled nodes from conversation tree
+                context.labeled_nodes = {}
+                self._rebuild_labels(context.bot_instance.conversation, context)
+                return f"Bot loaded from {filename}"
+            return "Load cancelled"
         except Exception as e:
             return f"Error loading bot: {str(e)}"
+
     def _rebuild_labels(self, node: ConversationNode, context: CLIContext):
         """Recursively rebuild labeled nodes from conversation tree."""
         if hasattr(node, 'labels'):
@@ -226,6 +221,7 @@ class StateHandler:
                 context.labeled_nodes[label] = node
         for reply in node.replies:
             self._rebuild_labels(reply, context)
+
 class SystemHandler:
     """Handler for system and configuration commands."""
     def help(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -239,8 +235,8 @@ Available commands:
 /help: Show this help message
 /verbose: Show tool requests and results (default on)
 /quiet: Hide tool requests and results
-/save: Save the current bot (prompts for filename)
-/load: Load a previously saved bot (prompts for filename)
+/save: Save the current bot
+/load: Load a previously saved bot
 /up: "rewind" the conversation by one turn by moving up the conversation tree
 /down: Move down the conversation tree. Requests index of reply if there are multiple.
 /left: Move to this conversation node's left sibling
@@ -290,6 +286,7 @@ Use '/config set <setting> <value>' to modify settings."""
             except ValueError:
                 return f"Invalid value for {setting}: {value}"
         return "Usage: /config or /config set <setting> <value>"
+    
     def auto(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Run bot autonomously until it stops using tools."""
         try:
@@ -314,6 +311,7 @@ Use '/config set <setting> <value>' to modify settings."""
             if context.old_terminal_settings:
                 restore_terminal(context.old_terminal_settings)
             return f"Error during autonomous execution: {str(e)}"
+
 class FunctionalPromptHandler:
     """Handler for functional prompt commands."""
     def __init__(self):
@@ -328,6 +326,7 @@ class FunctionalPromptHandler:
             'prompt_for': fp.prompt_for,
             'par_dispatch': fp.par_dispatch
         }
+
     def execute(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Execute functional prompt wizard."""
         try:
@@ -377,6 +376,7 @@ class FunctionalPromptHandler:
                 return f"Functional prompt '{fp_name}' completed"
         except Exception as e:
             return f"Error executing functional prompt: {str(e)}"
+
     def _collect_parameters(self, fp_name: str, fp_function: Callable) -> Optional[Dict[str, Any]]:
         """Collect parameters for the chosen functional prompt."""
         params = {}
@@ -406,6 +406,7 @@ class FunctionalPromptHandler:
             print("par_dispatch requires multiple bots and a functional prompt.")
             print("This is an advanced feature - not yet implemented.")
             return None
+
     def _collect_prompts(self) -> Optional[List[str]]:
         """Collect a list of prompts from user."""
         prompts = []
@@ -419,6 +420,7 @@ class FunctionalPromptHandler:
             print("No prompts entered")
             return None
         return prompts
+
     def _collect_condition(self) -> Optional[Callable]:
         """Collect stop condition from user."""
         conditions = {
@@ -440,6 +442,7 @@ class FunctionalPromptHandler:
         if choice == 'y':
             return fp.recombinators.simple_concatenate
         return None
+
 # Utility functions (from original auto_terminal.py)
 def check_for_interrupt() -> bool:
     """Check if user pressed Escape without blocking execution."""
@@ -454,6 +457,7 @@ def check_for_interrupt() -> bool:
             termios.tcflush(sys.stdin, termios.TCIOFLUSH)
             return key == '\x1b'  # ESC key
         return False
+
 def setup_raw_mode():
     """Set up terminal for raw input mode on Unix systems."""
     if platform.system() != 'Windows':
@@ -465,11 +469,13 @@ def setup_raw_mode():
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return old_settings
     return None
+
 def restore_terminal(old_settings):
     """Restore terminal settings on Unix systems."""
     if platform.system() != 'Windows' and old_settings is not None:
         fd = sys.stdin.fileno()
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
 def clean_dict(d: dict, indent: int = 4, level: int = 1):
     """
     Clean a dict containing recursive json dumped strings for printing
@@ -490,6 +496,7 @@ def clean_dict(d: dict, indent: int = 4, level: int = 1):
     cleaned_dict = cleaned_dict.replace('\\"', '"')
     cleaned_dict = cleaned_dict.replace('\\\\', '\\')
     return cleaned_dict
+
 def display_tool_results(bot: Bot, context: CLIContext):
     """Display tool requests and results in a readable format with bot message first."""
     requests = bot.tool_handler.requests
@@ -506,6 +513,7 @@ def display_tool_results(bot: Bot, context: CLIContext):
         for request in requests:
             tool_name, _ = bot.tool_handler.tool_name_and_input(request)
             pretty(f'{bot.name} used {tool_name}', "System", context.config.width, context.config.indent)
+
 def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: int = 4) -> None:
     """Print a string nicely formatted."""
     prefix = f"{name}: " if name is not None else ""
@@ -595,12 +603,12 @@ class CLI:
                     if command:
                         if msg:
                             # Command with message - handle chat first, then command
-                            self._handle_chat(self.context.bot_instance, msg)
+                            self._handle_chat(bot, msg)
                         # Handle the command (pass the full command string for compatibility)
-                        self._handle_command(self.context.bot_instance, command)
+                        self._handle_command(bot, command)
                     else:
                         # Regular chat
-                        self._handle_chat(self.context.bot_instance, user_input)
+                        self._handle_chat(bot, user_input)
                 except KeyboardInterrupt:
                     print("\nUse /exit to quit")
                 except EOFError:
@@ -608,7 +616,7 @@ class CLI:
                 except Exception as e:
                     print(f"Error: {str(e)}")
                     if self.context.conversation_backup:
-                        self.context.bot_instance.conversation = self.context.conversation_backup
+                        bot.conversation = self.context.conversation_backup
                         print("Restored conversation from backup")
         finally:
             restore_terminal(self.context.old_terminal_settings)
@@ -633,6 +641,7 @@ class CLI:
                     pretty("Restored conversation from backup", "System")
         else:
             pretty("Unrecognized command. Try /help.", "System", self.context.config.width, self.context.config.indent)
+
     def _handle_chat(self, bot: Bot, user_input: str):
         """Handle chat input."""
         if not user_input:
@@ -657,3 +666,11 @@ def main():
     cli.run()
 if __name__ == '__main__':
     main()
+
+
+
+
+
+
+
+
