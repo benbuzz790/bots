@@ -1,5 +1,5 @@
 {
-  "verbose": true,
+  "verbose": false,
   "width": 80,
   "indent": 4
 }

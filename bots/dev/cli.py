@@ -1,4 +1,4 @@
-﻿"""
+"""
 Modern CLI for bot interactions with improved architecture.
 This module provides a clean, extensible command-line interface for interacting
 with AI bots, featuring functional prompts, conversation management, and robust

@@ -1,4 +1,4 @@
-﻿"""Tests for functional prompt callback functionality."""
+"""Tests for functional prompt callback functionality."""
 import pytest
 from unittest.mock import Mock, MagicMock
 from bots.flows.functional_prompts import (

@@ -1,4 +1,4 @@
-﻿"""Tests for CLI callback functionality and *_while functions with prompt arrays."""
+"""Tests for CLI callback functionality and *_while functions with prompt arrays."""
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 from bots.flows.functional_prompts import chain_while, branch_while, par_branch_while, conditions

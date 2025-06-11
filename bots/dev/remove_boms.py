@@ -2,6 +2,7 @@ import os
 import codecs
 
 def remove_bom_from_files():
+    nboms = 0
     def remove_bom(file_path):
         with open(file_path, 'rb') as file:
             content = file.read()
@@ -9,6 +10,7 @@ def remove_bom_from_files():
             with open(file_path, 'wb') as file:
                 file.write(content[len(codecs.BOM_UTF8):])
             print(f"Removed BOM from: {file_path}")
+            nboms += 1
         else:
             print(f"No BOM found in: {file_path}")
 
@@ -31,7 +33,7 @@ def remove_bom_from_files():
             except Exception as e:
                 print(f"Error processing {file_path}: {str(e)}")
 
-    print("BOM removal process completed.")
+    print(f"BOM removal process completed. {nboms} BOMs removed")
 
 if __name__ == "__main__":
     remove_bom_from_files()
