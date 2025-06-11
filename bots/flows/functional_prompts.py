@@ -220,7 +220,7 @@ def single_prompt(bot: Bot, prompt: Prompt) -> Tuple[Response, ResponseNode]:
     node = bot.conversation
     return (response, node)
 
-def chain(bot: Bot, prompts: List[Prompt],
+def chain(bot: Bot, prompt_list: List[Prompt],
     callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None) -> Tuple[List[Response], List[ResponseNode]]:
     """Execute a sequence of prompts that build on each other.
 
@@ -238,7 +238,7 @@ def chain(bot: Bot, prompts: List[Prompt],
         bot (Bot): The bot to interact with. The bot maintains conversation
             context throughout the chain, allowing each step to reference
             and build upon previous responses
-        prompts (List[Prompt]): Ordered list of prompts to process sequentially.
+        prompt_list (List[Prompt]): Ordered list of prompts to process sequentially.
             For best results:
             - Make prompts build progressively
             - Reference previous steps when needed
@@ -253,7 +253,7 @@ def chain(bot: Bot, prompts: List[Prompt],
     """
     responses = []
     nodes = []
-    for prompt in prompts:
+    for prompt in prompt_list:
         response = bot.respond(prompt)
         responses.append(response)
         nodes.append(bot.conversation)
@@ -265,7 +265,7 @@ def chain(bot: Bot, prompts: List[Prompt],
     return responses, nodes
 
 
-def branch(bot: Bot, prompts: List[Prompt],
+def branch(bot: Bot, prompt_list: List[Prompt],
     callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None) -> Tuple[List[Response], List[ResponseNode]]:
     """Create multiple independent conversation paths from the current state.
 
@@ -335,7 +335,7 @@ def branch(bot: Bot, prompts: List[Prompt],
     original_conversation = bot.conversation
     responses = []
     nodes = []
-    for prompt in prompts:
+    for prompt in prompt_list:
         bot.conversation = original_conversation
         try:
             response = bot.respond(prompt)
@@ -1208,38 +1208,90 @@ def par_dispatch(
     
     return results
 
+def broadcast_to_leaves(
+    bot: Bot,
+    prompt: Prompt,
+    skip: List[str],
+    continue_prompt: Optional[Prompt] = None,
+    stop_condition: Optional[Condition] = None,
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
+) -> Tuple[List[Response], List[ResponseNode]]:
+    """Send a prompt to all leaf nodes in parallel, with optional iteration."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
+    original_autosave = bot.autosave
+    original_conversation = bot.conversation
+    bot.autosave = False
+    temp_file = 'temp_broadcast_bot.bot'
+    bot.save(temp_file)
 
+    # Find all leaf nodes starting from current position
+    def find_leaves(node: ConversationNode) -> List[ConversationNode]:
+        """Recursively find all leaf nodes from the given node."""
+        if not node.replies:
+            return [node]
+        leaves = []
+        for reply in node.replies:
+            leaves.extend(find_leaves(reply))
+        return leaves
 
+    all_leaves = find_leaves(bot.conversation)
 
+    # Filter out skipped leaves based on labels
+    target_leaves = []
+    for leaf in all_leaves:
+        should_skip = False
+        if hasattr(leaf, 'labels'):
+            for label in leaf.labels:
+                if label in skip:
+                    should_skip = True
+                    break
+        if not should_skip:
+            target_leaves.append(leaf)
 
+    responses = [None] * len(target_leaves)
+    nodes = [None] * len(target_leaves)
 
+    def process_leaf(index: int, leaf: ConversationNode):
+        """Process a single leaf node with optional iteration in parallel."""
+        try:
+            leaf_bot = Bot.load(temp_file)
+            leaf_bot.autosave = False
+            leaf_bot.conversation = leaf
+            response = leaf_bot.respond(prompt)
+            if continue_prompt is not None and stop_condition is not None:
+                while not stop_condition(leaf_bot):
+                    response = leaf_bot.respond(continue_prompt)
+                    if callback:
+                        try:
+                            callback([response], [leaf_bot.conversation])
+                        except Exception:
+                            pass
+            elif callback:
+                try:
+                    callback([response], [leaf_bot.conversation])
+                except Exception:
+                    pass
+            final_node = leaf_bot.conversation
+            final_node.parent = original_conversation
+            original_conversation.replies.append(final_node)
+            return index, response, final_node
+        except Exception:
+            return index, None, None
 
+    # Process all leaves in parallel
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(process_leaf, i, leaf) for i, leaf in enumerate(target_leaves)]
+        for future in as_completed(futures):
+            idx, response, node = future.result()
+            responses[idx] = response
+            nodes[idx] = node
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # Restore bot state
+    bot.autosave = original_autosave
+    bot.conversation = original_conversation
+    try:
+        os.remove(temp_file)
+    except:
+        pass
+    return responses, nodes

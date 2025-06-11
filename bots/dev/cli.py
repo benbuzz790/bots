@@ -15,6 +15,7 @@ import json
 import os
 import re
 import platform
+import argparse
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Callable, Tuple
 import textwrap
@@ -196,6 +197,12 @@ class StateHandler:
             filename = input("Load filename: ").strip()
             if not filename:
                 return "Load cancelled - no filename provided"
+            return self._load_bot_from_file(filename, context)
+        except Exception as e:
+            return f"Error loading bot: {str(e)}"
+    def _load_bot_from_file(self, filename: str, context: CLIContext) -> str:
+        """Load bot from file and update context. Used by both interactive load and CLI args."""
+        try:
             if not os.path.exists(filename):
                 # Try adding .bot extension if file doesn't exist
                 if not filename.endswith('.bot'):
@@ -269,10 +276,10 @@ Type your messages normally to chat.
         """Show or modify configuration."""
         if not args:
             return f"""Current configuration:
-  verbose: {context.config.verbose}
-  width: {context.config.width}
-  indent: {context.config.indent}
-Use '/config set <setting> <value>' to modify settings."""
+      verbose: {context.config.verbose}
+      width: {context.config.width}
+      indent: {context.config.indent}
+    Use '/config set <setting> <value>' to modify settings."""
         if len(args) >= 3 and args[0] == 'set':
             setting = args[1]
             value = args[2]
@@ -318,16 +325,17 @@ class FunctionalPromptHandler:
     """Handler for functional prompt commands."""
     def __init__(self):
         self.fp_functions = {
-            'chain': fp.chain,
-            'chain_while': fp.chain_while,
-            'prompt_while': fp.prompt_while,
-            'branch': fp.branch,
-            'branch_while': fp.branch_while,
-            'par_branch': fp.par_branch,
-            'par_branch_while': fp.par_branch_while,
-            'prompt_for': fp.prompt_for,
-            'par_dispatch': fp.par_dispatch
-        }
+                    'chain': fp.chain,
+                    'chain_while': fp.chain_while,
+                    'prompt_while': fp.prompt_while,
+                    'branch': fp.branch,
+                    'branch_while': fp.branch_while,
+                    'par_branch': fp.par_branch,
+                    'par_branch_while': fp.par_branch_while,
+                    'prompt_for': fp.prompt_for,
+                    'par_dispatch': fp.par_dispatch,
+                    'broadcast_to_leaves': fp.broadcast_to_leaves
+                }
     def execute(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Execute functional prompt wizard."""
         try:
@@ -385,7 +393,7 @@ class FunctionalPromptHandler:
             prompts = self._collect_prompts()
             if prompts is None:
                 return None
-            params['prompts'] = prompts
+            params['prompt_list'] = prompts
         elif fp_name in ['chain_while', 'prompt_while']:
             # Single prompt for while functions
             prompt = input("Enter prompt: ").strip()
@@ -406,6 +414,7 @@ class FunctionalPromptHandler:
             print("par_dispatch requires multiple bots and a functional prompt.")
             print("This is an advanced feature - not yet implemented.")
             return None
+        return params
     def _collect_prompts(self) -> Optional[List[str]]:
         """Collect a list of prompts from user."""
         prompts = []
@@ -529,12 +538,13 @@ def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: i
         print(line)
 class CLI:
     """Main CLI class that orchestrates all handlers."""
-    def __init__(self):
+    def __init__(self, bot_filename: Optional[str] = None):
         self.context = CLIContext()
         self.conversation = ConversationHandler()
         self.state = StateHandler()
         self.system = SystemHandler()
         self.fp = FunctionalPromptHandler()
+        self.bot_filename = bot_filename
         # Command registry
         self.commands = {
             '/help': self.system.help,
@@ -559,16 +569,22 @@ class CLI:
         try:
             print("Hello, world!")
             self.context.old_terminal_settings = setup_raw_mode()
-            # Initialize bot
-            bot = AnthropicBot()
-            self.context.bot_instance = bot
-            bot.add_tools(
-                bots.tools.terminal_tools,
-                bots.tools.code_tools.view_dir,
-                bots.tools.python_execution_tool,
-            )
+            # Initialize bot - either load from file or create new
+            if self.bot_filename:
+                # Load bot from command line argument
+                result = self.state._load_bot_from_file(self.bot_filename, self.context)
+                if "Error" in result or "File not found" in result:
+                    print(f"Failed to load bot: {result}")
+                    print("Starting with new bot instead...")
+                    self._initialize_new_bot()
+                else:
+                    print(result)
+                    if self.context.bot_instance:
+                        pretty(f"Bot loaded: {self.context.bot_instance.name}", "System")
+            else:
+                # Create new bot
+                self._initialize_new_bot()
             print("CLI started. Type /help for commands or chat normally.")
-            pretty(f"Bot initialized: {bot.name}", "System")
             while True:
                 try:
                     user_input = input(">>> ").strip()
@@ -613,6 +629,15 @@ class CLI:
         finally:
             restore_terminal(self.context.old_terminal_settings)
             print("Goodbye!")
+    def _initialize_new_bot(self):
+        """Initialize a new bot with default tools."""
+        bot = AnthropicBot()
+        self.context.bot_instance = bot
+        bot.add_tools(
+            bots.tools.terminal_tools,
+            bots.tools.code_tools.view_dir,
+            bots.tools.python_execution_tool,
+        )
     def _handle_command(self, bot: Bot, user_input: str):
         """Handle command input."""
         parts = user_input.split()
@@ -651,9 +676,29 @@ class CLI:
             if self.context.conversation_backup:
                 bot.conversation = self.context.conversation_backup
                 pretty("Restored conversation from backup", "System")
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description='Interactive CLI for AI bots with conversation management.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python -m bots.dev.cli                    # Start with new bot
+  python -m bots.dev.cli mybot.bot          # Load bot from file
+  python -m bots.dev.cli saved_conversation # Load bot (auto-adds .bot extension)
+        """
+    )
+    parser.add_argument(
+        'filename', 
+        nargs='?', 
+        help='Bot file to load (.bot extension will be added if not present)'
+    )
+    return parser.parse_args()
 def main():
     """Entry point for the CLI."""
-    cli = CLI()
+    args = parse_args()
+    cli = CLI(bot_filename=args.filename)
     cli.run()
 if __name__ == '__main__':
     main()
+
