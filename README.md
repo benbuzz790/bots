@@ -1,8 +1,8 @@
-# bots: making LLM tool use convenient and powerful
+# bots: Convenient agentic programming
 
 ## Overview
 
-**bots** (bɒts), ***n.pl.*** : Language Models which are instruct-tuned, have the ability to use tools, and are encapsulated with model parameters, metadata, tools, and conversation history.
+**bots** (bɒts), ***n.pl.*** : Tool-using agents, encapsulated with model parameters, conversation history, and tool source code in a single sharable file.
 
 The bots library provides a structured interface for working with such agents, aiming to make LLM tools more convenient, accessible, and sharable for developers and researchers.
 
@@ -29,8 +29,7 @@ The bots library provides a structured interface for working with such agents, a
 
 3. **Tree-based Conversations**
    - Implements a linked tree structure for conversation histories
-   - Allows branching conversations and exploring multiple dialogue paths
-   - Efficiently manages context by only sending path to root
+   - Allows branching conversations and exploring multiple prompt paths
 
    Example of using conversation branching:
    ```python
@@ -68,14 +67,28 @@ The bots library provides a structured interface for working with such agents, a
 
 ## Key Features
 
-1. **Pre-built Code Tools**
+1. **Pre-built Tools**
    - Built-in tools for:
-     - File operations (read, write, modify)
-     - Code manipulation and analysis
-     - Terminal operations (PowerShell execution)
+     - Powershell execution
+     - Python execution
    - Tool state preservation: When tools are added to a bot and the bot is saved, all tool context 
      (including source code and dependencies) is preserved, allowing the bot to be shared with others 
-     who can use the same tools without additional setup
+     who can use the same tools without additional setup (beyond installing this and any other required
+     libraries for the tools).
+
+2. **Functional Prompts**
+   - A functional prompt is function which sends a bot a prompt or sequence of prompts in a particular way.
+   - A 'chain' prompt, for example, sends an array of prompts one after the other:
+     ```python
+     import functional_prompts as fp
+     import bots
+     bot = bots.load('my_file.bot')
+     fp.chain(bot, ["View the directory", "Read cli.py", "Make me a mermaid diagram of the program flow"])
+     ```
+   - A 'branch' prompt is similar to a chain, but creates a new conversation branch for each prompt in the list.
+   - Parallel branching is easy with the par_branch fp. General parallelization is possible with the par_dispatch fp.
+   - Why "functional prompt" and not "workflow?" To emphasize that these are *composable*. 
+   - See functional_prompts.py for all available functional prompts.
 
 2. **CLI Interface**
    The CLI interface provides an advanced interface for working with bots interactively. It allows you to
@@ -88,11 +101,14 @@ The bots library provides a structured interface for working with such agents, a
    ```
 
    Key capabilities:
-   - Navigate conversation history with /up, /down, /left, /right commands
+   - Navigate conversation history with /up, /down, /left, /right, /label, and /goto commands
    - Enable autonomous operation with /auto command
    - Control tool output visibility with /verbose and /quiet
-   - Save and load conversation states
-   - Execute Python and PowerShell commands directly
+   - Save and load conversation states with /save and /load
+   - Run a functional prompt with /fp
+        - This starts a wizard to choose a functional prompt and fill in it's parameters
+        - Try parallel branching with 'par_branch_while' to make multiple files at the same time
+        - Try 'broadcast_to_leaves' afterward to debug each file at the same time
 
 3. **Lazy Decorator**
    The Lazy Decorator enables *runtime code generation* using LLMs. When applied to a function or class,
