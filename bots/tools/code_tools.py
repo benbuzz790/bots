@@ -67,6 +67,8 @@ def view(file_path: str, start_line: str = None, end_line: str = None,
         except UnicodeDecodeError:
             continue
     return f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
+
+@handle_errors
 def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py', 'txt', 'md']"):
     """
     Creates a summary of the directory structure starting from the given path, writing only files
@@ -117,6 +119,8 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
         with open(output_file, 'w') as file:
             file.write('\n'.join(output_text))
     return '\n'.join(output_text)
+
+
 @handle_errors
 def patch_edit(file_path: str, patch_content: str):
     """
@@ -138,9 +142,13 @@ def patch_edit(file_path: str, patch_content: str):
     encodings = ['utf-8', 'utf-16', 'utf-16le', 'ascii', 'cp1252', 'iso-8859-1']
     content = None
     used_encoding = 'utf-8'
+    
+    # Create directory if needed
     dir_path = os.path.dirname(file_path)
     if dir_path:
         os.makedirs(dir_path, exist_ok=True)
+    
+    # Read existing file or start with empty content
     if not os.path.exists(file_path):
         content = ''
     else:
@@ -152,44 +160,55 @@ def patch_edit(file_path: str, patch_content: str):
                     break
             except UnicodeDecodeError:
                 continue
+    
     if content is None and os.path.exists(file_path):
         return f"Error: Unable to read existing file with any of the attempted encodings: {', '.join(encodings)}"
+    
     if not patch_content.strip():
         return 'Error: patch_content is empty.'
+    
     original_lines = content.splitlines() if content else []
     current_lines = original_lines.copy()
     changes_made = []
     line_offset = 0
-    # Clean up to prevent some common errors.
+    
+    # Clean up patch content
     patch_content = textwrap.dedent(patch_content)
     patch_content = '\n' + patch_content
     hunks = patch_content.split('\n@@')[1:]
+    
     if not hunks:
         return 'Error: No valid patch hunks found. (No instances of "\\n@@". Did you accidentally indent the headers?)'
+    
     for hunk in hunks:
         hunk = hunk.strip()
         if not hunk:
             continue
+        
         try:
             header_end = hunk.index('\n')
             header = hunk[:header_end].strip()
             if not header.endswith('@@'):
                 header = header + ' @@'
+            
             old_range, new_range = header.rstrip(' @').split(' +')
             old_start = int(old_range.split(',')[0].lstrip('- ')) - 1  # Convert to 0-based
-            # new_start = int(new_range.split(',')[0]) - 1  # Unused, also would be 0-based
+            
             hunk_lines = _normalize_header_lines(hunk[header_end:].splitlines()[1:])
         except (ValueError, IndexError) as e:
             return f'Error parsing hunk header: {str(e)}\nHeader: {header}'
+        
+        # Parse hunk into components
         context_before = []
         context_after = []
         removals = []
         additions = []
+        
         for line in hunk_lines:
             if not line:
                 continue
             if not (line.startswith('+') or line.startswith('-')):
-                if not removals and (not additions):
+                if not removals and not additions:
                     context_before.append(line)
                 else:
                     context_after.append(line)
@@ -197,97 +216,440 @@ def patch_edit(file_path: str, patch_content: str):
                 removals.append(line[1:])
             elif line.startswith('+'):
                 additions.append(line[1:])
-        if not removals and (not additions):
-            return f'Error: No additons or removals found in hunk starting with {hunk_lines[0][0:20]}'
-            continue
-        # Create a new file if appropriate
-        if len(current_lines) == 0 and old_start == 0 and (not context_before) and (not removals):
+        
+        if not removals and not additions:
+            return f'Error: No additions or removals found in hunk starting with {hunk_lines[0][:20] if hunk_lines else "empty hunk"}'
+        
+        # Handle new file creation - must come before hierarchy check
+        # Debug: Let's be very explicit about the conditions
+        file_is_empty = len(current_lines) == 0
+        patch_starts_at_zero = old_start == 0  
+        no_context = len(context_before) == 0
+        no_removals = len(removals) == 0
+        
+        if file_is_empty and patch_starts_at_zero and no_context and no_removals:
             current_lines.extend(additions)
             changes_made.append('Applied changes to new file')
             continue
-        adjusted_start = old_start + line_offset
-        found = False
-        match_line = adjusted_start
-        exact_match = False
-        # Try to match at expected position with or without whitespace (0-based)
-        if adjusted_start <= len(current_lines):
-            found, was_whitespace = _check_match_type(current_lines, adjusted_start, context_before)
-            if found:
-                exact_match = not was_whitespace
-                if was_whitespace:
-                    changes_made.append(f'Note: Applied hunk starting with {hunk_lines[0][0:20]}, but had to ignore whitespace to find match')
-                else:
-                    changes_made.append(f'Applied hunk starting with {hunk_lines[0][0:20]} with exact match')
-        # Try to match at any position with or without whitespace
-        if not found:
-            matches = []
-            whitespace_matches = []
-            for i in range(0, len(current_lines) - len(context_before) + 1):  # start at 0!
-                found, was_whitespace = _check_match_type(current_lines, i, context_before)
-                if found:
-                    if was_whitespace:
-                        whitespace_matches.append(i)
-                    else:
-                        matches.append(i)
-                        exact_match = True
-            # Apply exact match if exactly one is found
-            if matches:
-                if len(matches) > 1:
-                    match_locations = '\n'.join((f'- at line {m + 1}' for m in matches))
-                    return f'Error: Multiple possible matches found:\n{match_locations} for hunk starting with {hunk_lines[0][0:20]}\nPlease provide more context to disambiguate.'
-                match_line = matches[0]
-                changes_made.append(f'Note: Applied hunk starting with {hunk_lines[0][0:20]} at line {match_line + 1} (different from specified line {old_start + 1})')
-                found = True
-            # Apply whitespace match if exactly one is found (and no exact match found)
-            elif whitespace_matches:
-                if len(whitespace_matches) > 1:
-                    match_locations = '\n'.join((f'- at line {m + 1}' for m in whitespace_matches))
-                    return f'Error: Multiple possible matches found:\n{match_locations}\nPlease provide more context to disambiguate.'
-                match_line = whitespace_matches[0]
-                changes_made.append(f'Note: Applied hunk starting with {hunk_lines[0][0:20]} at line {match_line + 1} (different from specified line {old_start + 1}), and had to ignore whitespace to find match')
-                found = True
-        # If no match found ignoring position and whitespace, send error with best match.
-        if not found and context_before:
-            _, best_line, match_quality, _ = _find_block_in_content(current_lines, context_before, ignore_whitespace=True)
-            if match_quality > 0.05:
-                context = _get_context(current_lines, best_line - 1, 2)
-                return f'Error: Could not find match. Best potential match: {best_line}\nContext:\n{context}\nMatch quality: {match_quality:.2f}'
-            else:
-                context = _get_context(current_lines, old_start, 2) if old_start >= 0 else []
-                return f'Error: Could not find match or close match.\nExpected:\n{context_before}\nFound:\n{context}'
-        # Apply changes
+        
+        # Apply new matching hierarchy
+        match_result = _find_match_with_hierarchy(
+            current_lines, old_start + line_offset, context_before, removals, additions
+        )
+        
+        if not match_result['found']:
+            return match_result['error']
+        
+        # Apply the changes
+        match_line = match_result['line']
+        indented_additions = match_result['additions']
         pos = match_line + len(context_before)
-        if exact_match:
-            indented_additions = additions
-        else:
-            target_indent = ''
-            if len(current_lines) > 0:
-                if pos < len(current_lines):
-                    if removals:
-                        target_indent = _get_line_indentation(current_lines[pos])
-                    else:
-                        target_indent = _get_line_indentation(current_lines[pos - 1]) if pos > 0 else ''
-                elif pos > 0:
-                    target_indent = _get_line_indentation(current_lines[pos - 1])
-            indented_additions = _adjust_indentation(additions, target_indent)
+        
         if removals:
             current_lines[pos:pos + len(removals)] = indented_additions
         else:
             current_lines[pos:pos] = indented_additions
+        
         line_offset += len(additions) - len(removals)
+        changes_made.append(match_result['message'])
+    
     if changes_made:
         new_content = '\n'.join(current_lines)
         if not new_content.endswith('\n'):
             new_content += '\n'
+        
         with open(file_path, 'w', encoding=used_encoding) as file:
             file.write(new_content)
+        
         return 'Successfully applied patches:\n' + '\n'.join(changes_made)
+    
     return 'No changes were applied'
+
+
+def _find_match_with_hierarchy(current_lines, expected_line, context_before, removals, additions):
+    """
+    Implement the new 5-step matching hierarchy.
+    Returns dict with keys: found, line, additions, message, error
+    """
+    
+    # Special case: if no context and no removals, this might be a pure insertion
+    # that should go at the expected line (common for new file scenarios that slip through)
+    if not context_before and not removals:
+        if expected_line <= len(current_lines):
+            return {
+                'found': True,
+                'line': expected_line,
+                'additions': additions,  
+                'message': f'Applied pure insertion at line {expected_line + 1}',
+                'error': None
+            }
+    
+    # Step 1: Check exact match at line numbers (line numbers + context + indentation)
+    if _check_exact_match_at_position(current_lines, expected_line, context_before, removals):
+        return {
+            'found': True,
+            'line': expected_line,
+            'additions': additions,
+            'message': f'Applied hunk with exact match at line {expected_line + 1}',
+            'error': None
+        }
+    
+    # Step 2: Check exact match ignoring line numbers (context + indentation match anywhere)
+    exact_match_line = _find_exact_match_anywhere(current_lines, context_before, removals)
+    if exact_match_line is not None:
+        return {
+            'found': True,
+            'line': exact_match_line,
+            'additions': additions,
+            'message': f'Applied hunk with exact match at line {exact_match_line + 1} (different from specified line {expected_line + 1})',
+            'error': None
+        }
+    
+    # Step 3: Check match at line numbers ignoring whitespace
+    if _check_whitespace_match_at_position(current_lines, expected_line, context_before, removals):
+        if not context_before:
+            return {
+                'found': False,
+                'line': None,
+                'additions': None,
+                'message': None,
+                'error': 'Error: Need context lines to determine correct indentation when whitespace differs'
+            }
+        
+        adjusted_additions = _adjust_additions_to_context(
+            current_lines, expected_line, context_before, additions
+        )
+        return {
+            'found': True,
+            'line': expected_line,
+            'additions': adjusted_additions,
+            'message': f'Applied hunk at line {expected_line + 1} with indentation adjustment',
+            'error': None
+        }
+    
+    # Step 4: Check match anywhere ignoring whitespace
+    whitespace_match_line = _find_whitespace_match_anywhere(current_lines, context_before, removals)
+    if whitespace_match_line is not None:
+        if not context_before:
+            return {
+                'found': False,
+                'line': None,
+                'additions': None,
+                'message': None,
+                'error': 'Error: Need context lines to determine correct indentation when whitespace differs'
+            }
+        
+        adjusted_additions = _adjust_additions_to_context(
+            current_lines, whitespace_match_line, context_before, additions
+        )
+        return {
+            'found': True,
+            'line': whitespace_match_line,
+            'additions': adjusted_additions,
+            'message': f'Applied hunk at line {whitespace_match_line + 1} (different from specified line {expected_line + 1}) with indentation adjustment',
+            'error': None
+        }
+    
+    # Step 5: Fuzzy matching - find best partial match
+    if context_before:
+        _, best_line, match_quality, _ = _find_block_in_content(current_lines, context_before, ignore_whitespace=True)
+        if match_quality > 0.05:
+            context = _get_context(current_lines, best_line - 1, 2)
+            return {
+                'found': False,
+                'line': None,
+                'additions': None,
+                'message': None,
+                'error': f'Error: Could not find match. Best potential match at lines {best_line} to {best_line + len(context_before) - 1}\nContext:\n' + '\n'.join(context) + f'\nMatch quality: {match_quality:.2f}'
+            }
+    
+    return {
+        'found': False,
+        'line': None,
+        'additions': None,
+        'message': None,
+        'error': 'Error: Could not find any suitable match for the patch context'
+    }
+
+def _check_exact_match_at_position(current_lines, line_pos, context_before, removals):
+    """Check if there's an exact match at the specified position."""
+    if line_pos < 0 or line_pos + len(context_before) > len(current_lines):
+        return False
+    
+    # Check context lines
+    for i, ctx_line in enumerate(context_before):
+        if current_lines[line_pos + i] != ctx_line:
+            return False
+    
+    # Check removal lines if present
+    if removals:
+        removal_pos = line_pos + len(context_before)
+        if removal_pos + len(removals) > len(current_lines):
+            return False
+        for i, rem_line in enumerate(removals):
+            if current_lines[removal_pos + i] != rem_line:
+                return False
+    
+    return True
+
+
+def _find_exact_match_anywhere(current_lines, context_before, removals):
+    """Find exact match anywhere in the file, ignoring line numbers."""
+    if not context_before and not removals:
+        return None
+    
+    search_lines = context_before + removals
+    
+    for i in range(len(current_lines) - len(search_lines) + 1):
+        match = True
+        for j, search_line in enumerate(search_lines):
+            if current_lines[i + j] != search_line:
+                match = False
+                break
+        if match:
+            return i
+    
+    return None
+
+
+def _check_whitespace_match_at_position(current_lines, line_pos, context_before, removals):
+    """Check if there's a whitespace-ignoring match at the specified position."""
+    if line_pos < 0 or line_pos + len(context_before) > len(current_lines):
+        return False
+    
+    # Check context lines ignoring whitespace
+    for i, ctx_line in enumerate(context_before):
+        if current_lines[line_pos + i].strip() != ctx_line.strip():
+            return False
+    
+    # Check removal lines if present
+    if removals:
+        removal_pos = line_pos + len(context_before)
+        if removal_pos + len(removals) > len(current_lines):
+            return False
+        for i, rem_line in enumerate(removals):
+            if current_lines[removal_pos + i].strip() != rem_line.strip():
+                return False
+    
+    return True
+
+
+def _find_whitespace_match_anywhere(current_lines, context_before, removals):
+    """Find whitespace-ignoring match anywhere in the file."""
+    if not context_before and not removals:
+        return None
+    
+    search_lines = context_before + removals
+    
+    for i in range(len(current_lines) - len(search_lines) + 1):
+        match = True
+        for j, search_line in enumerate(search_lines):
+            if current_lines[i + j].strip() != search_line.strip():
+                match = False
+                break
+        if match:
+            return i
+    
+    return None
+
+def _adjust_additions_to_context(current_lines, match_line, context_before, additions):
+    """
+    Adjust additions indentation based on context line indentation difference.
+    
+    The logic:
+    1. Find first non-empty context line in patch
+    2. Compare its indentation to corresponding line in actual file
+    3. Apply that indentation difference to all addition lines
+    """
+    if not context_before:
+        return None  # Error should be handled by caller
+    
+    if not additions:
+        return additions
+    
+    # Find first non-empty context line
+    patch_context_line = None
+    context_index = None
+    for i, ctx_line in enumerate(context_before):
+        if ctx_line.strip():  # Skip empty lines
+            patch_context_line = ctx_line
+            context_index = i
+            break
+    
+    if patch_context_line is None:
+        # All context lines are empty, can't determine baseline
+        return additions
+    
+    # Get indentation of context line in patch vs actual file
+    patch_indent = _get_line_indentation(patch_context_line)
+    actual_file_line = current_lines[match_line + context_index]
+    actual_indent = _get_line_indentation(actual_file_line)
+    
+    # Calculate the indentation difference
+    indent_diff_spaces = len(actual_indent) - len(patch_indent)
+    
+    # Apply the difference to all addition lines
+    adjusted_additions = []
+    for addition in additions:
+        current_addition_indent = _get_line_indentation(addition)
+        new_indent_spaces = len(current_addition_indent) + indent_diff_spaces
+        
+        # Ensure we don't go negative
+        if new_indent_spaces < 0:
+            new_indent_spaces = 0
+            
+        new_indent = ' ' * new_indent_spaces
+        line_content = addition.lstrip()
+        adjusted_line = new_indent + line_content
+        adjusted_additions.append(adjusted_line)
+    
+    return adjusted_additions
+
+def _check_exact_match_at_position(current_lines, line_pos, context_before, removals):
+    """Check if there's an exact match at the specified position."""
+    if line_pos < 0 or line_pos + len(context_before) > len(current_lines):
+        return False
+    
+    # Check context lines
+    for i, ctx_line in enumerate(context_before):
+        if current_lines[line_pos + i] != ctx_line:
+            return False
+    
+    # Check removal lines if present
+    if removals:
+        removal_pos = line_pos + len(context_before)
+        if removal_pos + len(removals) > len(current_lines):
+            return False
+        for i, rem_line in enumerate(removals):
+            if current_lines[removal_pos + i] != rem_line:
+                return False
+    
+    return True
+
+
+def _find_exact_match_anywhere(current_lines, context_before, removals):
+    """Find exact match anywhere in the file, ignoring line numbers."""
+    if not context_before and not removals:
+        return None
+    
+    search_lines = context_before + removals
+    
+    for i in range(len(current_lines) - len(search_lines) + 1):
+        match = True
+        for j, search_line in enumerate(search_lines):
+            if current_lines[i + j] != search_line:
+                match = False
+                break
+        if match:
+            return i
+    
+    return None
+
+
+def _check_whitespace_match_at_position(current_lines, line_pos, context_before, removals):
+    """Check if there's a whitespace-ignoring match at the specified position."""
+    if line_pos < 0 or line_pos + len(context_before) > len(current_lines):
+        return False
+    
+    # Check context lines ignoring whitespace
+    for i, ctx_line in enumerate(context_before):
+        if current_lines[line_pos + i].strip() != ctx_line.strip():
+            return False
+    
+    # Check removal lines if present
+    if removals:
+        removal_pos = line_pos + len(context_before)
+        if removal_pos + len(removals) > len(current_lines):
+            return False
+        for i, rem_line in enumerate(removals):
+            if current_lines[removal_pos + i].strip() != rem_line.strip():
+                return False
+    
+    return True
+
+
+def _find_whitespace_match_anywhere(current_lines, context_before, removals):
+    """Find whitespace-ignoring match anywhere in the file."""
+    if not context_before and not removals:
+        return None
+    
+    search_lines = context_before + removals
+    
+    for i in range(len(current_lines) - len(search_lines) + 1):
+        match = True
+        for j, search_line in enumerate(search_lines):
+            if current_lines[i + j].strip() != search_line.strip():
+                match = False
+                break
+        if match:
+            return i
+    
+    return None
+
+
+def _adjust_additions_to_context(current_lines, match_line, context_before, additions):
+    """
+    Adjust additions indentation based on context line indentation difference.
+    
+    The logic:
+    1. Find first non-empty context line in patch
+    2. Compare its indentation to corresponding line in actual file
+    3. Apply that indentation difference to all addition lines
+    """
+    if not context_before:
+        return None  # Error should be handled by caller
+    
+    if not additions:
+        return additions
+    
+    # Find first non-empty context line
+    patch_context_line = None
+    context_index = None
+    for i, ctx_line in enumerate(context_before):
+        if ctx_line.strip():  # Skip empty lines
+            patch_context_line = ctx_line
+            context_index = i
+            break
+    
+    if patch_context_line is None:
+        # All context lines are empty, can't determine baseline
+        return additions
+    
+    # Get indentation of context line in patch vs actual file
+    patch_indent_len = len(_get_line_indentation(patch_context_line))
+    actual_file_line = current_lines[match_line + context_index]
+    actual_indent_len = len(_get_line_indentation(actual_file_line))
+    
+    # Calculate the indentation difference
+    indent_diff_spaces = actual_indent_len - patch_indent_len
+    
+    # Apply the difference to all addition lines
+    adjusted_additions = []
+    for addition in additions:
+        if not addition.strip():  # Empty line
+            adjusted_additions.append(addition)
+            continue
+            
+        current_addition_indent_len = len(_get_line_indentation(addition))
+        new_indent_spaces = current_addition_indent_len + indent_diff_spaces
+        
+        # Ensure we don't go negative
+        if new_indent_spaces < 0:
+            new_indent_spaces = 0
+            
+        new_indent = ' ' * new_indent_spaces
+        line_content = addition.lstrip()
+        adjusted_line = new_indent + line_content
+        adjusted_additions.append(adjusted_line)
+    
+    return adjusted_additions
+
 def _get_context(lines, center_idx, context_size):
     """Get context lines around an index with line numbers."""
     start = max(0, center_idx - context_size)
     end = min(len(lines), center_idx + context_size + 1)
     return [f'{i + 1}:{line}' for i, line in enumerate(lines[start:end], start)]
+
 def _find_block_in_content(content_lines: list, block_lines: list, ignore_whitespace: bool=False) -> tuple[bool, int, float, bool]:
     """Helper function to find a block of lines anywhere in the content.
     Returns (found, line_number, match_quality, was_whitespace_match)"""
@@ -316,34 +678,8 @@ def _find_block_in_content(content_lines: list, block_lines: list, ignore_whites
 def _get_line_indentation(line: str) -> str:
     """Extract the indentation from a line."""
     return line[:len(line) - len(line.lstrip())]
-def _check_match_type(content_lines: list, start_pos: int, context_lines: list, removal_lines: list=None) -> tuple[bool, bool]:
-    """
-    Check if there's a match at the given position (0-based).
-    Returns (found_match, was_whitespace_match)
-    """
-    if start_pos + len(context_lines) > len(content_lines):
-        return (False, False)
-    context_exact = True
-    context_whitespace = True
-    for i, ctx_line in enumerate(context_lines):
-        content_line = content_lines[start_pos + i]
-        if content_line != ctx_line:
-            context_exact = False
-        if content_line.strip() != ctx_line.strip():
-            context_whitespace = False
-    if not context_whitespace:
-        return (False, False)
-    if removal_lines:
-        pos = start_pos + len(context_lines)
-        if pos + len(removal_lines) > len(content_lines):
-            return (False, False)
-        for i, rem_line in enumerate(removal_lines):
-            content_line = content_lines[pos + i]
-            if content_line != rem_line:
-                context_exact = False
-            if content_line.strip() != rem_line.strip():
-                return (False, False)
-    return (True, not context_exact)
+
+
 def _normalize_path(file_path: str) -> str:
     """
     Normalize file path to use consistent separators and handle both / and \\.
