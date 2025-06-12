@@ -40,11 +40,11 @@ The bots library provides a structured interface for working with such agents, a
    
    # Branch 1: Update a file
    bot.conversation = context_complete
-   security_response = bot.respond("Refactor cli.py")
+   branch1_response = bot.respond("Refactor cli.py")
    
    # Branch 2: Update a different file
    bot.conversation = context_complete
-   performance_response = bot.respond("Refactor test_cli.py")
+   branch2_response = bot.respond("Refactor test_cli.py")
    ```
 
 4. **Functional Prompting**
