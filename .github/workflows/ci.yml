@@ -18,5 +18,5 @@ jobs:
         pip install pytest flake8
     - name: Lint with flake8
       run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-    - name: Test with pytest (basic tests only)
-      run: pytest tests/test_basic.py tests/test_helpers.py --tb=short -v
+    - name: Test helpers (no API keys needed)
+      run: pytest tests/test_helpers.py --tb=short -v
