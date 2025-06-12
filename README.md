@@ -109,7 +109,7 @@ The bots library provides a structured interface for working with such agents, a
    - Control tool output visibility with /verbose and /quiet
    - Save and load bots with /save and /load
    - Run a functional prompt with /fp
-        - This starts a wizard to choose an set up a functional prompt
+        - This starts a wizard to choose and set up a functional prompt
         - Try parallel branching with 'par_branch_while' to make multiple files at the same time
         - Try 'broadcast_to_leaves' afterward to debug each file at the same time
 
