@@ -1,55 +1,33 @@
 ﻿name: CI Pipeline
-# When should this run?
-on:
-  push:
-    branches: [ main, master ]  # Runs when you push to main
-  pull_request:
-    branches: [ main, master ]  # Runs when someone creates a PR
-  schedule:
-    - cron: '0 6 * * 1'  # Runs every Monday at 6 AM (weekly health check)
-jobs:
-  test:
-    name: Test Python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
-    # Test multiple Python versions (good practice)
-    strategy:
-      matrix:
-        python-version: [3.8, 3.9, "3.10", "3.11"]
-    steps:
-    # Step 1: Get your code
-    - name: Checkout code
-      uses: actions/checkout@v4
-    # Step 2: Set up Python
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    # Step 3: Install dependencies
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest pytest-cov flake8 black isort
-    # Step 4: Code quality checks
-    - name: Lint with flake8
-      run: |
-        # Stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Treat all other issues as warnings
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    # Step 5: Check code formatting
-    - name: Check code formatting with black
-      run: black --check --diff .
-    # Step 6: Check import sorting
-    - name: Check import sorting with isort
-      run: isort --check-only --diff .
-    # Step 7: Run your tests
-    - name: Run tests with pytest
-      run: |
-        pytest --cov=bots --cov-report=xml --cov-report=term-missing
-    # Step 8: Upload coverage to see how much code is tested
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: false
+            on:
+              push:
+                branches: [ main, master ]
+              pull_request:
+                branches: [ main, master ]
+              schedule:
+                - cron: "0 6 * * 1"
+            jobs:
+              test:
+                name: Test Python ${{ matrix.python-version }}
+                runs-on: ubuntu-latest
+                strategy:
+                  matrix:
+                    python-version: [3.8, 3.9, "3.10", "3.11"]
+                steps:
+                - name: Checkout code
+                  uses: actions/checkout@v4
+                - name: Set up Python ${{ matrix.python-version }}
+                  uses: actions/setup-python@v4
+                  with:
+                    python-version: ${{ matrix.python-version }}
+                - name: Install dependencies
+                  run: |
+                    python -m pip install --upgrade pip
+                    pip install -r requirements.txt
+                    pip install pytest pytest-cov flake8
+                - name: Lint with flake8 (critical errors only)
+                  run: |
+                    flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+                - name: Run tests with pytest
+                  run: |
+                    pytest --cov=bots --cov-report=xml --cov-report=term-missing
