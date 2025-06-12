@@ -1,4 +1,4 @@
-"""Functional patterns for structured bot interactions and complex reasoning.
+﻿"""Functional patterns for structured bot interactions and complex reasoning.
 
 This module provides a collection of higher-level functions for orchestrating bot
 interactions in common patterns like chains, branches, and trees. These patterns
@@ -259,7 +259,7 @@ def chain(bot: Bot, prompt_list: List[Prompt],
         nodes.append(bot.conversation)
         if callback:
             try:
-                callback([response], [bot.conversation])
+                callback(responses, nodes)
             except Exception:
                 pass  # Don't let callback errors break the main function
     return responses, nodes
@@ -642,7 +642,7 @@ def prompt_while(
         nodes.append(bot.conversation)
         if callback:
             try:
-                callback([response], [bot.conversation])
+                callback(responses, nodes)
             except Exception:
                 pass  # Don't let callback errors break the main function
     return responses, nodes
@@ -820,7 +820,7 @@ def chain_while(
         bot.tool_handler.clear()
         if callback:
             try:
-                callback([response], [bot.conversation])
+                callback(responses, nodes)
             except Exception:
                 pass  # Don't let callback errors break the main function
     return responses, nodes
@@ -1095,11 +1095,9 @@ def par_branch_while(
                 response = branch_bot.respond(continue_prompt)
                 if callback:
                     try:
-                        callback([response], [bot.conversation])
+                        callback([response], [branch_bot.conversation])
                     except Exception:
                         pass  # Don't let callback errors break the main function
-            first_node.parent = original_conversation
-            original_conversation.replies.append(first_node)
             return index, response, first_node
         except Exception as e:
             return index, None, None
@@ -1295,3 +1293,9 @@ def broadcast_to_leaves(
     except:
         pass
     return responses, nodes
+
+
+
+
+
+

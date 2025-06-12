@@ -39,3 +39,4 @@ oai_api_example.txt
 test_clone_dir/
 *CICD*
 *log*
+test_results.*

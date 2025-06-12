@@ -1,4 +1,4 @@
-"""Unit tests for basic bot functionality and parallel processing capabilities.
+﻿"""Unit tests for basic bot functionality and parallel processing capabilities.
 
 This module contains test cases for the core functionality of both AnthropicBot
 and ChatGPT_Bot classes from the bots package. Tests cover initialization parameters,
@@ -66,7 +66,7 @@ class TestAnthropicBot(unittest.TestCase):
         """
         self.assertIsInstance(self.bot, AnthropicBot)
         self.assertEqual(self.bot.model_engine, Engines.CLAUDE4_SONNET)
-        self.assertEqual(self.bot.max_tokens, 4096)
+        self.assertEqual(self.bot.max_tokens, 8192)
         self.assertEqual(self.bot.temperature, 0.3)
         self.assertEqual(self.bot.name, 'Claude')
 

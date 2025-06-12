@@ -1,4 +1,4 @@
-"""Anthropic-specific bot implementation for the bots framework.
+﻿"""Anthropic-specific bot implementation for the bots framework.
 
 This module provides the necessary classes to interact with Anthropic's Claude models,
 implementing the base bot interfaces with Anthropic-specific handling for:
@@ -363,7 +363,7 @@ class AnthropicBot(Bot):
         self,
         api_key: Optional[str] = None,
         model_engine: Engines = Engines.CLAUDE4_SONNET,
-        max_tokens: int = 64000,
+        max_tokens: int = 8192,
         temperature: float = 0.3,
         name: str = 'Claude',
         role: str = 'assistant',
@@ -376,7 +376,7 @@ class AnthropicBot(Bot):
         Args:
             api_key: Optional API key (will use ANTHROPIC_API_KEY env var if not provided)
             model_engine: The Anthropic model to use (default: CLAUDE37_SONNET_20250219)
-            max_tokens: Maximum tokens per response (default: 4096)
+            max_tokens: Maximum tokens per response (default: 8192)
             temperature: Response randomness, 0-1 (default: 0.3)
             name: Bot's name (default: 'Claude')
             role: Bot's role (default: 'assistant')
@@ -623,3 +623,5 @@ class CacheController:
                     for pos in cache_control_positions[2:]:
                         self.remove_cache_control_at_position(messages, pos)
         return messages
+
+

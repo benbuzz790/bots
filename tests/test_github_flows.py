@@ -60,7 +60,7 @@ def test_clone_and_fp_chain():
     clone_path = test_dir / 'private_tests'
     prompts = [f"I've cloned the repository {repo_name} to {str(clone_path)}. Use view_dir with target_extensions=['py', 'txt', 'md', 'git', 'idx', 'pack', 'rev'] to see all files in {str(clone_path)}", "Respond with just the word 'yes' if you can see any files"]
     try:
-        responses, nodes = clone_and_fp(test_dir, repo_name, fp.chain, {'prompts': prompts})
+        responses, nodes = clone_and_fp(test_dir, repo_name, fp.chain, {'prompt_list': prompts})
         clone_path = test_dir / 'private_tests'
         print(f'\nDebug - Clone path exists: {clone_path.exists()}')
         if clone_path.exists():

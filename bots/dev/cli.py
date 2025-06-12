@@ -1,4 +1,4 @@
-"""
+﻿"""
 Modern CLI for bot interactions with improved architecture.
 This module provides a clean, extensible command-line interface for interacting
 with AI bots, featuring functional prompts, conversation management, and robust
@@ -405,11 +405,56 @@ class FunctionalPromptHandler:
             if condition is None:
                 return None
             params['stop_condition'] = condition
+        elif fp_name == 'broadcast_to_leaves':
+            # Collect prompt for broadcast
+            prompt = input('Enter prompt to broadcast: ').strip()
+            if not prompt:
+                return None
+            params['prompt'] = prompt
+            # Collect skip labels
+            skip_input = input('Enter labels to skip (comma-separated, or empty for none): ').strip()
+            if skip_input:
+                params['skip'] = [label.strip() for label in skip_input.split(',')]
+            else:
+                params['skip'] = []
+            # Ask about iteration
+            iterate = input('Enable iteration? (y/n): ').strip().lower()
+            if iterate == 'y':
+                continue_prompt = input('Enter continue prompt: ').strip()
+                if continue_prompt:
+                    params['continue_prompt'] = continue_prompt
+                condition = self._collect_condition()
+                if condition:
+                    params['stop_condition'] = condition
         elif fp_name == 'prompt_for':
             # Dynamic prompt function
             print("prompt_for requires a dynamic prompt function and data.")
             print("This is an advanced feature - not yet implemented")
             return None
+        elif fp_name == 'broadcast_to_leaves':
+            # Broadcast to leaves parameters
+            prompt = input('Enter prompt: ').strip()
+            if not prompt:
+                return None
+            params['prompt'] = prompt
+            # Collect skip labels
+            skip_input = input('Enter labels to skip (comma-separated, or empty for none): ').strip()
+            if skip_input:
+                params['skip'] = [label.strip() for label in skip_input.split(',')]
+            else:
+                params['skip'] = []
+            # Ask about iteration
+            iterate = input('Enable iteration? (y/n): ').strip().lower()
+            if iterate == 'y':
+                continue_prompt = input('Enter continue prompt: ').strip()
+                if not continue_prompt:
+                    return None
+                params['continue_prompt'] = continue_prompt
+                # Collect stop condition
+                condition = self._collect_condition()
+                if condition is None:
+                    return None
+                params['stop_condition'] = condition
         elif fp_name == 'par_dispatch':
             print("par_dispatch requires multiple bots and a functional prompt.")
             print("This is an advanced feature - not yet implemented.")
@@ -613,7 +658,7 @@ class CLI:
                             # Command with message - handle chat first, then command
                             self._handle_chat(self.context.bot_instance, msg)
                         # Handle the command (pass the full command string for compatibility)
-                        self._handle_command(self.context.bot_instance, command)
+                        self._handle_command(self.context.bot_instance, user_input if not msg else command + " " + msg)
                     else:
                         # Regular chat
                         self._handle_chat(self.context.bot_instance, user_input)
@@ -694,11 +739,14 @@ Examples:
         help='Bot file to load (.bot extension will be added if not present)'
     )
     return parser.parse_args()
-def main():
+def main(bot_filename=None):
     """Entry point for the CLI."""
-    args = parse_args()
-    cli = CLI(bot_filename=args.filename)
+    if bot_filename is None:
+        args = parse_args()
+        bot_filename = args.filename
+    cli = CLI(bot_filename=bot_filename)
     cli.run()
 if __name__ == '__main__':
     main()
+
 

@@ -1,4 +1,4 @@
-import unittest
+﻿import unittest
 import datetime as DT
 import os
 import sys
@@ -88,7 +88,7 @@ class TestCLIBasics(DetailedTestCase):
         mock_input.side_effect = ['/help', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nHelp output:\n{output}')
         self.assertContainsNormalized(output, 'Available commands')
@@ -100,7 +100,7 @@ class TestCLIBasics(DetailedTestCase):
         mock_input.side_effect = ['/verbose', '/quiet', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nVerbose/Quiet output:\n{output}')
         self.assertContainsNormalized(output, 'Tool output enabled')
@@ -111,7 +111,7 @@ class TestCLIBasics(DetailedTestCase):
         mock_input.side_effect = ['/config', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nConfig output:\n{output}')
         self.assertContainsNormalized(output, 'Current configuration')
@@ -126,7 +126,7 @@ class TestConversationNavigation(DetailedTestCase):
         mock_input.side_effect = ['Hello bot', '/root', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nRoot command output:\n{output}')
         self.assertContainsNormalized(output, 'Moved to root of conversation tree')
@@ -136,7 +136,7 @@ class TestConversationNavigation(DetailedTestCase):
         mock_input.side_effect = ['/up', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nUp at root output:\n{output}')
         self.assertContainsNormalized(output, "At root - can't go up")
@@ -146,7 +146,7 @@ class TestConversationNavigation(DetailedTestCase):
         mock_input.side_effect = ['/down', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nDown at leaf output:\n{output}')
         self.assertContainsNormalized(output, "At leaf - can't go down")
@@ -164,7 +164,7 @@ class TestLabelingSystem(DetailedTestCase):
         ]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nLabel and goto output:\n{output}')
         self.assertContainsNormalized(output, 'Saved current node with label: test_function')
@@ -179,7 +179,7 @@ class TestLabelingSystem(DetailedTestCase):
         ]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nGoto nonexistent output:\n{output}')
         self.assertContainsNormalized(output, 'No node found with label: nonexistent_label')
@@ -189,7 +189,7 @@ class TestLabelingSystem(DetailedTestCase):
         mock_input.side_effect = ['/showlabels', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nShowlabels empty output:\n{output}')
         self.assertContainsNormalized(output, 'No labels saved')
@@ -206,7 +206,7 @@ class TestLabelingSystem(DetailedTestCase):
         ]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nShowlabels with labels output:\n{output}')
         self.assertContainsNormalized(output, 'Saved labels:')
@@ -228,7 +228,7 @@ class TestFunctionalPrompts(DetailedTestCase):
         ]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nFP command output:\n{output}')
         self.assertContainsNormalized(output, 'Available functional prompts')
@@ -243,7 +243,7 @@ class TestFunctionalPrompts(DetailedTestCase):
         ]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nFP invalid selection output:\n{output}')
         self.assertContainsNormalized(output, 'Invalid selection')
@@ -255,19 +255,20 @@ class TestErrorHandling(DetailedTestCase):
         mock_input.side_effect = ['/invalid_command', '/exit']
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nInvalid command output:\n{output}')
         self.assertContainsNormalized(output, 'Unrecognized command')
     @patch('builtins.input')
     def test_keyboard_interrupt_handling(self, mock_input: MagicMock) -> None:
         """Test that KeyboardInterrupt is handled gracefully."""
-        def raise_keyboard_interrupt():
-            raise KeyboardInterrupt()
-        mock_input.side_effect = [raise_keyboard_interrupt, '/exit']
+        mock_input.side_effect = [KeyboardInterrupt(), '/exit']
+
+
+
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nKeyboard interrupt output:\n{output}')
         self.assertContainsNormalized(output, 'Use /exit to quit')
@@ -283,7 +284,7 @@ class TestConfigManagement(DetailedTestCase):
         ]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nConfig set verbose output:\n{output}')
         self.assertContainsNormalized(output, 'Set verbose to False')
@@ -297,7 +298,7 @@ class TestConfigManagement(DetailedTestCase):
         ]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nConfig set width output:\n{output}')
         self.assertContainsNormalized(output, 'Set width to 80')
@@ -310,7 +311,7 @@ class TestConfigManagement(DetailedTestCase):
         ]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
-                cli_module.main()
+                cli_module.main("")
             output = buf.getvalue()
             print(f'\nConfig invalid setting output:\n{output}')
         self.assertContainsNormalized(output, 'Unknown setting: invalid_setting')
