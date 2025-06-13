@@ -3,8 +3,11 @@ from queue import Queue, Empty
 from threading import Thread, Lock, local
 from typing import Dict, Generator
 from datetime import datetime
+import base64
+import tempfile
 
 from bots.dev.decorators import log_errors, handle_errors
+
 @log_errors
 @handle_errors
 def execute_powershell(command: str, output_length_limit: str='2500', timeout: str = '60') -> str:
@@ -31,6 +34,7 @@ def execute_powershell(command: str, output_length_limit: str='2500', timeout: s
     manager = PowerShellManager.get_instance()
     output = ''.join(manager.execute(command, int(output_length_limit), float(timeout)))
     return output
+
 
 class PowerShellSession:
     """
@@ -60,15 +64,53 @@ class PowerShellSession:
                     queue.put(line.rstrip('\n\r'))
             finally:
                 queue.put(None)
-        self._reader_threads = [Thread(target=reader_thread, args=(self._process.stdout, self._output_queue), daemon=True), Thread(target=reader_thread, args=(self._process.stderr, self._error_queue), daemon=True)]
+        self._reader_threads = [
+            Thread(target=reader_thread, args=(self._process.stdout, self._output_queue), daemon=True),
+            Thread(target=reader_thread, args=(self._process.stderr, self._error_queue), daemon=True)
+        ]
         for thread in self._reader_threads:
             thread.start()
 
     def __enter__(self):
         if not self._process:
-            self._process = subprocess.Popen(['powershell', '-NoProfile', '-NoLogo', '-NonInteractive', '-Command', '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=self.startupinfo, encoding='utf-8', errors='replace', bufsize=1)
+            self._process = subprocess.Popen(
+                ['powershell', '-NoProfile', '-NoLogo', '-NonInteractive', '-Command', '-'],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                startupinfo=self.startupinfo,
+                encoding='utf-8',
+                errors='replace',
+                bufsize=1
+            )
             self._start_reader_threads()
-            init_commands = ["$VerbosePreference='SilentlyContinue'", "$DebugPreference='SilentlyContinue'", "$ProgressPreference='SilentlyContinue'", "$WarningPreference='SilentlyContinue'", "$ErrorActionPreference='Stop'", "function prompt { '' }", "$PSDefaultParameterValues['*:Encoding']='utf8'", '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8', '[Console]::InputEncoding=[System.Text.Encoding]::UTF8', '$OutputEncoding=[System.Text.Encoding]::UTF8', "$env:PYTHONIOENCODING='utf-8'"]
+            # Initialize PowerShell session with better encoding and error handling
+            init_commands = [
+                "$VerbosePreference='SilentlyContinue'",
+                "$DebugPreference='SilentlyContinue'",
+                "$ProgressPreference='SilentlyContinue'",
+                "$WarningPreference='SilentlyContinue'",
+                "$ErrorActionPreference='Stop'",
+                "function prompt { '' }",
+                "$PSDefaultParameterValues['*:Encoding']='utf8'",
+                '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8',
+                '[Console]::InputEncoding=[System.Text.Encoding]::UTF8',
+                '$OutputEncoding=[System.Text.Encoding]::UTF8',
+                "$env:PYTHONIOENCODING='utf-8'",
+                # Add function to handle complex strings safely
+                """
+function Invoke-SafeCommand {
+    param([string]$Command)
+    try {
+        Invoke-Expression $Command
+        return $true
+    } catch {
+        Write-Error $_
+        return $false
+    }
+}
+                """.strip()
+            ]
             for cmd in init_commands:
                 self._process.stdin.write(cmd + '\n')
             self._process.stdin.flush()
@@ -104,25 +146,35 @@ class PowerShellSession:
         """
         if not self._process:
             raise Exception('PowerShell process is not running')
+
         try:
             self._command_counter += 1
             delimiter = f'<<<COMMAND_{self._command_counter}_COMPLETE>>>'
-            wrapped_code = f"\n            $ErrorActionPreference = 'Stop'\n            \n            # Execute in main scope\n            {code}\n            \n            # Collect output after execution\n            $output = @()\n            try {{\n                if ($?) {{ \n                    # Add any output from the last command\n                    $output += $LASTOUTPUT\n                }}\n            }} catch {{\n                Write-Error $_\n            }}\n            $output | ForEach-Object {{ $_ }}\n            Write-Output '{delimiter}'\n            "
+            
+            # Use a more robust approach for complex code execution
+            wrapped_code = self._wrap_code_safely(code, delimiter)
+            
+            # Clear queues
             while not self._output_queue.empty():
                 self._output_queue.get_nowait()
             while not self._error_queue.empty():
                 self._error_queue.get_nowait()
+
             self._process.stdin.write(wrapped_code + '\n')
             self._process.stdin.flush()
+
             output_lines = []
             error_output = []
             start_time = time.time()
             done = False
+
             while not done:
                 if time.time() - start_time > timeout:
                     raise TimeoutError(f'Command execution timed out after {timeout} seconds')
+
                 if self._process.poll() is not None:
                     raise Exception('PowerShell process unexpectedly closed')
+
                 try:
                     line = self._output_queue.get(timeout=0.1)
                     if line is None:
@@ -133,6 +185,7 @@ class PowerShellSession:
                         output_lines.append(line)
                 except Empty:
                     pass
+
                 try:
                     while True:
                         line = self._error_queue.get_nowait()
@@ -141,15 +194,106 @@ class PowerShellSession:
                         error_output.append(line)
                 except Empty:
                     pass
+
             all_output = [line for line in output_lines if line.strip()]
             if error_output:
                 error_lines = [line for line in error_output if line.strip()]
                 if error_lines:
                     all_output.extend(['', 'Errors:', *error_lines])
+
             return '\n'.join(all_output)
+
         except Exception as e:
             self.__exit__(type(e), e, e.__traceback__)
             raise
+
+    def _wrap_code_safely(self, code: str, delimiter: str) -> str:
+        """
+        Safely wrap code for execution, handling complex strings and multiline code.
+        """
+        # Check if this looks like a complex Python command that might have quote issues
+        if 'python -c' in code and ('"' in code or "'" in code):
+            return self._handle_python_command_safely(code, delimiter)
+        else:
+            # Use the original wrapping approach for simple commands
+            return f"""
+            $ErrorActionPreference = 'Stop'
+            
+            # Execute in main scope
+            {code}
+            
+            # Collect output after execution
+            $output = @()
+            try {{
+                if ($?) {{ 
+                    # Add any output from the last command
+                    $output += $LASTOUTPUT
+                }}
+            }} catch {{
+                Write-Error $_
+            }}
+            $output | ForEach-Object {{ $_ }}
+            Write-Output '{delimiter}'
+            """
+
+    def _handle_python_command_safely(self, code: str, delimiter: str) -> str:
+        """
+        Handle Python commands with complex strings by using file-based execution.
+        """
+        # Extract the Python code part
+        if 'python -c "' in code:
+            # Find the Python code between quotes
+            start_idx = code.find('python -c "') + len('python -c "')
+            # Find the closing quote - this is tricky with nested quotes
+            quote_count = 0
+            end_idx = start_idx
+            for i, char in enumerate(code[start_idx:], start_idx):
+                if char == '"' and (i == start_idx or code[i-1] != '\\'):
+                    quote_count += 1
+                    if quote_count == 1:  # Found the closing quote
+                        end_idx = i
+                        break
+            
+            if end_idx > start_idx:
+                python_code = code[start_idx:end_idx]
+                # Clean up the Python code - remove extra escaping
+                python_code = python_code.replace('\\"', '"').replace("\\'", "'")
+                
+                # Create a temporary file approach
+                return f"""
+                $ErrorActionPreference = 'Stop'
+                
+                # Create temporary file for Python code
+                $tempFile = [System.IO.Path]::GetTempFileName() + '.py'
+                $pythonCode = @'
+{python_code}
+'@
+                
+                try {{
+                    # Write Python code to temp file with UTF-8 encoding
+                    [System.IO.File]::WriteAllText($tempFile, $pythonCode, [System.Text.Encoding]::UTF8)
+                    
+                    # Execute Python with the temp file
+                    python $tempFile
+                }} catch {{
+                    Write-Error $_
+                }} finally {{
+                    # Clean up temp file
+                    if (Test-Path $tempFile) {{
+                        Remove-Item $tempFile -Force
+                    }}
+                }}
+                
+                Write-Output '{delimiter}'
+                """
+        
+        # Fallback to original approach
+        return f"""
+        $ErrorActionPreference = 'Stop'
+        {code}
+        Write-Output '{delimiter}'
+        """
+
 
 class PowerShellManager:
     """
@@ -161,7 +305,7 @@ class PowerShellManager:
     _lock = Lock()
 
     @classmethod
-    def get_instance(cls, bot_id: str=None) -> 'PowerShellManager':
+    def get_instance(cls, bot_id: str = None) -> 'PowerShellManager':
         """
         Get or create a PowerShell manager instance for the given bot_id.
         If no bot_id is provided, uses the current thread name.
@@ -174,6 +318,7 @@ class PowerShellManager:
         """
         if bot_id is None:
             bot_id = threading.current_thread().name
+
         with cls._lock:
             if bot_id not in cls._instances:
                 instance = cls.__new__(cls)
@@ -228,19 +373,21 @@ class PowerShellManager:
             session = self._thread_local.session
             if not session._process or session._process.poll() is not None:
                 return False
+            # Use a simple test that's less likely to cause issues
             test_output = session.execute("Write-Output 'test'", timeout=5)
             return 'test' in test_output
         except Exception as e:
             print(f'Session validation failed: {str(e)}')
             return False
 
-    def execute(self, code: str, output_length_limit: str='60', timeout: float = 60) -> Generator[str, None, None]:
+    def execute(self, code: str, output_length_limit: str = '60', timeout: float = 60) -> Generator[str, None, None]:
         """
         Execute PowerShell code in the session with automatic recovery.
 
         Args:
             code: PowerShell code to execute
             output_length_limit: Maximum number of lines in output
+            timeout: Maximum time in seconds to wait for command completion
 
         Yields:
             Command output as strings
@@ -252,10 +399,12 @@ class PowerShellManager:
             error_message = f'Tool Failed: {str(error)}\n'
             error_message += f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}"
             return error_message
+
         while retry_count <= max_retries:
             try:
                 processed_code = _process_commands(code)
                 output = self.session.execute(processed_code, timeout)
+                
                 if output_length_limit is not None and output:
                     output_length_limit_int = int(output_length_limit)
                     lines = output.splitlines()
@@ -267,6 +416,7 @@ class PowerShellManager:
                         truncated_output = '\n'.join(start_lines)
                         truncated_output += f'\n\n... {lines_omitted} lines omitted ...\n\n'
                         truncated_output += '\n'.join(end_lines)
+                        
                         output_file = os.path.join(os.getcwd(), f'ps_output_{self.bot_id}.txt')
                         with open(output_file, 'w', encoding='utf-8', errors='replace') as f:
                             f.write(output)
@@ -277,6 +427,7 @@ class PowerShellManager:
                 else:
                     yield output
                 break
+
             except Exception as e:
                 retry_count += 1
                 if retry_count <= max_retries:
@@ -298,6 +449,7 @@ class PowerShellManager:
             finally:
                 delattr(self._thread_local, 'session')
 
+
 def _get_active_sessions() -> list:
     """
     Get information about all active PowerShell sessions.
@@ -311,11 +463,17 @@ def _get_active_sessions() -> list:
             local_dict = thread._thread_local.__dict__
             if 'ps_manager' in local_dict:
                 manager = local_dict['ps_manager']
-                sessions.append({'bot_id': manager.bot_id, 'thread_name': thread.name, 'created_at': manager.created_at.isoformat(), 'active': hasattr(manager._thread_local, 'session')})
+                sessions.append({
+                    'bot_id': manager.bot_id,
+                    'thread_name': thread.name,
+                    'created_at': manager.created_at.isoformat(),
+                    'active': hasattr(manager._thread_local, 'session')
+                })
     return sessions
 
+
 @handle_errors
-def _execute_powershell_stateless(code: str, output_length_limit: str='120'):
+def _execute_powershell_stateless(code: str, output_length_limit: str = '120'):
     """
     Executes PowerShell code in a stateless environment
 
@@ -340,25 +498,44 @@ def _execute_powershell_stateless(code: str, output_length_limit: str='120'):
         error_message = f'Tool Failed: {str(error)}\n'
         error_message += f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}"
         return error_message
+
     output = ''
     try:
         processed_code = _process_commands(code)
-        setup_encoding = '\n        $PSDefaultParameterValues[\'*:Encoding\'] = \'utf8\'\n        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n        [Console]::InputEncoding = [System.Text.Encoding]::UTF8\n        $OutputEncoding = [System.Text.Encoding]::UTF8\n        $env:PYTHONIOENCODING = "utf-8"\n        '
+        setup_encoding = '''
+        $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+        [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+        $OutputEncoding = [System.Text.Encoding]::UTF8
+        $env:PYTHONIOENCODING = "utf-8"
+        '''
         wrapped_code = f'{setup_encoding}; {processed_code}'
+
         startupinfo = None
         if os.name == 'nt':
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        process = subprocess.Popen(['powershell', '-NoProfile', '-NonInteractive', '-Command', wrapped_code], stdout=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo, encoding='utf-8', errors='replace')
+
+        process = subprocess.Popen(
+            ['powershell', '-NoProfile', '-NonInteractive', '-Command', wrapped_code],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            startupinfo=startupinfo,
+            encoding='utf-8',
+            errors='replace'
+        )
         stdout, stderr = process.communicate(timeout=300)
+
         output = stdout
         if stderr:
             output += stderr
+
     except subprocess.TimeoutExpired as e:
         process.kill()
         output += 'Error: Command execution timed out after 300 seconds.'
     except Exception as e:
         output += _process_error(e)
+
     if output_length_limit is not None and output:
         output_length_limit = int(output_length_limit)
         lines = output.splitlines()
@@ -370,17 +547,22 @@ def _execute_powershell_stateless(code: str, output_length_limit: str='120'):
             truncated_output = '\n'.join(start_lines)
             truncated_output += f'\n\n... {lines_omitted} lines omitted ...\n\n'
             truncated_output += '\n'.join(end_lines)
+            
             output_file = os.path.join(os.getcwd(), 'ps_output.txt')
             with open(output_file, 'w', encoding='utf-8', errors='replace') as f:
                 f.write(output)
             truncated_output += f'\nFull output saved to {output_file}'
             return truncated_output
+
     return output
+
 
 def _process_commands(code: str) -> str:
     """
     Process PowerShell commands separated by &&, ensuring each command only runs if the previous succeeded.
     Uses PowerShell error handling to catch both command failures and non-existent commands.
+    
+    Enhanced to better handle complex multiline code blocks.
 
     Args:
         code (str): The original command string with && separators
@@ -388,11 +570,46 @@ def _process_commands(code: str) -> str:
     Returns:
         str: PowerShell code with proper error checking between commands
     """
-    commands = code.split(' && ')
-    if len(commands) == 1:
+    # Don't process commands that look like multiline code blocks
+    if '\n' in code.strip() and '&&' not in code:
         return code
+        
+    # Split on && but be more careful about it
+    commands = []
+    current_cmd = ""
+    i = 0
+    in_quotes = False
+    quote_char = None
+    
+    while i < len(code):
+        char = code[i]
+        
+        if char in ['"', "'"] and (i == 0 or code[i-1] != '\\'):
+            if not in_quotes:
+                in_quotes = True
+                quote_char = char
+            elif char == quote_char:
+                in_quotes = False
+                quote_char = None
+        
+        if not in_quotes and i < len(code) - 1 and code[i:i+2] == '&&':
+            commands.append(current_cmd.strip())
+            current_cmd = ""
+            i += 2
+            continue
+            
+        current_cmd += char
+        i += 1
+    
+    if current_cmd.strip():
+        commands.append(current_cmd.strip())
+    
+    if len(commands) <= 1:
+        return code
+
     processed_commands = []
     for cmd in commands:
         wrapped_cmd = f'$ErrorActionPreference = "Stop"; try {{ {cmd}; $LastSuccess = $true }} catch {{ $LastSuccess = $false; $_ }}'
         processed_commands.append(wrapped_cmd)
+
     return '; '.join([processed_commands[0]] + [f'if ($LastSuccess) {{ {cmd} }}' for cmd in processed_commands[1:]])

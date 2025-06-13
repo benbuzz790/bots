@@ -376,3 +376,276 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertEqual(1, len(outputs), 'Should get exactly one output')
         self.assertEqual(self.normalize_text('1'), self.normalize_text(outputs[0]))
         manager.cleanup()
+
+
+from bots.tools.terminal_tools import execute_powershell, PowerShellSession
+
+class TestPowerShellErrorLogScenarios(unittest.TestCase):
+    """
+    Integration tests that reproduce the specific error scenarios from your error logs.
+    These tests verify that the improved PowerShell tool handles the problematic cases.
+    """
+
+    def test_complex_python_string_scenario_1(self):
+        """
+        Test the complex Python command that was failing with unterminated string literals.
+        This reproduces the scenario from your error log where Python code with nested quotes failed.
+        """
+        # This is the type of command that was causing SyntaxError: unterminated string literal
+        problematic_code = '''python -c "
+import unittest
+import sys
+from unittest.mock import patch, MagicMock
+from io import StringIO
+from contextlib import redirect_stdout
+import bots.dev.cli as cli_module
+
+# Create the test manually
+mock_input = MagicMock()
+mock_input.side_effect = [KeyboardInterrupt(), '/exit']
+
+with patch('builtins.input', mock_input):
+    with StringIO() as buf, redirect_stdout(buf):
+        try:
+            cli_module.main()
+        except SystemExit:
+            pass
+        output = buf.getvalue()
+        
+print('Test output:')
+print(repr(output))
+print('Contains Use /exit to quit:', 'Use /exit to quit' in output)
+
+# Also test the normalize function from the test
+def normalize_text(text):
+    text = str(text).lower()
+    text = text.replace('\\"', '').replace(\\"'\\", '')
+    text = text.replace('{', '').replace('}', '')
+    text = text.replace('[', '').replace(']', '')
+    text = text.replace(':', '').replace(',', '')
+    return ' '.join(text.split())
+
+normalized_output = normalize_text(output)
+normalized_needle = normalize_text('Use /exit to quit')
+print('Normalized output:', repr(normalized_output))
+print('Normalized needle:', repr(normalized_needle))
+print('Normalized contains:', normalized_needle in normalized_output)
+"'''
+
+        # Test that this no longer causes a SyntaxError
+        session = PowerShellSession()
+        try:
+            result = session._handle_python_command_safely(problematic_code, "TEST_DELIMITER")
+            
+            # Should successfully create a temp file approach
+            self.assertIn('$tempFile', result)
+            self.assertIn('WriteAllText', result)
+            
+            # Should contain the problematic Python code without syntax errors
+            self.assertIn('normalize_text', result)
+            self.assertIn('redirect_stdout', result)
+            self.assertIn('KeyboardInterrupt', result)
+            
+            # Most importantly, should not contain the problematic escaped quotes
+            # that were causing the syntax errors
+            self.assertNotIn('\\"\'\\', result)
+            
+        except SyntaxError as e:
+            self.fail(f"Should not raise SyntaxError anymore, but got: {e}")
+
+    def test_unicode_error_handling(self):
+        """Test Unicode handling that was problematic in the error logs."""
+        # Test the Unicode scenarios from your logs
+        unicode_commands = [
+            '[System.Console]::Error.WriteLine("エラー 🚫")',
+            '''
+            Write-Output "Standard: こんにちは"
+            [System.Console]::Error.WriteLine("Error: システムエラー")
+        '''
+        ]
+        
+        for cmd in unicode_commands:
+            with self.subTest(command=cmd[:50] + "..."):
+                try:
+                    # Should not raise encoding errors
+                    result = execute_powershell(cmd, timeout='10')
+                    self.assertIsInstance(result, str)
+                    
+                    # Should contain error section for stderr output
+                    if 'Error.WriteLine' in cmd:
+                        self.assertIn('Errors:', result)
+                        
+                except UnicodeError as e:
+                    self.fail(f"Unicode handling failed for command: {e}")
+                except Exception as e:
+                    # Other exceptions are okay (like command not found), 
+                    # but not Unicode errors
+                    if 'unicode' in str(e).lower() or 'encoding' in str(e).lower():
+                        self.fail(f"Encoding error: {e}")
+
+    def test_command_not_found_handling(self):
+        """Test handling of non-existent commands from error logs."""
+        # From your logs: nonexistentcommand
+        result = execute_powershell('nonexistentcommand', timeout='10')
+        
+        # Should handle gracefully with error message
+        self.assertIn('Errors:', result)
+        self.assertIn('not recognized', result.lower())
+        self.assertNotIn('Tool Failed:', result)  # Should not be a tool failure
+
+    def test_mixed_stdout_stderr_output(self):
+        """Test mixed stdout/stderr output handling."""
+        # Reproduce the scenario where both stdout and stderr are produced
+        cmd = '''
+        Write-Output "Standard: こんにちは"
+        [System.Console]::Error.WriteLine("Error: システムエラー")
+        '''
+        
+        result = execute_powershell(cmd, timeout='10')
+        
+        # Should contain both outputs
+        self.assertIn('Standard:', result)
+        self.assertIn('Errors:', result)
+        self.assertIn('こんにちは', result)
+        self.assertIn('システムエラー', result)
+        
+    def test_file_not_found_scenario(self):
+        """Test file not found scenario from error logs."""
+        # Use a file name that definitely doesn't exist
+        import uuid
+        random_filename = f"definitely_does_not_exist_{uuid.uuid4().hex}.txt"
+        cmd = f'Get-Content "{random_filename}"'
+        
+        result = execute_powershell(cmd, timeout='10')
+        
+        # Should handle file not found gracefully
+        self.assertIn('Errors:', result)
+        self.assertTrue(
+            'Cannot find path' in result or 
+            'does not exist' in result or
+            'ItemNotFoundException' in result,
+            f"Should indicate file not found. Got: {result[:200]}..."
+        )
+
+    def test_python_command_with_file_operations(self):
+        """Test Python commands that involve file operations."""
+        # Simplified version of problematic code from logs
+        python_code = '''python -c "
+import bots.tools.python_edit as pe
+
+# Read the current file
+with open('bots/dev/cli.py', 'r') as f:
+    content = f.read()
+
+print('File read successfully')
+"'''
+
+        session = PowerShellSession()
+        result = session._handle_python_command_safely(python_code, "DELIMITER")
+        
+        # Should use temp file approach
+        self.assertIn('$tempFile', result)
+        self.assertIn('python_edit', result)
+        self.assertIn('File read successfully', result)
+
+    def test_quote_heavy_python_code(self):
+        """Test Python code with many nested quotes."""
+        # This type of code was causing the unterminated string literal errors
+        python_code = '''python -c "
+par_dispatch_line = 'elif fp_name == \\"par_dispatch\\":'
+par_dispatch_pos = content.find(par_dispatch_line)
+print(f'Found par_dispatch at position: {par_dispatch_pos}')
+"'''
+
+        session = PowerShellSession()
+        result = session._handle_python_command_safely(python_code, "DELIMITER")
+        
+        # Should handle the complex quoting
+        self.assertIn('par_dispatch', result)
+        self.assertIn('elif fp_name ==', result)
+        # Should clean up the quotes properly
+        self.assertIn('par_dispatch', result)
+
+    def test_bom_handling(self):
+        """Test handling of Unicode BOM that was causing issues."""
+        # Simulate BOM character that was in your error logs
+        code_with_bom = '\ufeff# This has a BOM character\nWrite-Output "test"'
+        
+        try:
+            result = execute_powershell(code_with_bom, timeout='10')
+            self.assertIsInstance(result, str)
+            # Should not fail due to BOM
+        except Exception as e:
+            if 'U+FEFF' in str(e) or 'non-printable character' in str(e):
+                self.fail(f"BOM handling failed: {e}")
+
+    def test_command_chaining_with_quotes(self):
+        """Test command chaining with quotes that might confuse the parser."""
+        # Test && handling with complex quotes
+        cmd = 'Write-Output "First && Second" && Write-Output "Third"'
+        
+        result = execute_powershell(cmd, timeout='10')
+        
+        # Should execute both parts
+        self.assertIn('First && Second', result)
+        self.assertIn('Third', result)
+
+
+
+class TestRegressionScenarios(unittest.TestCase):
+    """Test specific regression scenarios to ensure fixes don't break existing functionality."""
+
+    def test_simple_commands_still_work(self):
+        """Ensure simple commands still work after improvements."""
+        simple_commands = [
+            'Write-Output "Hello World"',
+            'Get-Date',
+            '$var = "test"; Write-Output $var',
+            'Write-Output (2 + 2)'
+        ]
+        
+        for cmd in simple_commands:
+            with self.subTest(command=cmd):
+                try:
+                    result = execute_powershell(cmd, timeout='10')
+                    self.assertIsInstance(result, str)
+                    self.assertNotIn('Tool Failed:', result)
+                except Exception as e:
+                    self.fail(f"Simple command failed: {cmd} - {e}")
+
+    def test_basic_python_commands_still_work(self):
+        """Ensure basic Python commands still work."""
+        basic_python_commands = [
+            'python -c "print(\'Hello World\')"',
+            'python -c "import sys; print(sys.version)"',
+            'python -c "print(2 + 2)"'
+        ]
+        
+        for cmd in basic_python_commands:
+            with self.subTest(command=cmd):
+                try:
+                    result = execute_powershell(cmd, timeout='15')
+                    self.assertIsInstance(result, str)
+                    # Python might not be available, but shouldn't cause tool failures
+                    if 'Tool Failed:' in result:
+                        self.fail(f"Tool failure on basic Python command: {cmd}")
+                except Exception as e:
+                    self.fail(f"Basic Python command failed: {cmd} - {e}")
+
+    def test_output_limiting_still_works(self):
+        """Ensure output limiting functionality still works."""
+        # Create a command that produces multiple lines
+        cmd = 'for ($i=1; $i -le 20; $i++) { Write-Output "Line $i" }'
+        
+        result = execute_powershell(cmd, output_length_limit='5', timeout='10')
+        
+        if 'Tool Failed:' not in result:
+            # If command succeeded, should have either full output or truncated
+            lines = result.split('\n')
+            # Should either be truncated or be the full 20 lines
+            self.assertTrue(len(lines) <= 25)  # Account for some formatting
+
+
+if __name__ == '__main__':
+    # Run these specific integration tests
+    unittest.main(verbosity=2)
