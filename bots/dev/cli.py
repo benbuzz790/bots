@@ -829,7 +829,7 @@ class CLI:
                     pretty("Restored conversation from backup", "System")
         else:
             pretty("Unrecognized command. Try /help.", "System", self.context.config.width, self.context.config.indent)
-    
+
     def _handle_chat(self, bot: Bot, user_input: str):
         """Handle chat input."""
         if not user_input:
@@ -876,3 +876,5 @@ def main(bot_filename=None):
 
 if __name__ == '__main__':
     main()
+
+
