@@ -90,6 +90,7 @@ class CLIContext:
         self.conversation_backup: Optional[ConversationNode] = None
         self.old_terminal_settings = None
         self.bot_instance = None
+        self.cached_leaves: List[ConversationNode] = []
 
 class ConversationHandler:
     """Handler for conversation navigation commands."""
@@ -189,6 +190,87 @@ class ConversationHandler:
             content_preview = node.content[:100] + "..." if len(node.content) > 100 else node.content
             result += f"  '{label}': {content_preview}\n"
         return result.rstrip()
+    
+    def showleaves(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Show all leaf nodes (conversation endpoints) reachable from current node."""
+        leaves = self._find_leaves(bot.conversation)
+        if not leaves:
+            return "No leaves found from current node"
+        
+        # Cache the leaves for use with /leaf command
+        context.cached_leaves = leaves
+        
+        result = f"Found {len(leaves)} leaf nodes:\n"
+        for i, leaf in enumerate(leaves):
+            # Show a preview of the leaf content
+            content_preview = leaf.content[:100] + "..." if len(leaf.content) > 100 else leaf.content
+            # Clean up the preview by removing excessive whitespace
+            content_preview = ' '.join(content_preview.split())
+            
+            # Show path depth from current node
+            depth = self._calculate_depth(bot.conversation, leaf)
+            
+            # Show labels if any
+            labels = getattr(leaf, 'labels', [])
+            label_str = f" (labels: {', '.join(labels)})" if labels else ""
+            
+            result += f"  {i+1}. [depth {depth}]{label_str}: {content_preview}\n"
+        
+        result += f"\nUse '/leaf <number>' to jump to a specific leaf."
+        return result.rstrip()
+    
+    def leaf(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Jump to a specific leaf node by index."""
+        if not context.cached_leaves:
+            return "No leaves cached. Use '/showleaves' first to see available leaves."
+        
+        if not args:
+            return "Please specify a leaf number. Use '/showleaves' to see available leaves."
+        
+        try:
+            leaf_index = int(args[0]) - 1  # Convert to 0-based index
+            if leaf_index < 0 or leaf_index >= len(context.cached_leaves):
+                return f"Invalid leaf number. Must be between 1 and {len(context.cached_leaves)}"
+            
+            context.conversation_backup = bot.conversation
+            bot.conversation = context.cached_leaves[leaf_index]
+            
+            # Show a preview of the content
+            content_preview = bot.conversation.content[:200] + "..." if len(bot.conversation.content) > 200 else bot.conversation.content
+            return f"Jumped to leaf {leaf_index + 1}: {content_preview}"
+            
+        except ValueError:
+            return "Invalid leaf number. Must be a number."
+    
+    def _find_leaves(self, node: ConversationNode) -> List[ConversationNode]:
+        """Recursively find all leaf nodes from a given node."""
+        leaves = []
+        
+        def dfs(current_node):
+            if not current_node.replies:  # This is a leaf
+                leaves.append(current_node)
+            else:
+                for reply in current_node.replies:
+                    dfs(reply)
+        
+        dfs(node)
+        return leaves
+    
+    def _calculate_depth(self, start_node: ConversationNode, target_node: ConversationNode) -> int:
+        """Calculate the depth/distance from start_node to target_node."""
+        def find_path_length(current, target, depth=0):
+            if current is target:
+                return depth
+            
+            for reply in current.replies:
+                result = find_path_length(reply, target, depth + 1)
+                if result is not None:
+                    return result
+            
+            return None
+        
+        depth = find_path_length(start_node, target_node)
+        return depth if depth is not None else 0
 
 class StateHandler:
     """Handler for bot state management commands."""
@@ -239,6 +321,8 @@ class StateHandler:
             # Rebuild labeled nodes from conversation tree
             context.labeled_nodes = {}
             self._rebuild_labels(new_bot.conversation, context)
+            # Clear cached leaves since we have a new conversation
+            context.cached_leaves = []
             return f"Bot loaded from {filename}. Conversation restored to most recent message."
         except Exception as e:
             return f"Error loading bot: {str(e)}"
@@ -276,6 +360,8 @@ class SystemHandler:
             /label: Save current node with a label for later reference
             /goto: Move to a previously labeled node
             /showlabels: Show all saved labels and their associated conversation content
+            /showleaves: Show all conversation endpoints (leaves) reachable from current node
+            /leaf <number>: Jump to a specific leaf node (use /showleaves to see numbering)
             /fp: Execute functional prompts (chain, branch, etc.)
             /config: Show or modify CLI configuration
             /exit: Exit the program
@@ -641,6 +727,8 @@ class CLI:
             '/label': self.conversation.label,
             '/goto': self.conversation.goto,
             '/showlabels': self.conversation.showlabels,
+            '/showleaves': self.conversation.showleaves,
+            '/leaf': self.conversation.leaf,
             '/auto': self.system.auto,
             '/fp': self.fp.execute,
         }
@@ -732,7 +820,7 @@ class CLI:
                 if result:
                     pretty(result, "System", self.context.config.width, self.context.config.indent)
                 # Show bot response for navigation commands
-                if command in ['/up', '/down', '/left', '/right', '/root', '/goto'] and bot.conversation:
+                if command in ['/up', '/down', '/left', '/right', '/root', '/goto', '/leaf'] and bot.conversation:
                     pretty(bot.conversation.content, bot.name, self.context.config.width, self.context.config.indent)
             except Exception as e:
                 pretty(f"Command error: {str(e)}", "Error", self.context.config.width, self.context.config.indent)
@@ -788,5 +876,3 @@ def main(bot_filename=None):
 
 if __name__ == '__main__':
     main()
-
-
