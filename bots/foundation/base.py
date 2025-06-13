@@ -1,4 +1,4 @@
-"""Core foundation classes for the bots framework.
+﻿"""Core foundation classes for the bots framework.
 
 This module provides the fundamental abstractions and base classes that power the bots framework:
 - Bot: Abstract base class for all LLM implementations
@@ -819,6 +819,11 @@ class ToolHandler(ABC):
                         code = func.__code__
                         names = code.co_names
                         context = {name: func.__globals__[name] for name in names if name in func.__globals__}
+                        # Add all imports from the original module
+                        import types
+                        for name, value in func.__globals__.items():
+                            if isinstance(value, types.ModuleType) or callable(value):
+                                context[name] = value
                         # Add any decorators referenced in source that are available in globals
                         import re
                         decorator_matches = re.findall(r'@(\w+)', source)
@@ -1814,3 +1819,6 @@ class Bot(ABC):
                 root = root.parent
             lines.extend(format_conversation(root))
         return '\n'.join(lines)
+
+
+
