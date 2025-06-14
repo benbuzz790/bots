@@ -608,8 +608,96 @@ class FunctionalPromptHandler:
         if choice == 'y':
             return fp.recombinators.simple_concatenate
         return None
-    
-# Utility functions (from original auto_terminal.py)
+
+    def broadcast_fp(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Execute any functional prompt in parallel on all leaf nodes."""
+        try:
+            # Step 1: Choose functional prompt type
+            print("Available functional prompts for broadcast:")
+            available_fps = {k: v for k, v in self.fp_functions.items() 
+                            if k not in ['broadcast_to_leaves']}
+            for i, name in enumerate(available_fps.keys(), 1):
+                print(f"  {i}. {name}")
+            choice = input("Select functional prompt (number or name): ").strip()
+            # Parse choice
+            fp_name = None
+            if choice.isdigit():
+                idx = int(choice) - 1
+                if 0 <= idx < len(available_fps):
+                    fp_name = list(available_fps.keys())[idx]
+            else:
+                if choice in available_fps:
+                    fp_name = choice
+            if not fp_name:
+                return "Invalid selection"
+            fp_function = available_fps[fp_name]
+            # Step 2: Collect parameters
+            params = self._collect_parameters(fp_name, fp_function)
+            if params is None:
+                return "Parameter collection cancelled"
+            # Step 3: Get skip labels
+            skip_input = input('Enter labels to skip (comma-separated, or empty): ').strip()
+            skip_labels = [label.strip() for label in skip_input.split(',')] if skip_input else []
+            # Step 4: Find and filter leaves
+            conv_handler = ConversationHandler()
+            leaves = conv_handler._find_leaves(bot.conversation)
+            if not leaves:
+                return "No leaf nodes found"
+            # Filter leaves based on skip labels
+            target_leaves = []
+            for leaf in leaves:
+                should_skip = False
+                if hasattr(leaf, 'labels'):
+                    for label in leaf.labels:
+                        if label in skip_labels:
+                            should_skip = True
+                            break
+                if not should_skip:
+                    target_leaves.append(leaf)
+            if not target_leaves:
+                return "All leaves are in skip list"
+            print(f"Broadcasting {fp_name} to {len(target_leaves)} leaves...")
+            # Step 5: Create bot copies and execute in parallel
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            context.conversation_backup = bot.conversation
+            callback = create_tool_result_callback(context)
+            # Create enough bot copies for parallel execution
+            bot_copies = bot * len(target_leaves)
+            results = [None] * len(target_leaves)
+            def process_leaf_with_fp(index: int, leaf_bot: Bot, target_leaf: ConversationNode):
+                """Execute the functional prompt on a specific leaf."""
+                try:
+                    # Set the bot to the target leaf
+                    leaf_bot.conversation = target_leaf
+                    # Add callback to params if not present
+                    if 'callback' not in params:
+                        params['callback'] = callback
+                    # Execute the functional prompt
+                    result = fp_function(leaf_bot, **params)
+                    # Handle different return types
+                    if isinstance(result, tuple) and len(result) == 2:
+                        responses, nodes = result
+                        if isinstance(responses, list):
+                            final_response = responses[-1] if responses else "No response"
+                        else:
+                            final_response = responses
+                    else:
+                        final_response = str(result)
+                    return index, final_response, leaf_bot.conversation
+                except Exception as e:
+                    return index, f"Error: {str(e)}", None
+            # Execute in parallel
+            with ThreadPoolExecutor() as executor:
+                futures = [
+                    executor.submit(process_leaf_with_fp, i, bot_copies[i], target_leaves[i])
+                    for i in range(len(target_leaves))
+                ]
+                for future in as_completed(futures):
+                    idx, response, final_node = future.result()
+                    results[idx] = f"Leaf {idx+1}: {response[:100]}..."
+            return f"Broadcast of '{fp_name}' completed on {len(target_leaves)} leaves:\n" + "\n".join(results)
+        except Exception as e:
+            return f"Error in broadcast_fp: {str(e)}"
 def check_for_interrupt() -> bool:
     """Check if user pressed Escape without blocking execution."""
     if platform.system() == 'Windows':
@@ -731,6 +819,7 @@ class CLI:
             '/leaf': self.conversation.leaf,
             '/auto': self.system.auto,
             '/fp': self.fp.execute,
+            '/broadcast_fp': self.fp.broadcast_fp,
         }
     
     def run(self):
@@ -801,12 +890,13 @@ class CLI:
     
     def _initialize_new_bot(self):
         """Initialize a new bot with default tools."""
-        bot = AnthropicBot()
+        bot = AnthropicBot(allow_web_search=True)
         self.context.bot_instance = bot
         bot.add_tools(
             bots.tools.terminal_tools,
-            bots.tools.code_tools.view_dir,
-            bots.tools.python_execution_tool,
+            bots.tools.python_edit,
+            bots.tools.code_tools
+            #bots.tools.python_execution_tool,
         )
     
     def _handle_command(self, bot: Bot, user_input: str):
@@ -876,5 +966,7 @@ def main(bot_filename=None):
 
 if __name__ == '__main__':
     main()
+
+
 
 
