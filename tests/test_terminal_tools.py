@@ -376,7 +376,36 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertEqual(1, len(outputs), 'Should get exactly one output')
         self.assertEqual(self.normalize_text('1'), self.normalize_text(outputs[0]))
         manager.cleanup()
-
+    def test_current_directory_display(self):
+        "Test that current directory is properly displayed in output"
+        from bots.tools.terminal_tools import execute_powershell
+        # Execute a simple command and check that directory info is included
+        ps_script = 'Write-Output "test command"'
+        result = self._collect_generator_output(execute_powershell(ps_script))
+        # Should contain the directory information
+        self.assertIn('[System: current directory <', result)
+        self.assertIn('>]', result)
+        # Should not contain the old error about Path property
+        self.assertNotIn('Property "Path', result)
+        self.assertNotIn('cannot be found', result)
+        # Should contain our test output
+        self.assertContainsNormalized(result, 'test command')
+    def test_directory_change_persistence(self):
+        "Test that directory changes persist between commands"
+        from bots.tools.terminal_tools import execute_powershell, PowerShellManager
+        manager = PowerShellManager.get_instance('dir_test')
+        # Create a test directory and change to it
+        ps_script1 = 'New-Item -ItemType Directory -Path "test_dir_persistence" -Force; Set-Location "test_dir_persistence"'
+        result1 = self._collect_generator_output(execute_powershell(ps_script1))
+        # Check that we're in the new directory
+        ps_script2 = 'Write-Output "Current location test"'
+        result2 = self._collect_generator_output(execute_powershell(ps_script2))
+        # Should show we're in the test directory
+        self.assertIn('test_dir_persistence', result2)
+        # Clean up
+        ps_script3 = 'Set-Location ..; Remove-Item -Path "test_dir_persistence" -Force -Recurse'
+        self._collect_generator_output(execute_powershell(ps_script3))
+        manager.cleanup()
 
 from bots.tools.terminal_tools import execute_powershell, PowerShellSession
 

@@ -288,7 +288,7 @@ function Invoke-SafeCommand {
         if not self._process:
             return "unknown"
         # Send a quick command to get current directory
-        self._process.stdin.write("Get-Location | Select-Object -ExpandProperty Path`n")
+        self._process.stdin.write("Get-Location | Select-Object -ExpandProperty Path\n")
         self._process.stdin.flush()
         # Read the response (simplified for this specific case)
         import time
