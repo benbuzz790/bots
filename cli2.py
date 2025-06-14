@@ -188,7 +188,7 @@ class DynamicFunctionalPromptHandler:
         return functions
 
     def execute(self, bot: Bot, context, args: List[str]) -> str:
-        """Execute functional prompt wizard with dynamic parameter collection."""
+        """Execute functional prompt wizard with dynamic parameter collection and fixes."""
         try:
             # Step 1: Choose functional prompt type
             print("\nAvailable functional prompts:")
@@ -211,27 +211,40 @@ class DynamicFunctionalPromptHandler:
             params = self.collector.collect_parameters(fp_function)
             if params is None:
                 return "Parameter collection cancelled"
-            # Step 3: Execute functional prompt
+            # Step 3: Execute functional prompt with fixes
             context.conversation_backup = bot.conversation
             print(f"\nExecuting {fp_name}...")
-            # Create callback for immediate tool result printing
-            callback = create_tool_result_callback(context)
-            params['callback'] = callback
+            # Create callback and adapt it for the specific function
+            cli_callback = create_tool_result_callback(context)
+            # Adapt callback based on function requirements
+            if fp_name == 'tree_of_thought':
+                # tree_of_thought expects single-item callback
+
+                def adapted_callback(response, node):
+                    cli_callback([response], [node])
+                params['callback'] = adapted_callback
+            elif fp_name in ['single_prompt', 'recombine']:
+                # These functions don't take callbacks
+                pass
+            else:
+                # Most functions expect list-based callbacks
+                params['callback'] = cli_callback
             # Execute the function
             result = fp_function(bot, **params)
-            # Handle results and display responses
+            # Normalize result to list format for consistent handling
             if isinstance(result, tuple) and len(result) == 2:
                 responses, nodes = result
-                # Handle both single response and list of responses
-                if isinstance(responses, list):
+                # Convert single format to list format if needed
+                if isinstance(responses, str):
+                    responses, nodes = ([responses], [nodes])
+                # Display responses
+                if responses:
                     for i, response in enumerate(responses):
                         if response:
                             pretty(f"Response {i+1}: {response}", bot.name, context.config.width, context.config.indent)
                     return f"Functional prompt '{fp_name}' completed with {len(responses)} responses"
                 else:
-                    if responses:
-                        pretty(responses, bot.name, context.config.width, context.config.indent)
-                    return f"Functional prompt '{fp_name}' completed"
+                    return f"Functional prompt '{fp_name}' completed with no responses"
             else:
                 return f"Functional prompt '{fp_name}' completed with result: {result}"
         except Exception as e:
@@ -295,76 +308,63 @@ class CLIContext:
         self.old_terminal_settings = None
         self.bot_instance = None
         self.cached_leaves: List[ConversationNode] = []
+
 class CLI2:
-   """Main CLI class that orchestrates all handlers with dynamic parameter collection."""
+    """Main CLI class that orchestrates all handlers with dynamic parameter collection."""
 
-   def __init__(self, bot_filename: Optional[str] = None):
-       self.context = CLIContext()
-       self.fp = DynamicFunctionalPromptHandler()
-       self.bot_filename = bot_filename
-        
-       # Command registry (simplified for now)
-       self.commands = {
-           '/fp': self.fp.execute,
-       }
+    def __init__(self, bot_filename: Optional[str]=None):
+        self.context = CLIContext()
+        self.fp = DynamicFunctionalPromptHandler()
+        self.bot_filename = bot_filename
+        # Command registry (simplified for now)
+        self.commands = {'/fp': self.fp.execute}
 
-   def run(self):
-       """Main CLI loop."""
-       try:
-           print("Hello, world! CLI2 with Dynamic Parameter Collection")
-            
-           # Initialize bot
-           self._initialize_new_bot()
-            
-           print("CLI2 started. Type /fp to test functional prompts or /exit to quit.")
-            
-           while True:
-               try:
-                   user_input = input(">>> ").strip()
-                   if user_input == '/exit':
-                       raise SystemExit(0)
-                    
-                   if not user_input:
-                       continue
-                    
-                   if user_input.startswith('/fp'):
-                       self._handle_command(self.context.bot_instance, user_input)
-                   else:
-                       self._handle_chat(self.context.bot_instance, user_input)
-                        
-               except KeyboardInterrupt:
-                   print("\nUse /exit to quit")
-               except EOFError:
-                   break
-               except Exception as e:
-                   print(f"Error: {str(e)}")
-       finally:
-           print("Goodbye!")
+    def run(self):
+        """Main CLI loop."""
+        try:
+            print("Hello, world! CLI2 with Dynamic Parameter Collection")
+            # Initialize bot
+            self._initialize_new_bot()
+            print("CLI2 started. Type /fp to test functional prompts or /exit to quit.")
+            while True:
+                try:
+                    user_input = input(">>> ").strip()
+                    if user_input == '/exit':
+                        raise SystemExit(0)
+                    if not user_input:
+                        continue
+                    if user_input.startswith('/fp'):
+                        self._handle_command(self.context.bot_instance, user_input)
+                    else:
+                        self._handle_chat(self.context.bot_instance, user_input)
+                except KeyboardInterrupt:
+                    print("\nUse /exit to quit")
+                except EOFError:
+                    break
+                except Exception as e:
+                    print(f"Error: {str(e)}")
+        finally:
+            print("Goodbye!")
 
-   def _initialize_new_bot(self):
-       """Initialize a new bot with default tools."""
-       bot = AnthropicBot(allow_web_search=True)
-       self.context.bot_instance = bot
-       bot.add_tools(
-           bots.tools.terminal_tools,
-           bots.tools.python_edit,
-           bots.tools.code_tools
-       )
+    def _initialize_new_bot(self):
+        """Initialize a new bot with default tools."""
+        bot = AnthropicBot(allow_web_search=True)
+        self.context.bot_instance = bot
+        bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools)
 
-   def _handle_command(self, bot: Bot, user_input: str):
-       """Handle command input."""
-       if user_input.startswith('/fp'):
-           result = self.fp.execute(bot, self.context, [])
-           if result:
-               pretty(result, "System", self.context.config.width, self.context.config.indent)
+    def _handle_command(self, bot: Bot, user_input: str):
+        """Handle command input."""
+        if user_input.startswith('/fp'):
+            result = self.fp.execute(bot, self.context, [])
+            if result:
+                pretty(result, "System", self.context.config.width, self.context.config.indent)
 
-   def _handle_chat(self, bot: Bot, user_input: str):
-       """Handle chat input."""
-       callback = create_tool_result_callback(self.context)
-       responses, nodes = fp.chain(bot, [user_input], callback=callback)
-       if responses:
-           pretty(responses[0], bot.name, self.context.config.width, self.context.config.indent)
-
+    def _handle_chat(self, bot: Bot, user_input: str):
+        """Handle chat input."""
+        callback = create_tool_result_callback(self.context)
+        responses, nodes = fp.chain(bot, [user_input], callback=callback)
+        if responses:
+            pretty(responses[0], bot.name, self.context.config.width, self.context.config.indent)
 
 def clean_dict(d: dict, indent: int=4, level: int=1):
     """Clean a dict containing recursive json dumped strings for printing"""
