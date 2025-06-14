@@ -44,6 +44,7 @@ from bots.foundation.base import Bot
 from bots.foundation.base import ConversationNode
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
+from bots.flows.recombinators import recombinators
 
 
 # Type Aliases
@@ -358,7 +359,8 @@ def recombine(
     bot: Bot,
     responses: List[Response],
     nodes: List[ResponseNode],
-    recombinator_function: RecombinatorFunction
+    recombinator_function: RecombinatorFunction,
+    **kwargs
 ) -> Tuple[Response, ResponseNode]:
     """Synthesize multiple conversation branches into a unified conclusion.
 
@@ -437,7 +439,7 @@ def recombine(
         - Updates bot's current conversation state
     """
     start_point = bot.conversation
-    response, node = recombinator_function(responses, nodes)
+    response, node = recombinator_function(responses, nodes, **kwargs)
     node.parent = start_point
     start_point.replies[-1] = node
     bot.conversation = node
@@ -447,7 +449,7 @@ def recombine(
 def tree_of_thought(
     bot: Bot,
     prompts: List[Prompt],
-    recombinator_function: RecombinatorFunction,
+     recombinator_function: RecombinatorFunction,
     callback: Optional[Callable[[Response, ResponseNode], None]] = None
 ) -> Tuple[Response, ResponseNode]:
     """Implement tree-of-thought reasoning for complex problem-solving.
@@ -1120,7 +1122,7 @@ def par_branch_while(
 def par_dispatch(
     bot_list: List[Bot],
     functional_prompt: Callable[[Bot, Any], Tuple[Response, ResponseNode]],
-    **kwargs: Any
+     **kwargs: Any
 ) -> List[Tuple[Optional[Response], Optional[ResponseNode]]]:
     """Execute a functional prompt pattern across multiple bots in parallel.
 
@@ -1144,7 +1146,7 @@ def par_dispatch(
             - chain: For sequential processing
             - branch: For parallel exploration
             - tree_of_thought: For complex reasoning
-        **kwargs (Any): Additional arguments to pass to the functional prompt.
+         **kwargs (Any): Additional arguments to pass to the functional prompt.
             These must match the signature of the chosen functional_prompt
 
     Returns:
@@ -1293,9 +1295,4 @@ def broadcast_to_leaves(
     except:
         pass
     return responses, nodes
-
-
-
-
-
 
