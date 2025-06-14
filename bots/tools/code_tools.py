@@ -1,4 +1,4 @@
-import os
+﻿import os
 import traceback
 import textwrap
 import difflib
@@ -69,7 +69,7 @@ def view(file_path: str, start_line: str = None, end_line: str = None,
     return f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
 
 @handle_errors
-def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py', 'txt', 'md']"):
+def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py', 'txt', 'md']", max_lines: int=500):
     """
     Creates a summary of the directory structure starting from the given path, writing only files
     with specified extensions and showing venv directories without their contents.
@@ -77,6 +77,7 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
     - start_path (str): The root directory to start scanning from.
     - output_file (str): The name of the file to optionally write the directory structure to.
     - target_extensions (str): String representation of a list of file extensions (e.g. "['py', 'txt']").
+    - max_lines (int): Maximum number of lines in output. If exceeded, deepest levels are truncated. Default 500.
     Returns:
     str: A formatted string containing the directory structure, with each directory and file properly indented.
     Example output:
@@ -89,17 +90,21 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
             utils.py
     cost: low
     """
+    if max_lines:
+        max_lines = int(max_lines)
     extensions_list = [ext.strip().strip('\'"') for ext in target_extensions.strip('[]').split(',')]
     extensions_list = ['.' + ext if not ext.startswith('.') else ext for ext in extensions_list]
-    output_text = []
+    # First pass: collect all directory entries with their levels
+    dir_entries = []
+    max_level = 0
     for root, dirs, files in os.walk(start_path):
         level = root.replace(start_path, '').count(os.sep)
         indent = '    ' * level
         basename = os.path.basename(root)
         is_venv = basename in ['venv', 'env', '.env'] or 'pyvenv.cfg' in files
         if is_venv:
-            line = f'{indent}{basename}/'
-            output_text.append(line)
+            dir_entries.append((level, f'{indent}{basename}/'))
+            max_level = max(max_level, level)
             dirs[:] = []
             continue
         has_relevant_files = False
@@ -108,13 +113,40 @@ def view_dir(start_path: str='.', output_file=None, target_extensions: str="['py
                 has_relevant_files = True
                 break
         if has_relevant_files:
-            line = f'{indent}{basename}/'
-            output_text.append(line)
+            dir_entries.append((level, f'{indent}{basename}/'))
+            max_level = max(max_level, level)
             subindent = '    ' * (level + 1)
             for file in files:
                 if file.endswith(tuple(extensions_list)):
-                    line = f'{subindent}{file}'
-                    output_text.append(line)
+                    dir_entries.append((level + 1, f'{subindent}{file}'))
+                    max_level = max(max_level, level + 1)
+    # Second pass: apply length limiting by progressively removing deeper levels
+    current_level_limit = max_level
+    while current_level_limit >= 0:
+        # Filter entries up to current level limit
+        filtered_entries = [(level, line) for level, line in dir_entries if level <= current_level_limit]
+        # Check if we need to add truncation indicators
+        truncated_dirs = set()
+        for level, line in dir_entries:
+            if level > current_level_limit and level == current_level_limit + 1:
+                # Find parent directory
+                parent_level = level - 1
+                for parent_level_check, parent_line in filtered_entries:
+                    if parent_level_check == parent_level and parent_line.endswith('/'):
+                        truncated_dirs.add(parent_line)
+        # Add truncation indicators
+        final_entries = []
+        for level, line in filtered_entries:
+            final_entries.append(line)
+            if line in truncated_dirs:
+                truncation_indent = '    ' * (level + 1)
+                final_entries.append(f'{truncation_indent}...')
+        if len(final_entries) <= max_lines:
+            output_text = final_entries
+            break
+        current_level_limit -= 1
+    else:
+        output_text = [f"Project too large (>{max_lines} lines). Showing root level only:", f"{os.path.basename(start_path) or start_path}/", "    ..."]
     if output_file is not None:
         with open(output_file, 'w') as file:
             file.write('\n'.join(output_text))
