@@ -1,4 +1,4 @@
-"""Development decorators for enhancing bot functionality and debugging.
+﻿"""Development decorators for enhancing bot functionality and debugging.
 
 This module provides decorators and utilities for:
 - Lazy implementation using LLMs (@lazy)
@@ -680,12 +680,9 @@ def log_errors(func: Callable) -> Callable:
         try:
             result = func(*args, **kwargs)
 
-            # Check if result is a string that starts with "Error" (case insensitive)
-            if isinstance(result, str):
-                # Check first few words for "Error"
-                first_words = ' '.join(result.split()[:5]).lower()
-                if 'error' in first_words:
-                    _log_error_to_file(func.__name__, f"Function returned error message: {result}", args, kwargs)
+                        # Check if result is a string that starts with "Tool Failed:" (the specific format from handle_errors)
+            if isinstance(result, str) and result.startswith("Tool Failed:"):
+                _log_error_to_file(func.__name__, f"Function returned error message: {result}", args, kwargs)
 
             return result
 
@@ -763,3 +760,5 @@ def handle_errors(func: Callable) -> Callable:
         except Exception as e:
             return _process_error(e)
     return wrapper
+
+
