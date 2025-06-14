@@ -201,12 +201,59 @@ function Invoke-SafeCommand {
                 if error_lines:
                     all_output.extend(['', 'Errors:', *error_lines])
 
+            # Get current directory for display
+            try:
+                current_dir = self._get_current_directory()
+                dir_info = f"[System: current directory <{current_dir}>]"
+                if all_output:
+                    all_output.insert(0, dir_info)
+                else:
+                    all_output = [dir_info]
+            except:
+                pass  # If we can't get directory, continue without it
             return '\n'.join(all_output)
 
         except Exception as e:
             self.__exit__(type(e), e, e.__traceback__)
             raise
 
+    def _get_current_directory(self) -> str:
+        """Get the current directory from the PowerShell session."""
+        if not self._process:
+            return "unknown"
+        try:
+            # Use a simple PowerShell command to get current directory
+            temp_counter = self._command_counter + 1000  # Use different counter to avoid conflicts
+            delimiter = f'<<<DIR_QUERY_{temp_counter}_COMPLETE>>>'
+            # Clear queues first
+            while not self._output_queue.empty():
+                try:
+                    self._output_queue.get_nowait()
+                except:
+                    break
+            # Send directory query
+            dir_command = f"(Get-Location).Path; Write-Output '{delimiter}'"
+            self._process.stdin.write(dir_command + '\n')
+            self._process.stdin.flush()
+            # Read response with timeout
+            start_time = time.time()
+            result_lines = []
+            while time.time() - start_time < 2:  # 2 second timeout
+                try:
+                    line = self._output_queue.get(timeout=0.1)
+                    if line == delimiter:
+                        break
+                    elif line and line.strip():
+                        result_lines.append(line.strip())
+                except:
+                    continue
+            # Return the first non-empty line as the directory
+            for line in result_lines:
+                if line and not line.startswith('PS ') and (':\\' in line or line.startswith('/')):
+                    return line
+            return "unknown"
+        except:
+            return "unknown"
     def _wrap_code_safely(self, code: str, delimiter: str) -> str:
         """
         Safely wrap code for execution, handling complex strings and multiline code.
@@ -236,6 +283,30 @@ function Invoke-SafeCommand {
             Write-Output '{delimiter}'
             """
 
+    def _get_current_directory(self) -> str:
+        """Get the current directory from the PowerShell session."""
+        if not self._process:
+            return "unknown"
+        # Send a quick command to get current directory
+        self._process.stdin.write("Get-Location | Select-Object -ExpandProperty Path`n")
+        self._process.stdin.flush()
+        # Read the response (simplified for this specific case)
+        import time
+        time.sleep(0.1)  # Brief wait for response
+        try:
+            # Try to get output from queue
+            lines = []
+            start_time = time.time()
+            while time.time() - start_time < 1:  # 1 second timeout
+                try:
+                    line = self._output_queue.get(timeout=0.1)
+                    if line and not line.startswith("PS ") and line.strip():
+                        return line.strip()
+                except:
+                    continue
+        except:
+            pass
+        return "unknown"
     def _handle_python_command_safely(self, code: str, delimiter: str) -> str:
         """
         Handle Python commands with complex strings by using file-based execution.
