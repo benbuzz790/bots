@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 import datetime as DT
 import os
 import sys

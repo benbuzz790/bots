@@ -1,4 +1,4 @@
-﻿"""Functional patterns for structured bot interactions and complex reasoning.
+"""Functional patterns for structured bot interactions and complex reasoning.
 
 This module provides a collection of higher-level functions for orchestrating bot
 interactions in common patterns like chains, branches, and trees. These patterns

@@ -1,4 +1,4 @@
-﻿"""Unit tests for basic bot functionality and parallel processing capabilities.
+"""Unit tests for basic bot functionality and parallel processing capabilities.
 
 This module contains test cases for the core functionality of both AnthropicBot
 and ChatGPT_Bot classes from the bots package. Tests cover initialization parameters,

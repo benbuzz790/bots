@@ -1,4 +1,4 @@
-﻿"""Development decorators for enhancing bot functionality and debugging.
+"""Development decorators for enhancing bot functionality and debugging.
 
 This module provides decorators and utilities for:
 - Lazy implementation using LLMs (@lazy)

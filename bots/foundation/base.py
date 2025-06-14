@@ -1,4 +1,4 @@
-﻿"""Core foundation classes for the bots framework.
+"""Core foundation classes for the bots framework.
 
 This module provides the fundamental abstractions and base classes that power the bots framework:
 - Bot: Abstract base class for all LLM implementations

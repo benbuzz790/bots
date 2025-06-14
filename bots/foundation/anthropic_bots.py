@@ -1,4 +1,4 @@
-﻿"""Anthropic-specific bot implementation for the bots framework.
+"""Anthropic-specific bot implementation for the bots framework.
 
 This module provides the necessary classes to interact with Anthropic's Claude models,
 implementing the base bot interfaces with Anthropic-specific handling for:
