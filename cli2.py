@@ -15,6 +15,7 @@ import bots.tools.python_edit
 import bots.tools.terminal_tools
 import bots.tools.code_tools
 import bots.flows.functional_prompts as fp
+import bots.flows.recombinators as recombinators
 """
 Modern CLI with dynamic parameter collection for functional prompts.
 This version uses function introspection to automatically handle parameter collection
@@ -43,11 +44,13 @@ class DynamicParameterCollector:
             sig = inspect.signature(func)
             params = {}
             print(f"\nCollecting parameters for {func.__name__}:")
+            # Check if this function needs a special callback signature
+            needs_single_callback = func.__name__ in ['tree_of_thought']
             for param_name, param in sig.parameters.items():
                 # Skip bot parameter - we'll provide this
                 if param_name == 'bot':
                     continue
-                # Skip callback parameter - we'll inject this automatically
+                # Skip callback parameter - we'll inject this automatically based on function
                 if param_name == 'callback':
                     continue
                 print(f"  Parameter: {param_name} (default: {param.default})")
@@ -66,6 +69,8 @@ class DynamicParameterCollector:
                     # Use default value for optional parameters
                 elif value is not None:
                     params[param_name] = value
+            # Store callback type info for later use
+            params['_callback_type'] = 'single' if needs_single_callback else 'list'
             return params
         except Exception as e:
             print(f"Error collecting parameters: {e}")
@@ -135,11 +140,19 @@ class DynamicParameterCollector:
             return []
 
     def _collect_recombinator(self, param_name: str, default: Any) -> Optional[Callable]:
-        """Collect recombinator function (simplified for now)."""
-        choice = input(f"Use default recombinator for {param_name}? (y/n): ").strip().lower()
-        if choice == 'y':
-            return fp.recombinators.simple_concatenate if hasattr(fp, 'recombinators') else None
-        return None
+        """Collect recombinator function with available options."""
+        print(f"\nAvailable recombinators for {param_name}:")
+        recombinator_options = {'1': ('concatenate', recombinators.recombinators.concatenate), '2': ('llm_judge', recombinators.recombinators.llm_judge), '3': ('llm_vote', recombinators.recombinators.llm_vote), '4': ('llm_merge', recombinators.recombinators.llm_merge)}
+        for key, (name, _) in recombinator_options.items():
+            print(f"  {key}. {name}")
+        choice = input("Select recombinator (or press enter for default): ").strip()
+        if not choice and default != inspect.Parameter.empty:
+            return default
+        elif choice in recombinator_options:
+            return recombinator_options[choice][1]
+        else:
+            print("Invalid recombinator selection, using concatenate")
+            return recombinators.recombinators.concatenate
 
     def _collect_items(self, param_name: str, default: Any) -> Optional[List[Any]]:
         """Collect items for prompt_for function."""
@@ -185,10 +198,17 @@ class DynamicFunctionalPromptHandler:
                         functions[name] = obj
                 except:
                     continue  # Skip if we can't inspect the signature
+        # Manually add any missing important functions
+        if 'single_prompt' not in functions and hasattr(fp, 'single_prompt'):
+            functions['single_prompt'] = fp.single_prompt
+        if 'tree_of_thought' not in functions and hasattr(fp, 'tree_of_thought'):
+            functions['tree_of_thought'] = fp.tree_of_thought
+        if 'recombine' not in functions and hasattr(fp, 'recombine'):
+            functions['recombine'] = fp.recombine
         return functions
 
     def execute(self, bot: Bot, context, args: List[str]) -> str:
-        """Execute functional prompt wizard with dynamic parameter collection and fixes."""
+        """Execute functional prompt wizard with dynamic parameter collection."""
         try:
             # Step 1: Choose functional prompt type
             print("\nAvailable functional prompts:")
@@ -211,40 +231,45 @@ class DynamicFunctionalPromptHandler:
             params = self.collector.collect_parameters(fp_function)
             if params is None:
                 return "Parameter collection cancelled"
-            # Step 3: Execute functional prompt with fixes
+            # Step 3: Execute functional prompt
             context.conversation_backup = bot.conversation
             print(f"\nExecuting {fp_name}...")
-            # Create callback and adapt it for the specific function
-            cli_callback = create_tool_result_callback(context)
-            # Adapt callback based on function requirements
-            if fp_name == 'tree_of_thought':
-                # tree_of_thought expects single-item callback
+            # Create appropriate callback based on function requirements
+            callback_type = params.pop('_callback_type', 'list')
+            if callback_type == 'single':
+                # Single callback for tree_of_thought
 
-                def adapted_callback(response, node):
-                    cli_callback([response], [node])
-                params['callback'] = adapted_callback
-            elif fp_name in ['single_prompt', 'recombine']:
-                # These functions don't take callbacks
-                pass
+                def single_callback(response: str, node):
+                    if hasattr(context, 'bot_instance') and context.bot_instance and context.config.verbose:
+                        bot_instance = context.bot_instance
+                        requests = bot_instance.tool_handler.requests
+                        results = bot_instance.tool_handler.results
+                        if requests:
+                            request_str = ''.join((clean_dict(r) for r in requests))
+                            result_str = ''.join((clean_dict(r) for r in results))
+                            pretty(f'Tool Requests\n\n{request_str}', "System", context.config.width, context.config.indent)
+                            if result_str.strip():
+                                pretty(f'Tool Results\n\n{result_str}', "System", context.config.width, context.config.indent)
+                params['callback'] = single_callback
             else:
-                # Most functions expect list-based callbacks
-                params['callback'] = cli_callback
+                # List callback for most functions
+                callback = create_tool_result_callback(context)
+                params['callback'] = callback
             # Execute the function
             result = fp_function(bot, **params)
-            # Normalize result to list format for consistent handling
+            # Handle results and display responses
             if isinstance(result, tuple) and len(result) == 2:
                 responses, nodes = result
-                # Convert single format to list format if needed
-                if isinstance(responses, str):
-                    responses, nodes = ([responses], [nodes])
-                # Display responses
-                if responses:
+                # Handle both single response and list of responses
+                if isinstance(responses, list):
                     for i, response in enumerate(responses):
                         if response:
                             pretty(f"Response {i+1}: {response}", bot.name, context.config.width, context.config.indent)
                     return f"Functional prompt '{fp_name}' completed with {len(responses)} responses"
                 else:
-                    return f"Functional prompt '{fp_name}' completed with no responses"
+                    if responses:
+                        pretty(responses, bot.name, context.config.width, context.config.indent)
+                    return f"Functional prompt '{fp_name}' completed"
             else:
                 return f"Functional prompt '{fp_name}' completed with result: {result}"
         except Exception as e:
