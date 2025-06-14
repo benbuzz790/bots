@@ -1,8 +1,8 @@
-# bots: making LLM tool use convenient and powerful
+# bots: Convenient agentic programming
 
 ## Overview
 
-**bots** (bɒts), ***n.pl.*** : Language Models which are instruct-tuned, have the ability to use tools, and are encapsulated with model parameters, metadata, tools, and conversation history.
+**bots** (bɒts), ***n.pl.*** : Tool-using agents, encapsulated with model parameters, conversation history, and tool source code in a single sharable file.
 
 The bots library provides a structured interface for working with such agents, aiming to make LLM tools more convenient, accessible, and sharable for developers and researchers.
 
@@ -22,31 +22,29 @@ The bots library provides a structured interface for working with such agents, a
    - `chat()`: Start an interactive chat in a terminal with the bot
 
 2. **Automatic Function to Tool Conversion**
-   - Tool handling capabilities - any well-structured Python function can be used by a bot
-   - Standardized tool requirements: clear docstrings, consistent error handling, and predictable return formats
-   - Added tools become self-contained by the bot with explicit dependencies
-   - Tool portability and preservation - tools are saved with the bot.
+   - Define a python function which returns a string. Call bot.add_tools(my_function). The bot can now use the function as a tool.
+   - Tools are saved with the bot and run locally.
 
 3. **Tree-based Conversations**
    - Implements a linked tree structure for conversation histories
-   - Allows branching conversations and exploring multiple dialogue paths
-   - Efficiently manages context by only sending path to root
+   - Allows branching conversations and exploring multiple prompt paths
+   - Allows sophisticated workflows.
 
-   Example of using conversation branching:
+   Example of manual conversation branching:
    ```python
    # Start a conversation
-   response = bot.respond("Read this code")
+   response = bot.respond("View the current working directory")
    
    # Save current conversation point
    context_complete = bot.conversation
    
-   # Branch 1: Security Analysis
+   # Branch 1: Update a file
    bot.conversation = context_complete
-   security_response = bot.respond("Focus on security issues")
+   branch1_response = bot.respond("Refactor cli.py")
    
-   # Branch 2: Performance Analysis
+   # Branch 2: Update a different file
    bot.conversation = context_complete
-   performance_response = bot.respond("Focus on performance issues")
+   branch2_response = bot.respond("Refactor test_cli.py")
    ```
 
 4. **Functional Prompting**
@@ -68,16 +66,30 @@ The bots library provides a structured interface for working with such agents, a
 
 ## Key Features
 
-1. **Pre-built Code Tools**
+1. **Pre-built Tools**
    - Built-in tools for:
-     - File operations (read, write, modify)
-     - Code manipulation and analysis
-     - Terminal operations (PowerShell execution)
+     - Powershell execution
+     - Python execution
    - Tool state preservation: When tools are added to a bot and the bot is saved, all tool context 
      (including source code and dependencies) is preserved, allowing the bot to be shared with others 
-     who can use the same tools without additional setup
+     who can use the same tools without additional setup (beyond installing this and any other required
+     libraries for the tools).
 
-2. **CLI Interface**
+2. **Functional Prompts**
+   - A functional prompt is function which sends a bot a prompt or sequence of prompts in a particular way.
+   - A 'chain' prompt, for example, sends an array of prompts one after the other:
+     ```python
+     import functional_prompts as fp
+     import bots
+     bot = bots.load('my_file.bot')
+     fp.chain(bot, ["View the directory", "Read cli.py", "Make me a mermaid diagram of the program flow"])
+     ```
+   - A 'branch' prompt is similar to a chain, but creates a new conversation branch for each prompt in the list.
+   - Parallel branching is easy with the par_branch fp. General parallelization is possible with the par_dispatch fp.
+   - Why "functional prompt" and not "workflow?" To emphasize that these are *composable*. 
+   - See functional_prompts.py for all available functional prompts.
+
+3. **CLI Interface**
    The CLI interface provides an advanced interface for working with bots interactively. It allows you to
    navigate through conversation history like a tree, moving up to previous points in the conversation and
    exploring different branches. The CLI also features an autonomous mode where the bot will continue
@@ -85,16 +97,23 @@ The bots library provides a structured interface for working with such agents, a
 
    ```bash
    python -m bots.dev.cli
+
+   or
+
+   python -m bots.dev.cli [filepath] #Loads bot at filepath
    ```
 
    Key capabilities:
-   - Navigate conversation history with /up, /down, /left, /right commands
-   - Enable autonomous operation with /auto command
+   - Navigate conversation history with /up, /down, /left, /right, /label, and /goto commands
+   - Enable autonomous operation with /auto command (sends 'ok' after each bot response until the bot doesn't use a tool)
    - Control tool output visibility with /verbose and /quiet
-   - Save and load conversation states
-   - Execute Python and PowerShell commands directly
+   - Save and load bots with /save and /load
+   - Run a functional prompt with /fp
+        - This starts a wizard to choose and set up a functional prompt
+        - Try parallel branching with 'par_branch_while' to make multiple files at the same time
+        - Try 'broadcast_to_leaves' afterward to debug each file at the same time
 
-3. **Lazy Decorator**
+4. **Lazy Decorator**
    The Lazy Decorator enables *runtime code generation* using LLMs. When applied to a function or class,
    it defers implementation until the first time that code is actually called. At runtime, the decorator
    sends relevant context to the LLM and uses its response to create the implementation. The context
@@ -203,10 +222,11 @@ fp.prompt_while(
 Tools must follow these specific requirements for reliability and compatibility:
 
 1. **Function Requirements**
-   - Must be top-level functions (not nested in classes or other functions)
-   - Must not start with an underscore
-   - Generally should be grouped in a single file
-   - Should prefer string inputs and outputs for reliability
+   - If using a module or file:
+      - Tools must be top-level functions (not nested in classes or other functions)
+      - Tools must not start with an underscore (all "_functions()" are stored with the bot, but not made available as tools)
+   - Should prefer string inputs
+   - Must return a string
    - Must catch all errors and return error messages as strings
 
 2. **Documentation Requirements**
@@ -214,22 +234,17 @@ Tools must follow these specific requirements for reliability and compatibility:
    - Explicit "Use when..." section explaining when to use the tool
    - All parameters documented with types and descriptions
    - Return format clearly specified
-   - Cost indication (low, medium, high) if relevant
 
 Example of a well-structured tool:
 
 ```python
-def analyze_code(file_path: str, max_lines: str = "1000") -> str:
-    """Analyze a Python file and return findings.
+def lint_code(file_path: str) -> str:
+    """Clean code with built in linter.
 
-    Use when you need to:
-    - Understand code structure
-    - Find potential issues
-    - Get an overview of a file
+    Use when you need to clean up your files
 
     Parameters:
     - file_path (str): Path to the Python file to analyze
-    - max_lines (str): Maximum number of lines to process
 
     Returns:
     str: Analysis results or error message
@@ -238,7 +253,7 @@ def analyze_code(file_path: str, max_lines: str = "1000") -> str:
     """
     try:
         # Perform analysis
-        result = perform_analysis(file_path, int(max_lines))
+        result = _lint(file_path)
         return result
     except Exception as e:
         return f'Error analyzing {file_path}: {str(e)}'
