@@ -162,65 +162,6 @@ class DynamicParameterCollector:
             value = input(f"Enter {param_name}: ").strip()
             return value if value else None
 
-def create_tool_result_callback(context):
-    """Create a callback function that prints tool results immediately."""
-
-    def tool_result_callback(responses, nodes):
-        # Print tool results for the most recent response
-        if hasattr(context, 'bot_instance') and context.bot_instance:
-            bot = context.bot_instance
-            requests = bot.tool_handler.requests
-            results = bot.tool_handler.results
-            if requests and context.config.verbose:
-                request_str = ''.join((clean_dict(r) for r in requests))
-                result_str = ''.join((clean_dict(r) for r in results))
-                pretty(f'Tool Requests\n\n{request_str}', "System", context.config.width, context.config.indent)
-                if result_str.strip():
-                    pretty(f'Tool Results\n\n{result_str}', "System", context.config.width, context.config.indent)
-    return tool_result_callback
-
-class CLIConfig:
-    """Configuration management for CLI settings."""
-
-    def __init__(self):
-        self.verbose = True
-        self.width = 1000
-        self.indent = 4
-        self.config_file = "cli_config.json"
-        self.load_config()
-
-    def load_config(self):
-        """Load configuration from file if it exists."""
-        try:
-            if os.path.exists(self.config_file):
-                with open(self.config_file, 'r') as f:
-                    config_data = json.load(f)
-                    self.verbose = config_data.get('verbose', True)
-                    self.width = config_data.get('width', 1000)
-                    self.indent = config_data.get('indent', 4)
-        except Exception:
-            pass  # Use defaults if config loading fails
-
-    def save_config(self):
-        """Save current configuration to file."""
-        try:
-            config_data = {'verbose': self.verbose, 'width': self.width, 'indent': self.indent}
-            with open(self.config_file, 'w') as f:
-                json.dump(config_data, f, indent=2)
-        except Exception:
-            pass  # Fail silently if config saving fails
-
-class CLIContext:
-    """Shared context for CLI operations."""
-
-    def __init__(self):
-        self.config = CLIConfig()
-        self.labeled_nodes: Dict[str, ConversationNode] = {}
-        self.conversation_backup: Optional[ConversationNode] = None
-        self.old_terminal_settings = None
-        self.bot_instance = None
-        self.cached_leaves: List[ConversationNode] = []
-
 class DynamicFunctionalPromptHandler:
     """Handler for functional prompt commands using dynamic parameter collection."""
 
@@ -295,6 +236,135 @@ class DynamicFunctionalPromptHandler:
                 return f"Functional prompt '{fp_name}' completed with result: {result}"
         except Exception as e:
             return f"Error executing functional prompt: {str(e)}"
+
+def create_tool_result_callback(context):
+    """Create a callback function that prints tool results immediately."""
+
+    def tool_result_callback(responses, nodes):
+        # Print tool results for the most recent response
+        if hasattr(context, 'bot_instance') and context.bot_instance:
+            bot = context.bot_instance
+            requests = bot.tool_handler.requests
+            results = bot.tool_handler.results
+            if requests and context.config.verbose:
+                request_str = ''.join((clean_dict(r) for r in requests))
+                result_str = ''.join((clean_dict(r) for r in results))
+                pretty(f'Tool Requests\n\n{request_str}', "System", context.config.width, context.config.indent)
+                if result_str.strip():
+                    pretty(f'Tool Results\n\n{result_str}', "System", context.config.width, context.config.indent)
+    return tool_result_callback
+
+class CLIConfig:
+    """Configuration management for CLI settings."""
+
+    def __init__(self):
+        self.verbose = True
+        self.width = 1000
+        self.indent = 4
+        self.config_file = "cli_config.json"
+        self.load_config()
+
+    def load_config(self):
+        """Load configuration from file if it exists."""
+        try:
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r') as f:
+                    config_data = json.load(f)
+                    self.verbose = config_data.get('verbose', True)
+                    self.width = config_data.get('width', 1000)
+                    self.indent = config_data.get('indent', 4)
+        except Exception:
+            pass  # Use defaults if config loading fails
+
+    def save_config(self):
+        """Save current configuration to file."""
+        try:
+            config_data = {'verbose': self.verbose, 'width': self.width, 'indent': self.indent}
+            with open(self.config_file, 'w') as f:
+                json.dump(config_data, f, indent=2)
+        except Exception:
+            pass  # Fail silently if config saving fails
+
+class CLIContext:
+    """Shared context for CLI operations."""
+
+    def __init__(self):
+        self.config = CLIConfig()
+        self.labeled_nodes: Dict[str, ConversationNode] = {}
+        self.conversation_backup: Optional[ConversationNode] = None
+        self.old_terminal_settings = None
+        self.bot_instance = None
+        self.cached_leaves: List[ConversationNode] = []
+class CLI2:
+   """Main CLI class that orchestrates all handlers with dynamic parameter collection."""
+
+   def __init__(self, bot_filename: Optional[str] = None):
+       self.context = CLIContext()
+       self.fp = DynamicFunctionalPromptHandler()
+       self.bot_filename = bot_filename
+        
+       # Command registry (simplified for now)
+       self.commands = {
+           '/fp': self.fp.execute,
+       }
+
+   def run(self):
+       """Main CLI loop."""
+       try:
+           print("Hello, world! CLI2 with Dynamic Parameter Collection")
+            
+           # Initialize bot
+           self._initialize_new_bot()
+            
+           print("CLI2 started. Type /fp to test functional prompts or /exit to quit.")
+            
+           while True:
+               try:
+                   user_input = input(">>> ").strip()
+                   if user_input == '/exit':
+                       raise SystemExit(0)
+                    
+                   if not user_input:
+                       continue
+                    
+                   if user_input.startswith('/fp'):
+                       self._handle_command(self.context.bot_instance, user_input)
+                   else:
+                       self._handle_chat(self.context.bot_instance, user_input)
+                        
+               except KeyboardInterrupt:
+                   print("\nUse /exit to quit")
+               except EOFError:
+                   break
+               except Exception as e:
+                   print(f"Error: {str(e)}")
+       finally:
+           print("Goodbye!")
+
+   def _initialize_new_bot(self):
+       """Initialize a new bot with default tools."""
+       bot = AnthropicBot(allow_web_search=True)
+       self.context.bot_instance = bot
+       bot.add_tools(
+           bots.tools.terminal_tools,
+           bots.tools.python_edit,
+           bots.tools.code_tools
+       )
+
+   def _handle_command(self, bot: Bot, user_input: str):
+       """Handle command input."""
+       if user_input.startswith('/fp'):
+           result = self.fp.execute(bot, self.context, [])
+           if result:
+               pretty(result, "System", self.context.config.width, self.context.config.indent)
+
+   def _handle_chat(self, bot: Bot, user_input: str):
+       """Handle chat input."""
+       callback = create_tool_result_callback(self.context)
+       responses, nodes = fp.chain(bot, [user_input], callback=callback)
+       if responses:
+           pretty(responses[0], bot.name, self.context.config.width, self.context.config.indent)
+
 
 def clean_dict(d: dict, indent: int=4, level: int=1):
     """Clean a dict containing recursive json dumped strings for printing"""
