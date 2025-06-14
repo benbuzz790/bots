@@ -87,7 +87,7 @@ The bots library provides a structured interface for working with such agents, a
    - A 'branch' prompt is similar to a chain, but creates a new conversation branch for each prompt in the list.
    - Parallel branching is easy with the par_branch fp. General parallelization is possible with the par_dispatch fp.
    - Why "functional prompt" and not "workflow?" To emphasize that these are *composable*. 
-   - See functional_prompts.py for all available functional prompts.
+   - See functional_prompts.py for all available functional prompts and functional_prompt_primer.md for more information.
 
 3. **CLI Interface**
    The CLI interface provides an advanced interface for working with bots interactively. It allows you to
