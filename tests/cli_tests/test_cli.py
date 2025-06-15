@@ -331,6 +331,7 @@ class TestWhileFunctionsInCLI(DetailedTestCase):
         self.mock_bot.tool_handler.clear = MagicMock()
         self.context = cli_module.CLIContext()
         self.context.bot_instance = self.mock_bot
+        
 class TestFunctionalPromptUsability(DetailedTestCase):
     """
     Test suite demonstrating the usability assessment of functional prompts in CLI.
@@ -345,6 +346,18 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         """Set up test fixtures for parameter collection testing."""
         self.collector = cli_module.DynamicParameterCollector()
         self.handler = cli_module.DynamicFunctionalPromptHandler()
+        
+        # Set up mock bot for tests that need it
+        self.mock_bot = MagicMock()
+        self.mock_bot.name = "TestBot"
+        self.mock_bot.conversation = MagicMock()
+        self.mock_bot.conversation.content = "Test response"
+        self.mock_bot.tool_handler = MagicMock()
+        self.mock_bot.tool_handler.requests = []
+        self.mock_bot.tool_handler.results = []
+        self.mock_bot.tool_handler.clear = MagicMock()
+        self.context = cli_module.CLIContext()
+        self.context.bot_instance = self.mock_bot
         
     def test_fully_usable_chain_function(self):
         """✅ Demonstrate that chain() is fully usable through CLI."""
