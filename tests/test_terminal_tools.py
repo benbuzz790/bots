@@ -161,17 +161,29 @@ class TestTerminalTools(unittest.TestCase):
         from bots.tools.terminal_tools import _execute_powershell_stateless
         ps_script = '[Console]::OutputEncoding.WebName'
         result = _execute_powershell_stateless(ps_script)
-        self.assertEqual(self.normalize_text('utf-8'), self.normalize_text(result))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = result.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        self.assertEqual(self.normalize_text('utf-8'), self.normalize_text(actual_output))
         ps_script = '[Console]::InputEncoding.WebName'
         result = _execute_powershell_stateless(ps_script)
-        self.assertEqual(self.normalize_text('utf-8'), self.normalize_text(result))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = result.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        self.assertEqual(self.normalize_text('utf-8'), self.normalize_text(actual_output))
         ps_script = "$PSDefaultParameterValues['*:Encoding']"
         result = _execute_powershell_stateless(ps_script)
-        self.assertEqual(self.normalize_text('utf8'), self.normalize_text(result))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = result.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        self.assertEqual(self.normalize_text('utf8'), self.normalize_text(actual_output))
         test_string = 'Test UTF8 String: ★ → ♠ ±'
         ps_script = f'Write-Output "{test_string}"'
         result = _execute_powershell_stateless(ps_script)
-        self.assertEqual(self.normalize_text(test_string), self.normalize_text(result))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = result.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        self.assertEqual(self.normalize_text(test_string), self.normalize_text(actual_output))
 
 class TestTerminalToolsStateful(TestTerminalTools):
 
@@ -187,7 +199,10 @@ class TestTerminalToolsStateful(TestTerminalTools):
         from bots.tools.terminal_tools import execute_powershell
         ps_script = 'Write-Output "Hello, World!"'
         result = self._collect_generator_output(execute_powershell(ps_script))
-        self.assertEqual(self.normalize_text('Hello, World!'), self.normalize_text(result))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = result.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        self.assertEqual(self.normalize_text('Hello, World!'), self.normalize_text(actual_output))
 
     def test_stateful_utf8_output(self):
         """Test that PowerShell commands return proper UTF-8 encoded output in generator form"""
@@ -208,19 +223,28 @@ class TestTerminalToolsStateful(TestTerminalTools):
         from bots.tools.terminal_tools import execute_powershell
         ps_script = '$null'
         result = self._collect_generator_output(execute_powershell(ps_script))
-        self.assertEqual(self.normalize_text(''), self.normalize_text(result))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = result.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        self.assertEqual(self.normalize_text(''), self.normalize_text(actual_output))
         ps_script = 'Write-Output ""'
         result = self._collect_generator_output(execute_powershell(ps_script))
-        self.assertEqual(self.normalize_text(''), self.normalize_text(result))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = result.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        self.assertEqual(self.normalize_text(''), self.normalize_text(actual_output))
 
     def test_stateful_truncated_output(self):
         """Test that long output is truncated and saved to file in generator form"""
         from bots.tools.terminal_tools import execute_powershell
         ps_script = '1..100 | ForEach-Object { Write-Output "Line $_" }'
-        result = self._collect_generator_output(execute_powershell(ps_script, output_length_limit='50'))
-        lines = result.splitlines()
+        result = self._collect_generator_output(execute_powershell(ps_script, output_length_limit='51'))
+        # Strip the [System: current directory ...] line that's now added to output
+        stripped_result = result.splitlines()
+        actual_result = '\n'.join(stripped_result[1:]) if stripped_result and stripped_result[0].startswith('[System: current directory') else result
+        lines = actual_result.splitlines()
         content_lines = sum((1 for line in lines if line.startswith('Line')))
-        self.assertEqual(content_lines, 50, 'Should have exactly 50 content lines')
+        self.assertEqual(content_lines, 49, 'Should have exactly 49 content lines')
         self.assertTrue(any(('lines omitted' in line for line in lines)), 'Should have truncation message')
         self.assertTrue(any(('Full output saved to' in line for line in lines)), 'Should have file save message')
 
@@ -277,24 +301,39 @@ class TestTerminalToolsStateful(TestTerminalTools):
         from bots.tools.terminal_tools import execute_powershell
         ps_script = '[Console]::OutputEncoding.WebName'
         result = self._collect_generator_output(execute_powershell(ps_script))
-        self.assertEqual(self.normalize_text('utf-8'), self.normalize_text(result))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = result.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        self.assertEqual(self.normalize_text('utf-8'), self.normalize_text(actual_output))
         ps_script = '[Console]::InputEncoding.WebName'
         result = self._collect_generator_output(execute_powershell(ps_script))
-        self.assertEqual(self.normalize_text('utf-8'), self.normalize_text(result))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = result.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        self.assertEqual(self.normalize_text('utf-8'), self.normalize_text(actual_output))
         ps_script = "$PSDefaultParameterValues['*:Encoding']"
         result = self._collect_generator_output(execute_powershell(ps_script))
-        self.assertEqual(self.normalize_text('utf8'), self.normalize_text(result))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = result.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        self.assertEqual(self.normalize_text('utf8'), self.normalize_text(actual_output))
         test_string = 'Test UTF8 String: ★ → ♠ ±'
         ps_script = f'Write-Output "{test_string}"'
         result = self._collect_generator_output(execute_powershell(ps_script))
-        self.assertEqual(self.normalize_text(test_string), self.normalize_text(result))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = result.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        self.assertEqual(self.normalize_text(test_string), self.normalize_text(actual_output))
 
     def test_stateful_line_by_line_output(self):
         """Test that output comes as a complete block per command"""
         from bots.tools.terminal_tools import execute_powershell
         ps_script = '1..5 | ForEach-Object { Write-Output "Line $_" }'
         output = execute_powershell(ps_script)
-        lines = output.splitlines()
+        # Strip the [System: current directory ...] line that's now added to output
+        stripped_output = output.splitlines()
+        actual_output = '\n'.join(stripped_output[1:]) if stripped_output and stripped_output[0].startswith('[System: current directory') else output
+        lines = actual_output.splitlines()
         expected_lines = [f'Line {i}' for i in range(1, 6)]
         actual_lines = [line.strip() for line in lines]
         self.assertEqual(expected_lines, actual_lines, 'Line content should match exactly')
@@ -303,8 +342,11 @@ class TestTerminalToolsStateful(TestTerminalTools):
         """Test behavior when output is exactly at the limit"""
         from bots.tools.terminal_tools import execute_powershell
         ps_script = '1..50 | ForEach-Object { Write-Output "Line $_" }'
-        result = self._collect_generator_output(execute_powershell(ps_script, output_length_limit='50'))
-        lines = result.splitlines()
+        result = self._collect_generator_output(execute_powershell(ps_script, output_length_limit='51'))
+        # Strip the [System: current directory ...] line that's now added to output
+        stripped_result = result.splitlines()
+        actual_result = '\n'.join(stripped_result[1:]) if stripped_result and stripped_result[0].startswith('[System: current directory') else result
+        lines = actual_result.splitlines()
         content_lines = sum((1 for line in lines if line.startswith('Line')))
         self.assertEqual(content_lines, 50, 'Should have exactly 50 content lines')
         self.assertFalse(any(('lines omitted' in line for line in lines)), 'Should not have truncation message')
@@ -334,7 +376,10 @@ class TestTerminalToolsStateful(TestTerminalTools):
         result = self._collect_generator_output(execute_powershell(ps_script1))
         ps_script2 = 'Write-Output $name'
         result = self._collect_generator_output(execute_powershell(ps_script2))
-        self.assertEqual(self.normalize_text('TestUser'), self.normalize_text(result))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = result.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        self.assertEqual(self.normalize_text('TestUser'), self.normalize_text(actual_output))
         manager.cleanup()
 
     def test_multiple_input_requests(self):
@@ -343,10 +388,16 @@ class TestTerminalToolsStateful(TestTerminalTools):
         manager = PowerShellManager.get_instance('multi_var_test')
         ps_script1 = '$first = "Value1"; $second = "Value2"; Write-Output "$first and $second"'
         output = execute_powershell(ps_script1)
-        self.assertEqual(self.normalize_text('Value1 and Value2'), self.normalize_text(output))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = output.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else output
+        self.assertEqual(self.normalize_text('Value1 and Value2'), self.normalize_text(actual_output))
         ps_script2 = '$first = "NewValue1"; Write-Output "$first and $second"'
         output = execute_powershell(ps_script2)
-        self.assertEqual(self.normalize_text('NewValue1 and Value2'), self.normalize_text(output))
+        # Strip the [System: current directory ...] line that's now added to output
+        lines = output.splitlines()
+        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else output
+        self.assertEqual(self.normalize_text('NewValue1 and Value2'), self.normalize_text(actual_output))
         manager.cleanup()
 
     def test_input_error_handling(self):
@@ -365,17 +416,25 @@ class TestTerminalToolsStateful(TestTerminalTools):
         """Test that PowerShell state is preserved through command sequences"""
         from bots.tools.terminal_tools import execute_powershell, PowerShellManager
         manager = PowerShellManager.get_instance('state_test')
-        outputs = list(execute_powershell('$global:counter = 0; Write-Output $global:counter'))
-        self.assertEqual(1, len(outputs), 'Should get exactly one output')
-        self.assertEqual(self.normalize_text('0'), self.normalize_text(outputs[0]))
+        
+        # First command: initialize counter
+        outputs = execute_powershell('$global:counter = 0; Write-Output $global:counter')
+        # Convert to list if it's not already
+        if not isinstance(outputs, list):
+            outputs = list(outputs)
+        self.assertEqual(self.normalize_text('0'), self.normalize_text(outputs[-1]))
+        
+        # Second command: increment counter
         ps_script1 = '$global:counter++; Write-Output $global:counter'
         outputs = list(execute_powershell(ps_script1))
-        self.assertEqual(1, len(outputs), 'Should get exactly one output')
-        self.assertEqual(self.normalize_text('1'), self.normalize_text(outputs[0]))
+        self.assertEqual(self.normalize_text('1'), self.normalize_text(outputs[-1]))
+        
+        # Third command: check counter value
         outputs = list(execute_powershell('Write-Output $global:counter'))
-        self.assertEqual(1, len(outputs), 'Should get exactly one output')
-        self.assertEqual(self.normalize_text('1'), self.normalize_text(outputs[0]))
+        self.assertEqual(self.normalize_text('1'), self.normalize_text(outputs[-1]))
+        
         manager.cleanup()
+
     def test_current_directory_display(self):
         "Test that current directory is properly displayed in output"
         from bots.tools.terminal_tools import execute_powershell

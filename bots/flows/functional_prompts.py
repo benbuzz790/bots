@@ -92,6 +92,185 @@ class conditions:
     """
     
     @staticmethod
+    def said_COMPLETE(bot: Bot) -> bool:
+        """Check if the bot's response contains the word 'COMPLETE'.
+
+        Use when you need to continue prompting until the bot indicates completion.
+
+        Args:
+            bot (Bot): The bot to check
+
+        Returns:
+            bool: True if the response contains 'COMPLETE', False otherwise
+        """
+        return 'COMPLETE' in bot.conversation.content
+
+    @staticmethod
+    def said_FINISHED(bot: Bot) -> bool:
+        """Check if the bot's response contains the word 'FINISHED'.
+
+        Use when you need to continue prompting until the bot indicates completion.
+
+        Args:
+            bot (Bot): The bot to check
+
+        Returns:
+            bool: True if the response contains 'FINISHED', False otherwise
+        """
+        return 'FINISHED' in bot.conversation.content
+
+    @staticmethod
+    def said_SUCCESS(bot: Bot) -> bool:
+        """Check if the bot's response contains the word 'SUCCESS'.
+
+        Use when you need to continue prompting until the bot indicates success.
+
+        Args:
+            bot (Bot): The bot to check
+
+        Returns:
+            bool: True if the response contains 'SUCCESS', False otherwise
+        """
+        return 'SUCCESS' in bot.conversation.content
+
+    @staticmethod
+    def said_READY(bot: Bot) -> bool:
+        """Check if the bot's response contains the word 'READY'.
+
+        Use when you need to continue prompting until the bot indicates readiness.
+
+        Args:
+            bot (Bot): The bot to check
+
+        Returns:
+            bool: True if the response contains 'READY', False otherwise
+        """
+        return 'READY' in bot.conversation.content
+
+    @staticmethod
+    def response_length_exceeds(threshold: int = 500):
+        """Create a condition that stops when response length exceeds threshold.
+
+        Use when you want to stop iteration based on response length.
+
+        Args:
+            threshold (int): Minimum response length to trigger stop condition
+
+        Returns:
+            Callable[[Bot], bool]: A condition function that checks response length
+        """
+        def condition(bot: Bot) -> bool:
+            return len(bot.conversation.content) > threshold
+        return condition
+
+    @staticmethod
+    def response_length_below(threshold: int = 50):
+        """Create a condition that stops when response length is below threshold.
+
+        Use when you want to stop iteration when responses become too short.
+
+        Args:
+            threshold (int): Maximum response length to trigger stop condition
+
+        Returns:
+            Callable[[Bot], bool]: A condition function that checks response length
+        """
+        def condition(bot: Bot) -> bool:
+            return len(bot.conversation.content) < threshold
+        return condition
+
+    @staticmethod
+    def contains_phrase(phrase: str, case_sensitive: bool = False):
+        """Create a condition that stops when response contains a specific phrase.
+
+        Use when you want to stop iteration based on custom completion phrases.
+
+        Args:
+            phrase (str): The phrase to look for in the response
+            case_sensitive (bool): Whether to perform case-sensitive matching
+
+        Returns:
+            Callable[[Bot], bool]: A condition function that checks for the phrase
+        """
+        def condition(bot: Bot) -> bool:
+            content = bot.conversation.content
+            if not case_sensitive:
+                content = content.lower()
+                phrase_check = phrase.lower()
+            else:
+                phrase_check = phrase
+            return phrase_check in content
+        return condition
+
+    @staticmethod
+    def max_iterations(max_count: int):
+        """Create a condition that stops after a maximum number of iterations.
+
+        Use when you want to prevent infinite loops by setting an iteration limit.
+        Note: This requires external counter management.
+
+        Args:
+            max_count (int): Maximum number of iterations allowed
+
+        Returns:
+            Callable[[Bot], bool]: A condition function with iteration counting
+        """
+        iteration_count = {'count': 0}
+        
+        def condition(bot: Bot) -> bool:
+            iteration_count['count'] += 1
+            return iteration_count['count'] >= max_count
+        return condition
+
+    @staticmethod
+    def no_new_tools_used(bot: Bot) -> bool:
+        """Check if the bot used the same tools as in the previous response.
+
+        Use when you want to stop when the bot stops exploring new tool options.
+
+        Args:
+            bot (Bot): The bot to check
+
+        Returns:
+            bool: True if no new tools were used compared to previous iteration
+        """
+        if not hasattr(bot, '_previous_tools'):
+            # First iteration - store current tools
+            bot._previous_tools = set()
+            if bot.tool_handler.requests:
+                for request in bot.tool_handler.requests:
+                    tool_name, _ = bot.tool_handler.tool_name_and_input(request)
+                    bot._previous_tools.add(tool_name)
+            return False
+        
+        # Get current tools
+        current_tools = set()
+        if bot.tool_handler.requests:
+            for request in bot.tool_handler.requests:
+                tool_name, _ = bot.tool_handler.tool_name_and_input(request)
+                current_tools.add(tool_name)
+        
+        # Check if any new tools were used
+        new_tools = current_tools - bot._previous_tools
+        bot._previous_tools = current_tools
+        
+        return len(new_tools) == 0 and len(current_tools) > 0
+
+    @staticmethod
+    def error_in_response(bot: Bot) -> bool:
+        """Check if the bot's response contains error indicators.
+
+        Use when you want to stop iteration if the bot encounters errors.
+
+        Args:
+            bot (Bot): The bot to check
+
+        Returns:
+            bool: True if the response contains error indicators
+        """
+        content = bot.conversation.content.lower()
+        error_indicators = ['error', 'failed', 'exception', 'traceback', 'syntax error']
+        return any(indicator in content for indicator in error_indicators)
     def tool_used(bot: Bot) -> bool:
         """Check if the bot has used any tools in its last response.
 
@@ -120,21 +299,6 @@ class conditions:
         return not bool(bot.tool_handler.requests)
 
     @staticmethod
-    def tool_not_used_debug(bot: Bot) -> bool:
-        """Debug version of tool_not_used that prints the bot's response.
-
-        Use when debugging why a bot continues to use tools.
-
-        Args:
-            bot (Bot): The bot to check
-
-        Returns:
-            bool: True if the bot has not used any tools, False otherwise
-        """
-        print(f'{bot.name}: {bot.conversation.content}')
-        return not bool(bot.tool_handler.requests)
-
-    @staticmethod
     def said_DONE(bot: Bot) -> bool:
         """Check if the bot's response contains the word 'DONE'.
 
@@ -146,21 +310,6 @@ class conditions:
         Returns:
             bool: True if the response contains 'DONE', False otherwise
         """
-        return 'DONE' in bot.conversation.content
-
-    @staticmethod
-    def said_DONE_debug(bot: Bot) -> bool:
-        """Debug version of said_DONE that prints the bot's response.
-
-        Use when debugging why a bot isn't indicating completion.
-
-        Args:
-            bot (Bot): The bot to check
-
-        Returns:
-            bool: True if the response contains 'DONE', False otherwise
-        """
-        print(f'{bot.name}: {bot.conversation.content}')
         return 'DONE' in bot.conversation.content
 
 
@@ -1296,3 +1445,147 @@ def broadcast_to_leaves(
         pass
     return responses, nodes
 
+
+def broadcast_fp(
+   bot: Bot,
+   functional_prompt: FunctionalPrompt,
+   skip: List[str] = None,
+   **kwargs: Any
+) -> Tuple[List[Response], List[ResponseNode]]:
+   """Execute a functional prompt on all leaf nodes in parallel.
+    
+   Use when you need to:
+   - Apply the same functional prompt pattern to all conversation endpoints
+   - Process multiple conversation branches with the same complex operation
+   - Gather results from all leaves using sophisticated prompting patterns
+   - Scale functional prompt patterns across conversation trees
+    
+   This function finds all leaf nodes from the current conversation position
+   and executes the specified functional prompt on each leaf independently
+   in parallel threads.
+    
+   Args:
+       bot (Bot): The bot to interact with
+       functional_prompt (FunctionalPrompt): Any functional prompt function
+           from this module (chain, branch, tree_of_thought, etc.)
+       skip (List[str], optional): List of labels to skip. Leaves with any
+           of these labels will not be processed. Defaults to empty list.
+       **kwargs: Additional arguments to pass to the functional prompt.
+           These must match the signature of the chosen functional_prompt
+            
+   Returns:
+       Tuple[List[Response], List[ResponseNode]]: A tuple containing:
+           - responses: List of responses from each leaf (None for failed/skipped)
+           - nodes: List of conversation nodes from each leaf (None for failed/skipped)
+            
+   Examples:
+       >>> # Chain prompts on all leaves
+       >>> responses, nodes = broadcast_fp(
+       ...     bot,
+       ...     chain,
+       ...     prompts=["Analyze this...", "Summarize findings..."]
+       ... )
+       >>>
+       >>> # Tree of thought on all leaves
+       >>> responses, nodes = broadcast_fp(
+       ...     bot,
+       ...     tree_of_thought,
+       ...     prompts=["Consider approach A...", "Consider approach B..."],
+       ...     recombinator_function=my_recombinator
+       ... )
+       >>>
+       >>> # Skip certain labeled leaves
+       >>> responses, nodes = broadcast_fp(
+       ...     bot,
+       ...     single_prompt,
+       ...     skip=["draft", "incomplete"],
+       ...     prompt="Finalize this work..."
+       ... )
+   """
+   from concurrent.futures import ThreadPoolExecutor, as_completed
+    
+   if skip is None:
+       skip = []
+    
+   original_autosave = bot.autosave
+   original_conversation = bot.conversation
+   bot.autosave = False
+   temp_file = 'temp_broadcast_fp_bot.bot'
+   bot.save(temp_file)
+    
+   # Find all leaf nodes starting from current position
+   def find_leaves(node: ConversationNode) -> List[ConversationNode]:
+       """Recursively find all leaf nodes from the given node."""
+       if not node.replies:
+           return [node]
+       leaves = []
+       for reply in node.replies:
+           leaves.extend(find_leaves(reply))
+       return leaves
+    
+   all_leaves = find_leaves(bot.conversation)
+    
+   # Filter out skipped leaves based on labels
+   target_leaves = []
+   for leaf in all_leaves:
+       should_skip = False
+       if hasattr(leaf, 'labels'):
+           for label in leaf.labels:
+               if label in skip:
+                   should_skip = True
+                   break
+       if not should_skip:
+           target_leaves.append(leaf)
+    
+   responses = [None] * len(target_leaves)
+   nodes = [None] * len(target_leaves)
+    
+   def process_leaf(index: int, leaf: ConversationNode):
+       """Process a single leaf node with the functional prompt."""
+       try:
+           leaf_bot = Bot.load(temp_file)
+           leaf_bot.autosave = False
+           leaf_bot.conversation = leaf
+            
+           # Execute the functional prompt on this leaf
+           result = functional_prompt(leaf_bot, **kwargs)
+            
+           # Handle different return types from functional prompts
+           if isinstance(result, tuple) and len(result) == 2:
+               if isinstance(result[0], list):
+                   # Multiple responses (like from chain, branch)
+                   final_response = result[0][-1] if result[0] else None
+                   final_node = result[1][-1] if result[1] else None
+               else:
+                   # Single response (like from single_prompt, tree_of_thought)
+                   final_response = result[0]
+                   final_node = result[1]
+           else:
+               final_response = None
+               final_node = None
+            
+           if final_node:
+               final_node.parent = original_conversation
+               original_conversation.replies.append(final_node)
+            
+           return index, final_response, final_node
+       except Exception:
+           return index, None, None
+    
+   # Process all leaves in parallel
+   with ThreadPoolExecutor() as executor:
+       futures = [executor.submit(process_leaf, i, leaf) for i, leaf in enumerate(target_leaves)]
+       for future in as_completed(futures):
+           idx, response, node = future.result()
+           responses[idx] = response
+           nodes[idx] = node
+    
+   # Restore bot state
+   bot.autosave = original_autosave
+   bot.conversation = original_conversation
+   try:
+       os.remove(temp_file)
+   except:
+       pass
+    
+   return responses, nodes

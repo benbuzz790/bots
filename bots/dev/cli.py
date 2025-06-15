@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import json
 import os
 import re
@@ -39,9 +39,9 @@ class DynamicParameterCollector:
 
     def __init__(self, function_filter: Optional[Callable[[str, Callable], bool]]=None):
         # Map parameter names to collection methods
-        self.param_handlers = {'prompt_list': self._collect_prompts, 'prompts': self._collect_prompts, 'prompt': self._collect_single_prompt, 'first_prompt': self._collect_single_prompt, 'stop_condition': self._collect_condition, 'continue_prompt': self._collect_continue_prompt, 'recombinator_function': self._collect_recombinator, 'should_branch': self._collect_boolean, 'skip': self._collect_skip_labels, 'items': self._collect_items, 'dynamic_prompt': self._collect_dynamic_prompt}
+        self.param_handlers = {'prompt_list': self._collect_prompts, 'prompts': self._collect_prompts, 'prompt': self._collect_single_prompt, 'first_prompt': self._collect_single_prompt, 'stop_condition': self._collect_condition, 'continue_prompt': self._collect_continue_prompt, 'recombinator_function': self._collect_recombinator, 'should_branch': self._collect_boolean, 'skip': self._collect_skip_labels, 'items': self._collect_items, 'dynamic_prompt': self._collect_dynamic_prompt, 'functional_prompt': self._collect_functional_prompt}
         # Available conditions for user selection
-        self.conditions = {'1': ('tool_used', fp.conditions.tool_used), '2': ('tool_not_used', fp.conditions.tool_not_used), '3': ('said_DONE', fp.conditions.said_DONE)}
+        self.conditions = {'1': ('tool_used', fp.conditions.tool_used), '2': ('tool_not_used', fp.conditions.tool_not_used), '3': ('said_DONE', fp.conditions.said_DONE), '4': ('said_COMPLETE', fp.conditions.said_COMPLETE), '5': ('said_FINISHED', fp.conditions.said_FINISHED), '6': ('said_SUCCESS', fp.conditions.said_SUCCESS), '7': ('said_READY', fp.conditions.said_READY), '8': ('error_in_response', fp.conditions.error_in_response), '9': ('no_new_tools_used', fp.conditions.no_new_tools_used), '10': ('response_length_exceeds(500)', lambda: fp.conditions.response_length_exceeds(500)), '11': ('contains_phrase("custom")', lambda: fp.conditions.contains_phrase(input("Enter phrase to look for: ")))}
         # Function filter for discovery
         self.function_filter = function_filter
 
@@ -162,16 +162,27 @@ class DynamicParameterCollector:
             return recombinators.recombinators.concatenate
 
     def _collect_items(self, param_name: str, default: Any) -> Optional[List[Any]]:
-        """Collect items for prompt_for function."""
-        print("prompt_for requires a list of items - this is an advanced feature")
-        print("Not yet implemented in this interface")
+        """Collect items for prompt_for function - DESCOPED."""
+        print(f"{param_name} is not supported in CLI interface")
         return None
 
     def _collect_dynamic_prompt(self, param_name: str, default: Any) -> Optional[Callable]:
-        """Collect dynamic prompt function."""
-        print("dynamic_prompt requires a function - this is an advanced feature")
-        print("Not yet implemented in this interface")
+        """Collect dynamic prompt function - DESCOPED."""
+        print(f"{param_name} is not supported in CLI interface")
         return None
+
+    def _collect_functional_prompt(self, param_name: str, default: Any) -> Optional[Callable]:
+        """Collect functional prompt function for broadcast_fp."""
+        print(f"\nAvailable functional prompts for {param_name}:")
+        fp_options = {'1': ('single_prompt', fp.single_prompt), '2': ('chain', fp.chain), '3': ('branch', fp.branch), '4': ('tree_of_thought', fp.tree_of_thought), '5': ('prompt_while', fp.prompt_while), '6': ('chain_while', fp.chain_while), '7': ('branch_while', fp.branch_while)}
+        for key, (name, _) in fp_options.items():
+            print(f"  {key}. {name}")
+        choice = input("Select functional prompt: ").strip()
+        if choice in fp_options:
+            return fp_options[choice][1]
+        else:
+            print("Invalid functional prompt selection, using single_prompt")
+            return fp.single_prompt
 
     def _collect_generic_parameter(self, param_name: str, default: Any) -> Optional[Any]:
         """Generic parameter collection for unknown parameter types."""
@@ -338,45 +349,98 @@ class ConversationHandler:
             result += f"  '{label}': {content_preview}\n"
         return result.rstrip()
 
-    def showleaves(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Show all leaf nodes (conversation endpoints) reachable from current node."""
+    def leaf(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Show all leaf nodes and optionally jump to one by number."""
         leaves = self._find_leaves(bot.conversation)
         if not leaves:
             return "No leaves found from current node"
-        # Cache the leaves for use with /leaf command
+        # Cache the leaves for potential jumping
         context.cached_leaves = leaves
+        # If args provided, try to jump directly
+        if args:
+            try:
+                leaf_index = int(args[0]) - 1  # Convert to 0-based index
+                if leaf_index < 0 or leaf_index >= len(leaves):
+                    return f"Invalid leaf number. Must be between 1 and {len(leaves)}"
+                context.conversation_backup = bot.conversation
+                bot.conversation = leaves[leaf_index]
+                # Show longer content preview
+                content_preview = self._get_leaf_preview(leaves[leaf_index])
+                return f"Jumped to leaf {leaf_index + 1}: {content_preview}"
+            except ValueError:
+                return "Invalid leaf number. Must be a number."
+        # Show leaves with longer previews
         result = f"Found {len(leaves)} leaf nodes:\n"
         for i, leaf in enumerate(leaves):
-            # Show a preview of the leaf content
-            content_preview = leaf.content[:100] + "..." if len(leaf.content) > 100 else leaf.content
-            # Clean up the preview by removing excessive whitespace
-            content_preview = ' '.join(content_preview.split())
+            # Show much longer messages, cutting from middle if needed
+            content_preview = self._get_leaf_preview(leaf)
             # Show path depth from current node
             depth = self._calculate_depth(bot.conversation, leaf)
             # Show labels if any
             labels = getattr(leaf, 'labels', [])
             label_str = f" (labels: {', '.join(labels)})" if labels else ""
             result += f"  {i+1}. [depth {depth}]{label_str}: {content_preview}\n"
-        result += f"\nUse '/leaf <number>' to jump to a specific leaf."
-        return result.rstrip()
-
-    def leaf(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Jump to a specific leaf node by index."""
-        if not context.cached_leaves:
-            return "No leaves cached. Use '/showleaves' first to see available leaves."
-        if not args:
-            return "Please specify a leaf number. Use '/showleaves' to see available leaves."
+        # Prompt user to pick one
+        result += f"\nEnter a number (1-{len(leaves)}) to jump to that leaf, or press Enter to stay: "
         try:
-            leaf_index = int(args[0]) - 1  # Convert to 0-based index
-            if leaf_index < 0 or leaf_index >= len(context.cached_leaves):
-                return f"Invalid leaf number. Must be between 1 and {len(context.cached_leaves)}"
-            context.conversation_backup = bot.conversation
-            bot.conversation = context.cached_leaves[leaf_index]
-            # Show a preview of the content
-            content_preview = bot.conversation.content[:200] + "..." if len(bot.conversation.content) > 200 else bot.conversation.content
-            return f"Jumped to leaf {leaf_index + 1}: {content_preview}"
+            choice = input(result).strip()
+            if choice:
+                leaf_index = int(choice) - 1
+                if 0 <= leaf_index < len(leaves):
+                    context.conversation_backup = bot.conversation
+                    bot.conversation = leaves[leaf_index]
+                    content_preview = self._get_leaf_preview(leaves[leaf_index])
+                    return f"Jumped to leaf {leaf_index + 1}: {content_preview}"
+                else:
+                    return f"Invalid choice. Must be between 1 and {len(leaves)}"
+            else:
+                return "Staying at current position"
         except ValueError:
-            return "Invalid leaf number. Must be a number."
+            return "Invalid input. Staying at current position"
+        except (EOFError, KeyboardInterrupt):
+            return "Cancelled. Staying at current position"
+
+    def _get_leaf_preview(self, leaf: ConversationNode, max_length: int=300) -> str:
+        """Get a preview of leaf content, cutting from middle if too long."""
+        content = leaf.content.strip()
+        if len(content) <= max_length:
+            return content
+        # Cut from middle, keeping start and end
+        half_length = (max_length - 5) // 2  # Account for " ... "
+        start = content[:half_length].strip()
+        end = content[-half_length:].strip()
+        return f"{start} ... {end}"
+
+    def combine_leaves(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Combine all leaves below current node using a recombinator function."""
+        leaves = self._find_leaves(bot.conversation)
+        if not leaves:
+            return "No leaves found from current node"
+        if len(leaves) < 2:
+            return "Need at least 2 leaves to combine"
+        # Show available recombinators
+        print(f"\nFound {len(leaves)} leaves to combine.")
+        print("Available recombinators:")
+        recombinator_options = {'1': ('concatenate', recombinators.recombinators.concatenate), '2': ('llm_judge', recombinators.recombinators.llm_judge), '3': ('llm_vote', recombinators.recombinators.llm_vote), '4': ('llm_merge', recombinators.recombinators.llm_merge)}
+        for key, (name, _) in recombinator_options.items():
+            print(f"  {key}. {name}")
+        choice = input("Select recombinator: ").strip()
+        if choice not in recombinator_options:
+            return "Invalid recombinator selection"
+        recombinator_func = recombinator_options[choice][1]
+        recombinator_name = recombinator_options[choice][0]
+        try:
+            # Extract responses from leaves
+            responses = [leaf.content for leaf in leaves]
+            # Use the recombine function from functional_prompts
+            context.conversation_backup = bot.conversation
+            print(f"Combining {len(leaves)} leaves using {recombinator_name}...")
+            final_response, final_node = fp.recombine(bot, responses, leaves, recombinator_func)
+            # Display the result
+            pretty(final_response, bot.name, context.config.width, context.config.indent)
+            return f"Successfully combined {len(leaves)} leaves using {recombinator_name}"
+        except Exception as e:
+            return f"Error combining leaves: {str(e)}"
 
     def _find_leaves(self, node: ConversationNode) -> List[ConversationNode]:
         """Recursively find all leaf nodes from a given node."""
@@ -468,14 +532,12 @@ class StateHandler:
         for reply in node.replies:
             self._rebuild_labels(reply, context)
 
-
-
 class SystemHandler:
     """Handler for system and configuration commands."""
 
     def help(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Show help message."""
-        help_lines = ["This program is an interactive terminal that uses AI bots.", "It allows you to chat with the LLM, save and load bot states, and execute various commands.", "The bot has the ability to read and write files and can execute powershell and python code directly.", "The bot also has tools to help edit python files in an accurate and token-efficient way.", "", "Available commands:", "/help: Show this help message", "/verbose: Show tool requests and results (default on)", "/quiet: Hide tool requests and results", "/save: Save the current bot (prompts for filename)", "/load: Load a previously saved bot (prompts for filename)", "/up: \"rewind\" the conversation by one turn by moving up the conversation tree", "/down: Move down the conversation tree. Requests index of reply if there are multiple.", "/left: Move to this conversation node's left sibling", "/right: Move to this conversation node's right sibling", "/auto: Let the bot work autonomously until it sends a response without using any tools", "/root: Move to the root node of the conversation tree", "/label: Save current node with a label for later reference", "/goto: Move to a previously labeled node", "/showlabels: Show all saved labels and their associated conversation content", "/showleaves: Show all conversation endpoints (leaves) reachable from current node", "/leaf <number>: Jump to a specific leaf node (use /showleaves to see numbering)", "/fp: Execute functional prompts with dynamic parameter collection", "/broadcast_fp: Execute functional prompts on all leaf nodes", "/config: Show or modify CLI configuration", "/exit: Exit the program", "", "Type your messages normally to chat."]
+        help_lines = ["This program is an interactive terminal that uses AI bots.", "It allows you to chat with the LLM, save and load bot states, and execute various commands.", "The bot has the ability to read and write files and can execute powershell and python code directly.", "The bot also has tools to help edit python files in an accurate and token-efficient way.", "", "Available commands:", "/help: Show this help message", "/verbose: Show tool requests and results (default on)", "/quiet: Hide tool requests and results", "/save: Save the current bot (prompts for filename)", "/load: Load a previously saved bot (prompts for filename)", "/up: \"rewind\" the conversation by one turn by moving up the conversation tree", "/down: Move down the conversation tree. Requests index of reply if there are multiple.", "/left: Move to this conversation node's left sibling", "/right: Move to this conversation node's right sibling", "/auto: Let the bot work autonomously until it sends a response without using any tools", "/root: Move to the root node of the conversation tree", "/label: Save current node with a label for later reference", "/goto: Move to a previously labeled node", "/showlabels: Show all saved labels and their associated conversation content", "/leaf [number]: Show all conversation endpoints (leaves) and optionally jump to one", "/combine_leaves: Combine all leaves below current node using a recombinator function", "/fp: Execute functional prompts with dynamic parameter collection", "/broadcast_fp: Execute functional prompts on all leaf nodes", "/config: Show or modify CLI configuration", "/exit: Exit the program", "", "Type your messages normally to chat."]
         return "\n".join(help_lines)
 
     def verbose(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -551,10 +613,12 @@ class DynamicFunctionalPromptHandler:
     def _discover_fp_functions(self) -> Dict[str, Callable]:
         """Automatically discover functional prompt functions from the fp module."""
         functions = {}
+        # Descoped functions that should not be available in CLI
+        descoped_functions = {'prompt_for', 'par_dispatch'}
         # Get all functions from the fp module
         for name in dir(fp):
             obj = getattr(fp, name)
-            if callable(obj) and (not name.startswith('_')):
+            if callable(obj) and (not name.startswith('_')) and (name not in descoped_functions):
                 # Check if it looks like a functional prompt (takes bot as first param)
                 try:
                     sig = inspect.signature(obj)
@@ -565,13 +629,15 @@ class DynamicFunctionalPromptHandler:
                             functions[name] = obj
                 except:
                     continue  # Skip if we can't inspect the signature
-        # Manually add any missing important functions
+        # Manually add any missing important functions (except descoped ones)
         if 'single_prompt' not in functions and hasattr(fp, 'single_prompt'):
             functions['single_prompt'] = fp.single_prompt
         if 'tree_of_thought' not in functions and hasattr(fp, 'tree_of_thought'):
             functions['tree_of_thought'] = fp.tree_of_thought
-        if 'recombine' not in functions and hasattr(fp, 'recombine'):
-            functions['recombine'] = fp.recombine
+        if 'broadcast_fp' not in functions and hasattr(fp, 'broadcast_fp'):
+            functions['broadcast_fp'] = fp.broadcast_fp
+        if 'broadcast_to_leaves' not in functions and hasattr(fp, 'broadcast_to_leaves'):
+            functions['broadcast_to_leaves'] = fp.broadcast_to_leaves
         return functions
 
     def execute(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -643,89 +709,94 @@ class DynamicFunctionalPromptHandler:
             return f"Error executing functional prompt: {str(e)}"
 
     def broadcast_fp(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Execute any functional prompt in parallel on all leaf nodes."""
+        """Execute broadcast_fp functional prompt with leaf selection by number."""
         try:
-            # Step 1: Choose functional prompt type
-            print("Available functional prompts for broadcast:")
-            available_fps = {k: v for k, v in self.fp_functions.items() if k not in ['broadcast_to_leaves']}
-            func_names = list(available_fps.keys())
-            for i, name in enumerate(func_names, 1):
-                print(f"  {i}. {name}")
-            choice = input("Select functional prompt (number or name): ").strip()
-            # Parse choice
-            fp_name = None
-            if choice.isdigit():
-                idx = int(choice) - 1
-                if 0 <= idx < len(func_names):
-                    fp_name = func_names[idx]
-            elif choice in available_fps:
-                fp_name = choice
-            if not fp_name:
-                return "Invalid selection"
-            fp_function = available_fps[fp_name]
-            # Step 2: Collect parameters
+            # Find all leaves from current position
+            leaves = context.conversation._find_leaves(bot.conversation)
+            if not leaves:
+                return "No leaves found from current node"
+            # Show all leaves with numbers (like /leaf command)
+            print(f"\nFound {len(leaves)} leaf nodes:")
+            for i, leaf in enumerate(leaves):
+                content_preview = context.conversation._get_leaf_preview(leaf)
+                depth = context.conversation._calculate_depth(bot.conversation, leaf)
+                labels = getattr(leaf, 'labels', [])
+                label_str = f" (labels: {', '.join(labels)})" if labels else ""
+                print(f"  {i+1}. [depth {depth}]{label_str}: {content_preview}")
+            # Get leaf selection from user
+            leaf_selection = input(f"\nSelect leaves to broadcast to (e.g., '1,3,5' or 'all' for all leaves): ").strip()
+            if not leaf_selection:
+                return "No leaves selected"
+            # Parse leaf selection
+            target_leaves = []
+            if leaf_selection.lower() == 'all':
+                target_leaves = leaves
+            else:
+                try:
+                    indices = [int(x.strip()) - 1 for x in leaf_selection.split(',')]
+                    for idx in indices:
+                        if 0 <= idx < len(leaves):
+                            target_leaves.append(leaves[idx])
+                        else:
+                            return f"Invalid leaf number: {idx + 1}. Must be between 1 and {len(leaves)}"
+                except ValueError:
+                    return "Invalid leaf selection format. Use numbers separated by commas (e.g., '1,3,5') or 'all'"
+            if not target_leaves:
+                return "No valid leaves selected"
+            print(f"\nSelected {len(target_leaves)} leaves for broadcast")
+            # Get functional prompt to use
+            print("\nSelect functional prompt to broadcast:")
+            fp_options = {'1': ('single_prompt', fp.single_prompt), '2': ('chain', fp.chain), '3': ('branch', fp.branch), '4': ('tree_of_thought', fp.tree_of_thought), '5': ('prompt_while', fp.prompt_while), '6': ('chain_while', fp.chain_while), '7': ('branch_while', fp.branch_while)}
+            for key, (name, _) in fp_options.items():
+                print(f"  {key}. {name}")
+            fp_choice = input("Select functional prompt: ").strip()
+            if fp_choice not in fp_options:
+                return "Invalid functional prompt selection"
+            fp_name, fp_function = fp_options[fp_choice]
+            # Collect parameters for the selected functional prompt
+            print(f"\nCollecting parameters for {fp_name}:")
             params = self.collector.collect_parameters(fp_function)
             if params is None:
                 return "Parameter collection cancelled"
-            # Step 3: Get skip labels
-            skip_input = input('Enter labels to skip (comma-separated, or empty): ').strip()
-            skip_labels = [label.strip() for label in skip_input.split(',')] if skip_input else []
-            # Step 4: Find and filter leaves
-            conv_handler = ConversationHandler()
-            leaves = conv_handler._find_leaves(bot.conversation)
-            if not leaves:
-                return "No leaf nodes found"
-            # Filter leaves based on skip labels
-            target_leaves = []
-            for leaf in leaves:
-                should_skip = False
-                if hasattr(leaf, 'labels'):
-                    for label in leaf.labels:
-                        if label in skip_labels:
-                            should_skip = True
-                            break
-                if not should_skip:
-                    target_leaves.append(leaf)
-            if not target_leaves:
-                return "All leaves are in skip list"
-            print(f"Broadcasting {fp_name} to {len(target_leaves)} leaves...")
-            # Step 5: Create bot copies and execute in parallel
-            from concurrent.futures import ThreadPoolExecutor, as_completed
-            context.conversation_backup = bot.conversation
+            # Remove callback type info
+            callback_type = params.pop('_callback_type', 'list')
+            # Create callback for tool result display
             callback = create_tool_result_callback(context)
-            # Create enough bot copies for parallel execution
-            bot_copies = bot * len(target_leaves)
-            results = [None] * len(target_leaves)
-
-            def process_leaf_with_fp(index: int, leaf_bot: Bot, target_leaf: ConversationNode):
-                """Execute the functional prompt on a specific leaf."""
-                try:
-                    # Set the bot to the target leaf
-                    leaf_bot.conversation = target_leaf
-                    # Add callback to params if not present
-                    if 'callback' not in params:
-                        params['callback'] = callback
-                    # Execute the functional prompt
-                    result = fp_function(leaf_bot, **params)
-                    # Handle different return types
-                    if isinstance(result, tuple) and len(result) == 2:
-                        responses, nodes = result
-                        if isinstance(responses, list):
-                            final_response = responses[-1] if responses else "No response"
-                        else:
-                            final_response = responses
-                    else:
-                        final_response = str(result)
-                    return (index, final_response, leaf_bot.conversation)
-                except Exception as e:
-                    return (index, f"Error: {str(e)}", None)
-            # Execute in parallel
-            with ThreadPoolExecutor() as executor:
-                futures = [executor.submit(process_leaf_with_fp, i, bot_copies[i], target_leaves[i]) for i in range(len(target_leaves))]
-                for future in as_completed(futures):
-                    idx, response, final_node = future.result()
-                    results[idx] = f"Leaf {idx+1}: {response[:100]}..."
-            return f"Broadcast of '{fp_name}' completed on {len(target_leaves)} leaves:\n" + "\n".join(results)
+            params['callback'] = callback
+            # Execute broadcast_fp with selected leaves
+            context.conversation_backup = bot.conversation
+            print(f"Broadcasting {fp_name} to {len(target_leaves)} selected leaves...")
+            # Use the actual broadcast_fp function from functional_prompts
+            # We need to create a temporary skip list that excludes all leaves except our targets
+            all_leaves = context.conversation._find_leaves(bot.conversation)
+            # Create skip labels for leaves we don't want to process
+            # We'll temporarily add unique labels to non-target leaves
+            temp_labels = {}
+            skip_labels = []
+            for i, leaf in enumerate(all_leaves):
+                if leaf not in target_leaves:
+                    # Add a temporary unique label to skip this leaf
+                    temp_label = f"__temp_skip_{i}__"
+                    if not hasattr(leaf, 'labels'):
+                        leaf.labels = []
+                    leaf.labels.append(temp_label)
+                    skip_labels.append(temp_label)
+                    temp_labels[leaf] = temp_label
+            try:
+                # Use the actual broadcast_fp function
+                responses, nodes = fp.broadcast_fp(bot, fp_function, skip=skip_labels, **params)
+                # Display results summary
+                successful_responses = [r for r in responses if r is not None]
+                failed_count = len(responses) - len(successful_responses)
+                result_msg = f"Broadcast completed: {len(successful_responses)} successful"
+                if failed_count > 0:
+                    result_msg += f", {failed_count} failed"
+                return result_msg
+            finally:
+                # Clean up temporary labels
+                for leaf, temp_label in temp_labels.items():
+                    if hasattr(leaf, 'labels') and temp_label in leaf.labels:
+                        leaf.labels.remove(temp_label)
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
 
@@ -830,7 +901,7 @@ class CLI:
         self.fp = DynamicFunctionalPromptHandler(function_filter)
         self.bot_filename = bot_filename
         # Command registry
-        self.commands = {'/help': self.system.help, '/verbose': self.system.verbose, '/quiet': self.system.quiet, '/config': self.system.config, '/save': self.state.save, '/load': self.state.load, '/up': self.conversation.up, '/down': self.conversation.down, '/left': self.conversation.left, '/right': self.conversation.right, '/root': self.conversation.root, '/label': self.conversation.label, '/goto': self.conversation.goto, '/showlabels': self.conversation.showlabels, '/showleaves': self.conversation.showleaves, '/leaf': self.conversation.leaf, '/auto': self.system.auto, '/fp': self.fp.execute, '/broadcast_fp': self.fp.broadcast_fp}
+        self.commands = {'/help': self.system.help, '/verbose': self.system.verbose, '/quiet': self.system.quiet, '/config': self.system.config, '/save': self.state.save, '/load': self.state.load, '/up': self.conversation.up, '/down': self.conversation.down, '/left': self.conversation.left, '/right': self.conversation.right, '/root': self.conversation.root, '/label': self.conversation.label, '/goto': self.conversation.goto, '/showlabels': self.conversation.showlabels, '/leaf': self.conversation.leaf, '/combine_leaves': self.conversation.combine_leaves, '/auto': self.system.auto, '/fp': self.fp.execute, '/broadcast_fp': self.fp.broadcast_fp}
 
     def run(self):
         """Main CLI loop."""
