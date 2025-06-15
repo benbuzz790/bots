@@ -375,9 +375,28 @@ class TestWhileFunctionsInCLI(DetailedTestCase):
             callback(["test response"], [self.mock_bot.conversation])
         except Exception as e:
             self.fail(f"Callback raised an exception: {e}")
+
+
+class TestAutoCommand(DetailedTestCase):
+   """Test suite for the /auto command functionality."""
+    
+   def setUp(self):
+       """Set up test fixtures for auto command tests."""
+       from unittest.mock import MagicMock
+       self.mock_bot = MagicMock()
+       self.mock_bot.name = "TestBot"
+       self.mock_bot.conversation = MagicMock()
+       self.mock_bot.conversation.content = "Test response"
+       self.mock_bot.tool_handler = MagicMock()
+       self.mock_bot.tool_handler.requests = []
+       self.mock_bot.tool_handler.results = []
+       self.mock_bot.tool_handler.clear = MagicMock()
+       self.context = cli_module.CLIContext()
+       self.context.bot_instance = self.mock_bot
+        
+
 if __name__ == '__main__':
     # Clean up any config files before running tests
     if os.path.exists('cli_config.json'):
         os.remove('cli_config.json')
     unittest.main()
-
