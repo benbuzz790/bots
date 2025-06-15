@@ -9,6 +9,8 @@ from io import StringIO
 from contextlib import redirect_stdout
 import bots.dev.cli as cli_module
 from datetime import datetime
+import inspect
+import bots.flows.functional_prompts as fp
 """Unit tests for the CLI module.
 This test suite verifies the functionality of the new CLI interface,
 focusing on file operations, conversation navigation, and command handling.
@@ -329,6 +331,213 @@ class TestWhileFunctionsInCLI(DetailedTestCase):
         self.mock_bot.tool_handler.clear = MagicMock()
         self.context = cli_module.CLIContext()
         self.context.bot_instance = self.mock_bot
+class TestFunctionalPromptUsability(DetailedTestCase):
+    """
+    Test suite demonstrating the usability assessment of functional prompts in CLI.
+    
+    This class validates which functional prompts are:
+    - ✅ Fully usable through CLI parameter collection
+    - ⚠️ Partially usable with limitations  
+    - ❌ Not usable due to parameter collection issues
+    """
+    
+    def setUp(self):
+        """Set up test fixtures for parameter collection testing."""
+        self.collector = cli_module.DynamicParameterCollector()
+        self.handler = cli_module.DynamicFunctionalPromptHandler()
+        
+    def test_fully_usable_chain_function(self):
+        """✅ Demonstrate that chain() is fully usable through CLI."""
+        # Test parameter collection for chain function
+        with patch('builtins.input', side_effect=[
+            'Analyze the problem step by step',
+            'Propose three different solutions', 
+            'Evaluate each solution for feasibility',
+            ''  # End prompt collection
+        ]):
+            collected = self.collector.collect_parameters(fp.chain)
+            
+        # Should successfully collect all required parameters
+        self.assertIsNotNone(collected)
+        self.assertIn('prompt_list', collected)
+        self.assertEqual(len(collected['prompt_list']), 3)
+        self.assertEqual(collected['prompt_list'][0], 'Analyze the problem step by step')
+        
+        # Verify callback handling
+        self.assertIn('_callback_type', collected)
+        self.assertEqual(collected['_callback_type'], 'list')
+        
+    def test_fully_usable_branch_function(self):
+        """✅ Demonstrate that branch() is fully usable through CLI."""
+        with patch('builtins.input', side_effect=[
+            'Analyze from security perspective',
+            'Analyze from performance perspective',
+            'Analyze from maintainability perspective',
+            ''
+        ]):
+            collected = self.collector.collect_parameters(fp.branch)
+            
+        self.assertIsNotNone(collected)
+        self.assertIn('prompt_list', collected)
+        self.assertEqual(len(collected['prompt_list']), 3)
+        
+    def test_fully_usable_prompt_while_function(self):
+        """✅ Demonstrate that prompt_while() is fully usable through CLI."""
+        with patch('builtins.input', side_effect=[
+            'Debug this code and fix all issues',  # first_prompt
+            'Continue debugging if needed',        # continue_prompt  
+            '2'  # stop_condition choice (tool_not_used)
+        ]):
+            collected = self.collector.collect_parameters(fp.prompt_while)
+            
+        self.assertIsNotNone(collected)
+        self.assertIn('first_prompt', collected)
+        self.assertIn('continue_prompt', collected)
+        self.assertIn('stop_condition', collected)
+        self.assertEqual(collected['first_prompt'], 'Debug this code and fix all issues')
+        
+    def test_partially_usable_tree_of_thought_function(self):
+        """⚠️ Demonstrate that tree_of_thought() is partially usable with limitations."""
+        with patch('builtins.input', side_effect=[
+            'Analyze technical feasibility',
+            'Analyze business impact',
+            'Analyze user experience impact', 
+            '',  # End prompts
+            '1'  # recombinator choice (concatenate)
+        ]):
+            collected = self.collector.collect_parameters(fp.tree_of_thought)
+            
+        # Should collect parameters but with limitations
+        self.assertIsNotNone(collected)
+        self.assertIn('prompts', collected)
+        self.assertIn('recombinator_function', collected)
+        
+        # Verify special callback handling for tree_of_thought
+        self.assertEqual(collected['_callback_type'], 'single')
+        
+        # Verify recombinator is limited to predefined options
+        from bots.flows.recombinators import recombinators
+        self.assertEqual(collected['recombinator_function'], recombinators.concatenate)
+        
+    def test_non_usable_prompt_for_function(self):
+        """❌ Demonstrate that prompt_for() is not usable due to unimplemented handlers."""
+        # Test that items parameter handler is not implemented
+        items_result = self.collector._collect_items('items', inspect.Parameter.empty)
+        self.assertIsNone(items_result)
+        
+        # Test that dynamic_prompt parameter handler is not implemented  
+        dynamic_prompt_result = self.collector._collect_dynamic_prompt('dynamic_prompt', inspect.Parameter.empty)
+        self.assertIsNone(dynamic_prompt_result)
+        
+        # Full parameter collection should fail
+        with patch('builtins.input', side_effect=['y']):  # should_branch = True
+            collected = self.collector.collect_parameters(fp.prompt_for)
+            
+        # Should return None due to missing required parameters
+        self.assertIsNone(collected)
+        
+    def test_non_usable_par_dispatch_function_signature(self):
+        """❌ Demonstrate par_dispatch() is not usable due to complex parameter requirements."""
+        sig = inspect.signature(fp.par_dispatch)
+        params = list(sig.parameters.keys())
+        
+        # Has parameters that require complex input CLI can't handle
+        self.assertIn('bot_list', params)          # List of Bot instances
+        self.assertIn('functional_prompt', params) # Function reference
+        
+        # Has **kwargs which can't be collected
+        sig_str = str(sig)
+        self.assertIn('**kwargs', sig_str)
+        
+    def test_function_discovery_completeness(self):
+        """Test that function discovery finds expected functions correctly."""
+        discovered = self.handler.fp_functions
+        
+        # Verify fully usable functions are discovered
+        fully_usable = ['chain', 'branch', 'prompt_while', 'chain_while']
+        for func_name in fully_usable:
+            self.assertIn(func_name, discovered, 
+                         f"Fully usable function '{func_name}' should be discovered")
+            
+        # Verify partially usable functions are discovered
+        if hasattr(fp, 'tree_of_thought'):
+            self.assertIn('tree_of_thought', discovered)
+        if hasattr(fp, 'recombine'):
+            self.assertIn('recombine', discovered)
+            
+        # Verify problematic functions are discovered (but will have collection issues)
+        if hasattr(fp, 'prompt_for'):
+            self.assertIn('prompt_for', discovered)
+            
+    def test_parameter_handler_coverage(self):
+        """Test that parameter handlers exist for expected parameter types."""
+        handlers = self.collector.param_handlers
+        
+        # Verify handlers exist for common parameter types
+        expected_handlers = [
+            'prompt_list', 'prompts', 'prompt', 'first_prompt',
+            'stop_condition', 'continue_prompt', 'recombinator_function',
+            'should_branch', 'skip', 'items', 'dynamic_prompt'
+        ]
+        
+        for handler_name in expected_handlers:
+            self.assertIn(handler_name, handlers,
+                         f"Handler for '{handler_name}' should exist")
+            
+    def test_condition_options_available(self):
+        """Test that predefined stop conditions are available."""
+        conditions = self.collector.conditions
+        
+        # Verify expected conditions are available
+        expected_conditions = ['1', '2', '3']  # tool_used, tool_not_used, said_DONE
+        for key in expected_conditions:
+            self.assertIn(key, conditions)
+            
+        # Verify condition functions are callable
+        for key, (name, func) in conditions.items():
+            self.assertTrue(callable(func), f"Condition '{name}' should be callable")
+            
+    def test_recombinator_options_available(self):
+        """Test that predefined recombinator functions are available."""
+        # Test recombinator collection
+        with patch('builtins.input', return_value='1'):
+            result = self.collector._collect_recombinator('recombinator_function', inspect.Parameter.empty)
+            
+        # Should return a valid recombinator function
+        self.assertIsNotNone(result)
+        self.assertTrue(callable(result))
+        
+        # Test invalid selection defaults to concatenate
+        with patch('builtins.input', return_value='invalid'):
+            result = self.collector._collect_recombinator('recombinator_function', inspect.Parameter.empty)
+            
+        from bots.flows.recombinators import recombinators
+        self.assertEqual(result, recombinators.concatenate)
+        
+    @patch('builtins.input')
+    def test_end_to_end_fp_command_with_chain(self, mock_input):
+        """✅ Demonstrate successful end-to-end /fp command with chain function."""
+        mock_input.side_effect = [
+            '/fp',
+            'chain',  # Select chain function by name
+            'First, understand the requirements',
+            'Then, design the architecture', 
+            'Finally, implement the solution',
+            '',  # End prompt collection
+            '/exit'
+        ]
+        
+        with StringIO() as buf, redirect_stdout(buf):
+            with self.assertRaises(SystemExit):
+                cli_module.main("")
+            output = buf.getvalue()
+            
+        # Should show successful parameter collection and execution
+        self.assertContainsNormalized(output, 'Available functional prompts')
+        self.assertContainsNormalized(output, 'Collecting parameters for chain')
+        self.assertContainsNormalized(output, 'Executing chain')
+
+
     def test_chain_while_with_multiple_prompts(self):
         """Test chain_while processes multiple prompts sequentially."""
         from bots.flows.functional_prompts import chain_while
