@@ -1,0 +1,1238 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bots package &mdash; bots 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            bots
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">bots package</a><ul>
+<li><a class="reference internal" href="#subpackages">Subpackages</a></li>
+<li><a class="reference internal" href="#module-bots">Module contents</a><ul>
+<li><a class="reference internal" href="#bots.AnthropicBot"><code class="docutils literal notranslate"><span class="pre">AnthropicBot</span></code></a><ul>
+<li><a class="reference internal" href="#bots.AnthropicBot.api_key"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.api_key</span></code></a></li>
+<li><a class="reference internal" href="#bots.AnthropicBot.model_engine"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.model_engine</span></code></a></li>
+<li><a class="reference internal" href="#bots.AnthropicBot.max_tokens"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.max_tokens</span></code></a></li>
+<li><a class="reference internal" href="#bots.AnthropicBot.temperature"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.temperature</span></code></a></li>
+<li><a class="reference internal" href="#bots.AnthropicBot.name"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.name</span></code></a></li>
+<li><a class="reference internal" href="#bots.AnthropicBot.role"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.role</span></code></a></li>
+<li><a class="reference internal" href="#bots.AnthropicBot.role_description"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.role_description</span></code></a></li>
+<li><a class="reference internal" href="#bots.AnthropicBot.system_message"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.system_message</span></code></a></li>
+<li><a class="reference internal" href="#bots.AnthropicBot.tool_handler"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.tool_handler</span></code></a></li>
+<li><a class="reference internal" href="#bots.AnthropicBot.conversation"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.conversation</span></code></a></li>
+<li><a class="reference internal" href="#bots.AnthropicBot.mailbox"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.mailbox</span></code></a></li>
+<li><a class="reference internal" href="#bots.AnthropicBot.autosave"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.autosave</span></code></a></li>
+<li><a class="reference internal" href="#bots.AnthropicBot.__init__"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.__init__()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot</span></code></a><ul>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot.api_key"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.api_key</span></code></a></li>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot.model_engine"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.model_engine</span></code></a></li>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot.max_tokens"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.max_tokens</span></code></a></li>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot.temperature"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.temperature</span></code></a></li>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot.name"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.name</span></code></a></li>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot.role"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.role</span></code></a></li>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot.role_description"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.role_description</span></code></a></li>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot.system_message"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.system_message</span></code></a></li>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot.tool_handler"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.tool_handler</span></code></a></li>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot.conversation"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.conversation</span></code></a></li>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot.mailbox"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.mailbox</span></code></a></li>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot.autosave"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.autosave</span></code></a></li>
+<li><a class="reference internal" href="#bots.ChatGPT_Bot.__init__"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.__init__()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#bots.Engines"><code class="docutils literal notranslate"><span class="pre">Engines</span></code></a><ul>
+<li><a class="reference internal" href="#bots.Engines.get"><code class="docutils literal notranslate"><span class="pre">Engines.get()</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.get_bot_class"><code class="docutils literal notranslate"><span class="pre">Engines.get_bot_class()</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.get_conversation_node_class"><code class="docutils literal notranslate"><span class="pre">Engines.get_conversation_node_class()</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.GPT4"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.GPT4_0613"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4_0613</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.GPT4_32K"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4_32K</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.GPT4_32K_0613"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4_32K_0613</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.GPT4TURBO"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4TURBO</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.GPT4TURBO_0125"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4TURBO_0125</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.GPT4TURBO_VISION"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4TURBO_VISION</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.GPT35TURBO"><code class="docutils literal notranslate"><span class="pre">Engines.GPT35TURBO</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.GPT35TURBO_16K"><code class="docutils literal notranslate"><span class="pre">Engines.GPT35TURBO_16K</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.GPT35TURBO_0125"><code class="docutils literal notranslate"><span class="pre">Engines.GPT35TURBO_0125</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.GPT35TURBO_INSTRUCT"><code class="docutils literal notranslate"><span class="pre">Engines.GPT35TURBO_INSTRUCT</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.CLAUDE3_HAIKU"><code class="docutils literal notranslate"><span class="pre">Engines.CLAUDE3_HAIKU</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.CLAUDE3_SONNET"><code class="docutils literal notranslate"><span class="pre">Engines.CLAUDE3_SONNET</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.CLAUDE3_OPUS"><code class="docutils literal notranslate"><span class="pre">Engines.CLAUDE3_OPUS</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.CLAUDE35_SONNET_20240620"><code class="docutils literal notranslate"><span class="pre">Engines.CLAUDE35_SONNET_20240620</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.CLAUDE35_SONNET_20241022"><code class="docutils literal notranslate"><span class="pre">Engines.CLAUDE35_SONNET_20241022</span></code></a></li>
+<li><a class="reference internal" href="#bots.Engines.CLAUDE37_SONNET_20250219"><code class="docutils literal notranslate"><span class="pre">Engines.CLAUDE37_SONNET_20250219</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#bots.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
+<li><a class="reference internal" href="#bots.lazy"><code class="docutils literal notranslate"><span class="pre">lazy()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">bots</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">bots package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/source/bots.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="bots-package">
+<h1>bots package<a class="headerlink" href="#bots-package" title="Link to this heading"></a></h1>
+<section id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="bots.dev.html">bots.dev package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="bots.dev.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bots.dev.html#module-bots.dev.auto_terminal">bots.dev.auto_terminal module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bots.dev.html#bots.dev.auto_terminal.check_for_interrupt"><code class="docutils literal notranslate"><span class="pre">check_for_interrupt()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.dev.html#bots.dev.auto_terminal.setup_raw_mode"><code class="docutils literal notranslate"><span class="pre">setup_raw_mode()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.dev.html#bots.dev.auto_terminal.restore_terminal"><code class="docutils literal notranslate"><span class="pre">restore_terminal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.dev.html#bots.dev.auto_terminal.pretty"><code class="docutils literal notranslate"><span class="pre">pretty()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.dev.html#bots.dev.auto_terminal.initialize_bot"><code class="docutils literal notranslate"><span class="pre">initialize_bot()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.dev.html#bots.dev.auto_terminal.clean_dict"><code class="docutils literal notranslate"><span class="pre">clean_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.dev.html#bots.dev.auto_terminal.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bots.dev.html#module-bots.dev.decorators">bots.dev.decorators module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bots.dev.html#bots.dev.decorators.NoHTTPFilter"><code class="docutils literal notranslate"><span class="pre">NoHTTPFilter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.dev.html#bots.dev.decorators.NoHTTPFilter.name"><code class="docutils literal notranslate"><span class="pre">NoHTTPFilter.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.dev.html#bots.dev.decorators.NoHTTPFilter.filter"><code class="docutils literal notranslate"><span class="pre">NoHTTPFilter.filter()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.dev.html#bots.dev.decorators.lazy"><code class="docutils literal notranslate"><span class="pre">lazy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.dev.html#bots.dev.decorators._get_context"><code class="docutils literal notranslate"><span class="pre">_get_context()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.dev.html#bots.dev.decorators._get_py_interface"><code class="docutils literal notranslate"><span class="pre">_get_py_interface()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.dev.html#bots.dev.decorators.debug_on_error"><code class="docutils literal notranslate"><span class="pre">debug_on_error()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bots.dev.html#bots-dev-start-module">bots.dev.start module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bots.dev.html#module-bots.dev">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="bots.flows.html">bots.flows package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="bots.flows.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bots.flows.html#module-bots.flows.functional_prompts">bots.flows.functional_prompts module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.conditions"><code class="docutils literal notranslate"><span class="pre">conditions</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.conditions.tool_used"><code class="docutils literal notranslate"><span class="pre">conditions.tool_used()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.conditions.tool_not_used"><code class="docutils literal notranslate"><span class="pre">conditions.tool_not_used()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.conditions.tool_not_used_debug"><code class="docutils literal notranslate"><span class="pre">conditions.tool_not_used_debug()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.conditions.said_DONE"><code class="docutils literal notranslate"><span class="pre">conditions.said_DONE()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.conditions.said_DONE_debug"><code class="docutils literal notranslate"><span class="pre">conditions.said_DONE_debug()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.single_prompt"><code class="docutils literal notranslate"><span class="pre">single_prompt()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.chain"><code class="docutils literal notranslate"><span class="pre">chain()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.branch"><code class="docutils literal notranslate"><span class="pre">branch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.recombine"><code class="docutils literal notranslate"><span class="pre">recombine()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.tree_of_thought"><code class="docutils literal notranslate"><span class="pre">tree_of_thought()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.prompt_while"><code class="docutils literal notranslate"><span class="pre">prompt_while()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.prompt_for"><code class="docutils literal notranslate"><span class="pre">prompt_for()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.chain_while"><code class="docutils literal notranslate"><span class="pre">chain_while()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.branch_while"><code class="docutils literal notranslate"><span class="pre">branch_while()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.par_branch"><code class="docutils literal notranslate"><span class="pre">par_branch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.par_branch_while"><code class="docutils literal notranslate"><span class="pre">par_branch_while()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.flows.html#bots.flows.functional_prompts.par_dispatch"><code class="docutils literal notranslate"><span class="pre">par_dispatch()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bots.flows.html#module-bots.flows">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="bots.foundation.html">bots.foundation package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="bots.foundation.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bots.foundation.html#module-bots.foundation.anthropic_bots">bots.foundation.anthropic_bots module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicNode"><code class="docutils literal notranslate"><span class="pre">AnthropicNode</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicNode.__init__"><code class="docutils literal notranslate"><span class="pre">AnthropicNode.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicNode._add_tool_results"><code class="docutils literal notranslate"><span class="pre">AnthropicNode._add_tool_results()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicNode._build_messages"><code class="docutils literal notranslate"><span class="pre">AnthropicNode._build_messages()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicToolHandler"><code class="docutils literal notranslate"><span class="pre">AnthropicToolHandler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicToolHandler.__init__"><code class="docutils literal notranslate"><span class="pre">AnthropicToolHandler.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicToolHandler.generate_tool_schema"><code class="docutils literal notranslate"><span class="pre">AnthropicToolHandler.generate_tool_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicToolHandler.generate_request_schema"><code class="docutils literal notranslate"><span class="pre">AnthropicToolHandler.generate_request_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicToolHandler.tool_name_and_input"><code class="docutils literal notranslate"><span class="pre">AnthropicToolHandler.tool_name_and_input()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicToolHandler.generate_response_schema"><code class="docutils literal notranslate"><span class="pre">AnthropicToolHandler.generate_response_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicToolHandler.generate_error_schema"><code class="docutils literal notranslate"><span class="pre">AnthropicToolHandler.generate_error_schema()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicMailbox"><code class="docutils literal notranslate"><span class="pre">AnthropicMailbox</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicMailbox.last_message"><code class="docutils literal notranslate"><span class="pre">AnthropicMailbox.last_message</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicMailbox.client"><code class="docutils literal notranslate"><span class="pre">AnthropicMailbox.client</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicMailbox.__init__"><code class="docutils literal notranslate"><span class="pre">AnthropicMailbox.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicMailbox.send_message"><code class="docutils literal notranslate"><span class="pre">AnthropicMailbox.send_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicMailbox.process_response"><code class="docutils literal notranslate"><span class="pre">AnthropicMailbox.process_response()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot"><code class="docutils literal notranslate"><span class="pre">AnthropicBot</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot.api_key"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.api_key</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot.model_engine"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.model_engine</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot.max_tokens"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.max_tokens</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot.temperature"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot.name"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot.role"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.role</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot.role_description"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.role_description</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot.system_message"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.system_message</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot.tool_handler"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.tool_handler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot.conversation"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.conversation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot.mailbox"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.mailbox</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot.autosave"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.autosave</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicBot.__init__"><code class="docutils literal notranslate"><span class="pre">AnthropicBot.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.CacheController"><code class="docutils literal notranslate"><span class="pre">CacheController</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.CacheController.find_cache_control_positions"><code class="docutils literal notranslate"><span class="pre">CacheController.find_cache_control_positions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.CacheController.should_add_cache_control"><code class="docutils literal notranslate"><span class="pre">CacheController.should_add_cache_control()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.CacheController.shift_cache_control_out_of_tool_block"><code class="docutils literal notranslate"><span class="pre">CacheController.shift_cache_control_out_of_tool_block()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.CacheController.insert_cache_control"><code class="docutils literal notranslate"><span class="pre">CacheController.insert_cache_control()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.CacheController.remove_cache_control_at_position"><code class="docutils literal notranslate"><span class="pre">CacheController.remove_cache_control_at_position()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.CacheController.manage_cache_controls"><code class="docutils literal notranslate"><span class="pre">CacheController.manage_cache_controls()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bots.foundation.html#module-bots.foundation.base">bots.foundation.base module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines"><code class="docutils literal notranslate"><span class="pre">Engines</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.GPT4"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.GPT4_0613"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4_0613</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.GPT4_32K"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4_32K</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.GPT4_32K_0613"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4_32K_0613</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.GPT4TURBO"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4TURBO</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.GPT4TURBO_0125"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4TURBO_0125</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.GPT4TURBO_VISION"><code class="docutils literal notranslate"><span class="pre">Engines.GPT4TURBO_VISION</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.GPT35TURBO"><code class="docutils literal notranslate"><span class="pre">Engines.GPT35TURBO</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.GPT35TURBO_16K"><code class="docutils literal notranslate"><span class="pre">Engines.GPT35TURBO_16K</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.GPT35TURBO_0125"><code class="docutils literal notranslate"><span class="pre">Engines.GPT35TURBO_0125</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.GPT35TURBO_INSTRUCT"><code class="docutils literal notranslate"><span class="pre">Engines.GPT35TURBO_INSTRUCT</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.CLAUDE3_HAIKU"><code class="docutils literal notranslate"><span class="pre">Engines.CLAUDE3_HAIKU</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.CLAUDE3_SONNET"><code class="docutils literal notranslate"><span class="pre">Engines.CLAUDE3_SONNET</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.CLAUDE3_OPUS"><code class="docutils literal notranslate"><span class="pre">Engines.CLAUDE3_OPUS</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.CLAUDE35_SONNET_20240620"><code class="docutils literal notranslate"><span class="pre">Engines.CLAUDE35_SONNET_20240620</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.CLAUDE35_SONNET_20241022"><code class="docutils literal notranslate"><span class="pre">Engines.CLAUDE35_SONNET_20241022</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.CLAUDE37_SONNET_20250219"><code class="docutils literal notranslate"><span class="pre">Engines.CLAUDE37_SONNET_20250219</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.get"><code class="docutils literal notranslate"><span class="pre">Engines.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.get_bot_class"><code class="docutils literal notranslate"><span class="pre">Engines.get_bot_class()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines.get_conversation_node_class"><code class="docutils literal notranslate"><span class="pre">Engines.get_conversation_node_class()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode"><code class="docutils literal notranslate"><span class="pre">ConversationNode</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode.role"><code class="docutils literal notranslate"><span class="pre">ConversationNode.role</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode.content"><code class="docutils literal notranslate"><span class="pre">ConversationNode.content</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode.parent"><code class="docutils literal notranslate"><span class="pre">ConversationNode.parent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode.replies"><code class="docutils literal notranslate"><span class="pre">ConversationNode.replies</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode.tool_calls"><code class="docutils literal notranslate"><span class="pre">ConversationNode.tool_calls</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode.tool_results"><code class="docutils literal notranslate"><span class="pre">ConversationNode.tool_results</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode.pending_results"><code class="docutils literal notranslate"><span class="pre">ConversationNode.pending_results</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode.__init__"><code class="docutils literal notranslate"><span class="pre">ConversationNode.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode._create_empty"><code class="docutils literal notranslate"><span class="pre">ConversationNode._create_empty()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode._is_empty"><code class="docutils literal notranslate"><span class="pre">ConversationNode._is_empty()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode._add_reply"><code class="docutils literal notranslate"><span class="pre">ConversationNode._add_reply()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode._sync_tool_context"><code class="docutils literal notranslate"><span class="pre">ConversationNode._sync_tool_context()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode._add_tool_calls"><code class="docutils literal notranslate"><span class="pre">ConversationNode._add_tool_calls()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode._add_tool_results"><code class="docutils literal notranslate"><span class="pre">ConversationNode._add_tool_results()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode._find_root"><code class="docutils literal notranslate"><span class="pre">ConversationNode._find_root()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode._root_dict"><code class="docutils literal notranslate"><span class="pre">ConversationNode._root_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode._to_dict_recursive"><code class="docutils literal notranslate"><span class="pre">ConversationNode._to_dict_recursive()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode._to_dict_self"><code class="docutils literal notranslate"><span class="pre">ConversationNode._to_dict_self()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode._build_messages"><code class="docutils literal notranslate"><span class="pre">ConversationNode._build_messages()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode._node_count"><code class="docutils literal notranslate"><span class="pre">ConversationNode._node_count()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ModuleContext"><code class="docutils literal notranslate"><span class="pre">ModuleContext</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ModuleContext.name"><code class="docutils literal notranslate"><span class="pre">ModuleContext.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ModuleContext.source"><code class="docutils literal notranslate"><span class="pre">ModuleContext.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ModuleContext.file_path"><code class="docutils literal notranslate"><span class="pre">ModuleContext.file_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ModuleContext.namespace"><code class="docutils literal notranslate"><span class="pre">ModuleContext.namespace</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ModuleContext.code_hash"><code class="docutils literal notranslate"><span class="pre">ModuleContext.code_hash</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#id0"><code class="docutils literal notranslate"><span class="pre">ModuleContext.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#id25"><code class="docutils literal notranslate"><span class="pre">ModuleContext.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#id26"><code class="docutils literal notranslate"><span class="pre">ModuleContext.file_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#id27"><code class="docutils literal notranslate"><span class="pre">ModuleContext.namespace</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#id28"><code class="docutils literal notranslate"><span class="pre">ModuleContext.code_hash</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ModuleContext.__init__"><code class="docutils literal notranslate"><span class="pre">ModuleContext.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandlerError"><code class="docutils literal notranslate"><span class="pre">ToolHandlerError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolNotFoundError"><code class="docutils literal notranslate"><span class="pre">ToolNotFoundError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ModuleLoadError"><code class="docutils literal notranslate"><span class="pre">ModuleLoadError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler"><code class="docutils literal notranslate"><span class="pre">ToolHandler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.tools"><code class="docutils literal notranslate"><span class="pre">ToolHandler.tools</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.function_map"><code class="docutils literal notranslate"><span class="pre">ToolHandler.function_map</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.requests"><code class="docutils literal notranslate"><span class="pre">ToolHandler.requests</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.results"><code class="docutils literal notranslate"><span class="pre">ToolHandler.results</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.modules"><code class="docutils literal notranslate"><span class="pre">ToolHandler.modules</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.__init__"><code class="docutils literal notranslate"><span class="pre">ToolHandler.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.generate_tool_schema"><code class="docutils literal notranslate"><span class="pre">ToolHandler.generate_tool_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.generate_request_schema"><code class="docutils literal notranslate"><span class="pre">ToolHandler.generate_request_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.tool_name_and_input"><code class="docutils literal notranslate"><span class="pre">ToolHandler.tool_name_and_input()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.generate_response_schema"><code class="docutils literal notranslate"><span class="pre">ToolHandler.generate_response_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.generate_error_schema"><code class="docutils literal notranslate"><span class="pre">ToolHandler.generate_error_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.extract_requests"><code class="docutils literal notranslate"><span class="pre">ToolHandler.extract_requests()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.exec_requests"><code class="docutils literal notranslate"><span class="pre">ToolHandler.exec_requests()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler._create_builtin_wrapper"><code class="docutils literal notranslate"><span class="pre">ToolHandler._create_builtin_wrapper()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler._create_dynamic_wrapper"><code class="docutils literal notranslate"><span class="pre">ToolHandler._create_dynamic_wrapper()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.add_tool"><code class="docutils literal notranslate"><span class="pre">ToolHandler.add_tool()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler._add_tools_from_file"><code class="docutils literal notranslate"><span class="pre">ToolHandler._add_tools_from_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler._add_tools_from_module"><code class="docutils literal notranslate"><span class="pre">ToolHandler._add_tools_from_module()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.to_dict"><code class="docutils literal notranslate"><span class="pre">ToolHandler.to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.from_dict"><code class="docutils literal notranslate"><span class="pre">ToolHandler.from_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.get_tools_json"><code class="docutils literal notranslate"><span class="pre">ToolHandler.get_tools_json()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.clear"><code class="docutils literal notranslate"><span class="pre">ToolHandler.clear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.add_request"><code class="docutils literal notranslate"><span class="pre">ToolHandler.add_request()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.add_result"><code class="docutils literal notranslate"><span class="pre">ToolHandler.add_result()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.get_results"><code class="docutils literal notranslate"><span class="pre">ToolHandler.get_results()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.get_requests"><code class="docutils literal notranslate"><span class="pre">ToolHandler.get_requests()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler._get_code_hash"><code class="docutils literal notranslate"><span class="pre">ToolHandler._get_code_hash()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.__str__"><code class="docutils literal notranslate"><span class="pre">ToolHandler.__str__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ToolHandler.__repr__"><code class="docutils literal notranslate"><span class="pre">ToolHandler.__repr__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Mailbox"><code class="docutils literal notranslate"><span class="pre">Mailbox</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Mailbox.__init__"><code class="docutils literal notranslate"><span class="pre">Mailbox.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Mailbox.log_message"><code class="docutils literal notranslate"><span class="pre">Mailbox.log_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Mailbox.send_message"><code class="docutils literal notranslate"><span class="pre">Mailbox.send_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Mailbox.process_response"><code class="docutils literal notranslate"><span class="pre">Mailbox.process_response()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot"><code class="docutils literal notranslate"><span class="pre">Bot</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.api_key"><code class="docutils literal notranslate"><span class="pre">Bot.api_key</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.name"><code class="docutils literal notranslate"><span class="pre">Bot.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.model_engine"><code class="docutils literal notranslate"><span class="pre">Bot.model_engine</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.max_tokens"><code class="docutils literal notranslate"><span class="pre">Bot.max_tokens</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.temperature"><code class="docutils literal notranslate"><span class="pre">Bot.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.role"><code class="docutils literal notranslate"><span class="pre">Bot.role</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.role_description"><code class="docutils literal notranslate"><span class="pre">Bot.role_description</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.conversation"><code class="docutils literal notranslate"><span class="pre">Bot.conversation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.system_message"><code class="docutils literal notranslate"><span class="pre">Bot.system_message</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.tool_handler"><code class="docutils literal notranslate"><span class="pre">Bot.tool_handler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.mailbox"><code class="docutils literal notranslate"><span class="pre">Bot.mailbox</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.autosave"><code class="docutils literal notranslate"><span class="pre">Bot.autosave</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.__init__"><code class="docutils literal notranslate"><span class="pre">Bot.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.respond"><code class="docutils literal notranslate"><span class="pre">Bot.respond()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.add_tools"><code class="docutils literal notranslate"><span class="pre">Bot.add_tools()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot._cvsn_respond"><code class="docutils literal notranslate"><span class="pre">Bot._cvsn_respond()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.set_system_message"><code class="docutils literal notranslate"><span class="pre">Bot.set_system_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.load"><code class="docutils literal notranslate"><span class="pre">Bot.load()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.save"><code class="docutils literal notranslate"><span class="pre">Bot.save()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.chat"><code class="docutils literal notranslate"><span class="pre">Bot.chat()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.__mul__"><code class="docutils literal notranslate"><span class="pre">Bot.__mul__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot.__str__"><code class="docutils literal notranslate"><span class="pre">Bot.__str__()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bots.foundation.html#module-bots.foundation.openai_bots">bots.foundation.openai_bots module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAINode"><code class="docutils literal notranslate"><span class="pre">OpenAINode</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAINode.content"><code class="docutils literal notranslate"><span class="pre">OpenAINode.content</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAINode.role"><code class="docutils literal notranslate"><span class="pre">OpenAINode.role</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAINode.parent"><code class="docutils literal notranslate"><span class="pre">OpenAINode.parent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAINode.children"><code class="docutils literal notranslate"><span class="pre">OpenAINode.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAINode.tool_calls"><code class="docutils literal notranslate"><span class="pre">OpenAINode.tool_calls</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAINode.tool_results"><code class="docutils literal notranslate"><span class="pre">OpenAINode.tool_results</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAINode.__init__"><code class="docutils literal notranslate"><span class="pre">OpenAINode.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAINode._build_messages"><code class="docutils literal notranslate"><span class="pre">OpenAINode._build_messages()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIToolHandler"><code class="docutils literal notranslate"><span class="pre">OpenAIToolHandler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIToolHandler.tools"><code class="docutils literal notranslate"><span class="pre">OpenAIToolHandler.tools</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIToolHandler.requests"><code class="docutils literal notranslate"><span class="pre">OpenAIToolHandler.requests</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIToolHandler.results"><code class="docutils literal notranslate"><span class="pre">OpenAIToolHandler.results</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIToolHandler.generate_tool_schema"><code class="docutils literal notranslate"><span class="pre">OpenAIToolHandler.generate_tool_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIToolHandler.generate_request_schema"><code class="docutils literal notranslate"><span class="pre">OpenAIToolHandler.generate_request_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIToolHandler.tool_name_and_input"><code class="docutils literal notranslate"><span class="pre">OpenAIToolHandler.tool_name_and_input()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIToolHandler.generate_response_schema"><code class="docutils literal notranslate"><span class="pre">OpenAIToolHandler.generate_response_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIToolHandler.generate_error_schema"><code class="docutils literal notranslate"><span class="pre">OpenAIToolHandler.generate_error_schema()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIMailbox"><code class="docutils literal notranslate"><span class="pre">OpenAIMailbox</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIMailbox.api_key"><code class="docutils literal notranslate"><span class="pre">OpenAIMailbox.api_key</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIMailbox.client"><code class="docutils literal notranslate"><span class="pre">OpenAIMailbox.client</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIMailbox.__init__"><code class="docutils literal notranslate"><span class="pre">OpenAIMailbox.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIMailbox.send_message"><code class="docutils literal notranslate"><span class="pre">OpenAIMailbox.send_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIMailbox.process_response"><code class="docutils literal notranslate"><span class="pre">OpenAIMailbox.process_response()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot.api_key"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.api_key</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot.model_engine"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.model_engine</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot.max_tokens"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.max_tokens</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot.temperature"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot.name"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot.role"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.role</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot.role_description"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.role_description</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot.system_message"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.system_message</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot.tool_handler"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.tool_handler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot.conversation"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.conversation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot.mailbox"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.mailbox</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot.autosave"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.autosave</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.ChatGPT_Bot.__init__"><code class="docutils literal notranslate"><span class="pre">ChatGPT_Bot.__init__()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bots.foundation.html#module-bots.foundation">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.__python_requires__"><code class="docutils literal notranslate"><span class="pre">__python_requires__</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.foundation.html#bots.foundation.__version__"><code class="docutils literal notranslate"><span class="pre">__version__</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="bots.tools.html">bots.tools package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="bots.tools.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bots.tools.html#module-bots.tools.code_tools">bots.tools.code_tools module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.code_tools.view"><code class="docutils literal notranslate"><span class="pre">view()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.code_tools.view_dir"><code class="docutils literal notranslate"><span class="pre">view_dir()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.code_tools.diff_edit"><code class="docutils literal notranslate"><span class="pre">diff_edit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.code_tools._find_matching_block"><code class="docutils literal notranslate"><span class="pre">_find_matching_block()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.code_tools._get_indentation"><code class="docutils literal notranslate"><span class="pre">_get_indentation()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.code_tools._adjust_indentation"><code class="docutils literal notranslate"><span class="pre">_adjust_indentation()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.code_tools._get_context"><code class="docutils literal notranslate"><span class="pre">_get_context()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.code_tools._calculate_block_match_score"><code class="docutils literal notranslate"><span class="pre">_calculate_block_match_score()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.code_tools._has_line_number_prefix"><code class="docutils literal notranslate"><span class="pre">_has_line_number_prefix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.code_tools._strip_line_number"><code class="docutils literal notranslate"><span class="pre">_strip_line_number()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bots.tools.html#module-bots.tools.meta_tools">bots.tools.meta_tools module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.meta_tools.message_bot"><code class="docutils literal notranslate"><span class="pre">message_bot()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.meta_tools.initialize_file_bot"><code class="docutils literal notranslate"><span class="pre">initialize_file_bot()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.meta_tools.generate_project"><code class="docutils literal notranslate"><span class="pre">generate_project()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bots.tools.html#module-bots.tools.python_editing_tools">bots.tools.python_editing_tools module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport"><code class="docutils literal notranslate"><span class="pre">NodeTransformerWithAsyncSupport</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport.__init__"><code class="docutils literal notranslate"><span class="pre">NodeTransformerWithAsyncSupport.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport.visit_FunctionDef"><code class="docutils literal notranslate"><span class="pre">NodeTransformerWithAsyncSupport.visit_FunctionDef()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport.visit_AsyncFunctionDef"><code class="docutils literal notranslate"><span class="pre">NodeTransformerWithAsyncSupport.visit_AsyncFunctionDef()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport._handle_function"><code class="docutils literal notranslate"><span class="pre">NodeTransformerWithAsyncSupport._handle_function()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.FunctionReplacer"><code class="docutils literal notranslate"><span class="pre">FunctionReplacer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.FunctionReplacer.__init__"><code class="docutils literal notranslate"><span class="pre">FunctionReplacer.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.MethodAdder"><code class="docutils literal notranslate"><span class="pre">MethodAdder</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.MethodAdder.__init__"><code class="docutils literal notranslate"><span class="pre">MethodAdder.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.MethodAdder.visit_ClassDef"><code class="docutils literal notranslate"><span class="pre">MethodAdder.visit_ClassDef()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.add_imports"><code class="docutils literal notranslate"><span class="pre">add_imports()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.remove_import"><code class="docutils literal notranslate"><span class="pre">remove_import()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.replace_import"><code class="docutils literal notranslate"><span class="pre">replace_import()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.add_class"><code class="docutils literal notranslate"><span class="pre">add_class()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.replace_class"><code class="docutils literal notranslate"><span class="pre">replace_class()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.add_function_to_class"><code class="docutils literal notranslate"><span class="pre">add_function_to_class()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.add_function_to_file"><code class="docutils literal notranslate"><span class="pre">add_function_to_file()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools.replace_function"><code class="docutils literal notranslate"><span class="pre">replace_function()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools._make_file"><code class="docutils literal notranslate"><span class="pre">_make_file()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools._add_single_function_to_class"><code class="docutils literal notranslate"><span class="pre">_add_single_function_to_class()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools._add_single_function_to_file"><code class="docutils literal notranslate"><span class="pre">_add_single_function_to_file()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_editing_tools._replace_single_function"><code class="docutils literal notranslate"><span class="pre">_replace_single_function()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bots.tools.html#module-bots.tools.python_execution_tool">bots.tools.python_execution_tool module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_execution_tool._execute_python_code"><code class="docutils literal notranslate"><span class="pre">_execute_python_code()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.python_execution_tool._process_error"><code class="docutils literal notranslate"><span class="pre">_process_error()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bots.tools.html#module-bots.tools.self_tools">bots.tools.self_tools module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.self_tools._get_calling_bot"><code class="docutils literal notranslate"><span class="pre">_get_calling_bot()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.self_tools.get_own_info"><code class="docutils literal notranslate"><span class="pre">get_own_info()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.self_tools._modify_own_settings"><code class="docutils literal notranslate"><span class="pre">_modify_own_settings()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.self_tools.branch_self"><code class="docutils literal notranslate"><span class="pre">branch_self()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.self_tools.add_tools"><code class="docutils literal notranslate"><span class="pre">add_tools()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.self_tools._process_string_array"><code class="docutils literal notranslate"><span class="pre">_process_string_array()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bots.tools.html#module-bots.tools.terminal_tools">bots.tools.terminal_tools module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools.execute_powershell"><code class="docutils literal notranslate"><span class="pre">execute_powershell()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools.PowerShellSession"><code class="docutils literal notranslate"><span class="pre">PowerShellSession</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools.PowerShellSession.__init__"><code class="docutils literal notranslate"><span class="pre">PowerShellSession.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools.PowerShellSession._start_reader_threads"><code class="docutils literal notranslate"><span class="pre">PowerShellSession._start_reader_threads()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools.PowerShellSession.execute"><code class="docutils literal notranslate"><span class="pre">PowerShellSession.execute()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools.PowerShellManager"><code class="docutils literal notranslate"><span class="pre">PowerShellManager</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools.PowerShellManager.get_instance"><code class="docutils literal notranslate"><span class="pre">PowerShellManager.get_instance()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools.PowerShellManager.__init__"><code class="docutils literal notranslate"><span class="pre">PowerShellManager.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools.PowerShellManager.session"><code class="docutils literal notranslate"><span class="pre">PowerShellManager.session</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools.PowerShellManager._start_new_session"><code class="docutils literal notranslate"><span class="pre">PowerShellManager._start_new_session()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools.PowerShellManager._is_session_valid"><code class="docutils literal notranslate"><span class="pre">PowerShellManager._is_session_valid()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools.PowerShellManager.execute"><code class="docutils literal notranslate"><span class="pre">PowerShellManager.execute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools.PowerShellManager.cleanup"><code class="docutils literal notranslate"><span class="pre">PowerShellManager.cleanup()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools._get_active_sessions"><code class="docutils literal notranslate"><span class="pre">_get_active_sessions()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools._execute_powershell_stateless"><code class="docutils literal notranslate"><span class="pre">_execute_powershell_stateless()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bots.tools.html#bots.tools.terminal_tools._process_commands"><code class="docutils literal notranslate"><span class="pre">_process_commands()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bots.tools.html#module-bots.tools">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="module-bots">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-bots" title="Link to this heading"></a></h2>
+<p>Bots package initialization and primary interface.</p>
+<p>This module serves as the main entry point for the bots package, providing access to:
+- Core bot implementations:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>AnthropicBot: Claude-based bot implementation</p></li>
+<li><p>ChatGPT_Bot: GPT-based bot implementation</p></li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Development tools:</dt><dd><ul>
+<li><p>auto_terminal: Advanced terminal interface for autonomous coding</p></li>
+<li><p>lazy: Runtime code generation decorator</p></li>
+<li><p>project_tree: Project structure analysis and management</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Tool collections:</dt><dd><ul>
+<li><p>python_editing_tools: Python code modification utilities</p></li>
+<li><p>meta_tools: Bot self-modification capabilities</p></li>
+<li><p>terminal_tools: Command-line interaction tools</p></li>
+<li><p>code_tools: General code manipulation utilities</p></li>
+<li><p>self_tools: Bot introspection utilities</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>The package follows a layered architecture with foundation, flows, and tools layers.
+All commonly used components are imported here for convenient access.</p>
+<dl>
+<dt>Example Usage:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">bots</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnthropicBot</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">bots.tools.code_tools</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">code_tools</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Initialize and equip bot</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bot</span> <span class="o">=</span> <span class="n">AnthropicBot</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bot</span><span class="o">.</span><span class="n">add_tools</span><span class="p">(</span><span class="n">code_tools</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Single response</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">response</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">respond</span><span class="p">(</span><span class="s2">&quot;Please write a basic Flask app&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Interactive mode</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="bots.AnthropicBot">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bots.</span></span><span class="sig-name descname"><span class="pre">AnthropicBot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines" title="bots.foundation.base.Engines"><span class="pre">Engines</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">Engines.CLAUDE37_SONNET_20250219</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_tokens</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4096</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Claude'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">role</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'assistant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">role_description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'a</span> <span class="pre">friendly</span> <span class="pre">AI</span> <span class="pre">assistant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autosave</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/foundation/anthropic_bots.html#AnthropicBot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.AnthropicBot" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><code class="xref py py-class docutils literal notranslate"><span class="pre">Bot</span></code></a></p>
+<p>A bot implementation using the Anthropic API.</p>
+<p>Use when you need to create a bot that interfaces with Anthropic’s chat completion models.
+Provides a complete implementation with Anthropic-specific conversation management,
+tool handling, and message processing. Supports both simple chat interactions and
+complex tool-using conversations.</p>
+<dl class="simple">
+<dt>Inherits from:</dt><dd><p>Bot: Base class for all bot implementations, providing core conversation and tool management</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.AnthropicBot.api_key">
+<span class="sig-name descname"><span class="pre">api_key</span></span><a class="headerlink" href="#bots.AnthropicBot.api_key" title="Link to this definition"></a></dt>
+<dd><p>Anthropic API key for authentication</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.AnthropicBot.model_engine">
+<span class="sig-name descname"><span class="pre">model_engine</span></span><a class="headerlink" href="#bots.AnthropicBot.model_engine" title="Link to this definition"></a></dt>
+<dd><p>The Anthropic model being used (e.g., GPT4)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#bots.Engines" title="bots.Engines">Engines</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.AnthropicBot.max_tokens">
+<span class="sig-name descname"><span class="pre">max_tokens</span></span><a class="headerlink" href="#bots.AnthropicBot.max_tokens" title="Link to this definition"></a></dt>
+<dd><p>Maximum tokens allowed in completion responses</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.AnthropicBot.temperature">
+<span class="sig-name descname"><span class="pre">temperature</span></span><a class="headerlink" href="#bots.AnthropicBot.temperature" title="Link to this definition"></a></dt>
+<dd><p>Response randomness factor (0-1)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.AnthropicBot.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#bots.AnthropicBot.name" title="Link to this definition"></a></dt>
+<dd><p>Instance name for identification</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.AnthropicBot.role">
+<span class="sig-name descname"><span class="pre">role</span></span><a class="headerlink" href="#bots.AnthropicBot.role" title="Link to this definition"></a></dt>
+<dd><p>Bot’s role identifier</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.AnthropicBot.role_description">
+<span class="sig-name descname"><span class="pre">role_description</span></span><a class="headerlink" href="#bots.AnthropicBot.role_description" title="Link to this definition"></a></dt>
+<dd><p>Detailed description of bot’s role/personality (for humans to read, not used in api)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.AnthropicBot.system_message">
+<span class="sig-name descname"><span class="pre">system_message</span></span><a class="headerlink" href="#bots.AnthropicBot.system_message" title="Link to this definition"></a></dt>
+<dd><p>System-level instructions for the bot</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.AnthropicBot.tool_handler">
+<span class="sig-name descname"><span class="pre">tool_handler</span></span><a class="headerlink" href="#bots.AnthropicBot.tool_handler" title="Link to this definition"></a></dt>
+<dd><p>Manages function calling capabilities</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicToolHandler" title="bots.foundation.anthropic_bots.AnthropicToolHandler">AnthropicToolHandler</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.AnthropicBot.conversation">
+<span class="sig-name descname"><span class="pre">conversation</span></span><a class="headerlink" href="#bots.AnthropicBot.conversation" title="Link to this definition"></a></dt>
+<dd><p>Manages conversation history</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicNode" title="bots.foundation.anthropic_bots.AnthropicNode">AnthropicNode</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.AnthropicBot.mailbox">
+<span class="sig-name descname"><span class="pre">mailbox</span></span><a class="headerlink" href="#bots.AnthropicBot.mailbox" title="Link to this definition"></a></dt>
+<dd><p>Handles API communication</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="bots.foundation.html#bots.foundation.anthropic_bots.AnthropicMailbox" title="bots.foundation.anthropic_bots.AnthropicMailbox">AnthropicMailbox</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.AnthropicBot.autosave">
+<span class="sig-name descname"><span class="pre">autosave</span></span><a class="headerlink" href="#bots.AnthropicBot.autosave" title="Link to this definition"></a></dt>
+<dd><p>Whether to automatically save state after responses</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<p><a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
+# Create a documentation expert bot
+bot = ChatGPT_Bot(</p>
+<blockquote>
+<div><p>model_engine=Engines.GPT4,
+temperature=0.3,
+role_description=”a Python documentation expert”</p>
+</div></blockquote>
+<p>)</p>
+<p># Add tools and use the bot
+bot.add_tool(my_function)
+response = bot.respond(“Please help document this code.”)</p>
+<p># Save the bot’s state for later use
+bot.save(“doc_expert.bot”)
+<a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.AnthropicBot.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines" title="bots.foundation.base.Engines"><span class="pre">Engines</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">Engines.CLAUDE37_SONNET_20250219</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_tokens</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4096</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Claude'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">role</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'assistant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">role_description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'a</span> <span class="pre">friendly</span> <span class="pre">AI</span> <span class="pre">assistant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autosave</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/bots/foundation/anthropic_bots.html#AnthropicBot.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.AnthropicBot.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize an AnthropicBot.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>api_key</strong> – Optional API key (will use ANTHROPIC_API_KEY env var if not provided)</p></li>
+<li><p><strong>model_engine</strong> – The Anthropic model to use (default: CLAUDE37_SONNET_20250219)</p></li>
+<li><p><strong>max_tokens</strong> – Maximum tokens per response (default: 4096)</p></li>
+<li><p><strong>temperature</strong> – Response randomness, 0-1 (default: 0.3)</p></li>
+<li><p><strong>name</strong> – Bot’s name (default: ‘Claude’)</p></li>
+<li><p><strong>role</strong> – Bot’s role (default: ‘assistant’)</p></li>
+<li><p><strong>role_description</strong> – Description of bot’s role (default: ‘a friendly AI assistant’)</p></li>
+<li><p><strong>autosave</strong> – Whether to autosave state after responses (default: True, saves to cwd)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bots.</span></span><span class="sig-name descname"><span class="pre">ChatGPT_Bot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines" title="bots.foundation.base.Engines"><span class="pre">Engines</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">Engines.GPT4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_tokens</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4096</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'bot'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">role</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'assistant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">role_description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'a</span> <span class="pre">friendly</span> <span class="pre">AI</span> <span class="pre">assistant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autosave</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/foundation/openai_bots.html#ChatGPT_Bot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.ChatGPT_Bot" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><code class="xref py py-class docutils literal notranslate"><span class="pre">Bot</span></code></a></p>
+<p>A bot implementation using the OpenAI GPT API.</p>
+<p>Use when you need to create a bot that interfaces with OpenAI’s chat completion models.
+Provides a complete implementation with OpenAI-specific conversation management,
+tool handling, and message processing. Supports both simple chat interactions and
+complex tool-using conversations.</p>
+<dl class="simple">
+<dt>Inherits from:</dt><dd><p>Bot: Base class for all bot implementations, providing core conversation and tool management</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot.api_key">
+<span class="sig-name descname"><span class="pre">api_key</span></span><a class="headerlink" href="#bots.ChatGPT_Bot.api_key" title="Link to this definition"></a></dt>
+<dd><p>OpenAI API key for authentication</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot.model_engine">
+<span class="sig-name descname"><span class="pre">model_engine</span></span><a class="headerlink" href="#bots.ChatGPT_Bot.model_engine" title="Link to this definition"></a></dt>
+<dd><p>The OpenAI model being used (e.g., GPT4)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#bots.Engines" title="bots.Engines">Engines</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot.max_tokens">
+<span class="sig-name descname"><span class="pre">max_tokens</span></span><a class="headerlink" href="#bots.ChatGPT_Bot.max_tokens" title="Link to this definition"></a></dt>
+<dd><p>Maximum tokens allowed in completion responses</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot.temperature">
+<span class="sig-name descname"><span class="pre">temperature</span></span><a class="headerlink" href="#bots.ChatGPT_Bot.temperature" title="Link to this definition"></a></dt>
+<dd><p>Response randomness factor (0-1)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#bots.ChatGPT_Bot.name" title="Link to this definition"></a></dt>
+<dd><p>Instance name for identification</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot.role">
+<span class="sig-name descname"><span class="pre">role</span></span><a class="headerlink" href="#bots.ChatGPT_Bot.role" title="Link to this definition"></a></dt>
+<dd><p>Bot’s role identifier</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot.role_description">
+<span class="sig-name descname"><span class="pre">role_description</span></span><a class="headerlink" href="#bots.ChatGPT_Bot.role_description" title="Link to this definition"></a></dt>
+<dd><p>Detailed description of bot’s role/personality</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot.system_message">
+<span class="sig-name descname"><span class="pre">system_message</span></span><a class="headerlink" href="#bots.ChatGPT_Bot.system_message" title="Link to this definition"></a></dt>
+<dd><p>System-level instructions for the bot</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot.tool_handler">
+<span class="sig-name descname"><span class="pre">tool_handler</span></span><a class="headerlink" href="#bots.ChatGPT_Bot.tool_handler" title="Link to this definition"></a></dt>
+<dd><p>Manages function calling capabilities</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIToolHandler" title="bots.foundation.openai_bots.OpenAIToolHandler">OpenAIToolHandler</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot.conversation">
+<span class="sig-name descname"><span class="pre">conversation</span></span><a class="headerlink" href="#bots.ChatGPT_Bot.conversation" title="Link to this definition"></a></dt>
+<dd><p>Manages conversation history</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAINode" title="bots.foundation.openai_bots.OpenAINode">OpenAINode</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot.mailbox">
+<span class="sig-name descname"><span class="pre">mailbox</span></span><a class="headerlink" href="#bots.ChatGPT_Bot.mailbox" title="Link to this definition"></a></dt>
+<dd><p>Handles API communication</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="bots.foundation.html#bots.foundation.openai_bots.OpenAIMailbox" title="bots.foundation.openai_bots.OpenAIMailbox">OpenAIMailbox</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot.autosave">
+<span class="sig-name descname"><span class="pre">autosave</span></span><a class="headerlink" href="#bots.ChatGPT_Bot.autosave" title="Link to this definition"></a></dt>
+<dd><p>Whether to automatically save state after responses</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<p><a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a>python
+# Create a documentation expert bot
+bot = ChatGPT_Bot(</p>
+<blockquote>
+<div><p>model_engine=Engines.GPT4,
+temperature=0.3,
+role_description=”a Python documentation expert”</p>
+</div></blockquote>
+<p>)</p>
+<p># Add tools and use the bot
+bot.add_tool(my_function)
+response = bot.respond(“Please help document this code.”)</p>
+<p># Save the bot’s state for later use
+bot.save(“doc_expert.bot”)
+<a href="#id13"><span class="problematic" id="id14">``</span></a><a href="#id15"><span class="problematic" id="id16">`</span></a></p>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.ChatGPT_Bot.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines" title="bots.foundation.base.Engines"><span class="pre">Engines</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">Engines.GPT4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_tokens</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4096</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'bot'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">role</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'assistant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">role_description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'a</span> <span class="pre">friendly</span> <span class="pre">AI</span> <span class="pre">assistant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autosave</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/foundation/openai_bots.html#ChatGPT_Bot.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.ChatGPT_Bot.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize a ChatGPT bot with OpenAI-specific components.</p>
+<p>Use when you need to create a new OpenAI-based bot instance with specific configuration.
+Sets up all necessary components for OpenAI interaction including conversation management,
+tool handling, and API communication.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>api_key</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – OpenAI API key. If not provided, attempts to read from
+OPENAI_API_KEY environment variable</p></li>
+<li><p><strong>model_engine</strong> (<a class="reference internal" href="#bots.Engines" title="bots.Engines"><em>Engines</em></a>) – The OpenAI model to use, defaults to GPT-4. Determines
+capabilities and pricing</p></li>
+<li><p><strong>max_tokens</strong> (<em>int</em>) – Maximum tokens in completion response, defaults to 4096. Affects
+response length and API costs</p></li>
+<li><p><strong>temperature</strong> (<em>float</em>) – Response randomness (0-1), defaults to 0.3. Higher values make
+responses more creative but less focused</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Name of the bot instance, defaults to ‘bot’. Used for identification
+in logs and saved states</p></li>
+<li><p><strong>role</strong> (<em>str</em>) – Role identifier for the bot, defaults to ‘assistant’. Used in message
+formatting</p></li>
+<li><p><strong>role_description</strong> (<em>str</em>) – Description of the bot’s role/personality, defaults to
+‘a friendly AI assistant’. Guides bot behavior</p></li>
+<li><p><strong>autosave</strong> (<em>bool</em>) – Whether to automatically save conversation state, defaults to True.
+Enables conversation recovery</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The bot is initialized with OpenAI-specific implementations of:
+- OpenAIToolHandler for function calling
+- OpenAINode for conversation management
+- OpenAIMailbox for API communication</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="bots.Engines">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bots.</span></span><span class="sig-name descname"><span class="pre">Engines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/foundation/base.html#Engines"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.Engines" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Enum class representing different AI model engines.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.Engines.get">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines" title="bots.foundation.base.Engines"><span class="pre">Engines</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/bots/foundation/base.html#Engines.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.Engines.get" title="Link to this definition"></a></dt>
+<dd><p>Retrieve an Engines enum member by its string value.</p>
+<p>Use when you need to convert a model name string to an Engines enum member.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – The string value of the engine (e.g., ‘gpt-4’, ‘claude-3-opus-20240229’)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The corresponding Engines enum member, or None if not found</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[<a class="reference internal" href="#bots.Engines" title="bots.Engines">Engines</a>]</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<p><a href="#id17"><span class="problematic" id="id18">``</span></a><a href="#id19"><span class="problematic" id="id20">`</span></a>python
+engine = Engines.get(‘gpt-4’)
+if engine:</p>
+<blockquote>
+<div><p>bot = Bot(model_engine=engine)</p>
+</div></blockquote>
+<p><a href="#id21"><span class="problematic" id="id22">``</span></a><a href="#id23"><span class="problematic" id="id24">`</span></a></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.Engines.get_bot_class">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_bot_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Engines" title="bots.foundation.base.Engines"><span class="pre">Engines</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/foundation/base.html#Engines.get_bot_class"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.Engines.get_bot_class" title="Link to this definition"></a></dt>
+<dd><p>Get the appropriate Bot subclass for a given model engine.</p>
+<p>Use when you need to programmatically determine which Bot implementation
+to use for a specific model engine.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>model_engine</strong> (<a class="reference internal" href="#bots.Engines" title="bots.Engines"><em>Engines</em></a>) – The engine enum member to get the bot class for</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The Bot subclass (ChatGPT_Bot or AnthropicBot)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Type[<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot">Bot</a>]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the model engine is not supported</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">bot_class</span> <span class="pre">=</span> <span class="pre">Engines.get_bot_class(Engines.GPT4)</span>
+<span class="pre">bot</span> <span class="pre">=</span> <span class="pre">bot_class(api_key=&quot;key&quot;)</span>
+<span class="pre">`</span></code></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.Engines.get_conversation_node_class">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_conversation_node_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">class_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode"><span class="pre">ConversationNode</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/foundation/base.html#Engines.get_conversation_node_class"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.Engines.get_conversation_node_class" title="Link to this definition"></a></dt>
+<dd><p>Get the appropriate ConversationNode subclass by name.</p>
+<p>Use when you need to reconstruct conversation nodes from saved bot state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>class_name</strong> (<em>str</em>) – Name of the node class (‘OpenAINode’ or ‘AnthropicNode’)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The ConversationNode subclass</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Type[<a class="reference internal" href="bots.foundation.html#bots.foundation.base.ConversationNode" title="bots.foundation.base.ConversationNode">ConversationNode</a>]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the class name is not a supported node type</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.GPT4">
+<span class="sig-name descname"><span class="pre">GPT4</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'gpt-4'</span></em><a class="headerlink" href="#bots.Engines.GPT4" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.GPT4_0613">
+<span class="sig-name descname"><span class="pre">GPT4_0613</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'gpt-4-0613'</span></em><a class="headerlink" href="#bots.Engines.GPT4_0613" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.GPT4_32K">
+<span class="sig-name descname"><span class="pre">GPT4_32K</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'gpt-4-32k'</span></em><a class="headerlink" href="#bots.Engines.GPT4_32K" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.GPT4_32K_0613">
+<span class="sig-name descname"><span class="pre">GPT4_32K_0613</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'gpt-4-32k-0613'</span></em><a class="headerlink" href="#bots.Engines.GPT4_32K_0613" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.GPT4TURBO">
+<span class="sig-name descname"><span class="pre">GPT4TURBO</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'gpt-4-turbo-preview'</span></em><a class="headerlink" href="#bots.Engines.GPT4TURBO" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.GPT4TURBO_0125">
+<span class="sig-name descname"><span class="pre">GPT4TURBO_0125</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'gpt-4-0125-preview'</span></em><a class="headerlink" href="#bots.Engines.GPT4TURBO_0125" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.GPT4TURBO_VISION">
+<span class="sig-name descname"><span class="pre">GPT4TURBO_VISION</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'gpt-4-vision-preview'</span></em><a class="headerlink" href="#bots.Engines.GPT4TURBO_VISION" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.GPT35TURBO">
+<span class="sig-name descname"><span class="pre">GPT35TURBO</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'gpt-3.5-turbo'</span></em><a class="headerlink" href="#bots.Engines.GPT35TURBO" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.GPT35TURBO_16K">
+<span class="sig-name descname"><span class="pre">GPT35TURBO_16K</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'gpt-3.5-turbo-16k'</span></em><a class="headerlink" href="#bots.Engines.GPT35TURBO_16K" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.GPT35TURBO_0125">
+<span class="sig-name descname"><span class="pre">GPT35TURBO_0125</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'gpt-3.5-turbo-0125'</span></em><a class="headerlink" href="#bots.Engines.GPT35TURBO_0125" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.GPT35TURBO_INSTRUCT">
+<span class="sig-name descname"><span class="pre">GPT35TURBO_INSTRUCT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'gpt-3.5-turbo-instruct'</span></em><a class="headerlink" href="#bots.Engines.GPT35TURBO_INSTRUCT" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.CLAUDE3_HAIKU">
+<span class="sig-name descname"><span class="pre">CLAUDE3_HAIKU</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'claude-3-haiku-20240307'</span></em><a class="headerlink" href="#bots.Engines.CLAUDE3_HAIKU" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.CLAUDE3_SONNET">
+<span class="sig-name descname"><span class="pre">CLAUDE3_SONNET</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'claude-3-sonnet-20240229'</span></em><a class="headerlink" href="#bots.Engines.CLAUDE3_SONNET" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.CLAUDE3_OPUS">
+<span class="sig-name descname"><span class="pre">CLAUDE3_OPUS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'claude-3-opus-20240229'</span></em><a class="headerlink" href="#bots.Engines.CLAUDE3_OPUS" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.CLAUDE35_SONNET_20240620">
+<span class="sig-name descname"><span class="pre">CLAUDE35_SONNET_20240620</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'claude-3-5-sonnet-20240620'</span></em><a class="headerlink" href="#bots.Engines.CLAUDE35_SONNET_20240620" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.CLAUDE35_SONNET_20241022">
+<span class="sig-name descname"><span class="pre">CLAUDE35_SONNET_20241022</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'claude-3-5-sonnet-20241022'</span></em><a class="headerlink" href="#bots.Engines.CLAUDE35_SONNET_20241022" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bots.Engines.CLAUDE37_SONNET_20250219">
+<span class="sig-name descname"><span class="pre">CLAUDE37_SONNET_20250219</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'claude-3-7-sonnet-20250219'</span></em><a class="headerlink" href="#bots.Engines.CLAUDE37_SONNET_20250219" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.load">
+<span class="sig-prename descclassname"><span class="pre">bots.</span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a></span></span><a class="reference internal" href="../_modules/bots/foundation/base.html#load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.load" title="Link to this definition"></a></dt>
+<dd><p>Load a saved bot from a file.</p>
+<p>Use when you need to restore a previously saved bot with its complete state,
+including conversation history, tools, and configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<em>str</em>) – Path to the .bot file containing the saved bot state</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A reconstructed Bot instance with the saved state</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot">Bot</a></p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">bot</span> <span class="pre">=</span> <span class="pre">bots.load(&quot;my_saved_bot.bot&quot;)</span>
+<span class="pre">bot.respond(&quot;Continue</span> <span class="pre">our</span> <span class="pre">previous</span> <span class="pre">conversation&quot;)</span>
+<span class="pre">`</span></code></p>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.lazy">
+<span class="sig-prename descclassname"><span class="pre">bots.</span></span><span class="sig-name descname"><span class="pre">lazy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prompt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="reference internal" href="../_modules/bots/dev/decorators.html#lazy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.lazy" title="Link to this definition"></a></dt>
+<dd><p>Decorator that lazily implements a function using an LLM at runtime.</p>
+<p>Use when you need to generate function implementations dynamically using an LLM.
+The implementation will be generated on first call and persisted to the source file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>prompt</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Additional instructions for the LLM about how to implement
+the function. Defaults to empty string.</p></li>
+<li><p><strong>bot</strong> (<em>Optional</em><em>[</em><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><em>Bot</em></a><em>]</em>) – The bot instance to use for implementation. Defaults to
+a new AnthropicBot instance.</p></li>
+<li><p><strong>context</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Level of context to provide to the LLM. Options are:
+- ‘None’: No additional context
+- ‘low’: Only the containing class
+- ‘medium’: The entire current file
+- ‘high’: Current file and interfaces of other files in directory
+- ‘very high’: All Python files in directory
+Defaults to ‘None’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A decorator function that wraps the target function</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Callable</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<p>&#64;lazy(“Sort using a funny algorithm. Name variables as though you’re a clown.”)
+def sort(arr: list[int]) -&gt; list[int]:</p>
+<blockquote>
+<div><p>pass</p>
+</div></blockquote>
+</div>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, benbuzz790.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

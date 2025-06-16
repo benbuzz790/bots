@@ -1,0 +1,954 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bots.tools package &mdash; bots 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            bots
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">bots.tools package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-bots.tools.code_tools">bots.tools.code_tools module</a><ul>
+<li><a class="reference internal" href="#bots.tools.code_tools.view"><code class="docutils literal notranslate"><span class="pre">view()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.code_tools.view_dir"><code class="docutils literal notranslate"><span class="pre">view_dir()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.code_tools.diff_edit"><code class="docutils literal notranslate"><span class="pre">diff_edit()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.code_tools._find_matching_block"><code class="docutils literal notranslate"><span class="pre">_find_matching_block()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.code_tools._get_indentation"><code class="docutils literal notranslate"><span class="pre">_get_indentation()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.code_tools._adjust_indentation"><code class="docutils literal notranslate"><span class="pre">_adjust_indentation()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.code_tools._get_context"><code class="docutils literal notranslate"><span class="pre">_get_context()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.code_tools._calculate_block_match_score"><code class="docutils literal notranslate"><span class="pre">_calculate_block_match_score()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.code_tools._has_line_number_prefix"><code class="docutils literal notranslate"><span class="pre">_has_line_number_prefix()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.code_tools._strip_line_number"><code class="docutils literal notranslate"><span class="pre">_strip_line_number()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-bots.tools.meta_tools">bots.tools.meta_tools module</a><ul>
+<li><a class="reference internal" href="#bots.tools.meta_tools.message_bot"><code class="docutils literal notranslate"><span class="pre">message_bot()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.meta_tools.initialize_file_bot"><code class="docutils literal notranslate"><span class="pre">initialize_file_bot()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.meta_tools.generate_project"><code class="docutils literal notranslate"><span class="pre">generate_project()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-bots.tools.python_editing_tools">bots.tools.python_editing_tools module</a><ul>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport"><code class="docutils literal notranslate"><span class="pre">NodeTransformerWithAsyncSupport</span></code></a><ul>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport.__init__"><code class="docutils literal notranslate"><span class="pre">NodeTransformerWithAsyncSupport.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport.visit_FunctionDef"><code class="docutils literal notranslate"><span class="pre">NodeTransformerWithAsyncSupport.visit_FunctionDef()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport.visit_AsyncFunctionDef"><code class="docutils literal notranslate"><span class="pre">NodeTransformerWithAsyncSupport.visit_AsyncFunctionDef()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport._handle_function"><code class="docutils literal notranslate"><span class="pre">NodeTransformerWithAsyncSupport._handle_function()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.FunctionReplacer"><code class="docutils literal notranslate"><span class="pre">FunctionReplacer</span></code></a><ul>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.FunctionReplacer.__init__"><code class="docutils literal notranslate"><span class="pre">FunctionReplacer.__init__()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.MethodAdder"><code class="docutils literal notranslate"><span class="pre">MethodAdder</span></code></a><ul>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.MethodAdder.__init__"><code class="docutils literal notranslate"><span class="pre">MethodAdder.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.MethodAdder.visit_ClassDef"><code class="docutils literal notranslate"><span class="pre">MethodAdder.visit_ClassDef()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.add_imports"><code class="docutils literal notranslate"><span class="pre">add_imports()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.remove_import"><code class="docutils literal notranslate"><span class="pre">remove_import()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.replace_import"><code class="docutils literal notranslate"><span class="pre">replace_import()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.add_class"><code class="docutils literal notranslate"><span class="pre">add_class()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.replace_class"><code class="docutils literal notranslate"><span class="pre">replace_class()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.add_function_to_class"><code class="docutils literal notranslate"><span class="pre">add_function_to_class()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.add_function_to_file"><code class="docutils literal notranslate"><span class="pre">add_function_to_file()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools.replace_function"><code class="docutils literal notranslate"><span class="pre">replace_function()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools._make_file"><code class="docutils literal notranslate"><span class="pre">_make_file()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools._add_single_function_to_class"><code class="docutils literal notranslate"><span class="pre">_add_single_function_to_class()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools._add_single_function_to_file"><code class="docutils literal notranslate"><span class="pre">_add_single_function_to_file()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_editing_tools._replace_single_function"><code class="docutils literal notranslate"><span class="pre">_replace_single_function()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-bots.tools.python_execution_tool">bots.tools.python_execution_tool module</a><ul>
+<li><a class="reference internal" href="#bots.tools.python_execution_tool._execute_python_code"><code class="docutils literal notranslate"><span class="pre">_execute_python_code()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.python_execution_tool._process_error"><code class="docutils literal notranslate"><span class="pre">_process_error()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-bots.tools.self_tools">bots.tools.self_tools module</a><ul>
+<li><a class="reference internal" href="#bots.tools.self_tools._get_calling_bot"><code class="docutils literal notranslate"><span class="pre">_get_calling_bot()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.self_tools.get_own_info"><code class="docutils literal notranslate"><span class="pre">get_own_info()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.self_tools._modify_own_settings"><code class="docutils literal notranslate"><span class="pre">_modify_own_settings()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.self_tools.branch_self"><code class="docutils literal notranslate"><span class="pre">branch_self()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.self_tools.add_tools"><code class="docutils literal notranslate"><span class="pre">add_tools()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.self_tools._process_string_array"><code class="docutils literal notranslate"><span class="pre">_process_string_array()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-bots.tools.terminal_tools">bots.tools.terminal_tools module</a><ul>
+<li><a class="reference internal" href="#bots.tools.terminal_tools.execute_powershell"><code class="docutils literal notranslate"><span class="pre">execute_powershell()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellSession"><code class="docutils literal notranslate"><span class="pre">PowerShellSession</span></code></a><ul>
+<li><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellSession.__init__"><code class="docutils literal notranslate"><span class="pre">PowerShellSession.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellSession._start_reader_threads"><code class="docutils literal notranslate"><span class="pre">PowerShellSession._start_reader_threads()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellSession.execute"><code class="docutils literal notranslate"><span class="pre">PowerShellSession.execute()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellManager"><code class="docutils literal notranslate"><span class="pre">PowerShellManager</span></code></a><ul>
+<li><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellManager.get_instance"><code class="docutils literal notranslate"><span class="pre">PowerShellManager.get_instance()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellManager.__init__"><code class="docutils literal notranslate"><span class="pre">PowerShellManager.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellManager.session"><code class="docutils literal notranslate"><span class="pre">PowerShellManager.session</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellManager._start_new_session"><code class="docutils literal notranslate"><span class="pre">PowerShellManager._start_new_session()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellManager._is_session_valid"><code class="docutils literal notranslate"><span class="pre">PowerShellManager._is_session_valid()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellManager.execute"><code class="docutils literal notranslate"><span class="pre">PowerShellManager.execute()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellManager.cleanup"><code class="docutils literal notranslate"><span class="pre">PowerShellManager.cleanup()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#bots.tools.terminal_tools._get_active_sessions"><code class="docutils literal notranslate"><span class="pre">_get_active_sessions()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.terminal_tools._execute_powershell_stateless"><code class="docutils literal notranslate"><span class="pre">_execute_powershell_stateless()</span></code></a></li>
+<li><a class="reference internal" href="#bots.tools.terminal_tools._process_commands"><code class="docutils literal notranslate"><span class="pre">_process_commands()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-bots.tools">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">bots</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">bots.tools package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/source/bots.tools.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="bots-tools-package">
+<h1>bots.tools package<a class="headerlink" href="#bots-tools-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-bots.tools.code_tools">
+<span id="bots-tools-code-tools-module"></span><h2>bots.tools.code_tools module<a class="headerlink" href="#module-bots.tools.code_tools" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.code_tools.view">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.code_tools.</span></span><span class="sig-name descname"><span class="pre">view</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_lines</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2500</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/code_tools.html#view"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.code_tools.view" title="Link to this definition"></a></dt>
+<dd><p>Display the contents of a file with line numbers.</p>
+<p>Parameters:
+- file_path (str): The path to the file to be viewed.
+- max_lines (int, optional): Maximum number of lines to display. Defaults to 2500.</p>
+<p>Returns:
+A string containing the file contents with line numbers.</p>
+<p>cost: varies</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.code_tools.view_dir">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.code_tools.</span></span><span class="sig-name descname"><span class="pre">view_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'.'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_extensions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&quot;['py',</span> <span class="pre">'txt',</span> <span class="pre">'.md']&quot;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/code_tools.html#view_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.code_tools.view_dir" title="Link to this definition"></a></dt>
+<dd><p>Creates a summary of the directory structure starting from the given path, writing only files
+with specified extensions and showing venv directories without their contents.</p>
+<p>Parameters:
+- start_path (str): The root directory to start scanning from.
+- output_file (str): The name of the file to optionally write the directory structure to.
+- target_extensions (str): String representation of a list of file extensions (e.g. “[‘py’, ‘txt’]”).</p>
+<p>Returns:
+str: A formatted string containing the directory structure, with each directory and file properly indented.</p>
+<p>Example output:
+my_project/</p>
+<blockquote>
+<div><p>venv/
+module1/</p>
+<blockquote>
+<div><p>script.py
+README.md</p>
+</div></blockquote>
+<dl class="simple">
+<dt>module2/</dt><dd><p>utils.py</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>cost: low</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.code_tools.diff_edit">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.code_tools.</span></span><span class="sig-name descname"><span class="pre">diff_edit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diff_spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/code_tools.html#diff_edit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.code_tools.diff_edit" title="Link to this definition"></a></dt>
+<dd><p>Diff spec editing with flexible matching.</p>
+<p>Use when you need to make precision changes in text files.</p>
+<p>Parameters:
+- file_path (str): Path to the file to modify
+- diff_spec (str): Diff-style specification of changes.
+Input lines beginning with ‘-’ are removed, and input lines
+beginning with ‘+’ are added at the starting index of the
+removed lines. All lines must start with + or -, and white
+space must be matched exactly.</p>
+<p>Returns:
+str: Description of changes made/to be made or error message with context</p>
+<p>ex) diff_spec:
+-import numpy
++import scipy</p>
+<p>cost: medium</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.code_tools._find_matching_block">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.code_tools.</span></span><span class="sig-name descname"><span class="pre">_find_matching_block</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">current_lines</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_lines</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_indentation</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/code_tools.html#_find_matching_block"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.code_tools._find_matching_block" title="Link to this definition"></a></dt>
+<dd><p>Find where a block of lines matches in the current file content.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>current_lines</strong> – List of strings representing current file content</p></li>
+<li><p><strong>remove_lines</strong> – List of strings to find in the file</p></li>
+<li><p><strong>ignore_indentation</strong> – Whether to ignore leading whitespace when matching</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool, line_num: int, indent: str, match_score: float, best_index: int)
+where:
+- match_found indicates if an exact match was found
+- line_num is the line where the match starts (or best partial match)
+- indent is the indentation to preserve
+- match_score indicates quality of best partial match (0-1)
+- best_index is the line number of best partial match</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple (match_found</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.code_tools._get_indentation">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.code_tools.</span></span><span class="sig-name descname"><span class="pre">_get_indentation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">line</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/code_tools.html#_get_indentation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.code_tools._get_indentation" title="Link to this definition"></a></dt>
+<dd><p>Extract the leading whitespace from a line.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.code_tools._adjust_indentation">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.code_tools.</span></span><span class="sig-name descname"><span class="pre">_adjust_indentation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_indent</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/code_tools.html#_adjust_indentation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.code_tools._adjust_indentation" title="Link to this definition"></a></dt>
+<dd><p>Adjust indentation of a block of lines to match target_indent.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.code_tools._get_context">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.code_tools.</span></span><span class="sig-name descname"><span class="pre">_get_context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context_size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/code_tools.html#_get_context"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.code_tools._get_context" title="Link to this definition"></a></dt>
+<dd><p>Get context lines around an index with line numbers.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.code_tools._calculate_block_match_score">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.code_tools.</span></span><span class="sig-name descname"><span class="pre">_calculate_block_match_score</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">current_block</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_lines</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_indentation</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/code_tools.html#_calculate_block_match_score"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.code_tools._calculate_block_match_score" title="Link to this definition"></a></dt>
+<dd><p>Calculate how well two blocks match, returning a score and matching line indices.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.code_tools._has_line_number_prefix">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.code_tools.</span></span><span class="sig-name descname"><span class="pre">_has_line_number_prefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">line</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../_modules/bots/tools/code_tools.html#_has_line_number_prefix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.code_tools._has_line_number_prefix" title="Link to this definition"></a></dt>
+<dd><p>Check if a string starts with a line number format (e.g., ‘123:’ or ‘  123:’)
+:param line: The line to check
+:type line: str</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if the line starts with a number followed by a colon</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.code_tools._strip_line_number">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.code_tools.</span></span><span class="sig-name descname"><span class="pre">_strip_line_number</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">line</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/code_tools.html#_strip_line_number"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.code_tools._strip_line_number" title="Link to this definition"></a></dt>
+<dd><p>Remove line number prefix if present (e.g., ‘123:content’ or ‘  123:content’ becomes ‘content’)
+Preserves any leading whitespace before the line number.
+:param line: The line to process
+:type line: str</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The line with any line number prefix removed</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-bots.tools.meta_tools">
+<span id="bots-tools-meta-tools-module"></span><h2>bots.tools.meta_tools module<a class="headerlink" href="#module-bots.tools.meta_tools" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.meta_tools.message_bot">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.meta_tools.</span></span><span class="sig-name descname"><span class="pre">message_bot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/meta_tools.html#message_bot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.meta_tools.message_bot" title="Link to this definition"></a></dt>
+<dd><p>Loads a bot, sends it a message, and allows it to work.</p>
+<p>Use to prepare a bot to do a task and to allow it to work. Returns control when the
+bot replies with ‘/DONE’.</p>
+<p>Parameters:
+- bot_path (str): File path to the saved bot
+- message (str): The message to send to the bot</p>
+<p>Returns the bot’s first response, a list of tool-uses in order, and final response as a string.</p>
+<p>Does NOT save the bot.</p>
+<p>cost: varies</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.meta_tools.initialize_file_bot">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.meta_tools.</span></span><span class="sig-name descname"><span class="pre">initialize_file_bot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">system_message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/meta_tools.html#initialize_file_bot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.meta_tools.initialize_file_bot" title="Link to this definition"></a></dt>
+<dd><p>Creates and initializes a new file-editing bot, saving it to disk.
+Creates any necessary directories from the file_name path if they don’t exist.</p>
+<p>Use when you need to create a new bot to handle implementation of a specific file.
+The bot will be initialized with appropriate file-level tools and context.</p>
+<p>Parameters:
+- file_name (str): Name of the file this bot will manage (can include directory path)</p>
+<p>Returns success message with bot’s file path or an error message string.</p>
+<p>cost: low</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.meta_tools.generate_project">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.meta_tools.</span></span><span class="sig-name descname"><span class="pre">generate_project</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/meta_tools.html#generate_project"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.meta_tools.generate_project" title="Link to this definition"></a></dt>
+<dd><p>Executes the standard process for project generation using a hierarchical system of specialized AI assistants.</p>
+<p>Use when you need to create a complete Python project from a specification. The system will:
+1. Analyze project specifications and create module requirements
+2. Break down the project into logical modules
+3. Create and coordinate specialized bots for implementation
+4. Implement and test the code
+5. Validate against requirements</p>
+<p>Parameters:
+- spec (str): Project specification text describing the desired system</p>
+<p>Returns:
+str: Success message or error message string</p>
+<p>cost: very high</p>
+</dd></dl>
+
+</section>
+<section id="module-bots.tools.python_editing_tools">
+<span id="bots-tools-python-editing-tools-module"></span><h2>bots.tools.python_editing_tools module<a class="headerlink" href="#module-bots.tools.python_editing_tools" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">NodeTransformerWithAsyncSupport</span></span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#NodeTransformerWithAsyncSupport"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">NodeTransformer</span></code></p>
+<p>Base class for AST transformers that need to handle both sync and async functions.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#NodeTransformerWithAsyncSupport.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport.visit_FunctionDef">
+<span class="sig-name descname"><span class="pre">visit_FunctionDef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#NodeTransformerWithAsyncSupport.visit_FunctionDef"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport.visit_FunctionDef" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport.visit_AsyncFunctionDef">
+<span class="sig-name descname"><span class="pre">visit_AsyncFunctionDef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#NodeTransformerWithAsyncSupport.visit_AsyncFunctionDef"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport.visit_AsyncFunctionDef" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport._handle_function">
+<span class="sig-name descname"><span class="pre">_handle_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#NodeTransformerWithAsyncSupport._handle_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport._handle_function" title="Link to this definition"></a></dt>
+<dd><p>Override this method in subclasses to implement specific transformation logic</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.FunctionReplacer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">FunctionReplacer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_func_node</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#FunctionReplacer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.FunctionReplacer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport" title="bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport"><code class="xref py py-class docutils literal notranslate"><span class="pre">NodeTransformerWithAsyncSupport</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.FunctionReplacer.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_func_node</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#FunctionReplacer.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.FunctionReplacer.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.MethodAdder">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">MethodAdder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">class_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_method_node</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#MethodAdder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.MethodAdder" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport" title="bots.tools.python_editing_tools.NodeTransformerWithAsyncSupport"><code class="xref py py-class docutils literal notranslate"><span class="pre">NodeTransformerWithAsyncSupport</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.MethodAdder.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">class_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_method_node</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#MethodAdder.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.MethodAdder.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.MethodAdder.visit_ClassDef">
+<span class="sig-name descname"><span class="pre">visit_ClassDef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#MethodAdder.visit_ClassDef"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.MethodAdder.visit_ClassDef" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.add_imports">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">add_imports</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#add_imports"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.add_imports" title="Link to this definition"></a></dt>
+<dd><p>Adds multiple import statements to a Python file.
+Creates the file if it doesn’t exist.
+Avoids adding duplicate imports.</p>
+<p>Parameters:
+- file_path (str): The path to the file where the imports will be added
+- code (str): Import statements, which can include parenthesized multi-line imports</p>
+<p>Returns a confirmation message or an error message.</p>
+<p>cost: very low</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.remove_import">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">remove_import</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">import_to_remove</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#remove_import"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.remove_import" title="Link to this definition"></a></dt>
+<dd><p>Removes an import statement from a Python file.</p>
+<p>Parameters:
+- file_path (str): The path to the file to modify
+- import_to_remove (str): The import statement to remove (e.g., “import os” or “from typing import List”)</p>
+<blockquote>
+<div><p>Must match the existing import statement exactly.</p>
+</div></blockquote>
+<p>Returns a confirmation message or an error message.</p>
+<p>cost: very low</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.replace_import">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">replace_import</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_import</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_import</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#replace_import"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.replace_import" title="Link to this definition"></a></dt>
+<dd><p>Replaces an existing import statement in a Python file.</p>
+<p>Parameters:
+- file_path (str): The path to the file to modify
+- old_import (str): The existing import statement to replace
+- new_import (str): The new import statement</p>
+<p>Returns a confirmation message or an error message.</p>
+<p>cost: very low</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.add_class">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">add_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">class_def</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#add_class"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.add_class" title="Link to this definition"></a></dt>
+<dd><p>Adds a new class definition to an existing Python file.
+Creates the file if it doesn’t exist.</p>
+<p>Parameters:
+- file_path (str): The path to the file where the new class will be added
+- class_def (str): The new class definition as a string</p>
+<p>Returns a confirmation message or an error message.</p>
+<p>cost: low</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.replace_class">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">replace_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_class_def</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_class_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#replace_class"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.replace_class" title="Link to this definition"></a></dt>
+<dd><p>Replaces a class definition in a file with a new class definition.
+Creates the file if it doesn’t exist.</p>
+<p>Parameters:
+- file_path (str): The path to the file to modify
+- new_class_def (str): The new class definition
+- old_class_name (str, optional): The name of the class to replace</p>
+<p>Returns a confirmation message or an error message.</p>
+<p>cost: low</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.add_function_to_class">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">add_function_to_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">class_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_method_def</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#add_function_to_class"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.add_function_to_class" title="Link to this definition"></a></dt>
+<dd><p>Adds one or more methods to an existing class in a Python file.
+Creates the file and class if they don’t exist.</p>
+<p>Parameters:
+- file_path (str): The path to the file to modify
+- class_name (str): The name of the class to modify
+- new_method_def (str): One or more method definitions as a string</p>
+<p>Returns a confirmation message or an error message.</p>
+<p>cost: very low</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.add_function_to_file">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">add_function_to_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_function_def</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">class_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#add_function_to_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.add_function_to_file" title="Link to this definition"></a></dt>
+<dd><p>Adds one or more function definitions to an existing Python file.
+Creates the file if it doesn’t exist.</p>
+<p>When adding complex code blocks:
+- Imports are moved to the top of the file
+- Functions are added in order of appearance
+- Non-function code (assignments, if blocks, etc.) is preserved but may be reordered
+- Comments are not preserved (limitation of AST)</p>
+<p>Parameters:
+- file_path (str): The path to the file to modify
+- new_function_def (str): One or more function definitions as a string
+- class_name (str, optional): If provided, add functions to this class</p>
+<p>Returns a confirmation message or an error message.</p>
+<p>cost: very low</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools.replace_function">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">replace_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_function_def</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">class_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#replace_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools.replace_function" title="Link to this definition"></a></dt>
+<dd><p>Replaces one or more function definitions in a file with new function definitions.
+Creates the file if it doesn’t exist.</p>
+<p>Parameters:
+- file_path (str): The path to the file to modify
+- new_function_def (str): One or more function definitions as a string
+- class_name (str, optional): If provided, only replace functions within this class</p>
+<p>Returns a confirmation message or an error message.</p>
+<p>cost: very low</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools._make_file">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">_make_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#_make_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools._make_file" title="Link to this definition"></a></dt>
+<dd><p>Creates a file and its parent directories if they don’t exist.
+Converts relative paths to absolute paths.</p>
+<p>Parameters:
+- file_path (str): The path to the file to be created</p>
+<p>Returns:
+- str: The absolute path to the file</p>
+<p>Raises:
+- ValueError: If there’s an error creating the file or directories,</p>
+<blockquote>
+<div><p>or if the file_path is empty</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools._add_single_function_to_class">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">_add_single_function_to_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">class_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_method_def</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#_add_single_function_to_class"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools._add_single_function_to_class" title="Link to this definition"></a></dt>
+<dd><p>Adds a single method to a class.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools._add_single_function_to_file">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">_add_single_function_to_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_function_def</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#_add_single_function_to_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools._add_single_function_to_file" title="Link to this definition"></a></dt>
+<dd><p>Adds a single function and preserves all code blocks, including any code following the function.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_editing_tools._replace_single_function">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_editing_tools.</span></span><span class="sig-name descname"><span class="pre">_replace_single_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_function_def</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">class_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_editing_tools.html#_replace_single_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_editing_tools._replace_single_function" title="Link to this definition"></a></dt>
+<dd><p>Replaces a single function in a file, optionally within a specific class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file_path</strong> – Path to the file to modify</p></li>
+<li><p><strong>new_function_def</strong> – The new function definition</p></li>
+<li><p><strong>class_name</strong> – If provided, only replace within this class</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-bots.tools.python_execution_tool">
+<span id="bots-tools-python-execution-tool-module"></span><h2>bots.tools.python_execution_tool module<a class="headerlink" href="#module-bots.tools.python_execution_tool" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_execution_tool._execute_python_code">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_execution_tool.</span></span><span class="sig-name descname"><span class="pre">_execute_python_code</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_execution_tool.html#_execute_python_code"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_execution_tool._execute_python_code" title="Link to this definition"></a></dt>
+<dd><p>Executes python code in a stateless environment with cross-platform timeout handling.</p>
+<p>Parameters:
+- code (str): Syntactically correct python code
+- timeout (int): Maximum execution time in seconds (default: 300)</p>
+<p>Returns stdout or an error message.</p>
+<p>cost: varies</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.python_execution_tool._process_error">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.python_execution_tool.</span></span><span class="sig-name descname"><span class="pre">_process_error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Exception</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/python_execution_tool.html#_process_error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.python_execution_tool._process_error" title="Link to this definition"></a></dt>
+<dd><p>Format error message with traceback.</p>
+</dd></dl>
+
+</section>
+<section id="module-bots.tools.self_tools">
+<span id="bots-tools-self-tools-module"></span><h2>bots.tools.self_tools module<a class="headerlink" href="#module-bots.tools.self_tools" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.self_tools._get_calling_bot">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.self_tools.</span></span><span class="sig-name descname"><span class="pre">_get_calling_bot</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot"><span class="pre">Bot</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/bots/tools/self_tools.html#_get_calling_bot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.self_tools._get_calling_bot" title="Link to this definition"></a></dt>
+<dd><p>Helper function to get a reference to the calling bot.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Reference to the calling bot or None if not found</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Optional[<a class="reference internal" href="bots.foundation.html#bots.foundation.base.Bot" title="bots.foundation.base.Bot">Bot</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.self_tools.get_own_info">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.self_tools.</span></span><span class="sig-name descname"><span class="pre">get_own_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/self_tools.html#get_own_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.self_tools.get_own_info" title="Link to this definition"></a></dt>
+<dd><p>Get information about yourself.</p>
+<p>Use when you need to inspect your current configuration (not tools).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON string containing bot information including:
+- name: Your name
+- role: Your role
+- role_description: Your role description
+- model_engine: Current model engine
+- temperature: Current temperature setting
+- max_tokens: Maximum tokens setting
+- tool_count: Number of available tools</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.self_tools._modify_own_settings">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.self_tools.</span></span><span class="sig-name descname"><span class="pre">_modify_own_settings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_tokens</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/self_tools.html#_modify_own_settings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.self_tools._modify_own_settings" title="Link to this definition"></a></dt>
+<dd><p>Modify your settings.</p>
+<p>Use when you need to adjust your configuration parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>temperature</strong> (<em>str</em><em>, </em><em>optional</em>) – New temperature value as string (0.0 to 1.0)</p></li>
+<li><p><strong>max_tokens</strong> (<em>str</em><em>, </em><em>optional</em>) – New maximum tokens value as string (must be &gt; 0)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Description of changes made or error message</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.self_tools.branch_self">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.self_tools.</span></span><span class="sig-name descname"><span class="pre">branch_self</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self_prompts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_work</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'False'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/self_tools.html#branch_self"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.self_tools.branch_self" title="Link to this definition"></a></dt>
+<dd><p>Branches your conversation using a list of self-prompts. The prompts
+will be sent as user messages in response to your message that calls this
+tool. Also tags the messages with (self-prompt) to distinguish from legitimate
+user messages.</p>
+<p>Use when you need to:
+- explore multiple conversation paths.
+- break down a large list of tasks (&gt;~6)</p>
+<p>Branches will be traversed sequentially.</p>
+<p>Each message will start a new conversation branch from the current message.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self_prompts</strong> (<em>str</em>) – Array formatted as a string, i.e. [‘1’, ‘2’, ‘3’]</p></li>
+<li><p><strong>allow_work</strong> – ‘True’ or ‘False’ (default). If True, allows each branch to work until it
+does not respond with any tool calls (i.e. each branch will be a chain).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>success message or error string.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.self_tools.add_tools">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.self_tools.</span></span><span class="sig-name descname"><span class="pre">add_tools</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/self_tools.html#add_tools"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.self_tools.add_tools" title="Link to this definition"></a></dt>
+<dd><p>Adds a new set of tools (python functions) to your toolkit</p>
+<p>All top-level, non-private functions in filepath will be uploaded
+to your toolkit. Use when you need to create a new tool or kit for
+yourself to use in the future. Tool format is strict: string in,
+string out, with error catching wrapping (typically) all code in
+the function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> – location of python tool file</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>success or error message</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.self_tools._process_string_array">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.self_tools.</span></span><span class="sig-name descname"><span class="pre">_process_string_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/tools/self_tools.html#_process_string_array"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.self_tools._process_string_array" title="Link to this definition"></a></dt>
+<dd><p>Parse a string representation of an array into a list of strings.
+Only works with properly formatted Python list literals.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>input_str</strong> (<em>str</em>) – String representation of a Python list literal</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of parsed strings</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[str]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the input is not a valid Python list literal</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-bots.tools.terminal_tools">
+<span id="bots-tools-terminal-tools-module"></span><h2>bots.tools.terminal_tools module<a class="headerlink" href="#module-bots.tools.terminal_tools" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools.execute_powershell">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.terminal_tools.</span></span><span class="sig-name descname"><span class="pre">execute_powershell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_length_limit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'120'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#execute_powershell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools.execute_powershell" title="Link to this definition"></a></dt>
+<dd><p>Executes PowerShell commands in a stateful environment</p>
+<p>Use when you need to run PowerShell commands and capture their output. If
+you have other tools available, you should use this as a fallback when the
+other tools fail. Coerces to utf-8.</p>
+<p>Potential use cases:
+- git commands
+- gh cli
+- other cli (which you may need to install using this tool)</p>
+<p>Parameters:
+- command (str): PowerShell command to execute.
+- output_length_limit (int, optional): Maximum number of lines in the output.</p>
+<blockquote>
+<div><p>If set, output exceeding this limit will be truncated. Default 120.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The complete output from the command execution</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools.PowerShellSession">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bots.tools.terminal_tools.</span></span><span class="sig-name descname"><span class="pre">PowerShellSession</span></span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#PowerShellSession"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools.PowerShellSession" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Manages a persistent PowerShell process for stateful command execution.
+Maintains a single PowerShell process that persists between commands,
+allowing for stateful operations like changing directories, setting
+environment variables, or activating virtual environments.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools.PowerShellSession.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#PowerShellSession.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools.PowerShellSession.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools.PowerShellSession._start_reader_threads">
+<span class="sig-name descname"><span class="pre">_start_reader_threads</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#PowerShellSession._start_reader_threads"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools.PowerShellSession._start_reader_threads" title="Link to this definition"></a></dt>
+<dd><p>Start background threads to read stdout and stderr</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools.PowerShellSession.execute">
+<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#PowerShellSession.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools.PowerShellSession.execute" title="Link to this definition"></a></dt>
+<dd><p>Execute PowerShell code and return its complete output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>code</strong> – The PowerShell code to execute</p></li>
+<li><p><strong>timeout</strong> – Maximum time in seconds to wait for command completion</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The complete output from the command(s)</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Exception if the process is not running</strong><strong> or </strong><strong>other execution errors</strong> – </p></li>
+<li><p><strong>TimeoutError if command execution exceeds timeout</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools.PowerShellManager">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bots.tools.terminal_tools.</span></span><span class="sig-name descname"><span class="pre">PowerShellManager</span></span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#PowerShellManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools.PowerShellManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Thread-safe PowerShell session manager that maintains separate sessions.
+Each instance automatically gets its own unique ID and isolated PowerShell session.
+Includes session recovery logic for lost or failed sessions.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools.PowerShellManager.get_instance">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_instance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bot_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellManager" title="bots.tools.terminal_tools.PowerShellManager"><span class="pre">PowerShellManager</span></a></span></span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#PowerShellManager.get_instance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools.PowerShellManager.get_instance" title="Link to this definition"></a></dt>
+<dd><p>Get or create a PowerShell manager instance for the given bot_id.
+If no bot_id is provided, uses the current thread name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>bot_id</strong> – Optional identifier for the bot instance</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The PowerShell manager instance for this bot/thread</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools.PowerShellManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#PowerShellManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools.PowerShellManager.__init__" title="Link to this definition"></a></dt>
+<dd><p>Private initializer - use get_instance() instead.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools.PowerShellManager.session">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#bots.tools.terminal_tools.PowerShellSession" title="bots.tools.terminal_tools.PowerShellSession"><span class="pre">PowerShellSession</span></a></em><a class="headerlink" href="#bots.tools.terminal_tools.PowerShellManager.session" title="Link to this definition"></a></dt>
+<dd><p>Get the PowerShell session for the current thread.
+Creates a new session if none exists or if the current session is invalid.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools.PowerShellManager._start_new_session">
+<span class="sig-name descname"><span class="pre">_start_new_session</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#PowerShellManager._start_new_session"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools.PowerShellManager._start_new_session" title="Link to this definition"></a></dt>
+<dd><p>Starts a new PowerShell session for the current thread.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools.PowerShellManager._is_session_valid">
+<span class="sig-name descname"><span class="pre">_is_session_valid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#PowerShellManager._is_session_valid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools.PowerShellManager._is_session_valid" title="Link to this definition"></a></dt>
+<dd><p>Checks if the current session is valid and responsive.
+:returns: True if session is valid, False otherwise
+:rtype: bool</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools.PowerShellManager.execute">
+<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_length_limit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'60'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#PowerShellManager.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools.PowerShellManager.execute" title="Link to this definition"></a></dt>
+<dd><p>Execute PowerShell code in the session with automatic recovery.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>code</strong> – PowerShell code to execute</p></li>
+<li><p><strong>output_length_limit</strong> – Maximum number of lines in output</p></li>
+</ul>
+</dd>
+<dt class="field-even">Yields<span class="colon">:</span></dt>
+<dd class="field-even"><p>Command output as strings</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools.PowerShellManager.cleanup">
+<span class="sig-name descname"><span class="pre">cleanup</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#PowerShellManager.cleanup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools.PowerShellManager.cleanup" title="Link to this definition"></a></dt>
+<dd><p>Clean up the PowerShell session for the current thread.
+Should be called when work is done or when a session needs to be reset.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools._get_active_sessions">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.terminal_tools.</span></span><span class="sig-name descname"><span class="pre">_get_active_sessions</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#_get_active_sessions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools._get_active_sessions" title="Link to this definition"></a></dt>
+<dd><p>Get information about all active PowerShell sessions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of dictionaries containing session information</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools._execute_powershell_stateless">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.terminal_tools.</span></span><span class="sig-name descname"><span class="pre">_execute_powershell_stateless</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_length_limit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'120'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#_execute_powershell_stateless"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools._execute_powershell_stateless" title="Link to this definition"></a></dt>
+<dd><p>Executes PowerShell code in a stateless environment</p>
+<p>Use when you need to run PowerShell commands and capture their output. If
+you have other tools available, you should use this as a fallback when the
+other tools fail. Coerces to utf-8 encoding.</p>
+<p>Potential use cases:
+- git commands
+- gh cli
+- other cli (which you may need to install using this tool)</p>
+<p>Parameters:
+- code (str): PowerShell code to execute.
+- output_length_limit (int, optional): Maximum number of lines in the output.</p>
+<blockquote>
+<div><p>If set, output exceeding this limit will be truncated. Default 60.</p>
+</div></blockquote>
+<p>Returns command output or an error message.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bots.tools.terminal_tools._process_commands">
+<span class="sig-prename descclassname"><span class="pre">bots.tools.terminal_tools.</span></span><span class="sig-name descname"><span class="pre">_process_commands</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/bots/tools/terminal_tools.html#_process_commands"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bots.tools.terminal_tools._process_commands" title="Link to this definition"></a></dt>
+<dd><p>Process PowerShell commands separated by &amp;&amp;, ensuring each command only runs if the previous succeeded.
+Uses PowerShell error handling to catch both command failures and non-existent commands.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>code</strong> (<em>str</em>) – The original command string with &amp;&amp; separators</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>PowerShell code with proper error checking between commands</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-bots.tools">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-bots.tools" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, benbuzz790.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

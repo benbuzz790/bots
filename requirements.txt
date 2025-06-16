@@ -1,0 +1,5 @@
+anthropic
+openai
+pytest==7.3.1
+typing_extensions==4.12.2
+#ghcli recommended

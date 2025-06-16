@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.env/
+
+# IDEs
+.vscode/
+.idea/
+
+# Miscellaneous
+.DS_Store
+*.log
+*.swp
+.pytest_cache/
+project_structure.txt
+scripts/*
+debug_on_error.py
+Notes.txt
+*credentials*
+bot_context.txt
+scratch.py
+tests/test_file.py
+benbuzz790*
+*experiments*
+*conversation_search*
+*issue103*
+oai_api_example.txt
+test_clone_dir/
+*CICD*
+*log*
+test_results.*
+cli_config.json

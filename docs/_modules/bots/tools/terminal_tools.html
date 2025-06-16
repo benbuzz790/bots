@@ -1,0 +1,537 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bots.tools.terminal_tools &mdash; bots 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            bots
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">bots</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">bots.tools.terminal_tools</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for bots.tools.terminal_tools</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span><span class="o">,</span><span class="w"> </span><span class="nn">subprocess</span><span class="o">,</span><span class="w"> </span><span class="nn">traceback</span><span class="o">,</span><span class="w"> </span><span class="nn">time</span><span class="o">,</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">queue</span><span class="w"> </span><span class="kn">import</span> <span class="n">Queue</span><span class="p">,</span> <span class="n">Empty</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">threading</span><span class="w"> </span><span class="kn">import</span> <span class="n">Thread</span><span class="p">,</span> <span class="n">Lock</span><span class="p">,</span> <span class="n">local</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Generator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+<div class="viewcode-block" id="execute_powershell">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools.execute_powershell">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">execute_powershell</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_length_limit</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;120&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Executes PowerShell commands in a stateful environment</span>
+
+<span class="sd">    Use when you need to run PowerShell commands and capture their output. If</span>
+<span class="sd">    you have other tools available, you should use this as a fallback when the</span>
+<span class="sd">    other tools fail. Coerces to utf-8.</span>
+
+<span class="sd">    Potential use cases:</span>
+<span class="sd">    - git commands</span>
+<span class="sd">    - gh cli</span>
+<span class="sd">    - other cli (which you may need to install using this tool)</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    - command (str): PowerShell command to execute.</span>
+<span class="sd">    - output_length_limit (int, optional): Maximum number of lines in the output.</span>
+<span class="sd">      If set, output exceeding this limit will be truncated. Default 120.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: The complete output from the command execution</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">manager</span> <span class="o">=</span> <span class="n">PowerShellManager</span><span class="o">.</span><span class="n">get_instance</span><span class="p">()</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">manager</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">output_length_limit</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">output</span></div>
+
+
+<div class="viewcode-block" id="PowerShellSession">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools.PowerShellSession">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PowerShellSession</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Manages a persistent PowerShell process for stateful command execution.</span>
+<span class="sd">    Maintains a single PowerShell process that persists between commands,</span>
+<span class="sd">    allowing for stateful operations like changing directories, setting</span>
+<span class="sd">    environment variables, or activating virtual environments.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="PowerShellSession.__init__">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools.PowerShellSession.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_process</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_command_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_error_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reader_threads</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">startupinfo</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;nt&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">startupinfo</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">STARTUPINFO</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">startupinfo</span><span class="o">.</span><span class="n">dwFlags</span> <span class="o">|=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">STARTF_USESHOWWINDOW</span></div>
+
+
+<div class="viewcode-block" id="PowerShellSession._start_reader_threads">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools.PowerShellSession._start_reader_threads">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_start_reader_threads</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start background threads to read stdout and stderr&quot;&quot;&quot;</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">reader_thread</span><span class="p">(</span><span class="n">pipe</span><span class="p">,</span> <span class="n">queue</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">pipe</span><span class="p">:</span>
+                    <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n\r</span><span class="s1">&#39;</span><span class="p">))</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reader_threads</span> <span class="o">=</span> <span class="p">[</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">reader_thread</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_queue</span><span class="p">),</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">reader_thread</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_error_queue</span><span class="p">),</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">thread</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reader_threads</span><span class="p">:</span>
+            <span class="n">thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">([</span><span class="s1">&#39;powershell&#39;</span><span class="p">,</span> <span class="s1">&#39;-NoProfile&#39;</span><span class="p">,</span> <span class="s1">&#39;-NoLogo&#39;</span><span class="p">,</span> <span class="s1">&#39;-NonInteractive&#39;</span><span class="p">,</span> <span class="s1">&#39;-Command&#39;</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">],</span> <span class="n">stdin</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">startupinfo</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">startupinfo</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;replace&#39;</span><span class="p">,</span> <span class="n">bufsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_reader_threads</span><span class="p">()</span>
+            <span class="n">init_commands</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;$VerbosePreference=&#39;SilentlyContinue&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;$DebugPreference=&#39;SilentlyContinue&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;$ProgressPreference=&#39;SilentlyContinue&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;$WarningPreference=&#39;SilentlyContinue&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;$ErrorActionPreference=&#39;Stop&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;function prompt { &#39;&#39; }&quot;</span><span class="p">,</span> <span class="s2">&quot;$PSDefaultParameterValues[&#39;*:Encoding&#39;]=&#39;utf8&#39;&quot;</span><span class="p">,</span> <span class="s1">&#39;[Console]::OutputEncoding=[System.Text.Encoding]::UTF8&#39;</span><span class="p">,</span> <span class="s1">&#39;[Console]::InputEncoding=[System.Text.Encoding]::UTF8&#39;</span><span class="p">,</span> <span class="s1">&#39;$OutputEncoding=[System.Text.Encoding]::UTF8&#39;</span><span class="p">,</span> <span class="s2">&quot;$env:PYTHONIOENCODING=&#39;utf-8&#39;&quot;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">cmd</span> <span class="ow">in</span> <span class="n">init_commands</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">cmd</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_process</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_output_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_error_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_reader_threads</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="PowerShellSession.execute">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools.PowerShellSession.execute">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute PowerShell code and return its complete output.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            code: The PowerShell code to execute</span>
+<span class="sd">            timeout: Maximum time in seconds to wait for command completion</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The complete output from the command(s)</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception if the process is not running or other execution errors</span>
+<span class="sd">            TimeoutError if command execution exceeds timeout</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;PowerShell process is not running&#39;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_command_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">delimiter</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;&lt;&lt;&lt;COMMAND_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_command_counter</span><span class="si">}</span><span class="s1">_COMPLETE&gt;&gt;&gt;&#39;</span>
+            <span class="n">wrapped_code</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">            $ErrorActionPreference = &#39;Stop&#39;</span><span class="se">\n</span><span class="s2">            </span><span class="se">\n</span><span class="s2">            # Execute in main scope</span><span class="se">\n</span><span class="s2">            </span><span class="si">{</span><span class="n">code</span><span class="si">}</span><span class="se">\n</span><span class="s2">            </span><span class="se">\n</span><span class="s2">            # Collect output after execution</span><span class="se">\n</span><span class="s2">            $output = @()</span><span class="se">\n</span><span class="s2">            try </span><span class="se">{{\n</span><span class="s2">                if ($?) </span><span class="se">{{</span><span class="s2"> </span><span class="se">\n</span><span class="s2">                    # Add any output from the last command</span><span class="se">\n</span><span class="s2">                    $output += $LASTOUTPUT</span><span class="se">\n</span><span class="s2">                </span><span class="se">}}\n</span><span class="s2">            </span><span class="se">}}</span><span class="s2"> catch </span><span class="se">{{\n</span><span class="s2">                Write-Error $_</span><span class="se">\n</span><span class="s2">            </span><span class="se">}}\n</span><span class="s2">            $output | ForEach-Object </span><span class="se">{{</span><span class="s2"> $_ </span><span class="se">}}\n</span><span class="s2">            Write-Output &#39;</span><span class="si">{</span><span class="n">delimiter</span><span class="si">}</span><span class="s2">&#39;</span><span class="se">\n</span><span class="s2">            &quot;</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_queue</span><span class="o">.</span><span class="n">empty</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_output_queue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_error_queue</span><span class="o">.</span><span class="n">empty</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_error_queue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">wrapped_code</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="n">output_lines</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">error_output</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">done</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span> <span class="o">&gt;</span> <span class="n">timeout</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Command execution timed out after </span><span class="si">{</span><span class="n">timeout</span><span class="si">}</span><span class="s1"> seconds&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;PowerShell process unexpectedly closed&#39;</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_queue</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">line</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;PowerShell process closed stdout&#39;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">line</span> <span class="o">==</span> <span class="n">delimiter</span><span class="p">:</span>
+                        <span class="n">done</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">output_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                <span class="k">except</span> <span class="n">Empty</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                        <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_error_queue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="n">line</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;PowerShell process closed stderr&#39;</span><span class="p">)</span>
+                        <span class="n">error_output</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                <span class="k">except</span> <span class="n">Empty</span><span class="p">:</span>
+                    <span class="k">pass</span>
+            <span class="n">all_output</span> <span class="o">=</span> <span class="p">[</span><span class="n">line</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">output_lines</span> <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+            <span class="k">if</span> <span class="n">error_output</span><span class="p">:</span>
+                <span class="n">error_lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">line</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">error_output</span> <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+                <span class="k">if</span> <span class="n">error_lines</span><span class="p">:</span>
+                    <span class="n">all_output</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;Errors:&#39;</span><span class="p">,</span> <span class="o">*</span><span class="n">error_lines</span><span class="p">])</span>
+            <span class="k">return</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">all_output</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">e</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">__traceback__</span><span class="p">)</span>
+            <span class="k">raise</span></div>
+</div>
+
+
+<div class="viewcode-block" id="PowerShellManager">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools.PowerShellManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PowerShellManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Thread-safe PowerShell session manager that maintains separate sessions.</span>
+<span class="sd">    Each instance automatically gets its own unique ID and isolated PowerShell session.</span>
+<span class="sd">    Includes session recovery logic for lost or failed sessions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_instances</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s1">&#39;PowerShellManager&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">_lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+
+<div class="viewcode-block" id="PowerShellManager.get_instance">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools.PowerShellManager.get_instance">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_instance</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">bot_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;PowerShellManager&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get or create a PowerShell manager instance for the given bot_id.</span>
+<span class="sd">        If no bot_id is provided, uses the current thread name.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            bot_id: Optional identifier for the bot instance</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            The PowerShell manager instance for this bot/thread</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">bot_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">bot_id</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">current_thread</span><span class="p">()</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">with</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">bot_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_instances</span><span class="p">:</span>
+                <span class="n">instance</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
+                <span class="n">instance</span><span class="o">.</span><span class="n">bot_id</span> <span class="o">=</span> <span class="n">bot_id</span>
+                <span class="n">instance</span><span class="o">.</span><span class="n">_thread_local</span> <span class="o">=</span> <span class="n">local</span><span class="p">()</span>
+                <span class="n">instance</span><span class="o">.</span><span class="n">created_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="n">_instances</span><span class="p">[</span><span class="n">bot_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">instance</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_instances</span><span class="p">[</span><span class="n">bot_id</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="PowerShellManager.__init__">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools.PowerShellManager.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Private initializer - use get_instance() instead.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Use PowerShellManager.get_instance() to create or get a PowerShell manager&#39;</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">session</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PowerShellSession</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the PowerShell session for the current thread.</span>
+<span class="sd">        Creates a new session if none exists or if the current session is invalid.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_thread_local</span><span class="p">,</span> <span class="s1">&#39;session&#39;</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Session not found for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bot_id</span><span class="si">}</span><span class="s1">, starting new session&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_start_new_session</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_session_valid</span><span class="p">():</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Invalid session detected for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bot_id</span><span class="si">}</span><span class="s1">, starting new session&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cleanup</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_start_new_session</span><span class="p">()</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thread_local</span><span class="o">.</span><span class="n">session</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Error accessing session: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s1">. Starting new session.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_new_session</span><span class="p">()</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thread_local</span><span class="o">.</span><span class="n">session</span>
+
+<div class="viewcode-block" id="PowerShellManager._start_new_session">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools.PowerShellManager._start_new_session">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_start_new_session</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Starts a new PowerShell session for the current thread.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_thread_local</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="n">PowerShellSession</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_thread_local</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="fm">__enter__</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="PowerShellManager._is_session_valid">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools.PowerShellManager._is_session_valid">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_is_session_valid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks if the current session is valid and responsive.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: True if session is valid, False otherwise</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_thread_local</span><span class="p">,</span> <span class="s1">&#39;session&#39;</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thread_local</span><span class="o">.</span><span class="n">session</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">session</span><span class="o">.</span><span class="n">_process</span> <span class="ow">or</span> <span class="n">session</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="n">test_output</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;Write-Output &#39;test&#39;&quot;</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+            <span class="k">return</span> <span class="s1">&#39;test&#39;</span> <span class="ow">in</span> <span class="n">test_output</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Session validation failed: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="PowerShellManager.execute">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools.PowerShellManager.execute">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_length_limit</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;60&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute PowerShell code in the session with automatic recovery.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            code: PowerShell code to execute</span>
+<span class="sd">            output_length_limit: Maximum number of lines in output</span>
+
+<span class="sd">        Yields:</span>
+<span class="sd">            Command output as strings</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">max_retries</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">retry_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_process_error</span><span class="p">(</span><span class="n">error</span><span class="p">):</span>
+            <span class="n">error_message</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;Tool Failed: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="n">error_message</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;Traceback:</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_tb</span><span class="p">(</span><span class="n">error</span><span class="o">.</span><span class="n">__traceback__</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">return</span> <span class="n">error_message</span>
+        <span class="k">while</span> <span class="n">retry_count</span> <span class="o">&lt;=</span> <span class="n">max_retries</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">processed_code</span> <span class="o">=</span> <span class="n">_process_commands</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">processed_code</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">output_length_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">output</span><span class="p">:</span>
+                    <span class="n">output_length_limit_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">output_length_limit</span><span class="p">)</span>
+                    <span class="n">lines</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">output_length_limit_int</span><span class="p">:</span>
+                        <span class="n">half_limit</span> <span class="o">=</span> <span class="n">output_length_limit_int</span> <span class="o">//</span> <span class="mi">2</span>
+                        <span class="n">start_lines</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[:</span><span class="n">half_limit</span><span class="p">]</span>
+                        <span class="n">end_lines</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="n">half_limit</span><span class="p">:]</span>
+                        <span class="n">lines_omitted</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">-</span> <span class="n">output_length_limit_int</span>
+                        <span class="n">truncated_output</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">start_lines</span><span class="p">)</span>
+                        <span class="n">truncated_output</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">... </span><span class="si">{</span><span class="n">lines_omitted</span><span class="si">}</span><span class="s1"> lines omitted ...</span><span class="se">\n\n</span><span class="s1">&#39;</span>
+                        <span class="n">truncated_output</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">end_lines</span><span class="p">)</span>
+                        <span class="n">output_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="sa">f</span><span class="s1">&#39;ps_output_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bot_id</span><span class="si">}</span><span class="s1">.txt&#39;</span><span class="p">)</span>
+                        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;replace&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+                        <span class="n">truncated_output</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Full output saved to </span><span class="si">{</span><span class="n">output_file</span><span class="si">}</span><span class="s1">&#39;</span>
+                        <span class="k">yield</span> <span class="n">truncated_output</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">yield</span> <span class="n">output</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">output</span>
+                <span class="k">break</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">retry_count</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">retry_count</span> <span class="o">&lt;=</span> <span class="n">max_retries</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Command failed, attempt </span><span class="si">{</span><span class="n">retry_count</span><span class="si">}</span><span class="s1"> of </span><span class="si">{</span><span class="n">max_retries</span><span class="si">}</span><span class="s1">. Starting new session...&#39;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">cleanup</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">_process_error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PowerShellManager.cleanup">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools.PowerShellManager.cleanup">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cleanup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Clean up the PowerShell session for the current thread.</span>
+<span class="sd">        Should be called when work is done or when a session needs to be reset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_thread_local</span><span class="p">,</span> <span class="s1">&#39;session&#39;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_thread_local</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Error during session cleanup: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="nb">delattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_thread_local</span><span class="p">,</span> <span class="s1">&#39;session&#39;</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="_get_active_sessions">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools._get_active_sessions">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_active_sessions</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get information about all active PowerShell sessions.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of dictionaries containing session information</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sessions</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">thread</span> <span class="ow">in</span> <span class="n">threading</span><span class="o">.</span><span class="n">enumerate</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">thread</span><span class="p">,</span> <span class="s1">&#39;_thread_local&#39;</span><span class="p">):</span>
+            <span class="n">local_dict</span> <span class="o">=</span> <span class="n">thread</span><span class="o">.</span><span class="n">_thread_local</span><span class="o">.</span><span class="vm">__dict__</span>
+            <span class="k">if</span> <span class="s1">&#39;ps_manager&#39;</span> <span class="ow">in</span> <span class="n">local_dict</span><span class="p">:</span>
+                <span class="n">manager</span> <span class="o">=</span> <span class="n">local_dict</span><span class="p">[</span><span class="s1">&#39;ps_manager&#39;</span><span class="p">]</span>
+                <span class="n">sessions</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s1">&#39;bot_id&#39;</span><span class="p">:</span> <span class="n">manager</span><span class="o">.</span><span class="n">bot_id</span><span class="p">,</span> <span class="s1">&#39;thread_name&#39;</span><span class="p">:</span> <span class="n">thread</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;created_at&#39;</span><span class="p">:</span> <span class="n">manager</span><span class="o">.</span><span class="n">created_at</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span> <span class="s1">&#39;active&#39;</span><span class="p">:</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">manager</span><span class="o">.</span><span class="n">_thread_local</span><span class="p">,</span> <span class="s1">&#39;session&#39;</span><span class="p">)})</span>
+    <span class="k">return</span> <span class="n">sessions</span></div>
+
+
+<div class="viewcode-block" id="_execute_powershell_stateless">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools._execute_powershell_stateless">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">_execute_powershell_stateless</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_length_limit</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;120&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Executes PowerShell code in a stateless environment</span>
+
+<span class="sd">    Use when you need to run PowerShell commands and capture their output. If</span>
+<span class="sd">    you have other tools available, you should use this as a fallback when the</span>
+<span class="sd">    other tools fail. Coerces to utf-8 encoding.</span>
+
+<span class="sd">    Potential use cases:</span>
+<span class="sd">    - git commands</span>
+<span class="sd">    - gh cli</span>
+<span class="sd">    - other cli (which you may need to install using this tool)</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    - code (str): PowerShell code to execute.</span>
+<span class="sd">    - output_length_limit (int, optional): Maximum number of lines in the output.</span>
+<span class="sd">      If set, output exceeding this limit will be truncated. Default 60.</span>
+
+<span class="sd">    Returns command output or an error message.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_process_error</span><span class="p">(</span><span class="n">error</span><span class="p">):</span>
+        <span class="n">error_message</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;Tool Failed: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="n">error_message</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;Traceback:</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_tb</span><span class="p">(</span><span class="n">error</span><span class="o">.</span><span class="n">__traceback__</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="n">error_message</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">processed_code</span> <span class="o">=</span> <span class="n">_process_commands</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+        <span class="n">setup_encoding</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">        $PSDefaultParameterValues[</span><span class="se">\&#39;</span><span class="s1">*:Encoding</span><span class="se">\&#39;</span><span class="s1">] = </span><span class="se">\&#39;</span><span class="s1">utf8</span><span class="se">\&#39;\n</span><span class="s1">        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8</span><span class="se">\n</span><span class="s1">        [Console]::InputEncoding = [System.Text.Encoding]::UTF8</span><span class="se">\n</span><span class="s1">        $OutputEncoding = [System.Text.Encoding]::UTF8</span><span class="se">\n</span><span class="s1">        $env:PYTHONIOENCODING = &quot;utf-8&quot;</span><span class="se">\n</span><span class="s1">        &#39;</span>
+        <span class="n">wrapped_code</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">setup_encoding</span><span class="si">}</span><span class="s1">; </span><span class="si">{</span><span class="n">processed_code</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="n">startupinfo</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;nt&#39;</span><span class="p">:</span>
+            <span class="n">startupinfo</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">STARTUPINFO</span><span class="p">()</span>
+            <span class="n">startupinfo</span><span class="o">.</span><span class="n">dwFlags</span> <span class="o">|=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">STARTF_USESHOWWINDOW</span>
+        <span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">([</span><span class="s1">&#39;powershell&#39;</span><span class="p">,</span> <span class="s1">&#39;-NoProfile&#39;</span><span class="p">,</span> <span class="s1">&#39;-NonInteractive&#39;</span><span class="p">,</span> <span class="s1">&#39;-Command&#39;</span><span class="p">,</span> <span class="n">wrapped_code</span><span class="p">],</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">startupinfo</span><span class="o">=</span><span class="n">startupinfo</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;replace&#39;</span><span class="p">)</span>
+        <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">stdout</span>
+        <span class="k">if</span> <span class="n">stderr</span><span class="p">:</span>
+            <span class="n">output</span> <span class="o">+=</span> <span class="n">stderr</span>
+    <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>
+        <span class="n">output</span> <span class="o">+=</span> <span class="s1">&#39;Error: Command execution timed out after 300 seconds.&#39;</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">+=</span> <span class="n">_process_error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">output_length_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">output</span><span class="p">:</span>
+        <span class="n">output_length_limit</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">output_length_limit</span><span class="p">)</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">output_length_limit</span><span class="p">:</span>
+            <span class="n">half_limit</span> <span class="o">=</span> <span class="n">output_length_limit</span> <span class="o">//</span> <span class="mi">2</span>
+            <span class="n">start_lines</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[:</span><span class="n">half_limit</span><span class="p">]</span>
+            <span class="n">end_lines</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="n">half_limit</span><span class="p">:]</span>
+            <span class="n">lines_omitted</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">-</span> <span class="n">output_length_limit</span>
+            <span class="n">truncated_output</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">start_lines</span><span class="p">)</span>
+            <span class="n">truncated_output</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">... </span><span class="si">{</span><span class="n">lines_omitted</span><span class="si">}</span><span class="s1"> lines omitted ...</span><span class="se">\n\n</span><span class="s1">&#39;</span>
+            <span class="n">truncated_output</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">end_lines</span><span class="p">)</span>
+            <span class="n">output_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s1">&#39;ps_output.txt&#39;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;replace&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+            <span class="n">truncated_output</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Full output saved to </span><span class="si">{</span><span class="n">output_file</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="k">return</span> <span class="n">truncated_output</span>
+    <span class="k">return</span> <span class="n">output</span></div>
+
+
+<div class="viewcode-block" id="_process_commands">
+<a class="viewcode-back" href="../../../source/bots.tools.html#bots.tools.terminal_tools._process_commands">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">_process_commands</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Process PowerShell commands separated by &amp;&amp;, ensuring each command only runs if the previous succeeded.</span>
+<span class="sd">    Uses PowerShell error handling to catch both command failures and non-existent commands.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        code (str): The original command string with &amp;&amp; separators</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: PowerShell code with proper error checking between commands</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">commands</span> <span class="o">=</span> <span class="n">code</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &amp;&amp; &#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">commands</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">code</span>
+    <span class="n">processed_commands</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">cmd</span> <span class="ow">in</span> <span class="n">commands</span><span class="p">:</span>
+        <span class="n">wrapped_cmd</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;$ErrorActionPreference = &quot;Stop&quot;; try </span><span class="se">{{</span><span class="s1"> </span><span class="si">{</span><span class="n">cmd</span><span class="si">}</span><span class="s1">; $LastSuccess = $true </span><span class="se">}}</span><span class="s1"> catch </span><span class="se">{{</span><span class="s1"> $LastSuccess = $false; $_ </span><span class="se">}}</span><span class="s1">&#39;</span>
+        <span class="n">processed_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">wrapped_cmd</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s1">&#39;; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">processed_commands</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;if ($LastSuccess) </span><span class="se">{{</span><span class="s1"> </span><span class="si">{</span><span class="n">cmd</span><span class="si">}</span><span class="s1"> </span><span class="se">}}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">cmd</span> <span class="ow">in</span> <span class="n">processed_commands</span><span class="p">[</span><span class="mi">1</span><span class="p">:]])</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, benbuzz790.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
