@@ -41,7 +41,11 @@ class DynamicParameterCollector:
         # Map parameter names to collection methods
         self.param_handlers = {'prompt_list': self._collect_prompts, 'prompts': self._collect_prompts, 'prompt': self._collect_single_prompt, 'first_prompt': self._collect_single_prompt, 'stop_condition': self._collect_condition, 'continue_prompt': self._collect_continue_prompt, 'recombinator_function': self._collect_recombinator, 'should_branch': self._collect_boolean, 'skip': self._collect_skip_labels, 'items': self._collect_items, 'dynamic_prompt': self._collect_dynamic_prompt, 'functional_prompt': self._collect_functional_prompt}
         # Available conditions for user selection
-        self.conditions = {'1': ('tool_used', fp.conditions.tool_used), '2': ('tool_not_used', fp.conditions.tool_not_used), '3': ('said_DONE', fp.conditions.said_DONE), '4': ('said_COMPLETE', fp.conditions.said_COMPLETE), '5': ('said_FINISHED', fp.conditions.said_FINISHED), '6': ('said_SUCCESS', fp.conditions.said_SUCCESS), '7': ('said_READY', fp.conditions.said_READY), '8': ('error_in_response', fp.conditions.error_in_response), '9': ('no_new_tools_used', fp.conditions.no_new_tools_used), '10': ('response_length_exceeds(500)', lambda: fp.conditions.response_length_exceeds(500)), '11': ('contains_phrase("custom")', lambda: fp.conditions.contains_phrase(input("Enter phrase to look for: ")))}
+        self.conditions = {'1': ('tool_used', fp.conditions.tool_used), 
+                           '2': ('tool_not_used', fp.conditions.tool_not_used), 
+                           '3': ('said_DONE', fp.conditions.said_DONE), 
+                           '4': ('said_READY', fp.conditions.said_READY), 
+                           '5': ('error_in_response', fp.conditions.error_in_response), }
         # Function filter for discovery
         self.function_filter = function_filter
 
