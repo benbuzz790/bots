@@ -90,48 +90,6 @@ class conditions:
         Each condition function takes a Bot instance and returns a boolean.
         True typically indicates iteration should stop.
     """
-    
-    @staticmethod
-    def said_COMPLETE(bot: Bot) -> bool:
-        """Check if the bot's response contains the word 'COMPLETE'.
-
-        Use when you need to continue prompting until the bot indicates completion.
-
-        Args:
-            bot (Bot): The bot to check
-
-        Returns:
-            bool: True if the response contains 'COMPLETE', False otherwise
-        """
-        return 'COMPLETE' in bot.conversation.content
-
-    @staticmethod
-    def said_FINISHED(bot: Bot) -> bool:
-        """Check if the bot's response contains the word 'FINISHED'.
-
-        Use when you need to continue prompting until the bot indicates completion.
-
-        Args:
-            bot (Bot): The bot to check
-
-        Returns:
-            bool: True if the response contains 'FINISHED', False otherwise
-        """
-        return 'FINISHED' in bot.conversation.content
-
-    @staticmethod
-    def said_SUCCESS(bot: Bot) -> bool:
-        """Check if the bot's response contains the word 'SUCCESS'.
-
-        Use when you need to continue prompting until the bot indicates success.
-
-        Args:
-            bot (Bot): The bot to check
-
-        Returns:
-            bool: True if the response contains 'SUCCESS', False otherwise
-        """
-        return 'SUCCESS' in bot.conversation.content
 
     @staticmethod
     def said_READY(bot: Bot) -> bool:
@@ -148,63 +106,8 @@ class conditions:
         return 'READY' in bot.conversation.content
 
     @staticmethod
-    def response_length_exceeds(threshold: int = 500):
-        """Create a condition that stops when response length exceeds threshold.
-
-        Use when you want to stop iteration based on response length.
-
-        Args:
-            threshold (int): Minimum response length to trigger stop condition
-
-        Returns:
-            Callable[[Bot], bool]: A condition function that checks response length
-        """
-        def condition(bot: Bot) -> bool:
-            return len(bot.conversation.content) > threshold
-        return condition
-
-    @staticmethod
-    def response_length_below(threshold: int = 50):
-        """Create a condition that stops when response length is below threshold.
-
-        Use when you want to stop iteration when responses become too short.
-
-        Args:
-            threshold (int): Maximum response length to trigger stop condition
-
-        Returns:
-            Callable[[Bot], bool]: A condition function that checks response length
-        """
-        def condition(bot: Bot) -> bool:
-            return len(bot.conversation.content) < threshold
-        return condition
-
-    @staticmethod
-    def contains_phrase(phrase: str, case_sensitive: bool = False):
-        """Create a condition that stops when response contains a specific phrase.
-
-        Use when you want to stop iteration based on custom completion phrases.
-
-        Args:
-            phrase (str): The phrase to look for in the response
-            case_sensitive (bool): Whether to perform case-sensitive matching
-
-        Returns:
-            Callable[[Bot], bool]: A condition function that checks for the phrase
-        """
-        def condition(bot: Bot) -> bool:
-            content = bot.conversation.content
-            if not case_sensitive:
-                content = content.lower()
-                phrase_check = phrase.lower()
-            else:
-                phrase_check = phrase
-            return phrase_check in content
-        return condition
-
-    @staticmethod
-    def max_iterations(max_count: int):
-        """Create a condition that stops after a maximum number of iterations.
+    def five_iterations(bot: Bot):
+        """Create a condition that stops after five iterations.
 
         Use when you want to prevent infinite loops by setting an iteration limit.
         Note: This requires external counter management.
@@ -219,7 +122,7 @@ class conditions:
         
         def condition(bot: Bot) -> bool:
             iteration_count['count'] += 1
-            return iteration_count['count'] >= max_count
+            return iteration_count['count'] >= 5
         return condition
 
     @staticmethod
@@ -269,8 +172,9 @@ class conditions:
             bool: True if the response contains error indicators
         """
         content = bot.conversation.content.lower()
-        error_indicators = ['error', 'failed', 'exception', 'traceback', 'syntax error']
+        error_indicators = ['error', 'failed', 'exception', 'traceback', 'syntax']
         return any(indicator in content for indicator in error_indicators)
+    
     def tool_used(bot: Bot) -> bool:
         """Check if the bot has used any tools in its last response.
 
