@@ -679,6 +679,591 @@ print(f'Found par_dispatch at position: {par_dispatch_pos}')
         self.assertIn('Third', result)
 
 
+class TestPowerShellUnicodeIssues(unittest.TestCase):
+    """Test Unicode and encoding issues that might cause apparent timeouts."""
+    
+    def setUp(self):
+        """Set up test environment."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.original_cwd = os.getcwd()
+        os.chdir(self.temp_dir)
+    
+    def tearDown(self):
+        """Clean up test environment."""
+        os.chdir(self.original_cwd)
+        import shutil
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+    
+    def test_basic_utf8_file_creation(self):
+        """Test creating files with UTF-8 content."""
+        command = '''@'
+Hello World
+'@ | Out-File -FilePath "test_utf8.txt" -Encoding UTF8'''
+        
+        result = execute_powershell(command)
+        print(f"UTF-8 basic test result: {result}")
+        
+        # Try to read the file with different encodings
+        if os.path.exists("test_utf8.txt"):
+            # Test reading with UTF-8
+            try:
+                with open("test_utf8.txt", "r", encoding="utf-8") as f:
+                    content = f.read()
+                print(f"✅ UTF-8 read successful: {repr(content)}")
+            except Exception as e:
+                print(f"❌ UTF-8 read failed: {e}")
+            
+            # Test reading with cp1252 (Windows default)
+            try:
+                with open("test_utf8.txt", "r", encoding="cp1252") as f:
+                    content = f.read()
+                print(f"✅ CP1252 read successful: {repr(content)}")
+            except Exception as e:
+                print(f"❌ CP1252 read failed: {e}")
+    
+    def test_special_characters_in_here_strings(self):
+        """Test here-strings with special characters that might cause encoding issues."""
+        
+        special_chars_tests = [
+            ("ASCII quotes", '"Hello" and \'World\''),
+            ("Smart quotes", '\u201cHello\u201d and \u2018World\u2019'),  # Unicode smart quotes
+            ("Accented chars", 'Café, résumé, naïve'),
+            ("Symbols", '© ® ™ € £ ¥'),
+            ("Arrows and boxes", '→ ← ↑ ↓ □ ■ ◆'),
+            ("Python code chars", 'f"value: {variable}" and encoding=\'utf-8\''),
+        ]
+        
+        for test_name, content in special_chars_tests:
+            with self.subTest(test_name=test_name):
+                filename = f"test_{test_name.replace(' ', '_').lower()}.txt"
+                command = f'''@'
+{content}
+'@ | Out-File -FilePath "{filename}" -Encoding UTF8'''
+                
+                try:
+                    result = execute_powershell(command, timeout='10')
+                    print(f"✅ {test_name}: Command executed - {result}")
+                    
+                    if os.path.exists(filename):
+                        # Try reading with different approaches
+                        self._test_file_reading(filename, test_name)
+                    else:
+                        print(f"❌ {test_name}: File not created")
+                        
+                except Exception as e:
+                    print(f"❌ {test_name}: Command failed - {e}")
+    
+    def _test_file_reading(self, filename, test_name):
+        """Test reading a file with different encoding strategies."""
+        
+        # Strategy 1: UTF-8 with error handling
+        try:
+            with open(filename, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+            print(f"  ✅ {test_name}: UTF-8 with replace - {repr(content[:50])}")
+        except Exception as e:
+            print(f"  ❌ {test_name}: UTF-8 with replace failed - {e}")
+        
+        # Strategy 2: Auto-detect encoding
+        try:
+            import chardet
+            with open(filename, "rb") as f:
+                raw_data = f.read()
+            detected = chardet.detect(raw_data)
+            print(f"  🔍 {test_name}: Detected encoding - {detected}")
+            
+            if detected['encoding']:
+                with open(filename, "r", encoding=detected['encoding']) as f:
+                    content = f.read()
+                print(f"  ✅ {test_name}: Auto-detected read - {repr(content[:50])}")
+        except ImportError:
+            print(f"  ⚠️ {test_name}: chardet not available for auto-detection")
+        except Exception as e:
+            print(f"  ❌ {test_name}: Auto-detection failed - {e}")
+        
+        # Strategy 3: Binary read to see raw bytes
+        try:
+            with open(filename, "rb") as f:
+                raw_bytes = f.read()
+            print(f"  🔍 {test_name}: Raw bytes - {raw_bytes[:50]}")
+            
+            # Look for problematic byte sequences
+            if b'\x8d' in raw_bytes:
+                print(f"  🚨 {test_name}: Found 0x8d byte (the error from integration test)!")
+            if b'\xff\xfe' in raw_bytes[:4] or b'\xfe\xff' in raw_bytes[:4]:
+                print(f"  🔍 {test_name}: BOM detected")
+                
+        except Exception as e:
+            print(f"  ❌ {test_name}: Binary read failed - {e}")
+    
+    def test_problematic_python_code_patterns(self):
+        """Test the exact Python code patterns that caused the Unicode error."""
+        
+        # This is similar to what the bot would generate
+        python_code = '''import subprocess
+import json
+
+def get_feedback(pr_id: str, repo: str = "promptfoo/promptfoo") -> str:
+    """Extract feedback from GitHub PR reviews."""
+    try:
+        cmd = ["gh", "api", f"repos/{repo}/pulls/{pr_id}/reviews"]
+        result = subprocess.run(cmd, capture_output=True, text=True, 
+                              timeout=30, encoding='utf-8', errors='replace')
+        
+        if result.returncode != 0:
+            return f"Error: {result.stderr}"
+        
+        return "success"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+if __name__ == "__main__":
+    print("test")'''
+        
+        command = f'''@'
+{python_code}
+'@ | Out-File -FilePath "problematic_code.py" -Encoding UTF8'''
+        
+        try:
+            result = execute_powershell(command, timeout='15')
+            print(f"Problematic code test result: {result}")
+            
+            if os.path.exists("problematic_code.py"):
+                self._test_file_reading("problematic_code.py", "Problematic Python Code")
+                
+                # Also test if the file is actually valid Python
+                try:
+                    with open("problematic_code.py", "r", encoding="utf-8") as f:
+                        code_content = f.read()
+                    
+                    # Try to compile it
+                    compile(code_content, "problematic_code.py", "exec")
+                    print("✅ Generated Python code is syntactically valid")
+                except SyntaxError as e:
+                    print(f"❌ Generated Python code has syntax errors: {e}")
+                except UnicodeDecodeError as e:
+                    print(f"🚨 Unicode error reading generated file: {e}")
+                    print("This matches the integration test error!")
+                    
+        except Exception as e:
+            print(f"❌ Problematic code test failed: {e}")
+    
+    def test_encoding_parameter_variations(self):
+        """Test different encoding parameters to see which ones cause issues."""
+        
+        test_content = 'print("Hello αβγ 中文 🚀")'  # Mix of Unicode chars
+        
+        encoding_tests = [
+            ("UTF8", "UTF8"),
+            ("UTF-8", "UTF8"),  
+            ("Unicode", "Unicode"),
+            ("ASCII", "ASCII"),
+            ("Default", "Default"),
+            ("No encoding", None),
+        ]
+        
+        for test_name, encoding in encoding_tests:
+            filename = f"encoding_test_{test_name.replace(' ', '_').lower()}.py"
+            
+            if encoding:
+                command = f'''@'
+{test_content}
+'@ | Out-File -FilePath "{filename}" -Encoding {encoding}'''
+            else:
+                command = f'''@'
+{test_content}
+'@ | Out-File -FilePath "{filename}"'''
+            
+            try:
+                result = execute_powershell(command, timeout='10')
+                print(f"✅ {test_name}: Command succeeded")
+                
+                if os.path.exists(filename):
+                    self._test_file_reading(filename, f"Encoding-{test_name}")
+                    
+            except Exception as e:
+                print(f"❌ {test_name}: Command failed - {e}")
+    
+    def test_bom_detection_and_handling(self):
+        """Test if PowerShell is adding BOMs that cause issues."""
+        
+        command = '''@'
+simple test content
+'@ | Out-File -FilePath "bom_test.txt" -Encoding UTF8'''
+        
+        result = execute_powershell(command)
+        print(f"BOM test result: {result}")
+        
+        if os.path.exists("bom_test.txt"):
+            with open("bom_test.txt", "rb") as f:
+                raw_data = f.read()
+            
+            print(f"Raw file data: {raw_data}")
+            print(f"First 10 bytes: {raw_data[:10]}")
+            
+            # Check for different BOMs
+            bom_checks = [
+                (b'\xff\xfe', "UTF-16 LE BOM"),
+                (b'\xfe\xff', "UTF-16 BE BOM"), 
+                (b'\xef\xbb\xbf', "UTF-8 BOM"),
+                (b'\xff\xfe\x00\x00', "UTF-32 LE BOM"),
+                (b'\x00\x00\xfe\xff', "UTF-32 BE BOM"),
+            ]
+            
+            for bom_bytes, bom_name in bom_checks:
+                if raw_data.startswith(bom_bytes):
+                    print(f"🔍 Found {bom_name}")
+                    break
+            else:
+                print("✅ No BOM detected")
+    
+    def test_powershell_internal_encoding_setup(self):
+        """Test if PowerShell's internal encoding setup is causing issues."""
+        
+        # Test the encoding setup commands from the PowerShell implementation
+        encoding_setup_commands = [
+            "$PSDefaultParameterValues['*:Encoding']='utf8'",
+            "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8",
+            "[Console]::InputEncoding=[System.Text.Encoding]::UTF8", 
+            "$OutputEncoding=[System.Text.Encoding]::UTF8",
+            "$env:PYTHONIOENCODING='utf-8'",
+        ]
+        
+        for i, cmd in enumerate(encoding_setup_commands):
+            try:
+                result = execute_powershell(cmd, timeout='5')
+                print(f"✅ Encoding setup {i+1}: {cmd} - Success")
+            except Exception as e:
+                print(f"❌ Encoding setup {i+1}: {cmd} - Failed: {e}")
+        
+        # Test what the current encoding settings are
+        info_commands = [
+            "[Console]::OutputEncoding",
+            "[Console]::InputEncoding",
+            "$OutputEncoding",
+            "$PSDefaultParameterValues['*:Encoding']",
+            "Get-Culture",
+        ]
+        
+        for cmd in info_commands:
+            try:
+                result = execute_powershell(cmd, timeout='5')
+                print(f"🔍 {cmd}: {result}")
+            except Exception as e:
+                print(f"❌ {cmd}: Failed - {e}")
+
+import unittest
+import tempfile
+import os
+from bots.tools.terminal_tools import execute_powershell
+
+
+class TestPythonCommandBOMFix(unittest.TestCase):
+    """Test that Python command execution no longer creates BOM-corrupted files."""
+    
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.original_cwd = os.getcwd()
+        os.chdir(self.temp_dir)
+    
+    def tearDown(self):
+        os.chdir(self.original_cwd)
+        import shutil
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+    
+    def test_python_command_no_bom(self):
+        """Test that Python -c commands no longer create BOM issues."""
+        
+        print("\n🧪 Testing Python command BOM fix...")
+        
+        # This should trigger _handle_python_command_safely
+        python_command = '''python -c "import json; print('Hello from Python')"'''
+        
+        try:
+            result = execute_powershell(python_command, timeout='10')
+            print(f"✅ Python command result: {result}")
+            
+            # The output should contain the Python print statement
+            if "Hello from Python" in result:
+                print("✅ Python command executed successfully - no encoding issues!")
+            else:
+                print(f"⚠️ Unexpected output: {result}")
+                
+        except Exception as e:
+            print(f"❌ Python command failed: {e}")
+            # Check if it's still a Unicode error
+            if "UnicodeDecodeError" in str(e) or "charmap" in str(e):
+                print("🚨 Still getting Unicode errors - BOM fix may not be working")
+            else:
+                print("🔍 Different error type - may be unrelated to BOM")
+    
+    def test_complex_python_command_with_quotes(self):
+        """Test complex Python commands with quotes and JSON."""
+        
+        print("\n🧪 Testing complex Python command with quotes...")
+        
+        # This mirrors the GitHub API call pattern from your integration test
+        complex_command = '''python -c "import json; data = {'status': 'success', 'message': 'test'}; print(json.dumps(data))"'''
+        
+        try:
+            result = execute_powershell(complex_command, timeout='10')
+            print(f"✅ Complex command result: {result}")
+            
+            # Should contain valid JSON
+            if '{"status": "success"' in result or '"status":"success"' in result:
+                print("✅ Complex Python command with quotes working!")
+            else:
+                print(f"⚠️ Unexpected output: {result}")
+                
+        except Exception as e:
+            print(f"❌ Complex command failed: {e}")
+            if "UnicodeDecodeError" in str(e):
+                print("🚨 Still getting Unicode errors on complex commands")
+    
+    def test_python_command_with_file_operations(self):
+        """Test Python commands that do file operations."""
+        
+        print("\n🧪 Testing Python file operations...")
+        
+        # Test creating and reading a file via Python
+        file_command = '''python -c "
+import json
+data = {'test': 'data', 'unicode': 'café résumé'}
+with open('test_output.json', 'w', encoding='utf-8') as f:
+    json.dump(data, f, ensure_ascii=False)
+print('File created successfully')
+"'''
+        
+        try:
+            result = execute_powershell(file_command, timeout='10')
+            print(f"✅ File operation result: {result}")
+            
+            # Check if the file was created and is readable
+            if os.path.exists('test_output.json'):
+                print("✅ Python created file successfully")
+                
+                # Try to read it
+                with open('test_output.json', 'r', encoding='utf-8') as f:
+                    content = f.read()
+                print(f"✅ File content readable: {content}")
+                
+                # Check for Unicode content
+                if 'café' in content:
+                    print("✅ Unicode characters preserved correctly")
+                    
+            else:
+                print("❌ File not created by Python command")
+                
+        except Exception as e:
+            print(f"❌ File operation failed: {e}")
+    
+    def test_verify_no_temp_files_with_bom(self):
+        """Verify that temp files created by Python commands don't have BOM."""
+        
+        print("\n🧪 Testing temp file BOM detection...")
+        
+        # Use a command that would create a temp file
+        command = '''python -c "print('Testing temp file creation')"'''
+        
+        # Monitor temp directory for .py files during execution
+        import glob
+        temp_files_before = set(glob.glob("*.py"))
+        
+        try:
+            result = execute_powershell(command, timeout='10')
+            print(f"✅ Command executed: {result}")
+            
+            temp_files_after = set(glob.glob("*.py"))
+            new_files = temp_files_after - temp_files_before
+            
+            if new_files:
+                print(f"🔍 Found temp files: {new_files}")
+                for temp_file in new_files:
+                    with open(temp_file, 'rb') as f:
+                        first_bytes = f.read(10)
+                    print(f"🔍 {temp_file} first bytes: {first_bytes}")
+                    
+                    if first_bytes.startswith(b'\xef\xbb\xbf'):
+                        print(f"🚨 BOM detected in {temp_file}!")
+                    else:
+                        print(f"✅ No BOM in {temp_file}")
+            else:
+                print("🔍 No temp .py files found (they may have been cleaned up)")
+                
+        except Exception as e:
+            print(f"❌ Temp file test failed: {e}")
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
+
+
+class TestPowerShellFileCreationDebug(unittest.TestCase):
+    """Debug why files aren't being created despite successful command execution."""
+    
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.original_cwd = os.getcwd()
+        os.chdir(self.temp_dir)
+    
+    def tearDown(self):
+        os.chdir(self.original_cwd)
+        import shutil
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+    
+    def test_debug_file_creation_failure(self):
+        """Debug why here-string file creation is failing."""
+        
+        print(f"\n🔍 Working directory: {os.getcwd()}")
+        print(f"🔍 Temp directory: {self.temp_dir}")
+        
+        # Test 1: Simple echo (should work)
+        print("\n=== TEST 1: Simple echo ===")
+        result1 = execute_powershell('echo "test" > simple.txt')
+        print(f"Result: {result1}")
+        print(f"File exists: {os.path.exists('simple.txt')}")
+        if os.path.exists('simple.txt'):
+            with open('simple.txt', 'rb') as f:
+                print(f"Raw content: {f.read()}")
+        
+        # Test 2: Here-string with absolute path
+        print("\n=== TEST 2: Here-string with absolute path ===")
+        abs_path = os.path.join(os.getcwd(), "absolute_test.txt").replace("\\", "/")
+        command2 = f'''@'
+test content
+'@ | Out-File -FilePath "{abs_path}" -Encoding UTF8'''
+        
+        result2 = execute_powershell(command2)
+        print(f"Result: {result2}")
+        print(f"File exists: {os.path.exists('absolute_test.txt')}")
+        
+        # Test 3: Check PowerShell's working directory
+        print("\n=== TEST 3: PowerShell working directory ===")
+        pwd_result = execute_powershell("Get-Location")
+        print(f"PowerShell PWD: {pwd_result}")
+        print(f"Python PWD: {os.getcwd()}")
+        
+        # Test 4: List files in PowerShell's current directory
+        print("\n=== TEST 4: List files in PowerShell directory ===")
+        ls_result = execute_powershell("Get-ChildItem")
+        print(f"PowerShell file list: {ls_result}")
+        
+        # Test 5: Force file creation with error checking
+        print("\n=== TEST 5: Force file creation with error checking ===")
+        force_command = '''
+        try {
+            $content = @'
+test content here
+'@
+            $filePath = "force_test.txt"
+            $content | Out-File -FilePath $filePath -Encoding UTF8 -Force
+            Write-Output "File creation attempted"
+            
+            if (Test-Path $filePath) {
+                Write-Output "✅ File exists: $filePath"
+                Write-Output "File size: $((Get-Item $filePath).Length) bytes"
+                Write-Output "File content preview:"
+                Get-Content $filePath | Select-Object -First 3
+            } else {
+                Write-Output "❌ File does not exist: $filePath"
+            }
+            
+            Write-Output "Current directory contents:"
+            Get-ChildItem | ForEach-Object { "  $($_.Name)" }
+            
+        } catch {
+            Write-Output "❌ Error: $_"
+            Write-Output "Error details: $($_.Exception.Message)"
+        }
+        '''
+        
+        result5 = execute_powershell(force_command)
+        print(f"Force result: {result5}")
+        
+        # Test 6: Check if files are in PowerShell's temp directory
+        print("\n=== TEST 6: Check PowerShell temp directory ===")
+        temp_check = '''
+        Write-Output "PowerShell working directory: $(Get-Location)"
+        Write-Output "Python working directory from PS: $env:PWD"
+        Write-Output "Files in current directory:"
+        Get-ChildItem | ForEach-Object { "  $($_.Name) - $($_.Length) bytes" }
+        '''
+        
+        result6 = execute_powershell(temp_check)
+        print(f"Temp check result: {result6}")
+        
+        # Test 7: List all files in the Python working directory from Python
+        print("\n=== TEST 7: Python file list ===")
+        python_files = os.listdir(os.getcwd())
+        print(f"Python sees files: {python_files}")
+    
+    def test_bom_handling_investigation(self):
+        """Investigate BOM handling and its impact on file operations."""
+        
+        print("\n🔍 BOM Investigation")
+        
+        # Create file with different encoding approaches
+        encodings_to_test = [
+            ("UTF8", "UTF8"),
+            ("UTF8BOM", "UTF8BOM"), 
+            ("UTF8NoBOM", "UTF8NoBOM"),
+            ("Unicode", "Unicode"),
+            ("ASCII", "ASCII"),
+            ("Default", "Default"),
+        ]
+        
+        for name, encoding in encodings_to_test:
+            print(f"\n--- Testing {name} encoding ---")
+            filename = f"bom_test_{name.lower()}.txt"
+            
+            if encoding == "Default":
+                command = f'''@'
+Hello from {name}
+'@ | Out-File -FilePath "{filename}"'''
+            else:
+                command = f'''@'
+Hello from {name}
+'@ | Out-File -FilePath "{filename}" -Encoding {encoding}'''
+            
+            try:
+                result = execute_powershell(command)
+                print(f"Command result: {result}")
+                
+                # Check if file exists in PowerShell
+                check_command = f'''
+                if (Test-Path "{filename}") {{
+                    Write-Output "✅ File exists in PowerShell"
+                    Write-Output "Size: $((Get-Item '{filename}').Length) bytes"
+                }} else {{
+                    Write-Output "❌ File not found in PowerShell"
+                }}
+                '''
+                check_result = execute_powershell(check_command)
+                print(f"PowerShell check: {check_result}")
+                
+                # Check if file exists in Python
+                if os.path.exists(filename):
+                    print("✅ File exists in Python")
+                    with open(filename, 'rb') as f:
+                        raw_bytes = f.read()
+                    print(f"Raw bytes: {raw_bytes}")
+                    print(f"First 10 bytes: {raw_bytes[:10]}")
+                    
+                    # Check for BOM
+                    if raw_bytes.startswith(b'\xef\xbb\xbf'):
+                        print("🔍 UTF-8 BOM detected")
+                    elif raw_bytes.startswith(b'\xff\xfe'):
+                        print("🔍 UTF-16 LE BOM detected")
+                    elif raw_bytes.startswith(b'\xfe\xff'):
+                        print("🔍 UTF-16 BE BOM detected")
+                    else:
+                        print("✅ No BOM detected")
+                else:
+                    print("❌ File not found in Python")
+                    
+            except Exception as e:
+                print(f"❌ Error with {name}: {e}")
+
 
 class TestRegressionScenarios(unittest.TestCase):
     """Test specific regression scenarios to ensure fixes don't break existing functionality."""
@@ -737,3 +1322,4 @@ class TestRegressionScenarios(unittest.TestCase):
 if __name__ == '__main__':
     # Run these specific integration tests
     unittest.main(verbosity=2)
+

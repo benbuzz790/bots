@@ -16,7 +16,7 @@ def execute_powershell(command: str, output_length_limit: str='2500', timeout: s
 
     Use when you need to run PowerShell commands and capture their output. If
     you have other tools available, you should use this as a fallback when the
-    other tools fail. Coerces to utf-8.
+    other tools fail. Coerces to utf-8 (no BOM).
 
     Potential use cases:
     - git commands
@@ -342,7 +342,7 @@ function Invoke-SafeCommand {
                 
                 try {{
                     # Write Python code to temp file with UTF-8 encoding
-                    [System.IO.File]::WriteAllText($tempFile, $pythonCode, [System.Text.Encoding]::UTF8)
+                    [System.IO.File]::WriteAllText($tempFile, $pythonCode, [System.Text.Encoding]::UTF8NoBOM)
                     
                     # Execute Python with the temp file
                     python $tempFile
