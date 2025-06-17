@@ -56,104 +56,98 @@ def find_python_files(start_path: str) -> List[str]:
                     python_files.append(file_path)
     return python_files
 
-def create_file_specific_tool(file_path: str, project_root: str):
-    """Create a file-specific CI/CD checking tool for a bot.
-    Use when you need to create a tool that runs CI/CD style checks on a specific file.
+def check_file_cicd(file_path: str, project_root: str) -> str:
+    """Run CI/CD style checks on a specific Python file.
+    
     Parameters:
-        file_path (str): Absolute path to the Python file
+        file_path (str): Absolute path to the Python file to check
         project_root (str): Root directory of the project
+        
     Returns:
-        function: A tool function that checks the specific file
+        str: Detailed report of all style issues found, or confirmation if file passes all checks
     """
     rel_path = os.path.relpath(file_path, project_root)
-    def check_my_file(file=file_path, root=project_root) -> str:
-        """Run CI/CD style checks on my assigned file.
-        Use when you need to check the current style compliance status of your assigned file.
-        Runs Black, isort, and flake8 checks to identify all style issues that need fixing.
-        Parameters:
-            file (str): Defaults to your file. Do not input
-            root (str): Defaults to project root. Do not input.
-        Returns:
-            str: Detailed report of all style issues found, or confirmation if file passes all checks
-        """
-        results = []
-        original_cwd = os.getcwd()
+    results = []
+    original_cwd = os.getcwd()
+    
+    try:
+        # Change to project root for consistent tool execution
+        os.chdir(project_root)
+        
+        # Run Black check
+        results.append("=== BLACK CHECK ===")
         try:
-            # Change to project root for consistent tool execution
-            os.chdir(project_root)
-            # Run Black check
-            results.append("=== BLACK CHECK ===")
-            try:
-                black_result = subprocess.run(
-                    ['python', '-m', 'black', '--check', '--diff', rel_path],
-                    capture_output=True,
-                    text=True,
-                    timeout=30
-                )
-                if black_result.returncode == 0:
-                    results.append("Black formatting: PASSED")
-                else:
-                    results.append("Black formatting: FAILED")
-                    results.append("Black diff output:")
-                    results.append(black_result.stdout)
-                    if black_result.stderr:
-                        results.append("Black errors:")
-                        results.append(black_result.stderr)
-            except subprocess.TimeoutExpired:
-                results.append("Black check timed out")
-            except Exception as e:
-                results.append(f"Black check failed: {e}")
-            # Run isort check
-            results.append("\n=== ISORT CHECK ===")
-            try:
-                isort_result = subprocess.run(
-                    ['python', '-m', 'isort', '--check-only', '--diff', rel_path],
-                    capture_output=True,
-                    text=True,
-                    timeout=30
-                )
-                if isort_result.returncode == 0:
-                    results.append("Import sorting: PASSED")
-                else:
-                    results.append("Import sorting: FAILED")
-                    results.append("Isort diff output:")
-                    results.append(isort_result.stdout)
-                    if isort_result.stderr:
-                        results.append("Isort errors:")
-                        results.append(isort_result.stderr)
-            except subprocess.TimeoutExpired:
-                results.append("Isort check timed out")
-            except Exception as e:
-                results.append(f"Isort check failed: {e}")
-            # Run flake8 check
-            results.append("\n=== FLAKE8 CHECK ===")
-            try:
-                flake8_result = subprocess.run(
-                    ['python', '-m', 'flake8', rel_path, '--count', '--statistics', '--show-source'],
-                    capture_output=True,
-                    text=True,
-                    timeout=30
-                )
-                if flake8_result.returncode == 0:
-                    results.append("Flake8 linting: PASSED")
-                else:
-                    results.append("Flake8 linting: FAILED")
-                    results.append("Flake8 output:")
-                    results.append(flake8_result.stdout)
-                    if flake8_result.stderr:
-                        results.append("Flake8 errors:")
-                        results.append(flake8_result.stderr)
-            except subprocess.TimeoutExpired:
-                results.append("Flake8 check timed out")
-            except Exception as e:
-                results.append(f"Flake8 check failed: {e}")
-        finally:
-            # Always restore original working directory
-            os.chdir(original_cwd)
-        return "\n".join(results)
-    # Set the function name for the tool
-    check_my_file.__name__ = "check_my_file"
-    return check_my_file
+            black_result = subprocess.run(
+                ['python', '-m', 'black', '--check', '--diff', rel_path],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if black_result.returncode == 0:
+                results.append("Black formatting: PASSED")
+            else:
+                results.append("Black formatting: FAILED")
+                results.append("Black diff output:")
+                results.append(black_result.stdout)
+                if black_result.stderr:
+                    results.append("Black errors:")
+                    results.append(black_result.stderr)
+        except subprocess.TimeoutExpired:
+            results.append("Black check timed out")
+        except Exception as e:
+            results.append(f"Black check failed: {e}")
+        
+        # Run isort check
+        results.append("\n=== ISORT CHECK ===")
+        try:
+            isort_result = subprocess.run(
+                ['python', '-m', 'isort', '--check-only', '--diff', rel_path],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if isort_result.returncode == 0:
+                results.append("Import sorting: PASSED")
+            else:
+                results.append("Import sorting: FAILED")
+                results.append("Isort diff output:")
+                results.append(isort_result.stdout)
+                if isort_result.stderr:
+                    results.append("Isort errors:")
+                    results.append(isort_result.stderr)
+        except subprocess.TimeoutExpired:
+            results.append("Isort check timed out")
+        except Exception as e:
+            results.append(f"Isort check failed: {e}")
+        
+        # Run flake8 check
+        results.append("\n=== FLAKE8 CHECK ===")
+        try:
+            flake8_result = subprocess.run(
+                ['python', '-m', 'flake8', rel_path, '--count', '--statistics', '--show-source'],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if flake8_result.returncode == 0:
+                results.append("Flake8 linting: PASSED")
+            else:
+                results.append("Flake8 linting: FAILED")
+                results.append("Flake8 output:")
+                results.append(flake8_result.stdout)
+                if flake8_result.stderr:
+                    results.append("Flake8 errors:")
+                    results.append(flake8_result.stderr)
+        except subprocess.TimeoutExpired:
+            results.append("Flake8 check timed out")
+        except Exception as e:
+            results.append(f"Flake8 check failed: {e}")
+            
+    finally:
+        # Always restore original working directory
+        os.chdir(original_cwd)
+    
+    return "\n".join(results)
 
 def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
     """Create and configure a bot specialized for fixing code style issues.
@@ -182,8 +176,7 @@ def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
     # Add terminal tools for running commands and editing files
     bot.add_tools(terminal_tools)
     # Add file-specific CI/CD checking tool
-    file_checker = create_file_specific_tool(file_path, project_root)
-    bot.add_tools(file_checker)
+    bot.add_tools(check_file_cicd)
     system_message = textwrap.dedent(f"""
         You are an expert in Python code style and CI/CD pipeline compliance. Your task is to fix 
         code style issues in the file '{rel_path}' to ensure it passes automated style checks.
