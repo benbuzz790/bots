@@ -1,22 +1,22 @@
 """Automated code style fixing system for CI/CD compliance for the bots repository.
-Use this module when you need to automatically fix code style issues across a Python project
-to ensure CI/CD pipeline compliance using LLM-powered bots.
+Use this module when you need to automatically fix code style issues across a
+Python project to ensure CI/CD pipeline compliance using LLM-powered bots.
 The module:
 1. Finds all Python files in the project (excluding .gitignore patterns)
 2. Creates multiple bots to fix style issues in parallel
 3. Uses par_branch_while to ensure thorough style fixing
 4. Makes direct improvements using terminal tools and style formatters
-This ensures all files pass Black, isort, flake8, and other style checks in the CI/CD pipeline.
+This ensures all files pass Black, isort, flake8, and other style checks in
+the CI/CD pipeline.
 """
 import os
 import subprocess
 import textwrap
 from typing import List, Tuple
-from bots.foundation.base import Bot, Engines, ConversationNode
-from bots.foundation.anthropic_bots import AnthropicBot
 from bots.flows import functional_prompts as fp
+from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.base import Bot, ConversationNode, Engines
 from bots.tools import terminal_tools
-
 def is_gitignored(file_path: str, project_root: str) -> bool:
     """Check if a file is ignored by git.
     Use when you need to determine if a file should be excluded from processing
@@ -29,7 +29,7 @@ def is_gitignored(file_path: str, project_root: str) -> bool:
     """
     try:
         result = subprocess.run(
-            ['git', 'check-ignore', file_path],
+            ["git", "check-ignore", file_path],
             cwd=project_root,
             capture_output=True,
             text=True
@@ -37,48 +37,45 @@ def is_gitignored(file_path: str, project_root: str) -> bool:
         return result.returncode == 0
     except (subprocess.SubprocessError, FileNotFoundError):
         return False
-    
 def find_python_files(start_path: str) -> List[str]:
     """Recursively find all Python files not in .gitignore.
     Use when you need to gather Python files for style fixing while respecting
     git ignore patterns and excluding files that shouldn't be processed.
     Parameters:
-        start_path (str): Root directory to start search from. Should be the project root.
+        start_path (str): Root directory to start search from. Should be the
+                         project root.
     Returns:
-        List[str]: List of absolute paths to Python files that should be style-fixed
+        List[str]: List of absolute paths to Python files that should be
+                  style-fixed
     """
     python_files = []
     for root, dirs, files in os.walk(start_path):
         for file in files:
-            if file.endswith('.py'):
+            if file.endswith(".py"):
                 file_path = os.path.join(root, file)
                 if not is_gitignored(file_path, start_path):
                     python_files.append(file_path)
     return python_files
-
 def check_file_cicd(file_path: str, project_root: str) -> str:
     """Run CI/CD style checks on a specific Python file.
-    
     Parameters:
         file_path (str): Absolute path to the Python file to check
         project_root (str): Root directory of the project
-        
     Returns:
-        str: Detailed report of all style issues found, or confirmation if file passes all checks
+        str: Detailed report of all style issues found, or confirmation if
+             file passes all checks
     """
     rel_path = os.path.relpath(file_path, project_root)
     results = []
     original_cwd = os.getcwd()
-    
     try:
         # Change to project root for consistent tool execution
         os.chdir(project_root)
-        
         # Run Black check
         results.append("=== BLACK CHECK ===")
         try:
             black_result = subprocess.run(
-                ['python', '-m', 'black', '--check', '--diff', rel_path],
+                ["python", "-m", "black", "--check", "--diff", rel_path],
                 capture_output=True,
                 text=True,
                 timeout=30
@@ -96,12 +93,11 @@ def check_file_cicd(file_path: str, project_root: str) -> str:
             results.append("Black check timed out")
         except Exception as e:
             results.append(f"Black check failed: {e}")
-        
         # Run isort check
         results.append("\n=== ISORT CHECK ===")
         try:
             isort_result = subprocess.run(
-                ['python', '-m', 'isort', '--check-only', '--diff', rel_path],
+                ["python", "-m", "isort", "--check-only", "--diff", rel_path],
                 capture_output=True,
                 text=True,
                 timeout=30
@@ -119,15 +115,17 @@ def check_file_cicd(file_path: str, project_root: str) -> str:
             results.append("Isort check timed out")
         except Exception as e:
             results.append(f"Isort check failed: {e}")
-        
         # Run flake8 check
         results.append("\n=== FLAKE8 CHECK ===")
         try:
             flake8_result = subprocess.run(
-                ['python', '-m', 'flake8', rel_path, '--count', '--statistics', '--show-source'],
+                [
+                    "python", "-m", "flake8", rel_path,
+                    "--count", "--statistics", "--show-source"
+                ],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
             )
             if flake8_result.returncode == 0:
                 results.append("Flake8 linting: PASSED")
@@ -142,13 +140,10 @@ def check_file_cicd(file_path: str, project_root: str) -> str:
             results.append("Flake8 check timed out")
         except Exception as e:
             results.append(f"Flake8 check failed: {e}")
-            
     finally:
         # Always restore original working directory
         os.chdir(original_cwd)
-    
     return "\n".join(results)
-
 def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
     """Create and configure a bot specialized for fixing code style issues.
     Use when you need to create a new style-fixing bot instance with
@@ -168,18 +163,20 @@ def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
     bot = AnthropicBot(
         model_engine=Engines.CLAUDE4_SONNET,  # Updated to Claude 4 Sonnet
         temperature=0.1,  # Low temperature for consistent style fixes
-        name=f'StyleFixer{num}',
-        role='Code Style Specialist',
-        role_description=f'Fixes Python code style issues for {rel_path}',
-        autosave=False
+        name=f"StyleFixer{num}",
+        role="Code Style Specialist",
+        role_description=f"Fixes Python code style issues for {rel_path}",
+        autosave=False,
     )
     # Add terminal tools for running commands and editing files
     bot.add_tools(terminal_tools)
     # Add file-specific CI/CD checking tool
     bot.add_tools(check_file_cicd)
-    system_message = textwrap.dedent(f"""
-        You are an expert in Python code style and CI/CD pipeline compliance. Your task is to fix 
-        code style issues in the file '{rel_path}' to ensure it passes automated style checks.
+    system_message = textwrap.dedent(
+        f"""
+        You are an expert in Python code style and CI/CD pipeline compliance.
+        Your task is to fix code style issues in the file '{rel_path}' to
+        ensure it passes automated style checks.
         Your assigned file: {rel_path}
         Your workflow:
         1. Use check_my_file() to identify current style issues
@@ -196,11 +193,12 @@ def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
         - Missing blank lines: Add proper spacing between functions/classes
         - 'raise NotImplemented': Change to 'raise NotImplementedError'
         IMPORTANT: Only work on your assigned file: {rel_path}
-        Use the available tools to make direct edits. Do not change functionality, only style.
-        """).strip()
+        Use the available tools to make direct edits. Do not change
+        functionality, only style.
+        """
+    ).strip()
     bot.set_system_message(system_message)
     return bot
-
 def fix_file_style(bot: Bot) -> Tuple[List[str], List[ConversationNode]]:
     """Execute a thorough style fixing process for a Python file.
     Use when you need to systematically fix all style issues in a Python file
@@ -213,7 +211,8 @@ def fix_file_style(bot: Bot) -> Tuple[List[str], List[ConversationNode]]:
             - List of responses from the style fixing process
             - List of conversation nodes tracking the fix history
     Note:
-        The bot must be initialized with a TARGET FILE path before calling this function.
+        The bot must be initialized with a TARGET FILE path before calling
+        this function.
         The process includes:
         1. Initial style check analysis
         2. Automatic formatter application
@@ -221,24 +220,31 @@ def fix_file_style(bot: Bot) -> Tuple[List[str], List[ConversationNode]]:
         4. Final verification
     """
     prompts = [
-        "INSTRUCTION: Start by running check_my_file() to see what style issues need to be fixed in your assigned file.",
-        "INSTRUCTION: Now apply the automatic formatters to fix what can be automated. Use execute_powershell to run 'python -m black [your file path]' and 'python -m isort [your file path]'. Then run check_my_file() again to see what issues remain.",
-        "INSTRUCTION: Fix any remaining flake8 issues manually. Focus on the most common issues like line length, bare except clauses, unused variables, and missing blank lines. Run check_my_file() after making changes to track progress.",
-        "INSTRUCTION: Run check_my_file() one final time to verify all style issues are resolved. The file should now pass all CI/CD style checks."
+        "INSTRUCTION: Start by running check_my_file() to see what style "
+        "issues need to be fixed in your assigned file.",
+        "INSTRUCTION: Now apply the automatic formatters to fix what can be "
+        "automated. Use execute_powershell to run 'python -m black [your "
+        "file path]' and 'python -m isort [your file path]'. Then run "
+        "check_my_file() again to see what issues remain.",
+        "INSTRUCTION: Fix any remaining flake8 issues manually. Focus on the "
+        "most common issues like line length, bare except clauses, unused "
+        "variables, and missing blank lines. Run check_my_file() after "
+        "making changes to track progress.",
+        "INSTRUCTION: Run check_my_file() one final time to verify all style "
+        "issues are resolved. The file should now pass all CI/CD style "
+        "checks.",
     ]
-
     def print_responses(responses, nodes):
         for response in responses:
-            print('\n\n'+response)
-
+            print("\n\n" + response)
     return fp.chain_while(
-        bot=bot, 
-        prompt_list=prompts, 
-        stop_condition=fp.conditions.tool_not_used, 
-        continue_prompt='Once you have finished INSTRUCTION, write a brief summary of what you did and we will move to the next INSTRUCTION',
-        callback=print_responses
+        bot=bot,
+        prompt_list=prompts,
+        stop_condition=fp.conditions.tool_not_used,
+        continue_prompt="Once you have finished INSTRUCTION, write a brief "
+        "summary of what you did and we will move to the next INSTRUCTION",
+        callback=print_responses,
     )
-
 def main():
     """Coordinate parallel style fixing across all Python files.
     Use when you need to execute a full project style fix that:
@@ -247,24 +253,35 @@ def main():
     3. Executes style fixing for each file
     4. Reports progress
     """
-    print('## Finding Files ##')
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    print("## Finding Files ##")
+    project_root = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..")
+    )
     python_files = find_python_files(project_root)
-    print(f'Found {len(python_files)} Python files to style-fix')
+    print(f"Found {len(python_files)} Python files to style-fix")
     for file in python_files:
         rel_path = os.path.relpath(file, project_root)
-        print(f'- {rel_path}')
+        print(f"- {rel_path}")
     # Create bots for parallel processing with file-specific tools
-    print('## Creating bots ##')
-    bots = [create_style_fixer_bot(n, file, project_root) for n, file in enumerate(python_files)]
+    print("## Creating bots ##")
+    bots = [
+        create_style_fixer_bot(n, file, project_root)
+        for n, file in enumerate(python_files)
+    ]
     # Initialize each bot with its target file
     for bot, file in zip(bots, python_files):
         rel_path = os.path.relpath(file, project_root)
-        bot.respond(f"You are assigned to fix style issues in {rel_path}. This is your TARGET FILE. Respond with 'ok' if you understand but do not begin.")
+        bot.respond(
+            f"You are assigned to fix style issues in {rel_path}. This is "
+            f"your TARGET FILE. Respond with 'ok' if you understand but do "
+            f"not begin."
+        )
     # Execute style fixing in parallel
     print(f"\n## Starting parallel style fixing for {len(bots)} files... ##")
     fp.par_dispatch(bots, fix_file_style)
-    print("\n ## Style fixing complete! All files should now pass CI/CD style checks. ##")
-
-if __name__ == '__main__':
+    print(
+        "\n ## Style fixing complete! All files should now pass CI/CD "
+        "style checks. ##"
+    )
+if __name__ == "__main__":
     main()

@@ -149,7 +149,9 @@ class Engines(str, Enum):
             raise ValueError(f"Unsupported model engine: {model_engine}")
 
     @staticmethod
-    def get_conversation_node_class(class_name: str) -> Type["ConversationNode"]:
+    def get_conversation_node_class(
+        class_name: str
+    ) -> Type["ConversationNode"]:
         """Get the appropriate ConversationNode subclass by name.
 
         Use when you need to reconstruct conversation nodes from saved bot state.
@@ -166,10 +168,15 @@ class Engines(str, Enum):
         from bots.foundation.anthropic_bots import AnthropicNode
         from bots.foundation.openai_bots import OpenAINode
 
-        NODE_CLASS_MAP = {"OpenAINode": OpenAINode, "AnthropicNode": AnthropicNode}
+        NODE_CLASS_MAP = {
+            "OpenAINode": OpenAINode,
+            "AnthropicNode": AnthropicNode
+        }
         node_class = NODE_CLASS_MAP.get(class_name)
         if node_class is None:
-            raise ValueError(f"Unsupported conversation node type: {class_name}")
+            raise ValueError(
+                f"Unsupported conversation node type: {class_name}"
+            )
         return node_class
 
 
@@ -228,7 +235,9 @@ class ConversationNode:
             setattr(self, key, value)
 
     @staticmethod
-    def _create_empty(cls: Optional[Type["ConversationNode"]] = None) -> "ConversationNode":
+    def _create_empty(
+        cls: Optional[Type["ConversationNode"]] = None
+    ) -> "ConversationNode":
         """Create an empty root node.
 
         Use when initializing a new conversation tree that needs an empty root.
@@ -595,7 +604,9 @@ class ToolHandler(ABC):
         raise NotImplementedError("You must implement this method in a subclass")
 
     @abstractmethod
-    def tool_name_and_input(self, request_schema: Dict[str, Any]) -> Tuple[Optional[str], Dict[str, Any]]:
+    def tool_name_and_input(
+        self, request_schema: Dict[str, Any]
+    ) -> Tuple[Optional[str], Dict[str, Any]]:
         """Extract tool name and parameters from a request schema. Must be implemented per provider.
 
         Use to parse a tool request into components that can be used for execution.
@@ -622,7 +633,11 @@ class ToolHandler(ABC):
         raise NotImplementedError("You must implement this method in a subclass")
 
     @abstractmethod
-    def generate_response_schema(self, request: Dict[str, Any], tool_output_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_response_schema(
+        self,
+        request: Dict[str, Any],
+        tool_output_kwargs: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Generate a response schema from tool execution results. Must be implemented per provider.
 
         Use to format tool output in a way the LLM can understand and process.
@@ -646,7 +661,11 @@ class ToolHandler(ABC):
         raise NotImplementedError("You must implement this method in a subclass")
 
     @abstractmethod
-    def generate_error_schema(self, request_schema: Dict[str, Any], error_msg: str) -> Dict[str, Any]:
+    def generate_error_schema(
+        self,
+        request_schema: Dict[str, Any],
+        error_msg: str
+    ) -> Dict[str, Any]:
         """Generate an error response schema. Must be implemented per provider.
 
         Use to format error messages in a way the LLM can understand and handle appropriately.
@@ -736,16 +755,24 @@ class ToolHandler(ABC):
                     raise ToolNotFoundError(f"Tool '{tool_name}' not found in function map")
                 func = self.function_map[tool_name]
                 output_kwargs = func(**input_kwargs)
-                response_schema = self.generate_response_schema(request_schema, output_kwargs)
+                response_schema = self.generate_response_schema(
+                        request_schema, output_kwargs
+                    )
             except ToolNotFoundError as e:
                 error_msg = "Error: Tool not found.\n\n" + str(e)
-                response_schema = self.generate_error_schema(request_schema, error_msg)
+                response_schema = self.generate_error_schema(
+                        request_schema, error_msg
+                    )
             except TypeError as e:
                 error_msg = f"Invalid arguments for tool '{tool_name}': {str(e)}"
-                response_schema = self.generate_error_schema(request_schema, error_msg)
+                response_schema = self.generate_error_schema(
+                        request_schema, error_msg
+                    )
             except Exception as e:
                 error_msg = f"Unexpected error while executing tool '{tool_name}': {str(e)}"
-                response_schema = self.generate_error_schema(request_schema, error_msg)
+                response_schema = self.generate_error_schema(
+                        request_schema, error_msg
+                    )
             self.results.append(response_schema)
             results.append(response_schema)
         return results
@@ -795,8 +822,8 @@ class ToolHandler(ABC):
             try:
                 body = inspect.getsource(func).split("\n", 1)[1]
                 source += body
-            except:
-                source += f"    return func(*args, **kwargs)\n"
+            except Exception:
+                source += "    return func(*args, **kwargs)\n"
         else:
             source += "    pass\n"
         return source
@@ -1308,10 +1335,14 @@ class Mailbox(ABC):
             - May handle tool results depending on API requirements
             - Should respect bot.model_engine and other configuration
         """
-        raise NotImplemented("You must implement this method in a subclass")
+        raise NotImplementedError("You must implement this method in a subclass")
 
     @abstractmethod
-    def process_response(self, response: Dict[str, Any], bot: Optional["Bot"] = None) -> Tuple[str, str, Dict[str, Any]]:
+    def process_response(
+        self,
+        response: Dict[str, Any],
+        bot: Optional["Bot"] = None
+    ) -> Tuple[str, str, Dict[str, Any]]:
         """Process the raw LLM response into a standardized format.
 
         Use to convert service-specific response formats into a consistent structure
@@ -1338,7 +1369,13 @@ class Mailbox(ABC):
         """
         raise NotImplementedError("You must implement this method in a subclass")
 
-    def _log_outgoing(self, conversation: ConversationNode, model: Engines, max_tokens, temperature):
+    def _log_outgoing(
+        self,
+        conversation: ConversationNode,
+        model: Engines,
+        max_tokens,
+        temperature
+    ):
         log_message = {
             "date": formatted_datetime(),
             "messages": conversation._build_messages(),
@@ -1415,7 +1452,9 @@ class Bot(ABC):
         name: str,
         role: str,
         role_description: str,
-        conversation: Optional[ConversationNode] = ConversationNode._create_empty(),
+        conversation: Optional[ConversationNode] = (
+            ConversationNode._create_empty()
+        ),
         tool_handler: Optional[ToolHandler] = None,
         mailbox: Optional[Mailbox] = None,
         autosave: bool = True,
@@ -1477,7 +1516,9 @@ class Bot(ABC):
             response = bot.respond("Please read config.json")
             ```
         """
-        self.conversation = self.conversation._add_reply(content=prompt, role=role)
+        self.conversation = self.conversation._add_reply(
+            content=prompt, role=role
+        )
         if self.autosave:
             self.save(f"{self.name}")
         reply, _ = self._cvsn_respond()
@@ -1577,11 +1618,11 @@ class Bot(ABC):
         try:
             self.tool_handler.clear()
             response = self.mailbox.send_message(self)
-            requests = []
-            results = []
             _ = self.tool_handler.extract_requests(response)
             text, role, data = self.mailbox.process_response(response, self)
-            self.conversation = self.conversation._add_reply(content=text, role=role, **data)
+            self.conversation = self.conversation._add_reply(
+                content=text, role=role, **data
+            )
             self.conversation._add_tool_calls(self.tool_handler.requests)
             _ = self.tool_handler.exec_requests()
             self.conversation._add_tool_results(self.tool_handler.results)
@@ -1863,7 +1904,6 @@ class Bot(ABC):
                         tool_info.append(f"{indent}│   - {str(result.get('content', ''))[:available_width]}")
                     else:
                         raise ValueError()
-            tool_info_str = "\n".join(tool_info) if tool_info else ""
             messages.append(f"{indent}┌─ {name_display}")
             messages.append(wrapped_content)
             if hasattr(node, "tool_calls") and node.tool_calls:

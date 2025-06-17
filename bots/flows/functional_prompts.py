@@ -39,13 +39,11 @@ Example:
     ... ])
 """
 
-from typing import List, Callable, Any, Tuple, Optional, Union
-from bots.foundation.base import Bot
-from bots.foundation.base import ConversationNode
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
-from bots.flows.recombinators import recombinators
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Callable, List, Optional, Tuple, Union
 
+from bots.foundation.base import Bot, ConversationNode
 
 # Type Aliases
 Prompt = str  # A string containing a prompt to be sent to the bot
@@ -56,36 +54,32 @@ Condition = Callable[[Bot], bool]  # A function that evaluates a bot's state and
 DynamicPrompt = Callable[[Any], Prompt]  # A function that generates a prompt from some input
 
 RecombinatorFunction = Callable[
-    [List[Response], List[ResponseNode]], 
-    Tuple[Response, ResponseNode]
+    [List[Response], List[ResponseNode]], Tuple[Response, ResponseNode]
 ]  # A function that combines multiple responses into a single response
 
 FunctionalPrompt = Callable[
-    [Bot, Any], 
-    Union [ Tuple[Response, ResponseNode], 
-            Tuple[List[Response], List[ResponseNode]]
-          ]
-] # A function that acts on a Bot and returns a response or set of responses in the form of a tuple.
+    [Bot, Any], Union[Tuple[Response, ResponseNode], Tuple[List[Response], List[ResponseNode]]]
+]  # A function that acts on a Bot and returns a response or set of responses in the form of a tuple.
 
 
 class conditions:
     """Predefined condition functions for controlling bot iteration.
-    
+
     This class provides a collection of static methods that can be used as
     stop conditions in functions like prompt_while() and chain_while(). Each
     condition evaluates some aspect of the bot's state to determine whether
     iteration should continue.
-    
+
     Attributes:
         No instance attributes - all methods are static
-    
+
     Common Usage:
         >>> # Continue until bot stops using tools
         >>> prompt_while(bot, prompt, stop_condition=conditions.tool_not_used)
-        >>> 
+        >>>
         >>> # Continue until bot says "DONE"
         >>> chain_while(bot, prompts, stop_condition=conditions.said_DONE)
-    
+
     Note:
         Each condition function takes a Bot instance and returns a boolean.
         True typically indicates iteration should stop.
@@ -103,7 +97,7 @@ class conditions:
         Returns:
             bool: True if the response contains 'READY', False otherwise
         """
-        return 'READY' in bot.conversation.content
+        return "READY" in bot.conversation.content
 
     @staticmethod
     def five_iterations(bot: Bot):
@@ -118,11 +112,12 @@ class conditions:
         Returns:
             Callable[[Bot], bool]: A condition function with iteration counting
         """
-        iteration_count = {'count': 0}
-        
+        iteration_count = {"count": 0}
+
         def condition(bot: Bot) -> bool:
-            iteration_count['count'] += 1
-            return iteration_count['count'] >= 5
+            iteration_count["count"] += 1
+            return iteration_count["count"] >= 5
+
         return condition
 
     @staticmethod
@@ -137,7 +132,7 @@ class conditions:
         Returns:
             bool: True if no new tools were used compared to previous iteration
         """
-        if not hasattr(bot, '_previous_tools'):
+        if not hasattr(bot, "_previous_tools"):
             # First iteration - store current tools
             bot._previous_tools = set()
             if bot.tool_handler.requests:
@@ -145,18 +140,18 @@ class conditions:
                     tool_name, _ = bot.tool_handler.tool_name_and_input(request)
                     bot._previous_tools.add(tool_name)
             return False
-        
+
         # Get current tools
         current_tools = set()
         if bot.tool_handler.requests:
             for request in bot.tool_handler.requests:
                 tool_name, _ = bot.tool_handler.tool_name_and_input(request)
                 current_tools.add(tool_name)
-        
+
         # Check if any new tools were used
         new_tools = current_tools - bot._previous_tools
         bot._previous_tools = current_tools
-        
+
         return len(new_tools) == 0 and len(current_tools) > 0
 
     @staticmethod
@@ -172,9 +167,9 @@ class conditions:
             bool: True if the response contains error indicators
         """
         content = bot.conversation.content.lower()
-        error_indicators = ['error', 'failed', 'exception', 'traceback', 'syntax']
+        error_indicators = ["error", "failed", "exception", "traceback", "syntax"]
         return any(indicator in content for indicator in error_indicators)
-    
+
     def tool_used(bot: Bot) -> bool:
         """Check if the bot has used any tools in its last response.
 
@@ -214,7 +209,7 @@ class conditions:
         Returns:
             bool: True if the response contains 'DONE', False otherwise
         """
-        return 'DONE' in bot.conversation.content
+        return "DONE" in bot.conversation.content
 
 
 def single_prompt(bot: Bot, prompt: Prompt) -> Tuple[Response, ResponseNode]:
@@ -249,17 +244,17 @@ def single_prompt(bot: Bot, prompt: Prompt) -> Tuple[Response, ResponseNode]:
 
     Examples:
         >>> # Simple question and answer
-        >>> response, node = basic(bot, 
+        >>> response, node = basic(bot,
         ...     "What is the time complexity of quicksort?"
         ... )
         >>> print(response)
-        >>> 
+        >>>
         >>> # Tool usage
         >>> response, node = basic(bot,
         ...     "Review the code in main.py"
         ... )
         >>> print(node.tool_calls)  # See what tools were used
-        >>> 
+        >>>
         >>> # Access conversation context
         >>> response, node = basic(bot, "Analyze this.")
         >>> print(node.parent.content)  # See previous context
@@ -274,8 +269,10 @@ def single_prompt(bot: Bot, prompt: Prompt) -> Tuple[Response, ResponseNode]:
     node = bot.conversation
     return (response, node)
 
-def chain(bot: Bot, prompt_list: List[Prompt],
-    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None) -> Tuple[List[Response], List[ResponseNode]]:
+
+def chain(
+    bot: Bot, prompt_list: List[Prompt], callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
+) -> Tuple[List[Response], List[ResponseNode]]:
     """Execute a sequence of prompts that build on each other.
 
     Use when you need to:
@@ -299,7 +296,7 @@ def chain(bot: Bot, prompt_list: List[Prompt],
             - Keep a clear logical flow
             - Use explicit transitions between steps
         callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
-            A function (with arguments list[respose], list[node]) which is called 
+            A function (with arguments list[respose], list[node]) which is called
             after each response from the bot.
 
     Returns:
@@ -319,8 +316,9 @@ def chain(bot: Bot, prompt_list: List[Prompt],
     return responses, nodes
 
 
-def branch(bot: Bot, prompt_list: List[Prompt],
-    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None) -> Tuple[List[Response], List[ResponseNode]]:
+def branch(
+    bot: Bot, prompt_list: List[Prompt], callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
+) -> Tuple[List[Response], List[ResponseNode]]:
     """Create multiple independent conversation paths from the current state.
 
     Use when you need to:
@@ -344,7 +342,7 @@ def branch(bot: Bot, prompt_list: List[Prompt],
             - Be explicit about the perspective or approach
             - Maintain consistent depth across branches
         callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
-            A function (with arguments list[respose], list[node]) which is called 
+            A function (with arguments list[respose], list[node]) which is called
             after each response from the bot.
 
     Returns:
@@ -409,11 +407,7 @@ def branch(bot: Bot, prompt_list: List[Prompt],
 
 
 def recombine(
-    bot: Bot,
-    responses: List[Response],
-    nodes: List[ResponseNode],
-    recombinator_function: RecombinatorFunction,
-    **kwargs
+    bot: Bot, responses: List[Response], nodes: List[ResponseNode], recombinator_function: RecombinatorFunction, **kwargs
 ) -> Tuple[Response, ResponseNode]:
     """Synthesize multiple conversation branches into a unified conclusion.
 
@@ -442,7 +436,7 @@ def recombine(
         recombinator_function (RecombinatorFunction): Custom function that
             implements the synthesis logic. Must have signature:
             (List[Response], List[ResponseNode]) -> Tuple[Response, ResponseNode]
-            
+
             The function should:
             - Process all input responses
             - Consider their relationships
@@ -473,7 +467,7 @@ def recombine(
         ...     for r in responses:
         ...         confidence = r.count("definitely") + r.count("clearly")
         ...         weighted.append((confidence, r))
-        ...     
+        ...
         ...     # Sort by confidence and format
         ...     sorted_insights = [r for _, r in sorted(weighted, reverse=True)]
         ...     synthesis = "Synthesis (by confidence):\\n" + "\\n".join(
@@ -502,8 +496,8 @@ def recombine(
 def tree_of_thought(
     bot: Bot,
     prompts: List[Prompt],
-     recombinator_function: RecombinatorFunction,
-    callback: Optional[Callable[[Response, ResponseNode], None]] = None
+    recombinator_function: RecombinatorFunction,
+    callback: Optional[Callable[[Response, ResponseNode], None]] = None,
 ) -> Tuple[Response, ResponseNode]:
     """Implement tree-of-thought reasoning for complex problem-solving.
 
@@ -535,7 +529,7 @@ def tree_of_thought(
             - Resolve conflicts
             - Create a coherent synthesis
         callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
-            A function (with arguments list[respose], list[node]) which is called 
+            A function (with arguments list[respose], list[node]) which is called
             after each response from the bot.
 
     Returns:
@@ -598,9 +592,9 @@ def tree_of_thought(
 def prompt_while(
     bot: Bot,
     first_prompt: Prompt,
-    continue_prompt: Prompt = 'ok',
+    continue_prompt: Prompt = "ok",
     stop_condition: Condition = conditions.tool_not_used,
-    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None,
 ) -> Tuple[List[Response], List[ResponseNode]]:
     """Repeatedly engage a bot in a task until completion criteria are met.
 
@@ -638,7 +632,7 @@ def prompt_while(
             - conditions.said_DONE: Stop when bot indicates completion
             - Custom conditions for specific criteria
         callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
-            A function (with arguments list[respose], list[node]) which is called 
+            A function (with arguments list[respose], list[node]) which is called
             after each response from the bot.
 
     Returns:
@@ -702,20 +696,21 @@ def prompt_while(
                 pass  # Don't let callback errors break the main function
     return responses, nodes
 
+
 def prompt_for(
-    bot: Bot, 
-    items: List[Any], 
+    bot: Bot,
+    items: List[Any],
     dynamic_prompt: DynamicPrompt,
     should_branch: bool = False,
-    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None,
 ) -> Tuple[List[Response], List[ResponseNode]]:
     """Generate and process prompts dynamically from a list of items.
-    
+
     Use when you need to process a collection of items where each item requires
     its own customized prompt. This function enables data-driven conversation
     flows by combining dynamic prompt generation with either sequential or
     parallel processing strategies.
-    
+
     Args:
         bot (Bot): The bot to interact with
         items (List[Any]): List of items to process. Each item will be passed
@@ -728,7 +723,7 @@ def prompt_for(
             - If False (default): Processes items sequentially in the same
               conversation (i.e. a chain), maintaining cumulative context
         callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
-            A function (with arguments list[respose], list[node]) which is called 
+            A function (with arguments list[respose], list[node]) which is called
             after each response from the bot.
 
     Returns:
@@ -736,7 +731,7 @@ def prompt_for(
             - responses: List[str] - Bot's responses, one per input item
             - nodes: List[ConversationNode] - Conversation nodes containing
               the responses and their context
-    
+
     Example:
         >>> # Define a prompt generator
         >>> def review_prompt(file_path: str) -> str:
@@ -749,7 +744,7 @@ def prompt_for(
         ...     review_prompt,
         ...     should_branch=True
         ... )
-        >>> 
+        >>>
         >>> # Process sequentially, building on previous context
         >>> responses, nodes = prompt_for(
         ...     bot,
@@ -757,7 +752,7 @@ def prompt_for(
         ...     lambda step: f"Complete {step}...",
         ...     should_branch=False
         ... )
-    
+
     Note:
         When should_branch is True, this function uses branch() internally,
         allowing parallel exploration of items. When False, it uses chain(),
@@ -774,8 +769,8 @@ def chain_while(
     bot: Bot,
     prompt_list: List[Prompt],
     stop_condition: Condition = conditions.tool_not_used,
-    continue_prompt: str = 'ok',
-    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
+    continue_prompt: str = "ok",
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None,
 ) -> Tuple[List[Response], List[ResponseNode]]:
     """Execute a sequence of steps where each step can iterate until complete.
 
@@ -814,7 +809,7 @@ def chain_while(
             - "Keep going until complete..."
             - "Any more improvements needed?"
         callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
-            A function (with arguments list[respose], list[node]) which is called 
+            A function (with arguments list[respose], list[node]) which is called
             after each response from the bot.
 
 
@@ -880,21 +875,22 @@ def chain_while(
                 pass  # Don't let callback errors break the main function
     return responses, nodes
 
+
 def branch_while(
-    bot: Bot, 
+    bot: Bot,
     prompt_list: List[Prompt],
     stop_condition: Condition = conditions.tool_not_used,
-    continue_prompt: str = 'ok',
-    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
+    continue_prompt: str = "ok",
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None,
 ) -> Tuple[List[Response], List[ResponseNode]]:
     """Create parallel conversation branches with independent iteration control.
-    
+
     Use when you need to explore multiple iterative processes independently,
     where each process may require a different number of steps to complete.
     This function combines the parallel exploration capability of branch()
     with the iterative control of prompt_while(), allowing multiple
     concurrent processes to run until they individually reach completion.
-    
+
     Args:
         bot (Bot): The bot to interact with
         prompt_list (List[Prompt]): Initial prompts that start each branch.
@@ -908,9 +904,9 @@ def branch_while(
             after the first when a branch hasn't met its stop condition.
             Defaults to 'ok'
         callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
-            A function (with arguments list[respose], list[node]) which is called 
+            A function (with arguments list[respose], list[node]) which is called
             after each response from the bot.
-    
+
     Returns:
         Tuple[List[Response], List[ResponseNode]]: A tuple containing:
             - responses: List[str] - Final responses from each branch,
@@ -918,7 +914,7 @@ def branch_while(
             - nodes: List[ConversationNode] - Conversation nodes containing
               the final responses and their full iteration history
             Note: Failed branches return (None, None) at their positions
-    
+
     Examples:
         >>> # Optimize multiple functions until they're "DONE"
         >>> responses, nodes = branch_while(
@@ -943,7 +939,7 @@ def branch_while(
         ...     stop_condition=conditions.tool_not_used,
         ...     continue_prompt="Continue reviewing and fixing"
         ... )
-    
+
     Note:
         Each branch maintains its own conversation context and can iterate
         a different number of times. This is useful when some tasks may
@@ -960,7 +956,7 @@ def branch_while(
                 response = bot.respond(continue_prompt)
                 if callback:
                     try:
-                        callback([response],[bot.conversation])
+                        callback([response], [bot.conversation])
                     except Exception:
                         pass  # Don't let callback errors break the main function
             node = bot.conversation
@@ -974,30 +970,28 @@ def branch_while(
 
 
 def par_branch(
-    bot: Bot, 
-    prompts: List[Prompt],
-    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
+    bot: Bot, prompts: List[Prompt], callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
 ) -> Tuple[List[Response], List[ResponseNode]]:
     """Create and process multiple conversation branches in parallel.
-    
+
     Use when you need to explore multiple lines of thinking simultaneously and
     want to leverage multiple CPU cores for faster processing. This is the
     parallel version of branch(), providing the same functionality but with
     improved performance for multiple prompts.
-    
+
     Args:
         bot (Bot): The bot to interact with
         prompts (List[Prompt]): List of prompts to process in parallel
         callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
-            A function (with arguments list[respose], list[node]) which is called 
+            A function (with arguments list[respose], list[node]) which is called
             after each response from the bot.
-    
+
     Returns:
         Tuple[List[Response], List[ResponseNode]]: A tuple containing:
             - List of responses, one per prompt
             - List of conversation nodes containing those responses
             Note: Failed branches return (None, None) at their positions
-    
+
     Example:
         responses, nodes = par_branch(
             bot,
@@ -1008,7 +1002,7 @@ def par_branch(
                 "Audit dependencies..."
             ]
         )
-    
+
     Note:
         This function temporarily disables bot autosave and creates a temporary
         file to facilitate parallel processing. The file is cleaned up after
@@ -1018,7 +1012,7 @@ def par_branch(
     original_autosave = bot.autosave
     original_conversation = bot.conversation
     bot.autosave = False
-    temp_file = 'temp_bot.bot'
+    temp_file = "temp_bot.bot"
     bot.save(temp_file)
     responses = [None] * len(prompts)
     nodes = [None] * len(prompts)
@@ -1046,7 +1040,7 @@ def par_branch(
             idx, response, node = future.result()
             responses[idx] = response
             nodes[idx] = node
-    
+
     bot.autosave = original_autosave
     try:
         os.remove(temp_file)
@@ -1056,16 +1050,16 @@ def par_branch(
 
 
 def par_branch_while(
-    bot: Bot, 
+    bot: Bot,
     prompt_list: List[Prompt],
     stop_condition: Condition = conditions.tool_not_used,
-    continue_prompt: str = 'ok',
-    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
+    continue_prompt: str = "ok",
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None,
 ) -> Tuple[List[Response], List[ResponseNode]]:
     """Execute multiple iterative conversation branches in parallel threads.
 
-    Use when you need to explore multiple iterative processes simultaneously 
-    This is the parallel processing version of branch_while(), using 
+    Use when you need to explore multiple iterative processes simultaneously
+    This is the parallel processing version of branch_while(), using
     ThreadPoolExecutor to run multiple conversation branches concurrently.
 
     Performance Benefits:
@@ -1081,13 +1075,13 @@ def par_branch_while(
             in its own thread
         stop_condition (Condition, optional): Function that determines when
             each branch should stop iterating. Takes a Bot parameter and
-            returns bool. Must be thread-safe. Defaults to 
+            returns bool. Must be thread-safe. Defaults to
             conditions.tool_not_used
         continue_prompt (str, optional): Prompt to send for each iteration
             after the first when a branch hasn't met its stop condition.
             Defaults to 'ok'
         callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
-            A function (with arguments list[respose], list[node]) which is called 
+            A function (with arguments list[respose], list[node]) which is called
             after each response from the bot.
 
     Returns:
@@ -1134,7 +1128,7 @@ def par_branch_while(
     original_autosave = bot.autosave
     original_conversation = bot.conversation
     bot.autosave = False
-    temp_file = 'temp_bot.bot'
+    temp_file = "temp_bot.bot"
     bot.save(temp_file)
     responses = [None] * len(prompt_list)
     nodes = [None] * len(prompt_list)
@@ -1163,7 +1157,7 @@ def par_branch_while(
             idx, response, node = future.result()
             responses[idx] = response
             nodes[idx] = node
-    
+
     bot.autosave = original_autosave
     try:
         os.remove(temp_file)
@@ -1173,9 +1167,7 @@ def par_branch_while(
 
 
 def par_dispatch(
-    bot_list: List[Bot],
-    functional_prompt: Callable[[Bot, Any], Tuple[Response, ResponseNode]],
-     **kwargs: Any
+    bot_list: List[Bot], functional_prompt: Callable[[Bot, Any], Tuple[Response, ResponseNode]], **kwargs: Any
 ) -> List[Tuple[Optional[Response], Optional[ResponseNode]]]:
     """Execute a functional prompt pattern across multiple bots in parallel.
 
@@ -1194,7 +1186,7 @@ def par_dispatch(
             can be a different type (AnthropicBot, OpenAIBot, etc.) or the
             same type with different configurations
         functional_prompt (Callable[[Bot, ...], Tuple[Response, ResponseNode]]):
-            Any function from this module that takes a bot as its first 
+            Any function from this module that takes a bot as its first
             argument. Common choices include:
             - chain: For sequential processing
             - branch: For parallel exploration
@@ -1258,8 +1250,9 @@ def par_dispatch(
         for future in as_completed(futures):
             idx, result = future.result()
             results[idx] = result
-    
+
     return results
+
 
 def broadcast_to_leaves(
     bot: Bot,
@@ -1267,7 +1260,7 @@ def broadcast_to_leaves(
     skip: List[str],
     continue_prompt: Optional[Prompt] = None,
     stop_condition: Optional[Condition] = None,
-    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
+    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None,
 ) -> Tuple[List[Response], List[ResponseNode]]:
     """Send a prompt to all leaf nodes in parallel, with optional iteration."""
     from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -1275,7 +1268,7 @@ def broadcast_to_leaves(
     original_autosave = bot.autosave
     original_conversation = bot.conversation
     bot.autosave = False
-    temp_file = 'temp_broadcast_bot.bot'
+    temp_file = "temp_broadcast_bot.bot"
     bot.save(temp_file)
 
     # Find all leaf nodes starting from current position
@@ -1294,7 +1287,7 @@ def broadcast_to_leaves(
     target_leaves = []
     for leaf in all_leaves:
         should_skip = False
-        if hasattr(leaf, 'labels'):
+        if hasattr(leaf, "labels"):
             for label in leaf.labels:
                 if label in skip:
                     should_skip = True
@@ -1351,145 +1344,142 @@ def broadcast_to_leaves(
 
 
 def broadcast_fp(
-   bot: Bot,
-   functional_prompt: FunctionalPrompt,
-   skip: List[str] = None,
-   **kwargs: Any
+    bot: Bot, functional_prompt: FunctionalPrompt, skip: List[str] = None, **kwargs: Any
 ) -> Tuple[List[Response], List[ResponseNode]]:
-   """Execute a functional prompt on all leaf nodes in parallel.
-    
-   Use when you need to:
-   - Apply the same functional prompt pattern to all conversation endpoints
-   - Process multiple conversation branches with the same complex operation
-   - Gather results from all leaves using sophisticated prompting patterns
-   - Scale functional prompt patterns across conversation trees
-    
-   This function finds all leaf nodes from the current conversation position
-   and executes the specified functional prompt on each leaf independently
-   in parallel threads.
-    
-   Args:
-       bot (Bot): The bot to interact with
-       functional_prompt (FunctionalPrompt): Any functional prompt function
-           from this module (chain, branch, tree_of_thought, etc.)
-       skip (List[str], optional): List of labels to skip. Leaves with any
-           of these labels will not be processed. Defaults to empty list.
-       **kwargs: Additional arguments to pass to the functional prompt.
-           These must match the signature of the chosen functional_prompt
-            
-   Returns:
-       Tuple[List[Response], List[ResponseNode]]: A tuple containing:
-           - responses: List of responses from each leaf (None for failed/skipped)
-           - nodes: List of conversation nodes from each leaf (None for failed/skipped)
-            
-   Examples:
-       >>> # Chain prompts on all leaves
-       >>> responses, nodes = broadcast_fp(
-       ...     bot,
-       ...     chain,
-       ...     prompts=["Analyze this...", "Summarize findings..."]
-       ... )
-       >>>
-       >>> # Tree of thought on all leaves
-       >>> responses, nodes = broadcast_fp(
-       ...     bot,
-       ...     tree_of_thought,
-       ...     prompts=["Consider approach A...", "Consider approach B..."],
-       ...     recombinator_function=my_recombinator
-       ... )
-       >>>
-       >>> # Skip certain labeled leaves
-       >>> responses, nodes = broadcast_fp(
-       ...     bot,
-       ...     single_prompt,
-       ...     skip=["draft", "incomplete"],
-       ...     prompt="Finalize this work..."
-       ... )
-   """
-   from concurrent.futures import ThreadPoolExecutor, as_completed
-    
-   if skip is None:
-       skip = []
-    
-   original_autosave = bot.autosave
-   original_conversation = bot.conversation
-   bot.autosave = False
-   temp_file = 'temp_broadcast_fp_bot.bot'
-   bot.save(temp_file)
-    
-   # Find all leaf nodes starting from current position
-   def find_leaves(node: ConversationNode) -> List[ConversationNode]:
-       """Recursively find all leaf nodes from the given node."""
-       if not node.replies:
-           return [node]
-       leaves = []
-       for reply in node.replies:
-           leaves.extend(find_leaves(reply))
-       return leaves
-    
-   all_leaves = find_leaves(bot.conversation)
-    
-   # Filter out skipped leaves based on labels
-   target_leaves = []
-   for leaf in all_leaves:
-       should_skip = False
-       if hasattr(leaf, 'labels'):
-           for label in leaf.labels:
-               if label in skip:
-                   should_skip = True
-                   break
-       if not should_skip:
-           target_leaves.append(leaf)
-    
-   responses = [None] * len(target_leaves)
-   nodes = [None] * len(target_leaves)
-    
-   def process_leaf(index: int, leaf: ConversationNode):
-       """Process a single leaf node with the functional prompt."""
-       try:
-           leaf_bot = Bot.load(temp_file)
-           leaf_bot.autosave = False
-           leaf_bot.conversation = leaf
-            
-           # Execute the functional prompt on this leaf
-           result = functional_prompt(leaf_bot, **kwargs)
-            
-           # Handle different return types from functional prompts
-           if isinstance(result, tuple) and len(result) == 2:
-               if isinstance(result[0], list):
-                   # Multiple responses (like from chain, branch)
-                   final_response = result[0][-1] if result[0] else None
-                   final_node = result[1][-1] if result[1] else None
-               else:
-                   # Single response (like from single_prompt, tree_of_thought)
-                   final_response = result[0]
-                   final_node = result[1]
-           else:
-               final_response = None
-               final_node = None
-            
-           if final_node:
-               final_node.parent = original_conversation
-               original_conversation.replies.append(final_node)
-            
-           return index, final_response, final_node
-       except Exception:
-           return index, None, None
-    
-   # Process all leaves in parallel
-   with ThreadPoolExecutor() as executor:
-       futures = [executor.submit(process_leaf, i, leaf) for i, leaf in enumerate(target_leaves)]
-       for future in as_completed(futures):
-           idx, response, node = future.result()
-           responses[idx] = response
-           nodes[idx] = node
-    
-   # Restore bot state
-   bot.autosave = original_autosave
-   bot.conversation = original_conversation
-   try:
-       os.remove(temp_file)
-   except:
-       pass
-    
-   return responses, nodes
+    """Execute a functional prompt on all leaf nodes in parallel.
+
+    Use when you need to:
+    - Apply the same functional prompt pattern to all conversation endpoints
+    - Process multiple conversation branches with the same complex operation
+    - Gather results from all leaves using sophisticated prompting patterns
+    - Scale functional prompt patterns across conversation trees
+
+    This function finds all leaf nodes from the current conversation position
+    and executes the specified functional prompt on each leaf independently
+    in parallel threads.
+
+    Args:
+        bot (Bot): The bot to interact with
+        functional_prompt (FunctionalPrompt): Any functional prompt function
+            from this module (chain, branch, tree_of_thought, etc.)
+        skip (List[str], optional): List of labels to skip. Leaves with any
+            of these labels will not be processed. Defaults to empty list.
+        **kwargs: Additional arguments to pass to the functional prompt.
+            These must match the signature of the chosen functional_prompt
+
+    Returns:
+        Tuple[List[Response], List[ResponseNode]]: A tuple containing:
+            - responses: List of responses from each leaf (None for failed/skipped)
+            - nodes: List of conversation nodes from each leaf (None for failed/skipped)
+
+    Examples:
+        >>> # Chain prompts on all leaves
+        >>> responses, nodes = broadcast_fp(
+        ...     bot,
+        ...     chain,
+        ...     prompts=["Analyze this...", "Summarize findings..."]
+        ... )
+        >>>
+        >>> # Tree of thought on all leaves
+        >>> responses, nodes = broadcast_fp(
+        ...     bot,
+        ...     tree_of_thought,
+        ...     prompts=["Consider approach A...", "Consider approach B..."],
+        ...     recombinator_function=my_recombinator
+        ... )
+        >>>
+        >>> # Skip certain labeled leaves
+        >>> responses, nodes = broadcast_fp(
+        ...     bot,
+        ...     single_prompt,
+        ...     skip=["draft", "incomplete"],
+        ...     prompt="Finalize this work..."
+        ... )
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    if skip is None:
+        skip = []
+
+    original_autosave = bot.autosave
+    original_conversation = bot.conversation
+    bot.autosave = False
+    temp_file = "temp_broadcast_fp_bot.bot"
+    bot.save(temp_file)
+
+    # Find all leaf nodes starting from current position
+    def find_leaves(node: ConversationNode) -> List[ConversationNode]:
+        """Recursively find all leaf nodes from the given node."""
+        if not node.replies:
+            return [node]
+        leaves = []
+        for reply in node.replies:
+            leaves.extend(find_leaves(reply))
+        return leaves
+
+    all_leaves = find_leaves(bot.conversation)
+
+    # Filter out skipped leaves based on labels
+    target_leaves = []
+    for leaf in all_leaves:
+        should_skip = False
+        if hasattr(leaf, "labels"):
+            for label in leaf.labels:
+                if label in skip:
+                    should_skip = True
+                    break
+        if not should_skip:
+            target_leaves.append(leaf)
+
+    responses = [None] * len(target_leaves)
+    nodes = [None] * len(target_leaves)
+
+    def process_leaf(index: int, leaf: ConversationNode):
+        """Process a single leaf node with the functional prompt."""
+        try:
+            leaf_bot = Bot.load(temp_file)
+            leaf_bot.autosave = False
+            leaf_bot.conversation = leaf
+
+            # Execute the functional prompt on this leaf
+            result = functional_prompt(leaf_bot, **kwargs)
+
+            # Handle different return types from functional prompts
+            if isinstance(result, tuple) and len(result) == 2:
+                if isinstance(result[0], list):
+                    # Multiple responses (like from chain, branch)
+                    final_response = result[0][-1] if result[0] else None
+                    final_node = result[1][-1] if result[1] else None
+                else:
+                    # Single response (like from single_prompt, tree_of_thought)
+                    final_response = result[0]
+                    final_node = result[1]
+            else:
+                final_response = None
+                final_node = None
+
+            if final_node:
+                final_node.parent = original_conversation
+                original_conversation.replies.append(final_node)
+
+            return index, final_response, final_node
+        except Exception:
+            return index, None, None
+
+    # Process all leaves in parallel
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(process_leaf, i, leaf) for i, leaf in enumerate(target_leaves)]
+        for future in as_completed(futures):
+            idx, response, node = future.result()
+            responses[idx] = response
+            nodes[idx] = node
+
+    # Restore bot state
+    bot.autosave = original_autosave
+    bot.conversation = original_conversation
+    try:
+        os.remove(temp_file)
+    except:
+        pass
+
+    return responses, nodes

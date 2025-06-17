@@ -1,40 +1,56 @@
 import ast
 import os
-from bots.utils.helpers import _process_error, _clean, _py_ast_to_source
+
 from bots.dev.decorators import handle_errors
+from bots.utils.helpers import _clean, _process_error, _py_ast_to_source
+
+
 class NodeTransformerWithAsyncSupport(ast.NodeTransformer):
     """Base class for AST transformers that need to handle both sync and async functions."""
+
     def __init__(self):
         self.success = False
+
     def visit_FunctionDef(self, node):
         return self._handle_function(node)
+
     def visit_AsyncFunctionDef(self, node):
         return self._handle_function(node)
+
     def _handle_function(self, node):
         """Override this method in subclasses to implement specific transformation logic"""
         raise NotImplementedError
+
+
 class FunctionReplacer(NodeTransformerWithAsyncSupport):
     def __init__(self, new_func_node):
         super().__init__()
         self.new_func_node = new_func_node
+
     def _handle_function(self, node):
         if node.name == self.new_func_node.name:
             self.success = True
             return self.new_func_node
         return node
+
+
 class MethodAdder(NodeTransformerWithAsyncSupport):
     def __init__(self, class_name, new_method_node):
         super().__init__()
         self.class_name = class_name
         self.new_method_node = new_method_node
+
     def visit_ClassDef(self, node):
         if node.name == self.class_name:
             self.success = True
             node.body.append(self.new_method_node)
             return node
         return node
+
     def _handle_function(self, node):
         return node
+
+
 @handle_errors
 def add_imports(file_path: str, code: str) -> str:
     """
@@ -47,7 +63,7 @@ def add_imports(file_path: str, code: str) -> str:
     cost: very low
     """
     abs_path = _make_file(file_path)
-    lines = code.strip().split('\n')
+    lines = code.strip().split("\n")
     import_blocks = []
     current_block = []
     in_parentheses = False
@@ -55,13 +71,13 @@ def add_imports(file_path: str, code: str) -> str:
         stripped = line.strip()
         if not stripped:
             continue
-        if '(' in stripped and (not stripped.endswith(')')):
+        if "(" in stripped and (not stripped.endswith(")")):
             in_parentheses = True
             current_block.append(stripped)
-        elif ')' in stripped and in_parentheses:
+        elif ")" in stripped and in_parentheses:
             in_parentheses = False
             current_block.append(stripped)
-            import_blocks.append('\n'.join(current_block))
+            import_blocks.append("\n".join(current_block))
             current_block = []
         elif in_parentheses:
             current_block.append(stripped)
@@ -70,25 +86,27 @@ def add_imports(file_path: str, code: str) -> str:
         else:
             import_blocks.append(stripped)
     if current_block:
-        import_blocks.append('\n'.join(current_block))
+        import_blocks.append("\n".join(current_block))
     new_import_nodes = []
     for stmt in import_blocks:
         node = ast.parse(_clean(stmt)).body[0]
         if not isinstance(node, (ast.Import, ast.ImportFrom)):
-            raise ValueError(f'Invalid import statement: {stmt}')
+            raise ValueError(f"Invalid import statement: {stmt}")
         new_import_nodes.append(node)
-    with open(abs_path, 'r', encoding='utf-8') as file:
+    with open(abs_path, "r", encoding="utf-8") as file:
         content = file.read()
     if not content.strip():
-        with open(abs_path, 'w', encoding='utf-8') as file:
-            file.write('\n'.join(import_blocks) + '\n')
+        with open(abs_path, "w", encoding="utf-8") as file:
+            file.write("\n".join(import_blocks) + "\n")
         return f"{len(import_blocks)} imports have been added to new file '{abs_path}'."
     tree = ast.parse(content)
     added_imports = []
     existing_imports = []
+
     def normalize_import(node):
         """Helper to normalize import node to string for comparison"""
-        return _py_ast_to_source(node).strip().replace(' ', '')
+        return _py_ast_to_source(node).strip().replace(" ", "")
+
     for new_node in new_import_nodes:
         new_stmt_normalized = normalize_import(new_node)
         is_duplicate = False
@@ -110,16 +128,18 @@ def add_imports(file_path: str, code: str) -> str:
                 tree.body.insert(last_import_idx + 1, node)
                 last_import_idx += 1
         updated_content = _py_ast_to_source(tree)
-        with open(abs_path, 'w', encoding='utf-8') as file:
+        with open(abs_path, "w", encoding="utf-8") as file:
             file.write(updated_content)
     result_parts = []
     if added_imports:
         result_parts.append(f"Added {len(added_imports)} new imports to '{abs_path}'")
     if existing_imports:
-        result_parts.append(f'Found {len(existing_imports)} existing imports')
+        result_parts.append(f"Found {len(existing_imports)} existing imports")
     if not result_parts:
-        raise ValueError('No valid import statements found')
-    return '. '.join(result_parts) + '.'
+        raise ValueError("No valid import statements found")
+    return ". ".join(result_parts) + "."
+
+
 @handle_errors
 def remove_import(file_path: str, import_to_remove: str) -> str:
     """
@@ -132,11 +152,11 @@ def remove_import(file_path: str, import_to_remove: str) -> str:
     cost: very low
     """
     if not os.path.exists(file_path):
-        raise ValueError(f'File {file_path} does not exist')
+        raise ValueError(f"File {file_path} does not exist")
     remove_node = ast.parse(import_to_remove).body[0]
     if not isinstance(remove_node, (ast.Import, ast.ImportFrom)):
-        raise ValueError('Provided statement is not a valid import')
-    with open(file_path, 'r', encoding='utf-8') as file:
+        raise ValueError("Provided statement is not a valid import")
+    with open(file_path, "r", encoding="utf-8") as file:
         content = file.read()
     tree = ast.parse(content)
     original_length = len(tree.body)
@@ -153,9 +173,11 @@ def remove_import(file_path: str, import_to_remove: str) -> str:
         return f"Import '{import_to_remove}' not found in '{file_path}'."
     tree.body = new_body
     updated_content = _py_ast_to_source(tree)
-    with open(file_path, 'w', encoding='utf-8') as file:
+    with open(file_path, "w", encoding="utf-8") as file:
         file.write(updated_content)
     return f"Import '{import_to_remove}' has been removed from '{file_path}'."
+
+
 @handle_errors
 def replace_import(file_path: str, old_import: str, new_import: str) -> str:
     """
@@ -168,12 +190,12 @@ def replace_import(file_path: str, old_import: str, new_import: str) -> str:
     cost: very low
     """
     if not os.path.exists(file_path):
-        raise ValueError(f'File {file_path} does not exist')
+        raise ValueError(f"File {file_path} does not exist")
     old_node = ast.parse(_clean(old_import)).body[0]
     new_node = ast.parse(_clean(new_import)).body[0]
     if not isinstance(old_node, (ast.Import, ast.ImportFrom)) or not isinstance(new_node, (ast.Import, ast.ImportFrom)):
-        raise ValueError('Both statements must be valid imports')
-    with open(file_path, 'r', encoding='utf-8') as file:
+        raise ValueError("Both statements must be valid imports")
+    with open(file_path, "r", encoding="utf-8") as file:
         content = file.read()
     tree = ast.parse(content)
     found = False
@@ -187,9 +209,11 @@ def replace_import(file_path: str, old_import: str, new_import: str) -> str:
     if not found:
         return f"Import '{old_import}' not found in '{file_path}'."
     updated_content = _py_ast_to_source(tree)
-    with open(file_path, 'w', encoding='utf-8') as file:
+    with open(file_path, "w", encoding="utf-8") as file:
         file.write(updated_content)
     return f"Import '{old_import}' has been updated to '{new_import}' in '{file_path}'."
+
+
 @handle_errors
 def add_class(file_path: str, class_def: str) -> str:
     """
@@ -209,17 +233,19 @@ def add_class(file_path: str, class_def: str) -> str:
         elif isinstance(node, ast.ClassDef):
             new_class_node = node
     if new_class_node is None:
-        raise ValueError('No class definition found in provided code')
-    with open(abs_path, 'r', encoding='utf-8') as file:
+        raise ValueError("No class definition found in provided code")
+    with open(abs_path, "r", encoding="utf-8") as file:
         content = file.read()
     tree = ast.parse(content)
     tree.body.append(new_class_node)
     updated_content = _py_ast_to_source(tree)
-    with open(abs_path, 'w', encoding='utf-8') as file:
+    with open(abs_path, "w", encoding="utf-8") as file:
         file.write(updated_content)
     return f"Class '{new_class_node.name}' has been added to '{abs_path}'."
+
+
 @handle_errors
-def replace_class(file_path: str, new_class_def: str, old_class_name: str=None) -> str:
+def replace_class(file_path: str, new_class_def: str, old_class_name: str = None) -> str:
     """
     Replaces a class definition in a file with a new class definition.
     Parameters:
@@ -240,27 +266,32 @@ def replace_class(file_path: str, new_class_def: str, old_class_name: str=None) 
             if old_class_name is None:
                 old_class_name = node.name
     if new_class_node is None:
-        raise ValueError('No class definition found in provided code')
-    with open(abs_path, 'r', encoding='utf-8') as file:
+        raise ValueError("No class definition found in provided code")
+    with open(abs_path, "r", encoding="utf-8") as file:
         content = file.read()
     tree = ast.parse(content)
+
     class ClassReplacer(NodeTransformerWithAsyncSupport):
         def visit_ClassDef(self, node):
             if node.name == old_class_name:
                 self.success = True
                 return new_class_node
             return node
+
         def _handle_function(self, node):
             return node
+
     transformer = ClassReplacer()
     tree = transformer.visit(tree)
     if not transformer.success:
         tree.body.append(new_class_node)
     updated_content = _py_ast_to_source(tree)
-    with open(abs_path, 'w', encoding='utf-8') as file:
+    with open(abs_path, "w", encoding="utf-8") as file:
         file.write(updated_content)
-    action = 'replaced in' if transformer.success else 'added to'
+    action = "replaced in" if transformer.success else "added to"
     return f"Class '{new_class_node.name}' has been {action} '{abs_path}'."
+
+
 @handle_errors
 def add_function_to_class(file_path: str, class_name: str, new_method_def: str) -> str:
     """
@@ -285,10 +316,12 @@ def add_function_to_class(file_path: str, class_name: str, new_method_def: str) 
             result = _add_single_function_to_class(file_path, class_name, method_source)
             messages.append(result)
     if not found_method:
-        raise ValueError('No method definitions found in provided code')
-    return '\n'.join(messages)
+        raise ValueError("No method definitions found in provided code")
+    return "\n".join(messages)
+
+
 @handle_errors
-def add_function_to_file(file_path: str, new_function_def: str, class_name: str=None) -> str:
+def add_function_to_file(file_path: str, new_function_def: str, class_name: str = None) -> str:
     """
     Adds one or more function definitions to an existing Python file.
     When adding complex code blocks:
@@ -322,19 +355,21 @@ def add_function_to_file(file_path: str, new_function_def: str, class_name: str=
         elif not isinstance(node, (ast.Import, ast.ImportFrom)):
             remaining_nodes.append(node)
     if not found_function:
-        raise ValueError('No function definitions found in provided code')
+        raise ValueError("No function definitions found in provided code")
     if remaining_nodes:
-        with open(file_path, 'r', encoding='utf-8') as file:
+        with open(file_path, "r", encoding="utf-8") as file:
             content = file.read()
         existing_tree = ast.parse(content)
         existing_tree.body.extend(remaining_nodes)
         updated_content = _py_ast_to_source(existing_tree)
-        with open(file_path, 'w', encoding='utf-8') as file:
+        with open(file_path, "w", encoding="utf-8") as file:
             file.write(updated_content)
-        messages.append(f'Added {len(remaining_nodes)} additional code blocks')
-    return '\n'.join(messages)
+        messages.append(f"Added {len(remaining_nodes)} additional code blocks")
+    return "\n".join(messages)
+
+
 @handle_errors
-def replace_function(file_path: str, new_function_def: str, class_name: str=None) -> str:
+def replace_function(file_path: str, new_function_def: str, class_name: str = None) -> str:
     """
     Replaces one or more function definitions in a file with new function definitions.
     Parameters:
@@ -357,8 +392,10 @@ def replace_function(file_path: str, new_function_def: str, class_name: str=None
             result = _replace_single_function(file_path, function_source, class_name)
             messages.append(result)
     if not found_function:
-        raise ValueError('No function definitions found in provided code')
-    return '\n'.join(messages)
+        raise ValueError("No function definitions found in provided code")
+    return "\n".join(messages)
+
+
 def _make_file(file_path: str) -> str:
     """
     Creates a file and its parent directories if they don't exist.
@@ -372,15 +409,17 @@ def _make_file(file_path: str) -> str:
                  or if the file_path is empty
     """
     if not file_path:
-        raise ValueError('File path cannot be empty')
+        raise ValueError("File path cannot be empty")
     abs_path = os.path.abspath(file_path)
     dir_path = os.path.dirname(abs_path)
     if dir_path:
         os.makedirs(dir_path, exist_ok=True)
     if not os.path.exists(abs_path):
-        with open(abs_path, 'w', encoding='utf-8') as f:
-            f.write('')
+        with open(abs_path, "w", encoding="utf-8") as f:
+            f.write("")
     return abs_path
+
+
 @handle_errors
 def _add_single_function_to_class(file_path: str, class_name: str, new_method_def: str) -> str:
     """Adds a single method to a class."""
@@ -393,20 +432,22 @@ def _add_single_function_to_class(file_path: str, class_name: str, new_method_de
         elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             new_method_node = node
     if new_method_node is None:
-        raise ValueError('No method definition found in provided code')
-    with open(abs_path, 'r', encoding='utf-8') as file:
+        raise ValueError("No method definition found in provided code")
+    with open(abs_path, "r", encoding="utf-8") as file:
         content = file.read()
     if not content.strip():
-        content = f'class {class_name}:\n    pass\n'
+        content = f"class {class_name}:\n    pass\n"
     tree = ast.parse(content)
     transformer = MethodAdder(class_name, new_method_node)
     tree = transformer.visit(tree)
     if not transformer.success:
         raise ValueError(f"Class '{class_name}' not found in the file.")
     updated_content = _py_ast_to_source(tree)
-    with open(abs_path, 'w', encoding='utf-8') as file:
+    with open(abs_path, "w", encoding="utf-8") as file:
         file.write(updated_content)
     return f"Method '{new_method_node.name}' has been added to class '{class_name}' in '{abs_path}'."
+
+
 @handle_errors
 def _add_single_function_to_file(file_path: str, new_function_def: str) -> str:
     """Adds a single function and preserves all code blocks, including any code following the function."""
@@ -422,11 +463,11 @@ def _add_single_function_to_file(file_path: str, new_function_def: str) -> str:
         elif found_func:
             new_nodes.append(node)
     if not new_func_node:
-        raise ValueError('No function definition found in provided code')
-    with open(abs_path, 'r', encoding='utf-8') as file:
+        raise ValueError("No function definition found in provided code")
+    with open(abs_path, "r", encoding="utf-8") as file:
         content = file.read()
     if not content.strip():
-        with open(abs_path, 'w', encoding='utf-8') as file:
+        with open(abs_path, "w", encoding="utf-8") as file:
             file.write(_py_ast_to_source(new_tree))
         return f"Code with function '{new_func_node.name}' has been added to new file '{abs_path}'."
     existing_tree = ast.parse(content)
@@ -443,11 +484,13 @@ def _add_single_function_to_file(file_path: str, new_function_def: str) -> str:
     combined_body.extend(new_nodes)
     combined_tree = ast.Module(body=combined_body, type_ignores=[])
     updated_content = _py_ast_to_source(combined_tree)
-    with open(abs_path, 'w', encoding='utf-8') as file:
+    with open(abs_path, "w", encoding="utf-8") as file:
         file.write(updated_content)
     return f"Code with function '{new_func_node.name}' has been added to '{abs_path}'."
+
+
 @handle_errors
-def _replace_single_function(file_path: str, new_function_def: str, class_name: str=None) -> str:
+def _replace_single_function(file_path: str, new_function_def: str, class_name: str = None) -> str:
     """Replaces a single function in a file, optionally within a specific class.
     Args:
         file_path: Path to the file to modify
@@ -463,16 +506,18 @@ def _replace_single_function(file_path: str, new_function_def: str, class_name: 
         elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             new_func_node = node
     if new_func_node is None:
-        raise ValueError('No function definition found in provided code')
-    with open(abs_path, 'r', encoding='utf-8') as file:
+        raise ValueError("No function definition found in provided code")
+    with open(abs_path, "r", encoding="utf-8") as file:
         content = file.read()
     tree = ast.parse(content)
+
     class ClassScopedFunctionReplacer(ast.NodeTransformer):
         def __init__(self, new_func_node, target_class=None):
             self.new_func_node = new_func_node
             self.target_class = target_class
             self.success = False
             self.in_target_class = False
+
         def visit_ClassDef(self, node):
             if self.target_class is None or node.name == self.target_class:
                 old_in_target_class = self.in_target_class
@@ -480,14 +525,17 @@ def _replace_single_function(file_path: str, new_function_def: str, class_name: 
                 node = self.generic_visit(node)
                 self.in_target_class = old_in_target_class
             return node
+
         def visit_FunctionDef(self, node):
             if node.name == self.new_func_node.name:
                 if self.target_class is None or self.in_target_class:
                     self.success = True
                     return self.new_func_node
             return node
+
         def visit_AsyncFunctionDef(self, node):
             return self.visit_FunctionDef(node)
+
     transformer = ClassScopedFunctionReplacer(new_func_node, class_name)
     tree = transformer.visit(tree)
     if not transformer.success:
@@ -495,8 +543,8 @@ def _replace_single_function(file_path: str, new_function_def: str, class_name: 
             raise ValueError(f"Function '{new_func_node.name}' not found in class '{class_name}'")
         tree.body.append(new_func_node)
     updated_content = _py_ast_to_source(tree)
-    with open(abs_path, 'w', encoding='utf-8') as file:
+    with open(abs_path, "w", encoding="utf-8") as file:
         file.write(updated_content)
-    context = f"in class '{class_name}'" if class_name else 'in file'
-    action = 'replaced' if transformer.success else 'added'
+    context = f"in class '{class_name}'" if class_name else "in file"
+    action = "replaced" if transformer.success else "added"
     return f"Function '{new_func_node.name}' has been {action} {context} '{abs_path}'."

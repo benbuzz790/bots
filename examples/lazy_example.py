@@ -1,12 +1,12 @@
 """Example demonstrating the @lazy decorator functionality.
-
-This module shows how to use the @lazy decorator to generate runtime implementations
-of functions using LLM-based code generation. The example specifically demonstrates
-how @lazy can follow stylistic instructions while maintaining functional correctness.
-
+This module shows how to use the @lazy decorator to generate runtime
+implementations of functions using LLM-based code generation. The example
+specifically demonstrates how @lazy can follow stylistic instructions while
+maintaining functional correctness.
 The module includes a practical example of sorting with the @lazy decorator,
 followed by a demonstration of its usage.
 """
+
 from bots import lazy
 
 
@@ -14,16 +14,14 @@ from bots import lazy
 def sort(arr: list[int]) -> list[int]:
     pass
 
+
 ''' A selected output
 def sort(arr: list[int]) -> list[int]:
     """
     Sort a list of integers using a funny algorithm.
-    
     gen by @lazy
-    
     Args:
         arr: A list of integers to be sorted
-        
     Returns:
         A sorted list of integers
     """
@@ -55,7 +53,6 @@ def sort(arr: list[int]) -> list[int]:
         funny_numbers.sort()
     return funny_numbers
 '''
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     result = sort([1, 2, 3, 4, 5, 0])
-    print(f'Sorted array: {result}')
+    print(f"Sorted array: {result}")

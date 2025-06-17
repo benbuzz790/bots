@@ -1,15 +1,16 @@
-import os
 import codecs
+import os
+
 
 def remove_bom_from_files():
     nboms = 0
 
     def remove_bom(file_path):
-        nonlocal nboms  # This tells Python we want to modify the outer variable
-        with open(file_path, 'rb') as file:
+        nonlocal nboms  # Modify the outer variable
+        with open(file_path, "rb") as file:
             content = file.read()
         if content.startswith(codecs.BOM_UTF8):
-            with open(file_path, 'wb') as file:
+            with open(file_path, "wb") as file:
                 file.write(content[len(codecs.BOM_UTF8):])
             print(f"Removed BOM from: {file_path}")
             nboms += 1
@@ -18,7 +19,8 @@ def remove_bom_from_files():
 
     def is_hidden(path):
         # Check if directory or file is hidden
-        return os.path.basename(path).startswith('.')
+        return os.path.basename(path).startswith(".")
+
     for root, dirs, files in os.walk(os.getcwd()):
         # Remove hidden directories from dirs list (modifies dirs in place)
         dirs[:] = [d for d in dirs if not is_hidden(d)]
@@ -32,5 +34,7 @@ def remove_bom_from_files():
             except Exception as e:
                 print(f"Error processing {file_path}: {str(e)}")
     print(f"BOM removal process completed. {nboms} BOMs removed")
+
+
 if __name__ == "__main__":
     remove_bom_from_files()

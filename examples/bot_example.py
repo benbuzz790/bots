@@ -24,7 +24,8 @@ def read_file(file_path: str) -> str:
     by default.
 
     Parameters:
-    - file_path (str): The path to the file to be read. Can be relative or absolute.
+    - file_path (str): The path to the file to be read. Can be relative or
+        absolute.
 
     Returns:
     str: Either:
@@ -33,10 +34,10 @@ def read_file(file_path: str) -> str:
             (e.g., file not found, permission denied, encoding issues)
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as file:
+        with open(file_path, "r", encoding="utf-8") as file:
             return file.read()
     except Exception as e:
-        return f'Error: {str(e)}'
+        return f"Error: {str(e)}"
 
 
 # Initialize an Anthropic-based bot

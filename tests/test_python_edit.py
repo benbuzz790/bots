@@ -1,4 +1,4 @@
-import os
+﻿import os
 import pytest
 import tempfile
 from textwrap import dedent
@@ -1366,9 +1366,9 @@ def test_escaped_quotes_debugging():
     
     try:
         ast.parse(test_assignment)
-        print("✓ AST parsing successful")
+        print("âœ“ AST parsing successful")
     except Exception as e:
-        print(f"✗ AST parsing failed: {e}")
+        print(f"âœ— AST parsing failed: {e}")
     
     # Should restore exactly
     restored = _detokenize_source(tokenized, token_map)
@@ -1394,9 +1394,9 @@ def test_complex_mixed_concatenation_simple():
     # Should be parseable
     try:
         ast.parse(f"x = {tokenized_concat}")
-        print("✓ Concatenation AST parsing successful")
+        print("âœ“ Concatenation AST parsing successful")
     except Exception as e:
-        print(f"✗ Concatenation AST parsing failed: {e}")
+        print(f"âœ— Concatenation AST parsing failed: {e}")
     
     # Should restore exactly
     restored = _detokenize_source(tokenized_concat, token_map_concat)
@@ -1416,7 +1416,7 @@ def test_problematic_string():
     assert locations[0]['start'] == 0, f"Expected start at 0, got {locations[0]['start']}"
     assert locations[0]['end'] == len(test_line) - 1, f"Expected end at {len(test_line) - 1}, got {locations[0]['end']}"
     
-    print("✓ Problematic string correctly identified as single unit")
+    print("âœ“ Problematic string correctly identified as single unit")
 
 
 # Test function for multiple strings
@@ -1429,7 +1429,7 @@ def test_multiple_strings():
     # Should find exactly THREE strings
     assert len(locations) == 3, f"Expected 3 strings, found {len(locations)}"
     
-    print("✓ Multiple strings correctly identified")
+    print("âœ“ Multiple strings correctly identified")
 
 def test_apostrophe_in_comments_regression():
     """
@@ -1440,7 +1440,8 @@ def test_apostrophe_in_comments_regression():
     This test ensures that comments with apostrophes don't break the tokenization process.
     """
     # The exact problematic pattern that was causing mega-tokens
-    problematic_code = '''def main():
+    problematic_code = '''
+def main():
     try:
         if inbox == 'No emails found':
             # Check if the last log entry was also "no emails"
@@ -1466,7 +1467,7 @@ def test_apostrophe_in_comments_regression():
                 # If log file doesn't exist or is empty, start fresh
                 with open('email_check.log', 'a') as log:
                     log.write("no emails:*\\n")
-            return
+            return ''
     except Exception as e:
         with open('email_check.log', 'a') as log:
             log.write(f'[{timestamp}] - Error: {str(e)}\\n')
@@ -1485,7 +1486,7 @@ def helper_function():
 '''
         
         # This should work without any "expected 'except' or 'finally' block" errors
-        result = python_edit(f"{test_file}::main", new_code, insert_after="return")
+        result = python_edit(f"{test_file}::main", new_code, insert_after="return ''")
         
         # Verify the edit was successful
         assert "Error" not in result, f"Edit failed with error: {result}"
@@ -1504,7 +1505,7 @@ def helper_function():
         # Should contain our new function
         assert "def helper_function():" in final_content, "New function not found in result"
         
-        print("✓ Apostrophe-in-comments regression test passed!")
+        print("âœ“ Apostrophe-in-comments regression test passed!")
         
     finally:
         if os.path.exists(test_file):
@@ -1562,7 +1563,7 @@ def test_function_{i}():
             if os.path.exists(test_file):
                 os.unlink(test_file)
     
-    print(f"✓ All {len(test_cases)} apostrophe pattern tests passed!")
+    print(f"âœ“ All {len(test_cases)} apostrophe pattern tests passed!")
 
 def test_tokenization_edge_cases():
     """
@@ -1616,7 +1617,7 @@ def test_tokenization_edge_cases():
             ast.parse(detokenized)
             
             # Test python_edit on this case
-            result = python_edit(f"{test_file}::test", "    # Added comment", insert_after="return")
+            result = python_edit(f"{test_file}::test", "    # Added comment", insert_after="return '''")
             assert "Error" not in result, f"python_edit failed on edge case {i}: {result}"
             
         finally:
