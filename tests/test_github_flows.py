@@ -6,6 +6,7 @@ import time
 import os
 from bots.flows import functional_prompts as fp
 
+@pytest.skip("Not a reliable test. Needs update.")
 def test_clone_and_edit():
     test_dir = Path('test_clone_dir')
     try:

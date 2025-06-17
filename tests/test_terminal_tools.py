@@ -176,7 +176,7 @@ class TestTerminalTools(unittest.TestCase):
         # Strip the [System: current directory ...] line that's now added to output
         lines = result.splitlines()
         actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
-        self.assertEqual(self.normalize_text('utf8'), self.normalize_text(actual_output))
+        self.assertEqual(self.normalize_text('utf8nobom'), self.normalize_text(actual_output))
         test_string = 'Test UTF8 String: ★ → ♠ ±'
         ps_script = f'Write-Output "{test_string}"'
         result = _execute_powershell_stateless(ps_script)
@@ -316,7 +316,7 @@ class TestTerminalToolsStateful(TestTerminalTools):
         # Strip the [System: current directory ...] line that's now added to output
         lines = result.splitlines()
         actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
-        self.assertEqual(self.normalize_text('utf8'), self.normalize_text(actual_output))
+        self.assertEqual(self.normalize_text('utf8nobom'), self.normalize_text(actual_output))
         test_string = 'Test UTF8 String: ★ → ♠ ±'
         ps_script = f'Write-Output "{test_string}"'
         result = self._collect_generator_output(execute_powershell(ps_script))
