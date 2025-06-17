@@ -78,9 +78,9 @@
                     with:
                       name: integration-test-results
                       path: test_results.xml
-                     retention-days: 7
+                      retention-days: 7
 
-             style-check:
+  style-check:
                name: Code Quality & Style Check
                timeout-minutes: 10
                runs-on: windows-latest
@@ -142,4 +142,3 @@
                  - name: Run actionlint
                    run: |
                      .\actionlint.exe .github/workflows/*.yml
-                    .\actionlint.exe .github/workflows/*.yml
