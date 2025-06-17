@@ -489,7 +489,7 @@ class PowerShellManager:
                         truncated_output += '\n'.join(end_lines)
                         
                         output_file = os.path.join(os.getcwd(), f'ps_output_{self.bot_id}.txt')
-                        with open(output_file, 'w', encoding='utf-8', errors='replace') as f:
+                        with open(output_file, 'w', encoding='utf-8', errors='replace', newline='') as f:
                             f.write(output)
                         truncated_output += f'\nFull output saved to {output_file}'
                         yield truncated_output
@@ -620,7 +620,7 @@ def _execute_powershell_stateless(code: str, output_length_limit: str = '120'):
             truncated_output += '\n'.join(end_lines)
             
             output_file = os.path.join(os.getcwd(), 'ps_output.txt')
-            with open(output_file, 'w', encoding='utf-8', errors='replace') as f:
+            with open(output_file, 'w', encoding='utf-8', errors='replace', newline='') as f:
                 f.write(output)
             truncated_output += f'\nFull output saved to {output_file}'
             return truncated_output

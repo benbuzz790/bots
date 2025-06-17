@@ -1,15 +1,15 @@
 [tool.black]
             line-length = 127
             target-version = ["py38"]
-            include = "\.pyi?$"
+            include = "\\.pyi?$"
             extend-exclude = """
             /(
-                \.eggs
-              | \.git
-              | \.hg
-              | \.mypy_cache
-              | \.tox
-              | \.venv
+                \\.eggs
+              | \\.git
+              | \\.hg
+              | \\.mypy_cache
+              | \\.tox
+              | \\.venv
               | _build
               | buck-out
               | build
