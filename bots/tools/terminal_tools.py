@@ -92,7 +92,7 @@ class PowerShellSession:
                 "$WarningPreference='SilentlyContinue'",
                 "$ErrorActionPreference='Stop'",
                 "function prompt { '' }",
-                "$PSDefaultParameterValues['*:Encoding']='utf8'",
+                "$PSDefaultParameterValues['*:Encoding']='utf8NoBOM'",
                 '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8',
                 '[Console]::InputEncoding=[System.Text.Encoding]::UTF8',
                 '$OutputEncoding=[System.Text.Encoding]::UTF8',
@@ -342,7 +342,7 @@ function Invoke-SafeCommand {
                 
                 try {{
                     # Write Python code to temp file with UTF-8 encoding
-                    [System.IO.File]::WriteAllText($tempFile, $pythonCode, [System.Text.Encoding]::UTF8NoBOM)
+                    [System.IO.File]::WriteAllText($tempFile, $pythonCode, [System.Text.UTF8Encoding]::new($false))
                     
                     # Execute Python with the temp file
                     python $tempFile
@@ -574,7 +574,7 @@ def _execute_powershell_stateless(code: str, output_length_limit: str = '120'):
     try:
         processed_code = _process_commands(code)
         setup_encoding = '''
-        $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+        $PSDefaultParameterValues['*:Encoding'] = 'utf8NoBOM'
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         [Console]::InputEncoding = [System.Text.Encoding]::UTF8
         $OutputEncoding = [System.Text.Encoding]::UTF8
