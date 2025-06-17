@@ -66,10 +66,13 @@ def create_file_specific_tool(file_path: str, project_root: str):
         function: A tool function that checks the specific file
     """
     rel_path = os.path.relpath(file_path, project_root)
-    def check_my_file() -> str:
-        f"""Run CI/CD style checks on my assigned file: {rel_path}.
+    def check_my_file(file=file_path, root=project_root) -> str:
+        """Run CI/CD style checks on my assigned file.
         Use when you need to check the current style compliance status of your assigned file.
         Runs Black, isort, and flake8 checks to identify all style issues that need fixing.
+        Parameters:
+            file (str): Defaults to your file. Do not input
+            root (str): Defaults to project root. Do not input.
         Returns:
             str: Detailed report of all style issues found, or confirmation if file passes all checks
         """
