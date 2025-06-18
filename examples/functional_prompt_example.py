@@ -4,14 +4,17 @@ Use when you need to understand how to:
     - Compare different conversation strategies with the same prompts
     - Handle multiple conversation branches effectively
 This example illustrates two key functional prompt patterns:
-1. chain() - Sequential conversation where each prompt builds on previous responses
+1. chain() - Sequential conversation where each prompt builds on previous
+   responses
    Returns: Tuple[List[str], List[ConversationNode]] - responses and nodes
-2. branch() - Parallel conversation paths exploring different dialogue directions
+2. branch() - Parallel conversation paths exploring different dialogue
+   directions
    Returns: Tuple[List[str], List[ConversationNode]] - responses and nodes
 Example usage:
     python functional_prompt_example.py
 The example uses a playful conversation to demonstrate how the same prompts can
-produce different conversation patterns when used with chain vs branch approaches.
+produce different conversation patterns when used with chain vs branch
+approaches.
 Key differences demonstrated:
 - chain(): Each response builds on all previous context
 - branch(): Each response starts fresh from the initial context

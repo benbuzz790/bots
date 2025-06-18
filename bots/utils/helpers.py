@@ -6,6 +6,7 @@ This module provides helper functions for common operations including:
 - AST manipulation and code cleaning
 - Datetime formatting for filenames
 """
+
 import ast
 import datetime as DT
 import os
@@ -13,6 +14,8 @@ import re
 import textwrap
 import traceback
 from typing import List, Tuple
+
+
 def _process_error(error: Exception) -> str:
     """Format an exception into a detailed error message string.
     Internal helper function for consistent error message formatting.
@@ -30,18 +33,18 @@ def _process_error(error: Exception) -> str:
     traceback_str = "".join(traceback.format_tb(error.__traceback__))
     error_message += f"Traceback:\n{traceback_str}"
     return error_message
-def _get_new_files(
-    start_time: float, directory: str = ".", extension: str = None
-) -> List[str]:
+
+
+def _get_new_files(start_time: float, dir=".", extension=None) -> List[str]:
     """Get all files created after a specified timestamp in a directory tree.
     Internal helper function for finding newly created files.
     Performs a recursive search through the directory tree and its
     subdirectories.
     Parameters:
         start_time (float): Unix timestamp to filter files created after
-        directory (str, optional): Root directory to start search from.
+        dir (str, optional): Root directory to start search from.
             Defaults to current directory
-        extension (str, optional): File extension to filter by including the
+        ext (str, optional): File extension to filter by including the
             dot (e.g. '.py', '.txt'). If None, returns files with any
             extension. Defaults to None
     Returns:
@@ -50,13 +53,15 @@ def _get_new_files(
             during directory traversal.
     """
     new_files = []
-    for root, _, files in os.walk(directory):
+    for root, _, files in os.walk(dir):
         for file in files:
             path = os.path.join(root, file)
             if os.path.getctime(path) >= start_time:
                 if extension is None or os.path.splitext(path)[1] == extension:
                     new_files.append(path)
     return new_files
+
+
 def _clean(code: str) -> str:
     """Clean and dedent code before parsing by removing common leading
     whitespace.
@@ -77,6 +82,8 @@ def _clean(code: str) -> str:
         'def example():\n    print("hello")'
     """
     return textwrap.dedent(code).strip()
+
+
 def _py_ast_to_source(node: ast.AST) -> str:
     """Convert a Python AST node back to valid Python source code.
     Internal helper function for AST manipulation. Uses ast.unparse() to
@@ -94,6 +101,8 @@ def _py_ast_to_source(node: ast.AST) -> str:
         the original source code are not preserved in the output.
     """
     return ast.unparse(node)
+
+
 def remove_code_blocks(text: str) -> Tuple[List[str], List[str]]:
     """Extract code blocks and language labels from markdown-formatted text.
     Use when you need to parse markdown text containing fenced code blocks
@@ -125,7 +134,8 @@ def remove_code_blocks(text: str) -> Tuple[List[str], List[str]]:
         ... ```
         ... '''
         >>> code_blocks, labels = remove_code_blocks(text)
-        >>> code_blocks  # ["def hello():\n    print('hello')", "console.log('hi');"]
+        >>> code_blocks  # ["def hello():\n    print('hello')",
+        ...              #  "console.log('hi');"]
         >>> labels      # ["python", ""]
     """
     pattern = "```(\\w*)\\s*([\\s\\S]*?)```"
@@ -134,6 +144,8 @@ def remove_code_blocks(text: str) -> Tuple[List[str], List[str]]:
     labels = [match[0].strip() for match in matches]
     text = re.sub(pattern, "", text)
     return code_blocks, labels
+
+
 def formatted_datetime() -> str:
     """Get current datetime formatted as a string suitable for filenames.
     Use when you need a timestamp string that is safe to use in file paths

@@ -10,7 +10,7 @@ followed by a demonstration of its usage.
 from bots import lazy
 
 
-@lazy("Sort using a funny algorithm. Name all variables as though you're a clown.")
+@lazy("Sort using a funny algorithm. Name variables like a clown.")
 def sort(arr: list[int]) -> list[int]:
     pass
 

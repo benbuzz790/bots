@@ -1,14 +1,16 @@
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
+
 from bots.flows.functional_prompts import conditions
-from bots.foundation.base import Bot, ConversationNode
+
 """
 Test suite for functional prompt conditions.
-
-This module tests all condition functions in bots.flows.functional_prompts.conditions
-to ensure they behave correctly and provide reliable stop conditions for iterative
-bot interactions.
+This module tests all condition functions in
+bots.flows.functional_prompts.conditions to ensure they behave correctly
+and provide reliable stop conditions for iterative bot interactions.
 """
+
 
 class MockBot:
     """Mock bot for testing conditions without requiring actual bot instances."""
@@ -36,6 +38,7 @@ class MockBot:
         # Mock the tool_name_and_input method
         self.tool_handler.tool_name_and_input = Mock(return_value=(tool_name, tool_input))
 
+
 class TestBasicConditions:
     """Test basic condition functions."""
 
@@ -43,25 +46,26 @@ class TestBasicConditions:
         """Test tool_used returns True when bot has used tools."""
         bot = MockBot()
         bot.set_tool_requests([{"tool": "test_tool"}])
-        assert conditions.tool_used(bot) == True
+        assert conditions.tool_used(bot) is True
 
     def test_tool_used_without_tools(self):
         """Test tool_used returns False when bot has not used tools."""
         bot = MockBot()
         bot.set_tool_requests([])
-        assert conditions.tool_used(bot) == False
+        assert conditions.tool_used(bot) is False
 
     def test_tool_not_used_with_tools(self):
         """Test tool_not_used returns False when bot has used tools."""
         bot = MockBot()
         bot.set_tool_requests([{"tool": "test_tool"}])
-        assert conditions.tool_not_used(bot) == False
+        assert conditions.tool_not_used(bot) is False
 
     def test_tool_not_used_without_tools(self):
         """Test tool_not_used returns True when bot has not used tools."""
         bot = MockBot()
         bot.set_tool_requests([])
-        assert conditions.tool_not_used(bot) == True
+        assert conditions.tool_not_used(bot) is True
+
 
 class TestCompletionConditions:
     """Test completion-related condition functions."""
@@ -69,22 +73,23 @@ class TestCompletionConditions:
     def test_said_DONE_positive(self):
         """Test said_DONE returns True when response contains 'DONE'."""
         bot = MockBot(content="Task is DONE")
-        assert conditions.said_DONE(bot) == True
+        assert conditions.said_DONE(bot) is True
 
     def test_said_DONE_negative(self):
         """Test said_DONE returns False when response doesn't contain 'DONE'."""
         bot = MockBot(content="Task is in progress")
-        assert conditions.said_DONE(bot) == False
+        assert conditions.said_DONE(bot) is False
 
     def test_said_READY_positive(self):
         """Test said_READY returns True when response contains 'READY'."""
         bot = MockBot(content="System is READY")
-        assert conditions.said_READY(bot) == True
+        assert conditions.said_READY(bot) is True
 
     def test_said_READY_negative(self):
         """Test said_READY returns False when response doesn't contain 'READY'."""
         bot = MockBot(content="System is initializing")
-        assert conditions.said_READY(bot) == False
+        assert conditions.said_READY(bot) is False
+
 
 class TestAdvancedConditions:
     """Test advanced condition functions."""
@@ -94,7 +99,7 @@ class TestAdvancedConditions:
         bot = MockBot()
         bot.add_tool_request("file_tool", {"action": "read"})
         # First iteration should always return False
-        assert conditions.no_new_tools_used(bot) == False
+        assert conditions.no_new_tools_used(bot) is False
 
     def test_no_new_tools_used_with_new_tools(self):
         """Test no_new_tools_used when new tools are used."""
@@ -103,11 +108,11 @@ class TestAdvancedConditions:
         # First iteration
         bot.set_tool_requests([{"tool": "file_tool"}])
         bot.tool_handler.tool_name_and_input.return_value = ("file_tool", {})
-        assert conditions.no_new_tools_used(bot) == False
+        assert conditions.no_new_tools_used(bot) is False
         # Second iteration with new tool
         bot.set_tool_requests([{"tool": "web_tool"}])
         bot.tool_handler.tool_name_and_input.return_value = ("web_tool", {})
-        assert conditions.no_new_tools_used(bot) == False
+        assert conditions.no_new_tools_used(bot) is False
 
     def test_no_new_tools_used_with_same_tools(self):
         """Test no_new_tools_used when same tools are used."""
@@ -116,28 +121,35 @@ class TestAdvancedConditions:
         # First iteration
         bot.set_tool_requests([{"tool": "file_tool"}])
         bot.tool_handler.tool_name_and_input.return_value = ("file_tool", {})
-        assert conditions.no_new_tools_used(bot) == False
+        assert conditions.no_new_tools_used(bot) is False
         # Second iteration with same tool
         bot.set_tool_requests([{"tool": "file_tool"}])
         bot.tool_handler.tool_name_and_input.return_value = ("file_tool", {})
-        assert conditions.no_new_tools_used(bot) == True
+        assert conditions.no_new_tools_used(bot) is True
 
     def test_error_in_response_positive(self):
         """Test error_in_response returns True when response contains error indicators."""
-        test_cases = ["An error occurred during processing", "The operation failed", "Exception: Invalid input", "Traceback (most recent call last):", "SyntaxError: invalid syntax"]
+        test_cases = [
+            "An error occurred during processing",
+            "The operation failed",
+            "Exception: Invalid input",
+            "Traceback (most recent call last):",
+            "SyntaxError: invalid syntax",
+        ]
         for content in test_cases:
             bot = MockBot(content=content)
-            assert conditions.error_in_response(bot) == True, f"Failed for content: {content}"
+            assert conditions.error_in_response(bot) is True, f"Failed for content: {content}"
 
     def test_error_in_response_negative(self):
         """Test error_in_response returns False when response doesn't contain error indicators."""
         bot = MockBot(content="Operation completed successfully")
-        assert conditions.error_in_response(bot) == False
+        assert conditions.error_in_response(bot) is False
 
     def test_error_in_response_case_insensitive(self):
         """Test error_in_response is case insensitive."""
         bot = MockBot(content="AN ERROR OCCURRED")
-        assert conditions.error_in_response(bot) == True
+        assert conditions.error_in_response(bot) is True
+
 
 class TestConditionIntegration:
     """Test conditions in realistic scenarios."""
@@ -149,14 +161,15 @@ class TestConditionIntegration:
         bot.set_content("Starting analysis...")
         bot.set_tool_requests([{"tool": "analyzer"}])
         # Should continue (tools used, not done)
-        assert conditions.tool_not_used(bot) == False
-        assert conditions.said_DONE(bot) == False
+        assert conditions.tool_not_used(bot) is False
+        assert conditions.said_DONE(bot) is False
         # Bot finishes and says DONE
         bot.set_content("Analysis complete. DONE.")
         bot.set_tool_requests([])
         # Should stop (no tools, said DONE)
-        assert conditions.tool_not_used(bot) == True
-        assert conditions.said_DONE(bot) == True
+        assert conditions.tool_not_used(bot) is True
+        assert conditions.said_DONE(bot) is True
+
 
 if __name__ == "__main__":
     # Run tests if executed directly

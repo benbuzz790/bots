@@ -1,10 +1,9 @@
 """Unit tests for basic bot functionality and parallel processing capabilities.
 
 This module contains test cases for the core functionality of both AnthropicBot
-and ChatGPT_Bot classes from the bots package. Tests cover initialization parameters,
-conversation handling, context retention, and parallel processing through bot
-multiplication.
-
+and ChatGPT_Bot classes from the bots package. Tests cover initialization
+parameters, conversation handling, context retention, and parallel processing
+through bot multiplication.
 Test Dependencies:
     - unittest: Python's built-in testing framework
     - bots.foundation.base: Provides Engines enumeration
@@ -18,11 +17,13 @@ The test suite verifies:
     - Bot multiplication for parallel processing capabilities
     - Deep copy integrity during bot multiplication
 """
+
 import unittest
 from typing import List
-from bots import AnthropicBot
-from bots import ChatGPT_Bot
+
+from bots import AnthropicBot, ChatGPT_Bot
 from bots.foundation.base import Engines
+
 
 class TestAnthropicBot(unittest.TestCase):
     """Test suite for AnthropicBot functionality.
@@ -62,7 +63,8 @@ class TestAnthropicBot(unittest.TestCase):
             None
 
         Raises:
-            AssertionError: If any default parameter doesn't match expected value
+            AssertionError: If any default parameter doesn't match expected
+                value
         """
         self.assertIsInstance(self.bot, AnthropicBot)
         self.assertEqual(self.bot.model_engine, Engines.CLAUDE4_SONNET)
@@ -86,17 +88,17 @@ class TestAnthropicBot(unittest.TestCase):
             model_engine=Engines.CLAUDE3_HAIKU,
             max_tokens=1000,
             temperature=0.7,
-            name='CustomClaude',
-            role='expert',
-            role_description='an AI language expert',
-            autosave=False
+            name="CustomClaude",
+            role="expert",
+            role_description="an AI language expert",
+            autosave=False,
         )
         self.assertEqual(custom_bot.model_engine, Engines.CLAUDE3_HAIKU)
         self.assertEqual(custom_bot.max_tokens, 1000)
         self.assertEqual(custom_bot.temperature, 0.7)
-        self.assertEqual(custom_bot.name, 'CustomClaude')
-        self.assertEqual(custom_bot.role, 'expert')
-        self.assertEqual(custom_bot.role_description, 'an AI language expert')
+        self.assertEqual(custom_bot.name, "CustomClaude")
+        self.assertEqual(custom_bot.role, "expert")
+        self.assertEqual(custom_bot.role_description, "an AI language expert")
 
     def test_basic_conversation(self) -> None:
         """Test basic conversation functionality with a simple greeting.
@@ -110,7 +112,7 @@ class TestAnthropicBot(unittest.TestCase):
         Raises:
             AssertionError: If response is not a string or is empty
         """
-        response = self.bot.respond('Hello, how are you?')
+        response = self.bot.respond("Hello, how are you?")
         self.assertIsInstance(response, str)
         self.assertTrue(len(response) > 0)
 
@@ -127,9 +129,10 @@ class TestAnthropicBot(unittest.TestCase):
             AssertionError: If responses don't contain expected information
         """
         response1 = self.bot.respond("What's the capital of France?")
-        self.assertIn('Paris', response1)
+        self.assertIn("Paris", response1)
         response2 = self.bot.respond("What's its population?")
-        self.assertIn('million', response2.lower())
+        self.assertIn("million", response2.lower())
+
 
 class TestGPTBot(unittest.TestCase):
     """Test suite for ChatGPT_Bot functionality.
@@ -169,13 +172,14 @@ class TestGPTBot(unittest.TestCase):
             None
 
         Raises:
-            AssertionError: If any default parameter doesn't match expected value
+            AssertionError: If any default parameter doesn't match expected
+                value
         """
         self.assertIsInstance(self.bot, ChatGPT_Bot)
         self.assertEqual(self.bot.model_engine, Engines.GPT4)
         self.assertEqual(self.bot.max_tokens, 4096)
         self.assertEqual(self.bot.temperature, 0.3)
-        self.assertEqual(self.bot.name, 'bot')
+        self.assertEqual(self.bot.name, "bot")
 
     def test_custom_initialization(self) -> None:
         """Test initialization with custom parameters.
@@ -193,16 +197,16 @@ class TestGPTBot(unittest.TestCase):
             model_engine=Engines.GPT4,
             max_tokens=2000,
             temperature=0.5,
-            name='CustomGPT',
-            role='assistant',
-            role_description='a helpful AI assistant'
+            name="CustomGPT",
+            role="assistant",
+            role_description="a helpful AI assistant",
         )
         self.assertEqual(custom_bot.model_engine, Engines.GPT4)
         self.assertEqual(custom_bot.max_tokens, 2000)
         self.assertEqual(custom_bot.temperature, 0.5)
-        self.assertEqual(custom_bot.name, 'CustomGPT')
-        self.assertEqual(custom_bot.role, 'assistant')
-        self.assertEqual(custom_bot.role_description, 'a helpful AI assistant')
+        self.assertEqual(custom_bot.name, "CustomGPT")
+        self.assertEqual(custom_bot.role, "assistant")
+        self.assertEqual(custom_bot.role_description, "a helpful AI assistant")
 
     def test_basic_conversation(self) -> None:
         """Test basic conversation functionality with a simple greeting.
@@ -216,7 +220,7 @@ class TestGPTBot(unittest.TestCase):
         Raises:
             AssertionError: If response is not a string or is empty
         """
-        response = self.bot.respond('Hello, how are you?')
+        response = self.bot.respond("Hello, how are you?")
         self.assertIsInstance(response, str)
         self.assertTrue(len(response) > 0)
 
@@ -233,9 +237,10 @@ class TestGPTBot(unittest.TestCase):
             AssertionError: If responses don't contain expected information
         """
         response1 = self.bot.respond("What's the capital of France?")
-        self.assertIn('Paris', response1)
+        self.assertIn("Paris", response1)
         response2 = self.bot.respond("What's its population?")
-        self.assertIn('million', response2.lower())
+        self.assertIn("million", response2.lower())
+
 
 def test_bot_multiplication() -> None:
     """Test the bot multiplication operator for parallel processing capability.
@@ -271,13 +276,13 @@ def test_bot_multiplication() -> None:
         model_engine=Engines.CLAUDE3_HAIKU,
         max_tokens=100,
         temperature=0.7,
-        name='TestBot',
-        role='test',
-        role_description='A test bot',
-        autosave=False
+        name="TestBot",
+        role="test",
+        role_description="A test bot",
+        autosave=False,
     )
-    bot.conversation = bot.conversation._add_reply(content='Hello', role='user')
-    bot.conversation = bot.conversation._add_reply(content='Hi there!', role='assistant')
+    bot.conversation = bot.conversation._add_reply(content="Hello", role="user")
+    bot.conversation = bot.conversation._add_reply(content="Hi there!", role="assistant")
     bot_copies: List[AnthropicBot] = bot * 3
     assert len(bot_copies) == 3
     assert all((isinstance(copy, AnthropicBot) for copy in bot_copies))
@@ -295,5 +300,7 @@ def test_bot_multiplication() -> None:
         assert copy.conversation.role == bot.conversation.role
         assert copy.conversation.parent is not None
         assert copy.conversation.parent is not bot.conversation.parent
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     unittest.main()

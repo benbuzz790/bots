@@ -2,8 +2,11 @@ import ast
 import os
 import subprocess
 import textwrap
+
 from bots.dev.decorators import handle_errors
 from bots.utils.helpers import _clean, _py_ast_to_source
+
+
 @handle_errors
 def _execute_python_code(code: str, timeout: int = 300) -> str:
     """
@@ -15,6 +18,7 @@ def _execute_python_code(code: str, timeout: int = 300) -> str:
     Returns stdout or an error message.
     cost: varies
     """
+
     def create_wrapper_ast():
         wrapper_code = textwrap.dedent(
             """
@@ -42,14 +46,17 @@ def _execute_python_code(code: str, timeout: int = 300) -> str:
             """
         )
         return ast.parse(wrapper_code)
+
     def insert_code_into_wrapper(wrapper_ast, code_ast, timeout_value):
         # Find the main function in the wrapper AST
         def is_main_func(node):
             return isinstance(node, ast.FunctionDef) and node.name == "main"
+
         nodes = wrapper_ast.body
         main_func = next(node for node in nodes if is_main_func(node))
         main_func.body = code_ast.body
         return wrapper_ast
+
     if not isinstance(timeout, int) or timeout <= 0:
         raise ValueError("Timeout must be a positive integer")
     code_ast = ast.parse(_clean(code))

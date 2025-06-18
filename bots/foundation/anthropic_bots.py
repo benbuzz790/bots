@@ -1,22 +1,28 @@
 """Anthropic-specific bot implementation for the bots framework.
 
-This module provides the necessary classes to interact with Anthropic's Claude`nmodels,
+This module provides the necessary classes to interact with Anthropic's
+Claude models,
 implementing the base bot interfaces with Anthropic-specific handling`nfor:
 - Message formatting and conversation management
 - Tool integration and execution
 - Cache control for optimal context window usage
 - API communication with retry logic
 
-The main class is AnthropicBot, which provides a complete implementation`nready for
+The main class is AnthropicBot, which provides a complete implementation
+ready for
 use with Anthropic's API. Supporting classes handle specific aspects of`nthe
 Anthropic integration while maintaining the framework's abstractions.
 
 Classes:
-    AnthropicNode: Conversation node implementation for Anthropic's`n        message format
-    AnthropicToolHandler: Tool management for Anthropic's function`n        calling format
-    AnthropicMailbox: API communication handler with Anthropic-specific`n        retry logic
+    AnthropicNode: Conversation node implementation for Anthropic's
+        message format
+    AnthropicToolHandler: Tool management for Anthropic's function
+        calling format
+    AnthropicMailbox: API communication handler with Anthropic-specific
+        retry logic
     AnthropicBot: Main bot implementation for Anthropic's Claude models
-    CacheController: Manages conversation history caching for context`n        optimization
+    CacheController: Manages conversation history caching for context
+        optimization
 """
 
 import inspect
@@ -264,8 +270,8 @@ class AnthropicMailbox(Mailbox):
         conversation: AnthropicNode = bot.conversation
         tools: Optional[List[Dict[str, Any]]] = None
         if bot.tool_handler and bot.tool_handler.tools:
-            if bot.allow_web_search and not any(tool.get("name") == "web_search" for tool in bot.tool_handler.tools):
-                bot.tool_handler.tools.append(AnthropicTools.web_search())
+            # if bot.allow_web_search and not any(tool.get("name") == "web_search" for tool in bot.tool_handler.tools):
+            #     bot.tool_handler.tools.append(AnthropicTools.web_search())
             tools = bot.tool_handler.tools
             tools[-1]["cache_control"] = {"type": "ephemeral"}
 
@@ -427,7 +433,7 @@ class AnthropicBot(Bot):
         role: str = "assistant",
         role_description: str = "a friendly AI assistant",
         autosave: bool = True,
-        allow_web_search: bool = False,
+        #allow_web_search: bool = False,
     ) -> None:
         """Initialize an AnthropicBot.
 
@@ -458,29 +464,27 @@ class AnthropicBot(Bot):
             mailbox=AnthropicMailbox(),
             autosave=autosave,
         )
-        self.allow_web_search = allow_web_search
+        #self.allow_web_search = allow_web_search
 
 
-class AnthropicTools:
+# class AnthropicTools:
 
-    def web_search():
-        """Returns the web search schema to be directly appended to the
-        tools block"""
-        return {
-            "type": "web_search_20250305",
-            "name": "web_search",
-            "max_uses": 10,
-        }
+#     def web_search():
+#         """Returns the web search schema to be directly appended to the
+#         tools block"""
+#         return {
+#             "type": "web_search_20250305",
+#             "name": "web_search",
+#             "max_uses": 10,
+#         }
 
-    # def text_editor():
-    #     """Returns the text editor schema to be directly appended to the
-
-
-#     tools block"""
-#     return {
-#         "type": "text_editor_20250429",
-#         "name": "str_replace_based_edit_tool"
-#     }
+#     # def text_editor():
+#     #     """Returns the text editor schema to be directly appended to the
+#     #     tools block"""
+#     #     return {
+#     #         "type": "text_editor_20250429",
+#     #         "name": "str_replace_based_edit_tool"
+#     #     }
 
 
 class CacheController:

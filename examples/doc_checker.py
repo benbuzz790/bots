@@ -9,17 +9,22 @@ The module:
 NOTE: This is an expensive operation. For a project this size, expect $20 - $40
 in api costs
 """
+
 import os
 import textwrap
 from typing import List, Tuple
+
 from bots.flows import functional_prompts as fp
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, ConversationNode, Engines
 from bots.tools import code_tools, python_editing_tools
+
+
 def find_python_files(
-    start_path: str, exclude_list: List[str] = []
+    start_path: str,
+    exclude_list: List[str] = [],
 ) -> List[str]:
-    """Recursively find all Python files in a directory with specific exclusions.
+    """Recursively find all Python files in a directory with exclusions.
     Use when you need to gather Python files for documentation review while
     excluding tool-related files and specific directories that don't need
     documentation review.
@@ -46,6 +51,8 @@ def find_python_files(
             if file.endswith(".py"):
                 python_files.append(os.path.join(root, file))
     return python_files
+
+
 def create_doc_review_bot(num: int) -> Bot:
     """Create and configure a bot specialized for documentation review.
     Use when you need to create a new documentation review bot instance with
@@ -78,6 +85,8 @@ def create_doc_review_bot(num: int) -> Bot:
         "them directly."
     )
     return bot
+
+
 def review_file_documentation(
     bot: Bot,
 ) -> Tuple[List[str], List[ConversationNode]]:
@@ -101,8 +110,7 @@ def review_file_documentation(
     prompts = [
         "First, let's read the project context to understand documentation "
         "standards. Please read bot_context.txt and README.md.",
-        "Now, let's examine the TARGET FILE. Use the view tool to read this "
-        "file.",
+        ("Now, let's examine the TARGET FILE. Use the view tool to " "read this file."),
         textwrap.dedent(
             """
                     Review the file's documentation and make improvements
@@ -119,8 +127,7 @@ def review_file_documentation(
                     - Return value documented with type
                     """
         ),
-        "Review the TARGET FILE one final time to ensure all documentation "
-        "is complete and consistent.",
+        ("Review the TARGET FILE one final time to ensure all " "documentation is complete and consistent."),
     ]
     return fp.chain_while(
         bot,
@@ -128,6 +135,8 @@ def review_file_documentation(
         stop_condition=fp.conditions.tool_not_used_debug,
         continue_prompt="ok",
     )
+
+
 def main():
     """Coordinate parallel documentation review across all Python files.
     Use when you need to execute a full project documentation review that:
@@ -136,9 +145,7 @@ def main():
     3. Executes documentation review for each file
     4. Reports progress
     """
-    project_root = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..")
-    )
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     python_files = find_python_files(project_root)
     print(f"Found {len(python_files)} Python files to review")
     for file in python_files:
@@ -150,5 +157,7 @@ def main():
             f"if you understand. Further instructions are incoming."
         )
     fp.par_dispatch(bots, review_file_documentation)
+
+
 if __name__ == "__main__":
     main()

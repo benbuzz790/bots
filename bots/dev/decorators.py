@@ -180,12 +180,12 @@ def lazy_fn(prompt: Optional[str] = None, bot: Optional[Any] = None, context: Op
                 logger.debug(f"Initializing lazy function: {function_name}")
                 context_content = _get_context(func, context)
                 instructions: str = textwrap.dedent(
-                    """Please fill out the following 
-                    function definition according to the following requirements. 
-                    Respond only with the code in a single code block. Include all 
-                    import statements inside the function definition. Remove the lazy 
-                    decorator. Respond only with the function definition, including 
-                    any new decorators and docstring. Include 'gen by @lazy' in the 
+                    """Please fill out the following
+                    function definition according to the following requirements.
+                    Respond only with the code in a single code block. Include all
+                    import statements inside the function definition. Remove the lazy
+                    decorator. Respond only with the function definition, including
+                    any new decorators and docstring. Include 'gen by @lazy' in the
                     docstring. Use PEP8 convention with type hints for all variables."""
                 )
                 complete_prompt: str = textwrap.dedent(
@@ -328,11 +328,11 @@ def lazy_class(prompt: Optional[str] = None, bot: Optional[Any] = None, context:
 
                 # Create prompt for LLM
                 instructions: str = textwrap.dedent(
-                    """Please implement the following class according to these requirements. 
-                    Respond only with the code in a single code block. Include all 
-                    import statements inside the class definition. Remove the lazy_class 
-                    decorator. Respond only with the class definition, including 
-                    any new decorators and docstring. Include 'gen by @lazy' in the 
+                    """Please implement the following class according to these requirements.
+                    Respond only with the code in a single code block. Include all
+                    import statements inside the class definition. Remove the lazy_class
+                    decorator. Respond only with the class definition, including
+                    any new decorators and docstring. Include 'gen by @lazy' in the
                     docstring. Use PEP8 convention with type hints."""
                 )
 

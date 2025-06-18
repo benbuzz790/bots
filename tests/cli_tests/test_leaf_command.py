@@ -1,15 +1,11 @@
-import unittest
-import sys
 import os
-from unittest.mock import patch, MagicMock
+import sys
+import unittest
+from unittest.mock import MagicMock, patch
+
 import bots.dev.cli as cli_module
 from bots.foundation.base import ConversationNode
-import unittest
-import sys
-import os
-from unittest.mock import patch, MagicMock
-import bots.dev.cli as cli_module
-from bots.foundation.base import ConversationNode
+
 """
 Test suite for the new enhanced /leaf command functionality.
 """
@@ -17,6 +13,7 @@ Test suite for the new enhanced /leaf command functionality.
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
+
 
 class TestLeafCommand(unittest.TestCase):
     """Test the new enhanced /leaf command functionality."""
@@ -31,7 +28,7 @@ class TestLeafCommand(unittest.TestCase):
         self.handler = cli_module.ConversationHandler()
 
     def _create_test_conversation_tree(self):
-        """Create a test conversation tree with multiple branches and leaves."""
+        """Create a test conversation tree with multiple branches."""
         # Root node
         root = ConversationNode("system", "System message")
         # First level - user prompt
@@ -45,19 +42,27 @@ class TestLeafCommand(unittest.TestCase):
         branch2_user = ConversationNode("user", "What about neural networks?", parent=assistant1)
         assistant1.replies.extend([branch1_user, branch2_user])
         # Create leaves
-        leaf1 = ConversationNode("assistant", "Machine learning is a subset of AI that focuses on algorithms", parent=branch1_user)
-        leaf2 = ConversationNode("assistant", "Neural networks are inspired by biological neural networks", parent=branch2_user)
+        leaf1 = ConversationNode(
+            "assistant",
+            "Machine learning is a subset of AI that focuses on algorithms",
+            parent=branch1_user,
+        )
+        leaf2 = ConversationNode(
+            "assistant",
+            "Neural networks are inspired by biological neural networks",
+            parent=branch2_user,
+        )
         branch1_user.replies.append(leaf1)
         branch2_user.replies.append(leaf2)
         # Add labels to some nodes
-        leaf1.labels = ['ml_info']
-        leaf2.labels = ['nn_info']
+        leaf1.labels = ["ml_info"]
+        leaf2.labels = ["nn_info"]
         return assistant1  # Start from a node with multiple leaves
 
     def test_leaf_command_shows_leaves(self):
         """Test that /leaf command shows all available leaves."""
         # Test with direct argument to avoid input() call
-        result = self.handler.leaf(self.mock_bot, self.context, ['1'])
+        result = self.handler.leaf(self.mock_bot, self.context, ["1"])
         # Should show that it jumped to a leaf, indicating leaves were found
         self.assertIn("Jumped to leaf 1", result)
         # Should have cached the leaves
@@ -66,39 +71,40 @@ class TestLeafCommand(unittest.TestCase):
     def test_leaf_command_with_direct_jump(self):
         """Test /leaf command with direct jump to specific leaf."""
         # Test jumping to leaf 1
-        result = self.handler.leaf(self.mock_bot, self.context, ['1'])
+        result = self.handler.leaf(self.mock_bot, self.context, ["1"])
         self.assertIn("Jumped to leaf 1", result)
         # Should have updated bot conversation
         self.assertEqual(len(self.context.cached_leaves), 2)
 
     def test_leaf_command_invalid_number(self):
         """Test /leaf command with invalid leaf number."""
-        result = self.handler.leaf(self.mock_bot, self.context, ['99'])
+        result = self.handler.leaf(self.mock_bot, self.context, ["99"])
         self.assertIn("Invalid leaf number", result)
         self.assertIn("Must be between 1 and", result)
 
     def test_leaf_command_no_leaves(self):
         """Test /leaf command when no leaves exist."""
-        # Create a node that has replies but no leaves (empty conversation tree)
+        # Create a node that has replies but no leaves (empty conversation
+        # tree)
         root = ConversationNode("system", "System")
         # Don't add any replies, so _find_leaves will return empty
         self.mock_bot.conversation = root
         # Mock _find_leaves to return empty list
-        with patch.object(self.handler, '_find_leaves', return_value=[]):
+        with patch.object(self.handler, "_find_leaves", return_value=[]):
             result = self.handler.leaf(self.mock_bot, self.context, [])
             self.assertIn("No leaves found", result)
 
-    @patch('builtins.input')
+    @patch("builtins.input")
     def test_leaf_command_interactive_selection(self, mock_input):
         """Test /leaf command with interactive selection."""
-        mock_input.return_value = '2'  # Select leaf 2
+        mock_input.return_value = "2"  # Select leaf 2
         result = self.handler.leaf(self.mock_bot, self.context, [])
         self.assertIn("Jumped to leaf 2", result)
 
-    @patch('builtins.input')
+    @patch("builtins.input")
     def test_leaf_command_interactive_cancel(self, mock_input):
         """Test /leaf command with interactive cancellation."""
-        mock_input.return_value = ''  # Cancel selection
+        mock_input.return_value = ""  # Cancel selection
         result = self.handler.leaf(self.mock_bot, self.context, [])
         self.assertIn("Staying at current position", result)
 
@@ -120,12 +126,7 @@ class TestLeafCommand(unittest.TestCase):
         self.assertIsInstance(preview, str)
         # Should be shorter than original if cutting worked
         self.assertTrue(len(preview) <= 100)
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     unittest.main()
-"""
-Test suite for the new enhanced /leaf command functionality.
-"""
-# Add the parent directory to the path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, parent_dir)

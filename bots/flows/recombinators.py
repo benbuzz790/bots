@@ -52,7 +52,7 @@ class recombinators:
         ),
         **kwargs,
     ) -> Tuple[Response, ResponseNode]:
-        """Use an LLM to judge and select the best response from multiple options.
+        """Use an LLM to judge and select the best response from options.
         Args:
             responses: List of response strings to judge
             nodes: List of conversation nodes

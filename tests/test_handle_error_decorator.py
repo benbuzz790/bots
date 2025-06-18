@@ -1,6 +1,9 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from bots.dev.decorators import handle_errors
+
 """Tests for the handle_errors decorator.
 
 This module tests the handle_errors decorator functionality including:
@@ -9,6 +12,7 @@ This module tests the handle_errors decorator functionality including:
 - Proper return values for successful operations
 - Integration with _process_error helper function
 """
+
 
 class TestHandleErrorsDecorator:
     """Test suite for the handle_errors decorator."""
@@ -19,15 +23,18 @@ class TestHandleErrorsDecorator:
         @handle_errors
         def successful_function(x, y):
             return x + y
+
         result = successful_function(2, 3)
         assert result == 5
 
     def test_exception_handling_returns_error_string(self):
-        """Test that exceptions are caught and returned as formatted error strings."""
+        """Test that exceptions are caught and returned as formatted error
+        strings."""
 
         @handle_errors
         def failing_function():
             raise ValueError("Test error message")
+
         result = failing_function()
         assert isinstance(result, str)
         assert result.startswith("Tool Failed:")
@@ -44,6 +51,7 @@ class TestHandleErrorsDecorator:
         @handle_errors
         def runtime_error_function():
             raise RuntimeError("Runtime error message")
+
         type_result = type_error_function()
         runtime_result = runtime_error_function()
         assert "TypeError" in type_result
@@ -59,6 +67,7 @@ class TestHandleErrorsDecorator:
             if c is None:
                 raise ValueError("c cannot be None")
             return a + b + c
+
         # Test successful call
         result = function_with_args(1, 2, c=3)
         assert result == 6
@@ -74,8 +83,10 @@ class TestHandleErrorsDecorator:
         def documented_function(x):
             """This is a test function with documentation."""
             return x * 2
+
         assert documented_function.__name__ == "documented_function"
-        assert "test function with documentation" in documented_function.__doc__
+        doc = documented_function.__doc__
+        assert "test function with documentation" in doc
 
     def test_nested_exceptions(self):
         """Test handling of nested function calls that raise exceptions."""
@@ -86,6 +97,7 @@ class TestHandleErrorsDecorator:
         @handle_errors
         def outer_function():
             return inner_function()
+
         result = outer_function()
         assert "Tool Failed:" in result
         assert "ZeroDivisionError" in result
@@ -99,12 +111,13 @@ class TestHandleErrorsDecorator:
             x = 1
             y = 0
             return x / y  # This will raise ZeroDivisionError
+
         result = function_with_traceback()
         assert "Tool Failed:" in result
         assert "Traceback:" in result
         assert "ZeroDivisionError" in result
 
-    @patch('bots.utils.helpers._process_error')
+    @patch("bots.utils.helpers._process_error")
     def test_process_error_integration(self, mock_process_error):
         """Test that the decorator properly calls _process_error."""
         mock_process_error.return_value = "Mocked error message"
@@ -112,6 +125,7 @@ class TestHandleErrorsDecorator:
         @handle_errors
         def failing_function():
             raise ValueError("Test error")
+
         result = failing_function()
         # Verify _process_error was called
         mock_process_error.assert_called_once()
@@ -132,6 +146,7 @@ class TestHandleErrorsDecorator:
         @handle_errors
         def function_two():
             raise TypeError("Error from function two")
+
         result_one = function_one()
         result_two = function_two()
         assert "ValueError" in result_one
@@ -145,6 +160,7 @@ class TestHandleErrorsDecorator:
         @handle_errors
         def function_returning_none():
             return None
+
         result = function_returning_none()
         assert result is None
 
@@ -158,6 +174,7 @@ class TestHandleErrorsDecorator:
         @handle_errors
         def function_returning_list():
             return [1, 2, 3, "test"]
+
         dict_result = function_returning_dict()
         list_result = function_returning_list()
         assert dict_result == {"key": "value", "number": 42}
@@ -175,6 +192,7 @@ class TestHandleErrorsDecorator:
             @handle_errors
             def method_that_succeeds(self, value):
                 return value * 2
+
         obj = TestClass()
         # Test successful method
         result = obj.method_that_succeeds(5)
@@ -184,5 +202,7 @@ class TestHandleErrorsDecorator:
         assert "Tool Failed:" in error_result
         assert "AttributeError" in error_result
         assert "Method error" in error_result
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

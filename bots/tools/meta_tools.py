@@ -39,7 +39,12 @@ def message_bot(bot_path, message):
         print(bot.name + ": " + response + "\n" + tool_name)
         return "/DONE" in response
 
-    _, nodes = fp.prompt_while(bot, first_message, continue_prompt, stop_condition)
+    _, nodes = fp.prompt_while(
+        bot,
+        first_message,
+        continue_prompt,
+        stop_condition,
+    )
     tools = ""
     for node in nodes:
         tool_name = ""

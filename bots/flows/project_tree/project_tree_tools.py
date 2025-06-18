@@ -32,7 +32,8 @@ def message_bot(bot_path, message):
             tools = ""
             if bot.tool_handler.requests:
                 for request in bot.tool_handler.requests:
-                    tool_name, _ = bot.tool_handler.tool_name_and_input(request)
+                    handler = bot.tool_handler
+                    tool_name, _ = handler.tool_name_and_input(request)
                 tools += "- " + tool_name + "\n"
             response = bot.conversation.content
             print(bot.name + ": " + response + "\n" + tool_name)
@@ -130,7 +131,8 @@ def view(file_path: str):
         try:
             with open(file_path, "r", encoding=encoding) as file:
                 lines = file.readlines()
-            numbered_lines = [f"{i + 1}:{line.rstrip()}" for i, line in enumerate(lines)]
+            lines_enum = enumerate(lines)
+            numbered_lines = [f"{i+1}:{ln.rstrip()}" for i, ln in lines_enum]
             return "\n".join(numbered_lines)
         except UnicodeDecodeError:
             continue
@@ -140,25 +142,20 @@ def view(file_path: str):
 
 
 def view_dir(
-    start_path: str = ".",
+    path: str = ".",
     output_file=None,
     target_extensions: str = "['py', 'txt', '.md']",
 ):
     """
     Creates a summary of the directory structure starting from the given path,
     writing only files with specified extensions. The output is written to a
-    text file and returned as a string.
-    Parameters:
-    - start_path (str): The root directory to start scanning from.
-    - output_file (str): The name of the file to optionally write the
-        directory structure to.
-    - target_extensions (str): String representation of a list of file
-        extensions (e.g. "['py', 'txt']").
+    file if specified.
+
     Returns:
     str: A formatted string containing the directory structure, with each
     directory and file properly indented.
     Example output:
-    my_project/
+    project/
         module1/
             script.py
             README.md
@@ -168,14 +165,14 @@ def view_dir(
     extensions_list = [ext.strip().strip("'\"") for ext in target_extensions.strip("[]").split(",")]
     extensions_list = [("." + ext if not ext.startswith(".") else ext) for ext in extensions_list]
     output_text = []
-    for root, dirs, files in os.walk(start_path):
+    for root, dirs, files in os.walk(path):
         has_py = False
         for _, _, fs in os.walk(root):
             if any(f.endswith(tuple(extensions_list)) for f in fs):
                 has_py = True
                 break
         if has_py:
-            level = root.replace(start_path, "").count(os.sep)
+            level = root.replace(path, "").count(os.sep)
             indent = "    " * level
             line = f"{indent}{os.path.basename(root)}/"
             output_text.append(line)

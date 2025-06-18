@@ -2,7 +2,7 @@ import ast
 import os
 
 from bots.dev.decorators import handle_errors
-from bots.utils.helpers import _clean, _process_error, _py_ast_to_source
+from bots.utils.helpers import _clean, _py_ast_to_source
 
 
 class NodeTransformerWithAsyncSupport(ast.NodeTransformer):
@@ -98,7 +98,7 @@ def add_imports(file_path: str, code: str) -> str:
     if not content.strip():
         with open(abs_path, "w", encoding="utf-8") as file:
             file.write("\n".join(import_blocks) + "\n")
-        return f"{len(import_blocks)} imports have been added to new file '{abs_path}'."
+        return f"{len(import_blocks)} imports have been added to new file " f"'{abs_path}'."
     tree = ast.parse(content)
     added_imports = []
     existing_imports = []
@@ -159,7 +159,6 @@ def remove_import(file_path: str, import_to_remove: str) -> str:
     with open(file_path, "r", encoding="utf-8") as file:
         content = file.read()
     tree = ast.parse(content)
-    original_length = len(tree.body)
     new_body = []
     found = False
     for node in tree.body:
@@ -211,7 +210,7 @@ def replace_import(file_path: str, old_import: str, new_import: str) -> str:
     updated_content = _py_ast_to_source(tree)
     with open(file_path, "w", encoding="utf-8") as file:
         file.write(updated_content)
-    return f"Import '{old_import}' has been updated to '{new_import}' in '{file_path}'."
+    return f"Import '{old_import}' has been updated to '{new_import}' " f"in '{file_path}'."
 
 
 @handle_errors
@@ -445,7 +444,7 @@ def _add_single_function_to_class(file_path: str, class_name: str, new_method_de
     updated_content = _py_ast_to_source(tree)
     with open(abs_path, "w", encoding="utf-8") as file:
         file.write(updated_content)
-    return f"Method '{new_method_node.name}' has been added to class '{class_name}' in '{abs_path}'."
+    return f"Method '{new_method_node.name}' has been added to class " f"'{class_name}' in '{abs_path}'."
 
 
 @handle_errors
@@ -469,7 +468,7 @@ def _add_single_function_to_file(file_path: str, new_function_def: str) -> str:
     if not content.strip():
         with open(abs_path, "w", encoding="utf-8") as file:
             file.write(_py_ast_to_source(new_tree))
-        return f"Code with function '{new_func_node.name}' has been added to new file '{abs_path}'."
+        return f"Code with function '{new_func_node.name}' has been added " f"to new file '{abs_path}'."
     existing_tree = ast.parse(content)
     combined_body = []
     imports = []
@@ -486,7 +485,7 @@ def _add_single_function_to_file(file_path: str, new_function_def: str) -> str:
     updated_content = _py_ast_to_source(combined_tree)
     with open(abs_path, "w", encoding="utf-8") as file:
         file.write(updated_content)
-    return f"Code with function '{new_func_node.name}' has been added to '{abs_path}'."
+    return f"Code with function '{new_func_node.name}' has been added " f"to '{abs_path}'."
 
 
 @handle_errors
@@ -540,11 +539,12 @@ def _replace_single_function(file_path: str, new_function_def: str, class_name: 
     tree = transformer.visit(tree)
     if not transformer.success:
         if class_name:
-            raise ValueError(f"Function '{new_func_node.name}' not found in class '{class_name}'")
+            raise ValueError(f"Function '{new_func_node.name}' not found in class " f"'{class_name}'")
         tree.body.append(new_func_node)
     updated_content = _py_ast_to_source(tree)
     with open(abs_path, "w", encoding="utf-8") as file:
         file.write(updated_content)
     context = f"in class '{class_name}'" if class_name else "in file"
     action = "replaced" if transformer.success else "added"
-    return f"Function '{new_func_node.name}' has been {action} {context} '{abs_path}'."
+    return f"Function '{new_func_node.name}' has been {action} {context} " f"'{abs_path}'."
+

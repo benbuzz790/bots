@@ -1,6 +1,8 @@
 import glob
 import os
 import shutil
+
+
 def cleanup_test_artifacts():
     """Clean up test artifacts that may be left behind after test runs."""
     cleanup_patterns = [
@@ -24,7 +26,7 @@ def cleanup_test_artifacts():
         "test_patch_file.txt_dir",
         "test_patch_file.txt_newdir",
         ".pytest_cache",
-        "__pycache__"
+        "__pycache__",
     ]
     print("Cleaning up test artifacts...")
     # Clean up files matching patterns
@@ -48,9 +50,13 @@ def cleanup_test_artifacts():
         except Exception as e:
             print(f"Warning: Could not remove {dir_path}: {e}")
     print("Test artifact cleanup complete.")
+
+
 def pytest_sessionfinish(session, exitstatus):
     """Pytest hook that runs after all tests complete."""
     cleanup_test_artifacts()
+
+
 def pytest_runtest_teardown(item, nextitem):
     """Pytest hook that runs after each test."""
     # Quick cleanup of common LLM-generated files
@@ -62,5 +68,7 @@ def pytest_runtest_teardown(item, nextitem):
                     os.remove(file_path)
             except Exception:
                 pass  # Ignore errors for quick cleanup
+
+
 if __name__ == "__main__":
     cleanup_test_artifacts()

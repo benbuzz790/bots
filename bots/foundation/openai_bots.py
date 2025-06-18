@@ -87,7 +87,11 @@ class OpenAINode(ConversationNode):
                 for result in node.tool_results:
                     conversation_dict = [result] + conversation_dict
                 if node.tool_calls:
-                    assistant_msg = {"role": "assistant", "content": node.content, "tool_calls": node.tool_calls}
+                    assistant_msg = {
+                        "role": "assistant",
+                        "content": node.content,
+                        "tool_calls": node.tool_calls,
+                    }
                     conversation_dict = [assistant_msg] + conversation_dict
             node = node.parent
         return conversation_dict
@@ -172,7 +176,10 @@ class OpenAIToolHandler(ToolHandler):
                 {
                     "id": tool_call.id,
                     "type": tool_call.type,
-                    "function": {"name": tool_call.function.name, "arguments": tool_call.function.arguments},
+                    "function": {
+                        "name": tool_call.function.name,
+                        "arguments": tool_call.function.arguments,
+                    },
                 }
                 for tool_call in response.choices[0].message.tool_calls
             ]
@@ -194,7 +201,10 @@ class OpenAIToolHandler(ToolHandler):
         """
         if not request_schema:
             return (None, None)
-        return (request_schema["function"]["name"], json.loads(request_schema["function"]["arguments"]))
+        return (
+            request_schema["function"]["name"],
+            json.loads(request_schema["function"]["arguments"]),
+        )
 
     def generate_response_schema(self, request: Dict[str, Any], tool_output_kwargs: Dict[str, Any]) -> Dict[str, Any]:
         """Format tool execution results for OpenAI's expected format.
@@ -213,7 +223,11 @@ class OpenAIToolHandler(ToolHandler):
                 - content: String representation of the tool output
                 - tool_call_id: ID from the original request
         """
-        return {"role": "tool", "content": str(tool_output_kwargs), "tool_call_id": request["id"]}
+        return {
+            "role": "tool",
+            "content": str(tool_output_kwargs),
+            "tool_call_id": request["id"],
+        }
 
     def generate_error_schema(self, request_schema: Optional[Dict[str, Any]], error_msg: str) -> Dict[str, Any]:
         """Generate an error response in OpenAI's expected format.
@@ -231,7 +245,11 @@ class OpenAIToolHandler(ToolHandler):
                 - content: The error message
                 - tool_call_id: ID from the original request or 'unknown'
         """
-        return {"role": "tool", "content": error_msg, "tool_call_id": (request_schema["id"] if request_schema else "unknown")}
+        return {
+            "role": "tool",
+            "content": error_msg,
+            "tool_call_id": (request_schema["id"] if request_schema else "unknown"),
+        }
 
 
 class OpenAIMailbox(Mailbox):
@@ -313,10 +331,16 @@ class OpenAIMailbox(Mailbox):
                 )
             else:
                 response = self.client.chat.completions.create(
-                    model=model, messages=messages, max_tokens=max_tokens, temperature=temperature
+                    model=model,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
                 )
             try:
-                self._log_message(json.dumps({"response": response.model_dump()}, indent=2), "INCOMING")
+                self._log_message(
+                    json.dumps({"response": response.model_dump()}, indent=2),
+                    "INCOMING",
+                )
             except FileNotFoundError:
                 pass
             return response
@@ -331,7 +355,8 @@ class OpenAIMailbox(Mailbox):
         follow-up responses until a final text response is received.
         Parameters:
             response (Dict[str, Any]): Raw response from OpenAI's chat
-                completion API containing the message content and any tool calls
+                completion API containing the message content and any tool
+                calls
             bot (Bot): The bot instance for handling tool calls and maintaining
                 conversation state
         Returns:

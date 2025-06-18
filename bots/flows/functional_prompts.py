@@ -1,6 +1,6 @@
 """Functional patterns for structured bot interactions and complex reasoning.
 
-This module provides a collection of higher-level functions for orchestrating bot
+This module provides a collection of higher-level functions for orchestrating
 interactions in common patterns like chains, branches, and trees. These patterns
 enable sophisticated reasoning approaches while maintaining clear structure and
 reproducibility.
@@ -50,8 +50,8 @@ Prompt = str  # A string containing a prompt to be sent to the bot
 Response = str  # A string containing a bot's response
 PromptNode = ConversationNode  # A conversation node containing a prompt
 ResponseNode = ConversationNode  # A conversation node containing a response
-Condition = Callable[[Bot], bool]  # A function that evaluates a bot's state and returns True/False
-DynamicPrompt = Callable[[Any], Prompt]  # A function that generates a prompt from some input
+Condition = Callable[[Bot], bool]  # Function that evaluates bot state
+DynamicPrompt = Callable[[Any], Prompt]  # Function that generates prompts
 
 RecombinatorFunction = Callable[
     [List[Response], List[ResponseNode]], Tuple[Response, ResponseNode]
@@ -770,8 +770,8 @@ def chain_while(
     prompt_list: List[Prompt],
     stop_condition: Condition = conditions.tool_not_used,
     continue_prompt: str = "ok",
-    callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None,
-) -> Tuple[List[Response], List[ResponseNode]]:
+    callback: Optional[Callable[[List[Response], List['ResponseNode']], None]] = None,
+) -> Tuple[List[Response], List['ResponseNode']]:
     """Execute a sequence of steps where each step can iterate until complete.
 
     Use when you need to:

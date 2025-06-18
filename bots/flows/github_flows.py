@@ -1,9 +1,12 @@
 from pathlib import Path
 from typing import Any, List, Tuple
+
 import bots
 import bots.flows.functional_prompts as fp
 from bots.foundation.base import Bot, ConversationNode
 from bots.tools.terminal_tools import execute_powershell
+
+
 def clone_and_edit(
     local_dir: Path, repo_name: str, task_prompt: str, bot: Bot = None
 ) -> Tuple[List[str], List[ConversationNode]]:
@@ -59,6 +62,8 @@ def clone_and_edit(
         },
         bot=bot,
     )
+
+
 def clone_and_fp(
     local_dir: Path,
     repo_name: str,
@@ -134,13 +139,7 @@ def clone_and_fp(
     # Add initial context about repository location
     if not kwargs.get("first_prompt"):
         if isinstance(kwargs.get("prompts"), list):
-            msg = (
-                "I've cloned the repository "
-                + repo_name
-                + " to "
-                + str(clone_path)
-                + ". "
-            )
+            msg = f"I've cloned the repository {repo_name} to {clone_path}. "
             kwargs["prompts"][0] = msg + kwargs["prompts"][0]
     try:
         result = functional_prompt(bot, **kwargs)

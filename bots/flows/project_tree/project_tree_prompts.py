@@ -1,4 +1,6 @@
 import textwrap
+
+
 class prompts:
     project_context = textwrap.dedent(
         """
@@ -30,6 +32,7 @@ class prompts:
         work around it.
         """
     )
+
     def root_breakdown_spec(spec: str):
         return textwrap.dedent(
             f"""
@@ -56,6 +59,7 @@ class prompts:
         common_req.txt.
         """
         )
+
     def root_make_bots():
         return textwrap.dedent(
             """
@@ -66,6 +70,7 @@ class prompts:
             You should use multiple parallel tool calls in a single message.
             """
         )
+
     def root_make_req(bot_name: str):
         bot_name = bot_name.removesuffix(".bot")
         return textwrap.dedent(
@@ -82,6 +87,7 @@ class prompts:
             executions. Assertions must always be side-effect free. Use
             literal assert statements."""
         )
+
     def file_create_files(bot_name: str):
         bot_name = bot_name.removesuffix(".bot")
         return textwrap.dedent(
@@ -94,6 +100,7 @@ class prompts:
             integration tests instead.
             Make sure your implementation is complete with no placeholders."""
         )
+
     def file_debug():
         return textwrap.dedent(
             """
@@ -105,16 +112,14 @@ class prompts:
             Continue debugging until all tests pass and requirements are met.
             """
         )
-    root_continue = (
-        'Work until the current INSTRUCTION is complete, then say "DONE" '
-        'to move on to the next INSTRUCTION'
-    )
+
+    root_continue = "Work until current INSTRUCTION complete, then say 'DONE'"
     file_continue = 'Say "/DONE" when INSTRUCTION is done.'
+
     def message_bot_first_message(message):
         return "MESSAGE:\n\n" + message
-    message_bot_continue = (
-        'Reply with command "/DONE" when MESSAGE has been addressed.'
-    )
+
+    message_bot_continue = "Reply with '/DONE' when MESSAGE addressed."
     file_initialization = project_context + textwrap.dedent(
         """
         You are a file bot responsible for:
