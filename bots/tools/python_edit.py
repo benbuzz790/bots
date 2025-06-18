@@ -1,7 +1,6 @@
 import ast
 import hashlib
 import os
-import re
 import textwrap
 from enum import Enum
 from typing import Dict, List, Tuple

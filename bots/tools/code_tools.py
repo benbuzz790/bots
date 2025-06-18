@@ -1,7 +1,6 @@
 import difflib
 import os
 import textwrap
-import traceback
 
 from bots.dev.decorators import handle_errors
 

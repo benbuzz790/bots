@@ -6,8 +6,7 @@ import platform
 import re
 import sys
 import textwrap
-from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Tuple, get_args, get_origin, get_type_hints
+from typing import Any, Callable, Dict, List, Optional
 
 import bots.flows.functional_prompts as fp
 import bots.flows.recombinators as recombinators
@@ -16,7 +15,6 @@ import bots.tools.python_edit
 import bots.tools.terminal_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, ConversationNode
-from bots.foundation.openai_bots import ChatGPT_Bot
 
 """
 CLI for bot interactions with improved architecture and dynamic parameter collection.
@@ -300,7 +298,7 @@ class ConversationHandler:
         if bot.conversation.parent and bot.conversation.parent.parent:
             context.conversation_backup = bot.conversation
             bot.conversation = bot.conversation.parent.parent
-            return f"Moved up conversation tree"
+            return "Moved up conversation tree"
         return "At root - can't go up"
 
     def down(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -713,7 +711,7 @@ class DynamicFunctionalPromptHandler:
                         # Apply filter if provided
                         if self.collector.function_filter is None or self.collector.function_filter(name, obj):
                             functions[name] = obj
-                except:
+                except Exception:
                     continue  # Skip if we can't inspect the signature
         return functions
 
@@ -802,7 +800,7 @@ class DynamicFunctionalPromptHandler:
                 label_str = f" (labels: {', '.join(labels)})" if labels else ""
                 print(f"  {i+1}. [depth {depth}]{label_str}: {content_preview}")
             # Get leaf selection from user
-            leaf_selection = input(f"\nSelect leaves to broadcast to (e.g., '1,3,5' or 'all' for all leaves): ").strip()
+            leaf_selection = input("\nSelect leaves to broadcast to (e.g., '1,3,5' or 'all' for all leaves): ").strip()
             if not leaf_selection:
                 return "No leaves selected"
             # Parse leaf selection

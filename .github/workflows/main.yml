@@ -102,6 +102,10 @@
 
                  - name: Install package
                    run: pip install -e .
+                - name: Remove BOMs from all files
+                  run: |
+                    python -m bots.dev.remove_boms
+
 
                  - name: Check Black formatting
                    run: |

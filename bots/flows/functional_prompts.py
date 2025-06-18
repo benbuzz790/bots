@@ -397,7 +397,7 @@ def branch(
                     callback([response], [node])
                 except Exception:
                     pass  # Don't let callback errors break the main function
-        except:
+        except Exception:
             response = None
             node = None
         finally:
@@ -1031,7 +1031,7 @@ def par_branch(
                 except Exception:
                     pass  # Don't let callback errors break the main function
             return index, response, new_node
-        except:
+        except Exception:
             return index, None, None
 
     with ThreadPoolExecutor() as executor:
@@ -1044,7 +1044,7 @@ def par_branch(
     bot.autosave = original_autosave
     try:
         os.remove(temp_file)
-    except:
+    except OSError:
         pass
     return responses, nodes
 
@@ -1161,7 +1161,7 @@ def par_branch_while(
     bot.autosave = original_autosave
     try:
         os.remove(temp_file)
-    except:
+    except OSError:
         pass
     return responses, nodes
 
@@ -1338,7 +1338,7 @@ def broadcast_to_leaves(
     bot.conversation = original_conversation
     try:
         os.remove(temp_file)
-    except:
+    except OSError:
         pass
     return responses, nodes
 
@@ -1479,7 +1479,7 @@ def broadcast_fp(
     bot.conversation = original_conversation
     try:
         os.remove(temp_file)
-    except:
+    except OSError:
         pass
 
     return responses, nodes

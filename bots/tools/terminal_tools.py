@@ -8,7 +8,7 @@ import traceback
 from datetime import datetime
 from queue import Empty, Queue
 from threading import Lock, Thread, local
-from typing import Dict, Generator, List, Set
+from typing import Dict, Generator, List
 
 from bots.dev.decorators import handle_errors, log_errors
 
