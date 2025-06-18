@@ -7,7 +7,11 @@ from bots.dev.decorators import handle_errors
 
 @handle_errors
 def view(
-    file_path: str, start_line: str = None, end_line: str = None, around_str_match: str = None, dist_from_match: str = "10"
+    file_path: str, 
+    start_line: str = None, 
+    end_line: str = None, 
+    around_str_match: str = None, 
+    dist_from_match: str = "10"
 ):
     """
     Display the contents of a file with line numbers.
@@ -72,7 +76,11 @@ def view(
 
 
 @handle_errors
-def view_dir(start_path: str = ".", output_file=None, target_extensions: str = "['py', 'txt', 'md']", max_lines: int = 500):
+def view_dir(start_path: str = ".", 
+             output_file=None, 
+             target_extensions: str = "['py', 'txt', 'md']", 
+             max_lines: int = 500
+):
     """
     Creates a summary of the directory structure starting from the given path, writing only files
     with specified extensions and showing venv directories without their contents.
@@ -518,142 +526,6 @@ def _adjust_additions_to_context(current_lines, match_line, context_before, addi
         return additions
 
     # Get indentation of context line in patch vs actual file
-    patch_indent = _get_line_indentation(patch_context_line)
-    actual_file_line = current_lines[match_line + context_index]
-    actual_indent = _get_line_indentation(actual_file_line)
-
-    # Calculate the indentation difference
-    indent_diff_spaces = len(actual_indent) - len(patch_indent)
-
-    # Apply the difference to all addition lines
-    adjusted_additions = []
-    for addition in additions:
-        current_addition_indent = _get_line_indentation(addition)
-        new_indent_spaces = len(current_addition_indent) + indent_diff_spaces
-
-        # Ensure we don't go negative
-        if new_indent_spaces < 0:
-            new_indent_spaces = 0
-
-        new_indent = " " * new_indent_spaces
-        line_content = addition.lstrip()
-        adjusted_line = new_indent + line_content
-        adjusted_additions.append(adjusted_line)
-
-    return adjusted_additions
-
-
-def _check_exact_match_at_position(current_lines, line_pos, context_before, removals):
-    """Check if there's an exact match at the specified position."""
-    if line_pos < 0 or line_pos + len(context_before) > len(current_lines):
-        return False
-
-    # Check context lines
-    for i, ctx_line in enumerate(context_before):
-        if current_lines[line_pos + i] != ctx_line:
-            return False
-
-    # Check removal lines if present
-    if removals:
-        removal_pos = line_pos + len(context_before)
-        if removal_pos + len(removals) > len(current_lines):
-            return False
-        for i, rem_line in enumerate(removals):
-            if current_lines[removal_pos + i] != rem_line:
-                return False
-
-    return True
-
-
-def _find_exact_match_anywhere(current_lines, context_before, removals):
-    """Find exact match anywhere in the file, ignoring line numbers."""
-    if not context_before and not removals:
-        return None
-
-    search_lines = context_before + removals
-
-    for i in range(len(current_lines) - len(search_lines) + 1):
-        match = True
-        for j, search_line in enumerate(search_lines):
-            if current_lines[i + j] != search_line:
-                match = False
-                break
-        if match:
-            return i
-
-    return None
-
-
-def _check_whitespace_match_at_position(current_lines, line_pos, context_before, removals):
-    """Check if there's a whitespace-ignoring match at the specified position."""
-    if line_pos < 0 or line_pos + len(context_before) > len(current_lines):
-        return False
-
-    # Check context lines ignoring whitespace
-    for i, ctx_line in enumerate(context_before):
-        if current_lines[line_pos + i].strip() != ctx_line.strip():
-            return False
-
-    # Check removal lines if present
-    if removals:
-        removal_pos = line_pos + len(context_before)
-        if removal_pos + len(removals) > len(current_lines):
-            return False
-        for i, rem_line in enumerate(removals):
-            if current_lines[removal_pos + i].strip() != rem_line.strip():
-                return False
-
-    return True
-
-
-def _find_whitespace_match_anywhere(current_lines, context_before, removals):
-    """Find whitespace-ignoring match anywhere in the file."""
-    if not context_before and not removals:
-        return None
-
-    search_lines = context_before + removals
-
-    for i in range(len(current_lines) - len(search_lines) + 1):
-        match = True
-        for j, search_line in enumerate(search_lines):
-            if current_lines[i + j].strip() != search_line.strip():
-                match = False
-                break
-        if match:
-            return i
-
-    return None
-
-
-def _adjust_additions_to_context(current_lines, match_line, context_before, additions):
-    """
-    Adjust additions indentation based on context line indentation difference.
-
-    The logic:
-    1. Find first non-empty context line in patch
-    2. Compare its indentation to corresponding line in actual file
-    3. Apply that indentation difference to all addition lines
-    """
-    if not context_before:
-        return None  # Error should be handled by caller
-
-    if not additions:
-        return additions
-
-    # Find first non-empty context line
-    patch_context_line = None
-    context_index = None
-    for i, ctx_line in enumerate(context_before):
-        if ctx_line.strip():  # Skip empty lines
-            patch_context_line = ctx_line
-            context_index = i
-            break
-
-    if patch_context_line is None:
-        # All context lines are empty, can't determine baseline
-        return additions
-
-    # Get indentation of context line in patch vs actual file
     patch_indent_len = len(_get_line_indentation(patch_context_line))
     actual_file_line = current_lines[match_line + context_index]
     actual_indent_len = len(_get_line_indentation(actual_file_line))
@@ -756,34 +628,3 @@ def _normalize_header_lines(lines):
                 line = f"@@ {ranges} @@"
         normalized.append(line)
     return normalized
-
-
-def _adjust_indentation(lines: list, target_indent: str) -> list:
-    """
-    Adjust indentation of a block of lines to match target indent while preserving relative indentation.
-    First applies target indentation to all lines, then preserves additional relative indentation.
-    Args:
-        lines (list[str]): Lines to adjust
-        target_indent (str): Target base indentation
-    Returns:
-        list[str]: Lines with adjusted indentation
-    """
-    if not lines:
-        return lines
-    base_indent = None
-    for line in lines:
-        if line.strip():
-            base_indent = _get_line_indentation(line)
-            break
-    if base_indent is None:
-        return lines
-    adjusted_lines = []
-    for line in lines:
-        if not line.strip():
-            adjusted_lines.append("")
-            continue
-        current_indent = _get_line_indentation(line)
-        relative_indent = len(current_indent) - len(base_indent)
-        new_indent = target_indent + " " * max(0, relative_indent)
-        adjusted_lines.append(new_indent + line.lstrip())
-    return adjusted_lines
