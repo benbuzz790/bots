@@ -1,4 +1,4 @@
-﻿import os
+import os
 import pytest
 import tempfile
 from textwrap import dedent
