@@ -1,6 +1,6 @@
-import subprocess
 import json
 import re
+import subprocess
 import sys
 
 

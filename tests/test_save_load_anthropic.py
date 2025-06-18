@@ -63,10 +63,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             and will be cleaned up in tearDown().
         """
         self.temp_dir = tempfile.mkdtemp()
-        self.bot = AnthropicBot(
-            name="TestClaude", 
-            model_engine=Engines.CLAUDE35_SONNET_20240620
-        )
+        self.bot = AnthropicBot(name="TestClaude", model_engine=Engines.CLAUDE35_SONNET_20240620)
         return self
 
     def tearDown(self) -> None:
@@ -687,5 +684,3 @@ class TestSaveLoadAnthropic(unittest.TestCase):
 def simple_addition(x, y) -> str:
     """Returns x + y with appropriate type conversion"""
     return str(int(x) + int(y))
-
-

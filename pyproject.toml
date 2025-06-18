@@ -15,6 +15,8 @@
               | build
               | dist
               | docs
+             | tests/test_python_edit.*
+             | tests/test_terminal_tools.*
             )/
             """
             [tool.isort]

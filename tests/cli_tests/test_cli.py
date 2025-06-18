@@ -1,12 +1,13 @@
-import unittest
+import inspect
 import os
 import sys
 import traceback
-from unittest.mock import patch, MagicMock
-from io import StringIO
+import unittest
 from contextlib import redirect_stdout
+from io import StringIO
+from unittest.mock import MagicMock, patch
+
 import bots.dev.cli as cli_module
-import inspect
 import bots.flows.functional_prompts as fp
 
 """Unit tests for the CLI module.
@@ -36,9 +37,7 @@ class DetailedTestCase(unittest.TestCase):
         text = text.replace(":", "").replace(",", "")
         return " ".join(text.split())
 
-    def assertContainsNormalized(
-        self, haystack: str, needle: str, msg: str | None = None
-    ) -> None:
+    def assertContainsNormalized(self, haystack: str, needle: str, msg: str | None = None) -> None:
         """Assert that needle exists in haystack after normalization.
         Performs a contains assertion after normalizing both strings to handle
         variations in formatting, whitespace, and special characters.
@@ -53,13 +52,10 @@ class DetailedTestCase(unittest.TestCase):
         normalized_needle = self.normalize_text(needle)
         self.assertTrue(
             normalized_needle in normalized_haystack,
-            msg
-            or f'Expected to find "{needle}" in text (after normalization).\nGot:\n{haystack}',
+            msg or f'Expected to find "{needle}" in text (after normalization).\nGot:\n{haystack}',
         )
 
-    def assertEqualWithDetails(
-        self, first: object, second: object, msg: str | None = None
-    ) -> None:
+    def assertEqualWithDetails(self, first: object, second: object, msg: str | None = None) -> None:
         """Detailed assertion with local variable context on failure.
         Enhanced version of assertEqual that provides detailed context including
         local variables and stack trace on assertion failure.
@@ -106,9 +102,7 @@ class TestCLIBasics(DetailedTestCase):
             print(f"\nHelp output:\n{output}")
         self.assertContainsNormalized(output, "Available commands")
         self.assertContainsNormalized(output, "/fp: Execute functional prompts")
-        self.assertContainsNormalized(
-            output, "/config: Show or modify CLI configuration"
-        )
+        self.assertContainsNormalized(output, "/config: Show or modify CLI configuration")
 
     @patch("builtins.input")
     def test_verbose_quiet_commands(self, mock_input: MagicMock) -> None:
@@ -194,9 +188,7 @@ class TestLabelingSystem(DetailedTestCase):
                 cli_module.main("")
             output = buf.getvalue()
             print(f"\nLabel and goto output:\n{output}")
-        self.assertContainsNormalized(
-            output, "Saved current node with label: test_function"
-        )
+        self.assertContainsNormalized(output, "Saved current node with label: test_function")
         self.assertContainsNormalized(output, "Moved to node labeled: test_function")
 
     @patch("builtins.input")
@@ -213,9 +205,7 @@ class TestLabelingSystem(DetailedTestCase):
                 cli_module.main("")
             output = buf.getvalue()
             print(f"\nGoto nonexistent output:\n{output}")
-        self.assertContainsNormalized(
-            output, "No node found with label: nonexistent_label"
-        )
+        self.assertContainsNormalized(output, "No node found with label: nonexistent_label")
 
     @patch("builtins.input")
     def test_showlabels_empty(self, mock_input: MagicMock) -> None:
@@ -412,9 +402,7 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         self.assertIsNotNone(collected)
         self.assertIn("prompt_list", collected)
         self.assertEqual(len(collected["prompt_list"]), 3)
-        self.assertEqual(
-            collected["prompt_list"][0], "Analyze the problem step by step"
-        )
+        self.assertEqual(collected["prompt_list"][0], "Analyze the problem step by step")
 
         # Verify callback handling
         self.assertIn("_callback_type", collected)
@@ -453,9 +441,7 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         self.assertIn("first_prompt", collected)
         self.assertIn("continue_prompt", collected)
         self.assertIn("stop_condition", collected)
-        self.assertEqual(
-            collected["first_prompt"], "Debug this code and fix all issues"
-        )
+        self.assertEqual(collected["first_prompt"], "Debug this code and fix all issues")
 
     def test_partially_usable_tree_of_thought_function(self):
         """⚠️ Demonstrate that tree_of_thought() is partially usable with limitations."""
@@ -491,9 +477,7 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         self.assertIsNone(items_result)
 
         # Test that dynamic_prompt parameter handler is not implemented
-        dynamic_prompt_result = self.collector._collect_dynamic_prompt(
-            "dynamic_prompt", inspect.Parameter.empty
-        )
+        dynamic_prompt_result = self.collector._collect_dynamic_prompt("dynamic_prompt", inspect.Parameter.empty)
         self.assertIsNone(dynamic_prompt_result)
 
         # Full parameter collection should fail
@@ -559,9 +543,7 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         ]
 
         for handler_name in expected_handlers:
-            self.assertIn(
-                handler_name, handlers, f"Handler for '{handler_name}' should exist"
-            )
+            self.assertIn(handler_name, handlers, f"Handler for '{handler_name}' should exist")
 
     def test_condition_options_available(self):
         """Test that predefined stop conditions are available."""
@@ -580,9 +562,7 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         """Test that predefined recombinator functions are available."""
         # Test recombinator collection
         with patch("builtins.input", return_value="1"):
-            result = self.collector._collect_recombinator(
-                "recombinator_function", inspect.Parameter.empty
-            )
+            result = self.collector._collect_recombinator("recombinator_function", inspect.Parameter.empty)
 
         # Should return a valid recombinator function
         self.assertIsNotNone(result)
@@ -590,9 +570,7 @@ class TestFunctionalPromptUsability(DetailedTestCase):
 
         # Test invalid selection defaults to concatenate
         with patch("builtins.input", return_value="invalid"):
-            result = self.collector._collect_recombinator(
-                "recombinator_function", inspect.Parameter.empty
-            )
+            result = self.collector._collect_recombinator("recombinator_function", inspect.Parameter.empty)
 
         from bots.flows.recombinators import recombinators
 
@@ -635,9 +613,7 @@ class TestFunctionalPromptUsability(DetailedTestCase):
 
         prompts = ["Prompt 1", "Prompt 2", "Prompt 3"]
         # Test chain_while
-        result_responses, result_nodes = chain_while(
-            self.mock_bot, prompts, stop_condition=stop_immediately
-        )
+        result_responses, result_nodes = chain_while(self.mock_bot, prompts, stop_condition=stop_immediately)
         # Verify all prompts were processed
         self.assertEqual(len(result_responses), 3)
         self.assertEqual(self.mock_bot.respond.call_count, 3)
@@ -653,9 +629,7 @@ class TestFunctionalPromptUsability(DetailedTestCase):
             return True
 
         # Test chain_while with empty list
-        responses, nodes = chain_while(
-            self.mock_bot, [], stop_condition=stop_immediately
-        )
+        responses, nodes = chain_while(self.mock_bot, [], stop_condition=stop_immediately)
         self.assertEqual(len(responses), 0)
         self.assertEqual(len(nodes), 0)
         # Verify bot.respond was never called

@@ -433,7 +433,7 @@ class AnthropicBot(Bot):
         role: str = "assistant",
         role_description: str = "a friendly AI assistant",
         autosave: bool = True,
-        #allow_web_search: bool = False,
+        # allow_web_search: bool = False,
     ) -> None:
         """Initialize an AnthropicBot.
 
@@ -464,7 +464,7 @@ class AnthropicBot(Bot):
             mailbox=AnthropicMailbox(),
             autosave=autosave,
         )
-        #self.allow_web_search = allow_web_search
+        # self.allow_web_search = allow_web_search
 
 
 # class AnthropicTools:

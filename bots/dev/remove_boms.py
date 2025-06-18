@@ -11,7 +11,7 @@ def remove_bom_from_files():
             content = file.read()
         if content.startswith(codecs.BOM_UTF8):
             with open(file_path, "wb") as file:
-                file.write(content[len(codecs.BOM_UTF8):])
+                file.write(content[len(codecs.BOM_UTF8) :])
             print(f"Removed BOM from: {file_path}")
             nboms += 1
         else:

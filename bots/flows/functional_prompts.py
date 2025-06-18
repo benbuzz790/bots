@@ -770,8 +770,8 @@ def chain_while(
     prompt_list: List[Prompt],
     stop_condition: Condition = conditions.tool_not_used,
     continue_prompt: str = "ok",
-    callback: Optional[Callable[[List[Response], List['ResponseNode']], None]] = None,
-) -> Tuple[List[Response], List['ResponseNode']]:
+    callback: Optional[Callable[[List[Response], List["ResponseNode"]], None]] = None,
+) -> Tuple[List[Response], List["ResponseNode"]]:
     """Execute a sequence of steps where each step can iterate until complete.
 
     Use when you need to:

@@ -1,24 +1,27 @@
 import ast
-import os
-import textwrap
-from bots.utils.helpers import _process_error, _clean, _py_ast_to_source
 import hashlib
+import os
 import re
-from typing import Dict, Tuple, List
+import textwrap
 from enum import Enum
+from typing import Dict, List, Tuple
 
+from bots.utils.helpers import _clean, _process_error, _py_ast_to_source
 
 ### CLASSES ##
 
+
 class TokenType(Enum):
     """Types of tokens for metadata-driven processing"""
-    STANDALONE_COMMENT = 'standalone_comment'
-    INLINE_COMMENT = 'inline_comment'
-    IMPORT_COMMENT = 'import_comment'
-    COMPOUND_COMMENT = 'compound_comment'
-    STRING_LITERAL = 'string_literal'
-    FSTRING_LITERAL = 'fstring_literal'
-    MULTILINE_STRING = 'multiline_string'
+
+    STANDALONE_COMMENT = "standalone_comment"
+    INLINE_COMMENT = "inline_comment"
+    IMPORT_COMMENT = "import_comment"
+    COMPOUND_COMMENT = "compound_comment"
+    STRING_LITERAL = "string_literal"
+    FSTRING_LITERAL = "fstring_literal"
+    MULTILINE_STRING = "multiline_string"
+
 
 class ScopeTransformer(ast.NodeTransformer):
     """AST transformer that handles scope-based Python code modifications."""
@@ -93,20 +96,20 @@ class ScopeTransformer(ast.NodeTransformer):
 
     def _handle_one_line_function(self, node, line):
         """Special handling for one-line function definitions"""
-        if ': pass' in line or ':pass' in line:
+        if ": pass" in line or ":pass" in line:
             base_indent = len(line) - len(line.lstrip())
             def_line = line.rstrip()
-            if self.insert_after == 'pass':
-                def_line = def_line.replace(': pass', ':').replace(':pass', ':')
+            if self.insert_after == "pass":
+                def_line = def_line.replace(": pass", ":").replace(":pass", ":")
                 body_indent = base_indent + 4
                 body_lines = []
-                body_lines.append(' ' * body_indent + 'pass')
+                body_lines.append(" " * body_indent + "pass")
                 for new_node in self.new_nodes:
-                    node_lines = _py_ast_to_source(new_node).split('\n')
+                    node_lines = _py_ast_to_source(new_node).split("\n")
                     for nl in node_lines:
                         if nl.strip():
-                            body_lines.append(' ' * body_indent + nl.lstrip())
-                new_source = def_line + '\n' + '\n'.join(body_lines)
+                            body_lines.append(" " * body_indent + nl.lstrip())
+                new_source = def_line + "\n" + "\n".join(body_lines)
                 try:
                     new_node = ast.parse(new_source).body[0]
                     self.success = True
@@ -123,12 +126,12 @@ class ScopeTransformer(ast.NodeTransformer):
 
     def _handle_insertion(self, node):
         """Handle inserting nodes after a specific point."""
-        if isinstance(self.insert_after, str) and '::' not in self.insert_after:
+        if isinstance(self.insert_after, str) and "::" not in self.insert_after:
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 return node
             if node.lineno == node.end_lineno:
                 return self._handle_one_line_function(node, self.file_lines[node.lineno - 1])
-            func_lines = self.file_lines[node.lineno - 1:node.end_lineno]
+            func_lines = self.file_lines[node.lineno - 1 : node.end_lineno]
             if not func_lines:
                 return node
             target = self.insert_after.strip()
@@ -142,7 +145,7 @@ class ScopeTransformer(ast.NodeTransformer):
             if self.line_match_count == 0:
                 return node
             elif self.line_match_count > 1:
-                raise ValueError(f'Ambiguous insert_after - found {self.line_match_count} matches for: {self.insert_after}')
+                raise ValueError(f"Ambiguous insert_after - found {self.line_match_count} matches for: {self.insert_after}")
             target_absolute_line = node.lineno + target_line_idx
             containing_node = self._find_containing_node(node, target_absolute_line)
             if containing_node and containing_node is not node:
@@ -150,7 +153,7 @@ class ScopeTransformer(ast.NodeTransformer):
             else:
                 insert_index = len(node.body)
                 for idx, child in enumerate(node.body):
-                    if hasattr(child, 'lineno') and child.lineno > target_absolute_line:
+                    if hasattr(child, "lineno") and child.lineno > target_absolute_line:
                         insert_index = idx
                         break
                 if insert_index == len(node.body):
@@ -162,14 +165,14 @@ class ScopeTransformer(ast.NodeTransformer):
             return node
         else:
             if self.insert_after:
-                target_path = self.insert_after.split('::')
+                target_path = self.insert_after.split("::")
                 current_path = self.current_path
                 if len(target_path) > 1 and len(current_path) == len(target_path) - 1:
-                    if all((c == t for c, t in zip(current_path, target_path[:len(current_path)]))):
+                    if all((c == t for c, t in zip(current_path, target_path[: len(current_path)]))):
                         target_name = target_path[-1]
                         insert_index = None
                         for idx, child in enumerate(node.body):
-                            if hasattr(child, 'name') and child.name == target_name:
+                            if hasattr(child, "name") and child.name == target_name:
                                 insert_index = idx + 1
                                 break
                         if insert_index is not None:
@@ -188,17 +191,17 @@ class ScopeTransformer(ast.NodeTransformer):
 
     def _find_containing_node(self, node, target_line):
         """Find the deepest AST node with a body that contains the target line."""
-        if not (hasattr(node, 'lineno') and hasattr(node, 'end_lineno')):
+        if not (hasattr(node, "lineno") and hasattr(node, "end_lineno")):
             return None
         if not node.lineno <= target_line <= node.end_lineno:
             return None
-        deepest_with_body = node if hasattr(node, 'body') else None
-        if hasattr(node, 'body'):
+        deepest_with_body = node if hasattr(node, "body") else None
+        if hasattr(node, "body"):
             for child in node.body:
                 deeper_node = self._find_containing_node(child, target_line)
                 if deeper_node:
                     return deeper_node
-        if hasattr(node, 'orelse'):
+        if hasattr(node, "orelse"):
             for child in node.orelse:
                 deeper_node = self._find_containing_node(child, target_line)
                 if deeper_node:
@@ -209,21 +212,24 @@ class ScopeTransformer(ast.NodeTransformer):
 
     def _insert_into_node(self, node, target_line):
         """Insert new nodes into the given node after the target line."""
-        if not hasattr(node, 'body'):
+        if not hasattr(node, "body"):
             return
         insert_index = len(node.body)
         for idx, child in enumerate(node.body):
-            if hasattr(child, 'lineno') and child.lineno > target_line:
+            if hasattr(child, "lineno") and child.lineno > target_line:
                 insert_index = idx
                 break
         for i, new_node in enumerate(self.new_nodes):
             node.body.insert(insert_index + i, new_node)
 
+
 ### ENTRY POINT ###
 
 from bots.dev.decorators import handle_errors
+
+
 @handle_errors
-def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
+def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> str:
     """
     Edit Python code using pytest-style scope syntax.
     Default behavior: Replace entire target scope.
@@ -256,12 +262,12 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
         Description of what was modified or error message
     """
     try:
-        file_path, *path_elements = target_scope.split('::')
-        if not file_path.endswith('.py'):
-            return _process_error(ValueError(f'File path must end with .py: {file_path}'))
+        file_path, *path_elements = target_scope.split("::")
+        if not file_path.endswith(".py"):
+            return _process_error(ValueError(f"File path must end with .py: {file_path}"))
         for element in path_elements:
             if not element.isidentifier():
-                return _process_error(ValueError(f'Invalid identifier in path: {element}'))
+                return _process_error(ValueError(f"Invalid identifier in path: {element}"))
         abs_path = _make_file(file_path)
         cleaned_code = _clean(code)
         tokenized_code, new_code_tokens = _tokenize_source(cleaned_code)
@@ -275,21 +281,21 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 else:
                     code_nodes.append(node)
         except Exception as e:
-            return _process_error(ValueError(f'Error parsing new code: {str(e)}'))
+            return _process_error(ValueError(f"Error parsing new code: {str(e)}"))
         try:
-            with open(abs_path, 'r', encoding='utf-8') as file:
+            with open(abs_path, "r", encoding="utf-8") as file:
                 original_content = file.read()
-            
+
             # Extract top-level comments before processing
             top_level_comments = []
             if original_content.strip():
                 original_content, top_level_comments = _extract_top_level_comments(original_content)
-            
-            tokenized_content, file_tokens = _tokenize_source(original_content) if original_content.strip() else ('', {})
-            file_lines = tokenized_content.split('\n')
+
+            tokenized_content, file_tokens = _tokenize_source(original_content) if original_content.strip() else ("", {})
+            file_lines = tokenized_content.split("\n")
             tree = ast.parse(tokenized_content) if original_content.strip() else ast.Module(body=[], type_ignores=[])
         except Exception as e:
-            return _process_error(ValueError(f'Error reading/parsing file {abs_path}: {str(e)}'))
+            return _process_error(ValueError(f"Error reading/parsing file {abs_path}: {str(e)}"))
         existing_imports = []
         non_imports = []
         for node in tree.body:
@@ -297,7 +303,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 existing_imports.append(node)
             else:
                 non_imports.append(node)
-        if insert_after == '__FILE_START__':
+        if insert_after == "__FILE_START__":
             tree.body = import_nodes + code_nodes + existing_imports + non_imports
             try:
                 updated_content = _py_ast_to_source(tree)
@@ -306,7 +312,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 final_content = _preserve_blank_lines(final_content, original_content)
                 # Restore top-level comments
                 final_content = _restore_top_level_comments(final_content, top_level_comments)
-                with open(abs_path, 'w', encoding='utf-8') as file:
+                with open(abs_path, "w", encoding="utf-8") as file:
                     file.write(final_content)
                 return f"Code inserted at start of '{abs_path}'."
             except Exception as e:
@@ -320,7 +326,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 final_content = _preserve_blank_lines(final_content, original_content)
                 # Restore top-level comments
                 final_content = _restore_top_level_comments(final_content, top_level_comments)
-                with open(abs_path, 'w', encoding='utf-8') as file:
+                with open(abs_path, "w", encoding="utf-8") as file:
                     file.write(final_content)
                 return f"Code added at file level in '{abs_path}'."
             except Exception as e:
@@ -330,9 +336,9 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
         modified_tree = transformer.visit(tree)
         if not transformer.success:
             if insert_after:
-                return _process_error(ValueError(f'Insert point not found: {insert_after}'))
+                return _process_error(ValueError(f"Insert point not found: {insert_after}"))
             else:
-                return _process_error(ValueError(f'Target scope not found: {target_scope}'))
+                return _process_error(ValueError(f"Target scope not found: {target_scope}"))
         try:
             updated_content = _py_ast_to_source(modified_tree)
             all_tokens = {**file_tokens, **new_code_tokens}
@@ -340,10 +346,10 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
             final_content = _preserve_blank_lines(final_content, original_content)
             # Restore top-level comments
             final_content = _restore_top_level_comments(final_content, top_level_comments)
-            with open(abs_path, 'w', encoding='utf-8') as file:
+            with open(abs_path, "w", encoding="utf-8") as file:
                 file.write(final_content)
-            action = 'inserted after' if insert_after else 'replaced at'
-            scope_str = '::'.join(path_elements) if path_elements else 'file level'
+            action = "inserted after" if insert_after else "replaced at"
+            scope_str = "::".join(path_elements) if path_elements else "file level"
             return f"Code {action} {scope_str} in '{abs_path}'."
         except Exception as e:
             return _process_error(e)
@@ -352,6 +358,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
 
 
 ### HELPER FUNCTIONS ###
+
 
 def _make_file(file_path: str) -> str:
     """
@@ -369,43 +376,49 @@ def _make_file(file_path: str) -> str:
                  or if the file_path is empty
     """
     if not file_path:
-        raise ValueError('File path cannot be empty')
+        raise ValueError("File path cannot be empty")
     abs_path = os.path.abspath(file_path)
     dir_path = os.path.dirname(abs_path)
     if dir_path:
         try:
             os.makedirs(dir_path, exist_ok=True)
         except Exception as e:
-            raise ValueError(f'Error creating directories {dir_path}: {str(e)}')
+            raise ValueError(f"Error creating directories {dir_path}: {str(e)}")
     if not os.path.exists(abs_path):
         try:
-            with open(abs_path, 'w', encoding='utf-8') as f:
-                f.write('')
+            with open(abs_path, "w", encoding="utf-8") as f:
+                f.write("")
         except Exception as e:
-            raise ValueError(f'Error creating file {abs_path}: {str(e)}')
+            raise ValueError(f"Error creating file {abs_path}: {str(e)}")
     return abs_path
 
-def _create_token(content: str, index: int, current_hash: str, token_type: TokenType=None, extra_metadata: dict=None) -> Tuple[str, Dict]:
+
+def _create_token(
+    content: str, index: int, current_hash: str, token_type: TokenType = None, extra_metadata: dict = None
+) -> Tuple[str, Dict]:
     """Create a token with our specific pattern and metadata"""
-    token_name = f'TOKEN_{current_hash}_{index}'
+    token_name = f"TOKEN_{current_hash}_{index}"
     metadata = extra_metadata or {}
     if token_type:
-        metadata['type'] = token_type.value
-    token_data = {'content': content, 'metadata': metadata}
+        metadata["type"] = token_type.value
+    token_data = {"content": content, "metadata": metadata}
     return (token_name, token_data)
+
 
 def _get_file_hash(content: str) -> str:
     """Create a short hash of file content"""
     return hashlib.sha256(content.encode()).hexdigest()[:8]
 
+
 def _contains_token(s: str) -> bool:
-    return 'TOKEN_' in s
+    return "TOKEN_" in s
+
 
 def _find_string_end(line, start_pos, quote_char):
     """Find the end position of a quoted string, handling escape sequences properly."""
     pos = start_pos + 1
     while pos < len(line):
-        if line[pos] == '\\' and pos + 1 < len(line):
+        if line[pos] == "\\" and pos + 1 < len(line):
             # Skip the backslash and the escaped character
             pos += 2
         elif line[pos] == quote_char:
@@ -414,44 +427,48 @@ def _find_string_end(line, start_pos, quote_char):
             pos += 1
     return -1  # No closing quote found
 
+
 def _is_fstring_start(line, pos):
     """Check if position starts an f-string (f", f', rf", etc.)"""
     if pos >= len(line) or line[pos] not in ['"', "'"]:
         return False, False  # Return tuple (is_fstring, is_raw)
-    
+
     # Check for f-string prefixes
     prefixes = {
-        'f': (True, False),
-        'F': (True, False),
-        'rf': (True, True),
-        'Rf': (True, True),
-        'rF': (True, True),
-        'RF': (True, True),
-        'fr': (True, True),
-        'Fr': (True, True),
-        'fR': (True, True),
-        'FR': (True, True)
+        "f": (True, False),
+        "F": (True, False),
+        "rf": (True, True),
+        "Rf": (True, True),
+        "rF": (True, True),
+        "RF": (True, True),
+        "fr": (True, True),
+        "Fr": (True, True),
+        "fR": (True, True),
+        "FR": (True, True),
     }
-    
+
     for prefix, (is_f, is_raw) in prefixes.items():
         prefix_start = pos - len(prefix)
-        if (prefix_start >= 0 and 
-            line[prefix_start:pos] == prefix and
-            (prefix_start == 0 or not line[prefix_start-1].isalnum())):
+        if (
+            prefix_start >= 0
+            and line[prefix_start:pos] == prefix
+            and (prefix_start == 0 or not line[prefix_start - 1].isalnum())
+        ):
             return is_f, is_raw
-    
+
     return False, False
+
 
 def _find_fstring_end(line, start_pos, quote_char, is_raw=False):
     """Find the end of an f-string, handling nested braces and expressions."""
     pos = start_pos + 1
     brace_depth = 0
-    
+
     while pos < len(line):
         char = line[pos]
-        
-        if char == '{':
-            if pos + 1 < len(line) and line[pos + 1] == '{':
+
+        if char == "{":
+            if pos + 1 < len(line) and line[pos + 1] == "{":
                 # Escaped brace {{
                 pos += 2
                 continue
@@ -460,9 +477,9 @@ def _find_fstring_end(line, start_pos, quote_char, is_raw=False):
                 brace_depth += 1
                 pos += 1
                 continue
-                
-        elif char == '}':
-            if pos + 1 < len(line) and line[pos + 1] == '}':
+
+        elif char == "}":
+            if pos + 1 < len(line) and line[pos + 1] == "}":
                 # Escaped brace }}
                 pos += 2
                 continue
@@ -471,16 +488,16 @@ def _find_fstring_end(line, start_pos, quote_char, is_raw=False):
                 brace_depth -= 1
                 pos += 1
                 continue
-                
+
         elif char == quote_char and brace_depth == 0:
             # Found closing quote at top level
             return pos
-            
-        elif char == '\\' and not is_raw and pos + 1 < len(line):
+
+        elif char == "\\" and not is_raw and pos + 1 < len(line):
             # Handle escape sequences (but not in raw strings)
             pos += 2
             continue
-            
+
         elif char in ['"', "'"] and brace_depth > 0:
             # Handle nested quotes inside f-string expressions
             nested_end = _find_string_end(line, pos, char)
@@ -488,49 +505,62 @@ def _find_fstring_end(line, start_pos, quote_char, is_raw=False):
                 return -1
             pos = nested_end + 1
             continue
-            
+
         pos += 1
-    
+
     return -1  # Unterminated f-string
+
 
 def _determine_comment_type(code_stripped: str) -> Tuple[TokenType, dict]:
     """Determine the type of comment based on the preceding code."""
-    
+
     # Strip indentation for pattern matching
     code_no_indent = code_stripped.lstrip()
-    
-    if code_no_indent.startswith(('import ', 'from ')):
-        return TokenType.IMPORT_COMMENT, {'import_statement': code_stripped}
-    
+
+    if code_no_indent.startswith(("import ", "from ")):
+        return TokenType.IMPORT_COMMENT, {"import_statement": code_stripped}
+
     compound_patterns = [
-        'def ', 'class ', 'if ', 'elif ', 'for ', 'while ', 'with ', 'async def ', 'try:', 'except ', 'finally:', 'else:'
+        "def ",
+        "class ",
+        "if ",
+        "elif ",
+        "for ",
+        "while ",
+        "with ",
+        "async def ",
+        "try:",
+        "except ",
+        "finally:",
+        "else:",
     ]
-    
+
     # Check if this is a compound statement (starts with compound keyword and ends with colon)
     # Use the stripped version for pattern matching but keep original for colon check
     is_compound = (
-        any(code_no_indent.startswith(pattern) for pattern in compound_patterns) 
-        and code_stripped.endswith(':')
-    ) or code_stripped.strip() in ['else:', 'try:', 'finally:']
-    
+        any(code_no_indent.startswith(pattern) for pattern in compound_patterns) and code_stripped.endswith(":")
+    ) or code_stripped.strip() in ["else:", "try:", "finally:"]
+
     if is_compound:
-        return TokenType.COMPOUND_COMMENT, {'statement': code_stripped}
-    
+        return TokenType.COMPOUND_COMMENT, {"statement": code_stripped}
+
     return TokenType.INLINE_COMMENT, {}
+
 
 def _get_indentation_at_position(source: str, pos: int) -> str:
     """Get the indentation level at a given position in source"""
-    line_start = source.rfind('\n', 0, pos) + 1
-    return source[line_start:pos].replace(source[line_start:pos].lstrip(), '')
+    line_start = source.rfind("\n", 0, pos) + 1
+    return source[line_start:pos].replace(source[line_start:pos].lstrip(), "")
+
 
 def _indent_multiline_content(content: str, indent: str) -> str:
     """Indent multiline content while preserving internal formatting"""
     if not content.strip():
         return content
-    lines = content.split('\n')
+    lines = content.split("\n")
     if len(lines) == 1:
         return content
-    if all((line.startswith(' ') for line in lines[1:] if line.strip())):
+    if all((line.startswith(" ") for line in lines[1:] if line.strip())):
         return content
     result = [lines[0]]
     for line in lines[1:]:
@@ -538,21 +568,22 @@ def _indent_multiline_content(content: str, indent: str) -> str:
             result.append(indent + line)
         else:
             result.append(line)
-    return '\n'.join(result)
+    return "\n".join(result)
+
 
 def _preserve_blank_lines(result: str, original_source: str) -> str:
     """
     Restore blank lines around comments that had them in the original source.
     """
-    original_lines = original_source.split('\n')
-    result_lines = result.split('\n')
+    original_lines = original_source.split("\n")
+    result_lines = result.split("\n")
     comments_with_blanks = {}
     for i, line in enumerate(original_lines):
-        if line.strip().startswith('#') and 'marker' in line.lower():
+        if line.strip().startswith("#") and "marker" in line.lower():
             blank_before = i > 0 and (not original_lines[i - 1].strip())
             blank_after = i < len(original_lines) - 1 and (not original_lines[i + 1].strip())
             if blank_before or blank_after:
-                comments_with_blanks[line.strip()] = {'blank_before': blank_before, 'blank_after': blank_after}
+                comments_with_blanks[line.strip()] = {"blank_before": blank_before, "blank_after": blank_after}
     if not comments_with_blanks:
         return result
     new_result_lines = []
@@ -562,17 +593,17 @@ def _preserve_blank_lines(result: str, original_source: str) -> str:
         line_stripped = line.strip()
         if line_stripped in comments_with_blanks:
             info = comments_with_blanks[line_stripped]
-            if info['blank_before']:
+            if info["blank_before"]:
                 if i > 0 and new_result_lines[-1].strip():
-                    new_result_lines.append('')
+                    new_result_lines.append("")
             new_result_lines.append(line)
-            if info['blank_after']:
+            if info["blank_after"]:
                 if i < len(result_lines) - 1 and result_lines[i + 1].strip():
-                    new_result_lines.append('')
+                    new_result_lines.append("")
         else:
             new_result_lines.append(line)
         i += 1
-    return '\n'.join(new_result_lines)
+    return "\n".join(new_result_lines)
 
 
 def _analyze_string_at_position_in_source(source, pos, paren_depth):
@@ -582,62 +613,63 @@ def _analyze_string_at_position_in_source(source, pos, paren_depth):
     """
     if pos >= len(source):
         return None
-        
+
     char = source[pos]
     if char not in ['"', "'"]:
         return None
-    
+
     # Check if this is an f-string
     is_fstring, is_raw = _is_fstring_start(source, pos)
-    
+
     if is_fstring:
         # Find the actual start of the f-string prefix
         string_start = pos
-        for prefix in ['rf', 'Rf', 'rF', 'RF', 'fr', 'Fr', 'fR', 'FR', 'f', 'F']:
+        for prefix in ["rf", "Rf", "rF", "RF", "fr", "Fr", "fR", "FR", "f", "F"]:
             prefix_start = pos - len(prefix)
-            if (prefix_start >= 0 and 
-                source[prefix_start:pos] == prefix and
-                (prefix_start == 0 or not source[prefix_start-1].isalnum())):
+            if (
+                prefix_start >= 0
+                and source[prefix_start:pos] == prefix
+                and (prefix_start == 0 or not source[prefix_start - 1].isalnum())
+            ):
                 string_start = prefix_start
                 break
-        
+
         end_pos = _find_fstring_end(source, pos, char, is_raw)
     else:
         string_start = pos
         end_pos = _find_string_end(source, pos, char)
-    
+
     if end_pos == -1:
         # Invalid/unterminated string
         return None
-    
+
     # Extract the complete string content
-    string_content = source[string_start:end_pos + 1]
-    
+    string_content = source[string_start : end_pos + 1]
+
     # Validate the string - additional safety checks
     if len(string_content) < 2:
         return None
-    
-    # Sanity check: if this is a single-quoted string, it shouldn't contain 
+
+    # Sanity check: if this is a single-quoted string, it shouldn't contain
     # unescaped newlines (except for triple quotes)
-    if (string_content.startswith("'") and not string_content.startswith("'''") and 
-        '\n' in string_content):
+    if string_content.startswith("'") and not string_content.startswith("'''") and "\n" in string_content:
         # This is likely an over-capture - reject it
         return None
-    
-    if (string_content.startswith('"') and not string_content.startswith('"""') and 
-        '\n' in string_content and not is_fstring):
-        # This is likely an over-capture - reject it  
+
+    if string_content.startswith('"') and not string_content.startswith('"""') and "\n" in string_content and not is_fstring:
+        # This is likely an over-capture - reject it
         return None
-    
+
     return {
-        'start': string_start,
-        'end': end_pos,
-        'content': string_content,
-        'is_fstring': is_fstring,
-        'is_raw': is_raw,
-        'paren_depth': paren_depth,
-        'quote_char': char
+        "start": string_start,
+        "end": end_pos,
+        "content": string_content,
+        "is_fstring": is_fstring,
+        "is_raw": is_raw,
+        "paren_depth": paren_depth,
+        "quote_char": char,
     }
+
 
 def _find_string_end(line, start_pos, quote_char):
     """
@@ -646,21 +678,22 @@ def _find_string_end(line, start_pos, quote_char):
     """
     if start_pos >= len(line):
         return -1
-        
+
     pos = start_pos + 1
     while pos < len(line):
-        if line[pos] == '\\' and pos + 1 < len(line):
+        if line[pos] == "\\" and pos + 1 < len(line):
             # Skip the backslash and the escaped character
             pos += 2
         elif line[pos] == quote_char:
             return pos
-        elif line[pos] == '\n' and quote_char in ['"', "'"]:
+        elif line[pos] == "\n" and quote_char in ['"', "'"]:
             # Single/double quoted strings shouldn't span lines (unless escaped)
             # This indicates we've gone too far
             return -1
         else:
             pos += 1
     return -1  # No closing quote found
+
 
 def _find_all_string_locations_in_source(source):
     """
@@ -670,68 +703,69 @@ def _find_all_string_locations_in_source(source):
     locations = []
     paren_depth = 0
     pos = 0
-    
+
     while pos < len(source):
         char = source[pos]
-        
+
         # Track parentheses depth
-        if char == '(':
+        if char == "(":
             paren_depth += 1
             pos += 1
             continue
-        elif char == ')':
+        elif char == ")":
             paren_depth -= 1
             pos += 1
             continue
-        
+
         # Check for comments - if we hit a '#', skip to end of line
-        if char == '#':
+        if char == "#":
             # Skip to end of line to avoid processing quotes in comments
-            while pos < len(source) and source[pos] != '\n':
+            while pos < len(source) and source[pos] != "\n":
                 pos += 1
             # pos is now at '\n' or end of source
             continue
-        
+
         # Look for string starts
         if char in ['"', "'"]:
             # Check if this quote is inside a comment by looking back on the current line
-            line_start = source.rfind('\n', 0, pos) + 1
+            line_start = source.rfind("\n", 0, pos) + 1
             line_before_quote = source[line_start:pos]
-            
+
             # If there's a '#' in the line before this quote (and no string quotes to protect it),
             # then this quote is inside a comment
             if _is_quote_in_comment(line_before_quote):
                 pos += 1
                 continue
-            
+
             # This is a real string quote, process it
             string_info = _analyze_string_at_position_in_source(source, pos, paren_depth)
             if string_info:
                 locations.append(string_info)
-                pos = string_info['end'] + 1  # Skip past this string
+                pos = string_info["end"] + 1  # Skip past this string
             else:
                 pos += 1
         else:
             pos += 1
-    
+
     return locations
+
 
 def _is_quote_in_comment(line_before_quote):
     """
     Determine if a quote is inside a comment by analyzing the line content before it.
-    
+
     Returns True if the quote is inside a comment, False otherwise.
     """
     # Simple approach: look for '#' that's not inside a string
     in_string = False
     string_char = None
     i = 0
-    
+
     while i < len(line_before_quote):
         char = line_before_quote[i]
-        
+
         if not in_string:
-            if char == '#':
+            if char == "#":
                 # Found unprotected '#' - everything after is a comment
                 return True
             elif char in ['"', "'"]:
@@ -740,7 +774,7 @@ def _is_quote_in_comment(line_before_quote):
                 string_char = char
         else:
             # Inside a string
-            if char == '\\' and i + 1 < len(line_before_quote):
+            if char == "\\" and i + 1 < len(line_before_quote):
                 # Skip escaped character
                 i += 2
                 continue
@@ -748,17 +782,19 @@ def _is_quote_in_comment(line_before_quote):
                 # End of string
                 in_string = False
                 string_char = None
-        
+
         i += 1
-    
+
     return False
 
+
 ### TOKENIZATION ###
+
 
 def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
     """
     Tokenize source code, preserving exact formatting.
-    
+
     Returns:
     - tokenized_source: Source with tokens inserted
     - token_map: Mapping of tokens to {'content': str, 'metadata': dict}
@@ -766,45 +802,43 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
     token_map = {}
     current_hash = _get_file_hash(source)
     token_counter = 0
-    
+
     # First pass: handle multi-line strings BEFORE any other processing
     tokenized = _process_multiline_strings(source, token_map, token_counter, current_hash)
     token_counter = len(token_map)
-    
+
     # Second pass: process ALL string literals in the entire source at once
     # CRITICAL: Do this BEFORE splitting into lines to preserve escape sequences
     tokenized, token_counter = _process_all_string_literals(tokenized, token_map, token_counter, current_hash)
-    
+
     # Third pass: process line by line for comments ONLY after string processing is complete
-    lines = tokenized.split('\n')
+    lines = tokenized.split("\n")
     processed_lines = []
-    
+
     for line in lines:
-        processed_line, token_counter = _process_line_comments(
-            line, token_map, token_counter, current_hash
-        )
+        processed_line, token_counter = _process_line_comments(line, token_map, token_counter, current_hash)
         processed_lines.append(processed_line)
-    
-    return '\n'.join(processed_lines), token_map
+
+    return "\n".join(processed_lines), token_map
 
 
 def _extract_top_level_comments(source: str) -> Tuple[str, List[str]]:
     """
     Extract top-level standalone comments that appear before any code.
-    
+
     Returns:
         (source_without_top_comments, list_of_top_comment_lines)
     """
-    lines = source.split('\n')
+    lines = source.split("\n")
     top_comments = []
     first_code_line_idx = 0
-    
+
     # Find all leading comments and blank lines
     for i, line in enumerate(lines):
         stripped = line.strip()
         if not stripped:  # Blank line
             continue
-        elif stripped.startswith('#'):  # Comment line
+        elif stripped.startswith("#"):  # Comment line
             top_comments.append(line)
         else:  # First non-comment, non-blank line
             first_code_line_idx = i
@@ -812,37 +846,36 @@ def _extract_top_level_comments(source: str) -> Tuple[str, List[str]]:
     else:
         # File is only comments and blank lines
         first_code_line_idx = len(lines)
-    
+
     # If we found top-level comments, remove them from source
     if top_comments:
         remaining_lines = lines[first_code_line_idx:]
-        source_without_comments = '\n'.join(remaining_lines)
+        source_without_comments = "\n".join(remaining_lines)
         return source_without_comments, top_comments
-    
+
     return source, []
+
 
 def _process_line_comments(line: str, token_map: dict, token_counter: int, current_hash: str) -> Tuple[str, int]:
     """Process comments on a single line, after string processing."""
     if not line.strip():
         return line, token_counter
-    
+
     indent = len(line) - len(line.lstrip())
-    indentation = ' ' * indent
+    indentation = " " * indent
     content = line[indent:]
-    
+
     # Handle standalone comments
-    if content.strip().startswith('#'):
-        token_name, token_data = _create_token(
-            content.strip(), token_counter, current_hash, TokenType.STANDALONE_COMMENT
-        )
+    if content.strip().startswith("#"):
+        token_name, token_data = _create_token(content.strip(), token_counter, current_hash, TokenType.STANDALONE_COMMENT)
         token_map[token_name] = token_data
         return f"{indentation}{token_name}", token_counter + 1
-    
+
     # Handle inline comments - pass the FULL line, not just content
-    if '#' in content:
+    if "#" in content:
         # Check if the # is already inside a token
-        hash_positions = [i for i, c in enumerate(content) if c == '#']
-        
+        hash_positions = [i for i, c in enumerate(content) if c == "#"]
+
         for hash_pos in hash_positions:
             # Check if this # is inside any existing token
             is_inside_token = False
@@ -853,21 +886,20 @@ def _process_line_comments(line: str, token_map: dict, token_counter: int, curre
                     if token_start <= hash_pos < token_end:
                         is_inside_token = True
                         break
-            
+
             if not is_inside_token:
                 # This is a real comment, process it with the FULL line
-                processed_line, new_counter = _process_inline_comment(
-                    line, token_map, token_counter, current_hash
-                )
+                processed_line, new_counter = _process_inline_comment(line, token_map, token_counter, current_hash)
                 return processed_line, new_counter
-    
+
     return line, token_counter
+
 
 def _process_multiline_strings(source: str, token_map: dict, token_counter: int, current_hash: str) -> str:
     """Process all triple-quoted strings in the source, including f-strings."""
     tokenized = source
     processed_positions = set()
-    
+
     # Extended patterns to handle f-strings
     patterns = [
         ('"""', '"""'),
@@ -881,119 +913,126 @@ def _process_multiline_strings(source: str, token_map: dict, token_counter: int,
         ('fr"""', '"""'),
         ("fr'''", "'''"),
         # Add all case variations
-        ('Rf"""', '"""'), ("Rf'''", "'''"),
-        ('rF"""', '"""'), ("rF'''", "'''"),
-        ('RF"""', '"""'), ("RF'''", "'''"),
-        ('Fr"""', '"""'), ("Fr'''", "'''"),
-        ('fR"""', '"""'), ("fR'''", "'''"),
-        ('FR"""', '"""'), ("FR'''", "'''"),
+        ('Rf"""', '"""'),
+        ("Rf'''", "'''"),
+        ('rF"""', '"""'),
+        ("rF'''", "'''"),
+        ('RF"""', '"""'),
+        ("RF'''", "'''"),
+        ('Fr"""', '"""'),
+        ("Fr'''", "'''"),
+        ('fR"""', '"""'),
+        ("fR'''", "'''"),
+        ('FR"""', '"""'),
+        ("FR'''", "'''"),
     ]
-    
+
     for start_pattern, end_pattern in patterns:
         pos = 0
         while True:
             start_pos = tokenized.find(start_pattern, pos)
             if start_pos == -1:
                 break
-            
+
             # Check if already processed
             if start_pos in processed_positions:
                 pos = start_pos + 1
                 continue
-            
+
             # Find the matching end
             end_pos = tokenized.find(end_pattern, start_pos + len(start_pattern))
             if end_pos == -1:
                 pos = start_pos + 1
                 continue
-            
+
             # Extract the complete string
             end_pos += len(end_pattern)
             string_content = tokenized[start_pos:end_pos]
-            
+
             # Skip if it contains tokens or is too large
             if _contains_token(string_content) or len(string_content) > 1000:
                 pos = start_pos + 1
                 continue
-            
+
             # Mark as processed
             processed_positions.add(start_pos)
-            
+
             # Determine if it's an f-string
-            is_fstring = any(string_content.startswith(p) for p in ['f', 'F', 'rf', 'Rf', 'rF', 'RF', 'fr', 'Fr', 'fR', 'FR'])
-            
+            is_fstring = any(string_content.startswith(p) for p in ["f", "F", "rf", "Rf", "rF", "RF", "fr", "Fr", "fR", "FR"])
+
             # Create token
             token_name, token_data = _create_token(
-                string_content, token_counter, current_hash, 
+                string_content,
+                token_counter,
+                current_hash,
                 TokenType.MULTILINE_STRING,
-                {'is_fstring': is_fstring} if is_fstring else None
+                {"is_fstring": is_fstring} if is_fstring else None,
             )
             token_map[token_name] = token_data
-            
+
             # Replace in source
             tokenized = tokenized[:start_pos] + token_name + tokenized[end_pos:]
             pos = start_pos + len(token_name)
             token_counter += 1
-    
+
     return tokenized
+
 
 def _process_all_string_literals(source, token_map, token_counter, current_hash):
     """Process all string literals in the entire source at once, preserving escape sequences."""
-    
+
     if _contains_token(source):
         # If source already contains tokens, we need to be more careful
         # Process line by line to avoid conflicts with existing tokens
-        lines = source.split('\n')
+        lines = source.split("\n")
         processed_lines = []
-        
+
         for line in lines:
             processed_line, token_counter = _process_string_literals(line, token_map, token_counter, current_hash)
             processed_lines.append(processed_line)
-        
-        return '\n'.join(processed_lines), token_counter
-    
+
+        return "\n".join(processed_lines), token_counter
+
     # Step 1: Identify ALL string positions in the entire source
     string_locations = _find_all_string_locations_in_source(source)
-    
+
     if not string_locations:
         return source, token_counter
-    
+
     # Step 2: Process strings from right to left to avoid position shifts
     # Sort by start position in descending order
-    string_locations.sort(key=lambda x: x['start'], reverse=True)
-    
+    string_locations.sort(key=lambda x: x["start"], reverse=True)
+
     result = source
-    
+
     # Step 3: Replace each string with its token
     for string_info in string_locations:
-        start = string_info['start']
-        end = string_info['end']
-        string_content = string_info['content']
-        is_fstring = string_info['is_fstring']
-        is_raw = string_info['is_raw']
-        paren_depth = string_info['paren_depth']
-        quote_char = string_info['quote_char']
-        
+        start = string_info["start"]
+        end = string_info["end"]
+        string_content = string_info["content"]
+        is_fstring = string_info["is_fstring"]
+        is_raw = string_info["is_raw"]
+        paren_depth = string_info["paren_depth"]
+        quote_char = string_info["quote_char"]
+
         # Create token with proper metadata
-        metadata = {'is_fstring': is_fstring, 'is_raw': is_raw, 'in_parens': paren_depth > 0}
+        metadata = {"is_fstring": is_fstring, "is_raw": is_raw, "in_parens": paren_depth > 0}
         if paren_depth > 0:
-            metadata['quote_char'] = quote_char
-        
-        token_name, token_data = _create_token(
-            string_content, token_counter, current_hash, TokenType.STRING_LITERAL, metadata
-        )
+            metadata["quote_char"] = quote_char
+
+        token_name, token_data = _create_token(string_content, token_counter, current_hash, TokenType.STRING_LITERAL, metadata)
         token_map[token_name] = token_data
-        
+
         # Determine replacement text
         if paren_depth > 0:
-            replacement = f'{quote_char}{token_name}{quote_char}'
+            replacement = f"{quote_char}{token_name}{quote_char}"
         else:
             replacement = token_name
-        
+
         # Replace in result (working right-to-left so positions stay valid)
-        result = result[:start] + replacement + result[end + 1:]
+        result = result[:start] + replacement + result[end + 1 :]
         token_counter += 1
-    
+
     return result, token_counter
 
 
@@ -1002,127 +1041,127 @@ def _find_all_string_locations_in_source(source):
     locations = []
     paren_depth = 0
     pos = 0
-    
+
     while pos < len(source):
         char = source[pos]
-        
+
         # Track parentheses depth
-        if char == '(':
+        if char == "(":
             paren_depth += 1
             pos += 1
             continue
-        elif char == ')':
+        elif char == ")":
             paren_depth -= 1
             pos += 1
             continue
-        
+
         # Look for string starts
         if char in ['"', "'"]:
             string_info = _analyze_string_at_position_in_source(source, pos, paren_depth)
             if string_info:
                 locations.append(string_info)
-                pos = string_info['end'] + 1  # Skip past this string
+                pos = string_info["end"] + 1  # Skip past this string
             else:
                 pos += 1
         else:
             pos += 1
-    
+
     return locations
 
 
 def _analyze_string_at_position_in_source(source, pos, paren_depth):
     """Analyze a potential string starting at the given position in the full source."""
     char = source[pos]
-    
+
     # Check if this is an f-string
     is_fstring, is_raw = _is_fstring_start(source, pos)
-    
+
     if is_fstring:
         # Find the actual start of the f-string prefix
         string_start = pos
-        for prefix in ['rf', 'Rf', 'rF', 'RF', 'fr', 'Fr', 'fR', 'FR', 'f', 'F']:
+        for prefix in ["rf", "Rf", "rF", "RF", "fr", "Fr", "fR", "FR", "f", "F"]:
             prefix_start = pos - len(prefix)
-            if (prefix_start >= 0 and 
-                source[prefix_start:pos] == prefix and
-                (prefix_start == 0 or not source[prefix_start-1].isalnum())):
+            if (
+                prefix_start >= 0
+                and source[prefix_start:pos] == prefix
+                and (prefix_start == 0 or not source[prefix_start - 1].isalnum())
+            ):
                 string_start = prefix_start
                 break
-        
+
         end_pos = _find_fstring_end(source, pos, char, is_raw)
     else:
         string_start = pos
         end_pos = _find_string_end(source, pos, char)
-    
+
     if end_pos == -1:
         # Invalid/unterminated string
         return None
-    
+
     # Extract the complete string content
-    string_content = source[string_start:end_pos + 1]
-    
+    string_content = source[string_start : end_pos + 1]
+
     # Validate the string
     if len(string_content) < 2:
         return None
-    
+
     return {
-        'start': string_start,
-        'end': end_pos,
-        'content': string_content,
-        'is_fstring': is_fstring,
-        'is_raw': is_raw,
-        'paren_depth': paren_depth,
-        'quote_char': char
+        "start": string_start,
+        "end": end_pos,
+        "content": string_content,
+        "is_fstring": is_fstring,
+        "is_raw": is_raw,
+        "paren_depth": paren_depth,
+        "quote_char": char,
     }
 
 
 def _process_string_literals(processed_line, token_map, token_counter, current_hash):
     """Process all strings in a line at once - fallback for when source already has tokens."""
-    
+
     if _contains_token(processed_line):
         return processed_line, token_counter
 
     # Step 1: Identify ALL string positions in the line
     string_locations = _find_all_string_locations(processed_line)
-    
+
     if not string_locations:
         return processed_line, token_counter
-    
+
     # Step 2: Process strings from right to left to avoid position shifts
     # Sort by start position in descending order
-    string_locations.sort(key=lambda x: x['start'], reverse=True)
-    
+    string_locations.sort(key=lambda x: x["start"], reverse=True)
+
     result = processed_line
-    
+
     # Step 3: Replace each string with its token
     for string_info in string_locations:
-        start = string_info['start']
-        end = string_info['end']
-        string_content = string_info['content']
-        is_fstring = string_info['is_fstring']
-        is_raw = string_info['is_raw']
-        paren_depth = string_info['paren_depth']
-        quote_char = string_info['quote_char']
-        
+        start = string_info["start"]
+        end = string_info["end"]
+        string_content = string_info["content"]
+        is_fstring = string_info["is_fstring"]
+        is_raw = string_info["is_raw"]
+        paren_depth = string_info["paren_depth"]
+        quote_char = string_info["quote_char"]
+
         # Create token with proper metadata
-        metadata = {'is_fstring': is_fstring, 'is_raw': is_raw, 'in_parens': paren_depth > 0}
+        metadata = {"is_fstring": is_fstring, "is_raw": is_raw, "in_parens": paren_depth > 0}
         if paren_depth > 0:
-            metadata['quote_char'] = quote_char
-        
-        token_name, token_data = _create_token(
-            string_content, token_counter, current_hash, TokenType.STRING_LITERAL, metadata
-        )
+            metadata["quote_char"] = quote_char
+
+        token_name, token_data = _create_token(string_content, token_counter, current_hash, TokenType.STRING_LITERAL, metadata)
         token_map[token_name] = token_data
-        
+
         # Determine replacement text
         if paren_depth > 0:
-            replacement = f'{quote_char}{token_name}{quote_char}'
+            replacement = f"{quote_char}{token_name}{quote_char}"
         else:
             replacement = token_name
-        
+
         # Replace in result (working right-to-left so positions stay valid)
-        result = result[:start] + replacement + result[end + 1:]
+        result = result[:start] + replacement + result[end + 1 :]
         token_counter += 1
-    
+
     return result, token_counter
 
 
@@ -1131,83 +1170,86 @@ def _find_all_string_locations(line):
     locations = []
     paren_depth = 0
     pos = 0
-    
+
     while pos < len(line):
         char = line[pos]
-        
+
         # Track parentheses depth
-        if char == '(':
+        if char == "(":
             paren_depth += 1
             pos += 1
             continue
-        elif char == ')':
+        elif char == ")":
             paren_depth -= 1
             pos += 1
             continue
-        
+
         # Look for string starts
         if char in ['"', "'"]:
             string_info = _analyze_string_at_position(line, pos, paren_depth)
             if string_info:
                 locations.append(string_info)
-                pos = string_info['end'] + 1  # Skip past this string
+                pos = string_info["end"] + 1  # Skip past this string
             else:
                 pos += 1
         else:
             pos += 1
-    
+
     return locations
 
 
 def _analyze_string_at_position(line, pos, paren_depth):
     """Analyze a potential string starting at the given position."""
     char = line[pos]
-    
+
     # Check if this is an f-string
     is_fstring, is_raw = _is_fstring_start(line, pos)
-    
+
     if is_fstring:
         # Find the actual start of the f-string prefix
         string_start = pos
-        for prefix in ['rf', 'Rf', 'rF', 'RF', 'fr', 'Fr', 'fR', 'FR', 'f', 'F']:
+        for prefix in ["rf", "Rf", "rF", "RF", "fr", "Fr", "fR", "FR", "f", "F"]:
             prefix_start = pos - len(prefix)
-            if (prefix_start >= 0 and 
-                line[prefix_start:pos] == prefix and
-                (prefix_start == 0 or not line[prefix_start-1].isalnum())):
+            if (
+                prefix_start >= 0
+                and line[prefix_start:pos] == prefix
+                and (prefix_start == 0 or not line[prefix_start - 1].isalnum())
+            ):
                 string_start = prefix_start
                 break
-        
+
         end_pos = _find_fstring_end(line, pos, char, is_raw)
     else:
         string_start = pos
         end_pos = _find_string_end(line, pos, char)
-    
+
     if end_pos == -1:
         # Invalid/unterminated string
         return None
-    
+
     # Extract the complete string content
-    string_content = line[string_start:end_pos + 1]
-    
+    string_content = line[string_start : end_pos + 1]
+
     # Validate the string
     if len(string_content) < 2:
         return None
-    
+
     return {
-        'start': string_start,
-        'end': end_pos,
-        'content': string_content,
-        'is_fstring': is_fstring,
-        'is_raw': is_raw,
-        'paren_depth': paren_depth,
-        'quote_char': char
+        "start": string_start,
+        "end": end_pos,
+        "content": string_content,
+        "is_fstring": is_fstring,
+        "is_raw": is_raw,
+        "paren_depth": paren_depth,
+        "quote_char": char,
     }
+
 
 def _process_inline_comment(line: str, token_map: dict, token_counter: int, current_hash: str) -> Tuple[str, int]:
     """Process inline comments, determining their type based on the preceding code."""
     # First check if the # is inside a string token
-    hash_positions = [i for i, c in enumerate(line) if c == '#']
-    
+    hash_positions = [i for i, c in enumerate(line) if c == "#"]
+
     for hash_pos in hash_positions:
         # Check if this # is inside any token
         is_inside_token = False
@@ -1218,7 +1260,7 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
                 if token_start <= hash_pos < token_end:
                     is_inside_token = True
                     break
-        
+
         if not is_inside_token:
             # This is a real comment
             comment_start = hash_pos
@@ -1226,59 +1268,61 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
             code_end = len(code.rstrip())
             spacing_and_comment = line[code_end:]
             code_stripped = code.rstrip()
-            
+
             # Determine comment type and metadata
-            token_type, extra_metadata = _determine_comment_type(code_stripped)            
+            token_type, extra_metadata = _determine_comment_type(code_stripped)
             token_name, token_data = _create_token(
                 spacing_and_comment, token_counter, current_hash, token_type, extra_metadata
             )
             token_map[token_name] = token_data
-            
+
             # For compound comments AND import comments, put token on separate line
             if token_type == TokenType.COMPOUND_COMMENT:
                 # Get the base indentation of the current line
                 base_indent = len(line) - len(line.lstrip())
                 # Add 4 spaces for the expected function/class body indentation
-                token_indent = ' ' * (base_indent + 4)
+                token_indent = " " * (base_indent + 4)
                 processed_line = f"{code.rstrip()}\n{token_indent}{token_name}"
                 return processed_line, token_counter + 1
             elif token_type == TokenType.IMPORT_COMMENT:
                 # For import comments, also move to separate line (like compound comments)
                 # This ensures the import statement remains valid for AST parsing
                 base_indent = len(line) - len(line.lstrip())
-                token_indent = ' ' * base_indent  # Same indentation as import
+                token_indent = " " * base_indent  # Same indentation as import
                 processed_line = f"{code.rstrip()}\n{token_indent}{token_name}"
                 return processed_line, token_counter + 1
             else:
                 # For regular inline comments, check if we need semicolon
                 # Don't add semicolon if the code ends with certain characters
                 code_trimmed = code.rstrip()
-                
+
                 # Characters where semicolon is inappropriate
-                no_semicolon_endings = [',', ':', '(', '[', '{', '\\']
-                
+                no_semicolon_endings = [",", ":", "(", "[", "{", "\\"]
+
                 if any(code_trimmed.endswith(char) for char in no_semicolon_endings):
                     # For commas and other special endings, move comment to next line
-                    if code_trimmed.endswith(','):
+                    if code_trimmed.endswith(","):
                         # Get the base indentation of the current line
                         base_indent = len(line) - len(line.lstrip())
                         # Use same indentation for the comment
-                        token_indent = ' ' * base_indent
+                        token_indent = " " * base_indent
                         processed_line = f"{code_trimmed}\n{token_indent}{token_name}"
                     else:
                         # For other special characters, preserve spacing but replace comment with token
-                        spacing_before_comment = line[len(code_trimmed):comment_start]
+                        spacing_before_comment = line[len(code_trimmed) : comment_start]
                         processed_line = f"{code_trimmed}{spacing_before_comment}{token_name}"
                 else:
                     # Add semicolon for regular inline comments
                     processed_line = f"{code.rstrip()}; {token_name}"
-                
+
                 return processed_line, token_counter + 1
-    
+
     # No comments found
     return line, token_counter
 
+
 ### DETOKENIZATION ###
+
 
 def _detokenize_source(tokenized_source: str, token_map: Dict[str, Dict]) -> str:
     """
@@ -1286,19 +1330,23 @@ def _detokenize_source(tokenized_source: str, token_map: Dict[str, Dict]) -> str
     This prevents issues with nested tokens and maintains proper reconstruction sequence.
     """
     result = tokenized_source
-    
+
     # Group tokens by type for ordered processing
     comment_tokens = []
     string_tokens = []
     multiline_tokens = []
     other_tokens = []
-    
+
     for token_name, token_data in token_map.items():
-        metadata = token_data['metadata']
-        token_type = metadata.get('type')
-        
-        if token_type in [TokenType.STANDALONE_COMMENT.value, TokenType.INLINE_COMMENT.value, 
-                         TokenType.IMPORT_COMMENT.value, TokenType.COMPOUND_COMMENT.value]:
+        metadata = token_data["metadata"]
+        token_type = metadata.get("type")
+
+        if token_type in [
+            TokenType.STANDALONE_COMMENT.value,
+            TokenType.INLINE_COMMENT.value,
+            TokenType.IMPORT_COMMENT.value,
+            TokenType.COMPOUND_COMMENT.value,
+        ]:
             comment_tokens.append((token_name, token_data))
         elif token_type == TokenType.STRING_LITERAL.value:
             string_tokens.append((token_name, token_data))
@@ -1306,71 +1354,72 @@ def _detokenize_source(tokenized_source: str, token_map: Dict[str, Dict]) -> str
             multiline_tokens.append((token_name, token_data))
         else:
             other_tokens.append((token_name, token_data))
-    
+
     # Sort each group by token name length (longest first) to avoid substring conflicts
     comment_tokens.sort(key=lambda x: len(x[0]), reverse=True)
     string_tokens.sort(key=lambda x: len(x[0]), reverse=True)
     multiline_tokens.sort(key=lambda x: len(x[0]), reverse=True)
     other_tokens.sort(key=lambda x: len(x[0]), reverse=True)
-    
+
     # Process in REVERSE order of tokenization:
     # 3. Comments (last tokenized, first detokenized)
-    # 2. String literals 
+    # 2. String literals
     # 1. Multi-line strings (first tokenized, last detokenized)
-    
+
     # Step 1: Process comment tokens first
     for token_name, token_data in comment_tokens:
         result = _process_single_token(result, token_name, token_data)
-    
+
     # Step 2: Process string literal tokens
     for token_name, token_data in string_tokens:
         result = _process_single_token(result, token_name, token_data)
-    
+
     # Step 3: Process multiline string tokens last
     for token_name, token_data in multiline_tokens:
         result = _process_single_token(result, token_name, token_data)
-    
+
     # Step 4: Process any remaining tokens
     for token_name, token_data in other_tokens:
         result = _process_single_token(result, token_name, token_data)
-    
+
     return result
+
 
 def _process_single_token(result: str, token_name: str, token_data: Dict) -> str:
     """Process a single token replacement with all its occurrences."""
-    content = token_data['content']
-    metadata = token_data['metadata']
-    token_type = metadata.get('type')
-    
+    content = token_data["content"]
+    metadata = token_data["metadata"]
+    token_type = metadata.get("type")
+
     # Replace all occurrences of this token
     while token_name in result:
         # Handle string concatenation patterns first
         if token_type == TokenType.STRING_LITERAL.value:
             # Check for concatenation patterns - use the stored quote character
-            if metadata.get('in_parens', False):
-                quote_char = metadata.get('quote_char', '"')
-                pattern = f'{quote_char}{token_name}{quote_char}'
+            if metadata.get("in_parens", False):
+                quote_char = metadata.get("quote_char", '"')
+                pattern = f"{quote_char}{token_name}{quote_char}"
                 if pattern in result:
                     result = result.replace(pattern, content)
                     continue
-            
+
             # Fallback: check both quote types if quote_char not stored
             quote_patterns = [f'"{token_name}"', f"'{token_name}'"]
             found_pattern = False
-            
+
             for pattern in quote_patterns:
                 if pattern in result:
                     result = result.replace(pattern, content)
                     found_pattern = True
                     break
-            
+
             if found_pattern:
                 continue
-            
+
         start = result.find(token_name)
         if start == -1:
             break
-            
+
         # Use the appropriate handler based on token type
         if token_type == TokenType.COMPOUND_COMMENT.value:
             result = _handle_compound_comment(result, token_name, content, start)
@@ -1386,155 +1435,163 @@ def _process_single_token(result: str, token_name: str, token_data: Dict) -> str
             result = _handle_string_literal(result, token_name, content, start)
         else:
             result = _handle_default_token(result, token_name, content, start)
-    
+
     return result
+
 
 def _handle_compound_comment(result: str, token_name: str, content: str, start: int) -> str:
     """Handle compound statement comments (def, class, if, etc.) with smart reunification"""
-    line_start = result.rfind('\n', 0, start) + 1
-    line_end = result.find('\n', start)
+    line_start = result.rfind("\n", 0, start) + 1
+    line_end = result.find("\n", start)
     if line_end == -1:
         line_end = len(result)
     line = result[line_start:line_end]
     line_stripped = line.strip()
-    
+
     # Check if this token is alone on its line (moved during tokenization)
     if line_stripped == token_name:
         # Look for the compound statement on the previous line
         search_start = line_start - 1
         while search_start > 0:
-            prev_line_start = result.rfind('\n', 0, search_start) + 1
+            prev_line_start = result.rfind("\n", 0, search_start) + 1
             prev_line = result[prev_line_start:search_start]
             if prev_line.strip():
                 # Found the compound statement - reunite them
-                if prev_line.strip().endswith(':'):
+                if prev_line.strip().endswith(":"):
                     reunited = prev_line.rstrip() + content
                     return result[:prev_line_start] + reunited + result[line_end:]
                 break
             search_start = prev_line_start - 1
-    
+
     # Fallback: just replace the token
-    return result[:start] + content + result[start + len(token_name):]
+    return result[:start] + content + result[start + len(token_name) :]
+
 
 def _handle_import_comment(result: str, token_name: str, content: str, start: int, metadata: dict) -> str:
     """Handle import statement comments with metadata-driven reunification"""
-    line_start = result.rfind('\n', 0, start) + 1
-    line_end = result.find('\n', start)
+    line_start = result.rfind("\n", 0, start) + 1
+    line_end = result.find("\n", start)
     if line_end == -1:
         line_end = len(result)
     line = result[line_start:line_end]
     line_stripped = line.strip()
-    
+
     # Check if this token is alone on its line (moved during tokenization)
     if line_stripped == token_name:
         # Look for the import statement on the previous line
         search_start = line_start - 1
         while search_start > 0:
-            prev_line_start = result.rfind('\n', 0, search_start) + 1
+            prev_line_start = result.rfind("\n", 0, search_start) + 1
             prev_line = result[prev_line_start:search_start]
-            import_statement = metadata.get('import_statement', '').strip()
-            
+            import_statement = metadata.get("import_statement", "").strip()
+
             if prev_line.strip() == import_statement:
                 # Found the import statement - reunite them
                 reunited = prev_line.rstrip() + content
                 return result[:prev_line_start] + reunited + result[line_end:]
             search_start = prev_line_start - 1
-    
+
     # Fallback: just replace the token
-    return result[:start] + content + result[start + len(token_name):]
+    return result[:start] + content + result[start + len(token_name) :]
+
 
 def _handle_inline_comment(result: str, token_name: str, content: str, start: int) -> str:
     """Handle inline comments (non-import, non-compound) with smart reunification"""
-    line_start = result.rfind('\n', 0, start) + 1
-    line_end = result.find('\n', start)
+    line_start = result.rfind("\n", 0, start) + 1
+    line_end = result.find("\n", start)
     if line_end == -1:
         line_end = len(result)
     line = result[line_start:line_end]
-    
+
     # Check if this is a semicolon-separated inline comment that needs reunification
-    if '; ' + token_name in line:
+    if "; " + token_name in line:
         # Remove the semicolon and space, then add the comment content
-        new_line = line.replace('; ' + token_name, content)
+        new_line = line.replace("; " + token_name, content)
         return result[:line_start] + new_line + result[line_end:]
-    
+
     # Check if this is a direct replacement (no semicolon case)
     # This handles cases where the comment was after comma, colon, etc.
     if token_name in line:
         # Find the position of the token in the line
         token_pos_in_line = line.find(token_name)
-        
+
         # Check what comes before the token
         before_token = line[:token_pos_in_line].rstrip()
-        
+
         # Characters that indicate we should do direct replacement (no semicolon was added)
-        no_semicolon_endings = [',', ':', '(', '[', '{', '\\']
-        
+        no_semicolon_endings = [",", ":", "(", "[", "{", "\\"]
+
         if any(before_token.endswith(char) for char in no_semicolon_endings):
             # Direct replacement - the comment was processed without semicolon
             new_line = line.replace(token_name, content)
             return result[:line_start] + new_line + result[line_end:]
-    
+
     # Check if token is on its own line (moved during compound comment processing)
     line_stripped = line.strip()
     if line_stripped == token_name:
         search_start = line_start - 1
         while search_start > 0:
-            prev_line_start = result.rfind('\n', 0, search_start) + 1
+            prev_line_start = result.rfind("\n", 0, search_start) + 1
             prev_line = result[prev_line_start:search_start]
             if prev_line.strip():
                 reunited = prev_line.rstrip() + content
                 return result[:prev_line_start] + reunited + result[line_end:]
             search_start = prev_line_start - 1
-    
+
     # Default replacement (fallback case)
-    return result[:start] + content + result[start + len(token_name):]
+    return result[:start] + content + result[start + len(token_name) :]
+
 
 def _handle_standalone_comment(result: str, token_name: str, content: str, start: int) -> str:
     """Handle standalone comment lines"""
-    line_start = result.rfind('\n', 0, start) + 1
-    line_end = result.find('\n', start)
+    line_start = result.rfind("\n", 0, start) + 1
+    line_end = result.find("\n", start)
     if line_end == -1:
         line_end = len(result)
     line = result[line_start:line_end]
-    indent = line[:len(line) - len(line.lstrip())]
+    indent = line[: len(line) - len(line.lstrip())]
     replacement = indent + content
     return result[:line_start] + replacement + result[line_end:]
 
+
 def _handle_multiline_string(result: str, token_name: str, content: str, start: int) -> str:
     """Handle multiline strings with proper indentation"""
-    if '\n' in content:
+    if "\n" in content:
         indent = _get_indentation_at_position(result, start)
         indented = _indent_multiline_content(content, indent)
-        return result[:start] + indented + result[start + len(token_name):]
+        return result[:start] + indented + result[start + len(token_name) :]
     else:
-        return result[:start] + content + result[start + len(token_name):]
+        return result[:start] + content + result[start + len(token_name) :]
+
 
 def _handle_string_literal(result: str, token_name: str, content: str, start: int) -> str:
     """Handle simple string literals"""
-    return result[:start] + content + result[start + len(token_name):]
+    return result[:start] + content + result[start + len(token_name) :]
+
 
 def _handle_default_token(result: str, token_name: str, content: str, start: int) -> str:
     """Handle tokens without specific type metadata"""
-    return result[:start] + content + result[start + len(token_name):]
+    return result[:start] + content + result[start + len(token_name) :]
+
 
 def _restore_top_level_comments(final_content: str, top_comments: List[str]) -> str:
     """
     Restore top-level comments to the beginning of the file.
-    
+
     Args:
         final_content: The processed file content
         top_comments: List of original top-level comment lines
-    
+
     Returns:
         Content with top-level comments restored
     """
     if not top_comments:
         return final_content
-    
+
     # Add comments at the start, followed by a blank line if there's content
-    comment_section = '\n'.join(top_comments)
-    
+    comment_section = "\n".join(top_comments)
+
     if final_content.strip():
-        return comment_section + '\n\n' + final_content
+        return comment_section + "\n\n" + final_content
     else:
-        return comment_section + '\n'
+        return comment_section + "\n"

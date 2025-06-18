@@ -547,4 +547,3 @@ def _replace_single_function(file_path: str, new_function_def: str, class_name: 
     context = f"in class '{class_name}'" if class_name else "in file"
     action = "replaced" if transformer.success else "added"
     return f"Function '{new_func_node.name}' has been {action} {context} " f"'{abs_path}'."
-

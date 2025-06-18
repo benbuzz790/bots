@@ -70,7 +70,7 @@ class TestAnthropicBot(unittest.TestCase):
         self.assertEqual(self.bot.model_engine, Engines.CLAUDE4_SONNET)
         self.assertEqual(self.bot.max_tokens, 8192)
         self.assertEqual(self.bot.temperature, 0.3)
-        self.assertEqual(self.bot.name, 'Claude')
+        self.assertEqual(self.bot.name, "Claude")
 
     def test_custom_initialization(self) -> None:
         """Test initialization with custom parameters.
