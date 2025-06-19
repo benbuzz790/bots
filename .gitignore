@@ -41,3 +41,4 @@ test_clone_dir/
 *log*
 test_results.*
 cli_config.json
+Claude.bot
