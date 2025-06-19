@@ -7,11 +7,7 @@ from bots.dev.decorators import handle_errors
 
 @handle_errors
 def view(
-    file_path: str, 
-    start_line: str = None, 
-    end_line: str = None, 
-    around_str_match: str = None, 
-    dist_from_match: str = "10"
+    file_path: str, start_line: str = None, end_line: str = None, around_str_match: str = None, dist_from_match: str = "10"
 ):
     """
     Display the contents of a file with line numbers.
@@ -76,11 +72,7 @@ def view(
 
 
 @handle_errors
-def view_dir(start_path: str = ".", 
-             output_file=None, 
-             target_extensions: str = "['py', 'txt', 'md']", 
-             max_lines: int = 500
-):
+def view_dir(start_path: str = ".", output_file=None, target_extensions: str = "['py', 'txt', 'md']", max_lines: int = 500):
     """
     Creates a summary of the directory structure starting from the given path, writing only files
     with specified extensions and showing venv directories without their contents.
@@ -575,8 +567,7 @@ def _find_block_in_content(
             return (True, i + 1, 1.0, False)
     if ignore_whitespace:
         for i in range(len(content_lines) - len(block_lines) + 1):
-            current_block = [l.strip() for l in content_lines[i : i + len(block_lines)]]
-            block_to_match = [l.strip() for l in block_lines]
+            current_block = [lines.strip() for lines in content_lines[i : i + len(block_lines)]]
             if current_block == block_lines:
                 return (True, i + 1, 0.9, True)
     best_match = 0.0

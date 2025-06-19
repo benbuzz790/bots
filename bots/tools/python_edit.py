@@ -4,10 +4,10 @@ import os
 import textwrap
 from enum import Enum
 from typing import Dict, List, Tuple
-
+from bots.dev.decorators import handle_errors
 from bots.utils.helpers import _clean, _process_error, _py_ast_to_source
 
-### CLASSES ##
+# CLASSES
 
 
 class TokenType(Enum):
@@ -222,9 +222,7 @@ class ScopeTransformer(ast.NodeTransformer):
             node.body.insert(insert_index + i, new_node)
 
 
-### ENTRY POINT ###
-
-from bots.dev.decorators import handle_errors
+# ENTRY POINT
 
 
 @handle_errors
@@ -356,7 +354,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> st
         return _process_error(e)
 
 
-### HELPER FUNCTIONS ###
+# HELPER FUNCTIONS
 
 
 def _make_file(file_path: str) -> str:
@@ -615,7 +613,7 @@ def _find_string_end(line, start_pos, quote_char):
     return -1  # No closing quote found
 
 
-### TOKENIZATION ###
+# TOKENIZATION
 
 
 def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
@@ -683,12 +681,7 @@ def _extract_top_level_comments(source: str) -> Tuple[str, List[str]]:
     return source, []
 
 
-def _process_line_comments(
-        line: str, 
-        token_map: dict, 
-        token_counter: int, 
-        current_hash: str
-) -> Tuple[str, int]:
+def _process_line_comments(line: str, token_map: dict, token_counter: int, current_hash: str) -> Tuple[str, int]:
     """Process comments on a single line, after string processing."""
     if not line.strip():
         return line, token_counter
@@ -1153,7 +1146,7 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
     return line, token_counter
 
 
-### DETOKENIZATION ###
+# DETOKENIZATION
 
 
 def _detokenize_source(tokenized_source: str, token_map: Dict[str, Dict]) -> str:
