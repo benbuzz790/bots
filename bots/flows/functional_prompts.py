@@ -528,8 +528,8 @@ def tree_of_thought(
             - Identify key insights
             - Resolve conflicts
             - Create a coherent synthesis
-        callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
-            A function (with arguments list[respose], list[node]) which is called
+       callback (Optional[Callable[[Response, ResponseNode], None]]):
+           A function called after each branch response with the individual
             after each response from the bot.
 
     Returns:
@@ -1023,14 +1023,14 @@ def par_branch(
             branch_bot.autosave = False
             response = branch_bot.respond(prompt)
             new_node = branch_bot.conversation
-            new_node.parent = original_conversation
-            original_conversation.replies.append(new_node)
+            new_node.parent.parent = original_conversation
+            original_conversation.replies.append(new_node.parent)
             if callback:
                 try:
                     callback([response], [new_node])
                 except Exception:
                     pass  # Don't let callback errors break the main function
-            return index, response, new_node
+            return index, response, new_node.parent
         except Exception:
             return index, None, None
 
@@ -1138,7 +1138,6 @@ def par_branch_while(
             branch_bot = Bot.load(temp_file)
             branch_bot.autosave = False
             first_response = branch_bot.respond(initial_prompt)
-            first_node = branch_bot.conversation
             response = first_response
             while not stop_condition(branch_bot):
                 response = branch_bot.respond(continue_prompt)
@@ -1147,7 +1146,12 @@ def par_branch_while(
                         callback([response], [branch_bot.conversation])
                     except Exception:
                         pass  # Don't let callback errors break the main function
-            return index, response, first_node
+            # Return the final node after all iterations, not the first node
+            final_node = branch_bot.conversation
+            # Link the final node back to the original conversation
+            final_node.parent.parent = original_conversation
+            original_conversation.replies.append(final_node.parent)
+            return index, response, final_node.parent
         except Exception as e:
             return index, None, None
 
@@ -1319,9 +1323,9 @@ def broadcast_to_leaves(
                 except Exception:
                     pass
             final_node = leaf_bot.conversation
-            final_node.parent = original_conversation
-            original_conversation.replies.append(final_node)
-            return index, response, final_node
+            final_node.parent.parent = original_conversation
+            original_conversation.replies.append(final_node.parent)
+            return index, response, final_node.parent
         except Exception:
             return index, None, None
 
@@ -1459,10 +1463,10 @@ def broadcast_fp(
                 final_node = None
 
             if final_node:
-                final_node.parent = original_conversation
-                original_conversation.replies.append(final_node)
+                final_node.parent.parent = original_conversation
+                original_conversation.replies.append(final_node.parent)
 
-            return index, final_response, final_node
+            return index, final_response, final_node.parent if final_node else None
         except Exception:
             return index, None, None
 
