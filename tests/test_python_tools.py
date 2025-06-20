@@ -1,4 +1,5 @@
 import ast
+from tests.conftest import get_unique_filename
 import difflib
 import inspect
 import os
@@ -73,7 +74,7 @@ class TestPythonTools(DetailedTestCase):
         """Test function replacement and addition within specific classes"""
         test_dir = os.path.join(self.temp_dir, "test_class_scoped")
         os.makedirs(test_dir, exist_ok=True)
-        test_file = os.path.join(test_dir, "test_class_functions.py")
+        test_file = os.path.join(test_dir, get_unique_filename("test_class_functions", "py"))
         try:
             initial_code = """
 class TestClass:
@@ -108,7 +109,7 @@ class OtherClass:
 
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
-        self.test_file = os.path.join(self.temp_dir, "test_file.py")
+        self.test_file = os.path.join(self.temp_dir, get_unique_filename("test_file", "py"))
         with open(self.test_file, "w") as f:
             f.write("# Original content\n")
 
@@ -388,24 +389,24 @@ def some_function():
 
         test_dir = tempfile.mkdtemp()
         try:
-            simple_file = os.path.join(self.temp_dir, "simple.py")
+            simple_file = os.path.join(self.temp_dir, get_unique_filename("simple", "py"))
             result = python_editing_tools.add_imports(simple_file, "import os")
             self.assertTrue(os.path.exists(simple_file))
             os.remove(simple_file)
-            rel_path = os.path.join(self.temp_dir, "test_subdir", "relative.py")
+            rel_path = os.path.join(self.temp_dir, "test_subdir", get_unique_filename("relative", "py"))
             result = python_editing_tools.add_imports(rel_path, "import sys")
             self.assertTrue(os.path.exists(rel_path))
             shutil.rmtree(os.path.join(self.temp_dir, "test_subdir"))
-            abs_path = os.path.join(test_dir, "subdir", "absolute.py")
+            abs_path = os.path.join(test_dir, "subdir", get_unique_filename("absolute", "py"))
             result = python_editing_tools.add_imports(abs_path, "import datetime")
             self.assertTrue(os.path.exists(abs_path))
-            class_file = os.path.join(test_dir, "class_test.py")
+            class_file = os.path.join(test_dir, get_unique_filename("class_test", "py"))
             result = python_editing_tools.add_class(class_file, "class TestClass:\n    pass")
             self.assertTrue(os.path.exists(class_file))
-            func_file = os.path.join(test_dir, "func_test.py")
+            func_file = os.path.join(test_dir, get_unique_filename("func_test", "py"))
             result = python_editing_tools.add_function_to_file(func_file, "def test_func():\n    pass")
             self.assertTrue(os.path.exists(func_file))
-            method_file = os.path.join(test_dir, "method_test.py")
+            method_file = os.path.join(test_dir, get_unique_filename("method_test", "py"))
             result = python_editing_tools.add_function_to_class(
                 method_file,
                 "TestClass",
@@ -428,21 +429,21 @@ def some_function():
         try:
             with self.assertRaises(ValueError):
                 python_editing_tools._make_file("")
-            simple_path = os.path.join(self.temp_dir, "test_make_file.py")
+            simple_path = os.path.join(self.temp_dir, get_unique_filename("test_make_file", "py"))
             abs_path = python_editing_tools._make_file(simple_path)
             self.assertTrue(os.path.isabs(abs_path))
             self.assertTrue(os.path.exists(abs_path))
             os.remove(abs_path)
-            rel_path = os.path.join(self.temp_dir, "test_subdir", "nested", "test.py")
+            rel_path = os.path.join(self.temp_dir, "test_subdir", "nested", get_unique_filename("test", "py"))
             abs_path = python_editing_tools._make_file(rel_path)
             self.assertTrue(os.path.isabs(abs_path))
             self.assertTrue(os.path.exists(abs_path))
             shutil.rmtree(os.path.join(self.temp_dir, "test_subdir"))
-            abs_input_path = os.path.join(test_dir, "absolute_test.py")
+            abs_input_path = os.path.join(test_dir, get_unique_filename("absolute_test", "py"))
             returned_path = python_editing_tools._make_file(abs_input_path)
             self.assertEqual(os.path.abspath(abs_input_path), returned_path)
             self.assertTrue(os.path.exists(returned_path))
-            existing_file = os.path.join(test_dir, "existing.py")
+            existing_file = os.path.join(test_dir, get_unique_filename("existing", "py"))
             with open(existing_file, "w") as f:
                 f.write("# existing content")
             abs_path = python_editing_tools._make_file(existing_file)
@@ -943,7 +944,7 @@ class TestClass:
 
         test_dir = tempfile.mkdtemp()
         try:
-            test_file = os.path.join(test_dir, "new_file.py")
+            test_file = os.path.join(test_dir, get_unique_filename("new_file", "py"))
             import_statements = "\nimport os\nfrom typing import List\nimport sys\n    "
             expected_content = "\nimport os\nfrom typing import List\nimport sys\n    "
             python_editing_tools.add_imports(test_file, import_statements)
@@ -1195,3 +1196,6 @@ import os
 
 if __name__ == "__main__":
     unittest.main()
+
+
+

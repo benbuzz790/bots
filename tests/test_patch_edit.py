@@ -1,4 +1,4 @@
-import os
+﻿import os
 import shutil
 import tempfile
 import textwrap
@@ -10,7 +10,8 @@ from bots.tools.code_tools import _adjust_additions_to_context, _find_match_with
 class TestGitPatch(unittest.TestCase):
 
     def setUp(self):
-        self.test_file = "test_patch_file.txt"
+        from tests.conftest import get_unique_filename
+        self.test_file = get_unique_filename("test_patch_file", "txt")
         with open(self.test_file, "w") as f:
             f.write("line 1\nline 2\nline 3\nline 4\nline 5\n")
 
@@ -462,8 +463,8 @@ class TestGitPatch(unittest.TestCase):
         """Insert a method after another method in a class, but with whitespace difference requiring inexact match."""
         orig_code = (
             "class MyClass:\n"
-            "    def foo(self):\n"  # ← 4 spaces in actual file
-            "        pass\n"  # ← 8 spaces in actual file
+            "    def foo(self):\n"  # Ã¢â€ Â 4 spaces in actual file
+            "        pass\n"  # Ã¢â€ Â 8 spaces in actual file
         )
 
         # Patch context lines use LESS indentation than actual file (common when copying from less-indented context)
@@ -487,8 +488,8 @@ class TestGitPatch(unittest.TestCase):
             "    def foo(self):\n"
             "        pass\n"
             "\n"
-            "    def bar(self):\n"  # ← 4 spaces (0 + 4 adjustment)
-            '        print("bar!")\n'  # ← 8 spaces (4 + 4 adjustment)
+            "    def bar(self):\n"  # Ã¢â€ Â 4 spaces (0 + 4 adjustment)
+            '        print("bar!")\n'  # Ã¢â€ Â 8 spaces (4 + 4 adjustment)
         )
 
         with tempfile.NamedTemporaryFile("w+", delete=False, suffix=".py") as tf:
@@ -506,6 +507,7 @@ class TestGitPatch(unittest.TestCase):
 class TestGitPatchHunkParsing(unittest.TestCase):
 
     def setUp(self):
+        from tests.conftest import get_unique_filename
         self.test_file = "test_hunk_parse.txt"
         with open(self.test_file, "w") as f:
             f.write("line 1\nline 2\nline 3\nline 4\nline 5\n")
@@ -572,7 +574,7 @@ class TestIndentationDebug(unittest.TestCase):
 
     def test_hierarchy_match_position(self):
         """Test that hierarchy finds match at correct line position."""
-        current_lines = ["class MyClass:", "    def foo(self):", "        pass"]  # ← Line 1, should match here
+        current_lines = ["class MyClass:", "    def foo(self):", "        pass"]  # Ã¢â€ Â Line 1, should match here
 
         context_before = ["def foo(self):", "    pass"]
         removals = []
@@ -591,7 +593,7 @@ class TestIndentationDebug(unittest.TestCase):
 
     def test_indentation_adjustment_direct(self):
         """Test indentation adjustment function directly."""
-        current_lines = ["class MyClass:", "    def foo(self):", "        pass"]  # ← Line 1: 4 spaces  # ← Line 2: 8 spaces
+        current_lines = ["class MyClass:", "    def foo(self):", "        pass"]  # Ã¢â€ Â Line 1: 4 spaces  # Ã¢â€ Â Line 2: 8 spaces
 
         match_line = 1  # Where hierarchy claims to have found the match
         context_before = ["def foo(self):", "    pass"]  # 0 spaces, 4 spaces
@@ -617,8 +619,8 @@ class TestIndentationDebug(unittest.TestCase):
         """Test that we're mapping context lines to file lines correctly."""
         current_lines = [
             "class MyClass:",  # Line 0
-            "    def foo(self):",  # Line 1 ← Context line 0 should map here
-            "        pass",  # Line 2 ← Context line 1 should map here
+            "    def foo(self):",  # Line 1 Ã¢â€ Â Context line 0 should map here
+            "        pass",  # Line 2 Ã¢â€ Â Context line 1 should map here
         ]
 
         match_line = 1
@@ -638,8 +640,8 @@ class TestIndentationDebug(unittest.TestCase):
         """Test the full patch process with detailed output."""
         orig_code = (
             "class MyClass:\n"
-            "    def foo(self):\n"  # ← 4 spaces
-            "        pass\n"  # ← 8 spaces
+            "    def foo(self):\n"  # Ã¢â€ Â 4 spaces
+            "        pass\n"  # Ã¢â€ Â 8 spaces
         )
 
         patch = textwrap.dedent(
@@ -686,7 +688,7 @@ class TestIndentationDebug(unittest.TestCase):
             return line[: len(line) - len(line.lstrip())]
 
         # Test case from debug output
-        current_lines = ["class MyClass:", "    def foo(self):", "        pass"]  # ← Line 1: 4 spaces  # ← Line 2: 8 spaces
+        current_lines = ["class MyClass:", "    def foo(self):", "        pass"]  # Ã¢â€ Â Line 1: 4 spaces  # Ã¢â€ Â Line 2: 8 spaces
 
         match_line = 1
         context_before = ["def foo(self):", "    pass"]  # 0 spaces, 4 spaces
@@ -737,3 +739,6 @@ def _get_line_indentation(line):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+

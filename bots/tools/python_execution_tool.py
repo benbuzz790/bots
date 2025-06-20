@@ -2,13 +2,21 @@ import ast
 import os
 import subprocess
 import textwrap
-
+import tempfile
+import time
 from bots.dev.decorators import handle_errors
 from bots.utils.helpers import _clean, _py_ast_to_source
 
+def _get_unique_filename(base_name, extension=""):
+    """Generate a unique filename using process ID and timestamp."""
+    timestamp = int(time.time() * 1000)
+    pid = os.getpid()
+    if extension and (not extension.startswith('.')):
+        extension = '.' + extension
+    return f"{base_name}_{pid}_{timestamp}{extension}"
 
 @handle_errors
-def _execute_python_code(code: str, timeout: int = 300) -> str:
+def _execute_python_code(code: str, timeout: int=300) -> str:
     """
     Executes python code in a stateless environment with cross-platform
     timeout handling.
@@ -20,8 +28,7 @@ def _execute_python_code(code: str, timeout: int = 300) -> str:
     """
 
     def create_wrapper_ast():
-        wrapper_code = textwrap.dedent(
-            """
+        wrapper_code = textwrap.dedent("""
             import os
             import sys
             import traceback
@@ -43,46 +50,33 @@ def _execute_python_code(code: str, timeout: int = 300) -> str:
                     print(f"An error occurred: {str(error)}", file=sys.stderr)
                     traceback.print_exc(file=sys.stderr)
                     sys.exit(1)
-            """
-        )
+            """)
         return ast.parse(wrapper_code)
 
     def insert_code_into_wrapper(wrapper_ast, code_ast, timeout_value):
         # Find the main function in the wrapper AST
+
         def is_main_func(node):
             return isinstance(node, ast.FunctionDef) and node.name == "main"
-
         nodes = wrapper_ast.body
-        main_func = next(node for node in nodes if is_main_func(node))
+        main_func = next((node for node in nodes if is_main_func(node)))
         main_func.body = code_ast.body
         return wrapper_ast
-
     if not isinstance(timeout, int) or timeout <= 0:
         raise ValueError("Timeout must be a positive integer")
     code_ast = ast.parse(_clean(code))
     wrapper_ast = create_wrapper_ast()
     combined_ast = insert_code_into_wrapper(wrapper_ast, code_ast, timeout)
     final_code = _py_ast_to_source(combined_ast)
-    package_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    scripts_dir = os.path.join(package_root, "scripts")
-    if not os.path.exists(scripts_dir):
-        os.makedirs(scripts_dir)
-    temp_file_name = os.path.join(scripts_dir, f"temp_script_{os.getpid()}.py")
+    # Use system temp directory instead of creating our own scripts directory
+    temp_file_name = os.path.join(tempfile.gettempdir(), _get_unique_filename("temp_script", "py"))
     with open(temp_file_name, "w", encoding="utf-8") as temp_file:
         temp_file.write(final_code)
         temp_file.flush()
         os.fsync(temp_file.fileno())
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
-    process = subprocess.Popen(
-        ["python", temp_file_name],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        encoding="utf-8",
-        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-        env=env,
-    )
+    process = subprocess.Popen(["python", temp_file_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0, env=env)
     stdout, stderr = process.communicate(timeout=timeout)
     # Clean up temp file
     if os.path.exists(temp_file_name):

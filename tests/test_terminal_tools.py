@@ -1,4 +1,5 @@
-import os
+﻿import os
+from tests.conftest import get_unique_filename
 import shutil
 import tempfile
 import unittest
@@ -23,7 +24,7 @@ class TestTerminalTools(unittest.TestCase):
         except Exception as e:
             print(f"Warning: Could not clean up temp directory: {e}")
         # Clean up PowerShell output files that might be created
-        cleanup_files = ["ps_output.txt", "ps_output_MainThread.txt", "test.txt"]
+        cleanup_files = [get_unique_filename("ps_output", "txt"), get_unique_filename("ps_output_MainThread", "txt"), get_unique_filename("test", "txt")]
         for cleanup_file in cleanup_files:
             try:
                 if os.path.exists(cleanup_file):
@@ -34,12 +35,13 @@ class TestTerminalTools(unittest.TestCase):
 
     def tearDown(self):
         """Clean up after each test"""
-        # Clean up any test.txt files created during individual tests
-        if os.path.exists("test.txt"):
+        # Clean up any test_20016_16_1750444995166.txt files created during individual tests
+        test_file = get_unique_filename("test", "txt")
+        if os.path.exists(test_file):
             try:
-                os.unlink("test.txt")
+                os.unlink(test_file)
             except Exception as e:
-                print(f"Warning: Could not clean up test.txt: {e}")
+                print(f"Warning: Could not clean up {test_file}: {e}")
 
     def normalize_text(self, text: str) -> str:
         """
@@ -137,10 +139,10 @@ class TestTerminalTools(unittest.TestCase):
         """Test complex command chains with mixed success/failure conditions"""
         from bots.tools.terminal_tools import _execute_powershell_stateless
 
-        ps_script = 'New-Item -Path "test.txt" -ItemType "file" -Force && Write-Output "success" > test.txt && Write-Output "fail" > /nonexistent/path/file.txt && Write-Output "Should Not See This"'
+        ps_script = 'New-Item -Path get_unique_filename("test", "txt") -ItemType "file" -Force && Write-Output "success" > test_20016_16_1750444995166.txt && Write-Output "fail" > /nonexistent/path/file.txt && Write-Output "Should Not See This"'
         result = _execute_powershell_stateless(ps_script)
         self.assertNotIn("Should Not See This", result)
-        cleanup = _execute_powershell_stateless('Remove-Item -Path "test.txt" -Force')
+        cleanup = _execute_powershell_stateless('Remove-Item -Path get_unique_filename("test", "txt") -Force')
 
     def test_powershell_special_characters(self):
         """Test handling of special characters and box drawing symbols"""
@@ -292,10 +294,10 @@ class TestTerminalToolsStateful(TestTerminalTools):
         """Test complex command chains with mixed success/failure conditions in generator form"""
         from bots.tools.terminal_tools import execute_powershell
 
-        ps_script = 'New-Item -Path "test.txt" -ItemType "file" -Force && Write-Output "success" > test.txt && Write-Output "fail" > /nonexistent/path/file.txt && Write-Output "Should Not See This"'
+        ps_script = 'New-Item -Path get_unique_filename("test", "txt") -ItemType "file" -Force && Write-Output "success" > test_20016_16_1750444995166.txt && Write-Output "fail" > /nonexistent/path/file.txt && Write-Output "Should Not See This"'
         result = self._collect_generator_output(execute_powershell(ps_script))
         self.assertNotIn("Should Not See This", result)
-        cleanup = self._collect_generator_output(execute_powershell('Remove-Item -Path "test.txt" -Force'))
+        cleanup = self._collect_generator_output(execute_powershell('Remove-Item -Path get_unique_filename("test", "txt") -Force'))
 
     def test_stateful_special_characters(self):
         """Test handling of special characters and box drawing symbols in generator form"""
@@ -398,12 +400,12 @@ class TestTerminalToolsStateful(TestTerminalTools):
         ps_script2 = "Write-Output $global:test_var"
         result = self._collect_generator_output(execute_powershell(ps_script2))
         self.assertContainsNormalized(result, "Hello from previous call")
-        ps_script3 = 'New-Item -ItemType Directory -Path "test_state_dir" -Force; Set-Location "test_state_dir"'
+        ps_script3 = 'New-Item -ItemType Directory -Path get_unique_filename("test_state_dir") -Force; Set-Location get_unique_filename("test_state_dir")'
         list(execute_powershell(ps_script3))
         ps_script4 = "(Get-Location).Path"
         result = self._collect_generator_output(execute_powershell(ps_script4))
-        self.assertTrue(result.strip().endswith("test_state_dir"))
-        ps_script5 = 'Set-Location ..; Remove-Item -Path "test_state_dir" -Force -Recurse'
+        self.assertTrue(result.strip().endswith(get_unique_filename("test_state_dir")))
+        ps_script5 = 'Set-Location ..; Remove-Item -Path get_unique_filename("test_state_dir") -Force -Recurse'
         list(execute_powershell(ps_script5))
 
     def test_basic_input_handling(self):
@@ -499,15 +501,15 @@ class TestTerminalToolsStateful(TestTerminalTools):
 
         manager = PowerShellManager.get_instance("dir_test")
         # Create a test directory and change to it
-        ps_script1 = 'New-Item -ItemType Directory -Path "test_dir_persistence" -Force; Set-Location "test_dir_persistence"'
+        ps_script1 = 'New-Item -ItemType Directory -Path get_unique_filename("test_dir_persistence") -Force; Set-Location get_unique_filename("test_dir_persistence")'
         result1 = self._collect_generator_output(execute_powershell(ps_script1))
         # Check that we're in the new directory
         ps_script2 = 'Write-Output "Current location test"'
         result2 = self._collect_generator_output(execute_powershell(ps_script2))
         # Should show we're in the test directory
-        self.assertIn("test_dir_persistence", result2)
+        self.assertIn(get_unique_filename("test_dir_persistence"), result2)
         # Clean up
-        ps_script3 = 'Set-Location ..; Remove-Item -Path "test_dir_persistence" -Force -Recurse'
+        ps_script3 = 'Set-Location ..; Remove-Item -Path get_unique_filename("test_dir_persistence") -Force -Recurse'
         self._collect_generator_output(execute_powershell(ps_script3))
         manager.cleanup()
 
@@ -937,13 +939,13 @@ if __name__ == "__main__":
 
         command = """@'
 simple test content
-'@ | Out-File -FilePath "bom_test.txt" -Encoding UTF8"""
+'@ | Out-File -FilePath get_unique_filename("bom_test", "txt") -Encoding UTF8"""
 
         result = execute_powershell(command)
         print(f"BOM test result: {result}")
 
-        if os.path.exists("bom_test.txt"):
-            with open("bom_test.txt", "rb") as f:
+        if os.path.exists(get_unique_filename("bom_test", "txt")):
+            with open(get_unique_filename("bom_test", "txt"), "rb") as f:
                 raw_data = f.read()
 
             print(f"Raw file data: {raw_data}")
@@ -1000,12 +1002,6 @@ simple test content
             except Exception as e:
                 print(f"❌ {cmd}: Failed - {e}")
 
-
-import os
-import tempfile
-import unittest
-
-from bots.tools.terminal_tools import execute_powershell
 
 
 class TestPythonCommandBOMFix(unittest.TestCase):
@@ -1183,14 +1179,14 @@ class TestPowerShellFileCreationDebug(unittest.TestCase):
 
         # Test 2: Here-string with absolute path
         print("\n=== TEST 2: Here-string with absolute path ===")
-        abs_path = os.path.join(os.getcwd(), "absolute_test.txt").replace("\\", "/")
+        abs_path = os.path.join(os.getcwd(), get_unique_filename("absolute_test", "txt")).replace("\\", "/")
         command2 = f"""@'
 test content
 '@ | Out-File -FilePath "{abs_path}" -Encoding UTF8"""
 
         result2 = execute_powershell(command2)
         print(f"Result: {result2}")
-        print(f"File exists: {os.path.exists('absolute_test.txt')}")
+        print(f"File exists: {os.path.exists('absolute_test_20016_16_1750444995166.txt')}")
 
         # Test 3: Check PowerShell's working directory
         print("\n=== TEST 3: PowerShell working directory ===")
@@ -1210,7 +1206,7 @@ test content
             $content = @'
 test content here
 '@
-            $filePath = "force_test.txt"
+            $filePath = get_unique_filename("force_test", "txt")
             $content | Out-File -FilePath $filePath -Encoding UTF8 -Force
             Write-Output "File creation attempted"
             
@@ -1377,3 +1373,7 @@ class TestRegressionScenarios(unittest.TestCase):
 if __name__ == "__main__":
     # Run these specific integration tests
     unittest.main(verbosity=2)
+
+
+
+

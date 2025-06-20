@@ -16,9 +16,10 @@ def create_temp_file(content):
 
 class TestCodeTools(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = os.path.join("benbuzz790", "private_tests", "temp")
+        from tests.conftest import get_unique_filename
+        self.temp_dir = os.path.join(tempfile.gettempdir(), get_unique_filename("benbuzz790_private_tests_temp"))
         os.makedirs(self.temp_dir, exist_ok=True)
-        self.temp_file = os.path.join(self.temp_dir, "test_file.txt")
+        self.temp_file = os.path.join(self.temp_dir, get_unique_filename("test_file", "txt"))
         content = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n" "Line 6\nLine 7\nLine 8\nLine 9\nLine 10\n"
         with open(self.temp_file, "w", encoding="utf-8") as f:
             f.write(content)
@@ -140,6 +141,7 @@ if __name__ == "__main__":
 
 class TestViewDir(unittest.TestCase):
     def setUp(self):
+        from tests.conftest import get_unique_filename
         self.temp_dir = os.path.join("benbuzz790", "private_tests", "view_dir_test")
         os.makedirs(self.temp_dir, exist_ok=True)
         self.files = {
@@ -168,3 +170,5 @@ class TestViewDir(unittest.TestCase):
         self.assertIn("test2.txt", result)
         self.assertNotIn("test3.md", result)
         self.assertNotIn("test4.json", result)
+
+
