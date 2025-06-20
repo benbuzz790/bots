@@ -81,7 +81,7 @@ name: CI
                       retention-days: 7
 
   style-check:
-        name: Code Quality & Style Check
+    name: Code Quality & Style Check
     timeout-minutes: 10
     runs-on: windows-latest
     steps:
