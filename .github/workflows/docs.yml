@@ -11,7 +11,10 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Set up Python\r\n      uses: actions/setup-python@v5\r\n      with:\r\n        python-version: '3.11'
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -21,6 +24,8 @@ jobs:
       run: |
         cd docs
         make html
-    - name: Upload documentation\r\n       uses: actions/upload-artifact@v4\r\n      with:
+    - name: Upload documentation
+      uses: actions/upload-artifact@v4
+      with:
         name: documentation
         path: docs/_build/html/

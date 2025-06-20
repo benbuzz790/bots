@@ -13,8 +13,10 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Set up Python\r\n      uses: actions/setup-python@v5
-      with:\r\n        python-version: '3.11'
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -26,7 +28,9 @@ jobs:
       run: bandit -r . -f json -o bandit-report.json || true
     - name: Run semgrep security scan
       run: semgrep --config=auto --json --output=semgrep-report.json . || true
-    - name: Upload security reports\r\n       uses: actions/upload-artifact@v4\r\n      if: always()
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      if: always()
       with:
         name: security-reports
         path: |

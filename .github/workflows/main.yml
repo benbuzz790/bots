@@ -16,7 +16,7 @@ name: CI
               test:
                 name: Test on Python ${{ matrix.python-version }}
                 timeout-minutes: 15
-                runs-on: windows-latest
+     runs-on: windows-latest
                 strategy:
                   fail-fast: false
                   matrix:
@@ -24,125 +24,124 @@ name: CI
                 env:
                   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
                   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-                steps:
-                  - name: Checkout repo
-                    uses: actions/checkout@v4
-                  - name: Set up Python ${{ matrix.python-version }}
-                    uses: actions/setup-python@v5
+     steps:
+       - name: Checkout repo
+         uses: actions/checkout@v4
+       - name: Set up Python ${{ matrix.python-version }}
+         uses: actions/setup-python@v5
                     with:
-                      python-version: ${{ matrix.python-version }}
-                      cache: 'pip'
-                  - name: Install dependencies
-                    run: |
+           python-version: ${{ matrix.python-version }}
+           cache: 'pip'
+       - name: Install dependencies
+         run: |
                       python -m pip install --upgrade pip
                       pip install -r requirements.txt
                       pip install pytest pytest-cov
-                  - name: Install package
-                    run: pip install -e .
-                  - name: Run unit tests
-                    run: pytest tests/ -m "not integration" --tb=short -v --maxfail=10
-                  - name: Run integration tests
+       - name: Install package
+         run: pip install -e .
+       - name: Run unit tests
+         run: pytest tests/ -m "not integration" --tb=short -v --maxfail=10
+       - name: Run integration tests
                     if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
-                    run: pytest tests/ -m "integration" --tb=short -v --maxfail=5
-                    continue-on-error: true
+         run: pytest tests/ -m "integration" --tb=short -v --maxfail=5
+         continue-on-error: true
               integration-tests:
                 name: Run Integration Tests
-                runs-on: windows-latest
+     runs-on: windows-latest
                 timeout-minutes: 20
                 if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
                 env:
                   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
                   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-                steps:
-                  - name: Checkout repo
-                    uses: actions/checkout@v4
-                  - name: Set up Python
-                    uses: actions/setup-python@v5
+     steps:
+       - name: Checkout repo
+         uses: actions/checkout@v4
+       - name: Set up Python
+         uses: actions/setup-python@v5
                     with:
-                      python-version: '3.11'
-                      cache: 'pip'
-                  - name: Install dependencies
-                    run: |
+           python-version: '3.11'
+           cache: 'pip'
+       - name: Install dependencies
+         run: |
                       python -m pip install --upgrade pip
                       pip install -r requirements.txt
                       pip install pytest pytest-cov pytest-timeout
-                  - name: Install package
-                    run: pip install -e .
-                  - name: Run comprehensive integration tests
+       - name: Install package
+         run: pip install -e .
+       - name: Run comprehensive integration tests
                     if: env.OPENAI_API_KEY != '' && env.ANTHROPIC_API_KEY != ''
-                    run: pytest tests/ -m "integration" --tb=long -v --timeout=300
-                    continue-on-error: false
-                  - name: Upload test results
-                    uses: actions/upload-artifact@v4
+         run: pytest tests/ -m "integration" --tb=long -v --timeout=300
+         continue-on-error: false
+       - name: Upload test results
+         uses: actions/upload-artifact@v4
                     if: always()
                     with:
                       name: integration-test-results
                       path: test_results.xml
                       retention-days: 7
 
-              style-check:
-               name: Code Quality & Style Check
-               timeout-minutes: 10
-               runs-on: windows-latest
-               steps:
-                 - name: Checkout repo
-                   uses: actions/checkout@v4
+  style-check:`r`n    name: Code Quality & Style Check
+    timeout-minutes: 10
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-                 - name: Set up Python
-                   uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
                    with:
-                     python-version: '3.11'
-                     cache: 'pip'
+          python-version: '3.11'
+          cache: 'pip'
 
-                 - name: Install dependencies
-                   run: |
+      - name: Install dependencies
+        run: |
                      python -m pip install --upgrade pip
                      pip install -r requirements.txt
                      pip install black isort flake8 mypy
 
-                 - name: Install package
-                   run: pip install -e .
+      - name: Install package
+        run: pip install -e .
                 - name: Remove BOMs from all files
                   run: |
                     python -m bots.dev.remove_boms
 
 
-                 - name: Check Black formatting
-                   run: |
+      - name: Check Black formatting
+        run: |
                      black --check --diff .
 
-                 - name: Check isort import sorting
-                   run: |
+      - name: Check isort import sorting
+        run: |
                      isort --check-only --diff .
 
-                 - name: Run flake8 linting
-                   run: |
+      - name: Run flake8 linting
+        run: |
                      flake8 . --count --statistics --show-source
 
-                 - name: Run mypy type checking
-                   run: |
+      - name: Run mypy type checking
+        run: |
                      mypy bots/ --ignore-missing-imports
-                   continue-on-error: true
+        continue-on-error: true
 
-                 - name: Check for circular dependencies
-                   run: |
+      - name: Check for circular dependencies
+        run: |
                      pip install pydeps
                      pydeps bots --show-deps --max-bacon=2 || echo "Circular dependency check completed"
-                   continue-on-error: true
+        continue-on-error: true
 
              actionlint:
                name: GitHub Actions Lint
-               runs-on: windows-latest
+    runs-on: windows-latest
                timeout-minutes: 5
-               steps:
-                 - name: Checkout repo
-                   uses: actions/checkout@v4
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-                 - name: Download actionlint
-                   run: |
+      - name: Download actionlint
+        run: |
                      Invoke-WebRequest -Uri "https://github.com/rhymond/actionlint/releases/latest/download/actionlint_windows_amd64.zip" -OutFile "actionlint.zip"
                      Expand-Archive -Path "actionlint.zip" -DestinationPath "."
 
-                 - name: Run actionlint
-                   run: |
+      - name: Run actionlint
+        run: |
                      .\actionlint.exe .github/workflows/*.yml
