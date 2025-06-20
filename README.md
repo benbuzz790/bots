@@ -4,7 +4,7 @@
 
 **bots** (bɒts), ***n.pl.*** : Tool-using agents, encapsulated with model parameters, conversation history, and tool source code in a single sharable file.
 
-The bots library provides a structured interface for working with such agents, aiming to make LLM tools more convenient, accessible, and sharable for developers and researchers.
+The bots library provides a structured interface for working with such agents, aiming to make agents more convenient, accessible, and sharable for developers and researchers.
 
 ## Core Elements
 
