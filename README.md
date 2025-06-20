@@ -1,4 +1,4 @@
-# bots: Convenient agentic programming
+# bots: convenient agentic programming
 
 ## Overview
 
