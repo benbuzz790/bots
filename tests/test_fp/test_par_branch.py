@@ -70,6 +70,7 @@ def test_par_branch_structure() -> None:
     original_node = bot.conversation
     prompts = ["test prompt 1", "test prompt 2", "test prompt 3"]
     responses, nodes = par_branch(bot, prompts)
+    print(bot)
     assert len(responses) == len(prompts)
     assert len(nodes) == len(prompts)
     assert len(original_node.replies) == len(prompts)

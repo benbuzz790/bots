@@ -3,6 +3,7 @@ from tests.conftest import get_unique_filename
 import shutil
 import tempfile
 import unittest
+from bots.tools.terminal_tools import PowerShellSession, execute_powershell
 
 
 class TestTerminalTools(unittest.TestCase):
@@ -390,24 +391,32 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertEqual(content_lines, 50, "Should have exactly 50 content lines")
         self.assertFalse(any(("lines omitted" in line for line in lines)), "Should not have truncation message")
         self.assertFalse(any(("Full output saved to" in line for line in lines)), "Should not have file save message")
-
+    
     def test_true_statefulness_between_calls(self):
         """Test that PowerShell state persists between function calls"""
+        import random
         from bots.tools.terminal_tools import execute_powershell
+
+        # Generate unique directory name using random number
+        unique_dir = f"test_state_dir_{random.randint(10000, 99999)}"
 
         ps_script1 = '$global:test_var = "Hello from previous call"'
         list(execute_powershell(ps_script1))
+        
         ps_script2 = "Write-Output $global:test_var"
         result = self._collect_generator_output(execute_powershell(ps_script2))
         self.assertContainsNormalized(result, "Hello from previous call")
-        ps_script3 = 'New-Item -ItemType Directory -Path get_unique_filename("test_state_dir") -Force; Set-Location get_unique_filename("test_state_dir")'
+        
+        ps_script3 = f'New-Item -ItemType Directory -Path "{unique_dir}" -Force; Set-Location "{unique_dir}"'
         list(execute_powershell(ps_script3))
+        
         ps_script4 = "(Get-Location).Path"
         result = self._collect_generator_output(execute_powershell(ps_script4))
-        self.assertTrue(result.strip().endswith(get_unique_filename("test_state_dir")))
-        ps_script5 = 'Set-Location ..; Remove-Item -Path get_unique_filename("test_state_dir") -Force -Recurse'
+        self.assertTrue(result.strip().endswith(unique_dir))
+        
+        ps_script5 = f'Set-Location ..; Remove-Item -Path "{unique_dir}" -Force -Recurse'
         list(execute_powershell(ps_script5))
-
+    
     def test_basic_input_handling(self):
         """Test that basic variable setting and retrieval works correctly"""
         from bots.tools.terminal_tools import PowerShellManager, execute_powershell
@@ -497,25 +506,29 @@ class TestTerminalToolsStateful(TestTerminalTools):
 
     def test_directory_change_persistence(self):
         "Test that directory changes persist between commands"
+        import random
         from bots.tools.terminal_tools import PowerShellManager, execute_powershell
 
         manager = PowerShellManager.get_instance("dir_test")
+        
+        # Generate unique directory name using random number
+        unique_dir = f"test_dir_persistence_{random.randint(10000, 99999)}"
+        
         # Create a test directory and change to it
-        ps_script1 = 'New-Item -ItemType Directory -Path get_unique_filename("test_dir_persistence") -Force; Set-Location get_unique_filename("test_dir_persistence")'
+        ps_script1 = f'New-Item -ItemType Directory -Path "{unique_dir}" -Force; Set-Location "{unique_dir}"'
         result1 = self._collect_generator_output(execute_powershell(ps_script1))
+        
         # Check that we're in the new directory
-        ps_script2 = 'Write-Output "Current location test"'
+        ps_script2 = 'Get-Location | Select-Object -ExpandProperty Path'
         result2 = self._collect_generator_output(execute_powershell(ps_script2))
+        
         # Should show we're in the test directory
-        self.assertIn(get_unique_filename("test_dir_persistence"), result2)
+        self.assertIn(unique_dir, result2)
+        
         # Clean up
-        ps_script3 = 'Set-Location ..; Remove-Item -Path get_unique_filename("test_dir_persistence") -Force -Recurse'
+        ps_script3 = f'Set-Location ..; Remove-Item -Path "{unique_dir}" -Force -Recurse'
         self._collect_generator_output(execute_powershell(ps_script3))
         manager.cleanup()
-
-
-from bots.tools.terminal_tools import PowerShellSession, execute_powershell
-
 
 class TestPowerShellErrorLogScenarios(unittest.TestCase):
     """
