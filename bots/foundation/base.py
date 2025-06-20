@@ -767,7 +767,12 @@ class ToolHandler(ABC):
             - Preserves original module context
             - Maintains function name and basic documentation
         """
-        source = f'def {func.__name__}(x):\n    """Wrapper for built-in function {func.__name__} from {func.__module__}"""\n    import {func.__module__}\n    return {func.__module__}.{func.__name__}(float(x))\n'
+        source = (
+            f"def {func.__name__}(x):\n"
+            f'    """Wrapper for built-in function {func.__name__} from {func.__module__}"""\n'
+            f"    import {func.__module__}\n"
+            f"    return {func.__module__}.{func.__name__}(float(x))\n"
+        )
         return source
 
     def _create_dynamic_wrapper(self, func: Callable) -> str:
@@ -1398,7 +1403,7 @@ class Bot(ABC):
                     name="MyBot",
                     role="assistant",
                     role_description="A helpful AI assistant"
-                )
+         )
 
         bot = MyBot("api_key")
         bot.add_tools(my_tools)

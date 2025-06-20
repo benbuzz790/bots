@@ -1,4 +1,4 @@
-﻿import argparse
+import argparse
 import inspect
 import json
 import os
