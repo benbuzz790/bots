@@ -29,7 +29,7 @@ name: CI
          uses: actions/checkout@v4
        - name: Set up Python ${{ matrix.python-version }}
          uses: actions/setup-python@v5
-                    with:
+         with:
            python-version: ${{ matrix.python-version }}
            cache: 'pip'
        - name: Install dependencies
@@ -58,7 +58,7 @@ name: CI
          uses: actions/checkout@v4
        - name: Set up Python
          uses: actions/setup-python@v5
-                    with:
+         with:
            python-version: '3.11'
            cache: 'pip'
        - name: Install dependencies
@@ -75,12 +75,13 @@ name: CI
        - name: Upload test results
          uses: actions/upload-artifact@v4
                     if: always()
-                    with:
+         with:
                       name: integration-test-results
                       path: test_results.xml
                       retention-days: 7
 
-  style-check:`r`n    name: Code Quality & Style Check
+  style-check:
+        name: Code Quality & Style Check
     timeout-minutes: 10
     runs-on: windows-latest
     steps:
@@ -89,7 +90,7 @@ name: CI
 
       - name: Set up Python
         uses: actions/setup-python@v5
-                   with:
+        with:
           python-version: '3.11'
           cache: 'pip'
 
