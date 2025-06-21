@@ -248,9 +248,9 @@ def patch_edit(file_path: str, patch_content: str):
                 continue
             if not (line.startswith("+") or line.startswith("-")):
                 if not removals and not additions:
-                    context_before.append(line)
+                    context_before.append(line[1:] if line.startswith(' ') else line) # Remove space character if present
                 else:
-                    context_after.append(line)
+                    context_after.append(line[1:] if line.startswith(' ') else line)  # Remove space character if present
             elif line.startswith("-"):
                 removals.append(line[1:])
             elif line.startswith("+"):

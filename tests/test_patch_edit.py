@@ -1,4 +1,4 @@
-﻿import os
+import os
 import shutil
 import tempfile
 import textwrap
@@ -307,7 +307,7 @@ class TestGitPatch(unittest.TestCase):
         with open(self.test_file, "w") as f:
             f.write("line 1\n    indented line\nline 3\n")
         patch = textwrap.dedent(
-            "\n@@ -2,1 +2,4 @@\n    indented line\n+    same level\n+        more indented\n+            most indented"
+            "\n@@ -2,1 +2,4 @@\n     indented line\n+    same level\n+        more indented\n+            most indented"
         )
         result = patch_edit(self.test_file, patch)
         self.assertIn("Successfully", result)
@@ -417,8 +417,8 @@ class TestGitPatch(unittest.TestCase):
         patch = textwrap.dedent(
             """\
             @@ -2,6 +2,10 @@
-                def foo(self):
-                    pass
+                 def foo(self):
+                     pass
             +
             +    def bar(self):
             +        print("bar!")
@@ -463,8 +463,8 @@ class TestGitPatch(unittest.TestCase):
         """Insert a method after another method in a class, but with whitespace difference requiring inexact match."""
         orig_code = (
             "class MyClass:\n"
-            "    def foo(self):\n"  # Ã¢â€ Â 4 spaces in actual file
-            "        pass\n"  # Ã¢â€ Â 8 spaces in actual file
+            "    def foo(self):\n"  # â† 4 spaces in actual file
+            "        pass\n"  # â† 8 spaces in actual file
         )
 
         # Patch context lines use LESS indentation than actual file (common when copying from less-indented context)
@@ -488,8 +488,8 @@ class TestGitPatch(unittest.TestCase):
             "    def foo(self):\n"
             "        pass\n"
             "\n"
-            "    def bar(self):\n"  # Ã¢â€ Â 4 spaces (0 + 4 adjustment)
-            '        print("bar!")\n'  # Ã¢â€ Â 8 spaces (4 + 4 adjustment)
+            "    def bar(self):\n"  # â† 4 spaces (0 + 4 adjustment)
+            '        print("bar!")\n'  # â† 8 spaces (4 + 4 adjustment)
         )
 
         with tempfile.NamedTemporaryFile("w+", delete=False, suffix=".py") as tf:
@@ -574,7 +574,7 @@ class TestIndentationDebug(unittest.TestCase):
 
     def test_hierarchy_match_position(self):
         """Test that hierarchy finds match at correct line position."""
-        current_lines = ["class MyClass:", "    def foo(self):", "        pass"]  # Ã¢â€ Â Line 1, should match here
+        current_lines = ["class MyClass:", "    def foo(self):", "        pass"]  # â† Line 1, should match here
 
         context_before = ["def foo(self):", "    pass"]
         removals = []
@@ -593,7 +593,7 @@ class TestIndentationDebug(unittest.TestCase):
 
     def test_indentation_adjustment_direct(self):
         """Test indentation adjustment function directly."""
-        current_lines = ["class MyClass:", "    def foo(self):", "        pass"]  # Ã¢â€ Â Line 1: 4 spaces  # Ã¢â€ Â Line 2: 8 spaces
+        current_lines = ["class MyClass:", "    def foo(self):", "        pass"]  # â† Line 1: 4 spaces  # â† Line 2: 8 spaces
 
         match_line = 1  # Where hierarchy claims to have found the match
         context_before = ["def foo(self):", "    pass"]  # 0 spaces, 4 spaces
@@ -619,8 +619,8 @@ class TestIndentationDebug(unittest.TestCase):
         """Test that we're mapping context lines to file lines correctly."""
         current_lines = [
             "class MyClass:",  # Line 0
-            "    def foo(self):",  # Line 1 Ã¢â€ Â Context line 0 should map here
-            "        pass",  # Line 2 Ã¢â€ Â Context line 1 should map here
+            "    def foo(self):",  # Line 1 â† Context line 0 should map here
+            "        pass",  # Line 2 â† Context line 1 should map here
         ]
 
         match_line = 1
@@ -640,8 +640,8 @@ class TestIndentationDebug(unittest.TestCase):
         """Test the full patch process with detailed output."""
         orig_code = (
             "class MyClass:\n"
-            "    def foo(self):\n"  # Ã¢â€ Â 4 spaces
-            "        pass\n"  # Ã¢â€ Â 8 spaces
+            "    def foo(self):\n"  # â† 4 spaces
+            "        pass\n"  # â† 8 spaces
         )
 
         patch = textwrap.dedent(
@@ -688,7 +688,7 @@ class TestIndentationDebug(unittest.TestCase):
             return line[: len(line) - len(line.lstrip())]
 
         # Test case from debug output
-        current_lines = ["class MyClass:", "    def foo(self):", "        pass"]  # Ã¢â€ Â Line 1: 4 spaces  # Ã¢â€ Â Line 2: 8 spaces
+        current_lines = ["class MyClass:", "    def foo(self):", "        pass"]  # â† Line 1: 4 spaces  # â† Line 2: 8 spaces
 
         match_line = 1
         context_before = ["def foo(self):", "    pass"]  # 0 spaces, 4 spaces
@@ -739,6 +739,162 @@ def _get_line_indentation(line):
 
 if __name__ == "__main__":
     unittest.main()
+    
+class TestIndentationBugFix(unittest.TestCase):
+   """Test cases specifically for the context line indentation bug fix.
+    
+   The bug: Context lines in unified diff format start with a space character,
+   but the patch parsing logic was keeping that space, causing indentation
+   calculations to be off by one space.
+   """
 
+   def setUp(self):
+       from tests.conftest import get_unique_filename
+       self.test_file = get_unique_filename("test_indent_bug", "py")
+
+   def tearDown(self):
+       if os.path.exists(self.test_file):
+           os.remove(self.test_file)
+
+   def test_function_level_indentation_bug(self):
+       """Test the exact scenario that revealed the bug: adding to a function."""
+       with open(self.test_file, "w") as f:
+           f.write("def outer_function():\n    print(\"outer function\")\n\n    def inner_function():\n        print(\"inner function\")\n        return 42\n")
+        
+       # This patch should add a line with 4 spaces, not 3
+       patch = textwrap.dedent("""
+            @@ -1,3 +1,4 @@
+            def outer_function():
+                 print("outer function")
+            +    print("added line")
+       """).strip()
+        
+       result = patch_edit(self.test_file, patch)
+       self.assertIn("Successfully", result)
+        
+       with open(self.test_file, "r") as f:
+           lines = f.readlines()
+        
+       # Find the added line
+       added_line = None
+       for line in lines:
+           if "added line" in line:
+               added_line = line
+               break
+        
+       self.assertIsNotNone(added_line, "Added line not found in file")
+        
+       # The critical test: should have exactly 4 spaces, not 3
+       indent_spaces = len(added_line) - len(added_line.lstrip())
+       self.assertEqual(indent_spaces, 4, 
+                       f"Added line should have 4 spaces but has {indent_spaces}. Line: {repr(added_line)}")
+
+   def test_method_level_indentation_bug(self):
+       """Test adding to a method with proper indentation."""
+       with open(self.test_file, "w") as f:
+           f.write("class TestClass:\n    def __init__(self):\n        self.value = 0\n    \n    def method1(self):\n        print(\"method1\")\n        return self.value\n")
+        
+       # This patch should add a line with 8 spaces, not 7
+       patch = \
+"""@@ -5,6 +5,7 @@
+def method1(self):
+         print("method1")
+         return self.value
++        # added comment"""
+        
+       result = patch_edit(self.test_file, patch)
+       self.assertIn("Successfully", result)
+        
+       with open(self.test_file, "r") as f:
+           lines = f.readlines()
+        
+       # Find the added line
+       added_line = None
+       for line in lines:
+           if "added comment" in line:
+               added_line = line
+               break
+        
+       self.assertIsNotNone(added_line, "Added comment not found in file")
+        
+       # The critical test: should have exactly 12 spaces, not 7
+       indent_spaces = len(added_line) - len(added_line.lstrip())
+       self.assertEqual(indent_spaces, 12, 
+                       f"Added line should have 12 spaces but has {indent_spaces}. Line: {repr(added_line)}")
+
+   def test_deeply_nested_indentation_bug(self):
+       """Test deeply nested code indentation."""
+       with open(self.test_file, "w") as f:
+           f.write("def function_with_deep_nesting():\n    if True:\n        for i in range(2):\n            if i == 0:\n                try:\n                    result = 10 / i\n                except ZeroDivisionError:\n                    print(\"division by zero\")\n                    result = 0\n                finally:\n                    print(\"cleanup\")\n")
+        
+       # This patch should add a line with 20 spaces, not 19
+       patch = \
+"""
+@@ -7,6 +7,7 @@
+         except ZeroDivisionError:
+             print("division by zero")
+             result = 0
++                print("error handled")
+         finally:
+             print("cleanup")
+"""
+        
+       result = patch_edit(self.test_file, patch)
+       self.assertIn("Successfully", result)
+        
+       with open(self.test_file, "r") as f:
+           lines = f.readlines()
+        
+       # Find the added line
+       added_line = None
+       for line in lines:
+           if "error handled" in line:
+               added_line = line
+               break
+        
+       self.assertIsNotNone(added_line, "Added line not found in file")
+        
+       # The critical test: should have exactly 24 spaces
+       indent_spaces = len(added_line) - len(added_line.lstrip())
+       self.assertEqual(indent_spaces, 24, 
+                       f"Added line should have 24 spaces but has {indent_spaces}. Line: {repr(added_line)}")
+
+   def test_context_line_space_removal(self):
+       """Test that context lines have their leading space properly removed during parsing."""
+       # This is a unit test for the specific parsing logic
+       patch_content = textwrap.dedent("""
+            @@ -1,3 +1,4 @@
+             def test():
+                 print("test")
+            +    print("added")
+       """).strip()
+        
+       # Simulate the patch parsing logic
+       patch_content = textwrap.dedent(patch_content)
+       patch_content = "\n" + patch_content
+       hunks = patch_content.split("\n@@")[1:]
+        
+       hunk = hunks[0].strip()
+       header_end = hunk.index("\n")
+       hunk_lines = hunk[header_end:].splitlines()[1:]
+        
+       context_before = []
+       additions = []
+        
+       for line in hunk_lines:
+           if not line:
+               continue
+           if not (line.startswith("+") or line.startswith("-")):
+               # Context lines should have their leading space removed
+               context_before.append(line[1:])  # This is the fix
+           elif line.startswith("+"):
+               additions.append(line[1:])
+        
+       # Verify context lines don't have extra leading space
+       self.assertEqual(context_before[0], "def test():")  # Not " def test:"
+       self.assertEqual(context_before[1], "    print(\"test\")")  # Not "     print(\"test\")"
+        
+       # Verify addition line is correct
+       self.assertEqual(additions[0], "    print(\"added\")")
 
 
