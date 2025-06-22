@@ -1149,8 +1149,10 @@ class CLI:
             callback = self.context.callbacks.get_standard_callback()
             # Use chain functional prompt with single prompt and callback
             responses, nodes = fp.chain(bot, [user_input], callback=callback)
-            # Display the response (callback already handled tool results)
-            if responses:
+            # Display the response only if not in quiet mode
+            # In quiet mode, the callback already prints the response
+            # In verbose mode, the callback only handles tool info, so we need to print the response here
+            if responses and self.context.config.verbose:
                 pretty(responses[0], bot.name, self.context.config.width, self.context.config.indent)
         except Exception as e:
             pretty(f"Chat error: {str(e)}", "Error", self.context.config.width, self.context.config.indent)
@@ -1178,4 +1180,3 @@ def main(bot_filename=None, function_filter=None):
     cli.run()
 if __name__ == "__main__":
     main()
-
