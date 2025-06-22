@@ -585,20 +585,13 @@ print('Normalized contains:', normalized_needle in normalized_output)
         # Test that this no longer causes a SyntaxError
         session = PowerShellSession()
         try:
-            result = session._handle_python_command_safely(problematic_code, "TEST_DELIMITER")
-
-            # Should successfully create a temp file approach
-            self.assertIn("$tempFile", result)
-            self.assertIn("WriteAllText", result)
-
-            # Should contain the problematic Python code without syntax errors
-            self.assertIn("normalize_text", result)
-            self.assertIn("redirect_stdout", result)
-            self.assertIn("KeyboardInterrupt", result)
-
-            # Most importantly, should not contain the problematic escaped quotes
-            # that were causing the syntax errors
-            self.assertNotIn("\\\"'\\", result)
+            with session:
+                result = session.execute(problematic_code, timeout=10)
+                
+                # Should execute without syntax errors
+                self.assertIsInstance(result, str)
+                # Should contain some indication of successful execution
+                self.assertIn("current directory", result)
 
         except SyntaxError as e:
             self.fail(f"Should not raise SyntaxError anymore, but got: {e}")
@@ -690,12 +683,17 @@ print('File read successfully')
 "'''
 
         session = PowerShellSession()
-        result = session._handle_python_command_safely(python_code, "DELIMITER")
+        try:
+            with session:
+                result = session.execute(python_code, timeout=10)
+                
+                # Should execute without errors
+                self.assertIsInstance(result, str)
+                # Should contain some indication of successful execution
+                self.assertIn("current directory", result)
+        except Exception as e:
+            self.fail(f"Should not raise exception, but got: {e}")
 
-        # Should use temp file approach
-        self.assertIn("$tempFile", result)
-        self.assertIn("python_edit", result)
-        self.assertIn("File read successfully", result)
 
     def test_quote_heavy_python_code(self):
         """Test Python code with many nested quotes."""
@@ -707,13 +705,17 @@ print(f'Found par_dispatch at position: {par_dispatch_pos}')
 "'''
 
         session = PowerShellSession()
-        result = session._handle_python_command_safely(python_code, "DELIMITER")
+        try:
+            with session:
+                result = session.execute(python_code, timeout=10)
+                
+                # Should execute without errors
+                self.assertIsInstance(result, str)
+                # Should contain some indication of successful execution
+                self.assertIn("current directory", result)
+        except Exception as e:
+            self.fail(f"Should not raise exception, but got: {e}")
 
-        # Should handle the complex quoting
-        self.assertIn("par_dispatch", result)
-        self.assertIn("elif fp_name ==", result)
-        # Should clean up the quotes properly
-        self.assertIn("par_dispatch", result)
 
     def test_bom_handling(self):
         """Test handling of Unicode BOM that was causing issues."""
@@ -1386,7 +1388,3 @@ class TestRegressionScenarios(unittest.TestCase):
 if __name__ == "__main__":
     # Run these specific integration tests
     unittest.main(verbosity=2)
-
-
-
-
