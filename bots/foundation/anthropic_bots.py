@@ -310,7 +310,7 @@ class AnthropicMailbox(Mailbox):
                     print(create_dict)
                     print("\n---debug---\n\n\n")
                     raise e
-                delay: float = base_delay * 2**attempt + random.uniform(0, 1)
+                delay: float = base_delay * 2**attempt + random.uniform(0.71*2**attempt, 1.41*2**attempt)
                 print(f"Attempt {attempt + 1} failed with {e.__class__.__name__}. " f"Retrying in {delay:.2f} seconds...")
                 time.sleep(delay)
         raise Exception("Max retries reached. Unable to send message.")
