@@ -42,7 +42,6 @@ class DynamicParameterCollector:
         self.conditions = {"1": ("tool_used", fp.conditions.tool_used), "2": ("tool_not_used", fp.conditions.tool_not_used), "3": ("said_DONE", fp.conditions.said_DONE), "4": ("said_READY", fp.conditions.said_READY), "5": ("error_in_response", fp.conditions.error_in_response)}
         # Function filter for discovery
         self.function_filter = function_filter
-        
 
     def _format_default_value(self, default: Any) -> str:
         """Format default values for clean display to users."""
@@ -82,7 +81,6 @@ class DynamicParameterCollector:
             sig = inspect.signature(func)
             params = {}
             print(f"\nCollecting parameters for {func.__name__}:")
-            
             # Check if this function needs a special callback signature
             needs_single_callback = func.__name__ in ["tree_of_thought"]
             for param_name, param in sig.parameters.items():
@@ -110,7 +108,6 @@ class DynamicParameterCollector:
                     # Use default value for optional parameters
                 elif value is not None:
                     params[param_name] = value
-                    
             # Store callback type info for later use
             params["_callback_type"] = "single" if needs_single_callback else "list"
             return params
@@ -232,24 +229,7 @@ class DynamicParameterCollector:
         else:
             value = input(f"Enter {param_name}: ").strip()
             return value if value else None
-
-def create_tool_result_callback(context):
-    """Create a callback function that prints tool results immediately."""
-
-    def tool_result_callback(responses, nodes):
-        # Print tool results for the most recent response
-        if hasattr(context, "bot_instance") and context.bot_instance:
-            bot = context.bot_instance
-            requests = bot.tool_handler.requests
-            results = bot.tool_handler.results
-            if requests and context.config.verbose:
-                request_str = "".join((clean_dict(r) for r in requests))
-                result_str = "".join((clean_dict(r) for r in results))
-                pretty(f"Tool Requests\n\n{request_str}", "System", context.config.width, context.config.indent)
-                if result_str.strip():
-                    pretty(f"Tool Results\n\n{result_str}", "System", context.config.width, context.config.indent)
-    return tool_result_callback
-
+# Removed - functionality moved to CLICallbacks class
 
 class CLIConfig:
     """Configuration management for CLI settings."""
@@ -282,29 +262,12 @@ class CLIConfig:
         except Exception:
             pass  # Fail silently if config saving fails
 
-
 class CLICallbacks:
     """Centralized callback management for CLI operations."""
 
     def __init__(self, context: 'CLIContext'):
         self.context = context
-
-    def create_tool_result_callback(self):
-        """Create a callback function that prints tool results immediately."""
-
-        def tool_result_callback(responses, nodes):
-            # Print tool results for the most recent response
-            if hasattr(self.context, "bot_instance") and self.context.bot_instance:
-                bot = self.context.bot_instance
-                requests = bot.tool_handler.requests
-                results = bot.tool_handler.results
-                if requests and self.context.config.verbose:
-                    request_str = "".join((clean_dict(r) for r in requests))
-                    result_str = "".join((clean_dict(r) for r in results))
-                    pretty(f"Tool Requests\n\n{request_str}", "System", self.context.config.width, self.context.config.indent)
-                    if result_str.strip():
-                        pretty(f"Tool Results\n\n{result_str}", "System", self.context.config.width, self.context.config.indent)
-        return tool_result_callback
+    # Removed - functionality moved to CLICallbacks class
 
     def create_message_only_callback(self):
         """Create a callback that only prints bot messages, no tool info."""
@@ -322,17 +285,17 @@ class CLICallbacks:
             # Print the response first
             if responses and responses[-1]:
                 pretty(responses[-1], self.context.bot_instance.name if self.context.bot_instance else "Bot", self.context.config.width, self.context.config.indent)
-            # Then print tool info regardless of verbose setting
-            if hasattr(self.context, "bot_instance") and self.context.bot_instance:
-                bot = self.context.bot_instance
-                requests = bot.tool_handler.requests
-                results = bot.tool_handler.results
-                if requests:
-                    request_str = "".join((clean_dict(r) for r in requests))
-                    result_str = "".join((clean_dict(r) for r in results))
-                    pretty(f"Tool Requests\n\n{request_str}", "System", self.context.config.width, self.context.config.indent)
-                    if result_str.strip():
-                        pretty(f"Tool Results\n\n{result_str}", "System", self.context.config.width, self.context.config.indent)
+            # Show tool info for the most recent node only (live updates)
+            if nodes and nodes[-1] and hasattr(self.context, "bot_instance") and self.context.bot_instance:
+                current_node = nodes[-1]
+                # Use the current node's tool calls and results instead of cumulative handler data
+                if hasattr(current_node, 'tool_calls') and current_node.tool_calls:
+                    tool_calls_str = "".join((clean_dict(call) for call in current_node.tool_calls))
+                    pretty(f"Tool Requests\n\n{tool_calls_str}", "System", self.context.config.width, self.context.config.indent)
+                if hasattr(current_node, 'tool_results') and current_node.tool_results:
+                    tool_results_str = "".join((clean_dict(result) for result in current_node.tool_results))
+                    if tool_results_str.strip():
+                        pretty(f"Tool Results\n\n{tool_results_str}", "System", self.context.config.width, self.context.config.indent)
         return verbose_callback
 
     def create_quiet_callback(self):
@@ -342,15 +305,16 @@ class CLICallbacks:
             # Print the response
             if responses and responses[-1]:
                 pretty(responses[-1], self.context.bot_instance.name if self.context.bot_instance else "Bot", self.context.config.width, self.context.config.indent)
-            # Show minimal tool info
-            if hasattr(self.context, "bot_instance") and self.context.bot_instance:
-                bot = self.context.bot_instance
-                requests = bot.tool_handler.requests
-                if requests:
+            # Show minimal tool info for the most recent node only (live updates)
+            if nodes and nodes[-1] and hasattr(self.context, "bot_instance") and self.context.bot_instance:
+                current_node = nodes[-1]
+                if hasattr(current_node, 'tool_calls') and current_node.tool_calls:
                     tool_names = []
-                    for request in requests:
-                        tool_name, _ = bot.tool_handler.tool_name_and_input(request)
-                        tool_names.append(tool_name)
+                    for tool_call in current_node.tool_calls:
+                        if 'function' in tool_call and 'name' in tool_call['function']:
+                            tool_names.append(tool_call['function']['name'])
+                        elif 'name' in tool_call:
+                            tool_names.append(tool_call['name'])
                     if tool_names:
                         pretty(f"Used tools: {', '.join(set(tool_names))}", "System", self.context.config.width, self.context.config.indent)
         return quiet_callback
@@ -361,7 +325,6 @@ class CLICallbacks:
             return self.create_verbose_callback()
         else:
             return self.create_quiet_callback()
-
 
 class CLIContext:
     """Shared context for CLI operations."""
@@ -716,7 +679,7 @@ class SystemHandler:
                 callback = context.callbacks.get_standard_callback()
                 responses, nodes = fp.chain(bot, ["ok"], callback=callback)
                 # Callback already handles printing the response, no need to print again
-                if responses and not bot.tool_handler.requests:
+                if responses and (not bot.tool_handler.requests):
                     restore_terminal(old_settings)
                     return "Bot finished autonomous execution"
         except Exception as e:
@@ -780,28 +743,28 @@ class DynamicFunctionalPromptHandler:
             # Step 3: Execute functional prompt
             context.conversation_backup = bot.conversation
             print(f"\nExecuting {fp_name}...")
-            
             # Create appropriate callback based on function requirements
             callback_type = params.pop("_callback_type", "list")
             if callback_type == "single":
-                # Single callback for tree_of_thought
+                # Single callback for tree_of_thought - use node-based tool info for live updates
+
                 def single_callback(response: str, node):
+                    # Print the response first
+                    pretty(response, context.bot_instance.name if context.bot_instance else "Bot", context.config.width, context.config.indent)
+                    # Show tool info for this specific node only (live updates)
                     if hasattr(context, "bot_instance") and context.bot_instance and context.config.verbose:
-                        bot_instance = context.bot_instance
-                        requests = bot_instance.tool_handler.requests
-                        results = bot_instance.tool_handler.results
-                        if requests:
-                            request_str = "".join((clean_dict(r) for r in requests))
-                            result_str = "".join((clean_dict(r) for r in results))
-                            pretty(f"Tool Requests\n\n{request_str}", "System", context.config.width, context.config.indent)
-                            if result_str.strip():
-                                pretty(f"Tool Results\n\n{result_str}", "System", context.config.width, context.config.indent)
+                        if hasattr(node, 'tool_calls') and node.tool_calls:
+                            tool_calls_str = "".join((clean_dict(call) for call in node.tool_calls))
+                            pretty(f"Tool Requests\n\n{tool_calls_str}", "System", context.config.width, context.config.indent)
+                        if hasattr(node, 'tool_results') and node.tool_results:
+                            tool_results_str = "".join((clean_dict(result) for result in node.tool_results))
+                            if tool_results_str.strip():
+                                pretty(f"Tool Results\n\n{tool_results_str}", "System", context.config.width, context.config.indent)
                 params["callback"] = single_callback
             else:
                 # List callback for most functions
                 callback = context.callbacks.get_standard_callback()
                 params["callback"] = callback
-                
             # Execute the function
             result = fp_function(bot, **params)
             # Handle results and display responses
@@ -962,7 +925,7 @@ def clean_dict(d: dict, indent: int=4, level: int=1):
                 lines[i] = line
             d[k] = "\n".join(lines)
     cleaned_dict = json.dumps(d, indent=indent * level)
-    cleaned_dict = re.sub(r"(?<!\\)\\n", "\n", cleaned_dict)
+    cleaned_dict = re.sub("(?<!\\)\\n", "\n", cleaned_dict)
     cleaned_dict = cleaned_dict.replace('\\"', '"')
     cleaned_dict = cleaned_dict.replace("\\\\", "\\")
     return cleaned_dict
