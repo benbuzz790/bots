@@ -267,7 +267,6 @@ class CLICallbacks:
 
     def __init__(self, context: 'CLIContext'):
         self.context = context
-    # Removed - functionality moved to CLICallbacks class
 
     def create_message_only_callback(self):
         """Create a callback that only prints bot messages, no tool info."""
@@ -973,6 +972,7 @@ class CLI:
     def __init__(self, bot_filename: Optional[str]=None, function_filter: Optional[Callable[[str, Callable], bool]]=None):
         self.context = CLIContext()
         self.conversation = ConversationHandler()
+        self.context.conversation = self.conversation  # Add reference for handlers to use
         self.state = StateHandler()
         self.system = SystemHandler()
         self.fp = DynamicFunctionalPromptHandler(function_filter)

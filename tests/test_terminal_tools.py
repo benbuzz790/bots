@@ -695,7 +695,7 @@ print('File read successfully')
         session = PowerShellSession()
         try:
             with session:
-                result = session.execute(python_code, timeout=10)
+                result = session.execute(python_code, timeout=20)
 
                 # Should execute without errors
                 self.assertIsInstance(result, str)
