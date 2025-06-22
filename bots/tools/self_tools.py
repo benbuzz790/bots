@@ -1,4 +1,4 @@
-import ast
+﻿import ast
 import inspect
 import json
 from typing import List, Optional
@@ -63,7 +63,21 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
     Returns:
         str: Description of changes made or error message
     """
-    bot = _get_calling_bot()
+    # Import _get_calling_bot locally to avoid decorator global namespace issues
+    import inspect
+    from bots.foundation.base import Bot
+    
+    def _get_calling_bot_local():
+        frame = inspect.currentframe()
+        while frame:
+            if frame.f_code.co_name == '_cvsn_respond' and 'self' in frame.f_locals:
+                potential_bot = frame.f_locals['self']
+                if isinstance(potential_bot, Bot):
+                    return potential_bot
+            frame = frame.f_back
+        return None
+    
+    bot = _get_calling_bot_local()
     if not bot:
         return "Error: Could not find calling bot"
     if temperature is not None:
@@ -81,24 +95,82 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
 
 @handle_errors
 def branch_self(self_prompts: str, allow_work: str = "False") -> str:
-    """Branches your conversation using a list of self-prompts. The prompts
-    will be sent as user messages in response to your message that calls this
-    tool. Also tags the messages with (self-prompt) to distinguish from
-    legitimate user messages.
-    Use when you need to:
-    - explore multiple conversation paths.
-    - break down a large list of tasks (>~6)
-    Branches will be traversed sequentially.
-    Each message will start a new conversation branch from the current message.
-    Parameters:
-        self_prompts (str): Array formatted as a string, i.e. ['1', '2', '3']
-        allow_work: 'True' or 'False' (default). If True, allows each branch
-            to work until it does not respond with any tool calls
-            (i.e. each branch will be a chain).
+    """Create multiple conversation branches to explore different approaches or tackle separate tasks.
+    
+    Think of this like opening multiple browser tabs - each branch starts from this point
+    and explores a different direction. Perfect for when you need to:
+    - Try different solutions to the same problem
+    - Handle multiple related tasks separately  
+    - Break down a complex request into smaller parts (when you have more than ~6 tasks)
+    - Compare different approaches side-by-side
+    
+    Each branch gets its own copy of the conversation up to this point, then follows
+    the prompt you give it. The branches run one after another, not at the same time.
+    
+    Args:
+        self_prompts (str): List of prompts as a string array, like ['task 1', 'task 2', 'task 3']
+                           Each prompt becomes a separate conversation branch
+        allow_work (str): 'True' to let each branch use tools and continue working until done
+                         'False' (default) for single-response branches
+    
     Returns:
-        str: success message or error string.
+        str: Success message with branch count, or error details if something went wrong
+        
+    Writing effective branch prompts:
+        Each prompt should be a complete, self-contained instruction that includes:
+        
+        REQUIRED:
+        - Task instruction: What specific action to take
+        - Definition of done: How to know when the task is complete, typically in
+        terms of a specific side effect or set of side effects on files or achieved
+        through use of your available tools.
+        
+        OPTIONAL:
+        - Tool suggestions: Which tools of yours might be helpful.
+        - Context to gather: What information to look up or files to examine first
+        - Output format: Specific system side effect, with specific qualities
+        - Success criteria: What makes a good vs. poor result
+        
+        Good prompt examples:
+        - "Search for recent AI safety research papers, then create a summary report 
+           highlighting key findings and methodologies. Done when I have a 2-page 
+           summary with at least 5 recent citations."
+           
+        - "Analyze our Q3 sales data from Google Drive, identify top 3 performance 
+           trends, and create visualizations. Use artifacts for charts. Done when 
+           I have clear charts showing trends with actionable insights."
+    
+    Example usage:
+        branch_self("['Analyze the data for trends', 'Create visualizations', 'Write summary report']")
     """
-    bot = _get_calling_bot()
+    
+    # Import _get_calling_bot locally to avoid decorator global namespace issues
+    import json  # Also import json locally
+    import ast  # Also import ast locally
+    from typing import List  # Import List type
+    from bots.flows import functional_prompts as fp  # Import functional_prompts locally
+    
+    def _process_string_array_local(input_str: str) -> List[str]:
+        '''Parse a string representation of an array into a list of strings.'''
+        result = ast.literal_eval(input_str)
+        if not isinstance(result, list) or not all(isinstance(x, str) for x in result):
+            raise ValueError('Input must evaluate to a list of strings')
+        return result
+    
+    import inspect
+    from bots.foundation.base import Bot
+    
+    def _get_calling_bot_local():
+        frame = inspect.currentframe()
+        while frame:
+            if frame.f_code.co_name == '_cvsn_respond' and 'self' in frame.f_locals:
+                potential_bot = frame.f_locals['self']
+                if isinstance(potential_bot, Bot):
+                    return potential_bot
+            frame = frame.f_back
+        return None
+    
+    bot = _get_calling_bot_local()
     # Insert a dummy result to prevent repeated tool calls
     if not bot.tool_handler.requests:
         return "Error: No branch_self tool request found"
@@ -112,7 +184,7 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
     if not bot:
         return "Error: Could not find calling bot"
     allow_work = allow_work.lower() == "true"
-    message_list = _process_string_array(self_prompts)
+    message_list = _process_string_array_local(self_prompts)
     if not message_list:
         return "Error: No valid messages provided"
     original_node = bot.conversation
