@@ -2,6 +2,7 @@ import codecs
 import glob
 import os
 import subprocess
+import textwrap
 import threading
 import time
 import traceback
@@ -560,92 +561,25 @@ function Invoke-SafeCommand {
         Safely wrap code for execution, handling complex strings and
         multiline code.
         """
-        # Check if this looks like a complex Python command that might have
-        # quote issues
-        if "python -c" in code and ('"' in code or "'" in code):
-            return self._handle_python_command_safely(code, delimiter)
-        else:
-            # Use the original wrapping approach for simple commands
-            return f"""
-            $ErrorActionPreference = 'Stop'
-            
-            # Execute in main scope
-            {code}
-            
-            # Collect output after execution
-            $output = @()
-            try {{
-                if ($?) {{ 
-                    # Add any output from the last command
-                    $output += $LASTOUTPUT
-                }}
-            }} catch {{
-                Write-Error $_
-            }}
-            $output | ForEach-Object {{ $_ }}
-            Write-Output '{delimiter}'
-            """
-
-    def _handle_python_command_safely(self, code: str, delimiter: str) -> str:
-        """
-        Handle Python commands with complex strings by using file-based
-        execution.
-        """
-        # Extract the Python code part
-        if 'python -c "' in code:
-            # Find the Python code between quotes
-            start_idx = code.find('python -c "') + len('python -c "')
-            # Find the closing quote - this is tricky with nested quotes
-            quote_count = 0
-            end_idx = start_idx
-            for i, char in enumerate(code[start_idx:], start_idx):
-                if char == '"' and (i == start_idx or code[i - 1] != "\\"):
-                    quote_count += 1
-                    if quote_count == 1:  # Found the closing quote
-                        end_idx = i
-                        break
-
-            if end_idx > start_idx:
-                python_code = code[start_idx:end_idx]
-                # Clean up the Python code - remove extra escaping
-                python_code = python_code.replace('\\"', '"').replace("\\'", "'")
-
-                # Create a temporary file approach
-                return f"""
-                $ErrorActionPreference = 'Stop'
-                
-                # Create temporary file for Python code
-                $tempFile = [System.IO.Path]::GetTempFileName() + '.py'
-                $pythonCode = @'
-{python_code}
-'@
-                
-                try {{
-                    # Write Python code to temp file with UTF-8 encoding (no BOM)
-                    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-                    [System.IO.File]::WriteAllText($tempFile, $pythonCode, $utf8NoBom)
-                    
-                    # Execute Python with the temp file
-                    python $tempFile
-                }} catch {{
-                    Write-Error $_
-                }} finally {{
-                    # Clean up temp file
-                    if (Test-Path $tempFile) {{
-                        Remove-Item $tempFile -Force
-                    }}
-                }}
-                
-                Write-Output '{delimiter}'
-                """
-
-        # Fallback to original approach
-        return f"""
+        return textwrap.dedent(f"""
         $ErrorActionPreference = 'Stop'
+        
+        # Execute in main scope
         {code}
+        
+        # Collect output after execution
+        $output = @()
+        try {{
+            if ($?) {{ 
+                # Add any output from the last command
+                $output += $LASTOUTPUT
+            }}
+        }} catch {{
+            Write-Error $_
+        }}
+        $output | ForEach-Object {{ $_ }}
         Write-Output '{delimiter}'
-        """
-
+        """)
 
 class PowerShellManager:
     """
