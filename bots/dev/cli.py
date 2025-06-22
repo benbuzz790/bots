@@ -1104,7 +1104,8 @@ class CLI:
         """Initialize a new bot with default tools."""
         bot = AnthropicBot()
         self.context.bot_instance = bot
-        bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools)
+        from bots.tools.self_tools import branch_self
+        bot.add_tools(bots.tools.terminal_tools, branch_self, bots.tools.python_edit, bots.tools.code_tools)
 
     def _handle_command(self, bot: Bot, user_input: str):
         """Handle command input."""
