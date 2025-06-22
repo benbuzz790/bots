@@ -1,15 +1,8 @@
 from unittest.mock import Mock, patch
-
-from bots.dev.cli import (
-    CLI,
-    DynamicFunctionalPromptHandler,
-    DynamicParameterCollector,
-)
+from bots.dev.cli import CLI, DynamicFunctionalPromptHandler, DynamicParameterCollector
 from bots.flows import functional_prompts as fp
 from bots.foundation.base import ConversationNode
-
 """Tests for broadcast_fp functionality in CLI."""
-
 
 def test_collect_functional_prompt():
     """Test collecting functional prompt parameter."""
@@ -18,14 +11,12 @@ def test_collect_functional_prompt():
         result = collector._collect_functional_prompt("functional_prompt", None)
         assert result == fp.single_prompt
 
-
 def test_collect_functional_prompt_invalid_choice():
     """Test collecting functional prompt with invalid choice."""
     collector = DynamicParameterCollector()
     with patch("builtins.input", return_value="invalid"):
         result = collector._collect_functional_prompt("functional_prompt", None)
         assert result == fp.single_prompt
-
 
 def test_collect_skip_labels():
     """Test collecting skip labels."""
@@ -34,14 +25,12 @@ def test_collect_skip_labels():
         result = collector._collect_skip_labels("skip", None)
         assert result == ["draft", "test", "incomplete"]
 
-
 def test_collect_skip_labels_empty():
     """Test collecting empty skip labels."""
     collector = DynamicParameterCollector()
     with patch("builtins.input", return_value=""):
         result = collector._collect_skip_labels("skip", None)
         assert result == []
-
 
 def test_discover_fp_functions_includes_broadcast_fp():
     """Test that broadcast_fp is discovered."""
@@ -50,14 +39,12 @@ def test_discover_fp_functions_includes_broadcast_fp():
     assert "broadcast_fp" in functions
     assert functions["broadcast_fp"] == fp.broadcast_fp
 
-
 def test_discover_fp_functions_excludes_descoped():
     """Test that descoped functions are excluded."""
     handler = DynamicFunctionalPromptHandler()
     functions = handler._discover_fp_functions()
     assert "prompt_for" not in functions
     assert "par_dispatch" not in functions
-
 
 @patch("bots.dev.cli.AnthropicBot")
 def test_fp_command_includes_broadcast_fp(mock_bot_class):
@@ -68,18 +55,15 @@ def test_fp_command_includes_broadcast_fp(mock_bot_class):
     # Check that broadcast_fp is in the discovered functions
     assert "broadcast_fp" in cli.fp.fp_functions
 
-
 def test_parameter_handlers_include_functional_prompt():
     """Test that parameter handlers include functional_prompt."""
     collector = DynamicParameterCollector()
     assert "functional_prompt" in collector.param_handlers
     assert collector.param_handlers["functional_prompt"] == collector._collect_functional_prompt
 
-
-@patch("bots.dev.cli.create_tool_result_callback")
 @patch("builtins.input")
 @patch("builtins.print")
-def test_broadcast_fp_new_system_all_leaves(mock_print, mock_input, mock_callback):
+def test_broadcast_fp_new_system_all_leaves(mock_print, mock_input):
     """Test broadcast_fp with new leaf selection system - select all leaves."""
     # Setup mock bot and context
     mock_bot = Mock()
@@ -101,8 +85,6 @@ def test_broadcast_fp_new_system_all_leaves(mock_print, mock_input, mock_callbac
     # Setup input sequence: select all leaves, choose single_prompt,
     # provide prompt
     mock_input.side_effect = ["all", "1", "Test prompt"]
-    # Setup callback
-    mock_callback.return_value = Mock()
     # Setup functional prompt execution - mock the actual fp.broadcast_fp
     # function
     mock_fp_responses = ["Response 1", "Response 2"]
@@ -117,11 +99,9 @@ def test_broadcast_fp_new_system_all_leaves(mock_print, mock_input, mock_callbac
     assert "Broadcast completed" in result
     assert "successful" in result
 
-
-@patch("bots.dev.cli.create_tool_result_callback")
 @patch("builtins.input")
 @patch("builtins.print")
-def test_broadcast_fp_new_system_specific_leaves(mock_print, mock_input, mock_callback):
+def test_broadcast_fp_new_system_specific_leaves(mock_print, mock_input):
     """Test broadcast_fp with new leaf selection system - select specific
     leaves."""
     # Setup mock bot and context
@@ -147,14 +127,9 @@ def test_broadcast_fp_new_system_specific_leaves(mock_print, mock_input, mock_ca
     # Setup input sequence: select leaves 1 and 3, choose single_prompt,
     # provide prompt
     mock_input.side_effect = ["1,3", "1", "Test prompt"]
-    # Setup callback
-    mock_callback.return_value = Mock()
     # Setup functional prompt execution - mock the actual fp.broadcast_fp
     # function
-    mock_fp_responses = [
-        "Response 1",
-        "Response 3",
-    ]  # Only 2 responses for selected leaves
+    mock_fp_responses = ["Response 1", "Response 3"]  # Only 2 responses for selected leaves
     mock_fp_nodes = [Mock(), Mock()]
     # Create handler and test
     handler = DynamicFunctionalPromptHandler()
@@ -165,7 +140,6 @@ def test_broadcast_fp_new_system_specific_leaves(mock_print, mock_input, mock_ca
     # Verify the result indicates success
     assert "Broadcast completed" in result
     assert "successful" in result
-
 
 @patch("builtins.input")
 @patch("builtins.print")
@@ -183,7 +157,6 @@ def test_broadcast_fp_no_leaves(mock_print, mock_input):
     result = handler.broadcast_fp(mock_bot, mock_context, [])
     # Should return no leaves message
     assert result == "No leaves found from current node"
-
 
 @patch("builtins.input")
 @patch("builtins.print")

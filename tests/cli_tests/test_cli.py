@@ -637,8 +637,8 @@ class TestFunctionalPromptUsability(DetailedTestCase):
 
     def test_cli_callback_function_creation(self):
         """Test that CLI callback function works correctly."""
-        # Test the create_tool_result_callback function
-        callback = cli_module.create_tool_result_callback(self.context)
+        # Test the CLICallbacks class method
+        callback = self.context.callbacks.get_standard_callback()
         # Mock tool data
         self.mock_bot.tool_handler.requests = [{"tool": "test", "args": {}}]
         self.mock_bot.tool_handler.results = [{"output": "test result"}]

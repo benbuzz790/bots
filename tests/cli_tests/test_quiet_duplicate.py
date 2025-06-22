@@ -83,7 +83,9 @@ class TestQuietModeDuplicate(unittest.TestCase):
             return (responses, nodes)
 
         mock_chain.side_effect = mock_chain_with_callback
-        # Add mock tool usage
+        # Add mock tool usage to the conversation node (new callback system expects this)
+        self.mock_bot.conversation.tool_calls = [{"function": {"name": "test_tool"}}]
+        # Also keep the old format for backward compatibility if needed
         self.mock_bot.tool_handler.requests = [{"function": {"name": "test_tool"}}]
         self.mock_bot.tool_handler.tool_name_and_input = MagicMock(return_value=("test_tool", {}))
         cli = cli_module.CLI()
