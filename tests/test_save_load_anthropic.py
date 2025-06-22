@@ -684,12 +684,14 @@ class TestSaveLoadAnthropic(unittest.TestCase):
 def simple_addition(x, y) -> str:
     """Returns x + y with appropriate type conversion"""
     return str(int(x) + int(y))
+
     def test_self_tools_get_calling_bot_issue(self) -> None:
         """Test that self_tools functions can find the calling bot during tool execution.
         This test reproduces the issue where _get_calling_bot() fails to find the bot
         when tools are executed through the normal tool execution pipeline.
         """
         import bots.tools.self_tools as self_tools
+
         # Add self_tools to the bot
         self.bot.add_tools(self_tools)
         # Try to use a self_tools function that relies on _get_calling_bot()
@@ -697,9 +699,11 @@ def simple_addition(x, y) -> str:
         # The response should contain bot information, not an error
         self.assertNotIn("Error: Could not find calling bot", response)
         self.assertIn("name", response.lower())
+
     def test_self_tools_branch_functionality(self) -> None:
         """Test that branch_self function works correctly when called as a tool."""
         import bots.tools.self_tools as self_tools
+
         # Add self_tools to the bot
         self.bot.add_tools(self_tools)
         # Try to use branch_self
@@ -708,9 +712,11 @@ def simple_addition(x, y) -> str:
         self.assertNotIn("Error: Could not find calling bot", response)
         # Should indicate successful branching
         self.assertIn("branch", response.lower())
+
     def test_self_tools_add_tools_functionality(self) -> None:
         """Test that add_tools function works when called as a tool."""
         import bots.tools.self_tools as self_tools
+
         # Add self_tools to the bot
         self.bot.add_tools(self_tools)
         # Get initial tool count

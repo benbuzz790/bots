@@ -248,16 +248,17 @@ def patch_edit(file_path: str, patch_content: str):
                 continue
             if not (line.startswith("+") or line.startswith("-")):
                 if not removals and not additions:
-                    context_before.append(line[1:] if line.startswith(' ') else line) # Remove space character if present
+                    context_before.append(line[1:] if line.startswith(" ") else line)  # Remove space character if present
                 else:
-                    context_after.append(line[1:] if line.startswith(' ') else line)  # Remove space character if present
+                    context_after.append(line[1:] if line.startswith(" ") else line)  # Remove space character if present
             elif line.startswith("-"):
                 removals.append(line[1:])
             elif line.startswith("+"):
                 additions.append(line[1:])
 
         if not removals and not additions:
-            return f'Error: No additions or removals found in hunk starting with {hunk_lines[0][:20] if hunk_lines else "empty hunk"}'
+            hunk_start = hunk_lines[0][:20] if hunk_lines else "empty hunk"
+            return f"Error: No additions or removals found in hunk starting with {hunk_start}"
 
         # Handle new file creation - must come before hierarchy check
         # Debug: Let's be very explicit about the conditions
@@ -338,7 +339,10 @@ def _find_match_with_hierarchy(current_lines, expected_line, context_before, rem
             "found": True,
             "line": exact_match_line,
             "additions": additions,
-            "message": f"Applied hunk with exact match at line {exact_match_line + 1} (different from specified line {expected_line + 1})",
+            "message": (
+                f"Applied hunk with exact match at line {exact_match_line + 1} "
+                f"(different from specified line {expected_line + 1})"
+            ),
             "error": None,
         }
 
@@ -379,7 +383,11 @@ def _find_match_with_hierarchy(current_lines, expected_line, context_before, rem
             "found": True,
             "line": whitespace_match_line,
             "additions": adjusted_additions,
-            "message": f"Applied hunk at line {whitespace_match_line + 1} (different from specified line {expected_line + 1}) with indentation adjustment",
+            "message": (
+                f"Applied hunk at line {whitespace_match_line + 1} "
+                f"(different from specified line {expected_line + 1}) "
+                f"with indentation adjustment"
+            ),
             "error": None,
         }
 
@@ -393,9 +401,12 @@ def _find_match_with_hierarchy(current_lines, expected_line, context_before, rem
                 "line": None,
                 "additions": None,
                 "message": None,
-                "error": f"Error: Could not find match. Best potential match at lines {best_line} to {best_line + len(context_before) - 1}\nContext:\n"
-                + "\n".join(context)
-                + f"\nMatch quality: {match_quality:.2f}",
+                "error": (
+                    f"Error: Could not find match. Best potential match at lines "
+                    f"{best_line} to {best_line + len(context_before) - 1}\nContext:\n"
+                    + "\n".join(context)
+                    + f"\nMatch quality: {match_quality:.2f}"
+                ),
             }
 
     return {

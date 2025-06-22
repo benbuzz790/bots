@@ -212,7 +212,7 @@ class TestSaveLoadOpenAI(unittest.TestCase):
         for func_name in initial_function_names:
             self.assertTrue(
                 callable(loaded_bot2.tool_handler.function_map[func_name]),
-                "Function {} is not callable after two save/load " + "cycles".format(func_name),
+                "Function {} is not callable after two save/load cycles".format(func_name),
             )
 
     def test_save_load_empty_bot(self) -> None:

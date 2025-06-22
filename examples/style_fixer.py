@@ -288,7 +288,11 @@ def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
     )
 
     # Add terminal tools for running commands and editing files
-    bot.add_tools(terminal_tools)
+    import bots.tools.code_tools as ct
+    import bots.tools.python_edit as pe
+    import bots.tools.python_editing_tools as pet
+
+    bot.add_tools(terminal_tools, pe, pet.replace_function, pet.replace_class, ct.view_dir, ct.view, ct.patch_edit)
 
     # Add file-specific CI/CD checking tool
     bot.add_tools(check_file_cicd)
@@ -320,6 +324,12 @@ def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
         IMPORTANT: Only work on your assigned file: {rel_path}
         Use the available tools to make direct edits. Do not change
         functionality, only style.
+
+        IMPORTANT: You may decide that the file *should not* be formatted
+        or otherwise adjusted. In that case, adjust the configuration file
+        to ignore the file in question. As an example, test_python_edit.py
+        contains many specific combinations of ", ', and escape characters
+        and formatters are very likely to change functionality.
         """
     ).strip()
 

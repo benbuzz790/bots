@@ -71,7 +71,7 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
             output = buf.getvalue()
 
         self.command_duration = time.time() - start_time
-        print(f"\n=== SIMPLE FILE CREATION TEST ===")
+        print("\\n=== SIMPLE FILE CREATION TEST ===")
         print(f"Duration: {self.command_duration:.2f} seconds")
         print(f"Output: {output[-500:]}")  # Last 500 chars
 
@@ -103,7 +103,7 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
             output = buf.getvalue()
 
         self.command_duration = time.time() - start_time
-        print(f"\n=== POWERSHELL HERE-STRING TEST ===")
+        print("\\n=== POWERSHELL HERE-STRING TEST ===")
         print(f"Duration: {self.command_duration:.2f} seconds")
         print(f"Output: {output[-500:]}")
 
@@ -153,7 +153,7 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
             output = buf.getvalue()
 
         self.command_duration = time.time() - start_time
-        print(f"\n=== COMPLEX PYTHON FILE TEST ===")
+        print("\\n=== COMPLEX PYTHON FILE TEST ===")
         print(f"Duration: {self.command_duration:.2f} seconds")
         print(f"Output: {output[-500:]}")
 
@@ -190,7 +190,7 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
                     cli.run()
                 except SystemExit:
                     pass
-                output = buf.getvalue()
+                _ = buf.getvalue()
 
             duration = time.time() - start_time
             print(f"=== PROGRESSION TEST {i+1} ===")

@@ -65,18 +65,19 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
     """
     # Import _get_calling_bot locally to avoid decorator global namespace issues
     import inspect
+
     from bots.foundation.base import Bot
-    
+
     def _get_calling_bot_local():
         frame = inspect.currentframe()
         while frame:
-            if frame.f_code.co_name == '_cvsn_respond' and 'self' in frame.f_locals:
-                potential_bot = frame.f_locals['self']
+            if frame.f_code.co_name == "_cvsn_respond" and "self" in frame.f_locals:
+                potential_bot = frame.f_locals["self"]
                 if isinstance(potential_bot, Bot):
                     return potential_bot
             frame = frame.f_back
         return None
-    
+
     bot = _get_calling_bot_local()
     if not bot:
         return "Error: Could not find calling bot"
@@ -96,80 +97,82 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
 @handle_errors
 def branch_self(self_prompts: str, allow_work: str = "False") -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
-    
+
     Think of this like opening multiple browser tabs - each branch starts from this point
     and explores a different direction. Perfect for when you need to:
     - Try different solutions to the same problem
-    - Handle multiple related tasks separately  
+    - Handle multiple related tasks separately
     - Break down a complex request into smaller parts (when you have more than ~6 tasks)
     - Compare different approaches side-by-side
-    
+
     Each branch gets its own copy of the conversation up to this point, then follows
     the prompt you give it. The branches run one after another, not at the same time.
-    
+
     Args:
         self_prompts (str): List of prompts as a string array, like ['task 1', 'task 2', 'task 3']
                            Each prompt becomes a separate conversation branch
         allow_work (str): 'True' to let each branch use tools and continue working until done
                          'False' (default) for single-response branches
-    
+
     Returns:
         str: Success message with branch count, or error details if something went wrong
-        
+
     Writing effective branch prompts:
         Each prompt should be a complete, self-contained instruction that includes:
-        
+
         REQUIRED:
         - Task instruction: What specific action to take
         - Definition of done: How to know when the task is complete, typically in
         terms of a specific side effect or set of side effects on files or achieved
         through use of your available tools.
-        
+
         OPTIONAL:
         - Tool suggestions: Which tools of yours might be helpful.
         - Context to gather: What information to look up or files to examine first
         - Output format: Specific system side effect, with specific qualities
         - Success criteria: What makes a good vs. poor result
-        
+
         Good prompt examples:
-        - "Search for recent AI safety research papers, then create a summary report 
-           highlighting key findings and methodologies. Done when I have a 2-page 
+        - "Search for recent AI safety research papers, then create a summary report
+           highlighting key findings and methodologies. Done when I have a 2-page
            summary with at least 5 recent citations."
-           
-        - "Analyze our Q3 sales data from Google Drive, identify top 3 performance 
-           trends, and create visualizations. Use artifacts for charts. Done when 
+
+        - "Analyze our Q3 sales data from Google Drive, identify top 3 performance
+           trends, and create visualizations. Use artifacts for charts. Done when
            I have clear charts showing trends with actionable insights."
-    
+
     Example usage:
         branch_self("['Analyze the data for trends', 'Create visualizations', 'Write summary report']")
     """
-    
+
     # Import _get_calling_bot locally to avoid decorator global namespace issues
-    import json  # Also import json locally
     import ast  # Also import ast locally
+    import json  # Also import json locally
     from typing import List  # Import List type
+
     from bots.flows import functional_prompts as fp  # Import functional_prompts locally
-    
+
     def _process_string_array_local(input_str: str) -> List[str]:
-        '''Parse a string representation of an array into a list of strings.'''
+        """Parse a string representation of an array into a list of strings."""
         result = ast.literal_eval(input_str)
         if not isinstance(result, list) or not all(isinstance(x, str) for x in result):
-            raise ValueError('Input must evaluate to a list of strings')
+            raise ValueError("Input must evaluate to a list of strings")
         return result
-    
+
     import inspect
+
     from bots.foundation.base import Bot
-    
+
     def _get_calling_bot_local():
         frame = inspect.currentframe()
         while frame:
-            if frame.f_code.co_name == '_cvsn_respond' and 'self' in frame.f_locals:
-                potential_bot = frame.f_locals['self']
+            if frame.f_code.co_name == "_cvsn_respond" and "self" in frame.f_locals:
+                potential_bot = frame.f_locals["self"]
                 if isinstance(potential_bot, Bot):
                     return potential_bot
             frame = frame.f_back
         return None
-    
+
     bot = _get_calling_bot_local()
     # Insert a dummy result to prevent repeated tool calls
     if not bot.tool_handler.requests:

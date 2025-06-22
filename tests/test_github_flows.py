@@ -1,4 +1,3 @@
-import os
 import shutil
 import time
 from pathlib import Path
@@ -66,7 +65,9 @@ def test_clone_and_fp_chain():
     repo_name = "benbuzz790/private_tests"
     clone_path = test_dir / "private_tests"
     prompts = [
-        f"I've cloned the repository {repo_name} to {str(clone_path)}. Use view_dir with target_extensions=['py', 'txt', 'md', 'git', 'idx', 'pack', 'rev'] to see all files in {str(clone_path)}",
+        f"I've cloned the repository {repo_name} to {str(clone_path)}. "
+        f"Use view_dir with target_extensions=['py', 'txt', 'md', 'git', 'idx', 'pack', 'rev'] "
+        f"to see all files in {str(clone_path)}",
         "Respond with just the word 'yes' if you can see any files",
     ]
     try:

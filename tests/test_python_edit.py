@@ -11,6 +11,7 @@ from bots.tools.python_edit import _detokenize_source, _tokenize_source, python_
 def setup_test_file(tmp_path, content):
     """Helper to create a test file with given content"""
     from tests.conftest import get_unique_filename
+
     if isinstance(tmp_path, str):
         os.makedirs(tmp_path, exist_ok=True)
         test_file = os.path.join(tmp_path, get_unique_filename("test_file", "py"))

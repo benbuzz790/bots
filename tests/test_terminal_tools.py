@@ -1,9 +1,10 @@
 ﻿import os
-from tests.conftest import get_unique_filename
 import shutil
 import tempfile
 import unittest
+
 from bots.tools.terminal_tools import PowerShellSession, execute_powershell
+from tests.conftest import get_unique_filename
 
 
 class TestTerminalTools(unittest.TestCase):
@@ -25,7 +26,11 @@ class TestTerminalTools(unittest.TestCase):
         except Exception as e:
             print(f"Warning: Could not clean up temp directory: {e}")
         # Clean up PowerShell output files that might be created
-        cleanup_files = [get_unique_filename("ps_output", "txt"), get_unique_filename("ps_output_MainThread", "txt"), get_unique_filename("test", "txt")]
+        cleanup_files = [
+            get_unique_filename("ps_output", "txt"),
+            get_unique_filename("ps_output_MainThread", "txt"),
+            get_unique_filename("test", "txt"),
+        ]
         for cleanup_file in cleanup_files:
             try:
                 if os.path.exists(cleanup_file):
@@ -298,7 +303,9 @@ class TestTerminalToolsStateful(TestTerminalTools):
         ps_script = 'New-Item -Path get_unique_filename("test", "txt") -ItemType "file" -Force && Write-Output "success" > test_20016_16_1750444995166.txt && Write-Output "fail" > /nonexistent/path/file.txt && Write-Output "Should Not See This"'
         result = self._collect_generator_output(execute_powershell(ps_script))
         self.assertNotIn("Should Not See This", result)
-        cleanup = self._collect_generator_output(execute_powershell('Remove-Item -Path get_unique_filename("test", "txt") -Force'))
+        cleanup = self._collect_generator_output(
+            execute_powershell('Remove-Item -Path get_unique_filename("test", "txt") -Force')
+        )
 
     def test_stateful_special_characters(self):
         """Test handling of special characters and box drawing symbols in generator form"""
@@ -391,10 +398,11 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertEqual(content_lines, 50, "Should have exactly 50 content lines")
         self.assertFalse(any(("lines omitted" in line for line in lines)), "Should not have truncation message")
         self.assertFalse(any(("Full output saved to" in line for line in lines)), "Should not have file save message")
-    
+
     def test_true_statefulness_between_calls(self):
         """Test that PowerShell state persists between function calls"""
         import random
+
         from bots.tools.terminal_tools import execute_powershell
 
         # Generate unique directory name using random number
@@ -402,21 +410,21 @@ class TestTerminalToolsStateful(TestTerminalTools):
 
         ps_script1 = '$global:test_var = "Hello from previous call"'
         list(execute_powershell(ps_script1))
-        
+
         ps_script2 = "Write-Output $global:test_var"
         result = self._collect_generator_output(execute_powershell(ps_script2))
         self.assertContainsNormalized(result, "Hello from previous call")
-        
+
         ps_script3 = f'New-Item -ItemType Directory -Path "{unique_dir}" -Force; Set-Location "{unique_dir}"'
         list(execute_powershell(ps_script3))
-        
+
         ps_script4 = "(Get-Location).Path"
         result = self._collect_generator_output(execute_powershell(ps_script4))
         self.assertTrue(result.strip().endswith(unique_dir))
-        
+
         ps_script5 = f'Set-Location ..; Remove-Item -Path "{unique_dir}" -Force -Recurse'
         list(execute_powershell(ps_script5))
-    
+
     def test_basic_input_handling(self):
         """Test that basic variable setting and retrieval works correctly"""
         from bots.tools.terminal_tools import PowerShellManager, execute_powershell
@@ -507,28 +515,30 @@ class TestTerminalToolsStateful(TestTerminalTools):
     def test_directory_change_persistence(self):
         "Test that directory changes persist between commands"
         import random
+
         from bots.tools.terminal_tools import PowerShellManager, execute_powershell
 
         manager = PowerShellManager.get_instance("dir_test")
-        
+
         # Generate unique directory name using random number
         unique_dir = f"test_dir_persistence_{random.randint(10000, 99999)}"
-        
+
         # Create a test directory and change to it
         ps_script1 = f'New-Item -ItemType Directory -Path "{unique_dir}" -Force; Set-Location "{unique_dir}"'
         result1 = self._collect_generator_output(execute_powershell(ps_script1))
-        
+
         # Check that we're in the new directory
-        ps_script2 = 'Get-Location | Select-Object -ExpandProperty Path'
+        ps_script2 = "Get-Location | Select-Object -ExpandProperty Path"
         result2 = self._collect_generator_output(execute_powershell(ps_script2))
-        
+
         # Should show we're in the test directory
         self.assertIn(unique_dir, result2)
-        
+
         # Clean up
         ps_script3 = f'Set-Location ..; Remove-Item -Path "{unique_dir}" -Force -Recurse'
         self._collect_generator_output(execute_powershell(ps_script3))
         manager.cleanup()
+
 
 class TestPowerShellErrorLogScenarios(unittest.TestCase):
     """
@@ -587,7 +597,7 @@ print('Normalized contains:', normalized_needle in normalized_output)
         try:
             with session:
                 result = session.execute(problematic_code, timeout=10)
-                
+
                 # Should execute without syntax errors
                 self.assertIsInstance(result, str)
                 # Should contain some indication of successful execution
@@ -686,14 +696,13 @@ print('File read successfully')
         try:
             with session:
                 result = session.execute(python_code, timeout=10)
-                
+
                 # Should execute without errors
                 self.assertIsInstance(result, str)
                 # Should contain some indication of successful execution
                 self.assertIn("current directory", result)
         except Exception as e:
             self.fail(f"Should not raise exception, but got: {e}")
-
 
     def test_quote_heavy_python_code(self):
         """Test Python code with many nested quotes."""
@@ -708,14 +717,13 @@ print(f'Found par_dispatch at position: {par_dispatch_pos}')
         try:
             with session:
                 result = session.execute(python_code, timeout=10)
-                
+
                 # Should execute without errors
                 self.assertIsInstance(result, str)
                 # Should contain some indication of successful execution
                 self.assertIn("current directory", result)
         except Exception as e:
             self.fail(f"Should not raise exception, but got: {e}")
-
 
     def test_bom_handling(self):
         """Test handling of Unicode BOM that was causing issues."""
@@ -1016,7 +1024,6 @@ simple test content
                 print(f"🔍 {cmd}: {result}")
             except Exception as e:
                 print(f"❌ {cmd}: Failed - {e}")
-
 
 
 class TestPythonCommandBOMFix(unittest.TestCase):

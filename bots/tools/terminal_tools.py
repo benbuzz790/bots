@@ -561,16 +561,17 @@ function Invoke-SafeCommand {
         Safely wrap code for execution, handling complex strings and
         multiline code.
         """
-        return textwrap.dedent(f"""
+        return textwrap.dedent(
+            f"""
         $ErrorActionPreference = 'Stop'
-        
+
         # Execute in main scope
         {code}
-        
+
         # Collect output after execution
         $output = @()
         try {{
-            if ($?) {{ 
+            if ($?) {{
                 # Add any output from the last command
                 $output += $LASTOUTPUT
             }}
@@ -579,7 +580,9 @@ function Invoke-SafeCommand {
         }}
         $output | ForEach-Object {{ $_ }}
         Write-Output '{delimiter}'
-        """)
+        """
+        )
+
 
 class PowerShellManager:
     """

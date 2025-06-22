@@ -1,21 +1,12 @@
-import unittest
+﻿import unittest
 from contextlib import redirect_stdout
 from io import StringIO
 from unittest.mock import MagicMock, patch
+
 import bots.dev.cli as cli_module
-import unittest
-from contextlib import redirect_stdout
-from io import StringIO
-from unittest.mock import MagicMock, patch
-import bots.dev.cli as cli_module
-import unittest
-from contextlib import redirect_stdout
-from io import StringIO
-from unittest.mock import MagicMock, patch
-import bots.dev.cli as cli_module
+
 
 class TestQuietModeDuplicate(unittest.TestCase):
-
     def setUp(self):
         self.mock_bot = MagicMock()
         self.mock_bot.name = "TestBot"
@@ -28,44 +19,8 @@ class TestQuietModeDuplicate(unittest.TestCase):
         self.context.bot_instance = self.mock_bot
         self.context.config.verbose = False
 
-    @patch('bots.flows.functional_prompts.chain')
-    def test_quiet_mode_duplicate_bug(self, mock_chain):
-        test_response = "Bot response that should appear twice"
 
-        def mock_chain_with_callback(bot, prompts, callback=None):
-            responses = [test_response]
-            nodes = [self.mock_bot.conversation]
-            if callback:
-                callback(responses, nodes)
-            return (responses, nodes)
-        mock_chain.side_effect = mock_chain_with_callback
-        cli = cli_module.CLI()
-        cli.context = self.context
-        cli.context.config.verbose = False
-        with StringIO() as buf, redirect_stdout(buf):
-            cli._handle_chat(self.mock_bot, "Test input")
-            output = buf.getvalue()
-        response_count = output.count(test_response)
-        print(f"Output: {repr(output)}")
-        print(f"Count: {response_count}")
-        self.assertEqual(response_count, 2, f"Expected 2, got {response_count}")
-if __name__ == "__main__":
-    unittest.main()
-
-class TestQuietModeDuplicate(unittest.TestCase):
-
-    def setUp(self):
-        self.mock_bot = MagicMock()
-        self.mock_bot.name = "TestBot"
-        self.mock_bot.conversation = MagicMock()
-        self.mock_bot.conversation.content = "Test response from bot"
-        self.mock_bot.tool_handler = MagicMock()
-        self.mock_bot.tool_handler.requests = []
-        self.mock_bot.tool_handler.results = []
-        self.context = cli_module.CLIContext()
-        self.context.bot_instance = self.mock_bot
-
-    @patch('bots.flows.functional_prompts.chain')
+    @patch("bots.flows.functional_prompts.chain")
     def test_quiet_mode_shows_message_once_after_fix(self, mock_chain):
         """Test that quiet mode shows message only once after the fix."""
         test_response = "Bot response should appear once in quiet mode"
@@ -76,6 +31,7 @@ class TestQuietModeDuplicate(unittest.TestCase):
             if callback:
                 callback(responses, nodes)
             return (responses, nodes)
+
         mock_chain.side_effect = mock_chain_with_callback
         cli = cli_module.CLI()
         cli.context = self.context
@@ -89,7 +45,7 @@ class TestQuietModeDuplicate(unittest.TestCase):
         # After fix, message should appear only once in quiet mode
         self.assertEqual(response_count, 1, f"In quiet mode, message should appear once but appears {response_count} times")
 
-    @patch('bots.flows.functional_prompts.chain')
+    @patch("bots.flows.functional_prompts.chain")
     def test_verbose_mode_shows_message_once_after_fix(self, mock_chain):
         """Test that verbose mode still shows message only once after the fix."""
         test_response = "Bot response should appear once in verbose mode"
@@ -100,69 +56,7 @@ class TestQuietModeDuplicate(unittest.TestCase):
             if callback:
                 callback(responses, nodes)
             return (responses, nodes)
-        mock_chain.side_effect = mock_chain_with_callback
-        cli = cli_module.CLI()
-        cli.context = self.context
-        cli.context.config.verbose = True  # Verbose mode
-        with StringIO() as buf, redirect_stdout(buf):
-            cli._handle_chat(self.mock_bot, "Test input")
-            output = buf.getvalue()
-        response_count = output.count(test_response)
-        print(f"Verbose mode output: {repr(output)}")
-        print(f"Verbose mode count: {response_count}")
-        # Verbose mode should still show message only once
-        self.assertEqual(response_count, 1, f"In verbose mode, message should appear once but appears {response_count} times")
-if __name__ == "__main__":
-    unittest.main()
 
-class TestQuietModeDuplicate(unittest.TestCase):
-
-    def setUp(self):
-        self.mock_bot = MagicMock()
-        self.mock_bot.name = "TestBot"
-        self.mock_bot.conversation = MagicMock()
-        self.mock_bot.conversation.content = "Test response from bot"
-        self.mock_bot.tool_handler = MagicMock()
-        self.mock_bot.tool_handler.requests = []
-        self.mock_bot.tool_handler.results = []
-        self.context = cli_module.CLIContext()
-        self.context.bot_instance = self.mock_bot
-
-    @patch('bots.flows.functional_prompts.chain')
-    def test_quiet_mode_shows_message_once_after_fix(self, mock_chain):
-        """Test that quiet mode shows message only once after the fix."""
-        test_response = "Bot response should appear once in quiet mode"
-
-        def mock_chain_with_callback(bot, prompts, callback=None):
-            responses = [test_response]
-            nodes = [self.mock_bot.conversation]
-            if callback:
-                callback(responses, nodes)
-            return (responses, nodes)
-        mock_chain.side_effect = mock_chain_with_callback
-        cli = cli_module.CLI()
-        cli.context = self.context
-        cli.context.config.verbose = False  # Quiet mode
-        with StringIO() as buf, redirect_stdout(buf):
-            cli._handle_chat(self.mock_bot, "Test input")
-            output = buf.getvalue()
-        response_count = output.count(test_response)
-        print(f"Quiet mode output: {repr(output)}")
-        print(f"Quiet mode count: {response_count}")
-        # After fix, message should appear only once in quiet mode
-        self.assertEqual(response_count, 1, f"In quiet mode, message should appear once but appears {response_count} times")
-
-    @patch('bots.flows.functional_prompts.chain')
-    def test_verbose_mode_shows_message_once_after_fix(self, mock_chain):
-        """Test that verbose mode still shows message only once after the fix."""
-        test_response = "Bot response should appear once in verbose mode"
-
-        def mock_chain_with_callback(bot, prompts, callback=None):
-            responses = [test_response]
-            nodes = [self.mock_bot.conversation]
-            if callback:
-                callback(responses, nodes)
-            return (responses, nodes)
         mock_chain.side_effect = mock_chain_with_callback
         cli = cli_module.CLI()
         cli.context = self.context
@@ -176,7 +70,7 @@ class TestQuietModeDuplicate(unittest.TestCase):
         # Verbose mode should still show message only once
         self.assertEqual(response_count, 1, f"In verbose mode, message should appear once but appears {response_count} times")
 
-    @patch('bots.flows.functional_prompts.chain')
+    @patch("bots.flows.functional_prompts.chain")
     def test_quiet_mode_with_tools_shows_tool_summary(self, mock_chain):
         """Test that quiet mode shows tool usage summary correctly."""
         test_response = "Bot used tools to complete the task"
@@ -187,6 +81,7 @@ class TestQuietModeDuplicate(unittest.TestCase):
             if callback:
                 callback(responses, nodes)
             return (responses, nodes)
+
         mock_chain.side_effect = mock_chain_with_callback
         # Add mock tool usage
         self.mock_bot.tool_handler.requests = [{"function": {"name": "test_tool"}}]
@@ -206,7 +101,7 @@ class TestQuietModeDuplicate(unittest.TestCase):
         self.assertEqual(response_count, 1, f"Message should appear once but appears {response_count} times")
         self.assertTrue(tool_summary_present, "Tool usage summary should be present in quiet mode")
 
-    @patch('bots.flows.functional_prompts.chain')
+    @patch("bots.flows.functional_prompts.chain")
     def test_verbose_mode_with_tools_shows_full_details(self, mock_chain):
         """Test that verbose mode shows full tool details correctly."""
         test_response = "Bot used tools in verbose mode"
@@ -217,6 +112,7 @@ class TestQuietModeDuplicate(unittest.TestCase):
             if callback:
                 callback(responses, nodes)
             return (responses, nodes)
+
         mock_chain.side_effect = mock_chain_with_callback
         # Add mock tool usage
         self.mock_bot.tool_handler.requests = [{"function": {"name": "test_tool"}}]
@@ -235,5 +131,7 @@ class TestQuietModeDuplicate(unittest.TestCase):
         # Message should appear once, and detailed tool info should be present
         self.assertEqual(response_count, 1, f"Message should appear once but appears {response_count} times")
         self.assertTrue(tool_requests_present, "Detailed tool information should be present in verbose mode")
+
+
 if __name__ == "__main__":
     unittest.main()
