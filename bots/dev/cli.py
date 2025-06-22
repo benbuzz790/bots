@@ -358,7 +358,7 @@ class CLICallbacks:
     def get_standard_callback(self):
         """Get the standard callback based on current config settings."""
         if self.context.config.verbose:
-            return self.create_tool_result_callback()
+            return self.create_verbose_callback()
         else:
             return self.create_quiet_callback()
 
@@ -1149,11 +1149,11 @@ class CLI:
             callback = self.context.callbacks.get_standard_callback()
             # Use chain functional prompt with single prompt and callback
             responses, nodes = fp.chain(bot, [user_input], callback=callback)
-            # Display the response only if not in quiet mode
-            # In quiet mode, the callback already prints the response
-            # In verbose mode, the callback only handles tool info, so we need to print the response here
-            if responses and self.context.config.verbose:
-                pretty(responses[0], bot.name, self.context.config.width, self.context.config.indent)
+            # The callback handles printing in both verbose and quiet modes
+            # In verbose mode: callback prints tool info, we need to print the response
+            # In quiet mode: callback already prints the response, so we don't print it again
+            # Both verbose and quiet callbacks now print the response, so we don't need to print it here
+            pass
         except Exception as e:
             pretty(f"Chat error: {str(e)}", "Error", self.context.config.width, self.context.config.indent)
             if self.context.conversation_backup:
