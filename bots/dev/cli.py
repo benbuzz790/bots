@@ -715,9 +715,8 @@ class SystemHandler:
                 # Use chain with callback like regular chat to get immediate tool display
                 callback = context.callbacks.get_standard_callback()
                 responses, nodes = fp.chain(bot, ["ok"], callback=callback)
-                if responses:
-                    pretty(responses[0], bot.name, context.config.width, context.config.indent)
-                if not bot.tool_handler.requests:
+                # Callback already handles printing the response, no need to print again
+                if responses and not bot.tool_handler.requests:
                     restore_terminal(old_settings)
                     return "Bot finished autonomous execution"
         except Exception as e:
