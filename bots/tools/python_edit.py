@@ -267,7 +267,12 @@ def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> st
             if not element.isidentifier():
                 return _process_error(ValueError(f"Invalid identifier in path: {element}"))
         abs_path = _make_file(file_path)
-        cleaned_code = _clean(code)
+        
+        # Use prep_input for better error handling
+        cleaned_code, prep_error = prep_input(code)
+        if prep_error:
+            return _process_error(ValueError(f"Input code validation failed:\n{prep_error}"))
+        
         tokenized_code, new_code_tokens = _tokenize_source(cleaned_code)
         try:
             new_tree = ast.parse(tokenized_code)
@@ -389,6 +394,68 @@ def _make_file(file_path: str) -> str:
         except Exception as e:
             raise ValueError(f"Error creating file {abs_path}: {str(e)}")
     return abs_path
+def prep_input(code: str) -> tuple[str, str | None]:
+    """
+    Prepare and validate input code with informative error messages.
+    
+    Parameters:
+    -----------
+    code : str
+        The input code to validate and prepare
+        
+    Returns:
+    --------
+    tuple[str, str | None]
+        (cleaned_code, error_message) where error_message is None if successful
+    """
+    try:
+        # Clean the input code
+        cleaned_code = _clean(code)
+        
+        if not cleaned_code.strip():
+            return "", "Input code is empty or contains only whitespace"
+        
+        # Try to parse the cleaned code
+        try:
+            ast.parse(cleaned_code)
+            return cleaned_code, None
+        except SyntaxError as e:
+            # Provide detailed syntax error information
+            error_lines = []
+            error_lines.append(f"Syntax error in input code: {e.msg}")
+            
+            if hasattr(e, 'lineno') and e.lineno:
+                error_lines.append(f"Line {e.lineno}: {e.text.strip() if e.text else '(unknown)'}")
+                
+                if hasattr(e, 'offset') and e.offset:
+                    # Show position indicator
+                    pointer = " " * (e.offset - 1) + "^"
+                    error_lines.append(f"Position: {pointer}")
+            
+            # Show the problematic code section
+            code_lines = cleaned_code.split('\n')
+            if hasattr(e, 'lineno') and e.lineno and 1 <= e.lineno <= len(code_lines):
+                error_lines.append("\nProblematic code section:")
+                start_line = max(1, e.lineno - 2)
+                end_line = min(len(code_lines), e.lineno + 2)
+                
+                for i in range(start_line, end_line + 1):
+                    line_num = i
+                    line_content = code_lines[i - 1] if i <= len(code_lines) else ""
+                    marker = ">>> " if i == e.lineno else "    "
+                    error_lines.append(f"{marker}{line_num:3d}: {line_content}")
+            
+            return cleaned_code, "\n".join(error_lines)
+            
+        except Exception as e:
+            # Handle other parsing errors
+            return cleaned_code, f"Failed to parse input code: {type(e).__name__}: {str(e)}"
+            
+    except Exception as e:
+        # Handle errors in code cleaning
+        return code, f"Failed to process input code: {type(e).__name__}: {str(e)}"
+
+
 
 
 def _create_token(
