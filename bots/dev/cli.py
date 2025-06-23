@@ -284,17 +284,18 @@ class CLICallbacks:
             # Print the response first
             if responses and responses[-1]:
                 pretty(responses[-1], self.context.bot_instance.name if self.context.bot_instance else "Bot", self.context.config.width, self.context.config.indent)
-            # Show tool info for the most recent node only (live updates)
-            if nodes and nodes[-1] and hasattr(self.context, "bot_instance") and self.context.bot_instance:
-                current_node = nodes[-1]
-                # Use the current node's tool calls and results instead of cumulative handler data
-                if hasattr(current_node, 'tool_calls') and current_node.tool_calls:
-                    tool_calls_str = "".join((clean_dict(call) for call in current_node.tool_calls))
-                    pretty(f"Tool Requests\n\n{tool_calls_str}", "System", self.context.config.width, self.context.config.indent)
-                if hasattr(current_node, 'tool_results') and current_node.tool_results:
-                    tool_results_str = "".join((clean_dict(result) for result in current_node.tool_results))
-                    if tool_results_str.strip():
-                        pretty(f"Tool Results\n\n{tool_results_str}", "System", self.context.config.width, self.context.config.indent)
+            # Show tool info using the bot's tool_handler (the correct way)
+            if hasattr(self.context, "bot_instance") and self.context.bot_instance:
+                bot = self.context.bot_instance
+                requests = bot.tool_handler.requests
+                results = bot.tool_handler.results
+                if requests:
+                    request_str = "".join((clean_dict(r) for r in requests))
+                    pretty(f"Tool Requests\n\n{request_str}", "System", self.context.config.width, self.context.config.indent)
+                if results:
+                    result_str = "".join((clean_dict(r) for r in results))
+                    if result_str.strip():
+                        pretty(f"Tool Results\n\n{result_str}", "System", self.context.config.width, self.context.config.indent)
         return verbose_callback
 
     def create_quiet_callback(self):
@@ -627,9 +628,11 @@ class SystemHandler:
 
     def verbose(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Enable verbose mode."""
+        if context.config.verbose:
+            return "Tool output is already enabled (verbose mode is on)"
         context.config.verbose = True
         context.config.save_config()
-        return "Tool output enabled"
+        return "Tool output enabled - will now show detailed tool requests and results"
 
     def quiet(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Disable verbose mode."""
