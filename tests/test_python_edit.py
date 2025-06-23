@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import os
 import tempfile
 from textwrap import dedent

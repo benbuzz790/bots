@@ -321,17 +321,20 @@ def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> st
             except Exception as e:
                 return _process_error(e)
         if not path_elements:
-            tree.body = existing_imports + import_nodes + non_imports + code_nodes
+            # File-level replacement: replace entire file content with new code
+            tree.body = existing_imports + import_nodes + code_nodes
             try:
                 updated_content = _py_ast_to_source(tree)
-                all_tokens = {**file_tokens, **new_code_tokens}
+                # For file-level replacement, don't include original file tokens
+                all_tokens = new_code_tokens
                 final_content = _detokenize_source(updated_content, all_tokens)
-                final_content = _preserve_blank_lines(final_content, original_content)
-                # Restore top-level comments
-                final_content = _restore_top_level_comments(final_content, top_level_comments)
+                # For file-level replacement, don't preserve blank lines from original
+                # final_content = _preserve_blank_lines(final_content, original_content)
+                # For file-level replacement, don't restore original top-level comments
+                # final_content = _restore_top_level_comments(final_content, top_level_comments)
                 with open(abs_path, "w", encoding="utf-8") as file:
                     file.write(final_content)
-                return f"Code added at file level in '{abs_path}'."
+                return f"Code replaced at file level in '{abs_path}'."
             except Exception as e:
                 return _process_error(e)
         tree.body = existing_imports + import_nodes + non_imports
@@ -347,8 +350,8 @@ def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> st
             all_tokens = {**file_tokens, **new_code_tokens}
             final_content = _detokenize_source(updated_content, all_tokens)
             final_content = _preserve_blank_lines(final_content, original_content)
-            # Restore top-level comments
-            final_content = _restore_top_level_comments(final_content, top_level_comments)
+            # For file-level replacement, don't restore original top-level comments
+            # The new code should completely replace the file content
             with open(abs_path, "w", encoding="utf-8") as file:
                 file.write(final_content)
             action = "inserted after" if insert_after else "replaced at"
