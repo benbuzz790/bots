@@ -1,8 +1,11 @@
 from unittest.mock import Mock, patch
+
 from bots.dev.cli import CLI, DynamicFunctionalPromptHandler, DynamicParameterCollector
 from bots.flows import functional_prompts as fp
 from bots.foundation.base import ConversationNode
+
 """Tests for broadcast_fp functionality in CLI."""
+
 
 def test_collect_functional_prompt():
     """Test collecting functional prompt parameter."""
@@ -11,12 +14,14 @@ def test_collect_functional_prompt():
         result = collector._collect_functional_prompt("functional_prompt", None)
         assert result == fp.single_prompt
 
+
 def test_collect_functional_prompt_invalid_choice():
     """Test collecting functional prompt with invalid choice."""
     collector = DynamicParameterCollector()
     with patch("builtins.input", return_value="invalid"):
         result = collector._collect_functional_prompt("functional_prompt", None)
         assert result == fp.single_prompt
+
 
 def test_collect_skip_labels():
     """Test collecting skip labels."""
@@ -25,12 +30,14 @@ def test_collect_skip_labels():
         result = collector._collect_skip_labels("skip", None)
         assert result == ["draft", "test", "incomplete"]
 
+
 def test_collect_skip_labels_empty():
     """Test collecting empty skip labels."""
     collector = DynamicParameterCollector()
     with patch("builtins.input", return_value=""):
         result = collector._collect_skip_labels("skip", None)
         assert result == []
+
 
 def test_discover_fp_functions_includes_broadcast_fp():
     """Test that broadcast_fp is discovered."""
@@ -39,12 +46,14 @@ def test_discover_fp_functions_includes_broadcast_fp():
     assert "broadcast_fp" in functions
     assert functions["broadcast_fp"] == fp.broadcast_fp
 
+
 def test_discover_fp_functions_excludes_descoped():
     """Test that descoped functions are excluded."""
     handler = DynamicFunctionalPromptHandler()
     functions = handler._discover_fp_functions()
     assert "prompt_for" not in functions
     assert "par_dispatch" not in functions
+
 
 @patch("bots.dev.cli.AnthropicBot")
 def test_fp_command_includes_broadcast_fp(mock_bot_class):
@@ -55,11 +64,13 @@ def test_fp_command_includes_broadcast_fp(mock_bot_class):
     # Check that broadcast_fp is in the discovered functions
     assert "broadcast_fp" in cli.fp.fp_functions
 
+
 def test_parameter_handlers_include_functional_prompt():
     """Test that parameter handlers include functional_prompt."""
     collector = DynamicParameterCollector()
     assert "functional_prompt" in collector.param_handlers
     assert collector.param_handlers["functional_prompt"] == collector._collect_functional_prompt
+
 
 @patch("builtins.input")
 @patch("builtins.print")
@@ -98,6 +109,7 @@ def test_broadcast_fp_new_system_all_leaves(mock_print, mock_input):
     # Verify the result indicates success
     assert "Broadcast completed" in result
     assert "successful" in result
+
 
 @patch("builtins.input")
 @patch("builtins.print")
@@ -141,6 +153,7 @@ def test_broadcast_fp_new_system_specific_leaves(mock_print, mock_input):
     assert "Broadcast completed" in result
     assert "successful" in result
 
+
 @patch("builtins.input")
 @patch("builtins.print")
 def test_broadcast_fp_no_leaves(mock_print, mock_input):
@@ -157,6 +170,7 @@ def test_broadcast_fp_no_leaves(mock_print, mock_input):
     result = handler.broadcast_fp(mock_bot, mock_context, [])
     # Should return no leaves message
     assert result == "No leaves found from current node"
+
 
 @patch("builtins.input")
 @patch("builtins.print")

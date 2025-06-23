@@ -3,9 +3,11 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+
 import bots.tools.self_tools as self_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
+
 
 class TestSelfTools(unittest.TestCase):
     """Test suite for self_tools module functionality.
@@ -32,6 +34,7 @@ class TestSelfTools(unittest.TestCase):
     def tearDown(self) -> None:
         """Clean up test environment after each test."""
         import shutil
+
         try:
             shutil.rmtree(self.temp_dir)
         except Exception as e:
@@ -51,7 +54,9 @@ class TestSelfTools(unittest.TestCase):
 
     def test_branch_self_basic_functionality(self) -> None:
         """Test that branch_self function correctly identifies it cannot be called as a tool."""
-        response1 = self.bot.respond("Use branch_self tool now with self_prompts=['Hello world', 'Goodbye world'] and allow_work='False'. Do not explain, just call the tool.")
+        response1 = self.bot.respond(
+            "Use branch_self tool now with self_prompts=['Hello world', 'Goodbye world'] and allow_work='False'. Do not explain, just call the tool."
+        )
         # Should not contain error about not finding calling bot
         self.assertNotIn("Error: Could not find calling bot", response1)
         # Check what the tool actually returned
@@ -64,6 +69,7 @@ class TestSelfTools(unittest.TestCase):
         # Capture stdout to verify no debug printing when constraint error occurs
         import io
         from unittest.mock import patch
+
         captured_output = io.StringIO()
         with patch("sys.stdout", captured_output):
             response1 = self.bot.respond("Use branch_self with prompts ['Test prompt 1', 'Test prompt 2']")
@@ -77,7 +83,9 @@ class TestSelfTools(unittest.TestCase):
 
     def test_branch_self_method_restoration(self) -> None:
         """Test that branch_self handles tool call constraints gracefully."""
-        response1 = self.bot.respond("Execute branch_self tool with self_prompts=['Test restoration'] now. Do not explain, just call the tool.")
+        response1 = self.bot.respond(
+            "Execute branch_self tool with self_prompts=['Test restoration'] now. Do not explain, just call the tool."
+        )
         # Check what the tool actually returned
         response2 = self.bot.respond("What did the branch_self tool return?")
         # Should handle the tool call constraint gracefully
@@ -91,6 +99,7 @@ class TestSelfTools(unittest.TestCase):
         """Test branch_self with allow_work=True parameter."""
         import io
         from unittest.mock import patch
+
         captured_output = io.StringIO()
         with patch("sys.stdout", captured_output):
             response1 = self.bot.respond("Use branch_self with prompts ['Simple task'] and allow_work='True'")
@@ -103,7 +112,9 @@ class TestSelfTools(unittest.TestCase):
 
     def test_branch_self_error_handling(self) -> None:
         """Test branch_self error handling with invalid input."""
-        response1 = self.bot.respond("Execute branch_self tool with self_prompts='not a list' now. Do not explain, just call the tool.")
+        response1 = self.bot.respond(
+            "Execute branch_self tool with self_prompts='not a list' now. Do not explain, just call the tool."
+        )
         # Check what the tool actually returned
         response2 = self.bot.respond("What did the branch_self tool return?")
         # Should handle the tool call constraint gracefully
@@ -111,7 +122,9 @@ class TestSelfTools(unittest.TestCase):
 
     def test_branch_self_empty_prompts(self) -> None:
         """Test branch_self with empty prompt list."""
-        response1 = self.bot.respond("Call branch_self tool with self_prompts=[] now. Do not explain, just execute the tool call.")
+        response1 = self.bot.respond(
+            "Call branch_self tool with self_prompts=[] now. Do not explain, just execute the tool call."
+        )
         # Check what the tool actually returned
         response2 = self.bot.respond("What did the branch_self tool return?")
         # Should handle the tool call constraint gracefully
@@ -121,6 +134,7 @@ class TestSelfTools(unittest.TestCase):
         """Test that branch_self handles constraints without producing debug output."""
         import io
         from unittest.mock import patch
+
         captured_output = io.StringIO()
         with patch("sys.stdout", captured_output):
             response1 = self.bot.respond("Use branch_self with prompts ['Format test']")
@@ -131,5 +145,7 @@ class TestSelfTools(unittest.TestCase):
         self.assertNotIn("DEBUG ===", debug_output)
         # Should handle constraint gracefully
         self.assertIn("API conversation state constraints", response2)
+
+
 if __name__ == "__main__":
     unittest.main()

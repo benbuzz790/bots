@@ -1,0 +1,155 @@
+{
+ "name": "TestBot",
+ "model_engine": "claude-3-5-sonnet-20240620",
+ "max_tokens": 8192,
+ "temperature": 0.3,
+ "role": "assistant",
+ "role_description": "a friendly AI assistant",
+ "conversation": {
+  "content": "",
+  "pending_results": [],
+  "role": "empty",
+  "tool_calls": [],
+  "tool_results": [],
+  "node_class": "AnthropicNode",
+  "replies": [
+   {
+    "content": "Use branch_self with prompts ['Test prompt 1', 'Test prompt 2']",
+    "pending_results": [],
+    "role": "user",
+    "tool_calls": [],
+    "tool_results": [],
+    "node_class": "AnthropicNode",
+    "replies": [
+     {
+      "content": "Certainly! I'll use the `branch_self` function with the prompts you've provided. Let's call the function with these prompts.",
+      "pending_results": [],
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "type": "tool_use",
+        "id": "toolu_01618mL6r1kiQzMC87ZaHfjC",
+        "name": "branch_self",
+        "input": {
+         "self_prompts": "['Test prompt 1', 'Test prompt 2']"
+        }
+       }
+      ],
+      "tool_results": [],
+      "node_class": "AnthropicNode",
+      "replies": [
+       {
+        "content": "What did the branch_self tool return?",
+        "pending_results": [],
+        "role": "user",
+        "tool_calls": [],
+        "tool_results": [
+         {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01618mL6r1kiQzMC87ZaHfjC",
+          "content": "Error: branch_self cannot be called as a tool due to API conversation state constraints"
+         }
+        ],
+        "node_class": "AnthropicNode",
+        "replies": [
+         {
+          "content": "I apologize for the confusion in my previous response. After attempting to use the `branch_self` function, I received an error message. Let me explain what happened:\n\nThe `branch_self` tool returned the following error:\n\n\"Error: branch_self cannot be called as a tool due to API conversation state constraints\"\n\nThis error message indicates that the `branch_self` function cannot be used as a regular tool in our current conversation environment. The reason for this is likely due to the special nature of the `branch_self` function, which is designed to create multiple conversation branches.\n\nThe `branch_self` function is different from typical tools because it affects the structure of the conversation itself, rather than just performing a task within the current conversation. It's meant to create separate \"branches\" or \"paths\" of conversation, each following a different prompt.\n\nBecause of these \"API conversation state constraints,\" it seems that `branch_self` is not something that can be directly called like other tools in this environment. It might require special handling or might only be available in certain contexts or conversation modes.\n\nIf you need to explore multiple approaches or tasks in parallel, we might need to find an alternative method or ask for guidance on how to properly utilize the branching functionality in this environment. Is there a specific goal you're trying to achieve with these multiple prompts? Perhaps we can find another way to address your needs within the current constraints of our conversation.",
+          "pending_results": [],
+          "role": "assistant",
+          "tool_calls": [],
+          "tool_results": [],
+          "node_class": "AnthropicNode"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "system_message": "",
+ "tool_handler": {
+  "class": "bots.foundation.anthropic_bots.AnthropicToolHandler",
+  "tools": [
+   {
+    "name": "get_own_info",
+    "description": "Get information about yourself.\nUse when you need to inspect your current configuration (not tools).\nReturns:\n    str: JSON string containing bot information including:\n    - name: Your name\n    - role: Your role\n    - role_description: Your role description\n    - model_engine: Current model engine\n    - temperature: Current temperature setting\n    - max_tokens: Maximum tokens setting\n    - tool_count: Number of available tools",
+    "input_schema": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   },
+   {
+    "name": "branch_self",
+    "description": "Create multiple conversation branches to explore different approaches or tackle separate tasks.\n\nThink of this like opening multiple browser tabs - each branch starts from this point\nand explores a different direction. Perfect for when you need to:\n- Try different solutions to the same problem\n- Handle multiple related tasks separately\n- Break down a complex request into smaller parts (when you have more than ~6 tasks)\n- Compare different approaches side-by-side\n\nEach branch gets its own copy of the conversation up to this point, then follows\nthe prompt you give it. The branches run one after another, not at the same time.\n\nArgs:\n    self_prompts (str): List of prompts as a string array, like ['task 1', 'task 2', 'task 3']\n                       Each prompt becomes a separate conversation branch\n    allow_work (str): 'True' to let each branch use tools and continue working until done\n                     'False' (default) for single-response branches\n\nReturns:\n    str: Success message with branch count, or error details if something went wrong\n\nWriting effective branch prompts:\n    Each prompt should be a complete, self-contained instruction that includes:\n\n    REQUIRED:\n    - Task instruction: What specific action to take\n    - Definition of done: How to know when the task is complete, typically in\n    terms of a specific side effect or set of side effects on files or achieved\n    through use of your available tools.\n\n    OPTIONAL:\n    - Tool suggestions: Which tools of yours might be helpful.\n    - Context to gather: What information to look up or files to examine first\n    - Output format: Specific system side effect, with specific qualities\n    - Success criteria: What makes a good vs. poor result\n\n    Good prompt examples:\n    - \"Search for recent AI safety research papers, then create a summary report\n       highlighting key findings and methodologies. Done when I have a 2-page\n       summary with at least 5 recent citations.\"\n\n    - \"Analyze our Q3 sales data from Google Drive, identify top 3 performance\n       trends, and create visualizations. Use artifacts for charts. Done when\n       I have clear charts showing trends with actionable insights.\"\n\nExample usage:\n    branch_self(\"['Analyze the data for trends', 'Create visualizations', 'Write summary report']\")",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "self_prompts": {
+       "type": "string"
+      },
+      "allow_work": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "self_prompts"
+     ]
+    }
+   },
+   {
+    "name": "add_tools",
+    "description": "Adds a new set of tools (python functions) to your toolkit\nAll top-level, non-private functions in filepath will be uploaded\nto your toolkit. Use when you need to create a new tool or kit for\nyourself to use in the future. Tool format is strict: string in,\nstring out, with error catching wrapping (typically) all code in\nthe function.\nParameters:\n    filepath: location of python tool file\nReturns:\n    str: success or error message",
+    "input_schema": {
+     "type": "object",
+     "properties": {
+      "filepath": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "filepath"
+     ]
+    },
+    "cache_control": {
+     "type": "ephemeral"
+    }
+   }
+  ],
+  "requests": [],
+  "results": [],
+  "modules": {
+   "C:\\Users\\benbu\\Code\\repo_working\\bots\\bots\\tools\\self_tools.py": {
+    "name": "dynamic_module_f48b6a9dbb29bea1afb5d740cf37e7cd",
+    "source": "import ast\nimport inspect\nimport json\nfrom typing import List, Optional\n\nfrom bots.dev.decorators import handle_errors\nfrom bots.flows import functional_prompts as fp\nfrom bots.foundation.base import Bot\n\n\ndef _get_calling_bot() -> Optional[Bot]:\n    \"\"\"Helper function to get a reference to the calling bot.\n    Returns:\n        Optional[Bot]: Reference to the calling bot or None if not found\n    \"\"\"\n    frame = inspect.currentframe()\n    while frame:\n        if frame.f_code.co_name == \"_cvsn_respond\" and \"self\" in frame.f_locals:\n            potential_bot = frame.f_locals[\"self\"]\n            if isinstance(potential_bot, Bot):\n                return potential_bot\n        frame = frame.f_back\n    return None\n\n\ndef get_own_info() -> str:\n    \"\"\"Get information about yourself.\n    Use when you need to inspect your current configuration (not tools).\n    Returns:\n        str: JSON string containing bot information including:\n        - name: Your name\n        - role: Your role\n        - role_description: Your role description\n        - model_engine: Current model engine\n        - temperature: Current temperature setting\n        - max_tokens: Maximum tokens setting\n        - tool_count: Number of available tools\n    \"\"\"\n    bot = _get_calling_bot()\n    if not bot:\n        return \"Error: Could not find calling bot\"\n    info = {\n        \"name\": bot.name,\n        \"role\": bot.role,\n        \"role_description\": bot.role_description,\n        \"model_engine\": bot.model_engine.value,\n        \"temperature\": bot.temperature,\n        \"max_tokens\": bot.max_tokens,\n        \"tool_count\": len(bot.tool_handler.tools) if bot.tool_handler else 0,\n    }\n    return json.dumps(info)\n\n\n@handle_errors\ndef _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str:\n    \"\"\"Modify your settings.\n    Use when you need to adjust your configuration parameters.\n    Parameters:\n        temperature (str, optional): New temperature value as string\n            (0.0 to 1.0)\n        max_tokens (str, optional): New maximum tokens value as string\n            (must be > 0)\n    Returns:\n        str: Description of changes made or error message\n    \"\"\"\n    # Import _get_calling_bot locally to avoid decorator global namespace issues\n    import inspect\n\n    from bots.foundation.base import Bot\n\n    def _get_calling_bot_local():\n        frame = inspect.currentframe()\n        while frame:\n            if frame.f_code.co_name == \"_cvsn_respond\" and \"self\" in frame.f_locals:\n                potential_bot = frame.f_locals[\"self\"]\n                if isinstance(potential_bot, Bot):\n                    return potential_bot\n            frame = frame.f_back\n        return None\n\n    bot = _get_calling_bot_local()\n    if not bot:\n        return \"Error: Could not find calling bot\"\n    if temperature is not None:\n        temp_float = float(temperature)\n        if not 0.0 <= temp_float <= 1.0:\n            return \"Error: Temperature must be between 0.0 and 1.0\"\n        bot.temperature = temp_float\n    if max_tokens is not None:\n        tokens_int = int(max_tokens)\n        if tokens_int <= 0:\n            return \"Error: Max tokens must be a positive integer\"\n        bot.max_tokens = tokens_int\n    return f\"Settings updated successfully. Current settings: \" f\"temperature={bot.temperature}, max_tokens={bot.max_tokens}\"\n\n\n@handle_errors\ndef branch_self(self_prompts: str, allow_work: str = \"False\") -> str:\n    \"\"\"Create multiple conversation branches to explore different approaches or tackle separate tasks.\n\n    Think of this like opening multiple browser tabs - each branch starts from this point\n    and explores a different direction. Perfect for when you need to:\n    - Try different solutions to the same problem\n    - Handle multiple related tasks separately\n    - Break down a complex request into smaller parts (when you have more than ~6 tasks)\n    - Compare different approaches side-by-side\n\n    Each branch gets its own copy of the conversation up to this point, then follows\n    the prompt you give it. The branches run one after another, not at the same time.\n\n    Args:\n        self_prompts (str): List of prompts as a string array, like ['task 1', 'task 2', 'task 3']\n                           Each prompt becomes a separate conversation branch\n        allow_work (str): 'True' to let each branch use tools and continue working until done\n                         'False' (default) for single-response branches\n\n    Returns:\n        str: Success message with branch count, or error details if something went wrong\n\n    Writing effective branch prompts:\n        Each prompt should be a complete, self-contained instruction that includes:\n\n        REQUIRED:\n        - Task instruction: What specific action to take\n        - Definition of done: How to know when the task is complete, typically in\n        terms of a specific side effect or set of side effects on files or achieved\n        through use of your available tools.\n\n        OPTIONAL:\n        - Tool suggestions: Which tools of yours might be helpful.\n        - Context to gather: What information to look up or files to examine first\n        - Output format: Specific system side effect, with specific qualities\n        - Success criteria: What makes a good vs. poor result\n\n        Good prompt examples:\n        - \"Search for recent AI safety research papers, then create a summary report\n           highlighting key findings and methodologies. Done when I have a 2-page\n           summary with at least 5 recent citations.\"\n\n        - \"Analyze our Q3 sales data from Google Drive, identify top 3 performance\n           trends, and create visualizations. Use artifacts for charts. Done when\n           I have clear charts showing trends with actionable insights.\"\n\n    Example usage:\n        branch_self(\"['Analyze the data for trends', 'Create visualizations', 'Write summary report']\")\n    \"\"\"\n\n    # Import _get_calling_bot locally to avoid decorator global namespace issues\n    import ast  # Also import ast locally\n    import json  # Also import json locally\n    from typing import List  # Import List type\n\n    from bots.flows import functional_prompts as fp  # Import functional_prompts locally\n\n    def _process_string_array_local(input_str: str) -> List[str]:\n        \"\"\"Parse a string representation of an array into a list of strings.\"\"\"\n        result = ast.literal_eval(input_str)\n        if not isinstance(result, list) or not all(isinstance(x, str) for x in result):\n            raise ValueError(\"Input must evaluate to a list of strings\")\n        return result\n\n    import inspect\n\n    from bots.foundation.base import Bot\n\n    def _get_calling_bot_local():\n        frame = inspect.currentframe()\n        while frame:\n            if frame.f_code.co_name == \"_cvsn_respond\" and \"self\" in frame.f_locals:\n                potential_bot = frame.f_locals[\"self\"]\n                if isinstance(potential_bot, Bot):\n                    return potential_bot\n            frame = frame.f_back\n        return None\n\n    bot = _get_calling_bot_local()\n    if not bot:\n        return \"Error: Could not find calling bot\"\n    \n    # Check if we're being called as a tool (which causes API conflicts)\n    if hasattr(bot, 'tool_handler') and bot.tool_handler.requests:\n        return \"Error: branch_self cannot be called as a tool due to API conversation state constraints\"\n    allow_work = allow_work.lower() == \"true\"\n    message_list = _process_string_array_local(self_prompts)\n    if not message_list:\n        return \"Error: No valid messages provided\"\n    original_node = bot.conversation\n    if not original_node:\n        return \"Error: No current conversation node found\"\n    for i, item in enumerate(message_list):\n        message_list[i] = f\"(self-prompt): {item}\"\n\n    # Store original respond method and create debug wrapper\n    original_respond = bot.respond\n    branch_counter = 0\n\n    def debug_respond(self, prompt):\n        nonlocal branch_counter\n        print(f\"\\n=== BRANCH {branch_counter} DEBUG ===\")\n        print(f\"PROMPT: {prompt}\")\n        print(\"=\" * 50)\n\n        # Call original respond method\n        response = original_respond(prompt)\n\n        print(f\"RESPONSE: {response}\")\n        print(f\"=== END BRANCH {branch_counter} DEBUG ===\\n\")\n        branch_counter += 1\n\n        return response\n\n    # Temporarily override the respond method\n    bot.respond = debug_respond.__get__(bot, type(bot))\n\n    try:\n        if not allow_work:\n            responses, nodes = fp.branch(bot, message_list)\n        else:\n            responses, nodes = fp.branch_while(bot, message_list)\n    finally:\n        # Always restore the original respond method\n        bot.respond = original_respond\n\n    # Clean up\n    bot.conversation = original_node\n    # return\n    if not any(response is None for response in responses):\n        return f\"Successfully created {len(responses)} conversation branches\"\n    else:\n        error_messages = []\n        for i, response in enumerate(responses):\n            if response is None:\n                error_messages.append(f\"Tool Error: branch {i+1} failed\")\n        return \"\\n\".join(error_messages)\n\n\ndef add_tools(filepath: str) -> str:\n    \"\"\"Adds a new set of tools (python functions) to your toolkit\n    All top-level, non-private functions in filepath will be uploaded\n    to your toolkit. Use when you need to create a new tool or kit for\n    yourself to use in the future. Tool format is strict: string in,\n    string out, with error catching wrapping (typically) all code in\n    the function.\n    Parameters:\n        filepath: location of python tool file\n    Returns:\n        str: success or error message\n    \"\"\"\n    bot = _get_calling_bot()\n    bot.add_tools(filepath)\n\n\n@handle_errors\ndef _process_string_array(input_str: str) -> List[str]:\n    \"\"\"Parse a string representation of an array into a list of strings.\n    Only works with properly formatted Python list literals.\n    Args:\n        input_str (str): String representation of a Python list literal\n    Returns:\n        List[str]: List of parsed strings\n    Raises:\n        ValueError: If the input is not a valid Python list literal\n    \"\"\"\n    result = ast.literal_eval(input_str)\n    if not isinstance(result, list) or not all(isinstance(x, str) for x in result):\n        raise ValueError(\"Input must evaluate to a list of strings\")\n    return result\n",
+    "file_path": "C:\\Users\\benbu\\Code\\repo_working\\bots\\bots\\tools\\self_tools.py",
+    "code_hash": "490c640a10f106e96fc5128781e207af",
+    "globals": {
+     "ast": "<module 'ast' from 'C:\\\\Users\\\\benbu\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312-arm64\\\\Lib\\\\ast.py'>",
+     "inspect": "<module 'inspect' from 'C:\\\\Users\\\\benbu\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312-arm64\\\\Lib\\\\inspect.py'>",
+     "json": "<module 'json' from 'C:\\\\Users\\\\benbu\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312-arm64\\\\Lib\\\\json\\\\__init__.py'>",
+     "List": "typing.List",
+     "Optional": "typing.Optional",
+     "handle_errors": "<function handle_errors at 0x0000021968A00B80>",
+     "fp": "<module 'bots.flows.functional_prompts' from 'C:\\\\Users\\\\benbu\\\\Code\\\\repo_working\\\\bots\\\\bots\\\\flows\\\\functional_prompts.py'>",
+     "Bot": "<class 'bots.foundation.base.Bot'>",
+     "_get_calling_bot": "<function _get_calling_bot at 0x000002196A4C8680>",
+     "get_own_info": "<function get_own_info at 0x000002196A4C8720>",
+     "_modify_own_settings": "<function _modify_own_settings at 0x000002196A4C8860>",
+     "branch_self": "<function branch_self at 0x000002196A4C89A0>",
+     "add_tools": "<function add_tools at 0x000002196A4C8A40>",
+     "_process_string_array": "<function _process_string_array at 0x000002196A4C8B80>"
+    }
+   }
+  },
+  "function_paths": {
+   "get_own_info": "C:\\Users\\benbu\\Code\\repo_working\\bots\\bots\\tools\\self_tools.py",
+   "branch_self": "C:\\Users\\benbu\\Code\\repo_working\\bots\\bots\\tools\\self_tools.py",
+   "add_tools": "C:\\Users\\benbu\\Code\\repo_working\\bots\\bots\\tools\\self_tools.py"
+  }
+ },
+ "autosave": true,
+ "bot_class": "AnthropicBot"
+}

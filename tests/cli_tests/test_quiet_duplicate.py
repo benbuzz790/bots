@@ -19,7 +19,6 @@ class TestQuietModeDuplicate(unittest.TestCase):
         self.context.bot_instance = self.mock_bot
         self.context.config.verbose = False
 
-
     @patch("bots.flows.functional_prompts.chain")
     def test_quiet_mode_shows_message_once_after_fix(self, mock_chain):
         """Test that quiet mode shows message only once after the fix."""

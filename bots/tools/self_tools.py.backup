@@ -176,10 +176,6 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
     bot = _get_calling_bot_local()
     if not bot:
         return "Error: Could not find calling bot"
-
-    # Check if we're being called as a tool (which causes API conflicts)
-    if hasattr(bot, "tool_handler") and bot.tool_handler.requests:
-        return "Error: branch_self cannot be called as a tool due to API conversation state constraints"
     allow_work = allow_work.lower() == "true"
     message_list = _process_string_array_local(self_prompts)
     if not message_list:
