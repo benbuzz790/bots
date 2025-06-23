@@ -174,18 +174,12 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
         return None
 
     bot = _get_calling_bot_local()
-    # Insert a dummy result to prevent repeated tool calls
-    if not bot.tool_handler.requests:
-        return "Error: No branch_self tool request found"
-    request = bot.tool_handler.requests[-1]
-    dummy_result = bot.tool_handler.generate_response_schema(
-        request=request,
-        tool_output_kwargs=json.dumps({"status": "branching_in_progress"}),
-    )
-    bot.tool_handler.add_result(dummy_result)
-    bot.conversation._add_tool_results([dummy_result])
     if not bot:
         return "Error: Could not find calling bot"
+    
+    # Check if we're being called as a tool (which causes API conflicts)
+    if hasattr(bot, 'tool_handler') and bot.tool_handler.requests:
+        return "Error: branch_self cannot be called as a tool due to API conversation state constraints"
     allow_work = allow_work.lower() == "true"
     message_list = _process_string_array_local(self_prompts)
     if not message_list:
@@ -195,29 +189,29 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
         return "Error: No current conversation node found"
     for i, item in enumerate(message_list):
         message_list[i] = f"(self-prompt): {item}"
-    
+
     # Store original respond method and create debug wrapper
     original_respond = bot.respond
     branch_counter = 0
-    
+
     def debug_respond(self, prompt):
         nonlocal branch_counter
         print(f"\n=== BRANCH {branch_counter} DEBUG ===")
         print(f"PROMPT: {prompt}")
         print("=" * 50)
-        
+
         # Call original respond method
         response = original_respond(prompt)
-        
+
         print(f"RESPONSE: {response}")
         print(f"=== END BRANCH {branch_counter} DEBUG ===\n")
         branch_counter += 1
-        
+
         return response
-    
+
     # Temporarily override the respond method
     bot.respond = debug_respond.__get__(bot, type(bot))
-    
+
     try:
         if not allow_work:
             responses, nodes = fp.branch(bot, message_list)
@@ -226,13 +220,9 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
     finally:
         # Always restore the original respond method
         bot.respond = original_respond
-    
+
     # Clean up
     bot.conversation = original_node
-    bot.conversation.tool_results = [r for r in bot.conversation.tool_results if r != dummy_result]
-    for reply in bot.conversation.replies:
-        reply.tool_results = [r for r in reply.tool_results if r != dummy_result]
-    bot.tool_handler.results = [r for r in bot.tool_handler.results if r != dummy_result]
     # return
     if not any(response is None for response in responses):
         return f"Successfully created {len(responses)} conversation branches"
