@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import inspect
 import json
 from typing import List, Optional
@@ -195,10 +195,38 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
         return "Error: No current conversation node found"
     for i, item in enumerate(message_list):
         message_list[i] = f"(self-prompt): {item}"
-    if not allow_work:
-        responses, nodes = fp.branch(bot, message_list)
-    else:
-        responses, nodes = fp.branch_while(bot, message_list)
+    
+    # Store original respond method and create debug wrapper
+    original_respond = bot.respond
+    branch_counter = 0
+    
+    def debug_respond(self, prompt):
+        nonlocal branch_counter
+        print(f"\n=== BRANCH {branch_counter} DEBUG ===")
+        print(f"PROMPT: {prompt}")
+        print("=" * 50)
+        
+        # Call original respond method
+        response = original_respond(prompt)
+        
+        print(f"RESPONSE: {response}")
+        print(f"=== END BRANCH {branch_counter} DEBUG ===\n")
+        branch_counter += 1
+        
+        return response
+    
+    # Temporarily override the respond method
+    bot.respond = debug_respond.__get__(bot, type(bot))
+    
+    try:
+        if not allow_work:
+            responses, nodes = fp.branch(bot, message_list)
+        else:
+            responses, nodes = fp.branch_while(bot, message_list)
+    finally:
+        # Always restore the original respond method
+        bot.respond = original_respond
+    
     # Clean up
     bot.conversation = original_node
     bot.conversation.tool_results = [r for r in bot.conversation.tool_results if r != dummy_result]
