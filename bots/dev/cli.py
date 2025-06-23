@@ -927,7 +927,7 @@ def clean_dict(d: dict, indent: int=4, level: int=1):
                 lines[i] = line
             d[k] = "\n".join(lines)
     cleaned_dict = json.dumps(d, indent=indent * level)
-    cleaned_dict = re.sub("(?<!\\)\\n", "\n", cleaned_dict)
+    cleaned_dict = re.sub(r"(?<!\\)\\n", "\n", cleaned_dict)
     cleaned_dict = cleaned_dict.replace('\\"', '"')
     cleaned_dict = cleaned_dict.replace("\\\\", "\\")
     return cleaned_dict
