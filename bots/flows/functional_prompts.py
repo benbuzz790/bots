@@ -300,7 +300,8 @@ def chain(
             after each response from the bot.
 
     Returns:
-    Tuple[List[Response], List[ResponseNode]]: A tuple containing a list of response strings and a list of corresponding ConversationNodes.
+    Tuple[List[Response], List[ResponseNode]]: A tuple containing a list of response strings 
+        and a list of corresponding ConversationNodes.
     """
     responses = []
     nodes = []
@@ -960,7 +961,7 @@ def branch_while(
                     except Exception:
                         pass  # Don't let callback errors break the main function
             node = bot.conversation
-        except Exception as e:
+        except Exception:
             response = None
             node = None
         finally:
@@ -1152,7 +1153,7 @@ def par_branch_while(
             final_node.parent.parent = original_conversation
             original_conversation.replies.append(final_node.parent)
             return index, response, final_node.parent
-        except Exception as e:
+        except Exception:
             return index, None, None
 
     with ThreadPoolExecutor() as executor:
@@ -1246,7 +1247,7 @@ def par_dispatch(
         try:
             result = functional_prompt(bot, **kwargs)
             return index, result
-        except Exception as e:
+        except Exception:
             return index, (None, None)
 
     with ThreadPoolExecutor() as executor:

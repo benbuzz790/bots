@@ -2,9 +2,7 @@ import ast
 import inspect
 import json
 from typing import List, Optional
-
 from bots.dev.decorators import handle_errors
-from bots.flows import functional_prompts as fp
 from bots.foundation.base import Bot
 
 
@@ -147,7 +145,6 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
 
     # Import _get_calling_bot locally to avoid decorator global namespace issues
     import ast  # Also import ast locally
-    import json  # Also import json locally
     from typing import List  # Import List type
 
     from bots.flows import functional_prompts as fp  # Import functional_prompts locally
