@@ -7,7 +7,8 @@ def cleanup_test_artifacts():
     """Clean up test artifacts that may be left behind after test runs."""
     cleanup_patterns = [
         "test_patch_file.txt*",
-        "benbuzz790/private_tests",
+        "test_clone_dir_*",
+        "temp_test_repo_*",
         "test.txt",
         "lazy_*.py",
         "*.tmp",
