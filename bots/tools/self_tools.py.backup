@@ -2,7 +2,9 @@ import ast
 import inspect
 import json
 from typing import List, Optional
+
 from bots.dev.decorators import handle_errors
+from bots.flows import functional_prompts as fp
 from bots.foundation.base import Bot
 
 
@@ -145,6 +147,7 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
 
     # Import _get_calling_bot locally to avoid decorator global namespace issues
     import ast  # Also import ast locally
+    import json  # Also import json locally
     from typing import List  # Import List type
 
     from bots.flows import functional_prompts as fp  # Import functional_prompts locally
@@ -173,10 +176,6 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
     bot = _get_calling_bot_local()
     if not bot:
         return "Error: Could not find calling bot"
-
-    # Check if we're being called as a tool (which causes API conflicts)
-    if hasattr(bot, "tool_handler") and bot.tool_handler.requests:
-        return "Error: branch_self cannot be called as a tool due to API conversation state constraints"
     allow_work = allow_work.lower() == "true"
     message_list = _process_string_array_local(self_prompts)
     if not message_list:
@@ -190,8 +189,8 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
     # Store original respond method and create debug wrapper
     original_respond = bot.respond
     branch_counter = 0
-    
-    def debug_respond(prompt):
+
+    def debug_respond(self, prompt):
         nonlocal branch_counter
         print(f"\n=== BRANCH {branch_counter} DEBUG ===")
         print(f"PROMPT: {prompt}")
@@ -207,8 +206,8 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
         return response
 
     # Temporarily override the respond method
-    bot.respond = debug_respond
-    
+    bot.respond = debug_respond.__get__(bot, type(bot))
+
     try:
         if not allow_work:
             responses, nodes = fp.branch(bot, message_list)

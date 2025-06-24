@@ -1,5 +1,4 @@
 import ast
-from tests.conftest import get_unique_filename
 import difflib
 import inspect
 import os
@@ -12,6 +11,7 @@ import traceback
 import unittest
 
 from bots.tools import python_editing_tools, python_execution_tool
+from tests.conftest import get_unique_filename
 
 
 def ast_normalize(code):
@@ -1196,6 +1196,3 @@ import os
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
