@@ -1,16 +1,16 @@
-import shutil
-import time
-import subprocess
 import gc
-from pathlib import Path
 import pytest
+import shutil
+import subprocess
+import time
+from pathlib import Path
 from bots.flows import functional_prompts as fp
 from bots.flows.github_flows import clone_and_edit, clone_and_fp
+
+
 @pytest.mark.skip("Not a reliable test. Needs update.")
 def test_clone_and_edit():
     from tests.conftest import get_unique_filename
-    import tempfile
-    import os
     # Use a temporary directory instead of hardcoded repo
     test_dir_name = get_unique_filename("test_clone_dir")
     test_dir = Path(test_dir_name)
@@ -33,7 +33,8 @@ def test_clone_and_edit():
         subprocess.run(["git", "add", "."], cwd=temp_repo_dir, check=True, capture_output=True)
         subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=temp_repo_dir, check=True, capture_output=True)
         repo_path = str(temp_repo_dir.absolute())
-        task_prompt = "Please view the contents of this repository and respond with just the word 'yes' if you can see any files."
+        task_prompt = "Please view the contents of this repository and \
+            respond with just the word 'yes' if you can see any files."
         try:
             responses, nodes = clone_and_edit(test_dir, repo_path, task_prompt)
             clone_path = test_dir / temp_repo_dir.name
@@ -68,10 +69,10 @@ def test_clone_and_edit():
                 shutil.rmtree(temp_repo_dir, ignore_errors=True)
             except Exception as e:
                 print(f"Warning: Could not clean temp repo {temp_repo_dir}: {e}")
+
+
 def test_clone_and_fp_chain():
     from tests.conftest import get_unique_filename
-    import tempfile
-    import os
     # Use a temporary directory instead of hardcoded repo
     test_dir_name = get_unique_filename("test_clone_dir")
     test_dir = Path(test_dir_name)

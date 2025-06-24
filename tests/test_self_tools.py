@@ -1,9 +1,8 @@
 import io
-import sys
 import tempfile
 import unittest
-from unittest.mock import patch
 import bots.tools.self_tools as self_tools
+from unittest.mock import patch
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 
@@ -70,7 +69,7 @@ class TestSelfTools(unittest.TestCase):
         original_self = self.bot.respond.__self__
 
         # Execute branch_self which should temporarily overwrite respond method
-        response = self.bot.respond("Use branch_self with prompts ['Test restoration']")
+        self.bot.respond("Use branch_self with prompts ['Test restoration']")
 
         # Verify the respond method was restored to the original
         self.assertIs(

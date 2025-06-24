@@ -390,24 +390,24 @@ def some_function():
         test_dir = tempfile.mkdtemp()
         try:
             simple_file = os.path.join(self.temp_dir, get_unique_filename("simple", "py"))
-            result = python_editing_tools.add_imports(simple_file, "import os")
+            python_editing_tools.add_imports(simple_file, "import os")
             self.assertTrue(os.path.exists(simple_file))
             os.remove(simple_file)
             rel_path = os.path.join(self.temp_dir, "test_subdir", get_unique_filename("relative", "py"))
-            result = python_editing_tools.add_imports(rel_path, "import sys")
+            python_editing_tools.add_imports(rel_path, "import sys")
             self.assertTrue(os.path.exists(rel_path))
             shutil.rmtree(os.path.join(self.temp_dir, "test_subdir"))
             abs_path = os.path.join(test_dir, "subdir", get_unique_filename("absolute", "py"))
-            result = python_editing_tools.add_imports(abs_path, "import datetime")
+            python_editing_tools.add_imports(abs_path, "import datetime")
             self.assertTrue(os.path.exists(abs_path))
             class_file = os.path.join(test_dir, get_unique_filename("class_test", "py"))
-            result = python_editing_tools.add_class(class_file, "class TestClass:\n    pass")
+            python_editing_tools.add_class(class_file, "class TestClass:\n    pass")
             self.assertTrue(os.path.exists(class_file))
             func_file = os.path.join(test_dir, get_unique_filename("func_test", "py"))
-            result = python_editing_tools.add_function_to_file(func_file, "def test_func():\n    pass")
+            python_editing_tools.add_function_to_file(func_file, "def test_func():\n    pass")
             self.assertTrue(os.path.exists(func_file))
             method_file = os.path.join(test_dir, get_unique_filename("method_test", "py"))
-            result = python_editing_tools.add_function_to_class(
+            python_editing_tools.add_function_to_class(
                 method_file,
                 "TestClass",
                 """def test_method(self):
@@ -515,66 +515,6 @@ class NewClass:
         self.assertIn("from typing import Optional", content)
         self.assertIn("import sys", content)
         self.assertIn("class NewClass:", content)
-
-    def test_add_multiple_methods_to_class(self):
-        initial_content = "\nclass TestClass:\n    def existing_method(self):\n        pass\n"
-        new_methods = """
-def method1(self):
-    print("Method 1")
-def method2(self):
-    print("Method 2")
-"""
-        expected_content = """
-class TestClass:
-    def existing_method(self):
-        pass
-
-    def method1(self):
-        print("Method 1")
-
-    def method2(self):
-        print("Method 2")
-"""
-        with open(self.test_file, "w") as f:
-            f.write(initial_content)
-        python_editing_tools.add_function_to_class(self.test_file, "TestClass", new_methods)
-        self.assertFileContentEqual(self.test_file, expected_content, "Add multiple methods to class failed")
-
-    def test_add_multiple_functions_to_file(self):
-        initial_content = "# Empty file\n"
-        new_functions = """
-def func1():
-    print("Function 1")
-def func2():
-    print("Function 2")
-"""
-        expected_content = """# Empty file
-
-def func1():
-    print("Function 1")
-
-def func2():
-    print("Function 2")
-"""
-        with open(self.test_file, "w") as f:
-            f.write(initial_content)
-        python_editing_tools.add_function_to_file(self.test_file, new_functions)
-        self.assertFileContentEqual(self.test_file, expected_content, "Add multiple functions to file failed")
-
-    def test_replace_multiple_functions(self):
-        initial_content = '\ndef func1():\n    print("Old 1")\ndef func2():\n    print("Old 2")\n'
-        new_functions = '\ndef func1():\n    print("New 1")\ndef func2():\n    print("New 2")\n'
-        expected_content = """
-def func1():
-    print("New 1")
-
-def func2():
-    print("New 2")
-"""
-        with open(self.test_file, "w") as f:
-            f.write(initial_content)
-        python_editing_tools.replace_function(self.test_file, new_functions)
-        self.assertFileContentEqual(self.test_file, expected_content, "Replace multiple functions failed")
 
     def test_add_multiple_methods_to_class(self):
         initial_content = "\nclass TestClass:\n    def existing_method(self):\n        pass\n"

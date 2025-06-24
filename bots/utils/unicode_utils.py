@@ -2,6 +2,8 @@
 import os
 import sys
 from typing import Any
+
+
 def ensure_utf8_encoding():
     """Ensure proper UTF-8 encoding for the current environment.
     This function sets up UTF-8 encoding to prevent Unicode errors
@@ -15,6 +17,8 @@ def ensure_utf8_encoding():
     # Set environment variables for UTF-8
     os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
     os.environ.setdefault('PYTHONUTF8', '1')
+
+
 def clean_unicode_string(text: Any) -> str:
     """Clean a string of problematic Unicode characters.
     Args:
@@ -31,6 +35,8 @@ def clean_unicode_string(text: Any) -> str:
     # Strip whitespace
     cleaned = cleaned.strip()
     return cleaned
+
+
 def clean_dict_strings(data: Any) -> Any:
     """Recursively clean all strings in a dictionary or list.
     Args:
@@ -46,5 +52,7 @@ def clean_dict_strings(data: Any) -> Any:
         return clean_unicode_string(data)
     else:
         return data
+
+
 # Ensure UTF-8 encoding is set up when module is imported
 ensure_utf8_encoding()

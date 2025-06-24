@@ -1,8 +1,5 @@
-import os
-import sys
 import unittest
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import bots.flows.functional_prompts as fp
 from bots.dev.cli import DynamicFunctionalPromptHandler
 from bots.dev.decorators import debug_on_error
