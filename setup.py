@@ -67,6 +67,7 @@ EXTRAS_REQUIRE: Dict[str, List[str]] = {
 # See https://pypi.org/classifiers/ for full list
 CLASSIFIERS: List[str] = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
@@ -84,5 +85,5 @@ setup(
     packages=find_packages(),  # Automatically find all packages
     install_requires=INSTALL_REQUIRES,
     extras_require=EXTRAS_REQUIRE,
-    python_requires=">=3.6",
+    python_requires=">=3.12",
 )
