@@ -3,6 +3,22 @@ import os
 import textwrap
 
 from bots.dev.decorators import handle_errors
+from bots.utils.unicode_utils import clean_unicode_string
+
+
+def _read_file_bom_safe(file_path: str) -> str:
+    """Read a file with BOM protection."""
+    with open(file_path, "r", encoding="utf-8") as file:
+        content = file.read()
+    return clean_unicode_string(content)
+
+
+def _write_file_bom_safe(file_path: str, content: str) -> None:
+    """Write a file with BOM protection."""
+    # Ensure content is BOM-free
+    clean_content = clean_unicode_string(content)
+    with open(file_path, "w", encoding="utf-8") as file:
+        file.write(clean_content)
 
 
 @handle_errors
