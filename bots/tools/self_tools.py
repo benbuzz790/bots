@@ -200,7 +200,7 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
     original_respond = bot.respond
     branch_counter = 0
     
-    def debug_respond(self, prompt):
+    def debug_respond(prompt):
         nonlocal branch_counter
         print(f"\n=== BRANCH {branch_counter} DEBUG ===")
         print(f"PROMPT: {prompt}")
@@ -216,7 +216,7 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
         return response
     
     # Temporarily override the respond method
-    bot.respond = debug_respond.__get__(bot, type(bot))
+    bot.respond = debug_respond
     
     try:
         if not allow_work:
