@@ -83,8 +83,10 @@ def test_par_branch_while_with_prompt_array():
         return True  # Stop after first response for each prompt
 
     # Mock the file operations for parallel processing
-    with patch("os.remove"), patch.object(MockBot, "save"), patch.object(
-        MockBot, "load", return_value=MockBot(["Par response"])
+    with (
+        patch("os.remove"),
+        patch.object(MockBot, "save"),
+        patch.object(MockBot, "load", return_value=MockBot(["Par response"])),
     ):
         bot = MockBot(["Par 1", "Par 2", "Par 3"])
         prompts = ["Par prompt 1", "Par prompt 2", "Par prompt 3"]

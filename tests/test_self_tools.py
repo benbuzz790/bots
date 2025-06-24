@@ -7,6 +7,7 @@ import bots.tools.self_tools as self_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 
+
 class TestSelfTools(unittest.TestCase):
     """Test suite for self_tools module functionality.
 
@@ -32,6 +33,7 @@ class TestSelfTools(unittest.TestCase):
     def tearDown(self) -> None:
         """Clean up test environment after each test."""
         import shutil
+
         try:
             shutil.rmtree(self.temp_dir)
         except Exception as e:
@@ -56,7 +58,9 @@ class TestSelfTools(unittest.TestCase):
 
     def test_branch_self_debug_printing(self) -> None:
         """Test that branch_self function works correctly with multiple prompts."""
-        response = self.bot.respond("Please create 2 branches with prompts ['Test prompt 1', 'Test prompt 2'] using branch_self")
+        response = self.bot.respond(
+            "Please create 2 branches with prompts ['Test prompt 1', 'Test prompt 2'] using branch_self"
+        )
         self.assertIn("branch", response.lower())
 
     def test_branch_self_method_restoration(self) -> None:
@@ -64,19 +68,23 @@ class TestSelfTools(unittest.TestCase):
         # Store the original method's underlying function and instance
         original_func = self.bot.respond.__func__
         original_self = self.bot.respond.__self__
-        
+
         # Execute branch_self which should temporarily overwrite respond method
         response = self.bot.respond("Use branch_self with prompts ['Test restoration']")
-        
+
         # Verify the respond method was restored to the original
-        self.assertIs(self.bot.respond.__func__, original_func,
-                    "respond method function was not properly restored after branch_self")
-        self.assertIs(self.bot.respond.__self__, original_self,
-                    "respond method instance was not properly restored after branch_self")
+        self.assertIs(
+            self.bot.respond.__func__, original_func, "respond method function was not properly restored after branch_self"
+        )
+        self.assertIs(
+            self.bot.respond.__self__, original_self, "respond method instance was not properly restored after branch_self"
+        )
 
     def test_branch_self_with_allow_work_true(self) -> None:
         """Test branch_self with allow_work=True parameter."""
-        response = self.bot.respond("Please create 1 branch with prompts ['Simple task'] using branch_self with allow_work=True")
+        response = self.bot.respond(
+            "Please create 1 branch with prompts ['Simple task'] using branch_self with allow_work=True"
+        )
         self.assertIn("branch", response.lower())
 
     def test_branch_self_error_handling(self) -> None:
@@ -92,10 +100,10 @@ class TestSelfTools(unittest.TestCase):
     def test_debug_output_format(self) -> None:
         """Test that debug output follows the expected format."""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch("sys.stdout", captured_output):
             self.bot.respond("Use branch_self with prompts ['Format test']")
         debug_output = captured_output.getvalue()
-        lines = debug_output.split('\n')
+        lines = debug_output.split("\n")
         # Find debug sections
         debug_start_lines = [i for i, line in enumerate(lines) if "=== BRANCH" in line and "DEBUG ===" in line]
         debug_end_lines = [i for i, line in enumerate(lines) if "=== END BRANCH" in line and "DEBUG ===" in line]
@@ -103,12 +111,13 @@ class TestSelfTools(unittest.TestCase):
         self.assertEqual(len(debug_start_lines), len(debug_end_lines))
         # Each debug section should be properly formatted
         for start_idx, end_idx in zip(debug_start_lines, debug_end_lines):
-            section = lines[start_idx:end_idx + 1]
-            section_text = '\n'.join(section)
+            section = lines[start_idx : end_idx + 1]
+            section_text = "\n".join(section)
             # Should contain required elements
             self.assertIn("PROMPT:", section_text)
             self.assertIn("RESPONSE:", section_text)
             self.assertIn("=" * 50, section_text)  # Separator line
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

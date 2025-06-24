@@ -300,7 +300,7 @@ def chain(
             after each response from the bot.
 
     Returns:
-    Tuple[List[Response], List[ResponseNode]]: A tuple containing a list of response strings 
+    Tuple[List[Response], List[ResponseNode]]: A tuple containing a list of response strings
         and a list of corresponding ConversationNodes.
     """
     responses = []

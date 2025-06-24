@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 on:
   pull_request:
   push:
@@ -24,6 +24,7 @@ jobs:
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -40,10 +41,10 @@ jobs:
       - name: Install package
         run: pip install -e .
       - name: Run unit tests
-        run: pytest tests/ -m "not integration" --tb=short -v --maxfail=10
+        run: pytest tests/ --tb=short -v --maxfail=10
       - name: Run integration tests
         if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
-        run: pytest tests/ -m "integration" --tb=short -v --maxfail=5
+        run: pytest tests/ --tb=short -v --maxfail=5
         continue-on-error: true
   integration-tests:
     name: Run Integration Tests
@@ -53,6 +54,7 @@ jobs:
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -70,7 +72,7 @@ jobs:
         run: pip install -e .
       - name: Run comprehensive integration tests
         if: env.OPENAI_API_KEY != '' && env.ANTHROPIC_API_KEY != ''
-        run: pytest tests/ -m "integration" --tb=long -v --timeout=300
+        run: pytest tests/ --tb=long -v --timeout=300
         continue-on-error: false
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -133,3 +135,6 @@ jobs:
       - name: Run actionlint
         run: |
           .\actionlint.exe .github/workflows/*.yml
+
+
+

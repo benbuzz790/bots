@@ -1,14 +1,16 @@
 import sys
 import io
 from unittest.mock import patch
-sys.path.append('.')
+
+sys.path.append(".")
 from tests.conftest import TestBot
+
 # Create a test bot
 bot = TestBot()
 print("=== Testing branch_self function ===")
 # Capture stdout
 captured_output = io.StringIO()
-with patch('sys.stdout', captured_output):
+with patch("sys.stdout", captured_output):
     print("About to call bot.respond...")
     response = bot.respond("Use branch_self with prompts ['Test prompt 1', 'Test prompt 2']")
     print("Got response:", response)
