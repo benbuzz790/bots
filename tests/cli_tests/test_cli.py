@@ -107,7 +107,7 @@ class TestCLIBasics(DetailedTestCase):
     @patch("builtins.input")
     def test_verbose_quiet_commands(self, mock_input: MagicMock) -> None:
         """Test verbose and quiet mode commands."""
-        mock_input.side_effect = ["/verbose", "/quiet", "/exit"]
+        mock_input.side_effect = ["/quiet", "/verbose", "/exit"]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 cli_module.main("")
