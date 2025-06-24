@@ -989,7 +989,6 @@ class ToolHandler(ABC):
                                         if imports or globals_defs:
                                             prefix = '\n'.join(imports + globals_defs) + '\n\n'
                                             source = prefix + source
-                                        print(f'DEBUG: About to prepend decorator_source: {decorator_source[:100]}...')
                                         source = _clean_decorator_source(decorator_source) + '\n\n' + source
                                 except (TypeError, OSError):
                                     # Can't get decorator source, continue with function object
@@ -1215,7 +1214,10 @@ class ToolHandler(ABC):
                 "source": self._add_imports_to_source(module_context),
                 "file_path": module_context.file_path,
                 "code_hash": self._get_code_hash(self._add_imports_to_source(module_context)),
-                "globals": {k: v for k, v in module_context.namespace.__dict__.items() if not k.startswith("__") and (isinstance(v, (int, float, str, bool, list, dict)) or (hasattr(v, "__name__") and v.__name__ in ["math", "datetime", "collections", "defaultdict"]))},
+                "globals": {
+                    k: v for k, v in module_context.namespace.__dict__.items() 
+                    if not k.startswith("__") and isinstance(v, (int, float, str, bool, list, dict))
+                }
             }
         for name, func in self.function_map.items():
             module_context = getattr(func, "__module_context__", None)
