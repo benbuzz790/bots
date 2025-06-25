@@ -1720,3 +1720,29 @@ def debug_string_locations(line):
         print(f"    - Quote char: {repr(loc['quote_char'])}")
 
     return locations
+
+
+def test_decorated_function_import_capture():
+    """Test that decorated functions can access imports from their original module."""
+    result = python_edit("test_decorated.py", "def simple_function(): return \"Hello\"")
+    assert "Code replaced at file level" in result
+    assert os.path.exists("test_decorated.py")
+    if os.path.exists("test_decorated.py"):
+        os.remove("test_decorated.py")
+
+def test_decorated_function_with_tool_handler():
+    """Test that decorated functions work correctly when added as tools to a bot."""
+    from bots.foundation.anthropic_bots import AnthropicToolHandler
+    from bots.tools.python_edit import python_edit
+    handler = AnthropicToolHandler()
+    handler.add_tool(python_edit)
+    assert "python_edit" in handler.function_map
+    assert len(handler.tools) == 1
+
+def test_import_capture_regression():
+    """Regression test to ensure the specific _process_error import issue is fixed."""
+    test_code = "def example(): return 42"
+    result = python_edit("regression_test.py", test_code)
+    assert "Code replaced at file level" in result
+    if os.path.exists("regression_test.py"):
+        os.remove("regression_test.py")

@@ -927,6 +927,17 @@ class ToolHandler(ABC):
                         code = func.__code__
                         names = code.co_names
                         context = {name: func.__globals__[name] for name in names if name in func.__globals__}
+
+                        # Also capture globals from the original module (important for decorated functions)
+                        import importlib
+                        try:
+                            original_module = importlib.import_module(func.__module__)
+                            for name, value in original_module.__dict__.items():
+                                if not name.startswith('__') and name not in context:
+                                    if callable(value) or isinstance(value, type):
+                                        context[name] = value
+                        except ImportError:
+                            pass
                         # Add all imports from the original module
                         import types
 
