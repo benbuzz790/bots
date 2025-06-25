@@ -783,7 +783,6 @@ class SystemHandler:
             old_settings = setup_raw_mode()
             context.old_terminal_settings = old_settings
             print("Bot running autonomously. Press ESC to interrupt...")
-            final_response = None
             while True:
                 if check_for_interrupt():
                     restore_terminal(old_settings)
@@ -858,8 +857,8 @@ class DynamicFunctionalPromptHandler:
             context.conversation_backup = bot.conversation
             print(f"\nExecuting {fp_name}...")
             # Create appropriate callback based on function requirements
-            callback_type = params.pop("_callback_type", "list")
-            if callback_type == "single":
+            _callback_type = params.pop("_callback_type", "list")
+            if _callback_type == "single":
                 # Single callback for tree_of_thought - use node-based tool info for live updates
 
                 def single_callback(response: str, node):
@@ -969,7 +968,6 @@ class DynamicFunctionalPromptHandler:
             if params is None:
                 return "Parameter collection cancelled"
             # Remove callback type info
-            callback_type = params.pop("_callback_type", "list")
             # Create callback for tool result display
             callback = context.callbacks.get_standard_callback()
             params["callback"] = callback
@@ -1249,9 +1247,8 @@ class CLI:
         """Initialize a new bot with default tools."""
         bot = AnthropicBot()
         self.context.bot_instance = bot
-        from bots.tools.self_tools import branch_self
-        from bots.tools.code_tools import view_dir, view
-        from bots.tools.python_editing_tools import replace_function, replace_class, replace_import
+        from bots.tools.code_tools import view, view_dir
+        from bots.tools.python_editing_tools import replace_class, replace_function, replace_import
 
         bot.add_tools(bots.tools.terminal_tools, replace_function, replace_class, replace_import, view, view_dir)
 

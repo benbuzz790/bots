@@ -1,4 +1,5 @@
 """Unicode handling utilities for CI environments."""
+
 import os
 import sys
 from typing import Any
@@ -10,13 +11,13 @@ def ensure_utf8_encoding():
     in CI environments, particularly on Windows runners.
     """
     # Set UTF-8 encoding for stdout/stderr
-    if hasattr(sys.stdout, 'reconfigure'):
-        sys.stdout.reconfigure(encoding='utf-8')
-    if hasattr(sys.stderr, 'reconfigure'):
-        sys.stderr.reconfigure(encoding='utf-8')
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
     # Set environment variables for UTF-8
-    os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
-    os.environ.setdefault('PYTHONUTF8', '1')
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    os.environ.setdefault("PYTHONUTF8", "1")
 
 
 def clean_unicode_string(text: Any) -> str:
@@ -29,9 +30,9 @@ def clean_unicode_string(text: Any) -> str:
     if not isinstance(text, str):
         text = str(text)
     # Remove BOM and other problematic characters
-    cleaned = text.encode('utf-8', errors='ignore').decode('utf-8')
+    cleaned = text.encode("utf-8", errors="ignore").decode("utf-8")
     # Remove BOM specifically
-    cleaned = cleaned.lstrip('\ufeff')
+    cleaned = cleaned.lstrip("\ufeff")
     # Strip whitespace
     cleaned = cleaned.strip()
     return cleaned

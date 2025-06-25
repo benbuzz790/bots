@@ -1,8 +1,9 @@
 import io
 import tempfile
 import unittest
-import bots.tools.self_tools as self_tools
 from unittest.mock import patch
+
+import bots.tools.self_tools as self_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 

@@ -64,10 +64,11 @@ jobs:
         run: |
           python -m bots.dev.remove_boms
       - name: Run unit tests
-        run: pytest tests/ --tb=short -v --maxfail=10
+        if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
+        run: pytest tests/ --tb=short -v --maxfail=10 -n 0
       - name: Run integration tests
         if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
-        run: pytest tests/ --tb=short -v --maxfail=5
+        run: pytest tests/ --tb=short -v --maxfail=5 -n 0
         continue-on-error: true
   integration-tests:
     name: Run Integration Tests
@@ -113,7 +114,7 @@ jobs:
           python -m bots.dev.remove_boms
       - name: Run comprehensive integration tests
         if: env.OPENAI_API_KEY != '' && env.ANTHROPIC_API_KEY != ''
-        run: pytest tests/ --tb=long -v --timeout=300
+        run: pytest tests/ --tb=long -v --timeout=300 -n 0
         continue-on-error: false
       - name: Upload test results
         uses: actions/upload-artifact@v4

@@ -6,7 +6,6 @@ from bots.utils.helpers import _clean, _py_ast_to_source
 from bots.utils.unicode_utils import clean_unicode_string
 
 
-
 def _read_file_bom_safe(file_path: str) -> str:
     """Read a file with BOM protection."""
     with open(file_path, "r", encoding="utf-8") as file:
@@ -20,6 +19,7 @@ def _write_file_bom_safe(file_path: str, content: str) -> None:
     clean_content = clean_unicode_string(content)
     with open(file_path, "w", encoding="utf-8") as file:
         file.write(clean_content)
+
 
 class NodeTransformerWithAsyncSupport(ast.NodeTransformer):
     """Base class for AST transformers that need to handle both sync and async functions."""
