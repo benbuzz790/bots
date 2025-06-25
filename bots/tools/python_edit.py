@@ -132,69 +132,47 @@ class ScopeTransformer(ast.NodeTransformer):
         return node
 
     def _handle_insertion(self, node):
-        """Handle inserting nodes after a specific point."""
-        if isinstance(self.insert_after, str) and '::' not in self.insert_after:
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                return node
-            if node.lineno == node.end_lineno:
-                return self._handle_one_line_function(node, self.file_lines[node.lineno - 1])
-            func_lines = self.file_lines[node.lineno - 1:node.end_lineno]
-            if not func_lines:
-                return node
-            target = self.insert_after.strip()
-            target_line_idx = None
-            for i, line in enumerate(func_lines):
-                detokenized_line = _detokenize_source(line, self.all_tokens)
-                if detokenized_line.strip() == target:
-                    self.line_match_count += 1
-                    if self.line_match_count == 1:
-                        target_line_idx = i
-            if self.line_match_count == 0:
-                return node
-            elif self.line_match_count > 1:
-                raise ValueError(f'Ambiguous insert_after - found {self.line_match_count} matches for: {self.insert_after}')
-            target_absolute_line = node.lineno + target_line_idx
-            containing_node = self._find_containing_node(node, target_absolute_line)
-            if containing_node and containing_node is not node:
-                self._insert_into_node(containing_node, target_absolute_line)
-            else:
-                insert_index = len(node.body)
-                for idx, child in enumerate(node.body):
-                    if hasattr(child, 'lineno') and child.lineno > target_absolute_line:
-                        insert_index = idx
-                        break
-                if insert_index == len(node.body):
+        """Handle inserting nodes after a specific scope point."""
+        if not self.insert_after:
+            return node
+        if self.insert_after == '__FILE_START__':
+            return node
+        if '::' in self.insert_after:
+            target_path = self.insert_after.split('::')
+            current_path = self.current_path
+            if len(target_path) > 1 and len(current_path) == len(target_path) - 1:
+                if all((c == t for c, t in zip(current_path, target_path[:len(current_path)]))):
+                    target_name = target_path[-1]
+                    insert_index = None
+                    for idx, child in enumerate(node.body):
+                        if hasattr(child, 'name') and child.name == target_name:
+                            insert_index = idx + 1
+                            break
+                    if insert_index is not None:
+                        for i, new_node in enumerate(self.new_nodes):
+                            node.body.insert(insert_index + i, new_node)
+                        self.success = True
+                        return node
+            if len(current_path) == len(target_path) and all((c == t for c, t in zip(current_path, target_path))):
+                self.success = True
+                if isinstance(node, ast.ClassDef):
                     node.body.extend(self.new_nodes)
                 else:
-                    for i, new_node in enumerate(self.new_nodes):
-                        node.body.insert(insert_index + i, new_node)
-            self.success = True
-            return node
+                    for new_node in self.new_nodes:
+                        node.body.append(new_node)
         else:
-            if self.insert_after:
-                target_path = self.insert_after.split('::')
-                current_path = self.current_path
-                if len(target_path) > 1 and len(current_path) == len(target_path) - 1:
-                    if all((c == t for c, t in zip(current_path, target_path[:len(current_path)]))):
-                        target_name = target_path[-1]
-                        insert_index = None
-                        for idx, child in enumerate(node.body):
-                            if hasattr(child, 'name') and child.name == target_name:
-                                insert_index = idx + 1
-                                break
-                        if insert_index is not None:
-                            for i, new_node in enumerate(self.new_nodes):
-                                node.body.insert(insert_index + i, new_node)
-                            self.success = True
-                            return node
-                if len(current_path) == len(target_path) and all((c == t for c, t in zip(current_path, target_path))):
-                    self.success = True
-                    if isinstance(node, ast.ClassDef):
-                        node.body.extend(self.new_nodes)
-                    else:
-                        for new_node in self.new_nodes:
-                            node.body.append(new_node)
-            return node
+            target_name = self.insert_after
+            insert_index = None
+            for idx, child in enumerate(node.body):
+                if hasattr(child, 'name') and child.name == target_name:
+                    insert_index = idx + 1
+                    break
+            if insert_index is not None:
+                for i, new_node in enumerate(self.new_nodes):
+                    node.body.insert(insert_index + i, new_node)
+                self.success = True
+                return node
+        return node
 
     def _find_containing_node(self, node, target_line):
         """Find the deepest AST node with a body that contains the target line."""
@@ -251,11 +229,11 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
         Import statements will be automatically extracted and handled.
 
     insert_after : str, optional
-        Where to insert the code. Can be either:
+        Scope to insert the code after, using the same syntax as target_scope:
         - "__FILE_START__" (special token for file beginning)
-        - A scope ("MyClass::method")
-        - An exact line match (like a context line in git patches)
-        If not specified, replaces the node at target_scope.
+        - "MyClass::method" (insert after this method within the target scope)
+        - "MyClass" (insert after this class within the target scope)
+        If not specified, replaces the entire target_scope.
 
     Returns:
     --------
@@ -304,6 +282,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 existing_imports.append(node)
             else:
                 non_imports.append(node)
+        deduplicated_imports = _deduplicate_imports(existing_imports, import_nodes)
         if insert_after == '__FILE_START__':
             tree.body = import_nodes + code_nodes + existing_imports + non_imports
             try:
@@ -318,7 +297,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
             except Exception as e:
                 return _process_error(e)
         if not path_elements:
-            tree.body = existing_imports + import_nodes + non_imports + code_nodes
+            tree.body = deduplicated_imports + code_nodes
             try:
                 updated_content = _py_ast_to_source(tree)
                 all_tokens = {**file_tokens, **new_code_tokens}
@@ -333,7 +312,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                     return f"Code replaced at file level in '{abs_path}'."
             except Exception as e:
                 return _process_error(e)
-        tree.body = existing_imports + import_nodes + non_imports
+        tree.body = deduplicated_imports + non_imports
         transformer = ScopeTransformer(path_elements, code_nodes, insert_after, file_lines, file_tokens, new_code_tokens)
         modified_tree = transformer.visit(tree)
         if not transformer.success:
@@ -1090,3 +1069,39 @@ def _restore_top_level_comments(final_content: str, top_comments: List[str]) -> 
         return comment_section + '\n\n' + final_content
     else:
         return comment_section + '\n'
+
+def _deduplicate_imports(existing_imports: List[ast.stmt], new_imports: List[ast.stmt]) -> List[ast.stmt]:
+    """
+    Deduplicate import statements, keeping new imports and non-duplicate existing ones.
+
+    Parameters:
+    - existing_imports: List of existing import AST nodes
+    - new_imports: List of new import AST nodes to add
+
+    Returns:
+    - List of deduplicated import AST nodes
+    """
+
+    def import_signature(node):
+        """Create a signature for an import node for comparison."""
+        if isinstance(node, ast.Import):
+            names = frozenset((alias.name for alias in node.names))
+            return ('import', names)
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ''
+            names = frozenset((alias.name for alias in node.names))
+            level = node.level
+            return ('from', module, names, level)
+        return None
+    new_signatures = set()
+    result_imports = []
+    for imp in new_imports:
+        sig = import_signature(imp)
+        if sig:
+            new_signatures.add(sig)
+            result_imports.append(imp)
+    for imp in existing_imports:
+        sig = import_signature(imp)
+        if sig and sig not in new_signatures:
+            result_imports.append(imp)
+    return result_imports
