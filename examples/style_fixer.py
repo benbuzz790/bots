@@ -38,6 +38,7 @@ def is_gitignored(file_path: str, project_root: str) -> bool:
             cwd=project_root,
             capture_output=True,
             text=True,
+            encoding='utf-8',
         )
         return result.returncode == 0
     except (subprocess.SubprocessError, FileNotFoundError):
@@ -88,6 +89,7 @@ def passes_style_checks(file_path: str, project_root: str) -> bool:
                 ["python", "-m", "black", "--check", rel_path],
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
                 timeout=30,
             )
             if black_result.returncode != 0:
@@ -101,6 +103,7 @@ def passes_style_checks(file_path: str, project_root: str) -> bool:
                 ["python", "-m", "isort", "--check-only", rel_path],
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
                 timeout=30,
             )
             if isort_result.returncode != 0:
@@ -114,6 +117,7 @@ def passes_style_checks(file_path: str, project_root: str) -> bool:
                 ["python", "-m", "flake8", rel_path],
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
                 timeout=30,
             )
             if flake8_result.returncode != 0:
@@ -185,6 +189,7 @@ def check_file_cicd(file_path: str, project_root: str) -> str:
                 ["python", "-m", "black", "--check", "--diff", rel_path],
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
                 timeout=30,
             )
             if black_result.returncode == 0:
@@ -208,6 +213,7 @@ def check_file_cicd(file_path: str, project_root: str) -> str:
                 ["python", "-m", "isort", "--check-only", "--diff", rel_path],
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
                 timeout=30,
             )
             if isort_result.returncode == 0:
@@ -239,6 +245,7 @@ def check_file_cicd(file_path: str, project_root: str) -> str:
                 ],
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
                 timeout=30,
             )
             if flake8_result.returncode == 0:
