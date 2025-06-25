@@ -4,7 +4,8 @@ import json
 from typing import List, Optional
 
 from bots.dev.decorators import handle_errors
-from bots.flows import functional_prompts as fp, recombinators
+from bots.flows import functional_prompts as fp
+from bots.flows import recombinators
 from bots.foundation.base import Bot
 
 
@@ -112,7 +113,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                          'False' (default) for single-response branches
         parallel (str): 'True' to let branches work in parallel, 'False' for sequential (default).
         recombine (str): One of ('concatenate', 'llm_merge', 'llm_vote', 'llm_judge'). If specified
-                         combines the final messages from each branch using that method. 
+                         combines the final messages from each branch using that method.
     Returns:
         str: Success message with branch count, or error details if something went wrong
     Writing effective branch prompts:
@@ -138,18 +139,19 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         branch_self("['Analyze the data for trends', 'Create visualizations', 'Write summary report']")
     """
     # Import dependencies locally
-    
+
     bot = _get_calling_bot()
     if not bot or not bot.tool_handler.requests:
         return "Error: No branch_self tool request found"
-    
+
     # Insert dummy result to prevent repeated tool calls
     request = bot.tool_handler.requests[-1]
     dummy_result = bot.tool_handler.generate_response_schema(
-        request=request, tool_output_kwargs=json.dumps({"status": "branching_in_progress"}))
+        request=request, tool_output_kwargs=json.dumps({"status": "branching_in_progress"})
+    )
     bot.tool_handler.add_result(dummy_result)
     bot.conversation._add_tool_results([dummy_result])
-    
+
     # Parse and validate parameters
     allow_work = allow_work.lower() == "true"
     parallel = parallel.lower() == "true"
@@ -157,15 +159,15 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
     valid_recombine_options = ["none", "concatenate", "llm_judge", "llm_vote", "llm_merge"]
     if recombine not in valid_recombine_options:
         return f"Error: Invalid recombine option. Valid: {valid_recombine_options}"
-    
+
     message_list = _process_string_array(self_prompts)
     if not message_list:
         return "Error: No valid messages provided"
-    
+
     original_node = bot.conversation
     for i, item in enumerate(message_list):
         message_list[i] = f"(self-prompt): {item}"
-    
+
     # Execute branches based on parameters
     try:
         if parallel:
@@ -187,12 +189,12 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         for reply in bot.conversation.replies:
             reply.tool_results = [r for r in reply.tool_results if r != dummy_result]
         bot.tool_handler.results = [r for r in bot.tool_handler.results if r != dummy_result]
-    
+
     # Check for errors
     if any(response is None for response in responses):
         error_messages = [f"Branch {i+1} failed" for i, r in enumerate(responses) if r is None]
         return "Errors: " + "; ".join(error_messages)
-    
+
     # Handle recombination
     if recombine == "none":
         exec_type = "parallel" if parallel else "sequential"
@@ -211,6 +213,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
             return combined_response
         except Exception as e:
             return f"Error during {recombine} recombination: {str(e)}"
+
 
 def add_tools(filepath: str) -> str:
     """Adds a new set of tools (python functions) to your toolkit
@@ -243,4 +246,3 @@ def _process_string_array(input_str: str) -> List[str]:
     if not isinstance(result, list) or not all(isinstance(x, str) for x in result):
         raise ValueError("Input must evaluate to a list of strings")
     return result
-

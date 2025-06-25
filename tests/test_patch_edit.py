@@ -5,13 +5,12 @@ import textwrap
 import unittest
 
 from bots.tools.code_tools import _adjust_additions_to_context, _find_match_with_hierarchy, patch_edit
+from tests.conftest import get_unique_filename
 
 
 class TestGitPatch(unittest.TestCase):
 
     def setUp(self):
-        from tests.conftest import get_unique_filename
-
         self.test_file = get_unique_filename("test_patch_file", "txt")
         with open(self.test_file, "w") as f:
             f.write("line 1\nline 2\nline 3\nline 4\nline 5\n")
@@ -254,7 +253,7 @@ class TestGitPatch(unittest.TestCase):
                 try:
                     # Try normal cleanup first
                     shutil.rmtree(cleanup_dir)
-                except (FileNotFoundError, OSError, PermissionError) as e:
+                except (FileNotFoundError, OSError, PermissionError):
                     # If that fails, try with error handler (Windows-specific)
                     def handle_remove_readonly(func, path, exc):
                         """Error handler for Windows read-only files."""
@@ -276,16 +275,22 @@ class TestGitPatch(unittest.TestCase):
         """Test that class and method indentation is properly preserved when applying patches"""
         with open(self.test_file, "w") as f:
             f.write(
-                'class MyClass:\n    def method1(self):\n        return "original"\n\n    def method2(self):\n        return "test"\n'
+                'class MyClass:\n    def method1(self):\n        return "original"\n\n'
+                '    def method2(self):\n        return "test"\n'
             )
         patch = textwrap.dedent(
-            '\n@@ -1,6 +1,6 @@\nclass MyClass:\n    def method1(self):\n-        return "original"\n+        return "modified"\n\n    def method2(self):\n        return "test"'
+            "\n@@ -1,6 +1,6 @@\nclass MyClass:\n    def method1(self):\n"
+            '-        return "original"\n+        return "modified"\n\n'
+            '    def method2(self):\n        return "test"'
         )
         result = patch_edit(self.test_file, patch)
         self.assertIn("Successfully", result)
         with open(self.test_file, "r") as f:
             content = f.read()
-        expected = 'class MyClass:\n    def method1(self):\n        return "modified"\n\n    def method2(self):\n        return "test"\n'
+        expected = (
+            'class MyClass:\n    def method1(self):\n        return "modified"\n\n'
+            '    def method2(self):\n        return "test"\n'
+        )
         self.assertEqual(
             content, expected, f"Indentation was not preserved.\nExpected:\n{repr(expected)}\nGot:\n{repr(content)}"
         )
@@ -318,7 +323,9 @@ class TestGitPatch(unittest.TestCase):
         self.assertEqual(
             content,
             expected,
-            f"Relative indentation not preserved when adding to indented line.\nExpected:\n{repr(expected)}\nGot:\n{repr(content)}",
+            f"Relative indentation not preserved when adding to indented line.\n"
+            f"Expected:\n{repr(expected)}\n"
+            f"Got:\n{repr(content)}",
         )
 
     def test_replacement_context_matching(self):
@@ -397,7 +404,7 @@ class TestGitPatch(unittest.TestCase):
             try:
                 with open(self.test_file, "w") as f:
                     f.write(initial)
-                result = patch_edit(self.test_file, patch)
+                patch_edit(self.test_file, patch)
                 with open(self.test_file, "r") as f:
                     content = f.read()
                 print(f"\nTest case: {desc} (line {line_num})")
@@ -472,7 +479,7 @@ class TestGitPatch(unittest.TestCase):
         patch = textwrap.dedent(
             """\
             @@ -2,2 +2,6 @@
-            def foo(self):          
+            def foo(self):
                 pass
             +
             +def bar(self):
@@ -508,8 +515,6 @@ class TestGitPatch(unittest.TestCase):
 class TestGitPatchHunkParsing(unittest.TestCase):
 
     def setUp(self):
-        from tests.conftest import get_unique_filename
-
         self.test_file = "test_hunk_parse.txt"
         with open(self.test_file, "w") as f:
             f.write("line 1\nline 2\nline 3\nline 4\nline 5\n")
@@ -586,7 +591,7 @@ class TestIndentationDebug(unittest.TestCase):
         match_result = _find_match_with_hierarchy(current_lines, 1, context_before, removals, additions)
 
         print(f"Hierarchy found match at line: {match_result.get('line')}")
-        print(f"Expected line: 1")
+        print("Expected line: 1")
         print(f"Match successful: {match_result.get('found')}")
         print(f"Message: {match_result.get('message')}")
 
@@ -649,7 +654,7 @@ class TestIndentationDebug(unittest.TestCase):
         patch = textwrap.dedent(
             """\
             @@ -2,2 +2,6 @@
-            def foo(self):          
+            def foo(self):
                 pass
             +
             +def bar(self):
@@ -661,13 +666,13 @@ class TestIndentationDebug(unittest.TestCase):
             tf.write(orig_code)
             tf.flush()
 
-            print(f"Original file content:")
+            print("Original file content:")
             with open(tf.name, "r") as f:
                 lines = f.readlines()
                 for i, line in enumerate(lines):
                     print(f"  {i}: '{line.rstrip()}' ({len(_get_line_indentation(line))} spaces)")
 
-            print(f"\nPatch context lines:")
+            print("\nPatch context lines:")
             context_lines = ["def foo(self):", "    pass"]
             for i, line in enumerate(context_lines):
                 print(f"  {i}: '{line}' ({len(_get_line_indentation(line))} spaces)")
@@ -675,7 +680,7 @@ class TestIndentationDebug(unittest.TestCase):
             result = patch_edit(tf.name, patch)
             print(f"\nPatch result: {result}")
 
-            print(f"\nFinal file content:")
+            print("\nFinal file content:")
             with open(tf.name, "r") as f:
                 lines = f.readlines()
                 for i, line in enumerate(lines):
@@ -693,7 +698,6 @@ class TestIndentationDebug(unittest.TestCase):
         current_lines = ["class MyClass:", "    def foo(self):", "        pass"]  # â† Line 1: 4 spaces  # â† Line 2: 8 spaces
 
         match_line = 1
-        context_before = ["def foo(self):", "    pass"]  # 0 spaces, 4 spaces
         additions = ["", "def bar(self):", "    print('bar!')"]  # 0, 0, 4 spaces
 
         # Manual calculation:

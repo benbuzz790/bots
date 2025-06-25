@@ -1,12 +1,16 @@
-import pytest
-import tempfile
 import os
+import tempfile
 from textwrap import dedent
+
 from bots.tools.python_edit import python_edit
+
+
 def setup_test_file(content):
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(dedent(content))
         return f.name
+
+
 def test_method_replacement_with_imports_bug():
     """BUG: Method replacement with imports can replace entire file"""
     content = """
@@ -22,7 +26,7 @@ def test_method_replacement_with_imports_bug():
     """
     test_file = setup_test_file(content)
     try:
-        result = python_edit(
+        python_edit(
             target_scope=f"{test_file}::StringUtils::reverse_string",
             code="""
                 import re
@@ -31,7 +35,7 @@ def test_method_replacement_with_imports_bug():
                     timestamp = datetime.datetime.now()
                     print(f"Reversing at {timestamp}")
                     return s[::-1]
-            """
+            """,
         )
         with open(test_file, "r") as f:
             final_content = f.read()
@@ -46,5 +50,7 @@ def test_method_replacement_with_imports_bug():
     finally:
         if os.path.exists(test_file):
             os.unlink(test_file)
+
+
 if __name__ == "__main__":
     test_method_replacement_with_imports_bug()

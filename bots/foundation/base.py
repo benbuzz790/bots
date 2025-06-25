@@ -883,13 +883,13 @@ class ToolHandler(ABC):
         """Extract all names used in type annotations from source code."""
         import ast
         import re
-        
+
         annotation_names = set()
-        
+
         try:
             # Parse the source code into an AST
             tree = ast.parse(source_code)
-            
+
             # Walk through all nodes to find annotations
             for node in ast.walk(tree):
                 # Function annotations (parameters and return types)
@@ -898,36 +898,36 @@ class ToolHandler(ABC):
                     for arg in node.args.args:
                         if arg.annotation:
                             annotation_names.update(self._extract_names_from_ast_node(arg.annotation))
-                    
+
                     # Return type annotation
                     if node.returns:
                         annotation_names.update(self._extract_names_from_ast_node(node.returns))
-                
+
                 # Variable annotations (like: x: int = 5)
                 elif isinstance(node, ast.AnnAssign):
                     if node.annotation:
                         annotation_names.update(self._extract_names_from_ast_node(node.annotation))
-        
+
         except SyntaxError:
             # Fallback: use regex if AST parsing fails
             # Match common annotation patterns
             patterns = [
-                r':\s*([A-Za-z_][A-Za-z0-9_]*)',  # param: Type
-                r'->\s*([A-Za-z_][A-Za-z0-9_]*)',  # -> ReturnType
-                r'\[\s*([A-Za-z_][A-Za-z0-9_]*)',  # List[Type]
-                r',\s*([A-Za-z_][A-Za-z0-9_]*)',  # Dict[str, Type]
+                r":\s*([A-Za-z_][A-Za-z0-9_]*)",  # param: Type
+                r"->\s*([A-Za-z_][A-Za-z0-9_]*)",  # -> ReturnType
+                r"\[\s*([A-Za-z_][A-Za-z0-9_]*)",  # List[Type]
+                r",\s*([A-Za-z_][A-Za-z0-9_]*)",  # Dict[str, Type]
             ]
-            
+
             for pattern in patterns:
                 matches = re.findall(pattern, source_code)
                 annotation_names.update(matches)
-        
+
         return annotation_names
 
     def _extract_names_from_ast_node(self, node) -> set:
         """Extract all names from an AST annotation node."""
         names = set()
-        
+
         if isinstance(node, ast.Name):
             names.add(node.id)
         elif isinstance(node, ast.Attribute):
@@ -942,33 +942,33 @@ class ToolHandler(ABC):
                     names.update(self._extract_names_from_ast_node(elt))
             else:
                 names.update(self._extract_names_from_ast_node(node.slice))
-        elif hasattr(node, 'elts'):  # Handle tuples/lists in annotations
+        elif hasattr(node, "elts"):  # Handle tuples/lists in annotations
             for elt in node.elts:
                 names.update(self._extract_names_from_ast_node(elt))
-        
+
         return names
 
     def _capture_annotation_context(self, func: Callable, context: dict) -> None:
         """Capture all objects referenced in function annotations."""
         if not hasattr(func, "__globals__"):
             return
-        
+
         # Get the function's source to analyze annotations
         try:
             source = inspect.getsource(func)
             annotation_names = self._extract_annotation_names(source)
-            
+
             # For each name found in annotations, try to capture it from globals
             for name in annotation_names:
                 if name in func.__globals__:
                     context[name] = func.__globals__[name]
-                    
+
         except (TypeError, OSError):
             # If we can't get source, fall back to __annotations__
             if hasattr(func, "__annotations__") and func.__annotations__:
                 # This is a simplified fallback - get basic type names
                 for annotation in func.__annotations__.values():
-                    if hasattr(annotation, '__name__'):
+                    if hasattr(annotation, "__name__"):
                         name = annotation.__name__
                         if name in func.__globals__:
                             context[name] = func.__globals__[name]
@@ -1027,22 +1027,23 @@ class ToolHandler(ABC):
 
                         # Also capture globals from the original module
                         import importlib
+
                         try:
                             original_module = importlib.import_module(func.__module__)
                             for name, value in original_module.__dict__.items():
-                                if not name.startswith('__') and name not in context:
+                                if not name.startswith("__") and name not in context:
                                     if callable(value) or isinstance(value, type):
                                         context[name] = value
                         except ImportError:
                             pass
-                        
+
                         # Add all imports from the original module
                         import types
 
                         for name, value in func.__globals__.items():
                             if isinstance(value, types.ModuleType) or callable(value):
                                 context[name] = value
-                        
+
                         # Enhanced decorator handling with annotation support
                         import re
 
@@ -1050,15 +1051,15 @@ class ToolHandler(ABC):
                         for decorator_name in decorator_matches:
                             if decorator_name in func.__globals__:
                                 context[decorator_name] = func.__globals__[decorator_name]
-                                
+
                                 try:
                                     decorator_func = func.__globals__[decorator_name]
                                     if callable(decorator_func) and not inspect.isbuiltin(decorator_func):
                                         decorator_source = inspect.getsource(decorator_func)
-                                        
+
                                         # CRITICAL: Capture annotation context from decorator
                                         self._capture_annotation_context(decorator_func, context)
-                                        
+
                                         # Enhanced decorator dependency capture
                                         if hasattr(decorator_func, "__globals__"):
                                             # Capture ALL globals that the decorator might need
@@ -1069,9 +1070,9 @@ class ToolHandler(ABC):
                                                     elif isinstance(dec_value, types.ModuleType):
                                                         context[dec_name] = dec_value
                                                     # Also capture any objects from decorator's globals
-                                                    elif hasattr(dec_value, '__module__'):
+                                                    elif hasattr(dec_value, "__module__"):
                                                         context[dec_name] = dec_value
-                                        
+
                                         # Handle closure variables
                                         if hasattr(decorator_func, "__closure__") and decorator_func.__closure__:
                                             freevars = decorator_func.__code__.co_freevars
@@ -1088,16 +1089,14 @@ class ToolHandler(ABC):
                                                     except ValueError:
                                                         pass
                                             if closure_defs:
-                                                decorator_source = (
-                                                    "\n".join(closure_defs) + "\n\n" + decorator_source
-                                                )
-                                        
+                                                decorator_source = "\n".join(closure_defs) + "\n\n" + decorator_source
+
                                         source = _clean_decorator_source(decorator_source) + "\n\n" + source
-                                        
+
                                 except (TypeError, OSError):
                                     # Can't get decorator source, continue with function object
                                     pass
-                        
+
                         # Enhanced handling for locally-defined decorators
                         missing_decorators = [name for name in decorator_matches if name not in func.__globals__]
                         if missing_decorators:
@@ -1105,17 +1104,17 @@ class ToolHandler(ABC):
                             try:
                                 while frame:
                                     frame_locals = frame.f_locals
-                                    
+
                                     for decorator_name in missing_decorators:
                                         if decorator_name in frame_locals:
                                             decorator_func = frame_locals[decorator_name]
                                             if callable(decorator_func):
                                                 try:
                                                     decorator_source = inspect.getsource(decorator_func)
-                                                    
+
                                                     # CRITICAL: Capture annotation context from local decorator too
                                                     self._capture_annotation_context(decorator_func, context)
-                                                    
+
                                                     # Handle closure variables
                                                     closure_defs = []
                                                     if hasattr(decorator_func, "__closure__") and decorator_func.__closure__:
@@ -1131,17 +1130,15 @@ class ToolHandler(ABC):
                                                                     context[var_name] = closure_value
                                                                 except ValueError:
                                                                     pass
-                                                    
+
                                                     if closure_defs:
-                                                        decorator_source = (
-                                                            "\n".join(closure_defs) + "\n\n" + decorator_source
-                                                        )
-                                                    
+                                                        decorator_source = "\n".join(closure_defs) + "\n\n" + decorator_source
+
                                                     source = _clean_decorator_source(decorator_source) + "\n\n" + source
-                                                    
+
                                                 except (TypeError, OSError) as e:
                                                     print(f"DEBUG: Could not capture decorator {decorator_name}: {e}")
-                                    
+
                                     frame = frame.f_back
                             finally:
                                 del frame
@@ -1293,11 +1290,10 @@ class ToolHandler(ABC):
     def _add_imports_to_source(self, module_context) -> str:
         """Add necessary imports to module source code."""
         import types
-        import re
 
         imports_needed = []
         source = module_context.source
-        
+
         # Scan the source code for annotation usage and add imports accordingly
         annotation_names = self._extract_annotation_names(source)
         if annotation_names:
@@ -1305,15 +1301,27 @@ class ToolHandler(ABC):
             typing_names = []
             collections_names = []
             other_names = []
-            
+
             for name in annotation_names:
-                if name in ['Any', 'Callable', 'Dict', 'List', 'Optional', 'Tuple', 'Type', 'Union', 'Literal', 'TypeVar', 'Generic']:
+                if name in [
+                    "Any",
+                    "Callable",
+                    "Dict",
+                    "List",
+                    "Optional",
+                    "Tuple",
+                    "Type",
+                    "Union",
+                    "Literal",
+                    "TypeVar",
+                    "Generic",
+                ]:
                     typing_names.append(name)
-                elif name in ['defaultdict', 'deque', 'Counter', 'OrderedDict']:
+                elif name in ["defaultdict", "deque", "Counter", "OrderedDict"]:
                     collections_names.append(name)
                 else:
                     other_names.append(name)
-            
+
             if typing_names:
                 imports_needed.append(f"from typing import {', '.join(sorted(typing_names))}")
             if collections_names:
@@ -1331,7 +1339,7 @@ class ToolHandler(ABC):
                     imports_needed.append("from collections import defaultdict")
 
         # Also check for wraps import (commonly used in decorators)
-        if 'wraps' in source and '@wraps' in source:
+        if "wraps" in source and "@wraps" in source:
             imports_needed.append("from functools import wraps")
 
         if imports_needed:
@@ -1363,11 +1371,11 @@ class ToolHandler(ABC):
         """
         module_details = {}
         function_paths = {}
-        
+
         for file_path, module_context in self.modules.items():
             # CRITICAL: Use the enhanced source with imports when saving
             enhanced_source = self._add_imports_to_source(module_context)
-            
+
             module_details[file_path] = {
                 "name": module_context.name,
                 "source": enhanced_source,  # Save the enhanced source, not the original
@@ -1379,14 +1387,14 @@ class ToolHandler(ABC):
                     if not k.startswith("__") and isinstance(v, (int, float, str, bool, list, dict))
                 },
             }
-        
+
         for name, func in self.function_map.items():
             module_context = getattr(func, "__module_context__", None)
             if module_context:
                 function_paths[name] = module_context.file_path
             else:
                 function_paths[name] = "dynamic"
-        
+
         return {
             "class": f"{self.__class__.__module__}.{self.__class__.__name__}",
             "tools": self.tools.copy(),
@@ -1433,7 +1441,7 @@ class ToolHandler(ABC):
         handler.requests = data.get("requests", [])
         handler.tools = data.get("tools", []).copy()
         function_paths = data.get("function_paths", {})
-        
+
         for file_path, module_data in data.get("modules", {}).items():
             current_code_hash = cls._get_code_hash(module_data["source"])
             if current_code_hash != module_data["code_hash"]:
@@ -1443,12 +1451,12 @@ class ToolHandler(ABC):
                 module = ModuleType(module_data["name"])
                 module.__file__ = file_path
                 source = module_data["source"]
-                
+
                 if "globals" in module_data:
                     module.__dict__.update(module_data["globals"])
-                
+
                 exec(source, module.__dict__)
-                
+
                 module_context = ModuleContext(
                     name=module_data["name"],
                     source=source,
@@ -1457,21 +1465,21 @@ class ToolHandler(ABC):
                     code_hash=current_code_hash,
                 )
                 handler.modules[module_data["file_path"]] = module_context
-                
+
                 for func_name, path in function_paths.items():
                     if path == module_data["file_path"] and func_name in module.__dict__:
                         func = module.__dict__[func_name]
                         if callable(func):
                             func.__module_context__ = module_context
                             handler.function_map[func_name] = func
-                            
+
             except Exception as e:
-                import traceback
                 import sys
-                
+                import traceback
+
                 print(f"Warning: Failed to load module {file_path}")
                 print(f"  Error: {type(e).__name__}: {str(e)}")
-                
+
                 # Get detailed traceback information
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 if exc_traceback:
@@ -1479,38 +1487,39 @@ class ToolHandler(ABC):
                     tb_lineno = exc_traceback.tb_lineno
                     print(f"  Location: {tb_frame.f_code.co_filename}:{tb_lineno}")
                     print(f"  Function: {tb_frame.f_code.co_name}")
-                    
+
                     # Get local variables at the point of failure
                     if tb_frame.f_locals:
-                        relevant_locals = {k: v for k, v in tb_frame.f_locals.items() 
-                                         if not k.startswith('__') and not callable(v)}
+                        relevant_locals = {
+                            k: v for k, v in tb_frame.f_locals.items() if not k.startswith("__") and not callable(v)
+                        }
                         if relevant_locals:
                             print(f"  Local variables: {relevant_locals}")
-                
+
                 # Show the full stack trace for debugging
                 tb_lines = traceback.format_tb(exc_traceback)
                 if tb_lines:
                     print("  Full stack trace:")
                     for i, line in enumerate(tb_lines):
                         print(f"    Frame {i}: {line.strip()}")
-                
+
                 # Show the source code around the error if possible
-                if exc_traceback and hasattr(exc_traceback, 'tb_lineno'):
+                if exc_traceback and hasattr(exc_traceback, "tb_lineno"):
                     try:
-                        source_lines = source.split('\n')
+                        source_lines = source.split("\n")
                         error_line = exc_traceback.tb_lineno
                         start_line = max(0, error_line - 3)
                         end_line = min(len(source_lines), error_line + 2)
-                        
+
                         print(f"  Source context (lines {start_line + 1}-{end_line}):")
                         for i in range(start_line, end_line):
                             prefix = ">>> " if i + 1 == error_line else "    "
                             print(f"  {prefix}{i + 1:3d}: {source_lines[i]}")
                     except Exception:
                         pass
-                
+
                 continue
-        
+
         return handler
 
     def get_tools_json(self) -> str:
@@ -2253,16 +2262,12 @@ class Bot(ABC):
                 tool_info.append(f"{indent}│ Tool Results:")
                 for result in node.tool_results:
                     if isinstance(result, dict):
-                        tool_info.append(
-                            f"{indent}│   - {str(result.get('content', ''))[:available_width]}"
-                        )
+                        tool_info.append(f"{indent}│   - {str(result.get('content', ''))[:available_width]}")
             if hasattr(node, "pending_results") and node.pending_results:
                 tool_info.append(f"{indent}│ Pending Results:")
                 for result in node.pending_results:
                     if isinstance(result, dict):
-                        tool_info.append(
-                            f"{indent}│   - {str(result.get('content', ''))[:available_width]}"
-                        )
+                        tool_info.append(f"{indent}│   - {str(result.get('content', ''))[:available_width]}")
                     else:
                         raise ValueError()
             messages.append(f"{indent}├─ {name_display}")
@@ -2276,16 +2281,12 @@ class Bot(ABC):
                 messages.append(f"{indent}│ Tool Results:")
                 for result in node.tool_results:
                     if isinstance(result, dict):
-                        messages.append(
-                            f"{indent}│   - {str(result.get('content', ''))[:available_width]}"
-                        )
+                        messages.append(f"{indent}│   - {str(result.get('content', ''))[:available_width]}")
             if hasattr(node, "pending_results") and node.pending_results:
                 messages.append(f"{indent}│ Pending Results:")
                 for result in node.pending_results:
                     if isinstance(result, dict):
-                        messages.append(
-                            f"{indent}│   - {str(result.get('content', ''))[:available_width]}"
-                        )
+                        messages.append(f"{indent}│   - {str(result.get('content', ''))[:available_width]}")
             messages.append(f"{indent}└" + "─" * 40)
             if hasattr(node, "replies") and node.replies:
                 for reply in node.replies:

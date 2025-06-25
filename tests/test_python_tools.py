@@ -2,7 +2,6 @@ import ast
 import difflib
 import inspect
 import os
-import psutil
 import shutil
 import sys
 import tempfile
@@ -10,6 +9,8 @@ import textwrap
 import time
 import traceback
 import unittest
+
+import psutil
 
 from bots.tools import python_editing_tools, python_execution_tool
 from tests.conftest import get_unique_filename

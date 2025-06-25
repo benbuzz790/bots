@@ -1248,10 +1248,10 @@ class CLI:
         bot = AnthropicBot()
         self.context.bot_instance = bot
         from bots.tools.code_tools import view, view_dir
-        from bots.tools.python_editing_tools import replace_class, replace_function, replace_import
-        from bots.tools.self_tools import branch_self
         from bots.tools.python_edit import python_edit
-        bot.add_tools(bots.tools.terminal_tools, replace_class, replace_function, replace_import, view, view_dir)
+        from bots.tools.self_tools import branch_self
+
+        bot.add_tools(bots.tools.terminal_tools, branch_self, python_edit, view, view_dir)
 
     def _handle_command(self, bot: Bot, user_input: str):
         """Handle command input."""

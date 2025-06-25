@@ -322,9 +322,11 @@ def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
 
         Common manual fixes needed:
         - Line length violations: Break long lines at appropriate points
+          but do not excessively shorten variable names. Descriptive var
+          names are part of the author's style.
         - Bare except clauses: Change 'except:' to 'except Exception:'
         - Unused variables: Remove or prefix with underscore
-        - F-strings without placeholders: Convert to regular strings
+        - F-strings without placeholders: Convert to regular strings (use double quotes)
         - Missing blank lines: Add proper spacing between functions/classes
         - 'raise NotImplemented': Change to 'raise NotImplementedError'
 
@@ -337,6 +339,10 @@ def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
         to ignore the file in question. As an example, test_python_edit.py
         contains many specific combinations of ", ', and escape characters
         and formatters are very likely to change functionality.
+
+        IMPORTANT: If you see repeated code elements, and very large amounts
+        of indentation you *may* refactor into smaller chunks, but only do
+        this if it's completely necessary to meet line length limits.
         """
     ).strip()
 

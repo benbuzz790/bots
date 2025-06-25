@@ -4,31 +4,37 @@ import os
 import textwrap
 from enum import Enum
 from typing import Dict, List, Tuple
+
 from bots.dev.decorators import handle_errors
 from bots.utils.helpers import _clean, _process_error, _py_ast_to_source
 from bots.utils.unicode_utils import clean_unicode_string
 
+
 def _read_file_bom_safe(file_path: str) -> str:
     """Read a file with BOM protection."""
-    with open(file_path, 'r', encoding='utf-8') as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         content = file.read()
     return clean_unicode_string(content)
+
 
 def _write_file_bom_safe(file_path: str, content: str) -> None:
     """Write a file with BOM protection."""
     clean_content = clean_unicode_string(content)
-    with open(file_path, 'w', encoding='utf-8') as file:
+    with open(file_path, "w", encoding="utf-8") as file:
         file.write(clean_content)
+
 
 class TokenType(Enum):
     """Types of tokens for metadata-driven processing"""
-    STANDALONE_COMMENT = 'standalone_comment'
-    INLINE_COMMENT = 'inline_comment'
-    IMPORT_COMMENT = 'import_comment'
-    COMPOUND_COMMENT = 'compound_comment'
-    STRING_LITERAL = 'string_literal'
-    FSTRING_LITERAL = 'fstring_literal'
-    MULTILINE_STRING = 'multiline_string'
+
+    STANDALONE_COMMENT = "standalone_comment"
+    INLINE_COMMENT = "inline_comment"
+    IMPORT_COMMENT = "import_comment"
+    COMPOUND_COMMENT = "compound_comment"
+    STRING_LITERAL = "string_literal"
+    FSTRING_LITERAL = "fstring_literal"
+    MULTILINE_STRING = "multiline_string"
+
 
 class ScopeTransformer(ast.NodeTransformer):
     """AST transformer that handles scope-based Python code modifications."""
@@ -103,20 +109,20 @@ class ScopeTransformer(ast.NodeTransformer):
 
     def _handle_one_line_function(self, node, line):
         """Special handling for one-line function definitions"""
-        if ': pass' in line or ':pass' in line:
+        if ": pass" in line or ":pass" in line:
             base_indent = len(line) - len(line.lstrip())
             def_line = line.rstrip()
-            if self.insert_after == 'pass':
-                def_line = def_line.replace(': pass', ':').replace(':pass', ':')
+            if self.insert_after == "pass":
+                def_line = def_line.replace(": pass", ":").replace(":pass", ":")
                 body_indent = base_indent + 4
                 body_lines = []
-                body_lines.append(' ' * body_indent + 'pass')
+                body_lines.append(" " * body_indent + "pass")
                 for new_node in self.new_nodes:
-                    node_lines = _py_ast_to_source(new_node).split('\n')
+                    node_lines = _py_ast_to_source(new_node).split("\n")
                     for nl in node_lines:
                         if nl.strip():
-                            body_lines.append(' ' * body_indent + nl.lstrip())
-                new_source = def_line + '\n' + '\n'.join(body_lines)
+                            body_lines.append(" " * body_indent + nl.lstrip())
+                new_source = def_line + "\n" + "\n".join(body_lines)
                 try:
                     new_node = ast.parse(new_source).body[0]
                     self.success = True
@@ -135,17 +141,17 @@ class ScopeTransformer(ast.NodeTransformer):
         """Handle inserting nodes after a specific scope point."""
         if not self.insert_after:
             return node
-        if self.insert_after == '__FILE_START__':
+        if self.insert_after == "__FILE_START__":
             return node
-        if '::' in self.insert_after:
-            target_path = self.insert_after.split('::')
+        if "::" in self.insert_after:
+            target_path = self.insert_after.split("::")
             current_path = self.current_path
             if len(target_path) > 1 and len(current_path) == len(target_path) - 1:
-                if all((c == t for c, t in zip(current_path, target_path[:len(current_path)]))):
+                if all((c == t for c, t in zip(current_path, target_path[: len(current_path)]))):
                     target_name = target_path[-1]
                     insert_index = None
                     for idx, child in enumerate(node.body):
-                        if hasattr(child, 'name') and child.name == target_name:
+                        if hasattr(child, "name") and child.name == target_name:
                             insert_index = idx + 1
                             break
                     if insert_index is not None:
@@ -164,7 +170,7 @@ class ScopeTransformer(ast.NodeTransformer):
             target_name = self.insert_after
             insert_index = None
             for idx, child in enumerate(node.body):
-                if hasattr(child, 'name') and child.name == target_name:
+                if hasattr(child, "name") and child.name == target_name:
                     insert_index = idx + 1
                     break
             if insert_index is not None:
@@ -176,17 +182,17 @@ class ScopeTransformer(ast.NodeTransformer):
 
     def _find_containing_node(self, node, target_line):
         """Find the deepest AST node with a body that contains the target line."""
-        if not (hasattr(node, 'lineno') and hasattr(node, 'end_lineno')):
+        if not (hasattr(node, "lineno") and hasattr(node, "end_lineno")):
             return None
         if not node.lineno <= target_line <= node.end_lineno:
             return None
-        deepest_with_body = node if hasattr(node, 'body') else None
-        if hasattr(node, 'body'):
+        deepest_with_body = node if hasattr(node, "body") else None
+        if hasattr(node, "body"):
             for child in node.body:
                 deeper_node = self._find_containing_node(child, target_line)
                 if deeper_node:
                     return deeper_node
-        if hasattr(node, 'orelse'):
+        if hasattr(node, "orelse"):
             for child in node.orelse:
                 deeper_node = self._find_containing_node(child, target_line)
                 if deeper_node:
@@ -197,18 +203,19 @@ class ScopeTransformer(ast.NodeTransformer):
 
     def _insert_into_node(self, node, target_line):
         """Insert new nodes into the given node after the target line."""
-        if not hasattr(node, 'body'):
+        if not hasattr(node, "body"):
             return
         insert_index = len(node.body)
         for idx, child in enumerate(node.body):
-            if hasattr(child, 'lineno') and child.lineno > target_line:
+            if hasattr(child, "lineno") and child.lineno > target_line:
                 insert_index = idx
                 break
         for i, new_node in enumerate(self.new_nodes):
             node.body.insert(insert_index + i, new_node)
 
+
 @handle_errors
-def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
+def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> str:
     """
     Edit Python code using pytest-style scope syntax.
     Default behavior: Replace entire target scope.
@@ -241,16 +248,16 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
         Description of what was modified or error message
     """
     try:
-        file_path, *path_elements = target_scope.split('::')
-        if not file_path.endswith('.py'):
-            return _process_error(ValueError(f'File path must end with .py: {file_path}'))
+        file_path, *path_elements = target_scope.split("::")
+        if not file_path.endswith(".py"):
+            return _process_error(ValueError(f"File path must end with .py: {file_path}"))
         for element in path_elements:
             if not element.isidentifier():
-                return _process_error(ValueError(f'Invalid identifier in path: {element}'))
+                return _process_error(ValueError(f"Invalid identifier in path: {element}"))
         abs_path = _make_file(file_path)
         cleaned_code, prep_error = prep_input(code)
         if prep_error:
-            return _process_error(ValueError(f'Input code validation failed:\n{prep_error}'))
+            return _process_error(ValueError(f"Input code validation failed:\n{prep_error}"))
         tokenized_code, new_code_tokens = _tokenize_source(cleaned_code)
         try:
             new_tree = ast.parse(tokenized_code)
@@ -262,19 +269,19 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 else:
                     code_nodes.append(node)
         except Exception as e:
-            return _process_error(ValueError(f'Error parsing new code: {str(e)}'))
+            return _process_error(ValueError(f"Error parsing new code: {str(e)}"))
         try:
-            with open(abs_path, 'r', encoding='utf-8') as file:
+            with open(abs_path, "r", encoding="utf-8") as file:
                 original_content = file.read()
             was_originally_empty = not original_content.strip()
             top_level_comments = []
             if original_content.strip():
                 original_content, top_level_comments = _extract_top_level_comments(original_content)
-            tokenized_content, file_tokens = _tokenize_source(original_content) if original_content.strip() else ('', {})
-            file_lines = tokenized_content.split('\n')
+            tokenized_content, file_tokens = _tokenize_source(original_content) if original_content.strip() else ("", {})
+            file_lines = tokenized_content.split("\n")
             tree = ast.parse(tokenized_content) if original_content.strip() else ast.Module(body=[], type_ignores=[])
         except Exception as e:
-            return _process_error(ValueError(f'Error reading/parsing file {abs_path}: {str(e)}'))
+            return _process_error(ValueError(f"Error reading/parsing file {abs_path}: {str(e)}"))
         existing_imports = []
         non_imports = []
         for node in tree.body:
@@ -283,7 +290,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
             else:
                 non_imports.append(node)
         deduplicated_imports = _deduplicate_imports(existing_imports, import_nodes)
-        if insert_after == '__FILE_START__':
+        if insert_after == "__FILE_START__":
             tree.body = import_nodes + code_nodes + existing_imports + non_imports
             try:
                 updated_content = _py_ast_to_source(tree)
@@ -291,7 +298,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 final_content = _detokenize_source(updated_content, all_tokens)
                 final_content = _preserve_blank_lines(final_content, original_content)
                 final_content = _restore_top_level_comments(final_content, top_level_comments)
-                with open(abs_path, 'w', encoding='utf-8') as file:
+                with open(abs_path, "w", encoding="utf-8") as file:
                     file.write(final_content)
                 return f"Code inserted at start of '{abs_path}'."
             except Exception as e:
@@ -301,30 +308,30 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 # File-level insert_after: find the target and insert after it
                 target_found = False
                 insert_index = len(non_imports)  # Default to end if not found
-                
+
                 for i, node in enumerate(non_imports):
-                    if hasattr(node, 'name') and node.name == insert_after:
+                    if hasattr(node, "name") and node.name == insert_after:
                         insert_index = i + 1
                         target_found = True
                         break
-                
+
                 if not target_found:
-                    return _process_error(ValueError(f'Insert point not found at file level: {insert_after}'))
-                
+                    return _process_error(ValueError(f"Insert point not found at file level: {insert_after}"))
+
                 # Insert the new code nodes at the found position
                 new_non_imports = non_imports[:insert_index] + code_nodes + non_imports[insert_index:]
                 tree.body = deduplicated_imports + new_non_imports
             else:
                 # File-level replacement: replace entire file content
                 tree.body = deduplicated_imports + code_nodes
-            
+
             try:
                 updated_content = _py_ast_to_source(tree)
                 all_tokens = {**file_tokens, **new_code_tokens}
                 final_content = _detokenize_source(updated_content, all_tokens)
                 final_content = _preserve_blank_lines(final_content, original_content)
                 final_content = _restore_top_level_comments(final_content, top_level_comments)
-                with open(abs_path, 'w', encoding='utf-8') as file:
+                with open(abs_path, "w", encoding="utf-8") as file:
                     file.write(final_content)
                 if was_originally_empty:
                     return f"Code added to '{abs_path}'."
@@ -339,24 +346,25 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
         modified_tree = transformer.visit(tree)
         if not transformer.success:
             if insert_after:
-                return _process_error(ValueError(f'Insert point not found: {insert_after}'))
+                return _process_error(ValueError(f"Insert point not found: {insert_after}"))
             else:
-                return _process_error(ValueError(f'Target scope not found: {target_scope}'))
+                return _process_error(ValueError(f"Target scope not found: {target_scope}"))
         try:
             updated_content = _py_ast_to_source(modified_tree)
             all_tokens = {**file_tokens, **new_code_tokens}
             final_content = _detokenize_source(updated_content, all_tokens)
             final_content = _preserve_blank_lines(final_content, original_content)
             final_content = _restore_top_level_comments(final_content, top_level_comments)
-            with open(abs_path, 'w', encoding='utf-8') as file:
+            with open(abs_path, "w", encoding="utf-8") as file:
                 file.write(final_content)
-            action = 'inserted after' if insert_after else 'replaced at'
-            scope_str = '::'.join(path_elements) if path_elements else 'file level'
+            action = "inserted after" if insert_after else "replaced at"
+            scope_str = "::".join(path_elements) if path_elements else "file level"
             return f"Code {action} {scope_str} in '{abs_path}'."
         except Exception as e:
             return _process_error(e)
     except Exception as e:
         return _process_error(e)
+
 
 def _make_file(file_path: str) -> str:
     """
@@ -374,21 +382,22 @@ def _make_file(file_path: str) -> str:
                  or if the file_path is empty
     """
     if not file_path:
-        raise ValueError('File path cannot be empty')
+        raise ValueError("File path cannot be empty")
     abs_path = os.path.abspath(file_path)
     dir_path = os.path.dirname(abs_path)
     if dir_path:
         try:
             os.makedirs(dir_path, exist_ok=True)
         except Exception as e:
-            raise ValueError(f'Error creating directories {dir_path}: {str(e)}')
+            raise ValueError(f"Error creating directories {dir_path}: {str(e)}")
     if not os.path.exists(abs_path):
         try:
-            with open(abs_path, 'w', encoding='utf-8') as f:
-                f.write('')
+            with open(abs_path, "w", encoding="utf-8") as f:
+                f.write("")
         except Exception as e:
-            raise ValueError(f'Error creating file {abs_path}: {str(e)}')
+            raise ValueError(f"Error creating file {abs_path}: {str(e)}")
     return abs_path
+
 
 def prep_input(code: str) -> tuple[str, str | None]:
     """
@@ -407,60 +416,82 @@ def prep_input(code: str) -> tuple[str, str | None]:
     try:
         cleaned_code = _clean(code)
         if not cleaned_code.strip():
-            return ('', 'Input code is empty or contains only whitespace')
+            return ("", "Input code is empty or contains only whitespace")
         try:
             ast.parse(cleaned_code)
             return (cleaned_code, None)
         except SyntaxError as e:
             error_lines = []
-            error_lines.append(f'Syntax error in input code: {e.msg}')
-            if hasattr(e, 'lineno') and e.lineno:
+            error_lines.append(f"Syntax error in input code: {e.msg}")
+            if hasattr(e, "lineno") and e.lineno:
                 error_lines.append(f"Line {e.lineno}: {(e.text.strip() if e.text else '(unknown)')}")
-                if hasattr(e, 'offset') and e.offset:
-                    pointer = ' ' * (e.offset - 1) + '^'
-                    error_lines.append(f'Position: {pointer}')
-            code_lines = cleaned_code.split('\n')
-            if hasattr(e, 'lineno') and e.lineno and (1 <= e.lineno <= len(code_lines)):
-                error_lines.append('\nProblematic code section:')
+                if hasattr(e, "offset") and e.offset:
+                    pointer = " " * (e.offset - 1) + "^"
+                    error_lines.append(f"Position: {pointer}")
+            code_lines = cleaned_code.split("\n")
+            if hasattr(e, "lineno") and e.lineno and (1 <= e.lineno <= len(code_lines)):
+                error_lines.append("\nProblematic code section:")
                 start_line = max(1, e.lineno - 2)
                 end_line = min(len(code_lines), e.lineno + 2)
                 for i in range(start_line, end_line + 1):
                     line_num = i
-                    line_content = code_lines[i - 1] if i <= len(code_lines) else ''
-                    marker = '>>> ' if i == e.lineno else '    '
-                    error_lines.append(f'{marker}{line_num:3d}: {line_content}')
-            return (cleaned_code, '\n'.join(error_lines))
+                    line_content = code_lines[i - 1] if i <= len(code_lines) else ""
+                    marker = ">>> " if i == e.lineno else "    "
+                    error_lines.append(f"{marker}{line_num:3d}: {line_content}")
+            return (cleaned_code, "\n".join(error_lines))
         except Exception as e:
-            return (cleaned_code, f'Failed to parse input code: {type(e).__name__}: {str(e)}')
+            return (cleaned_code, f"Failed to parse input code: {type(e).__name__}: {str(e)}")
     except Exception as e:
-        return (code, f'Failed to process input code: {type(e).__name__}: {str(e)}')
+        return (code, f"Failed to process input code: {type(e).__name__}: {str(e)}")
 
-def _create_token(content: str, index: int, current_hash: str, token_type: TokenType=None, extra_metadata: dict=None) -> Tuple[str, Dict]:
+
+def _create_token(
+    content: str, index: int, current_hash: str, token_type: TokenType = None, extra_metadata: dict = None
+) -> Tuple[str, Dict]:
     """Create a token with our specific pattern and metadata"""
-    token_name = f'TOKEN_{current_hash}_{index}'
+    token_name = f"TOKEN_{current_hash}_{index}"
     metadata = extra_metadata or {}
     if token_type:
-        metadata['type'] = token_type.value
-    token_data = {'content': content, 'metadata': metadata}
+        metadata["type"] = token_type.value
+    token_data = {"content": content, "metadata": metadata}
     return (token_name, token_data)
+
 
 def _get_file_hash(content: str) -> str:
     """Create a short hash of file content"""
     return hashlib.sha256(content.encode()).hexdigest()[:8]
 
+
 def _contains_token(s: str) -> bool:
-    return 'TOKEN_' in s
+    return "TOKEN_" in s
+
 
 def _is_fstring_start(line, pos):
     """Check if position starts an f-string (f", f', rf", etc.)"""
     if pos >= len(line) or line[pos] not in ['"', "'"]:
         return (False, False)
-    prefixes = {'f': (True, False), 'F': (True, False), 'rf': (True, True), 'Rf': (True, True), 'rF': (True, True), 'RF': (True, True), 'fr': (True, True), 'Fr': (True, True), 'fR': (True, True), 'FR': (True, True)}
+    prefixes = {
+        "f": (True, False),
+        "F": (True, False),
+        "rf": (True, True),
+        "Rf": (True, True),
+        "rF": (True, True),
+        "RF": (True, True),
+        "fr": (True, True),
+        "Fr": (True, True),
+        "fR": (True, True),
+        "FR": (True, True),
+    }
     for prefix, (is_f, is_raw) in prefixes.items():
         prefix_start = pos - len(prefix)
-        if prefix_start >= 0 and line[prefix_start:pos] == prefix and (prefix_start == 0 or not line[prefix_start - 1].isalnum()):
+        if (
+            prefix_start >= 0
+            and line[prefix_start:pos] == prefix
+            and (prefix_start == 0 or not line[prefix_start - 1].isalnum())
+        ):
             return (is_f, is_raw)
     return (False, False)
+
 
 def _find_fstring_end(line, start_pos, quote_char, is_raw=False):
     """Find the end of an f-string, handling nested braces and expressions."""
@@ -468,16 +499,16 @@ def _find_fstring_end(line, start_pos, quote_char, is_raw=False):
     brace_depth = 0
     while pos < len(line):
         char = line[pos]
-        if char == '{':
-            if pos + 1 < len(line) and line[pos + 1] == '{':
+        if char == "{":
+            if pos + 1 < len(line) and line[pos + 1] == "{":
                 pos += 2
                 continue
             else:
                 brace_depth += 1
                 pos += 1
                 continue
-        elif char == '}':
-            if pos + 1 < len(line) and line[pos + 1] == '}':
+        elif char == "}":
+            if pos + 1 < len(line) and line[pos + 1] == "}":
                 pos += 2
                 continue
             else:
@@ -486,7 +517,7 @@ def _find_fstring_end(line, start_pos, quote_char, is_raw=False):
                 continue
         elif char == quote_char and brace_depth == 0:
             return pos
-        elif char == '\\' and (not is_raw) and (pos + 1 < len(line)):
+        elif char == "\\" and (not is_raw) and (pos + 1 < len(line)):
             pos += 2
             continue
         elif char in ['"', "'"] and brace_depth > 0:
@@ -498,30 +529,50 @@ def _find_fstring_end(line, start_pos, quote_char, is_raw=False):
         pos += 1
     return -1
 
+
 def _determine_comment_type(code_stripped: str) -> Tuple[TokenType, dict]:
     """Determine the type of comment based on the preceding code."""
     code_no_indent = code_stripped.lstrip()
-    if code_no_indent.startswith(('import ', 'from ')):
-        return (TokenType.IMPORT_COMMENT, {'import_statement': code_stripped})
-    compound_patterns = ['def ', 'class ', 'if ', 'elif ', 'for ', 'while ', 'with ', 'async def ', 'try:', 'except ', 'finally:', 'else:']
-    is_compound = any((code_no_indent.startswith(pattern) for pattern in compound_patterns)) and code_stripped.endswith(':') or code_stripped.strip() in ['else:', 'try:', 'finally:']
+    if code_no_indent.startswith(("import ", "from ")):
+        return (TokenType.IMPORT_COMMENT, {"import_statement": code_stripped})
+    compound_patterns = [
+        "def ",
+        "class ",
+        "if ",
+        "elif ",
+        "for ",
+        "while ",
+        "with ",
+        "async def ",
+        "try:",
+        "except ",
+        "finally:",
+        "else:",
+    ]
+    is_compound = (
+        any((code_no_indent.startswith(pattern) for pattern in compound_patterns))
+        and code_stripped.endswith(":")
+        or code_stripped.strip() in ["else:", "try:", "finally:"]
+    )
     if is_compound:
-        return (TokenType.COMPOUND_COMMENT, {'statement': code_stripped})
+        return (TokenType.COMPOUND_COMMENT, {"statement": code_stripped})
     return (TokenType.INLINE_COMMENT, {})
+
 
 def _get_indentation_at_position(source: str, pos: int) -> str:
     """Get the indentation level at a given position in source"""
-    line_start = source.rfind('\n', 0, pos) + 1
-    return source[line_start:pos].replace(source[line_start:pos].lstrip(), '')
+    line_start = source.rfind("\n", 0, pos) + 1
+    return source[line_start:pos].replace(source[line_start:pos].lstrip(), "")
+
 
 def _indent_multiline_content(content: str, indent: str) -> str:
     """Indent multiline content while preserving internal formatting"""
     if not content.strip():
         return content
-    lines = content.split('\n')
+    lines = content.split("\n")
     if len(lines) == 1:
         return content
-    if all((line.startswith(' ') for line in lines[1:] if line.strip())):
+    if all((line.startswith(" ") for line in lines[1:] if line.strip())):
         return content
     result = [lines[0]]
     for line in lines[1:]:
@@ -529,21 +580,22 @@ def _indent_multiline_content(content: str, indent: str) -> str:
             result.append(indent + line)
         else:
             result.append(line)
-    return '\n'.join(result)
+    return "\n".join(result)
+
 
 def _preserve_blank_lines(result: str, original_source: str) -> str:
     """
     Restore blank lines around comments that had them in the original source.
     """
-    original_lines = original_source.split('\n')
-    result_lines = result.split('\n')
+    original_lines = original_source.split("\n")
+    result_lines = result.split("\n")
     comments_with_blanks = {}
     for i, line in enumerate(original_lines):
-        if line.strip().startswith('#') and 'marker' in line.lower():
+        if line.strip().startswith("#") and "marker" in line.lower():
             blank_before = i > 0 and (not original_lines[i - 1].strip())
             blank_after = i < len(original_lines) - 1 and (not original_lines[i + 1].strip())
             if blank_before or blank_after:
-                comments_with_blanks[line.strip()] = {'blank_before': blank_before, 'blank_after': blank_after}
+                comments_with_blanks[line.strip()] = {"blank_before": blank_before, "blank_after": blank_after}
     if not comments_with_blanks:
         return result
     new_result_lines = []
@@ -553,17 +605,18 @@ def _preserve_blank_lines(result: str, original_source: str) -> str:
         line_stripped = line.strip()
         if line_stripped in comments_with_blanks:
             info = comments_with_blanks[line_stripped]
-            if info['blank_before']:
+            if info["blank_before"]:
                 if i > 0 and new_result_lines[-1].strip():
-                    new_result_lines.append('')
+                    new_result_lines.append("")
             new_result_lines.append(line)
-            if info['blank_after']:
+            if info["blank_after"]:
                 if i < len(result_lines) - 1 and result_lines[i + 1].strip():
-                    new_result_lines.append('')
+                    new_result_lines.append("")
         else:
             new_result_lines.append(line)
         i += 1
-    return '\n'.join(new_result_lines)
+    return "\n".join(new_result_lines)
+
 
 def _find_string_end(line, start_pos, quote_char):
     """
@@ -574,15 +627,16 @@ def _find_string_end(line, start_pos, quote_char):
         return -1
     pos = start_pos + 1
     while pos < len(line):
-        if line[pos] == '\\' and pos + 1 < len(line):
+        if line[pos] == "\\" and pos + 1 < len(line):
             pos += 2
         elif line[pos] == quote_char:
             return pos
-        elif line[pos] == '\n' and quote_char in ['"', "'"]:
+        elif line[pos] == "\n" and quote_char in ['"', "'"]:
             return -1
         else:
             pos += 1
     return -1
+
 
 def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
     """
@@ -598,12 +652,13 @@ def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
     tokenized = _process_multiline_strings(source, token_map, token_counter, current_hash)
     token_counter = len(token_map)
     tokenized, token_counter = _process_all_string_literals(tokenized, token_map, token_counter, current_hash)
-    lines = tokenized.split('\n')
+    lines = tokenized.split("\n")
     processed_lines = []
     for line in lines:
         processed_line, token_counter = _process_line_comments(line, token_map, token_counter, current_hash)
         processed_lines.append(processed_line)
-    return ('\n'.join(processed_lines), token_map)
+    return ("\n".join(processed_lines), token_map)
+
 
 def _extract_top_level_comments(source: str) -> Tuple[str, List[str]]:
     """
@@ -612,14 +667,14 @@ def _extract_top_level_comments(source: str) -> Tuple[str, List[str]]:
     Returns:
         (source_without_top_comments, list_of_top_comment_lines)
     """
-    lines = source.split('\n')
+    lines = source.split("\n")
     top_comments = []
     first_code_line_idx = 0
     for i, line in enumerate(lines):
         stripped = line.strip()
         if not stripped:
             continue
-        elif stripped.startswith('#'):
+        elif stripped.startswith("#"):
             top_comments.append(line)
         else:
             first_code_line_idx = i
@@ -628,23 +683,24 @@ def _extract_top_level_comments(source: str) -> Tuple[str, List[str]]:
         first_code_line_idx = len(lines)
     if top_comments:
         remaining_lines = lines[first_code_line_idx:]
-        source_without_comments = '\n'.join(remaining_lines)
+        source_without_comments = "\n".join(remaining_lines)
         return (source_without_comments, top_comments)
     return (source, [])
+
 
 def _process_line_comments(line: str, token_map: dict, token_counter: int, current_hash: str) -> Tuple[str, int]:
     """Process comments on a single line, after string processing."""
     if not line.strip():
         return (line, token_counter)
     indent = len(line) - len(line.lstrip())
-    indentation = ' ' * indent
+    indentation = " " * indent
     content = line[indent:]
-    if content.strip().startswith('#'):
+    if content.strip().startswith("#"):
         token_name, token_data = _create_token(content.strip(), token_counter, current_hash, TokenType.STANDALONE_COMMENT)
         token_map[token_name] = token_data
-        return (f'{indentation}{token_name}', token_counter + 1)
-    if '#' in content:
-        hash_positions = [i for i, c in enumerate(content) if c == '#']
+        return (f"{indentation}{token_name}", token_counter + 1)
+    if "#" in content:
+        hash_positions = [i for i, c in enumerate(content) if c == "#"]
         for hash_pos in hash_positions:
             is_inside_token = False
             for token_name in token_map:
@@ -659,11 +715,35 @@ def _process_line_comments(line: str, token_map: dict, token_counter: int, curre
                 return (processed_line, new_counter)
     return (line, token_counter)
 
+
 def _process_multiline_strings(source: str, token_map: dict, token_counter: int, current_hash: str) -> str:
     """Process all triple-quoted strings in the source, including f-strings."""
     tokenized = source
     processed_positions = set()
-    patterns = [('"""', '"""'), ("'''", "'''"), ('f"""', '"""'), ("f'''", "'''"), ('F"""', '"""'), ("F'''", "'''"), ('rf"""', '"""'), ("rf'''", "'''"), ('fr"""', '"""'), ("fr'''", "'''"), ('Rf"""', '"""'), ("Rf'''", "'''"), ('rF"""', '"""'), ("rF'''", "'''"), ('RF"""', '"""'), ("RF'''", "'''"), ('Fr"""', '"""'), ("Fr'''", "'''"), ('fR"""', '"""'), ("fR'''", "'''"), ('FR"""', '"""'), ("FR'''", "'''")]
+    patterns = [
+        ('"""', '"""'),
+        ("'''", "'''"),
+        ('f"""', '"""'),
+        ("f'''", "'''"),
+        ('F"""', '"""'),
+        ("F'''", "'''"),
+        ('rf"""', '"""'),
+        ("rf'''", "'''"),
+        ('fr"""', '"""'),
+        ("fr'''", "'''"),
+        ('Rf"""', '"""'),
+        ("Rf'''", "'''"),
+        ('rF"""', '"""'),
+        ("rF'''", "'''"),
+        ('RF"""', '"""'),
+        ("RF'''", "'''"),
+        ('Fr"""', '"""'),
+        ("Fr'''", "'''"),
+        ('fR"""', '"""'),
+        ("fR'''", "'''"),
+        ('FR"""', '"""'),
+        ("FR'''", "'''"),
+    ]
     for start_pattern, end_pattern in patterns:
         pos = 0
         while True:
@@ -683,48 +763,58 @@ def _process_multiline_strings(source: str, token_map: dict, token_counter: int,
                 pos = start_pos + 1
                 continue
             processed_positions.add(start_pos)
-            is_fstring = any((string_content.startswith(p) for p in ['f', 'F', 'rf', 'Rf', 'rF', 'RF', 'fr', 'Fr', 'fR', 'FR']))
-            token_name, token_data = _create_token(string_content, token_counter, current_hash, TokenType.MULTILINE_STRING, {'is_fstring': is_fstring} if is_fstring else None)
+            is_fstring = any(
+                (string_content.startswith(p) for p in ["f", "F", "rf", "Rf", "rF", "RF", "fr", "Fr", "fR", "FR"])
+            )
+            token_name, token_data = _create_token(
+                string_content,
+                token_counter,
+                current_hash,
+                TokenType.MULTILINE_STRING,
+                {"is_fstring": is_fstring} if is_fstring else None,
+            )
             token_map[token_name] = token_data
             tokenized = tokenized[:start_pos] + token_name + tokenized[end_pos:]
             pos = start_pos + len(token_name)
             token_counter += 1
     return tokenized
 
+
 def _process_all_string_literals(source, token_map, token_counter, current_hash):
     """Process all string literals in the entire source at once, preserving escape sequences."""
     if _contains_token(source):
-        lines = source.split('\n')
+        lines = source.split("\n")
         processed_lines = []
         for line in lines:
             processed_line, token_counter = _process_string_literals(line, token_map, token_counter, current_hash)
             processed_lines.append(processed_line)
-        return ('\n'.join(processed_lines), token_counter)
+        return ("\n".join(processed_lines), token_counter)
     string_locations = _find_all_string_locations_in_source(source)
     if not string_locations:
         return (source, token_counter)
-    string_locations.sort(key=lambda x: x['start'], reverse=True)
+    string_locations.sort(key=lambda x: x["start"], reverse=True)
     result = source
     for string_info in string_locations:
-        start = string_info['start']
-        end = string_info['end']
-        string_content = string_info['content']
-        is_fstring = string_info['is_fstring']
-        is_raw = string_info['is_raw']
-        paren_depth = string_info['paren_depth']
-        quote_char = string_info['quote_char']
-        metadata = {'is_fstring': is_fstring, 'is_raw': is_raw, 'in_parens': paren_depth > 0}
+        start = string_info["start"]
+        end = string_info["end"]
+        string_content = string_info["content"]
+        is_fstring = string_info["is_fstring"]
+        is_raw = string_info["is_raw"]
+        paren_depth = string_info["paren_depth"]
+        quote_char = string_info["quote_char"]
+        metadata = {"is_fstring": is_fstring, "is_raw": is_raw, "in_parens": paren_depth > 0}
         if paren_depth > 0:
-            metadata['quote_char'] = quote_char
+            metadata["quote_char"] = quote_char
         token_name, token_data = _create_token(string_content, token_counter, current_hash, TokenType.STRING_LITERAL, metadata)
         token_map[token_name] = token_data
         if paren_depth > 0:
-            replacement = f'{quote_char}{token_name}{quote_char}'
+            replacement = f"{quote_char}{token_name}{quote_char}"
         else:
             replacement = token_name
-        result = result[:start] + replacement + result[end + 1:]
+        result = result[:start] + replacement + result[end + 1 :]
         token_counter += 1
     return (result, token_counter)
+
 
 def _find_all_string_locations_in_source(source):
     """Find all string literal locations in the entire source, preserving escape sequences."""
@@ -733,11 +823,11 @@ def _find_all_string_locations_in_source(source):
     pos = 0
     while pos < len(source):
         char = source[pos]
-        if char == '(':
+        if char == "(":
             paren_depth += 1
             pos += 1
             continue
-        elif char == ')':
+        elif char == ")":
             paren_depth -= 1
             pos += 1
             continue
@@ -745,12 +835,13 @@ def _find_all_string_locations_in_source(source):
             string_info = _analyze_string_at_position_in_source(source, pos, paren_depth)
             if string_info:
                 locations.append(string_info)
-                pos = string_info['end'] + 1
+                pos = string_info["end"] + 1
             else:
                 pos += 1
         else:
             pos += 1
     return locations
+
 
 def _analyze_string_at_position_in_source(source, pos, paren_depth):
     """Analyze a potential string starting at the given position in the full source."""
@@ -758,9 +849,13 @@ def _analyze_string_at_position_in_source(source, pos, paren_depth):
     is_fstring, is_raw = _is_fstring_start(source, pos)
     if is_fstring:
         string_start = pos
-        for prefix in ['rf', 'Rf', 'rF', 'RF', 'fr', 'Fr', 'fR', 'FR', 'f', 'F']:
+        for prefix in ["rf", "Rf", "rF", "RF", "fr", "Fr", "fR", "FR", "f", "F"]:
             prefix_start = pos - len(prefix)
-            if prefix_start >= 0 and source[prefix_start:pos] == prefix and (prefix_start == 0 or not source[prefix_start - 1].isalnum()):
+            if (
+                prefix_start >= 0
+                and source[prefix_start:pos] == prefix
+                and (prefix_start == 0 or not source[prefix_start - 1].isalnum())
+            ):
                 string_start = prefix_start
                 break
         end_pos = _find_fstring_end(source, pos, char, is_raw)
@@ -769,10 +864,19 @@ def _analyze_string_at_position_in_source(source, pos, paren_depth):
         end_pos = _find_string_end(source, pos, char)
     if end_pos == -1:
         return None
-    string_content = source[string_start:end_pos + 1]
+    string_content = source[string_start : end_pos + 1]
     if len(string_content) < 2:
         return None
-    return {'start': string_start, 'end': end_pos, 'content': string_content, 'is_fstring': is_fstring, 'is_raw': is_raw, 'paren_depth': paren_depth, 'quote_char': char}
+    return {
+        "start": string_start,
+        "end": end_pos,
+        "content": string_content,
+        "is_fstring": is_fstring,
+        "is_raw": is_raw,
+        "paren_depth": paren_depth,
+        "quote_char": char,
+    }
+
 
 def _process_string_literals(processed_line, token_map, token_counter, current_hash):
     """Process all strings in a line at once - fallback for when source already has tokens."""
@@ -781,28 +885,29 @@ def _process_string_literals(processed_line, token_map, token_counter, current_h
     string_locations = _find_all_string_locations(processed_line)
     if not string_locations:
         return (processed_line, token_counter)
-    string_locations.sort(key=lambda x: x['start'], reverse=True)
+    string_locations.sort(key=lambda x: x["start"], reverse=True)
     result = processed_line
     for string_info in string_locations:
-        start = string_info['start']
-        end = string_info['end']
-        string_content = string_info['content']
-        is_fstring = string_info['is_fstring']
-        is_raw = string_info['is_raw']
-        paren_depth = string_info['paren_depth']
-        quote_char = string_info['quote_char']
-        metadata = {'is_fstring': is_fstring, 'is_raw': is_raw, 'in_parens': paren_depth > 0}
+        start = string_info["start"]
+        end = string_info["end"]
+        string_content = string_info["content"]
+        is_fstring = string_info["is_fstring"]
+        is_raw = string_info["is_raw"]
+        paren_depth = string_info["paren_depth"]
+        quote_char = string_info["quote_char"]
+        metadata = {"is_fstring": is_fstring, "is_raw": is_raw, "in_parens": paren_depth > 0}
         if paren_depth > 0:
-            metadata['quote_char'] = quote_char
+            metadata["quote_char"] = quote_char
         token_name, token_data = _create_token(string_content, token_counter, current_hash, TokenType.STRING_LITERAL, metadata)
         token_map[token_name] = token_data
         if paren_depth > 0:
-            replacement = f'{quote_char}{token_name}{quote_char}'
+            replacement = f"{quote_char}{token_name}{quote_char}"
         else:
             replacement = token_name
-        result = result[:start] + replacement + result[end + 1:]
+        result = result[:start] + replacement + result[end + 1 :]
         token_counter += 1
     return (result, token_counter)
+
 
 def _find_all_string_locations(line):
     """Find all string literal locations in a line without tokenizing."""
@@ -811,11 +916,11 @@ def _find_all_string_locations(line):
     pos = 0
     while pos < len(line):
         char = line[pos]
-        if char == '(':
+        if char == "(":
             paren_depth += 1
             pos += 1
             continue
-        elif char == ')':
+        elif char == ")":
             paren_depth -= 1
             pos += 1
             continue
@@ -823,12 +928,13 @@ def _find_all_string_locations(line):
             string_info = _analyze_string_at_position(line, pos, paren_depth)
             if string_info:
                 locations.append(string_info)
-                pos = string_info['end'] + 1
+                pos = string_info["end"] + 1
             else:
                 pos += 1
         else:
             pos += 1
     return locations
+
 
 def _analyze_string_at_position(line, pos, paren_depth):
     """Analyze a potential string starting at the given position."""
@@ -836,9 +942,13 @@ def _analyze_string_at_position(line, pos, paren_depth):
     is_fstring, is_raw = _is_fstring_start(line, pos)
     if is_fstring:
         string_start = pos
-        for prefix in ['rf', 'Rf', 'rF', 'RF', 'fr', 'Fr', 'fR', 'FR', 'f', 'F']:
+        for prefix in ["rf", "Rf", "rF", "RF", "fr", "Fr", "fR", "FR", "f", "F"]:
             prefix_start = pos - len(prefix)
-            if prefix_start >= 0 and line[prefix_start:pos] == prefix and (prefix_start == 0 or not line[prefix_start - 1].isalnum()):
+            if (
+                prefix_start >= 0
+                and line[prefix_start:pos] == prefix
+                and (prefix_start == 0 or not line[prefix_start - 1].isalnum())
+            ):
                 string_start = prefix_start
                 break
         end_pos = _find_fstring_end(line, pos, char, is_raw)
@@ -847,14 +957,23 @@ def _analyze_string_at_position(line, pos, paren_depth):
         end_pos = _find_string_end(line, pos, char)
     if end_pos == -1:
         return None
-    string_content = line[string_start:end_pos + 1]
+    string_content = line[string_start : end_pos + 1]
     if len(string_content) < 2:
         return None
-    return {'start': string_start, 'end': end_pos, 'content': string_content, 'is_fstring': is_fstring, 'is_raw': is_raw, 'paren_depth': paren_depth, 'quote_char': char}
+    return {
+        "start": string_start,
+        "end": end_pos,
+        "content": string_content,
+        "is_fstring": is_fstring,
+        "is_raw": is_raw,
+        "paren_depth": paren_depth,
+        "quote_char": char,
+    }
+
 
 def _process_inline_comment(line: str, token_map: dict, token_counter: int, current_hash: str) -> Tuple[str, int]:
     """Process inline comments, determining their type based on the preceding code."""
-    hash_positions = [i for i, c in enumerate(line) if c == '#']
+    hash_positions = [i for i, c in enumerate(line) if c == "#"]
     for hash_pos in hash_positions:
         is_inside_token = False
         for token_name in token_map:
@@ -871,33 +990,36 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
             spacing_and_comment = line[code_end:]
             code_stripped = code.rstrip()
             token_type, extra_metadata = _determine_comment_type(code_stripped)
-            token_name, token_data = _create_token(spacing_and_comment, token_counter, current_hash, token_type, extra_metadata)
+            token_name, token_data = _create_token(
+                spacing_and_comment, token_counter, current_hash, token_type, extra_metadata
+            )
             token_map[token_name] = token_data
             if token_type == TokenType.COMPOUND_COMMENT:
                 base_indent = len(line) - len(line.lstrip())
-                token_indent = ' ' * (base_indent + 4)
-                processed_line = f'{code.rstrip()}\n{token_indent}{token_name}'
+                token_indent = " " * (base_indent + 4)
+                processed_line = f"{code.rstrip()}\n{token_indent}{token_name}"
                 return (processed_line, token_counter + 1)
             elif token_type == TokenType.IMPORT_COMMENT:
                 base_indent = len(line) - len(line.lstrip())
-                token_indent = ' ' * base_indent
-                processed_line = f'{code.rstrip()}\n{token_indent}{token_name}'
+                token_indent = " " * base_indent
+                processed_line = f"{code.rstrip()}\n{token_indent}{token_name}"
                 return (processed_line, token_counter + 1)
             else:
                 code_trimmed = code.rstrip()
-                no_semicolon_endings = [',', ':', '(', '[', '{', '\\']
+                no_semicolon_endings = [",", ":", "(", "[", "{", "\\"]
                 if any((code_trimmed.endswith(char) for char in no_semicolon_endings)):
-                    if code_trimmed.endswith(','):
+                    if code_trimmed.endswith(","):
                         base_indent = len(line) - len(line.lstrip())
-                        token_indent = ' ' * base_indent
-                        processed_line = f'{code_trimmed}\n{token_indent}{token_name}'
+                        token_indent = " " * base_indent
+                        processed_line = f"{code_trimmed}\n{token_indent}{token_name}"
                     else:
-                        spacing_before_comment = line[len(code_trimmed):comment_start]
-                        processed_line = f'{code_trimmed}{spacing_before_comment}{token_name}'
+                        spacing_before_comment = line[len(code_trimmed) : comment_start]
+                        processed_line = f"{code_trimmed}{spacing_before_comment}{token_name}"
                 else:
-                    processed_line = f'{code.rstrip()}; {token_name}'
+                    processed_line = f"{code.rstrip()}; {token_name}"
                 return (processed_line, token_counter + 1)
     return (line, token_counter)
+
 
 def _detokenize_source(tokenized_source: str, token_map: Dict[str, Dict]) -> str:
     """
@@ -910,9 +1032,14 @@ def _detokenize_source(tokenized_source: str, token_map: Dict[str, Dict]) -> str
     multiline_tokens = []
     other_tokens = []
     for token_name, token_data in token_map.items():
-        metadata = token_data['metadata']
-        token_type = metadata.get('type')
-        if token_type in [TokenType.STANDALONE_COMMENT.value, TokenType.INLINE_COMMENT.value, TokenType.IMPORT_COMMENT.value, TokenType.COMPOUND_COMMENT.value]:
+        metadata = token_data["metadata"]
+        token_type = metadata.get("type")
+        if token_type in [
+            TokenType.STANDALONE_COMMENT.value,
+            TokenType.INLINE_COMMENT.value,
+            TokenType.IMPORT_COMMENT.value,
+            TokenType.COMPOUND_COMMENT.value,
+        ]:
             comment_tokens.append((token_name, token_data))
         elif token_type == TokenType.STRING_LITERAL.value:
             string_tokens.append((token_name, token_data))
@@ -934,16 +1061,17 @@ def _detokenize_source(tokenized_source: str, token_map: Dict[str, Dict]) -> str
         result = _process_single_token(result, token_name, token_data)
     return result
 
+
 def _process_single_token(result: str, token_name: str, token_data: Dict) -> str:
     """Process a single token replacement with all its occurrences."""
-    content = token_data['content']
-    metadata = token_data['metadata']
-    token_type = metadata.get('type')
+    content = token_data["content"]
+    metadata = token_data["metadata"]
+    token_type = metadata.get("type")
     while token_name in result:
         if token_type == TokenType.STRING_LITERAL.value:
-            if metadata.get('in_parens', False):
-                quote_char = metadata.get('quote_char', '"')
-                pattern = f'{quote_char}{token_name}{quote_char}'
+            if metadata.get("in_parens", False):
+                quote_char = metadata.get("quote_char", '"')
+                pattern = f"{quote_char}{token_name}{quote_char}"
                 if pattern in result:
                     result = result.replace(pattern, content)
                     continue
@@ -975,10 +1103,11 @@ def _process_single_token(result: str, token_name: str, token_data: Dict) -> str
             result = _handle_default_token(result, token_name, content, start)
     return result
 
+
 def _handle_compound_comment(result: str, token_name: str, content: str, start: int) -> str:
     """Handle compound statement comments (def, class, if, etc.) with smart reunification"""
-    line_start = result.rfind('\n', 0, start) + 1
-    line_end = result.find('\n', start)
+    line_start = result.rfind("\n", 0, start) + 1
+    line_end = result.find("\n", start)
     if line_end == -1:
         line_end = len(result)
     line = result[line_start:line_end]
@@ -986,20 +1115,21 @@ def _handle_compound_comment(result: str, token_name: str, content: str, start: 
     if line_stripped == token_name:
         search_start = line_start - 1
         while search_start > 0:
-            prev_line_start = result.rfind('\n', 0, search_start) + 1
+            prev_line_start = result.rfind("\n", 0, search_start) + 1
             prev_line = result[prev_line_start:search_start]
             if prev_line.strip():
-                if prev_line.strip().endswith(':'):
+                if prev_line.strip().endswith(":"):
                     reunited = prev_line.rstrip() + content
                     return result[:prev_line_start] + reunited + result[line_end:]
                 break
             search_start = prev_line_start - 1
-    return result[:start] + content + result[start + len(token_name):]
+    return result[:start] + content + result[start + len(token_name) :]
+
 
 def _handle_import_comment(result: str, token_name: str, content: str, start: int, metadata: dict) -> str:
     """Handle import statement comments with metadata-driven reunification"""
-    line_start = result.rfind('\n', 0, start) + 1
-    line_end = result.find('\n', start)
+    line_start = result.rfind("\n", 0, start) + 1
+    line_end = result.find("\n", start)
     if line_end == -1:
         line_end = len(result)
     line = result[line_start:line_end]
@@ -1007,29 +1137,30 @@ def _handle_import_comment(result: str, token_name: str, content: str, start: in
     if line_stripped == token_name:
         search_start = line_start - 1
         while search_start > 0:
-            prev_line_start = result.rfind('\n', 0, search_start) + 1
+            prev_line_start = result.rfind("\n", 0, search_start) + 1
             prev_line = result[prev_line_start:search_start]
-            import_statement = metadata.get('import_statement', '').strip()
+            import_statement = metadata.get("import_statement", "").strip()
             if prev_line.strip() == import_statement:
                 reunited = prev_line.rstrip() + content
                 return result[:prev_line_start] + reunited + result[line_end:]
             search_start = prev_line_start - 1
-    return result[:start] + content + result[start + len(token_name):]
+    return result[:start] + content + result[start + len(token_name) :]
+
 
 def _handle_inline_comment(result: str, token_name: str, content: str, start: int) -> str:
     """Handle inline comments (non-import, non-compound) with smart reunification"""
-    line_start = result.rfind('\n', 0, start) + 1
-    line_end = result.find('\n', start)
+    line_start = result.rfind("\n", 0, start) + 1
+    line_end = result.find("\n", start)
     if line_end == -1:
         line_end = len(result)
     line = result[line_start:line_end]
-    if '; ' + token_name in line:
-        new_line = line.replace('; ' + token_name, content)
+    if "; " + token_name in line:
+        new_line = line.replace("; " + token_name, content)
         return result[:line_start] + new_line + result[line_end:]
     if token_name in line:
         token_pos_in_line = line.find(token_name)
         before_token = line[:token_pos_in_line].rstrip()
-        no_semicolon_endings = [',', ':', '(', '[', '{', '\\']
+        no_semicolon_endings = [",", ":", "(", "[", "{", "\\"]
         if any((before_token.endswith(char) for char in no_semicolon_endings)):
             new_line = line.replace(token_name, content)
             return result[:line_start] + new_line + result[line_end:]
@@ -1037,41 +1168,46 @@ def _handle_inline_comment(result: str, token_name: str, content: str, start: in
     if line_stripped == token_name:
         search_start = line_start - 1
         while search_start > 0:
-            prev_line_start = result.rfind('\n', 0, search_start) + 1
+            prev_line_start = result.rfind("\n", 0, search_start) + 1
             prev_line = result[prev_line_start:search_start]
             if prev_line.strip():
                 reunited = prev_line.rstrip() + content
                 return result[:prev_line_start] + reunited + result[line_end:]
             search_start = prev_line_start - 1
-    return result[:start] + content + result[start + len(token_name):]
+    return result[:start] + content + result[start + len(token_name) :]
+
 
 def _handle_standalone_comment(result: str, token_name: str, content: str, start: int) -> str:
     """Handle standalone comment lines"""
-    line_start = result.rfind('\n', 0, start) + 1
-    line_end = result.find('\n', start)
+    line_start = result.rfind("\n", 0, start) + 1
+    line_end = result.find("\n", start)
     if line_end == -1:
         line_end = len(result)
     line = result[line_start:line_end]
-    indent = line[:len(line) - len(line.lstrip())]
+    indent = line[: len(line) - len(line.lstrip())]
     replacement = indent + content
     return result[:line_start] + replacement + result[line_end:]
 
+
 def _handle_multiline_string(result: str, token_name: str, content: str, start: int) -> str:
     """Handle multiline strings with proper indentation"""
-    if '\n' in content:
+    if "\n" in content:
         indent = _get_indentation_at_position(result, start)
         indented = _indent_multiline_content(content, indent)
-        return result[:start] + indented + result[start + len(token_name):]
+        return result[:start] + indented + result[start + len(token_name) :]
     else:
-        return result[:start] + content + result[start + len(token_name):]
+        return result[:start] + content + result[start + len(token_name) :]
+
 
 def _handle_string_literal(result: str, token_name: str, content: str, start: int) -> str:
     """Handle simple string literals"""
-    return result[:start] + content + result[start + len(token_name):]
+    return result[:start] + content + result[start + len(token_name) :]
+
 
 def _handle_default_token(result: str, token_name: str, content: str, start: int) -> str:
     """Handle tokens without specific type metadata"""
-    return result[:start] + content + result[start + len(token_name):]
+    return result[:start] + content + result[start + len(token_name) :]
+
 
 def _restore_top_level_comments(final_content: str, top_comments: List[str]) -> str:
     """
@@ -1086,11 +1222,12 @@ def _restore_top_level_comments(final_content: str, top_comments: List[str]) -> 
     """
     if not top_comments:
         return final_content
-    comment_section = '\n'.join(top_comments)
+    comment_section = "\n".join(top_comments)
     if final_content.strip():
-        return comment_section + '\n\n' + final_content
+        return comment_section + "\n\n" + final_content
     else:
-        return comment_section + '\n'
+        return comment_section + "\n"
+
 
 def _deduplicate_imports(existing_imports: List[ast.stmt], new_imports: List[ast.stmt]) -> List[ast.stmt]:
     """
@@ -1108,13 +1245,14 @@ def _deduplicate_imports(existing_imports: List[ast.stmt], new_imports: List[ast
         """Create a signature for an import node for comparison."""
         if isinstance(node, ast.Import):
             names = frozenset((alias.name for alias in node.names))
-            return ('import', names)
+            return ("import", names)
         elif isinstance(node, ast.ImportFrom):
-            module = node.module or ''
+            module = node.module or ""
             names = frozenset((alias.name for alias in node.names))
             level = node.level
-            return ('from', module, names, level)
+            return ("from", module, names, level)
         return None
+
     new_signatures = set()
     result_imports = []
     for imp in new_imports:
