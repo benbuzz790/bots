@@ -4,6 +4,7 @@ import json
 from typing import List, Optional
 
 from bots.dev.decorators import handle_errors
+from bots.flows import functional_prompts as fp, recombinators
 from bots.foundation.base import Bot
 
 
@@ -94,7 +95,7 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
 
 
 @handle_errors
-def branch_self(self_prompts: str, allow_work: str = "False") -> str:
+def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "False", recombine: str = "none") -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
     Think of this like opening multiple browser tabs - each branch starts from this point
     and explores a different direction. Perfect for when you need to:
@@ -109,6 +110,9 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
                            Each prompt becomes a separate conversation branch
         allow_work (str): 'True' to let each branch use tools and continue working until done
                          'False' (default) for single-response branches
+        parallel (str): 'True' to let branches work in parallel, 'False' for sequential (default).
+        recombine (str): One of ('concatenate', 'llm_merge', 'llm_vote', 'llm_judge'). If specified
+                         combines the final messages from each branch using that method. 
     Returns:
         str: Success message with branch count, or error details if something went wrong
     Writing effective branch prompts:
@@ -133,89 +137,81 @@ def branch_self(self_prompts: str, allow_work: str = "False") -> str:
     Example usage:
         branch_self("['Analyze the data for trends', 'Create visualizations', 'Write summary report']")
     """
-    # Import _get_calling_bot locally to avoid decorator global namespace issues
-    import ast  # Also import ast locally
-    import json  # Also import json locally
-    from typing import List  # Import List type
-    from bots.flows import functional_prompts as fp  # Import functional_prompts locally
-    def _process_string_array_local(input_str: str) -> List[str]:
-        """Parse a string representation of an array into a list of strings."""
-        result = ast.literal_eval(input_str)
-        if not isinstance(result, list) or not all(isinstance(x, str) for x in result):
-            raise ValueError("Input must evaluate to a list of strings")
-        return result
-    import inspect
-    from bots.foundation.base import Bot
-    def _get_calling_bot_local():
-        frame = inspect.currentframe()
-        while frame:
-            if frame.f_code.co_name == "_cvsn_respond" and "self" in frame.f_locals:
-                potential_bot = frame.f_locals["self"]
-                if isinstance(potential_bot, Bot):
-                    return potential_bot
-            frame = frame.f_back
-        return None
-    bot = _get_calling_bot_local()
-    # Insert a dummy result to prevent repeated tool calls
-    if not bot.tool_handler.requests:
+    # Import dependencies locally
+    
+    bot = _get_calling_bot()
+    if not bot or not bot.tool_handler.requests:
         return "Error: No branch_self tool request found"
+    
+    # Insert dummy result to prevent repeated tool calls
     request = bot.tool_handler.requests[-1]
     dummy_result = bot.tool_handler.generate_response_schema(
-        request=request,
-        tool_output_kwargs=json.dumps({"status": "branching_in_progress"}),
-    )
+        request=request, tool_output_kwargs=json.dumps({"status": "branching_in_progress"}))
     bot.tool_handler.add_result(dummy_result)
     bot.conversation._add_tool_results([dummy_result])
-    if not bot:
-        return "Error: Could not find calling bot"
+    
+    # Parse and validate parameters
     allow_work = allow_work.lower() == "true"
-    message_list = _process_string_array_local(self_prompts)
+    parallel = parallel.lower() == "true"
+    recombine = recombine.lower()
+    valid_recombine_options = ["none", "concatenate", "llm_judge", "llm_vote", "llm_merge"]
+    if recombine not in valid_recombine_options:
+        return f"Error: Invalid recombine option. Valid: {valid_recombine_options}"
+    
+    message_list = _process_string_array(self_prompts)
     if not message_list:
         return "Error: No valid messages provided"
+    
     original_node = bot.conversation
-    if not original_node:
-        return "Error: No current conversation node found"
     for i, item in enumerate(message_list):
         message_list[i] = f"(self-prompt): {item}"
-    # Store original respond method and create debug wrapper
-    original_respond = bot.respond
-    branch_counter = 0
-    def debug_respond(self, prompt):
-        nonlocal branch_counter
-        print(f"\n=== BRANCH {branch_counter} DEBUG ===")
-        print(f"PROMPT: {prompt}")
-        print("=" * 50)
-        # Call original respond method
-        response = original_respond(prompt)
-        print(f"RESPONSE: {response}")
-        print(f"=== END BRANCH {branch_counter} DEBUG ===\n")
-        branch_counter += 1
-        return response
-    # Temporarily override the respond method
-    bot.respond = debug_respond.__get__(bot, type(bot))
+    
+    # Execute branches based on parameters
     try:
-        if not allow_work:
-            responses, nodes = fp.branch(bot, message_list)
+        if parallel:
+            if allow_work:
+                responses, nodes = fp.par_branch_while(bot, message_list)
+            else:
+                responses, nodes = fp.par_branch(bot, message_list)
         else:
-            responses, nodes = fp.branch_while(bot, message_list)
+            if allow_work:
+                responses, nodes = fp.branch_while(bot, message_list)
+            else:
+                responses, nodes = fp.branch(bot, message_list)
+    except Exception as e:
+        return f"Error during branching: {str(e)}"
     finally:
-        # Always restore the original respond method
-        bot.respond = original_respond
-    # Clean up
-    bot.conversation = original_node
-    bot.conversation.tool_results = [r for r in bot.conversation.tool_results if r != dummy_result]
-    for reply in bot.conversation.replies:
-        reply.tool_results = [r for r in reply.tool_results if r != dummy_result]
-    bot.tool_handler.results = [r for r in bot.tool_handler.results if r != dummy_result]
-    # return
-    if not any(response is None for response in responses):
-        return f"Successfully created {len(responses)} conversation branches"
+        # Clean up
+        bot.conversation = original_node
+        bot.conversation.tool_results = [r for r in bot.conversation.tool_results if r != dummy_result]
+        for reply in bot.conversation.replies:
+            reply.tool_results = [r for r in reply.tool_results if r != dummy_result]
+        bot.tool_handler.results = [r for r in bot.tool_handler.results if r != dummy_result]
+    
+    # Check for errors
+    if any(response is None for response in responses):
+        error_messages = [f"Branch {i+1} failed" for i, r in enumerate(responses) if r is None]
+        return "Errors: " + "; ".join(error_messages)
+    
+    # Handle recombination
+    if recombine == "none":
+        exec_type = "parallel" if parallel else "sequential"
+        work_type = "iterative" if allow_work else "single-response"
+        return f"Successfully created {len(responses)} {exec_type} {work_type} branches"
     else:
-        error_messages = []
-        for i, response in enumerate(responses):
-            if response is None:
-                error_messages.append(f"Tool Error: branch {i+1} failed")
-        return "\n".join(error_messages)
+        try:
+            if recombine == "concatenate":
+                combined_response, _ = recombinators.recombinators.concatenate(responses, nodes)
+            elif recombine == "llm_judge":
+                combined_response, _ = recombinators.recombinators.llm_judge(responses, nodes)
+            elif recombine == "llm_vote":
+                combined_response, _ = recombinators.recombinators.llm_vote(responses, nodes)
+            elif recombine == "llm_merge":
+                combined_response, _ = recombinators.recombinators.llm_merge(responses, nodes)
+            return combined_response
+        except Exception as e:
+            return f"Error during {recombine} recombination: {str(e)}"
+
 def add_tools(filepath: str) -> str:
     """Adds a new set of tools (python functions) to your toolkit
     All top-level, non-private functions in filepath will be uploaded
