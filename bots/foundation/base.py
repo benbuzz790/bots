@@ -879,6 +879,100 @@ class ToolHandler(ABC):
             source += "    pass\n"
         return source
 
+    def _extract_annotation_names(self, source_code: str) -> set:
+        """Extract all names used in type annotations from source code."""
+        import ast
+        import re
+        
+        annotation_names = set()
+        
+        try:
+            # Parse the source code into an AST
+            tree = ast.parse(source_code)
+            
+            # Walk through all nodes to find annotations
+            for node in ast.walk(tree):
+                # Function annotations (parameters and return types)
+                if isinstance(node, ast.FunctionDef):
+                    # Parameter annotations
+                    for arg in node.args.args:
+                        if arg.annotation:
+                            annotation_names.update(self._extract_names_from_ast_node(arg.annotation))
+                    
+                    # Return type annotation
+                    if node.returns:
+                        annotation_names.update(self._extract_names_from_ast_node(node.returns))
+                
+                # Variable annotations (like: x: int = 5)
+                elif isinstance(node, ast.AnnAssign):
+                    if node.annotation:
+                        annotation_names.update(self._extract_names_from_ast_node(node.annotation))
+        
+        except SyntaxError:
+            # Fallback: use regex if AST parsing fails
+            # Match common annotation patterns
+            patterns = [
+                r':\s*([A-Za-z_][A-Za-z0-9_]*)',  # param: Type
+                r'->\s*([A-Za-z_][A-Za-z0-9_]*)',  # -> ReturnType
+                r'\[\s*([A-Za-z_][A-Za-z0-9_]*)',  # List[Type]
+                r',\s*([A-Za-z_][A-Za-z0-9_]*)',  # Dict[str, Type]
+            ]
+            
+            for pattern in patterns:
+                matches = re.findall(pattern, source_code)
+                annotation_names.update(matches)
+        
+        return annotation_names
+
+    def _extract_names_from_ast_node(self, node) -> set:
+        """Extract all names from an AST annotation node."""
+        names = set()
+        
+        if isinstance(node, ast.Name):
+            names.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            # Handle things like typing.Optional
+            if isinstance(node.value, ast.Name):
+                names.add(node.value.id)  # Add 'typing'
+        elif isinstance(node, ast.Subscript):
+            # Handle generic types like List[str], Dict[str, int]
+            names.update(self._extract_names_from_ast_node(node.value))
+            if isinstance(node.slice, ast.Tuple):
+                for elt in node.slice.elts:
+                    names.update(self._extract_names_from_ast_node(elt))
+            else:
+                names.update(self._extract_names_from_ast_node(node.slice))
+        elif hasattr(node, 'elts'):  # Handle tuples/lists in annotations
+            for elt in node.elts:
+                names.update(self._extract_names_from_ast_node(elt))
+        
+        return names
+
+    def _capture_annotation_context(self, func: Callable, context: dict) -> None:
+        """Capture all objects referenced in function annotations."""
+        if not hasattr(func, "__globals__"):
+            return
+        
+        # Get the function's source to analyze annotations
+        try:
+            source = inspect.getsource(func)
+            annotation_names = self._extract_annotation_names(source)
+            
+            # For each name found in annotations, try to capture it from globals
+            for name in annotation_names:
+                if name in func.__globals__:
+                    context[name] = func.__globals__[name]
+                    
+        except (TypeError, OSError):
+            # If we can't get source, fall back to __annotations__
+            if hasattr(func, "__annotations__") and func.__annotations__:
+                # This is a simplified fallback - get basic type names
+                for annotation in func.__annotations__.values():
+                    if hasattr(annotation, '__name__'):
+                        name = annotation.__name__
+                        if name in func.__globals__:
+                            context[name] = func.__globals__[name]
+
     def add_tool(self, func: Callable) -> None:
         """Add a single Python function as a tool for LLM use.
 
@@ -928,7 +1022,10 @@ class ToolHandler(ABC):
                         names = code.co_names
                         context = {name: func.__globals__[name] for name in names if name in func.__globals__}
 
-                        # Also capture globals from the original module (important for decorated functions)
+                        # CRITICAL: Capture ALL annotation dependencies
+                        self._capture_annotation_context(func, context)
+
+                        # Also capture globals from the original module
                         import importlib
                         try:
                             original_module = importlib.import_module(func.__module__)
@@ -938,24 +1035,30 @@ class ToolHandler(ABC):
                                         context[name] = value
                         except ImportError:
                             pass
+                        
                         # Add all imports from the original module
                         import types
 
                         for name, value in func.__globals__.items():
                             if isinstance(value, types.ModuleType) or callable(value):
                                 context[name] = value
-                        # Add any decorators referenced in source that are available in globals
+                        
+                        # Enhanced decorator handling with annotation support
                         import re
 
                         decorator_matches = re.findall(r"@(\w+)", source)
                         for decorator_name in decorator_matches:
                             if decorator_name in func.__globals__:
                                 context[decorator_name] = func.__globals__[decorator_name]
-                                # Try to capture decorator source code
+                                
                                 try:
                                     decorator_func = func.__globals__[decorator_name]
                                     if callable(decorator_func) and not inspect.isbuiltin(decorator_func):
                                         decorator_source = inspect.getsource(decorator_func)
+                                        
+                                        # CRITICAL: Capture annotation context from decorator
+                                        self._capture_annotation_context(decorator_func, context)
+                                        
                                         # Enhanced decorator dependency capture
                                         if hasattr(decorator_func, "__globals__"):
                                             # Capture ALL globals that the decorator might need
@@ -965,81 +1068,55 @@ class ToolHandler(ABC):
                                                         context[dec_name] = dec_value
                                                     elif isinstance(dec_value, types.ModuleType):
                                                         context[dec_name] = dec_value
-                                        # Try to capture locally-defined decorator source
-                                        try:
-                                            # If decorator is not in global scope, try to get its source
-                                            if True:  # Always try to capture decorator source for closure handling
-                                                # This might be a locally-defined decorator
-                                                local_decorator_source = inspect.getsource(decorator_func)
-                                                # Include any closure variables in the source
-                                                if hasattr(decorator_func, "__closure__") and decorator_func.__closure__:
-                                                    freevars = decorator_func.__code__.co_freevars
-                                                    closure_defs = []
-                                                    for k, var_name in enumerate(freevars):
-                                                        if (
-                                                            k < len(decorator_func.__closure__)
-                                                            and decorator_func.__closure__[k] is not None
-                                                        ):
-                                                            try:
-                                                                closure_value = decorator_func.__closure__[k].cell_contents
-                                                                closure_defs.append(f"{var_name} = {repr(closure_value)}")
-                                                            except ValueError:
-                                                                pass
-                                                    if closure_defs:
-                                                        local_decorator_source = (
-                                                            "\n".join(closure_defs) + "\n\n" + local_decorator_source
-                                                        )
-                                                if "local_decorator_source" in locals():
-                                                    decorator_source = local_decorator_source
-                                        except (TypeError, OSError):
-                                            pass
+                                                    # Also capture any objects from decorator's globals
+                                                    elif hasattr(dec_value, '__module__'):
+                                                        context[dec_name] = dec_value
+                                        
                                         # Handle closure variables
                                         if hasattr(decorator_func, "__closure__") and decorator_func.__closure__:
                                             freevars = decorator_func.__code__.co_freevars
-                                            for j, var_name in enumerate(freevars):
+                                            closure_defs = []
+                                            for k, var_name in enumerate(freevars):
                                                 if (
-                                                    j < len(decorator_func.__closure__)
-                                                    and decorator_func.__closure__[j] is not None
+                                                    k < len(decorator_func.__closure__)
+                                                    and decorator_func.__closure__[k] is not None
                                                 ):
                                                     try:
-                                                        closure_value = decorator_func.__closure__[j].cell_contents
-                                                        if isinstance(closure_value, (int, float, str, bool, list, dict)):
-                                                            context[var_name] = closure_value
+                                                        closure_value = decorator_func.__closure__[k].cell_contents
+                                                        closure_defs.append(f"{var_name} = {repr(closure_value)}")
+                                                        context[var_name] = closure_value
                                                     except ValueError:
-                                                        pass  # Empty cell
-                                        imports = []
-                                        globals_defs = []
-                                        if imports or globals_defs:
-                                            prefix = "\n".join(imports + globals_defs) + "\n\n"
-                                            source = prefix + source
+                                                        pass
+                                            if closure_defs:
+                                                decorator_source = (
+                                                    "\n".join(closure_defs) + "\n\n" + decorator_source
+                                                )
+                                        
                                         source = _clean_decorator_source(decorator_source) + "\n\n" + source
+                                        
                                 except (TypeError, OSError):
                                     # Can't get decorator source, continue with function object
                                     pass
+                        
                         # Enhanced handling for locally-defined decorators
-                        # Check for decorators not found in globals (locally-defined)
                         missing_decorators = [name for name in decorator_matches if name not in func.__globals__]
                         if missing_decorators:
-                            # Try to find locally-defined decorators by examining the call stack
-                            import inspect as stack_inspect
-
-                            frame = stack_inspect.currentframe()
+                            frame = inspect.currentframe()
                             try:
-                                # Walk up the call stack to find the frame where the function was defined
                                 while frame:
                                     frame_locals = frame.f_locals
-                                    frame_globals = frame.f_globals
-
+                                    
                                     for decorator_name in missing_decorators:
-                                        # Check if decorator is in this frame's locals
                                         if decorator_name in frame_locals:
                                             decorator_func = frame_locals[decorator_name]
                                             if callable(decorator_func):
                                                 try:
-                                                    # Get the decorator source
-                                                    decorator_source = stack_inspect.getsource(decorator_func)
-
-                                                    # Handle closure variables for the decorator
+                                                    decorator_source = inspect.getsource(decorator_func)
+                                                    
+                                                    # CRITICAL: Capture annotation context from local decorator too
+                                                    self._capture_annotation_context(decorator_func, context)
+                                                    
+                                                    # Handle closure variables
                                                     closure_defs = []
                                                     if hasattr(decorator_func, "__closure__") and decorator_func.__closure__:
                                                         freevars = decorator_func.__code__.co_freevars
@@ -1054,21 +1131,17 @@ class ToolHandler(ABC):
                                                                     context[var_name] = closure_value
                                                                 except ValueError:
                                                                     pass
-
-                                                    # Prepend closure definitions to decorator source
+                                                    
                                                     if closure_defs:
                                                         decorator_source = (
-                                                            chr(10).join(closure_defs) + chr(10) + chr(10) + decorator_source
+                                                            "\n".join(closure_defs) + "\n\n" + decorator_source
                                                         )
-
-                                                    # Add decorator source to the main source
-                                                    source = (
-                                                        _clean_decorator_source(decorator_source) + chr(10) + chr(10) + source
-                                                    )
-
+                                                    
+                                                    source = _clean_decorator_source(decorator_source) + "\n\n" + source
+                                                    
                                                 except (TypeError, OSError) as e:
                                                     print(f"DEBUG: Could not capture decorator {decorator_name}: {e}")
-
+                                    
                                     frame = frame.f_back
                             finally:
                                 del frame
@@ -1217,6 +1290,57 @@ class ToolHandler(ABC):
         else:
             raise ModuleLoadError(f"Module {module.__name__} has neither file path nor source. Cannot load.")
 
+    def _add_imports_to_source(self, module_context) -> str:
+        """Add necessary imports to module source code."""
+        import types
+        import re
+
+        imports_needed = []
+        source = module_context.source
+        
+        # Scan the source code for annotation usage and add imports accordingly
+        annotation_names = self._extract_annotation_names(source)
+        if annotation_names:
+            # Group by likely modules
+            typing_names = []
+            collections_names = []
+            other_names = []
+            
+            for name in annotation_names:
+                if name in ['Any', 'Callable', 'Dict', 'List', 'Optional', 'Tuple', 'Type', 'Union', 'Literal', 'TypeVar', 'Generic']:
+                    typing_names.append(name)
+                elif name in ['defaultdict', 'deque', 'Counter', 'OrderedDict']:
+                    collections_names.append(name)
+                else:
+                    other_names.append(name)
+            
+            if typing_names:
+                imports_needed.append(f"from typing import {', '.join(sorted(typing_names))}")
+            if collections_names:
+                imports_needed.append(f"from collections import {', '.join(sorted(collections_names))}")
+
+        # Check for other common imports that might be needed
+        for k, v in module_context.namespace.__dict__.items():
+            if k.startswith("__"):
+                continue
+            elif isinstance(v, types.ModuleType):
+                if v.__name__ in ["math", "datetime", "collections", "os", "sys", "re", "json", "time"]:
+                    imports_needed.append(f"import {v.__name__}")
+            elif hasattr(v, "__module__") and hasattr(v, "__name__"):
+                if v.__module__ == "collections" and v.__name__ == "defaultdict":
+                    imports_needed.append("from collections import defaultdict")
+
+        # Also check for wraps import (commonly used in decorators)
+        if 'wraps' in source and '@wraps' in source:
+            imports_needed.append("from functools import wraps")
+
+        if imports_needed:
+            unique_imports = list(dict.fromkeys(imports_needed))  # Remove duplicates while preserving order
+            import_block = "\n".join(unique_imports) + "\n\n"
+            source = import_block + source
+
+        return source
+
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the complete ToolHandler state to a dictionary.
 
@@ -1239,24 +1363,30 @@ class ToolHandler(ABC):
         """
         module_details = {}
         function_paths = {}
+        
         for file_path, module_context in self.modules.items():
+            # CRITICAL: Use the enhanced source with imports when saving
+            enhanced_source = self._add_imports_to_source(module_context)
+            
             module_details[file_path] = {
                 "name": module_context.name,
-                "source": self._add_imports_to_source(module_context),
+                "source": enhanced_source,  # Save the enhanced source, not the original
                 "file_path": module_context.file_path,
-                "code_hash": self._get_code_hash(self._add_imports_to_source(module_context)),
+                "code_hash": self._get_code_hash(enhanced_source),  # Hash the enhanced source
                 "globals": {
                     k: v
                     for k, v in module_context.namespace.__dict__.items()
                     if not k.startswith("__") and isinstance(v, (int, float, str, bool, list, dict))
                 },
             }
+        
         for name, func in self.function_map.items():
             module_context = getattr(func, "__module_context__", None)
             if module_context:
                 function_paths[name] = module_context.file_path
             else:
                 function_paths[name] = "dynamic"
+        
         return {
             "class": f"{self.__class__.__module__}.{self.__class__.__name__}",
             "tools": self.tools.copy(),
@@ -1303,6 +1433,7 @@ class ToolHandler(ABC):
         handler.requests = data.get("requests", [])
         handler.tools = data.get("tools", []).copy()
         function_paths = data.get("function_paths", {})
+        
         for file_path, module_data in data.get("modules", {}).items():
             current_code_hash = cls._get_code_hash(module_data["source"])
             if current_code_hash != module_data["code_hash"]:
@@ -1312,9 +1443,12 @@ class ToolHandler(ABC):
                 module = ModuleType(module_data["name"])
                 module.__file__ = file_path
                 source = module_data["source"]
+                
                 if "globals" in module_data:
                     module.__dict__.update(module_data["globals"])
+                
                 exec(source, module.__dict__)
+                
                 module_context = ModuleContext(
                     name=module_data["name"],
                     source=source,
@@ -1323,15 +1457,60 @@ class ToolHandler(ABC):
                     code_hash=current_code_hash,
                 )
                 handler.modules[module_data["file_path"]] = module_context
+                
                 for func_name, path in function_paths.items():
                     if path == module_data["file_path"] and func_name in module.__dict__:
                         func = module.__dict__[func_name]
                         if callable(func):
                             func.__module_context__ = module_context
                             handler.function_map[func_name] = func
+                            
             except Exception as e:
-                print(f"Warning: Failed to load module {file_path}: {str(e)}")
+                import traceback
+                import sys
+                
+                print(f"Warning: Failed to load module {file_path}")
+                print(f"  Error: {type(e).__name__}: {str(e)}")
+                
+                # Get detailed traceback information
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                if exc_traceback:
+                    tb_frame = exc_traceback.tb_frame
+                    tb_lineno = exc_traceback.tb_lineno
+                    print(f"  Location: {tb_frame.f_code.co_filename}:{tb_lineno}")
+                    print(f"  Function: {tb_frame.f_code.co_name}")
+                    
+                    # Get local variables at the point of failure
+                    if tb_frame.f_locals:
+                        relevant_locals = {k: v for k, v in tb_frame.f_locals.items() 
+                                         if not k.startswith('__') and not callable(v)}
+                        if relevant_locals:
+                            print(f"  Local variables: {relevant_locals}")
+                
+                # Show the full stack trace for debugging
+                tb_lines = traceback.format_tb(exc_traceback)
+                if tb_lines:
+                    print("  Full stack trace:")
+                    for i, line in enumerate(tb_lines):
+                        print(f"    Frame {i}: {line.strip()}")
+                
+                # Show the source code around the error if possible
+                if exc_traceback and hasattr(exc_traceback, 'tb_lineno'):
+                    try:
+                        source_lines = source.split('\n')
+                        error_line = exc_traceback.tb_lineno
+                        start_line = max(0, error_line - 3)
+                        end_line = min(len(source_lines), error_line + 2)
+                        
+                        print(f"  Source context (lines {start_line + 1}-{end_line}):")
+                        for i in range(start_line, end_line):
+                            prefix = ">>> " if i + 1 == error_line else "    "
+                            print(f"  {prefix}{i + 1:3d}: {source_lines[i]}")
+                    except Exception:
+                        pass
+                
                 continue
+        
         return handler
 
     def get_tools_json(self) -> str:
@@ -1428,30 +1607,6 @@ class ToolHandler(ABC):
             str: MD5 hash of the code string
         """
         return hashlib.md5(code.encode()).hexdigest()
-
-    def _add_imports_to_source(self, module_context) -> str:
-        """Add necessary imports to module source code."""
-        import types
-
-        imports_needed = []
-
-        for k, v in module_context.namespace.__dict__.items():
-            if k.startswith("__"):
-                continue
-            elif isinstance(v, types.ModuleType):
-                if v.__name__ in ["math", "datetime", "collections", "os", "sys", "re", "json", "time"]:
-                    imports_needed.append(f"import {v.__name__}")
-            elif hasattr(v, "__module__") and hasattr(v, "__name__"):
-                if v.__module__ == "collections" and v.__name__ == "defaultdict":
-                    imports_needed.append("from collections import defaultdict")
-
-        source = module_context.source
-        if imports_needed:
-            unique_imports = list(dict.fromkeys(imports_needed))
-            import_block = "\n".join(unique_imports) + "\n\n"
-            source = import_block + source
-
-        return source
 
     def __str__(self) -> str:
         """Create a simple string representation of the ToolHandler.
@@ -2084,54 +2239,54 @@ class Bot(ABC):
                 textwrap.wrap(
                     content,
                     width=available_width,
-                    initial_indent=indent + "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ",
-                    subsequent_indent=indent + "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ",
+                    initial_indent=indent + "│ ",
+                    subsequent_indent=indent + "│ ",
                 )
             )
             tool_info = []
             if hasattr(node, "tool_calls") and node.tool_calls:
-                tool_info.append(f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ Tool Calls:")
+                tool_info.append(f"{indent}│ Tool Calls:")
                 for call in node.tool_calls:
                     if isinstance(call, dict):
-                        tool_info.append(f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡   - {call.get('name', 'unknown')}")
+                        tool_info.append(f"{indent}│   - {call.get('name', 'unknown')}")
             if hasattr(node, "tool_results") and node.tool_results:
-                tool_info.append(f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ Tool Results:")
+                tool_info.append(f"{indent}│ Tool Results:")
                 for result in node.tool_results:
                     if isinstance(result, dict):
                         tool_info.append(
-                            f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡   - {str(result.get('content', ''))[:available_width]}"
+                            f"{indent}│   - {str(result.get('content', ''))[:available_width]}"
                         )
             if hasattr(node, "pending_results") and node.pending_results:
-                tool_info.append(f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ Pending Results:")
+                tool_info.append(f"{indent}│ Pending Results:")
                 for result in node.pending_results:
                     if isinstance(result, dict):
                         tool_info.append(
-                            f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡   - {str(result.get('content', ''))[:available_width]}"
+                            f"{indent}│   - {str(result.get('content', ''))[:available_width]}"
                         )
                     else:
                         raise ValueError()
-            messages.append(f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ {name_display}")
+            messages.append(f"{indent}├─ {name_display}")
             messages.append(wrapped_content)
             if hasattr(node, "tool_calls") and node.tool_calls:
-                messages.append(f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ Tool Calls:")
+                messages.append(f"{indent}│ Tool Calls:")
                 for call in node.tool_calls:
                     if isinstance(call, dict):
-                        messages.append(f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡   - {call.get('name', 'unknown')}")
+                        messages.append(f"{indent}│   - {call.get('name', 'unknown')}")
             if hasattr(node, "tool_results") and node.tool_results:
-                messages.append(f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ Tool Results:")
+                messages.append(f"{indent}│ Tool Results:")
                 for result in node.tool_results:
                     if isinstance(result, dict):
                         messages.append(
-                            f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡   - {str(result.get('content', ''))[:available_width]}"
+                            f"{indent}│   - {str(result.get('content', ''))[:available_width]}"
                         )
             if hasattr(node, "pending_results") and node.pending_results:
-                messages.append(f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ Pending Results:")
+                messages.append(f"{indent}│ Pending Results:")
                 for result in node.pending_results:
                     if isinstance(result, dict):
                         messages.append(
-                            f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡   - {str(result.get('content', ''))[:available_width]}"
+                            f"{indent}│   - {str(result.get('content', ''))[:available_width]}"
                         )
-            messages.append(f"{indent}ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã‚Â" + "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬" * 40)
+            messages.append(f"{indent}└" + "─" * 40)
             if hasattr(node, "replies") and node.replies:
                 for reply in node.replies:
                     messages.extend(format_conversation(reply, level + 1))
