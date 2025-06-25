@@ -1,11 +1,11 @@
 # Installation and Quick Start
 ## Installation
 ### Basic Installation
-`ash
+`bash
 pip install git+https://github.com/benbuzz790/bots.git
 `
 ### Development Installation
-`ash
+`bash
 git clone https://github.com/benbuzz790/bots.git
 cd bots
 pip install -e .[dev]
@@ -16,11 +16,11 @@ pip install -e .[dev]
 ## API Key Setup
 Set your API key as an environment variable:
 **For Anthropic (Claude):**
-`ash
+`bash
 export ANTHROPIC_API_KEY="your-api-key-here"
 `
 **For OpenAI (GPT):**
-`ash
+`bash
 export OPENAI_API_KEY="your-api-key-here"
 `
 **Windows PowerShell:**
@@ -190,7 +190,7 @@ responses, nodes = fp.prompt_for(
 `
 ### Level 5: CLI Integration and Advanced Navigation
 #### Advanced CLI Usage
-`ash
+`bash
 # Start CLI with pre-loaded bot
 python -m bots.dev.cli my_expert.bot
 # In CLI - navigate conversation tree
@@ -207,7 +207,7 @@ python -m bots.dev.cli my_expert.bot
 >>> /broadcast_fp
 `
 #### CLI Functional Prompt Integration
-`ash
+`bash
 # In CLI session
 >>> /fp
 Select functional prompt:

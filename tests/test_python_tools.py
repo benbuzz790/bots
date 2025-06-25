@@ -2,6 +2,7 @@ import ast
 import difflib
 import inspect
 import os
+import psutil
 import shutil
 import sys
 import tempfile
@@ -1082,7 +1083,6 @@ class TestClass:
 
     def test_execute_python_code_process_cleanup(self):
         """Test that processes are properly cleaned up after execution"""
-        import psutil
 
         initial_processes = set(psutil.Process().children(recursive=True))
         code = textwrap.dedent(
