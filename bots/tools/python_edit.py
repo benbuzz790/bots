@@ -297,7 +297,27 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
             except Exception as e:
                 return _process_error(e)
         if not path_elements:
-            tree.body = deduplicated_imports + code_nodes
+            if insert_after:
+                # File-level insert_after: find the target and insert after it
+                target_found = False
+                insert_index = len(non_imports)  # Default to end if not found
+                
+                for i, node in enumerate(non_imports):
+                    if hasattr(node, 'name') and node.name == insert_after:
+                        insert_index = i + 1
+                        target_found = True
+                        break
+                
+                if not target_found:
+                    return _process_error(ValueError(f'Insert point not found at file level: {insert_after}'))
+                
+                # Insert the new code nodes at the found position
+                new_non_imports = non_imports[:insert_index] + code_nodes + non_imports[insert_index:]
+                tree.body = deduplicated_imports + new_non_imports
+            else:
+                # File-level replacement: replace entire file content
+                tree.body = deduplicated_imports + code_nodes
+            
             try:
                 updated_content = _py_ast_to_source(tree)
                 all_tokens = {**file_tokens, **new_code_tokens}
@@ -308,6 +328,8 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                     file.write(final_content)
                 if was_originally_empty:
                     return f"Code added to '{abs_path}'."
+                elif insert_after:
+                    return f"Code inserted after {insert_after} in '{abs_path}'."
                 else:
                     return f"Code replaced at file level in '{abs_path}'."
             except Exception as e:
