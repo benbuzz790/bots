@@ -1511,11 +1511,7 @@ class ToolHandler(ABC):
                 "source": enhanced_source,  # Save the enhanced source, not the original
                 "file_path": module_context.file_path,
                 "code_hash": self._get_code_hash(enhanced_source),  # Hash the enhanced source
-                "globals": {
-                    k: v
-                    for k, v in module_context.namespace.__dict__.items()
-                    if not k.startswith("__") and isinstance(v, (int, float, str, bool, list, dict))
-                },
+                "globals": self._serialize_globals(module_context.namespace.__dict__),
             }
 
         for name, func in self.function_map.items():
@@ -1533,6 +1529,33 @@ class ToolHandler(ABC):
             "modules": module_details,
             "function_paths": function_paths,
         }
+    def _serialize_globals(self, namespace_dict: dict) -> dict:
+        """Serialize globals including modules and other necessary objects."""
+        import types
+        serialized = {}
+        
+        for k, v in namespace_dict.items():
+            if k.startswith("__"):
+                continue
+                
+            # Include basic types
+            if isinstance(v, (int, float, str, bool, list, dict)):
+                serialized[k] = v
+            # Include modules - store their import information
+            elif isinstance(v, types.ModuleType):
+                # Store module info for reconstruction
+                serialized[k] = {
+                    "__module_type__": True,
+                    "name": v.__name__,
+                    "spec": getattr(v, "__spec__", None) and v.__spec__.name
+                }
+            # Include other serializable objects that might be needed
+            elif hasattr(v, "__module__") and hasattr(v, "__name__"):
+                # This covers classes and other importable objects
+                pass  # For now, skip these - they're complex to serialize
+                
+        return serialized
+
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ToolHandler":
@@ -1583,7 +1606,7 @@ class ToolHandler(ABC):
                 source = module_data["source"]
 
                 if "globals" in module_data:
-                    module.__dict__.update(module_data["globals"])
+                    cls._deserialize_globals(module.__dict__, module_data["globals"])
 
                 exec(source, module.__dict__)
 
@@ -1651,6 +1674,28 @@ class ToolHandler(ABC):
                 continue
 
         return handler
+    @staticmethod
+    def _deserialize_globals(module_dict: dict, serialized_globals: dict):
+        """Deserialize globals including module reconstruction."""
+        import types
+        import importlib
+        
+        for k, v in serialized_globals.items():
+            if isinstance(v, dict) and v.get("__module_type__"):
+                # This is a serialized module - reconstruct it
+                module_name = v["name"]
+                try:
+                    # Import the module
+                    imported_module = importlib.import_module(module_name)
+                    module_dict[k] = imported_module
+                except ImportError as e:
+                    print(f"Warning: Could not import module {module_name}: {e}")
+                    # Continue without this module - function might still work
+                    pass
+            else:
+                # Regular value - just assign it
+                module_dict[k] = v
+
 
     def get_tools_json(self) -> str:
         """Get a JSON string representation of all registered tools.
