@@ -189,7 +189,7 @@ class BOMRemover:
 
 @log_errors
 @handle_errors
-def execute_powershell(command: str, output_length_limit: str = "2500", timeout: str = "60") -> str:
+def execute_powershell(command: str, output_length_limit: str = "1000", timeout: str = "60") -> str:
     """
     Executes PowerShell commands in a stateful environment with automatic BOM removal
 
@@ -497,7 +497,7 @@ function Invoke-SafeCommand {
             # Get current directory for display and BOM cleanup
             try:
                 current_dir = self._get_current_directory()
-                dir_info = f"[System: current directory <{current_dir}>]"
+                dir_info = f"PS {current_dir}> {code}\n"
 
                 # Perform BOM cleanup after execution
                 bom_count = self._post_execution_bom_cleanup(code, current_dir)
