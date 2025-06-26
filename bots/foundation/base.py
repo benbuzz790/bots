@@ -36,9 +36,12 @@ import hashlib
 import importlib
 import inspect
 import json
+import keyword
 import os
+import re
 import sys
 import textwrap
+import types
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -1025,9 +1028,24 @@ class ToolHandler(ABC):
                         # CRITICAL: Capture ALL annotation dependencies
                         self._capture_annotation_context(func, context)
 
-                        # Also capture globals from the original module
+                        # UNION FIX: Capture EVERYTHING from both function globals AND original module
                         import importlib
+                        import types
 
+                        # First, add ALL function globals (not just co_names)
+                        for name, value in func.__globals__.items():
+                            if not name.startswith("__"):
+                                context[name] = value
+
+                        # Then, union with the original module namespace
+                        try:
+                            original_module = importlib.import_module(func.__module__)
+                            for name, value in original_module.__dict__.items():
+                                if not name.startswith("__"):
+                                    # Module namespace takes precedence over function globals for conflicts
+                                    context[name] = value
+                        except ImportError:
+                            pass
                         try:
                             original_module = importlib.import_module(func.__module__)
                             for name, value in original_module.__dict__.items():
@@ -1288,65 +1306,61 @@ class ToolHandler(ABC):
             raise ModuleLoadError(f"Module {module.__name__} has neither file path nor source. Cannot load.")
 
     def _add_imports_to_source(self, module_context) -> str:
-        """Add necessary imports to module source code."""
-        import types
-
-        imports_needed = []
+        """Add necessary imports to module source code by extracting existing imports."""     
         source = module_context.source
-
-        # Scan the source code for annotation usage and add imports accordingly
-        annotation_names = self._extract_annotation_names(source)
-        if annotation_names:
-            # Group by likely modules
-            typing_names = []
-            collections_names = []
-            other_names = []
-
-            for name in annotation_names:
-                if name in [
-                    "Any",
-                    "Callable",
-                    "Dict",
-                    "List",
-                    "Optional",
-                    "Tuple",
-                    "Type",
-                    "Union",
-                    "Literal",
-                    "TypeVar",
-                    "Generic",
-                ]:
-                    typing_names.append(name)
-                elif name in ["defaultdict", "deque", "Counter", "OrderedDict"]:
-                    collections_names.append(name)
-                else:
-                    other_names.append(name)
-
-            if typing_names:
-                imports_needed.append(f"from typing import {', '.join(sorted(typing_names))}")
-            if collections_names:
-                imports_needed.append(f"from collections import {', '.join(sorted(collections_names))}")
-
-        # Check for other common imports that might be needed
-        for k, v in module_context.namespace.__dict__.items():
-            if k.startswith("__"):
-                continue
-            elif isinstance(v, types.ModuleType):
-                if v.__name__ in ["math", "datetime", "collections", "os", "sys", "re", "json", "time"]:
-                    imports_needed.append(f"import {v.__name__}")
-            elif hasattr(v, "__module__") and hasattr(v, "__name__"):
-                if v.__module__ == "collections" and v.__name__ == "defaultdict":
-                    imports_needed.append("from collections import defaultdict")
-
-        # Also check for wraps import (commonly used in decorators)
-        if "wraps" in source and "@wraps" in source:
-            imports_needed.append("from functools import wraps")
-
-        if imports_needed:
-            unique_imports = list(dict.fromkeys(imports_needed))  # Remove duplicates while preserving order
-            import_block = "\n".join(unique_imports) + "\n\n"
+        imports_needed = []
+        
+        # Extract existing import statements from the source using AST
+        try:
+            tree = ast.parse(source)
+            
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.asname:
+                            imports_needed.append(f"import {alias.name} as {alias.asname}")
+                        else:
+                            imports_needed.append(f"import {alias.name}")
+                            
+                elif isinstance(node, ast.ImportFrom):
+                    module_name = node.module or ""
+                    names = []
+                    for alias in node.names:
+                        if alias.asname:
+                            names.append(f"{alias.name} as {alias.asname}")
+                        else:
+                            names.append(alias.name)
+                    
+                    if names:
+                        imports_needed.append(f"from {module_name} import {', '.join(names)}")
+                        
+        except SyntaxError:
+            # Fallback: use regex to extract import statements
+            import_patterns = [
+                r'^import\s+[\w\.,\s]+',
+                r'^from\s+[\w\.]+\s+import\s+[\w\.,\s\*]+',
+            ]
+            
+            for line in source.split('\n'):
+                line = line.strip()
+                for pattern in import_patterns:
+                    if re.match(pattern, line):
+                        imports_needed.append(line)
+                        break
+        
+        # Remove duplicates while preserving order
+        unique_imports = []
+        seen = set()
+        for imp in imports_needed:
+            if imp not in seen:
+                unique_imports.append(imp)
+                seen.add(imp)
+        
+        # Add imports to source if any were found
+        if unique_imports:
+            import_block = '\n'.join(unique_imports) + '\n\n'
             source = import_block + source
-
+        
         return source
 
     def to_dict(self) -> Dict[str, Any]:
