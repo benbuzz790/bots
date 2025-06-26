@@ -43,3 +43,4 @@ test_results.*
 cli_config.json
 Claude.bot
 large_refactor_tasks.md
+__*
