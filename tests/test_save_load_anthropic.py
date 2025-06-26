@@ -328,6 +328,55 @@ class TestSaveLoadAnthropic(unittest.TestCase):
                 f"Function {func_name} is not callable after two save/load cycles",
             )
 
+
+    def test_callable_tool_persistence(self) -> None:
+        """Test callabe-based tool persistence through multiple save/load cycles.
+
+        Use when verifying that tools imported from callables maintain their
+        functionality and configuration through multiple serialization cycles.
+
+        Args:
+            self: Test class instance
+
+        Returns:
+            None
+
+        Tests:
+            - Callable tool count preservation
+            - Function name mapping preservation
+            - Tool callability after multiple save/load cycles
+            - Tool configuration consistency
+            - Function map integrity
+
+        Raises:
+            AssertionError: If tool configurations don't match or functions
+                become uncallable after save/load cycles
+
+        Note:
+            Uses python_editing_tools callables as test subject and performs
+            multiple save/load cycles to ensure stability
+        """
+        from bots.tools.python_editing_tools import replace_class, replace_function, add_imports
+        self.bot.add_tools(replace_class, replace_function, add_imports)
+        initial_tool_count = len(self.bot.tool_handler.tools)
+        initial_function_names = set(self.bot.tool_handler.function_map.keys())
+        save_path1 = os.path.join(self.temp_dir, f"callable_tools_1_{self.bot.name}")
+        self.bot.save(save_path1)
+        loaded_bot1 = Bot.load(save_path1 + ".bot")
+        self.assertEqual(initial_tool_count, len(loaded_bot1.tool_handler.tools))
+        self.assertEqual(initial_function_names, set(loaded_bot1.tool_handler.function_map.keys()))
+        save_path2 = os.path.join(self.temp_dir, f"callable_tools_2_{self.bot.name}")
+        loaded_bot1.save(save_path2)
+        loaded_bot2 = Bot.load(save_path2 + ".bot")
+        self.assertEqual(initial_tool_count, len(loaded_bot2.tool_handler.tools))
+        self.assertEqual(initial_function_names, set(loaded_bot2.tool_handler.function_map.keys()))
+        for func_name in initial_function_names:
+            self.assertTrue(
+                callable(loaded_bot2.tool_handler.function_map[func_name]),
+                f"Function {func_name} is not callable after two save/load cycles",
+            )
+
+
     def test_save_load_empty_bot(self) -> None:
         """Test save/load operations on a bot with no conversation history.
 
@@ -729,13 +778,6 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         final_count = len(self.bot.tool_handler.tools)
         self.assertGreater(final_count, initial_count)
 
-import json
-import os
-import tempfile
-import unittest
-from bots.foundation.anthropic_bots import AnthropicBot
-from bots.foundation.base import Bot, Engines
-
 
 class TestDebugImports(unittest.TestCase):
     """Debug test class to identify import capture issues."""
@@ -940,7 +982,6 @@ class TestDebugImports(unittest.TestCase):
         """Deep dive into what _add_imports_to_source is actually doing."""
         
         import json
-        from typing import Callable, Any
         
         def test_func(data: str) -> str:
             """Function that uses both json and type hints"""
