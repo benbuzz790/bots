@@ -1347,6 +1347,122 @@ class ToolHandler(ABC):
                     if re.match(pattern, line):
                         imports_needed.append(line)
                         break
+        # CRITICAL FIX: Add imports for typing objects used in type hints
+        # This fixes the issue where Callable, Any, etc. are used but not imported
+        try:
+            tree = ast.parse(source)
+            
+            # Find all names used in type annotations
+            annotation_names = set()
+            
+            class AnnotationVisitor(ast.NodeVisitor):
+                def visit_FunctionDef(self, node):
+                    # Check function annotations
+                    if node.returns:
+                        self._extract_names_from_annotation(node.returns, annotation_names)
+                    
+                    for arg in node.args.args:
+                        if arg.annotation:
+                            self._extract_names_from_annotation(arg.annotation, annotation_names)
+                    
+                    self.generic_visit(node)
+                
+                def visit_AsyncFunctionDef(self, node):
+                    # Same as FunctionDef but for async functions
+                    if node.returns:
+                        self._extract_names_from_annotation(node.returns, annotation_names)
+                    
+                    for arg in node.args.args:
+                        if arg.annotation:
+                            self._extract_names_from_annotation(arg.annotation, annotation_names)
+                    
+                    self.generic_visit(node)
+                
+                def _extract_names_from_annotation(self, annotation, names_set):
+                    """Extract all names from a type annotation."""
+                    if isinstance(annotation, ast.Name):
+                        names_set.add(annotation.id)
+                    elif isinstance(annotation, ast.Attribute):
+                        # For things like typing.Optional
+                        if isinstance(annotation.value, ast.Name):
+                            names_set.add(annotation.value.id)
+                    elif isinstance(annotation, ast.Subscript):
+                        # For things like List[str], Optional[int]
+                        self._extract_names_from_annotation(annotation.value, names_set)
+                        if hasattr(annotation, 'slice'):
+                            if isinstance(annotation.slice, ast.Name):
+                                names_set.add(annotation.slice.id)
+                            elif hasattr(annotation.slice, 'elts'):  # Tuple of types
+                                for elt in annotation.slice.elts:
+                                    self._extract_names_from_annotation(elt, names_set)
+                            else:
+                                self._extract_names_from_annotation(annotation.slice, names_set)
+            
+            visitor = AnnotationVisitor()
+            visitor.visit(tree)
+            
+            # Now check if any of these annotation names are typing objects in the namespace
+            if hasattr(module_context, 'namespace') and hasattr(module_context.namespace, '__dict__'):
+                namespace_dict = module_context.namespace.__dict__
+                
+                # Common typing imports that need to be handled
+                typing_imports = []
+                
+                for name in annotation_names:
+                    if name in namespace_dict:
+                        value = namespace_dict[name]
+                        
+                        # Check if this is a typing object
+                        if hasattr(value, '__module__') and value.__module__ == 'typing':
+                            typing_imports.append(name)
+                
+                # Add typing imports if we found any
+                if typing_imports:
+                    typing_import = f"from typing import {', '.join(sorted(typing_imports))}"
+                    imports_needed.append(typing_import)
+                    
+                # ADDITIONAL FIX: Also check for other common module imports (like functools.wraps)
+                # Look for any names used in the code that exist in the namespace
+                all_names_used = set()
+                
+                # Collect all names used in the source (not just annotations)
+                class NameCollector(ast.NodeVisitor):
+                    def visit_Name(self, node):
+                        if isinstance(node.ctx, ast.Load):
+                            all_names_used.add(node.id)
+                        self.generic_visit(node)
+                
+                name_collector = NameCollector()
+                name_collector.visit(tree)
+                
+                # Group imports by module
+                module_imports = {}
+                
+                for name in all_names_used:
+                    if name in namespace_dict:
+                        value = namespace_dict[name]
+                        
+                        # Check if this has a module and it's a standard library or common module
+                        if hasattr(value, '__module__') and value.__module__:
+                            module_name = value.__module__
+                            
+                            # Only handle common modules to avoid importing everything
+                            if module_name in ['functools', 'itertools', 'collections', 'operator', 're', 'math', 'datetime']:
+                                if module_name not in module_imports:
+                                    module_imports[module_name] = []
+                                module_imports[module_name].append(name)
+                
+                # Add the module imports
+                for module_name, names in module_imports.items():
+                    if names:
+                        module_import = f"from {module_name} import {', '.join(sorted(names))}"
+                        imports_needed.append(module_import)
+                    
+        except Exception as e:
+            # If annotation analysis fails, continue without it
+            # This ensures we don't break existing functionality
+            pass
+
         
         # Remove duplicates while preserving order
         unique_imports = []
