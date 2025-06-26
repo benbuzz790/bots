@@ -138,8 +138,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
     Example usage:
         branch_self("['Analyze the data for trends', 'Create visualizations', 'Write summary report']")
     """
-    # Import dependencies locally
-
+    import json #hack for now
     bot = _get_calling_bot()
     if not bot or not bot.tool_handler.requests:
         return "Error: No branch_self tool request found"
@@ -150,7 +149,6 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         request=request, tool_output_kwargs=json.dumps({"status": "branching_in_progress"})
     )
     bot.tool_handler.add_result(dummy_result)
-    bot.conversation._add_tool_results([dummy_result])
 
     # Parse and validate parameters
     allow_work = allow_work.lower() == "true"
@@ -164,7 +162,18 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
     if not message_list:
         return "Error: No valid messages provided"
 
+    # # Capture complete initial state before any modifications
+    # original_tool_handler_results = list(bot.tool_handler.results)
+    # original_conversation_tool_results = list(bot.conversation.tool_results)
+    # original_conversation_content = bot.conversation.content
+    # original_conversation_role = bot.conversation.role
+    # original_conversation_tool_calls = list(bot.conversation.tool_calls) if bot.conversation.tool_calls else []
+    # original_conversation_pending_results = list(bot.conversation.pending_results) if bot.conversation.pending_results else []
+    original_replies_tool_results = {}
     original_node = bot.conversation
+    for i, reply in enumerate(bot.conversation.replies):
+        original_replies_tool_results[i] = list(reply.tool_results)
+    
     for i, item in enumerate(message_list):
         message_list[i] = f"(self-prompt): {item}"
 
@@ -246,3 +255,8 @@ def _process_string_array(input_str: str) -> List[str]:
     if not isinstance(result, list) or not all(isinstance(x, str) for x in result):
         raise ValueError("Input must evaluate to a list of strings")
     return result
+
+
+
+
+
