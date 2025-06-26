@@ -257,7 +257,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> st
         abs_path = _make_file(file_path)
         cleaned_code, prep_error = prep_input(code)
         if prep_error:
-            return _process_error(ValueError(f"Input code validation failed:\n{prep_error}"))
+            return f"Tool Failed: Input code validation failed:\n{prep_error}"
         tokenized_code, new_code_tokens = _tokenize_source(cleaned_code)
         try:
             new_tree = ast.parse(tokenized_code)
@@ -746,8 +746,13 @@ def _process_multiline_strings(source: str, token_map: dict, token_counter: int,
     ]
     for start_pattern, end_pattern in patterns:
         pos = 0
+        iteration_count = 0  # Safety counter
         while True:
             start_pos = tokenized.find(start_pattern, pos)
+            iteration_count += 1
+            if iteration_count > 1000:
+                print(f"Warning: Breaking infinite loop for pattern {start_pattern}")
+                break
             if start_pos == -1:
                 break
             if start_pos in processed_positions:
