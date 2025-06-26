@@ -24,6 +24,63 @@ def _write_file_bom_safe(file_path: str, content: str) -> None:
         file.write(clean_content)
 
 
+class ScopeViewer(ast.NodeVisitor):
+    """AST visitor that finds and extracts specific scopes from Python code."""
+    
+    def __init__(self, path_elements):
+        self.target_path = path_elements
+        self.current_path = []
+        self.target_node = None
+        self.found = False
+    
+    def find_target(self, tree):
+        """Find the target node in the AST tree."""
+        self.visit(tree)
+        return self.target_node
+    
+    def visit_ClassDef(self, node):
+        """Visit a class definition node."""
+        return self._visit_named_node(node)
+    
+    def visit_FunctionDef(self, node):
+        """Visit a function definition node."""
+        return self._visit_named_node(node)
+    
+    def visit_AsyncFunctionDef(self, node):
+        """Visit an async function definition node."""
+        return self._visit_named_node(node)
+    
+    def _visit_named_node(self, node):
+        """Common handling for named nodes (classes, functions)."""
+        if self.found:
+            return
+        
+        # Check if this node matches the current position in our target path
+        if len(self.current_path) < len(self.target_path) and node.name == self.target_path[len(self.current_path)]:
+            self.current_path.append(node.name)
+            
+            # If we've reached the end of our target path, we found our target
+            if len(self.current_path) == len(self.target_path):
+                self.target_node = node
+                self.found = True
+                return
+            
+            # Continue searching in the body of this node
+            for child in node.body:
+                self.visit(child)
+            
+            # Backtrack
+            self.current_path.pop()
+        
+        # If this node doesn't match our current target, don't explore its children
+        # (unless we're at the module level and haven't started matching yet)
+        elif len(self.current_path) == 0:
+            # At module level, visit all top-level nodes
+            pass
+        else:
+            # We're inside a scope but this node doesn't match our path
+            return
+
 class TokenType(Enum):
     """Types of tokens for metadata-driven processing"""
 
@@ -212,6 +269,85 @@ class ScopeTransformer(ast.NodeTransformer):
                 break
         for i, new_node in enumerate(self.new_nodes):
             node.body.insert(insert_index + i, new_node)
+
+
+@handle_errors
+def python_view(target_scope: str) -> str:
+    """
+    View Python code using pytest-style scope syntax.
+    
+    Parameters:
+    ----------
+    target_scope : str
+        Location to view in pytest-style scope syntax:
+        - "file.py" (whole file)
+        - "file.py::MyClass" (class)
+        - "file.py::my_function" (function)
+        - "file.py::MyClass::method" (method)
+        - "file.py::Outer::Inner::method" (nested)
+        - "file.py::utils::helper_func" (nested function)
+
+    Returns:
+    --------
+    str
+        The source code of the specified scope or error message
+    """
+    try:
+        file_path, *path_elements = target_scope.split("::")
+        
+        if not file_path.endswith(".py"):
+            return _process_error(ValueError(f"File path must end with .py: {file_path}"))
+        
+        for element in path_elements:
+            if not element.isidentifier():
+                return _process_error(ValueError(f"Invalid identifier in path: {element}"))
+        
+        abs_path = os.path.abspath(file_path)
+        
+        if not os.path.exists(abs_path):
+            return _process_error(FileNotFoundError(f"File not found: {abs_path}"))
+        
+        try:
+            original_content = _read_file_bom_safe(abs_path)
+            
+            if not original_content.strip():
+                return f"File '{abs_path}' is empty."
+            
+            # Extract top-level comments for potential restoration
+            content_without_comments, top_comments = _extract_top_level_comments(original_content)
+            
+            # If viewing the whole file, return original content with proper formatting
+            if not path_elements:
+                return original_content
+            
+            # For scoped viewing, we need to parse and find the target
+            tokenized_content, file_tokens = _tokenize_source(content_without_comments) if content_without_comments.strip() else ("", {})
+            tree = ast.parse(tokenized_content) if content_without_comments.strip() else ast.Module(body=[], type_ignores=[])
+            
+        except Exception as e:
+            return _process_error(ValueError(f"Error reading/parsing file {abs_path}: {str(e)}"))
+        
+        # Find the target scope
+        viewer = ScopeViewer(path_elements)
+        target_node = viewer.find_target(tree)
+        
+        if not target_node:
+            return _process_error(ValueError(f"Target scope not found: {target_scope}"))
+        
+        try:
+            # Convert the found node back to source code
+            node_source = _py_ast_to_source(target_node)
+            
+            # Detokenize to restore original formatting
+            final_content = _detokenize_source(node_source, file_tokens)
+            
+            return final_content
+            
+        except Exception as e:
+            return _process_error(ValueError(f"Error converting scope to source: {str(e)}"))
+    
+    except Exception as e:
+        return _process_error(e)
 
 
 @handle_errors
