@@ -962,9 +962,6 @@ def branch_while(
                         pass  # Don't let callback errors break the main function
             node = bot.conversation
         except Exception as e:
-            import traceback
-            error_details = f"Exception in branch_while: {type(e).__name__}: {str(e)}\nTraceback:\n{traceback.format_exc()}"
-            print(f"BRANCH ERROR: {error_details}")
             response = None
             node = None
         finally:
@@ -1036,9 +1033,6 @@ def par_branch(
                     pass  # Don't let callback errors break the main function
             return index, response, new_node.parent
         except Exception as e:
-            import traceback
-            error_details = f"Exception in branch {index}: {type(e).__name__}: {str(e)}\nTraceback:\n{traceback.format_exc()}"
-            print(f"BRANCH ERROR: {error_details}")
             return index, None, None
 
     with ThreadPoolExecutor() as executor:
@@ -1145,7 +1139,14 @@ def par_branch_while(
             branch_bot = Bot.load(temp_file)
             branch_bot.autosave = False
             first_response = branch_bot.respond(initial_prompt)
+            first_response_node = branch_bot.conversation
             response = first_response
+            if callback:
+                try:
+                    callback([response], [branch_bot.conversation])
+                except Exception as e:
+                    pass  # Don't let callback errors break the main function
+
             while not stop_condition(branch_bot):
                 response = branch_bot.respond(continue_prompt)
                 if callback:
@@ -1155,14 +1156,12 @@ def par_branch_while(
                         pass  # Don't let callback errors break the main function
             # Return the final node after all iterations, not the first node
             final_node = branch_bot.conversation
-            # Link the final node back to the original conversation
-            final_node.parent.parent = original_conversation
-            original_conversation.replies.append(final_node.parent)
+            # Link the *first* node back to the original conversation
+            first_response_node.parent.parent = original_conversation
+            # And link the original conversation to the initial prompt node
+            original_conversation.replies.append(first_response_node.parent)
             return index, response, final_node.parent
         except Exception as e:
-            import traceback
-            error_details = f"Exception in branch {index}: {type(e).__name__}: {str(e)}\nTraceback:\n{traceback.format_exc()}"
-            print(f"BRANCH ERROR: {error_details}")
             return index, None, None
 
     with ThreadPoolExecutor() as executor:

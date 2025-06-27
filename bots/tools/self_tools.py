@@ -1,4 +1,4 @@
-import ast
+﻿import ast
 import inspect
 import json
 from typing import List, Optional
@@ -148,7 +148,8 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
     dummy_result = bot.tool_handler.generate_response_schema(
         request=request, tool_output_kwargs=json.dumps({"status": "branching_in_progress"})
     )
-    bot.tool_handler.add_result(dummy_result)
+    # Properly add dummy result to conversation, not just tool_handler
+    bot.conversation._add_tool_results([dummy_result])
 
     # Parse and validate parameters
     allow_work = allow_work.lower() == "true"
@@ -162,17 +163,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
     if not message_list:
         return "Error: No valid messages provided"
 
-    # # Capture complete initial state before any modifications
-    # original_tool_handler_results = list(bot.tool_handler.results)
-    # original_conversation_tool_results = list(bot.conversation.tool_results)
-    # original_conversation_content = bot.conversation.content
-    # original_conversation_role = bot.conversation.role
-    # original_conversation_tool_calls = list(bot.conversation.tool_calls) if bot.conversation.tool_calls else []
-    # original_conversation_pending_results = list(bot.conversation.pending_results) if bot.conversation.pending_results else []
-    original_replies_tool_results = {}
-    original_node = bot.conversation
-    for i, reply in enumerate(bot.conversation.replies):
-        original_replies_tool_results[i] = list(reply.tool_results)
+    original_node = bot.conversation  # This now includes the dummy result
     
     for i, item in enumerate(message_list):
         message_list[i] = f"(self-prompt): {item}"
@@ -192,12 +183,8 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
     except Exception as e:
         return f"Error during branching: {str(e)}"
     finally:
-        # Clean up
-        bot.conversation = original_node
-        bot.conversation.tool_results = [r for r in bot.conversation.tool_results if r != dummy_result]
-        for reply in bot.conversation.replies:
-            reply.tool_results = [r for r in reply.tool_results if r != dummy_result]
-        bot.tool_handler.results = [r for r in bot.tool_handler.results if r != dummy_result]
+        original_node.tool_results = [res for res in original_node.tool_results if res != dummy_result]
+
 
     # Check for errors
     if any(response is None for response in responses):
