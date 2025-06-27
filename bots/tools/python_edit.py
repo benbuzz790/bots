@@ -1172,12 +1172,12 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
             if token_type == TokenType.COMPOUND_COMMENT:
                 base_indent = len(line) - len(line.lstrip())
                 token_indent = " " * (base_indent + 4)
-                processed_line = f"{code.rstrip()}\n{token_indent}{token_name}"
+                processed_line = f"{code.rstrip()}\n{token_indent}# {token_name}"
                 return (processed_line, token_counter + 1)
             elif token_type == TokenType.IMPORT_COMMENT:
                 base_indent = len(line) - len(line.lstrip())
                 token_indent = " " * base_indent
-                processed_line = f"{code.rstrip()}\n{token_indent}{token_name}"
+                processed_line = f"{code.rstrip()}\n{token_indent}# {token_name}"
                 return (processed_line, token_counter + 1)
             else:
                 code_trimmed = code.rstrip()
@@ -1186,7 +1186,7 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
                     if code_trimmed.endswith(","):
                         base_indent = len(line) - len(line.lstrip())
                         token_indent = " " * base_indent
-                        processed_line = f"{code_trimmed}\n{token_indent}{token_name}"
+                        processed_line = f"{code_trimmed}\n{token_indent}# {token_name}"
                     else:
                         spacing_before_comment = line[len(code_trimmed) : comment_start]
                         processed_line = f"{code_trimmed}{spacing_before_comment}{token_name}"
