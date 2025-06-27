@@ -1037,7 +1037,18 @@ def _analyze_string_at_position_in_source(source, pos, paren_depth):
                 break
         end_pos = _find_fstring_end_in_source(source, pos, char, is_raw)
     else:
+        # Check for plain raw string prefix (r"..." or R"...")
         string_start = pos
+        for prefix in ["r", "R"]:
+            prefix_start = pos - len(prefix)
+            if (
+                prefix_start >= 0
+                and source[prefix_start:pos] == prefix
+                and (prefix_start == 0 or not source[prefix_start - 1].isalnum())
+            ):
+                string_start = prefix_start
+                is_raw = True
+                break
         end_pos = _find_string_end_in_source(source, pos, char)
     if end_pos == -1:
         return None
@@ -1080,7 +1091,9 @@ def _process_string_literals(processed_line, token_map, token_counter, current_h
         if paren_depth > 0 or is_fstring:
             replacement = f"{quote_char}{token_name}{quote_char}"
         else:
-            replacement = f"{quote_char}{token_name}{quote_char}"
+            replacement = token_name
+        token_counter += 1
+        result = result[:start] + replacement + result[end + 1 :]
     return (result, token_counter)
 
 
@@ -1128,7 +1141,18 @@ def _analyze_string_at_position(line, pos, paren_depth):
                 break
         end_pos = _find_fstring_end(line, pos, char, is_raw)
     else:
+        # Check for plain raw string prefix (r"..." or R"...")
         string_start = pos
+        for prefix in ["r", "R"]:
+            prefix_start = pos - len(prefix)
+            if (
+                prefix_start >= 0
+                and line[prefix_start:pos] == prefix
+                and (prefix_start == 0 or not line[prefix_start - 1].isalnum())
+            ):
+                string_start = prefix_start
+                is_raw = True
+                break
         end_pos = _find_string_end(line, pos, char)
     if end_pos == -1:
         return None
@@ -1172,12 +1196,12 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
             if token_type == TokenType.COMPOUND_COMMENT:
                 base_indent = len(line) - len(line.lstrip())
                 token_indent = " " * (base_indent + 4)
-                processed_line = f"{code.rstrip()}\n{token_indent}# {token_name}"
+                processed_line = f"{code.rstrip()}\n{token_indent}{token_name}"
                 return (processed_line, token_counter + 1)
             elif token_type == TokenType.IMPORT_COMMENT:
                 base_indent = len(line) - len(line.lstrip())
                 token_indent = " " * base_indent
-                processed_line = f"{code.rstrip()}\n{token_indent}# {token_name}"
+                processed_line = f"{code.rstrip()}\n{token_indent}{token_name}"
                 return (processed_line, token_counter + 1)
             else:
                 code_trimmed = code.rstrip()
@@ -1186,7 +1210,8 @@ def _process_inline_comment(line: str, token_map: dict, token_counter: int, curr
                     if code_trimmed.endswith(","):
                         base_indent = len(line) - len(line.lstrip())
                         token_indent = " " * base_indent
-                        processed_line = f"{code_trimmed}\n{token_indent}# {token_name}"
+                        spacing_before_comment = line[len(code_trimmed) : comment_start]
+                        processed_line = f"{code_trimmed}{spacing_before_comment}{token_name}"
                     else:
                         spacing_before_comment = line[len(code_trimmed) : comment_start]
                         processed_line = f"{code_trimmed}{spacing_before_comment}{token_name}"
@@ -1440,3 +1465,4 @@ def _deduplicate_imports(existing_imports: List[ast.stmt], new_imports: List[ast
         if sig and sig not in new_signatures:
             result_imports.append(imp)
     return result_imports
+
