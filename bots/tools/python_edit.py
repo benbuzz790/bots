@@ -774,6 +774,35 @@ def _find_string_end(line, start_pos, quote_char):
     return -1
 
 
+def _find_string_end_in_source(source, start_pos, quote_char):
+    if start_pos >= len(source): return -1
+    pos = start_pos + 1
+    while pos < len(source):
+        if source[pos] == chr(92) and pos + 1 < len(source): pos += 2
+        elif source[pos] == quote_char: return pos
+        else: pos += 1
+    return -1
+
+def _find_fstring_end_in_source(source, start_pos, quote_char, is_raw=False):
+    pos = start_pos + 1
+    brace_depth = 0
+    while pos < len(source):
+        char = source[pos]
+        if char == chr(123): # {
+            if pos + 1 < len(source) and source[pos + 1] == chr(123): pos += 2; continue
+            else: brace_depth += 1; pos += 1; continue
+        elif char == chr(125): # }
+            if pos + 1 < len(source) and source[pos + 1] == chr(125): pos += 2; continue
+            else: brace_depth -= 1; pos += 1; continue
+        elif char == quote_char and brace_depth == 0: return pos
+        elif char == chr(92) and not is_raw and pos + 1 < len(source): pos += 2; continue
+        elif char in [chr(34), chr(39)] and brace_depth > 0:
+            nested_end = _find_string_end_in_source(source, pos, char)
+            if nested_end == -1: return -1
+            pos = nested_end + 1; continue
+        pos += 1
+    return -1
+
 def _tokenize_source(source: str) -> Tuple[str, Dict[str, Dict]]:
     """
     Tokenize source code, preserving exact formatting.
@@ -834,7 +863,7 @@ def _process_line_comments(line: str, token_map: dict, token_counter: int, curre
     if content.strip().startswith("#"):
         token_name, token_data = _create_token(content.strip(), token_counter, current_hash, TokenType.STANDALONE_COMMENT)
         token_map[token_name] = token_data
-        return (f"{indentation}{token_name}", token_counter + 1)
+        return (f'{indentation}# {token_name}', token_counter + 1)
     if "#" in content:
         hash_positions = [i for i, c in enumerate(content) if c == "#"]
         for hash_pos in hash_positions:
@@ -900,7 +929,7 @@ def _process_multiline_strings(source: str, token_map: dict, token_counter: int,
                 continue
             end_pos += len(end_pattern)
             string_content = tokenized[start_pos:end_pos]
-            if _contains_token(string_content) or len(string_content) > 1000:
+            if _contains_token(string_content) or False:
                 pos = start_pos + 1
                 continue
             processed_positions.add(start_pos)
@@ -948,14 +977,21 @@ def _process_all_string_literals(source, token_map, token_counter, current_hash)
             metadata["quote_char"] = quote_char
         token_name, token_data = _create_token(string_content, token_counter, current_hash, TokenType.STRING_LITERAL, metadata)
         token_map[token_name] = token_data
-        if paren_depth > 0:
+        if paren_depth > 0 or is_fstring:
             replacement = f"{quote_char}{token_name}{quote_char}"
         else:
             replacement = token_name
-        result = result[:start] + replacement + result[end + 1 :]
         token_counter += 1
+        result = result[:start] + replacement + result[end + 1 :]
     return (result, token_counter)
 
+
+
+def _is_position_in_comment(source, pos):
+    line_start = source.rfind(chr(10), 0, pos) + 1
+    line_content = source[line_start:pos + 1]
+    hash_pos = line_content.find(chr(35))
+    return hash_pos != -1
 
 def _find_all_string_locations_in_source(source):
     """Find all string literal locations in the entire source, preserving escape sequences."""
@@ -972,7 +1008,7 @@ def _find_all_string_locations_in_source(source):
             paren_depth -= 1
             pos += 1
             continue
-        if char in ['"', "'"]:
+        if char in [chr(34), chr(39)]:
             string_info = _analyze_string_at_position_in_source(source, pos, paren_depth)
             if string_info:
                 locations.append(string_info)
@@ -999,10 +1035,10 @@ def _analyze_string_at_position_in_source(source, pos, paren_depth):
             ):
                 string_start = prefix_start
                 break
-        end_pos = _find_fstring_end(source, pos, char, is_raw)
+        end_pos = _find_fstring_end_in_source(source, pos, char, is_raw)
     else:
         string_start = pos
-        end_pos = _find_string_end(source, pos, char)
+        end_pos = _find_string_end_in_source(source, pos, char)
     if end_pos == -1:
         return None
     string_content = source[string_start : end_pos + 1]
@@ -1041,12 +1077,10 @@ def _process_string_literals(processed_line, token_map, token_counter, current_h
             metadata["quote_char"] = quote_char
         token_name, token_data = _create_token(string_content, token_counter, current_hash, TokenType.STRING_LITERAL, metadata)
         token_map[token_name] = token_data
-        if paren_depth > 0:
+        if paren_depth > 0 or is_fstring:
             replacement = f"{quote_char}{token_name}{quote_char}"
         else:
-            replacement = token_name
-        result = result[:start] + replacement + result[end + 1 :]
-        token_counter += 1
+            replacement = f"{quote_char}{token_name}{quote_char}"
     return (result, token_counter)
 
 
@@ -1326,7 +1360,7 @@ def _handle_standalone_comment(result: str, token_name: str, content: str, start
         line_end = len(result)
     line = result[line_start:line_end]
     indent = line[: len(line) - len(line.lstrip())]
-    replacement = indent + content
+    replacement = indent + "# " + content if not content.startswith("#") else indent + content
     return result[:line_start] + replacement + result[line_end:]
 
 
