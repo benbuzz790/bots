@@ -569,16 +569,7 @@ function Invoke-SafeCommand {
         {code}
 
         # Collect output after execution
-        $output = @()
-        try {{
-            if ($?) {{
-                # Add any output from the last command
-                $output += $LASTOUTPUT
-            }}
-        }} catch {{
-            Write-Error $_
-        }}
-        $output | ForEach-Object {{ $_ }}
+        # Send completion delimiter
         Write-Output '{delimiter}'
         """
         )
