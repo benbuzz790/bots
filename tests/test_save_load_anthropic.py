@@ -67,7 +67,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             and will be cleaned up in tearDown().
         """
         self.temp_dir = tempfile.mkdtemp()
-        self.bot = AnthropicBot(name="TestClaude", model_engine=Engines.CLAUDE35_SONNET_20240620)
+        self.bot = AnthropicBot(name="TestClaude", model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
         return self
 
     def tearDown(self) -> None:
@@ -404,7 +404,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             Verifies both the initial empty state and the bot's ability
             to properly function after loading from an empty state
         """
-        fresh_bot = AnthropicBot(name="TestClaude", model_engine=Engines.CLAUDE35_SONNET_20240620)
+        fresh_bot = AnthropicBot(name="TestClaude", model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
         save_path = os.path.join(self.temp_dir, f"empty_{fresh_bot.name}")
         save_path = fresh_bot.save(save_path)
         loaded_bot = Bot.load(save_path)
