@@ -54,7 +54,7 @@ class TestBranchSelfIntegration(DetailedTestCase):
     @patch("builtins.input")
     def test_branch_self_nested_directory_and_file_creation(self, mock_input):
         """Test the specific prompt: branch_self to make directories, then each branch makes files."""
-        prompt = "Hi Claude. Please use branch_self to make three directories, and then have each branch use branch_self to make three files in each directory. This is a test"
+        prompt = "Hi Claude. Please use branch_self to make three directories (dir1, dir2, dir3), and then have each branch use branch_self to make three files in each directory. This is a test"
         mock_input.side_effect = [prompt, "/exit"]
         start_time = time.time()
         with StringIO() as buf, redirect_stdout(buf):
@@ -105,7 +105,7 @@ class TestBranchSelfIntegration(DetailedTestCase):
     @patch("builtins.input")
     def test_branch_self_basic_functionality(self, mock_input):
         """Test basic branch_self functionality to ensure it works in CLI context."""
-        basic_prompt = "Please use branch_self to create three simple text files with different content in each"
+        basic_prompt = "Please use branch_self to create three simple text files with different content in each. Cancel if you hit an error."
         mock_input.side_effect = [basic_prompt, "/exit"]
         start_time = time.time()
         with StringIO() as buf, redirect_stdout(buf):

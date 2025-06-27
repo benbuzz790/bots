@@ -312,7 +312,7 @@ def chain(
         if callback:
             try:
                 callback(responses, nodes)
-            except Exception:
+            except Exception as e:
                 pass  # Don't let callback errors break the main function
     return responses, nodes
 
@@ -396,9 +396,9 @@ def branch(
             if callback:
                 try:
                     callback([response], [node])
-                except Exception:
+                except Exception as e:
                     pass  # Don't let callback errors break the main function
-        except Exception:
+        except Exception as e:
             response = None
             node = None
         finally:
@@ -693,7 +693,7 @@ def prompt_while(
         if callback:
             try:
                 callback(responses, nodes)
-            except Exception:
+            except Exception as e:
                 pass  # Don't let callback errors break the main function
     return responses, nodes
 
@@ -872,7 +872,7 @@ def chain_while(
         if callback:
             try:
                 callback(responses, nodes)
-            except Exception:
+            except Exception as e:
                 pass  # Don't let callback errors break the main function
     return responses, nodes
 
@@ -950,18 +950,21 @@ def branch_while(
     responses = []
     nodes = []
     for initial_prompt in prompt_list:
+        bot.conversation = original_conversation  # Reset to original state for each branch
         try:
-            bot.conversation = original_conversation
             response = bot.respond(initial_prompt)
             while not stop_condition(bot):
                 response = bot.respond(continue_prompt)
                 if callback:
                     try:
                         callback([response], [bot.conversation])
-                    except Exception:
+                    except Exception as e:
                         pass  # Don't let callback errors break the main function
             node = bot.conversation
-        except Exception:
+        except Exception as e:
+            import traceback
+            error_details = f"Exception in branch_while: {type(e).__name__}: {str(e)}\nTraceback:\n{traceback.format_exc()}"
+            print(f"BRANCH ERROR: {error_details}")
             response = None
             node = None
         finally:
@@ -1029,10 +1032,13 @@ def par_branch(
             if callback:
                 try:
                     callback([response], [new_node])
-                except Exception:
+                except Exception as e:
                     pass  # Don't let callback errors break the main function
             return index, response, new_node.parent
-        except Exception:
+        except Exception as e:
+            import traceback
+            error_details = f"Exception in branch {index}: {type(e).__name__}: {str(e)}\nTraceback:\n{traceback.format_exc()}"
+            print(f"BRANCH ERROR: {error_details}")
             return index, None, None
 
     with ThreadPoolExecutor() as executor:
@@ -1145,7 +1151,7 @@ def par_branch_while(
                 if callback:
                     try:
                         callback([response], [branch_bot.conversation])
-                    except Exception:
+                    except Exception as e:
                         pass  # Don't let callback errors break the main function
             # Return the final node after all iterations, not the first node
             final_node = branch_bot.conversation
@@ -1153,7 +1159,10 @@ def par_branch_while(
             final_node.parent.parent = original_conversation
             original_conversation.replies.append(final_node.parent)
             return index, response, final_node.parent
-        except Exception:
+        except Exception as e:
+            import traceback
+            error_details = f"Exception in branch {index}: {type(e).__name__}: {str(e)}\nTraceback:\n{traceback.format_exc()}"
+            print(f"BRANCH ERROR: {error_details}")
             return index, None, None
 
     with ThreadPoolExecutor() as executor:
@@ -1247,7 +1256,7 @@ def par_dispatch(
         try:
             result = functional_prompt(bot, **kwargs)
             return index, result
-        except Exception:
+        except Exception as e:
             return index, (None, None)
 
     with ThreadPoolExecutor() as executor:
@@ -1316,18 +1325,18 @@ def broadcast_to_leaves(
                     if callback:
                         try:
                             callback([response], [leaf_bot.conversation])
-                        except Exception:
+                        except Exception as e:
                             pass
             elif callback:
                 try:
                     callback([response], [leaf_bot.conversation])
-                except Exception:
+                except Exception as e:
                     pass
             final_node = leaf_bot.conversation
             final_node.parent.parent = original_conversation
             original_conversation.replies.append(final_node.parent)
             return index, response, final_node.parent
-        except Exception:
+        except Exception as e:
             return index, None, None
 
     # Process all leaves in parallel
@@ -1468,7 +1477,7 @@ def broadcast_fp(
                 original_conversation.replies.append(final_node.parent)
 
             return index, final_response, final_node.parent if final_node else None
-        except Exception:
+        except Exception as e:
             return index, None, None
 
     # Process all leaves in parallel
