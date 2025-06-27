@@ -979,3 +979,162 @@ def test_empty_file_message_format(tmp_path):
 
 
 
+def test_real_scenario_tokenization_large_files():
+    """
+    Real-scenario test: Tokenize and detokenize actual large files from the codebase.
+    This test validates that the tokenization/detokenization process works correctly
+    on real, complex Python files including:
+    - Large files with thousands of lines
+    - Complex nested structures
+    - Mixed string types (regular, f-strings, multiline)
+    - Comments with various special characters
+    - Real-world code patterns
+    """
+    import time
+    from pathlib import Path
+    # Test files from the actual codebase
+    test_files = [
+        "bots/foundation/base.py",  # Large file ~2000 lines with complex patterns
+        # Skip test file - contains complex test strings
+        "bots/tools/python_edit.py"  # The module we're testing
+    ]
+    results = []
+    for file_path in test_files:
+        if not os.path.exists(file_path):
+            print(f"Skipping {file_path} - file not found")
+            continue
+        print(f"\\nTesting tokenization of {file_path}")
+        # Read the original file
+        with open(file_path, 'r', encoding='utf-8') as f:
+            original_content = f.read()
+        original_lines = len(original_content.splitlines())
+        original_size = len(original_content)
+        print(f"  Original: {original_lines} lines, {original_size} characters")
+        # Ensure it's valid Python before we start
+        try:
+            ast.parse(original_content)
+        except SyntaxError as e:
+            print(f"  ??  Skipping {file_path} - syntax error: {e}")
+            continue
+        # Time the tokenization process
+        start_time = time.time()
+        try:
+            # Tokenize
+            tokenized, token_map = _tokenize_source(original_content)
+            tokenize_time = time.time() - start_time
+            # Validate tokenized version is parseable
+            ast.parse(tokenized)
+            # Count tokens created
+            token_count = len(token_map)
+            tokenized_size = len(tokenized)
+            # Time the detokenization
+            start_time = time.time()
+            restored = _detokenize_source(tokenized, token_map)
+            detokenize_time = time.time() - start_time
+            # Validate restored version
+            ast.parse(restored)
+            # Check for perfect round-trip
+            content_match = restored == original_content
+            # Collect results
+            result = {
+                'file': file_path,
+                'original_lines': original_lines,
+                'original_size': original_size,
+                'token_count': token_count,
+                'tokenized_size': tokenized_size,
+                'tokenize_time': tokenize_time,
+                'detokenize_time': detokenize_time,
+                'content_match': content_match,
+                'compression_ratio': tokenized_size / original_size if original_size > 0 else 0
+            }
+            results.append(result)
+            print(f"  ? Tokenized: {token_count} tokens, {tokenized_size} chars ({tokenize_time:.3f}s)")
+            print(f"  ? Detokenized: {len(restored)} chars ({detokenize_time:.3f}s)")
+            print(f"  ? Round-trip: {'PERFECT' if content_match else 'MISMATCH'}")
+            print(f"  ?? Compression: {result['compression_ratio']:.2%}")
+            # Assert critical requirements
+            assert content_match, f"Round-trip failed for {file_path} - content doesn't match"
+            assert token_count > 0, f"No tokens created for {file_path}"
+            assert tokenize_time < 10.0, f"Tokenization too slow for {file_path}: {tokenize_time:.3f}s"
+            assert detokenize_time < 10.0, f"Detokenization too slow for {file_path}: {detokenize_time:.3f}s"
+        except Exception as e:
+            print(f"  ? Failed: {e}")
+            raise AssertionError(f"Tokenization failed for {file_path}: {e}")
+    # Summary statistics
+    if results:
+        total_lines = sum(r['original_lines'] for r in results)
+        total_tokens = sum(r['token_count'] for r in results)
+        avg_compression = sum(r['compression_ratio'] for r in results) / len(results)
+        total_time = sum(r['tokenize_time'] + r['detokenize_time'] for r in results)
+        print(f"\\n?? SUMMARY:")
+        print(f"  Files processed: {len(results)}")
+        print(f"  Total lines: {total_lines:,}")
+        print(f"  Total tokens: {total_tokens:,}")
+        print(f"  Average compression: {avg_compression:.2%}")
+        print(f"  Total processing time: {total_time:.3f}s")
+        print(f"  All round-trips: PERFECT ?")
+        # Performance assertions
+        assert len(results) >= 2, "Should test at least 2 files"
+        assert total_tokens > 100, "Should create substantial number of tokens"
+        assert avg_compression < 1.0, "Tokenization should provide some compression"
+        assert total_time < 30.0, "Total processing should be reasonable"
+    else:
+        pytest.skip("No test files found")
+
+def test_real_scenario_edit_integration():
+    """
+    Real-scenario test: Perform actual edits on copies of real files.
+    This validates that python_edit works correctly on real codebase files
+    by making safe, reversible edits.
+    """
+    import tempfile
+    import shutil
+    # Test with a real file
+    source_file = "bots/tools/python_edit.py"
+    if not os.path.exists(source_file):
+        pytest.skip(f"Source file {source_file} not found")
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Copy the real file to temp location
+        test_file = os.path.join(temp_dir, "test_edit.py")
+        shutil.copy2(source_file, test_file)
+        # Read original content
+        with open(test_file, 'r') as f:
+            original_content = f.read()
+        original_lines = len(original_content.splitlines())
+        print(f"Testing edits on real file: {original_lines} lines")
+        # Test 1: Add a simple function at file level
+        result1 = python_edit(test_file, '''
+def test_function_added_by_integration_test():
+    """This function was added by the integration test."""
+    return "integration_test_marker"
+'''.strip())
+        assert "error" not in result1.lower(), f"Edit 1 failed: {result1}"
+        # Verify the edit worked and file is still valid Python
+        with open(test_file, 'r') as f:
+            content_after_edit1 = f.read()
+        ast.parse(content_after_edit1)  # Should not raise
+        assert "test_function_added_by_integration_test" in content_after_edit1
+        assert "integration_test_marker" in content_after_edit1
+        # Test 2: Add import at file start
+        result2 = python_edit(test_file, "import uuid  # Added by integration test", insert_after="__FILE_START__")
+        assert "error" not in result2.lower(), f"Edit 2 failed: {result2}"
+        # Verify import was added at the start
+        with open(test_file, 'r') as f:
+            final_content = f.read()
+        ast.parse(final_content)  # Should not raise
+        lines = final_content.splitlines()
+        # Find the import line
+        import_line_found = False
+        for i, line in enumerate(lines[:10]):  # Check first 10 lines
+            if "import uuid" in line and "integration test" in line:
+                import_line_found = True
+                break
+        assert import_line_found, "Import was not added at file start"
+        # Test 3: Verify tokenization handled the complex real file correctly
+        tokenized, token_map = _tokenize_source(final_content)
+        restored = _detokenize_source(tokenized, token_map)
+        assert restored == final_content, "Tokenization round-trip failed on edited real file"
+        print(f"? Successfully performed {len([result1, result2])} edits on real file")
+        print(f"? File remains valid Python with {len(final_content.splitlines())} lines")
+        print(f"? Tokenization round-trip successful")
+
