@@ -427,7 +427,7 @@ class AnthropicBot(Bot):
         self,
         api_key: Optional[str] = None,
         model_engine: Engines = Engines.CLAUDE4_SONNET,
-        max_tokens: int = 8192,
+        max_tokens: int = 32768,
         temperature: float = 0.3,
         name: str = "Claude",
         role: str = "assistant",
