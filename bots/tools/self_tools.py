@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import inspect
 import json
 from typing import List, Optional
@@ -92,7 +92,7 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
         if tokens_int <= 0:
             return "Error: Max tokens must be a positive integer"
         bot.max_tokens = tokens_int
-    return f"Settings updated successfully. Current settings: " f"temperature={bot.temperature}, max_tokens={bot.max_tokens}"
+    return f"Settings updated successfully. Current settings: temperature={bot.temperature}, max_tokens={bot.max_tokens}"
 
 
 @handle_errors
@@ -140,16 +140,9 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
     """
     import json #hack for now
     bot = _get_calling_bot()
-    if not bot or not bot.tool_handler.requests:
-        return "Error: No branch_self tool request found"
 
-    # Insert dummy result to prevent repeated tool calls
-    request = bot.tool_handler.requests[-1]
-    dummy_result = bot.tool_handler.generate_response_schema(
-        request=request, tool_output_kwargs=json.dumps({"status": "branching_in_progress"})
-    )
-    # Properly add dummy result to conversation, not just tool_handler
-    bot.conversation._add_tool_results([dummy_result])
+    # Save original node for cleanup
+    original_node = bot.conversation
 
     # Parse and validate parameters
     allow_work = allow_work.lower() == "true"
@@ -163,7 +156,6 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
     if not message_list:
         return "Error: No valid messages provided"
 
-    original_node = bot.conversation  # This now includes the dummy result
     
     for i, item in enumerate(message_list):
         message_list[i] = f"(self-prompt): {item}"
@@ -172,24 +164,27 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
     try:
         if parallel:
             if allow_work:
-                responses, nodes = fp.par_branch_while(bot, message_list)
+                responses, nodes = fp.par_branch_while(bot, message_list, callback=verbose_callback)
             else:
-                responses, nodes = fp.par_branch(bot, message_list)
+                responses, nodes = fp.par_branch(bot, message_list, callback=verbose_callback)
         else:
             if allow_work:
-                responses, nodes = fp.branch_while(bot, message_list)
+                responses, nodes = fp.branch_while(bot, message_list, callback=verbose_callback)
             else:
-                responses, nodes = fp.branch(bot, message_list)
+                responses, nodes = fp.branch(bot, message_list, callback=verbose_callback)
     except Exception as e:
         return f"Error during branching: {str(e)}"
     finally:
-        original_node.tool_results = [res for res in original_node.tool_results if res != dummy_result]
-
-
+        # No cleanup needed since we're not using dummy results
+        pass
     # Check for errors
     if any(response is None for response in responses):
         error_messages = [f"Branch {i+1} failed" for i, r in enumerate(responses) if r is None]
         return "Errors: " + "; ".join(error_messages)
+
+    ## debug
+    bot.save()
+
 
     # Handle recombination
     if recombine == "none":
@@ -247,3 +242,33 @@ def _process_string_array(input_str: str) -> List[str]:
 
 
 
+
+def verbose_callback(responses, nodes):
+    from bots.dev.cli import pretty, clean_dict
+    # Print the response first
+    if responses and responses[-1]:
+        pretty(
+            responses[-1],
+        )
+    requests = nodes[-1].requests
+    results = nodes[-1].results
+    pending_results = nodes[-1].pending_results
+    if requests:
+        request_str = "".join((clean_dict(r) for r in requests))
+        pretty(f"Tool Requests\n\n{request_str}", "System")
+    else:
+        pretty("No requests")
+
+    if results:
+        result_str = "".join((clean_dict(r) for r in results))
+        if result_str.strip():
+            pretty(f"Tool Results\n\n{result_str}", "System")
+    else:
+        pretty("No results")
+
+    if pending_results:
+        result_str = "".join((clean_dict(r) for r in pending_results))
+        if result_str.strip():
+            pretty(f"Pending Results\n\n{result_str}", "System")
+    else:
+        pretty("No pending results")
