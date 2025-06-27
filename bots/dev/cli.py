@@ -1251,7 +1251,7 @@ class CLI:
         from bots.tools.self_tools import branch_self
 
         bot.add_tools(bots.tools.terminal_tools, 
-                      branch_self, 
+                      #branch_self, 
                       bots.tools.python_edit,
                       #bots.tools.code_tools
                       view,
