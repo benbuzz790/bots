@@ -368,7 +368,7 @@ class ConversationNode:
             all_tool_results = []
             for sibling in self.parent.replies:
                 for result in sibling.tool_results:
-                    if result not in all_tool_results:
+                    if result not in all_tool_results: # Content comparison of JSON strings
                         all_tool_results.append(result)
             for sibling in self.parent.replies:
                 sibling.tool_results = all_tool_results.copy()
@@ -1937,7 +1937,10 @@ class Mailbox(ABC):
         with open(self.log_file, "a", encoding="utf-8") as file:
             file.write(log_entry)
 
-
+# max_tokens and temperature because those were the two
+# sliders on the first openai playground and I found them
+# very useful at the time. Eventually this will change to 
+# a general config file
 class Bot(ABC):
     """Abstract base class for LLM-powered conversational agents.
 
