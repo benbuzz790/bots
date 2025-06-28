@@ -83,7 +83,7 @@ def _modify_own_settings(temperature: str=None, max_tokens: str=None) -> str:
 def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False", recombine: str="none") -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
     Each branch gets its own copy of the conversation up to this point, then follows
-    the prompt you give it. The branches run one after another, not at the same time.
+    the prompt you give it. The branches run one after another if parallel is "False" (default).
     Args:
         self_prompts (str): List of prompts as a string array, like ['task 1', 'task 2', 'task 3']
                            Each prompt becomes a separate conversation branch
