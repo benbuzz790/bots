@@ -2,12 +2,10 @@ import ast
 import inspect
 import json
 from typing import List, Optional
-
 from bots.dev.decorators import handle_errors
 from bots.flows import functional_prompts as fp
 from bots.flows import recombinators
 from bots.foundation.base import Bot
-
 
 def _get_calling_bot() -> Optional[Bot]:
     """Helper function to get a reference to the calling bot.
@@ -22,7 +20,6 @@ def _get_calling_bot() -> Optional[Bot]:
                 return potential_bot
         frame = frame.f_back
     return None
-
 
 def get_own_info() -> str:
     """Get information about yourself.
@@ -40,20 +37,11 @@ def get_own_info() -> str:
     bot = _get_calling_bot()
     if not bot:
         return "Error: Could not find calling bot"
-    info = {
-        "name": bot.name,
-        "role": bot.role,
-        "role_description": bot.role_description,
-        "model_engine": bot.model_engine.value,
-        "temperature": bot.temperature,
-        "max_tokens": bot.max_tokens,
-        "tool_count": len(bot.tool_handler.tools) if bot.tool_handler else 0,
-    }
+    info = {"name": bot.name, "role": bot.role, "role_description": bot.role_description, "model_engine": bot.model_engine.value, "temperature": bot.temperature, "max_tokens": bot.max_tokens, "tool_count": len(bot.tool_handler.tools) if bot.tool_handler else 0}
     return json.dumps(info)
 
-
 @handle_errors
-def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str:
+def _modify_own_settings(temperature: str=None, max_tokens: str=None) -> str:
     """Modify your settings.
     Use when you need to adjust your configuration parameters.
     Parameters:
@@ -64,9 +52,7 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
     Returns:
         str: Description of changes made or error message
     """
-    # Import _get_calling_bot locally to avoid decorator global namespace issues
     import inspect
-
     from bots.foundation.base import Bot
 
     def _get_calling_bot_local():
@@ -78,7 +64,6 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
                     return potential_bot
             frame = frame.f_back
         return None
-
     bot = _get_calling_bot_local()
     if not bot:
         return "Error: Could not find calling bot"
@@ -94,9 +79,8 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
         bot.max_tokens = tokens_int
     return f"Settings updated successfully. Current settings: temperature={bot.temperature}, max_tokens={bot.max_tokens}"
 
-
 @handle_errors
-def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "False", recombine: str = "none") -> str:
+def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False", recombine: str="none") -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
     Think of this like opening multiple browser tabs - each branch starts from this point
     and explores a different direction. Perfect for when you need to:
@@ -140,53 +124,35 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
     """
     import json #hack for now
     bot = _get_calling_bot()
-
-    # Save original node for cleanup
-    original_node = bot.conversation
-
-    # Parse and validate parameters
+    original_conversation_node = bot.conversation
     allow_work = allow_work.lower() == "true"
     parallel = parallel.lower() == "true"
     recombine = recombine.lower()
     valid_recombine_options = ["none", "concatenate", "llm_judge", "llm_vote", "llm_merge"]
     if recombine not in valid_recombine_options:
         return f"Error: Invalid recombine option. Valid: {valid_recombine_options}"
-
     message_list = _process_string_array(self_prompts)
     if not message_list:
         return "Error: No valid messages provided"
-
-    
     for i, item in enumerate(message_list):
         message_list[i] = f"(self-prompt): {item}"
-
-    # Execute branches based on parameters
     try:
         if parallel:
             if allow_work:
                 responses, nodes = fp.par_branch_while(bot, message_list, callback=verbose_callback)
             else:
                 responses, nodes = fp.par_branch(bot, message_list, callback=verbose_callback)
+        elif allow_work:
+            responses, nodes = fp.branch_while(bot, message_list, callback=verbose_callback)
         else:
-            if allow_work:
-                responses, nodes = fp.branch_while(bot, message_list, callback=verbose_callback)
-            else:
-                responses, nodes = fp.branch(bot, message_list, callback=verbose_callback)
+            responses, nodes = fp.branch(bot, message_list, callback=verbose_callback)
+        bot.conversation = original_conversation_node
     except Exception as e:
+        bot.conversation = original_conversation_node
         return f"Error during branching: {str(e)}"
-    finally:
-        # No cleanup needed since we're not using dummy results
-        pass
-    # Check for errors
-    if any(response is None for response in responses):
+    if any((response is None for response in responses)):
         error_messages = [f"Branch {i+1} failed" for i, r in enumerate(responses) if r is None]
         return "Errors: " + "; ".join(error_messages)
-
-    ## debug
-    bot.save()
-
-
-    # Handle recombination
     if recombine == "none":
         exec_type = "parallel" if parallel else "sequential"
         work_type = "iterative" if allow_work else "single-response"
@@ -205,7 +171,6 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         except Exception as e:
             return f"Error during {recombine} recombination: {str(e)}"
 
-
 def add_tools(filepath: str) -> str:
     """Adds a new set of tools (python functions) to your toolkit
     All top-level, non-private functions in filepath will be uploaded
@@ -221,7 +186,6 @@ def add_tools(filepath: str) -> str:
     bot = _get_calling_bot()
     bot.add_tools(filepath)
 
-
 @handle_errors
 def _process_string_array(input_str: str) -> List[str]:
     """Parse a string representation of an array into a list of strings.
@@ -234,22 +198,14 @@ def _process_string_array(input_str: str) -> List[str]:
         ValueError: If the input is not a valid Python list literal
     """
     result = ast.literal_eval(input_str)
-    if not isinstance(result, list) or not all(isinstance(x, str) for x in result):
+    if not isinstance(result, list) or not all((isinstance(x, str) for x in result)):
         raise ValueError("Input must evaluate to a list of strings")
     return result
 
-
-
-
-
-
 def verbose_callback(responses, nodes):
     from bots.dev.cli import pretty, clean_dict
-    # Print the response first
     if responses and responses[-1]:
-        pretty(
-            responses[-1],
-        )
+        pretty(responses[-1])
     requests = nodes[-1].requests
     results = nodes[-1].results
     pending_results = nodes[-1].pending_results
@@ -258,14 +214,12 @@ def verbose_callback(responses, nodes):
         pretty(f"Tool Requests\n\n{request_str}", "System")
     else:
         pretty("No requests")
-
     if results:
         result_str = "".join((clean_dict(r) for r in results))
         if result_str.strip():
             pretty(f"Tool Results\n\n{result_str}", "System")
     else:
         pretty("No results")
-
     if pending_results:
         result_str = "".join((clean_dict(r) for r in pending_results))
         if result_str.strip():
