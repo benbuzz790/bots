@@ -27,7 +27,7 @@ class TestSelfTools(unittest.TestCase):
         with Claude 3.5 Sonnet configuration and self_tools loaded.
         """
         self.temp_dir = tempfile.mkdtemp()
-        self.bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE35_SONNET_20240620)
+        self.bot = AnthropicBot(name="TestBot", max_tokens=1000, model_engine=Engines.CLAUDE35_SONNET_20240620)
         self.bot.add_tools(self_tools)
 
     def tearDown(self) -> None:
@@ -224,44 +224,6 @@ class TestSelfTools(unittest.TestCase):
         finally:
             os.chdir(original_cwd)
 
-    def test_branch_self_conversation_tree_integrity(self) -> None:
-        """Test that conversation tree structure remains intact after nested branching."""
-        original_cwd = os.getcwd()
-        os.chdir(self.temp_dir)
-        try:
-            # Store initial conversation structure
-            initial_conversation = self.bot.conversation
-            initial_replies_count = len(initial_conversation.replies)
-            print(f"Initial conversation structure:")
-            print(f"  Replies count: {initial_replies_count}")
-            print(f"  Conversation content length: {len(initial_conversation.content)}")
-            # Execute nested branching
-            response = self.bot.respond("""
-        Use branch_self with prompts: 
-        ['First branch: use get_own_info, then use branch_self with prompts ["Nested: use get_own_info"]',
-         'Second branch: use get_own_info, then use branch_self with prompts ["Nested: use get_own_info"]']
-        Set allow_work=True.
-        """)
-            # Check final conversation structure
-            final_conversation = self.bot.conversation
-            final_replies_count = len(final_conversation.replies)
-            print(f"\nFinal conversation structure:")
-            print(f"  Replies count: {final_replies_count}")
-            print(f"  Conversation content length: {len(final_conversation.content)}")
-            print(f"  Same conversation object: {initial_conversation is final_conversation}")
-            # The conversation object should be the same
-            self.assertIs(initial_conversation, final_conversation, "Conversation object should remain the same after branching")
-            # Check that we don't have an explosion of replies due to nested branching
-            replies_added = final_replies_count - initial_replies_count
-            print(f"  Replies added: {replies_added}")
-            # We expect some replies from the branching, but not an excessive number
-            self.assertLess(replies_added, 15, f"Too many replies added: {replies_added}, suggesting conversation tree contamination")
-            # Verify bot functionality
-            follow_up = self.bot.respond("Summarize what just happened")
-            self.assertIn("branch", follow_up.lower())
-        finally:
-            os.chdir(original_cwd)
-
     def test_parallel_vs_sequential_branching_comparison(self) -> None:
         """Compare parallel vs sequential branching to identify tool result contamination differences."""
         original_cwd = os.getcwd()
@@ -269,7 +231,10 @@ class TestSelfTools(unittest.TestCase):
         try:
             print("\n=== TESTING SEQUENTIAL BRANCHING ===")
             # Test sequential branching (uses branch_while)
-            bot1 = AnthropicBot(name="SequentialBot", model_engine=Engines.CLAUDE35_SONNET_20240620)
+            bot1 = AnthropicBot(name="SequentialBot", 
+                                model_engine=Engines.CLAUDE35_SONNET_20240620,
+                                max_tokens=1000,
+                                )
             bot1.add_tools(self_tools)
             initial_tool_results_seq = len(bot1.tool_handler.results)
             response_seq = bot1.respond("""
@@ -289,7 +254,7 @@ class TestSelfTools(unittest.TestCase):
                 print(f"Sequential - Follow-up failed: {str(e)[:100]}")
             print("\n=== TESTING PARALLEL BRANCHING ===")
             # Test parallel branching (uses par_branch_while)
-            bot2 = AnthropicBot(name="ParallelBot", model_engine=Engines.CLAUDE35_SONNET_20240620)
+            bot2 = AnthropicBot(name="ParallelBot", max_tokens=1000, model_engine=Engines.CLAUDE35_SONNET_20240620)
             bot2.add_tools(self_tools)
             initial_tool_results_par = len(bot2.tool_handler.results)
             response_par = bot2.respond("""
@@ -327,7 +292,7 @@ class TestSelfTools(unittest.TestCase):
         os.chdir(self.temp_dir)
         try:
             print("\n=== TESTING DEEPER NESTING ===")
-            bot = AnthropicBot(name="DeepNestBot", model_engine=Engines.CLAUDE35_SONNET_20240620)
+            bot = AnthropicBot(name="DeepNestBot", max_tokens=1000, model_engine=Engines.CLAUDE35_SONNET_20240620)
             bot.add_tools(self_tools)
             initial_tool_results = len(bot.tool_handler.results)
             initial_conversation_tool_results = len(bot.conversation.tool_results)

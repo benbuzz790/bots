@@ -82,12 +82,6 @@ def _modify_own_settings(temperature: str=None, max_tokens: str=None) -> str:
 @handle_errors
 def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False", recombine: str="none") -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
-    Think of this like opening multiple browser tabs - each branch starts from this point
-    and explores a different direction. Perfect for when you need to:
-    - Try different solutions to the same problem
-    - Handle multiple related tasks separately
-    - Break down a complex request into smaller parts (when you have more than ~6 tasks)
-    - Compare different approaches side-by-side
     Each branch gets its own copy of the conversation up to this point, then follows
     the prompt you give it. The branches run one after another, not at the same time.
     Args:
