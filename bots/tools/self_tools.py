@@ -165,6 +165,7 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
         except Exception as e:
             return f"Error during {recombine} recombination: {str(e)}"
 
+@handle_errors
 def add_tools(filepath: str) -> str:
     """Adds a new set of tools (python functions) to your toolkit
     All top-level, non-private functions in filepath will be uploaded
@@ -179,8 +180,8 @@ def add_tools(filepath: str) -> str:
     """
     bot = _get_calling_bot()
     bot.add_tools(filepath)
+    
 
-@handle_errors
 def _process_string_array(input_str: str) -> List[str]:
     """Parse a string representation of an array into a list of strings.
     Only works with properly formatted Python list literals.
@@ -195,6 +196,7 @@ def _process_string_array(input_str: str) -> List[str]:
     if not isinstance(result, list) or not all((isinstance(x, str) for x in result)):
         raise ValueError("Input must evaluate to a list of strings")
     return result
+
 
 def verbose_callback(responses, nodes):
     from bots.dev.cli import pretty, clean_dict

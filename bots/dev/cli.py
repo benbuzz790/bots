@@ -1,3 +1,14 @@
+"""
+CLI for bot interactions with improved architecture and dynamic parameter collection.
+
+Architecture:
+- Handler classes for logical command grouping
+- Command registry for easy extensibility
+- Dynamic parameter collection for functional prompts
+- Robust error handling with conversation backup
+- Configuration support for CLI settings
+"""
+
 import argparse
 import inspect
 import json
@@ -16,17 +27,6 @@ import bots.tools.terminal_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, ConversationNode
 
-"""
-CLI for bot interactions with improved architecture and dynamic parameter collection.
-
-Architecture:
-- Handler classes for logical command grouping
-- Command registry for easy extensibility
-- Dynamic parameter collection for functional prompts
-- Robust error handling with conversation backup
-- Configuration support for CLI settings
-"""
-# Import platform-specific modules
 if platform.system() == "Windows":
     import msvcrt
 else:
@@ -34,35 +34,22 @@ else:
     import termios
     import tty
 
+COLOR_USER = '\033[36m'             # Cyan
+COLOR_ASSISTANT = '\033[36m'        # Cyan
+COLOR_SYSTEM = '\033[33m'           # Yellow
+COLOR_ERROR = '\033[31m'            # Red
+COLOR_RESET = '\033[0m'             # Reset
+COLOR_BOLD = '\033[1m'              # Bold
+COLOR_DIM = '\033[2m'               # Dim
+COLOR_TOOL_REQUEST = '\033[34m'     # Blue
+COLOR_TOOL_RESULT = '\033[32m'      # Green
 
 class DynamicParameterCollector:
     """Dynamically collect parameters for functional prompts based on their signatures."""
 
-    def __init__(self, function_filter: Optional[Callable[[str, Callable], bool]] = None):
-        # Map parameter names to collection methods
-        self.param_handlers = {
-            "prompt_list": self._collect_prompts,
-            "prompts": self._collect_prompts,
-            "prompt": self._collect_single_prompt,
-            "first_prompt": self._collect_single_prompt,
-            "stop_condition": self._collect_condition,
-            "continue_prompt": self._collect_continue_prompt,
-            "recombinator_function": self._collect_recombinator,
-            "should_branch": self._collect_boolean,
-            "skip": self._collect_skip_labels,
-            "items": self._collect_items,
-            "dynamic_prompt": self._collect_dynamic_prompt,
-            "functional_prompt": self._collect_functional_prompt,
-        }
-        # Available conditions for user selection
-        self.conditions = {
-            "1": ("tool_used", fp.conditions.tool_used),
-            "2": ("tool_not_used", fp.conditions.tool_not_used),
-            "3": ("said_DONE", fp.conditions.said_DONE),
-            "4": ("said_READY", fp.conditions.said_READY),
-            "5": ("error_in_response", fp.conditions.error_in_response),
-        }
-        # Function filter for discovery
+    def __init__(self, function_filter: Optional[Callable[[str, Callable], bool]]=None):
+        self.param_handlers = {"prompt_list": self._collect_prompts, "prompts": self._collect_prompts, "prompt": self._collect_single_prompt, "first_prompt": self._collect_single_prompt, "stop_condition": self._collect_condition, "continue_prompt": self._collect_continue_prompt, "recombinator_function": self._collect_recombinator, "should_branch": self._collect_boolean, "skip": self._collect_skip_labels, "items": self._collect_items, "dynamic_prompt": self._collect_dynamic_prompt, "functional_prompt": self._collect_functional_prompt}
+        self.conditions = {"1": ("tool_used", fp.conditions.tool_used), "2": ("tool_not_used", fp.conditions.tool_not_used), "3": ("said_DONE", fp.conditions.said_DONE), "4": ("said_READY", fp.conditions.said_READY), "5": ("error_in_response", fp.conditions.error_in_response)}
         self.function_filter = function_filter
 
     def _format_default_value(self, default: Any) -> str:
@@ -70,7 +57,6 @@ class DynamicParameterCollector:
         if default == inspect.Parameter.empty:
             return "required"
         elif callable(default):
-            # Handle function defaults like conditions.tool_not_used
             if hasattr(default, "__name__"):
                 return f"function: {default.__name__}"
             else:
@@ -91,7 +77,6 @@ class DynamicParameterCollector:
         elif default is None:
             return "None"
         else:
-            # Fallback for other types
             str_repr = str(default)
             if len(str_repr) > 50:
                 return f"{str_repr[:47]}..."
@@ -103,34 +88,25 @@ class DynamicParameterCollector:
             sig = inspect.signature(func)
             params = {}
             print(f"\nCollecting parameters for {func.__name__}:")
-            # Check if this function needs a special callback signature
             needs_single_callback = func.__name__ in ["tree_of_thought"]
             for param_name, param in sig.parameters.items():
-                # Skip bot parameter - we'll provide this
                 if param_name == "bot":
                     continue
-                # Skip callback parameter - we'll inject this automatically based on function
                 if param_name == "callback":
                     continue
-                # Display parameter with clean default formatting
                 default_display = self._format_default_value(param.default)
                 print(f"  Parameter: {param_name} (default: {default_display})")
-                # Use specific handler if available
                 if param_name in self.param_handlers:
                     handler = self.param_handlers[param_name]
                     value = handler(param_name, param.default)
                 else:
-                    # Generic handler based on type
                     value = self._collect_generic_parameter(param_name, param.default)
-                # Handle required vs optional parameters
                 if value is None:
                     if param.default == inspect.Parameter.empty:
                         print(f"Required parameter '{param_name}' not provided")
                         return None
-                    # Use default value for optional parameters
                 elif value is not None:
                     params[param_name] = value
-            # Store callback type info for later use
             params["_callback_type"] = "single" if needs_single_callback else "list"
             return params
         except Exception as e:
@@ -161,7 +137,6 @@ class DynamicParameterCollector:
         print(f"\nAvailable stop conditions for {param_name}:")
         for key, (name, _) in self.conditions.items():
             print(f"  {key}. {name}")
-        # Show default more clearly
         default_display = self._format_default_value(default)
         choice = input(f"Select condition (default: {default_display}): ").strip()
         if not choice and default != inspect.Parameter.empty:
@@ -206,12 +181,7 @@ class DynamicParameterCollector:
     def _collect_recombinator(self, param_name: str, default: Any) -> Optional[Callable]:
         """Collect recombinator function with available options."""
         print(f"\nAvailable recombinators for {param_name}:")
-        recombinator_options = {
-            "1": ("concatenate", recombinators.recombinators.concatenate),
-            "2": ("llm_judge", recombinators.recombinators.llm_judge),
-            "3": ("llm_vote", recombinators.recombinators.llm_vote),
-            "4": ("llm_merge", recombinators.recombinators.llm_merge),
-        }
+        recombinator_options = {"1": ("concatenate", recombinators.recombinators.concatenate), "2": ("llm_judge", recombinators.recombinators.llm_judge), "3": ("llm_vote", recombinators.recombinators.llm_vote), "4": ("llm_merge", recombinators.recombinators.llm_merge)}
         for key, (name, _) in recombinator_options.items():
             print(f"  {key}. {name}")
         default_display = self._format_default_value(default)
@@ -237,15 +207,7 @@ class DynamicParameterCollector:
     def _collect_functional_prompt(self, param_name: str, default: Any) -> Optional[Callable]:
         """Collect functional prompt function for broadcast_fp."""
         print(f"\nAvailable functional prompts for {param_name}:")
-        fp_options = {
-            "1": ("single_prompt", fp.single_prompt),
-            "2": ("chain", fp.chain),
-            "3": ("branch", fp.branch),
-            "4": ("tree_of_thought", fp.tree_of_thought),
-            "5": ("prompt_while", fp.prompt_while),
-            "6": ("chain_while", fp.chain_while),
-            "7": ("branch_while", fp.branch_while),
-        }
+        fp_options = {"1": ("single_prompt", fp.single_prompt), "2": ("chain", fp.chain), "3": ("branch", fp.branch), "4": ("tree_of_thought", fp.tree_of_thought), "5": ("prompt_while", fp.prompt_while), "6": ("chain_while", fp.chain_while), "7": ("branch_while", fp.branch_while)}
         for key, (name, _) in fp_options.items():
             print(f"  {key}. {name}")
         choice = input("Select functional prompt: ").strip()
@@ -264,10 +226,6 @@ class DynamicParameterCollector:
         else:
             value = input(f"Enter {param_name}: ").strip()
             return value if value else None
-
-
-# Removed - functionality moved to CLICallbacks class
-
 
 class CLIConfig:
     """Configuration management for CLI settings."""
@@ -300,7 +258,6 @@ class CLIConfig:
         except Exception:
             pass  # Fail silently if config saving fails
 
-
 class CLICallbacks:
     """Centralized callback management for CLI operations."""
 
@@ -311,59 +268,33 @@ class CLICallbacks:
         """Create a callback that only prints bot messages, no tool info."""
 
         def message_only_callback(responses, nodes):
-            # Just print the most recent response
             if responses and responses[-1]:
-                pretty(
-                    responses[-1],
-                    self.context.bot_instance.name if self.context.bot_instance else "Bot",
-                    self.context.config.width,
-                    self.context.config.indent,
-                )
-
+                pretty(responses[-1], self.context.bot_instance.name if self.context.bot_instance else "Bot", self.context.config.width, self.context.config.indent)
         return message_only_callback
 
     def create_verbose_callback(self):
-        """Create a callback that shows everything: messages, tool requests, and results."""
+        """Create a callback that shows everything: tool info first, then messages."""
 
         def verbose_callback(responses, nodes):
-            # Print the response first
-            if responses and responses[-1]:
-                pretty(
-                    responses[-1],
-                    self.context.bot_instance.name if self.context.bot_instance else "Bot",
-                    self.context.config.width,
-                    self.context.config.indent,
-                )
-            # Show tool info using the bot's tool_handler (the correct way)
             if hasattr(self.context, "bot_instance") and self.context.bot_instance:
                 bot = self.context.bot_instance
                 requests = bot.tool_handler.requests
                 results = bot.tool_handler.results
                 if requests:
                     request_str = "".join((clean_dict(r) for r in requests))
-                    pretty(f"Tool Requests\n\n{request_str}", "System", self.context.config.width, self.context.config.indent)
+                    pretty(f"Tool Requests\n\n{request_str}", "Tool Requests", self.context.config.width, self.context.config.indent)
                 if results:
                     result_str = "".join((clean_dict(r) for r in results))
                     if result_str.strip():
-                        pretty(
-                            f"Tool Results\n\n{result_str}", "System", self.context.config.width, self.context.config.indent
-                        )
-
+                        pretty(f"Tool Results\n\n{result_str}", "Tool Results", self.context.config.width, self.context.config.indent)
+            if responses and responses[-1]:
+                pretty(responses[-1], self.context.bot_instance.name if self.context.bot_instance else "Bot", self.context.config.width, self.context.config.indent)
         return verbose_callback
 
     def create_quiet_callback(self):
-        """Create a callback that only shows tool usage summary, no details."""
+        """Create a callback that shows tool usage summary first, then response."""
 
         def quiet_callback(responses, nodes):
-            # Print the response
-            if responses and responses[-1]:
-                pretty(
-                    responses[-1],
-                    self.context.bot_instance.name if self.context.bot_instance else "Bot",
-                    self.context.config.width,
-                    self.context.config.indent,
-                )
-            # Show minimal tool info for the most recent node only (live updates)
             if nodes and nodes[-1] and hasattr(self.context, "bot_instance") and self.context.bot_instance:
                 current_node = nodes[-1]
                 if hasattr(current_node, "tool_calls") and current_node.tool_calls:
@@ -374,13 +305,9 @@ class CLICallbacks:
                         elif "name" in tool_call:
                             tool_names.append(tool_call["name"])
                     if tool_names:
-                        pretty(
-                            f"Used tools: {', '.join(set(tool_names))}",
-                            "System",
-                            self.context.config.width,
-                            self.context.config.indent,
-                        )
-
+                        pretty(f"Used tools: {', '.join(set(tool_names))}", "System", self.context.config.width, self.context.config.indent)
+            if responses and responses[-1]:
+                pretty(responses[-1], self.context.bot_instance.name if self.context.bot_instance else "Bot", self.context.config.width, self.context.config.indent)
         return quiet_callback
 
     def get_standard_callback(self):
@@ -389,7 +316,6 @@ class CLICallbacks:
             return self.create_verbose_callback()
         else:
             return self.create_quiet_callback()
-
 
 class CLIContext:
     """Shared context for CLI operations."""
@@ -403,7 +329,6 @@ class CLIContext:
         self.cached_leaves: List[ConversationNode] = []
         self.callbacks = CLICallbacks(self)
 
-
 class ConversationHandler:
     """Handler for conversation navigation commands."""
 
@@ -412,6 +337,9 @@ class ConversationHandler:
         if bot.conversation.parent and bot.conversation.parent.parent:
             context.conversation_backup = bot.conversation
             bot.conversation = bot.conversation.parent.parent
+            if not self._ensure_assistant_node(bot):
+                return "Warning: Ended up on user node with no assistant response"
+            self._display_conversation_context(bot, context)
             return "Moved up conversation tree"
         return "At root - can't go up"
 
@@ -433,6 +361,9 @@ class ConversationHandler:
                 bot.conversation = next_node.replies[0]
             else:
                 bot.conversation = next_node
+            if not self._ensure_assistant_node(bot):
+                return "Warning: Ended up on user node with no assistant response"
+            self._display_conversation_context(bot, context)
             return "Moved down conversation tree"
         return "At leaf - can't go down"
 
@@ -447,6 +378,9 @@ class ConversationHandler:
         next_index = (current_index - 1) % len(replies)
         context.conversation_backup = bot.conversation
         bot.conversation = replies[next_index]
+        if not self._ensure_assistant_node(bot):
+            return "Warning: Ended up on user node with no assistant response"
+        self._display_conversation_context(bot, context)
         return "Moved left in conversation tree"
 
     def right(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -460,6 +394,9 @@ class ConversationHandler:
         next_index = (current_index + 1) % len(replies)
         context.conversation_backup = bot.conversation
         bot.conversation = replies[next_index]
+        if not self._ensure_assistant_node(bot):
+            return "Warning: Ended up on user node with no assistant response"
+        self._display_conversation_context(bot, context)
         return "Moved right in conversation tree"
 
     def root(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -467,6 +404,9 @@ class ConversationHandler:
         context.conversation_backup = bot.conversation
         while bot.conversation.parent:
             bot.conversation = bot.conversation.parent
+        if not self._ensure_assistant_node(bot):
+            return "Warning: Ended up on user node with no assistant response"
+        self._display_conversation_context(bot, context)
         return "Moved to root of conversation tree"
 
     def label(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -475,7 +415,6 @@ class ConversationHandler:
         if not label:
             return "Label cannot be empty"
         context.labeled_nodes[label] = bot.conversation
-        # Store label in conversation node for persistence
         if not hasattr(bot.conversation, "labels"):
             bot.conversation.labels = []
         if label not in bot.conversation.labels:
@@ -488,6 +427,9 @@ class ConversationHandler:
         if label in context.labeled_nodes:
             context.conversation_backup = bot.conversation
             bot.conversation = context.labeled_nodes[label]
+            if not self._ensure_assistant_node(bot):
+                return f"Warning: Moved to node labeled '{label}' but ended up on user node with no assistant response"
+            self._display_conversation_context(bot, context)
             return f"Moved to node labeled: {label}"
         return f"No node found with label: {label}"
 
@@ -506,9 +448,7 @@ class ConversationHandler:
         leaves = self._find_leaves(bot.conversation)
         if not leaves:
             return "No leaves found from current node"
-        # Cache the leaves for potential jumping
         context.cached_leaves = leaves
-        # If args provided, try to jump directly
         if args:
             try:
                 leaf_index = int(args[0]) - 1  # Convert to 0-based index
@@ -516,23 +456,20 @@ class ConversationHandler:
                     return f"Invalid leaf number. Must be between 1 and {len(leaves)}"
                 context.conversation_backup = bot.conversation
                 bot.conversation = leaves[leaf_index]
-                # Show longer content preview
+                if not self._ensure_assistant_node(bot):
+                    return f"Warning: Jumped to leaf {leaf_index + 1} but ended up on user node with no assistant response"
+                self._display_conversation_context(bot, context)
                 content_preview = self._get_leaf_preview(leaves[leaf_index])
                 return f"Jumped to leaf {leaf_index + 1}: {content_preview}"
             except ValueError:
                 return "Invalid leaf number. Must be a number."
-        # Show leaves with longer previews
         result = f"Found {len(leaves)} leaf nodes:\n"
         for i, leaf in enumerate(leaves):
-            # Show much longer messages, cutting from middle if needed
             content_preview = self._get_leaf_preview(leaf)
-            # Show path depth from current node
             depth = self._calculate_depth(bot.conversation, leaf)
-            # Show labels if any
             labels = getattr(leaf, "labels", [])
             label_str = f" (labels: {', '.join(labels)})" if labels else ""
             result += f"  {i+1}. [depth {depth}]{label_str}: {content_preview}\n"
-        # Prompt user to pick one
         result += f"\nEnter a number (1-{len(leaves)}) to jump to that leaf, or press Enter to stay: "
         try:
             choice = input(result).strip()
@@ -541,6 +478,9 @@ class ConversationHandler:
                 if 0 <= leaf_index < len(leaves):
                     context.conversation_backup = bot.conversation
                     bot.conversation = leaves[leaf_index]
+                    if not self._ensure_assistant_node(bot):
+                        return f"Warning: Jumped to leaf {leaf_index + 1} but ended up on user node with no assistant response"
+                    self._display_conversation_context(bot, context)
                     content_preview = self._get_leaf_preview(leaves[leaf_index])
                     return f"Jumped to leaf {leaf_index + 1}: {content_preview}"
                 else:
@@ -552,12 +492,11 @@ class ConversationHandler:
         except (EOFError, KeyboardInterrupt):
             return "Cancelled. Staying at current position"
 
-    def _get_leaf_preview(self, leaf: ConversationNode, max_length: int = 300) -> str:
+    def _get_leaf_preview(self, leaf: ConversationNode, max_length: int=300) -> str:
         """Get a preview of leaf content, cutting from middle if too long."""
         content = leaf.content.strip()
         if len(content) <= max_length:
             return content
-        # Cut from middle, keeping start and end
         half_length = (max_length - 5) // 2  # Account for " ... "
         start = content[:half_length].strip()
         end = content[-half_length:].strip()
@@ -570,15 +509,9 @@ class ConversationHandler:
             return "No leaves found from current node"
         if len(leaves) < 2:
             return "Need at least 2 leaves to combine"
-        # Show available recombinators
         print(f"\nFound {len(leaves)} leaves to combine.")
         print("Available recombinators:")
-        recombinator_options = {
-            "1": ("concatenate", recombinators.recombinators.concatenate),
-            "2": ("llm_judge", recombinators.recombinators.llm_judge),
-            "3": ("llm_vote", recombinators.recombinators.llm_vote),
-            "4": ("llm_merge", recombinators.recombinators.llm_merge),
-        }
+        recombinator_options = {"1": ("concatenate", recombinators.recombinators.concatenate), "2": ("llm_judge", recombinators.recombinators.llm_judge), "3": ("llm_vote", recombinators.recombinators.llm_vote), "4": ("llm_merge", recombinators.recombinators.llm_merge)}
         for key, (name, _) in recombinator_options.items():
             print(f"  {key}. {name}")
         choice = input("Select recombinator: ").strip()
@@ -587,13 +520,10 @@ class ConversationHandler:
         recombinator_func = recombinator_options[choice][1]
         recombinator_name = recombinator_options[choice][0]
         try:
-            # Extract responses from leaves
             responses = [leaf.content for leaf in leaves]
-            # Use the recombine function from functional_prompts
             context.conversation_backup = bot.conversation
             print(f"Combining {len(leaves)} leaves using {recombinator_name}...")
             final_response, final_node = fp.recombine(bot, responses, leaves, recombinator_func)
-            # Display the result
             pretty(final_response, bot.name, context.config.width, context.config.indent)
             return f"Successfully combined {len(leaves)} leaves using {recombinator_name}"
         except Exception as e:
@@ -609,7 +539,6 @@ class ConversationHandler:
             else:
                 for reply in current_node.replies:
                     dfs(reply)
-
         dfs(node)
         return leaves
 
@@ -624,10 +553,8 @@ class ConversationHandler:
                 if result is not None:
                     return result
             return None
-
         depth = find_path_length(start_node, target_node)
         return depth if depth is not None else 0
-
 
 class StateHandler:
     """Handler for bot state management commands."""
@@ -659,7 +586,6 @@ class StateHandler:
         """Load bot from file and update context. Used by both interactive load and CLI args."""
         try:
             if not os.path.exists(filename):
-                # Try adding .bot extension if file doesn't exist
                 if not filename.endswith(".bot"):
                     filename_with_ext = filename + ".bot"
                     if os.path.exists(filename_with_ext):
@@ -668,17 +594,12 @@ class StateHandler:
                         return f"File not found: {filename}"
                 else:
                     return f"File not found: {filename}"
-            # Load the new bot
             new_bot = Bot.load(filename)
-            # Navigate to the end of the conversation (most recent message)
             while new_bot.conversation.replies:
                 new_bot.conversation = new_bot.conversation.replies[-1]
-            # Update context to use the new bot
             context.bot_instance = new_bot
-            # Rebuild labeled nodes from conversation tree
             context.labeled_nodes = {}
             self._rebuild_labels(new_bot.conversation, context)
-            # Clear cached leaves since we have a new conversation
             context.cached_leaves = []
             return f"Bot loaded from {filename}. Conversation restored to most recent message."
         except Exception as e:
@@ -692,42 +613,12 @@ class StateHandler:
         for reply in node.replies:
             self._rebuild_labels(reply, context)
 
-
 class SystemHandler:
     """Handler for system and configuration commands."""
 
     def help(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Show help message."""
-        help_lines = [
-            "This program is an interactive terminal that uses AI bots.",
-            "It allows you to chat with the LLM, save and load bot states, and execute various commands.",
-            "The bot has the ability to read and write files and can execute powershell and python code directly.",
-            "The bot also has tools to help edit python files in an accurate and token-efficient way.",
-            "",
-            "Available commands:",
-            "/help: Show this help message",
-            "/verbose: Show tool requests and results (default on)",
-            "/quiet: Hide tool requests and results",
-            "/save: Save the current bot (prompts for filename)",
-            "/load: Load a previously saved bot (prompts for filename)",
-            '/up: "rewind" the conversation by one turn by moving up the conversation tree',
-            "/down: Move down the conversation tree. Requests index of reply if there are multiple.",
-            "/left: Move to this conversation node's left sibling",
-            "/right: Move to this conversation node's right sibling",
-            "/auto: Let the bot work autonomously until it sends a response that doesn't use tools (esc to quit)",
-            "/root: Move to the root node of the conversation tree",
-            "/label: Save current node with a label for later reference",
-            "/goto: Move to a previously labeled node",
-            "/showlabels: Show all saved labels and their associated conversation content",
-            "/leaf [number]: Show all conversation endpoints (leaves) and optionally jump to one",
-            "/fp: Execute functional prompts with dynamic parameter collection",
-            "/combine_leaves: Combine all leaves below current node using a recombinator function",
-            "/broadcast_fp: Execute functional prompts on all leaf nodes",
-            "/config: Show or modify CLI configuration",
-            "/exit: Exit the program",
-            "",
-            "Type your messages normally to chat.",
-        ]
+        help_lines = ["This program is an interactive terminal that uses AI bots.", "It allows you to chat with the LLM, save and load bot states, and execute various commands.", "The bot has the ability to read and write files and can execute powershell and python code directly.", "The bot also has tools to help edit python files in an accurate and token-efficient way.", "", "Available commands:", "/help: Show this help message", "/verbose: Show tool requests and results (default on)", "/quiet: Hide tool requests and results", "/save: Save the current bot (prompts for filename)", "/load: Load a previously saved bot (prompts for filename)", '/up: "rewind" the conversation by one turn by moving up the conversation tree', "/down: Move down the conversation tree. Requests index of reply if there are multiple.", "/left: Move to this conversation node's left sibling", "/right: Move to this conversation node's right sibling", "/auto: Let the bot work autonomously until it sends a response that doesn't use tools (esc to quit)", "/root: Move to the root node of the conversation tree", "/label: Save current node with a label for later reference", "/goto: Move to a previously labeled node", "/showlabels: Show all saved labels and their associated conversation content", "/leaf [number]: Show all conversation endpoints (leaves) and optionally jump to one", "/fp: Execute functional prompts with dynamic parameter collection", "/combine_leaves: Combine all leaves below current node using a recombinator function", "/broadcast_fp: Execute functional prompts on all leaf nodes", "/config: Show or modify CLI configuration", "/exit: Exit the program", "", "Type your messages normally to chat."]
         return "\n".join(help_lines)
 
     def verbose(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -747,13 +638,7 @@ class SystemHandler:
     def config(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Show or modify configuration."""
         if not args:
-            config_lines = [
-                "Current configuration:",
-                f"    verbose: {context.config.verbose}",
-                f"    width: {context.config.width}",
-                f"    indent: {context.config.indent}",
-                "Use '/config set <setting> <value>' to modify settings.",
-            ]
+            config_lines = ["Current configuration:", f"    verbose: {context.config.verbose}", f"    width: {context.config.width}", f"    indent: {context.config.indent}", "Use '/config set <setting> <value>' to modify settings."]
             return "\n".join(config_lines)
         if len(args) >= 3 and args[0] == "set":
             setting = args[1]
@@ -777,9 +662,7 @@ class SystemHandler:
         """Run bot autonomously until it stops using tools."""
         try:
             import bots.flows.functional_prompts as fp
-
             context.conversation_backup = bot.conversation
-            # Set up interrupt checking
             old_settings = setup_raw_mode()
             context.old_terminal_settings = old_settings
             print("Bot running autonomously. Press ESC to interrupt...")
@@ -787,10 +670,8 @@ class SystemHandler:
                 if check_for_interrupt():
                     restore_terminal(old_settings)
                     return "Autonomous execution interrupted by user"
-                # Use chain with callback like regular chat to get immediate tool display
                 callback = context.callbacks.get_standard_callback()
                 responses, nodes = fp.chain(bot, ["ok"], callback=callback)
-                # Callback already handles printing the response, no need to print again
                 if responses and (not bot.tool_handler.requests):
                     restore_terminal(old_settings)
                     return "Bot finished autonomous execution"
@@ -799,30 +680,24 @@ class SystemHandler:
                 restore_terminal(context.old_terminal_settings)
             return f"Error during autonomous execution: {str(e)}"
 
-
 class DynamicFunctionalPromptHandler:
     """Handler for functional prompt commands using dynamic parameter collection."""
 
-    def __init__(self, function_filter: Optional[Callable[[str, Callable], bool]] = None):
+    def __init__(self, function_filter: Optional[Callable[[str, Callable], bool]]=None):
         self.collector = DynamicParameterCollector(function_filter)
-        # Automatically discover all functional prompt functions
         self.fp_functions = self._discover_fp_functions()
 
     def _discover_fp_functions(self) -> Dict[str, Callable]:
         """Automatically discover functional prompt functions from the fp module."""
         functions = {}
-        # Descoped functions that should not be available in CLI
         descoped_functions = {"prompt_for", "par_dispatch"}
-        # Get all functions from the fp module
         for name in dir(fp):
             obj = getattr(fp, name)
             if callable(obj) and (not name.startswith("_")) and (name not in descoped_functions):
-                # Check if it looks like a functional prompt (takes bot as first param)
                 try:
                     sig = inspect.signature(obj)
                     params = list(sig.parameters.keys())
                     if params and params[0] == "bot":
-                        # Apply filter if provided
                         if self.collector.function_filter is None or self.collector.function_filter(name, obj):
                             functions[name] = obj
                 except Exception:
@@ -832,13 +707,11 @@ class DynamicFunctionalPromptHandler:
     def execute(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Execute functional prompt wizard with dynamic parameter collection."""
         try:
-            # Step 1: Choose functional prompt type
             print("\nAvailable functional prompts:")
             func_names = list(self.fp_functions.keys())
             for i, name in enumerate(func_names, 1):
                 print(f"  {i}. {name}")
             choice = input("\nSelect functional prompt (number or name): ").strip()
-            # Parse choice
             fp_name = None
             if choice.isdigit():
                 idx = int(choice) - 1
@@ -849,27 +722,16 @@ class DynamicFunctionalPromptHandler:
             if not fp_name:
                 return "Invalid selection"
             fp_function = self.fp_functions[fp_name]
-            # Step 2: Dynamically collect parameters
             params = self.collector.collect_parameters(fp_function)
             if params is None:
                 return "Parameter collection cancelled"
-            # Step 3: Execute functional prompt
             context.conversation_backup = bot.conversation
             print(f"\nExecuting {fp_name}...")
-            # Create appropriate callback based on function requirements
             _callback_type = params.pop("_callback_type", "list")
             if _callback_type == "single":
-                # Single callback for tree_of_thought - use node-based tool info for live updates
 
                 def single_callback(response: str, node):
-                    # Print the response first
-                    pretty(
-                        response,
-                        context.bot_instance.name if context.bot_instance else "Bot",
-                        context.config.width,
-                        context.config.indent,
-                    )
-                    # Show tool info for this specific node only (live updates)
+                    pretty(response, context.bot_instance.name if context.bot_instance else "Bot", context.config.width, context.config.indent)
                     if hasattr(context, "bot_instance") and context.bot_instance and context.config.verbose:
                         if hasattr(node, "tool_calls") and node.tool_calls:
                             tool_calls_str = "".join((clean_dict(call) for call in node.tool_calls))
@@ -877,24 +739,14 @@ class DynamicFunctionalPromptHandler:
                         if hasattr(node, "tool_results") and node.tool_results:
                             tool_results_str = "".join((clean_dict(result) for result in node.tool_results))
                             if tool_results_str.strip():
-                                pretty(
-                                    f"Tool Results\n\n{tool_results_str}",
-                                    "System",
-                                    context.config.width,
-                                    context.config.indent,
-                                )
-
+                                pretty(f"Tool Results\n\n{tool_results_str}", "System", context.config.width, context.config.indent)
                 params["callback"] = single_callback
             else:
-                # List callback for most functions
                 callback = context.callbacks.get_standard_callback()
                 params["callback"] = callback
-            # Execute the function
             result = fp_function(bot, **params)
-            # Handle results and display responses
             if isinstance(result, tuple) and len(result) == 2:
                 responses, nodes = result
-                # Handle both single response and list of responses
                 if isinstance(responses, list):
                     for i, response in enumerate(responses):
                         if response:
@@ -912,11 +764,9 @@ class DynamicFunctionalPromptHandler:
     def broadcast_fp(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Execute broadcast_fp functional prompt with leaf selection by number."""
         try:
-            # Find all leaves from current position
             leaves = context.conversation._find_leaves(bot.conversation)
             if not leaves:
                 return "No leaves found from current node"
-            # Show all leaves with numbers (like /leaf command)
             print(f"\nFound {len(leaves)} leaf nodes:")
             for i, leaf in enumerate(leaves):
                 content_preview = context.conversation._get_leaf_preview(leaf)
@@ -924,11 +774,9 @@ class DynamicFunctionalPromptHandler:
                 labels = getattr(leaf, "labels", [])
                 label_str = f" (labels: {', '.join(labels)})" if labels else ""
                 print(f"  {i+1}. [depth {depth}]{label_str}: {content_preview}")
-            # Get leaf selection from user
             leaf_selection = input("\nSelect leaves to broadcast to (e.g., '1,3,5' or 'all' for all leaves): ").strip()
             if not leaf_selection:
                 return "No leaves selected"
-            # Parse leaf selection
             target_leaves = []
             if leaf_selection.lower() == "all":
                 target_leaves = leaves
@@ -945,45 +793,27 @@ class DynamicFunctionalPromptHandler:
             if not target_leaves:
                 return "No valid leaves selected"
             print(f"\nSelected {len(target_leaves)} leaves for broadcast")
-            # Get functional prompt to use
             print("\nSelect functional prompt to broadcast:")
-            fp_options = {
-                "1": ("single_prompt", fp.single_prompt),
-                "2": ("chain", fp.chain),
-                "3": ("branch", fp.branch),
-                "4": ("tree_of_thought", fp.tree_of_thought),
-                "5": ("prompt_while", fp.prompt_while),
-                "6": ("chain_while", fp.chain_while),
-                "7": ("branch_while", fp.branch_while),
-            }
+            fp_options = {"1": ("single_prompt", fp.single_prompt), "2": ("chain", fp.chain), "3": ("branch", fp.branch), "4": ("tree_of_thought", fp.tree_of_thought), "5": ("prompt_while", fp.prompt_while), "6": ("chain_while", fp.chain_while), "7": ("branch_while", fp.branch_while)}
             for key, (name, _) in fp_options.items():
                 print(f"  {key}. {name}")
             fp_choice = input("Select functional prompt: ").strip()
             if fp_choice not in fp_options:
                 return "Invalid functional prompt selection"
             fp_name, fp_function = fp_options[fp_choice]
-            # Collect parameters for the selected functional prompt
             print(f"\nCollecting parameters for {fp_name}:")
             params = self.collector.collect_parameters(fp_function)
             if params is None:
                 return "Parameter collection cancelled"
-            # Remove callback type info
-            # Create callback for tool result display
             callback = context.callbacks.get_standard_callback()
             params["callback"] = callback
-            # Execute broadcast_fp with selected leaves
             context.conversation_backup = bot.conversation
             print(f"Broadcasting {fp_name} to {len(target_leaves)} selected leaves...")
-            # Use the actual broadcast_fp function from functional_prompts
-            # We need to create a temporary skip list that excludes all leaves except our targets
             all_leaves = context.conversation._find_leaves(bot.conversation)
-            # Create skip labels for leaves we don't want to process
-            # We'll temporarily add unique labels to non-target leaves
             temp_labels = {}
             skip_labels = []
             for i, leaf in enumerate(all_leaves):
                 if leaf not in target_leaves:
-                    # Add a temporary unique label to skip this leaf
                     temp_label = f"__temp_skip_{i}__"
                     if not hasattr(leaf, "labels"):
                         leaf.labels = []
@@ -991,9 +821,7 @@ class DynamicFunctionalPromptHandler:
                     skip_labels.append(temp_label)
                     temp_labels[leaf] = temp_label
             try:
-                # Use the actual broadcast_fp function
                 responses, nodes = fp.broadcast_fp(bot, fp_function, skip=skip_labels, **params)
-                # Display results summary
                 successful_responses = [r for r in responses if r is not None]
                 failed_count = len(responses) - len(successful_responses)
                 result_msg = f"Broadcast completed: {len(successful_responses)} successful"
@@ -1001,13 +829,11 @@ class DynamicFunctionalPromptHandler:
                     result_msg += f", {failed_count} failed"
                 return result_msg
             finally:
-                # Clean up temporary labels
                 for leaf, temp_label in temp_labels.items():
                     if hasattr(leaf, "labels") and temp_label in leaf.labels:
                         leaf.labels.remove(temp_label)
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
-
 
 def check_for_interrupt() -> bool:
     """Check if user pressed Escape without blocking execution."""
@@ -1023,7 +849,6 @@ def check_for_interrupt() -> bool:
             return key == "\x1b"  # ESC key
         return False
 
-
 def setup_raw_mode():
     """Set up terminal for raw input mode on Unix systems."""
     if platform.system() != "Windows":
@@ -1035,15 +860,13 @@ def setup_raw_mode():
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return old_settings
 
-
 def restore_terminal(old_settings):
     """Restore terminal settings on Unix systems."""
     if platform.system() != "Windows" and old_settings is not None:
         fd = sys.stdin.fileno()
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-
-def clean_dict(d: dict, indent: int = 4, level: int = 1):
+def clean_dict(d: dict, indent: int=4, level: int=1):
     """
     Clean a dict containing recursive json dumped strings for printing
     Returns: clean string representation of the dict
@@ -1065,50 +888,63 @@ def clean_dict(d: dict, indent: int = 4, level: int = 1):
     cleaned_dict = cleaned_dict.replace("\\\\", "\\")
     return cleaned_dict
 
-
 def display_tool_results(bot: Bot, context: CLIContext):
-    """Display tool requests and results in a readable format with bot message first."""
+    """Display tool requests and results first, then bot message."""
     requests = bot.tool_handler.requests
     results = bot.tool_handler.results
-    pretty(bot.conversation.content, bot.name, context.config.width, context.config.indent)
-    if not requests:
-        return
-    if context.config.verbose:
+    if requests and context.config.verbose:
         request_str = "".join((clean_dict(r) for r in requests))
         result_str = "".join((clean_dict(r) for r in results))
         pretty(f"Tool Requests\n\n{request_str}", "System", context.config.width, context.config.indent)
         pretty(f"Tool Results\n\n{result_str}", "System", context.config.width, context.config.indent)
-    else:
+    elif requests and (not context.config.verbose):
         for request in requests:
             tool_name, _ = bot.tool_handler.tool_name_and_input(request)
             pretty(f"{bot.name} used {tool_name}", "System", context.config.width, context.config.indent)
+    pretty(bot.conversation.content, bot.name, context.config.width, context.config.indent)
 
-
-def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: int = 4) -> None:
-    """Print a string nicely formatted."""
-    prefix = f"{name}: " if name is not None else ""
+def pretty(string: str, name: Optional[str]=None, width: int=1000, indent: int=4, color: str=None) -> None:
+    """Print a string nicely formatted with optional color."""
+    print()
+    if color is None:
+        if name and name.lower() in ['user', 'human']:
+            color = COLOR_USER
+        elif name and name.lower() in ['assistant', 'bot']:
+            color = COLOR_ASSISTANT
+        elif name and name.lower() == 'system':
+            if string and ('Tool Requests' in string or 'tool request' in string.lower()):
+                color = COLOR_TOOL_REQUEST
+            elif string and ('Tool Results' in string or 'tool result' in string.lower()):
+                color = COLOR_TOOL_RESULT
+            else:
+                color = COLOR_SYSTEM
+        elif name and name.lower() == 'error':
+            color = COLOR_ERROR
+        else:
+            color = COLOR_RESET
+    prefix = f"{color}{COLOR_BOLD}{name}: {COLOR_RESET}{color}" if name is not None else color
     if not isinstance(string, str):
         string = str(string)
     lines = string.split("\n")
     formatted_lines = []
     for i, line in enumerate(lines):
         if i == 0:
-            initial_line = prefix + line
+            initial_line = prefix + line + COLOR_RESET
             wrapped = textwrap.wrap(initial_line, width=width, subsequent_indent=" " * indent)
         else:
-            wrapped = textwrap.wrap(line, width=width, initial_indent=" " * indent, subsequent_indent=" " * indent)
+            wrapped = textwrap.wrap(color + line + COLOR_RESET, width=width, initial_indent=" " * indent, subsequent_indent=" " * indent)
         if wrapped:
             formatted_lines.extend(wrapped)
         else:
-            formatted_lines.append(" " * indent if i > 0 else prefix)
+            formatted_lines.append(" " * indent if i > 0 else prefix + COLOR_RESET)
     for line in formatted_lines:
         print(line)
-
+    print()
 
 class CLI:
     """Main CLI class that orchestrates all handlers."""
 
-    def __init__(self, bot_filename: Optional[str] = None, function_filter: Optional[Callable[[str, Callable], bool]] = None):
+    def __init__(self, bot_filename: Optional[str]=None, function_filter: Optional[Callable[[str, Callable], bool]]=None):
         self.context = CLIContext()
         self.conversation = ConversationHandler()
         self.context.conversation = self.conversation  # Add reference for handlers to use
@@ -1116,37 +952,14 @@ class CLI:
         self.system = SystemHandler()
         self.fp = DynamicFunctionalPromptHandler(function_filter)
         self.bot_filename = bot_filename
-        # Command registry
-        self.commands = {
-            "/help": self.system.help,
-            "/verbose": self.system.verbose,
-            "/quiet": self.system.quiet,
-            "/config": self.system.config,
-            "/save": self.state.save,
-            "/load": self.state.load,
-            "/up": self.conversation.up,
-            "/down": self.conversation.down,
-            "/left": self.conversation.left,
-            "/right": self.conversation.right,
-            "/root": self.conversation.root,
-            "/label": self.conversation.label,
-            "/goto": self.conversation.goto,
-            "/showlabels": self.conversation.showlabels,
-            "/leaf": self.conversation.leaf,
-            "/combine_leaves": self.conversation.combine_leaves,
-            "/auto": self.system.auto,
-            "/fp": self.fp.execute,
-            "/broadcast_fp": self.fp.broadcast_fp,
-        }
+        self.commands = {"/help": self.system.help, "/verbose": self.system.verbose, "/quiet": self.system.quiet, "/config": self.system.config, "/save": self.state.save, "/load": self.state.load, "/up": self.conversation.up, "/down": self.conversation.down, "/left": self.conversation.left, "/right": self.conversation.right, "/root": self.conversation.root, "/label": self.conversation.label, "/goto": self.conversation.goto, "/showlabels": self.conversation.showlabels, "/leaf": self.conversation.leaf, "/combine_leaves": self.conversation.combine_leaves, "/auto": self.system.auto, "/fp": self.fp.execute, "/broadcast_fp": self.fp.broadcast_fp}
 
     def run(self):
         """Main CLI loop."""
         try:
             print("Hello, world! Combined CLI with Dynamic Parameter Collection")
             self.context.old_terminal_settings = setup_raw_mode()
-            # Initialize bot - either load from file or create new
             if self.bot_filename:
-                # Load bot from command line argument
                 result = self.state._load_bot_from_file(self.bot_filename, self.context)
                 if "Error" in result or "File not found" in result:
                     print(f"Failed to load bot: {result}")
@@ -1157,7 +970,6 @@ class CLI:
                     if self.context.bot_instance:
                         pretty(f"Bot loaded: {self.context.bot_instance.name}", "System")
             else:
-                # Create new bot
                 self._initialize_new_bot()
             print("CLI started. Type /help for commands or chat normally.")
             while True:
@@ -1165,13 +977,11 @@ class CLI:
                     user_input = input(">>> ").strip()
                     if user_input == "/exit":
                         raise SystemExit(0)
-                    # Parse input for commands at start or end (like auto_terminal.py)
                     if not user_input:
                         continue
                     words = user_input.split()
                     if not words:
                         continue
-                    # Check for command at start or end
                     command = None
                     msg = None
                     if words[0].startswith("/"):
@@ -1182,53 +992,21 @@ class CLI:
                         msg = " ".join(words[:-1]) if len(words) > 1 else None
                     else:
                         msg = user_input
-                    # Handle the input
                     if command:
-                        # TASK 4 FIX: Validate command before processing message
                         if command not in self.commands:
-                            # Show unrecognized command error immediately, don't process message
-                            pretty(
-                                "Unrecognized command. Try /help.",
-                                "System",
-                                self.context.config.width,
-                                self.context.config.indent,
-                            )
+                            pretty("Unrecognized command. Try /help.", "System", self.context.config.width, self.context.config.indent)
                             continue
-                        # Command is valid - decide execution order based on command type
                         if msg:
-                            # For navigation and info commands, process command first
-                            if command in [
-                                "/help",
-                                "/verbose",
-                                "/quiet",
-                                "/config",
-                                "/save",
-                                "/load",
-                                "/up",
-                                "/down",
-                                "/left",
-                                "/right",
-                                "/root",
-                                "/label",
-                                "/goto",
-                                "/showlabels",
-                                "/leaf",
-                                "/combine_leaves",
-                            ]:
-                                # These commands don't need the message, process command first
+                            if command in ["/help", "/verbose", "/quiet", "/config", "/save", "/load", "/up", "/down", "/left", "/right", "/root", "/label", "/goto", "/showlabels", "/leaf", "/combine_leaves"]:
                                 self._handle_command(self.context.bot_instance, user_input)
-                                # Then optionally process message if it makes sense for navigation commands
                                 if command in ["/up", "/down", "/left", "/right", "/root", "/goto", "/leaf"]:
                                     self._handle_chat(self.context.bot_instance, msg)
                             else:
-                                # For commands like /fp, /broadcast_fp, /auto - message first might make sense
                                 self._handle_chat(self.context.bot_instance, msg)
                                 self._handle_command(self.context.bot_instance, user_input)
                         else:
-                            # No message, just handle the command
                             self._handle_command(self.context.bot_instance, user_input)
                     else:
-                        # Regular chat
                         self._handle_chat(self.context.bot_instance, user_input)
                 except KeyboardInterrupt:
                     print("\nUse /exit to quit")
@@ -1249,19 +1027,11 @@ class CLI:
         self.context.bot_instance = bot
         from bots.tools.code_tools import view, view_dir
         from bots.tools.self_tools import branch_self
-
-        bot.add_tools(bots.tools.terminal_tools, 
-                      #branch_self, 
-                      bots.tools.python_edit,
-                      #bots.tools.code_tools
-                      view,
-                      view_dir
-                    )   
+        bot.add_tools(bots.tools.terminal_tools, branch_self, bots.tools.python_edit, view, view_dir)
 
     def _handle_command(self, bot: Bot, user_input: str):
         """Handle command input."""
         parts = user_input.split()
-        # Extract command - it could be at start or end
         command = None
         args = []
         if parts[0].startswith("/"):
@@ -1271,7 +1041,6 @@ class CLI:
             command = parts[-1]
             args = parts[:-1]  # Everything except the command
         else:
-            # Fallback - shouldn't happen due to earlier validation
             command = parts[0]
             args = parts[1:]
         if command in self.commands:
@@ -1279,9 +1048,6 @@ class CLI:
                 result = self.commands[command](bot, self.context, args)
                 if result:
                     pretty(result, "System", self.context.config.width, self.context.config.indent)
-                # Show bot response for navigation commands
-                if command in ["/up", "/down", "/left", "/right", "/root", "/goto", "/leaf"] and bot.conversation:
-                    pretty(bot.conversation.content, bot.name, self.context.config.width, self.context.config.indent)
             except Exception as e:
                 pretty(f"Command error: {str(e)}", "Error", self.context.config.width, self.context.config.indent)
                 if self.context.conversation_backup:
@@ -1296,14 +1062,8 @@ class CLI:
             return
         try:
             self.context.conversation_backup = bot.conversation
-            # Create callback for immediate tool result printing
             callback = self.context.callbacks.get_standard_callback()
-            # Use chain functional prompt with single prompt and callback
             responses, nodes = fp.chain(bot, [user_input], callback=callback)
-            # The callback handles printing in both verbose and quiet modes
-            # In verbose mode: callback prints tool info, we need to print the response
-            # In quiet mode: callback already prints the response, so we don't print it again
-            # Both verbose and quiet callbacks now print the response, so we don't need to print it here
             pass
         except Exception as e:
             pretty(f"Chat error: {str(e)}", "Error", self.context.config.width, self.context.config.indent)
@@ -1311,24 +1071,16 @@ class CLI:
                 bot.conversation = self.context.conversation_backup
                 pretty("Restored conversation from backup", "System")
 
-
 def parse_args():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Interactive CLI for AI bots with conversation management and dynamic parameter collection.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent(
-            """
+    parser = argparse.ArgumentParser(description='Interactive CLI for AI bots with conversation management and dynamic parameter collection.', formatter_class=argparse.RawDescriptionHelpFormatter, epilog=textwrap.dedent("""
              Examples:
              python -m bots.dev.cli_combined                    # Start with new bot
              python -m bots.dev.cli_combined mybot.bot          # Load bot from file
              python -m bots.dev.cli_combined saved_conversation # Load bot (auto-adds .bot extension)
-             """.strip()
-        ),
-    )
+             """.strip()))
     parser.add_argument("filename", nargs="?", help="Bot file to load (.bot extension will be added if not present)")
     return parser.parse_args()
-
 
 def main(bot_filename=None, function_filter=None):
     """Entry point for the CLI."""
@@ -1337,7 +1089,5 @@ def main(bot_filename=None, function_filter=None):
         bot_filename = args.filename
     cli = CLI(bot_filename=bot_filename, function_filter=function_filter)
     cli.run()
-
-
 if __name__ == "__main__":
     main()
