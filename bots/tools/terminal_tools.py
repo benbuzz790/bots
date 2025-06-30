@@ -330,7 +330,7 @@ class PowerShellSession:
             try:
                 current_dir = self._get_current_directory()
                 truncated_code = code[:30] + "..." if len(code) > 30 else code
-                dir_info = f"[System: current directory <{current_dir}>] {truncated_code}"
+                dir_info = f"{current_dir}> {truncated_code}"
                 bom_count = self._post_execution_bom_cleanup(code, current_dir)
                 if bom_count > 0:
                     dir_info += f" [BOM cleanup: {bom_count} files processed]"
