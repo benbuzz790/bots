@@ -346,6 +346,8 @@ class AnthropicMailbox(Mailbox):
                     bool: True if the response was truncated and contains no
                     tool calls
                 """
+                return False # FEATURE DISABLED - some weird interaction with max_tokens and
+                             # the new api makes this hang indefinitely
                 return response.stop_reason == "max_tokens" and any(
                     isinstance(block, anthropic.types.ToolUseBlock) for block in response.content
                 )
@@ -442,7 +444,7 @@ class AnthropicBot(Bot):
             not provided)
             model_engine: The Anthropic model to use (default:
             CLAUDE37_SONNET_20250219)
-            max_tokens: Maximum tokens per response (default: 8192)
+            max_tokens: Maximum tokens per response (default: 32000)
             temperature: Response randomness, 0-1 (default: 0.3)
             name: Bot's name (default: 'Claude')
             role: Bot's role (default: 'assistant')
