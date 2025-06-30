@@ -359,12 +359,12 @@ class AnthropicMailbox(Mailbox):
                 block = anthropic.types.TextBlock(text="~", type="text")
                 response.content.insert(0, block)
 
-            while should_continue(response):
-                if bot.conversation.role == "user":  # base case
-                    bot.conversation._add_reply(role="assistant", content=response.content[0].text)
-                elif bot.conversation.role == "assistant":  # recursive case
-                    bot.conversation.content += response
-                response = self.send_message(bot)
+            # while should_continue(response):
+            #     if bot.conversation.role == "user":  # base case
+            #         bot.conversation._add_reply(role="assistant", content=response.content[0].text)
+            #     elif bot.conversation.role == "assistant":  # recursive case
+            #         bot.conversation.content += response
+            #     response = self.send_message(bot)
 
             # process the complete response
             response_role: str = response.role
