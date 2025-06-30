@@ -1023,7 +1023,7 @@ class CLI:
         self.context.bot_instance = bot
         from bots.tools.code_tools import view, view_dir
         from bots.tools.self_tools import branch_self
-        bot.add_tools(bots.tools.terminal_tools, branch_self, bots.tools.python_edit, view, view_dir)
+        bot.add_tools(bots.tools.terminal_tools, view, view_dir)
 
     def _handle_command(self, bot: Bot, user_input: str):
         """Handle command input."""
