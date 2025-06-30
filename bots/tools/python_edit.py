@@ -37,7 +37,7 @@ class ScopeViewer(ast.NodeVisitor):
         """Find the target node in the AST tree."""
         self.visit(tree)
         return self.target_node
-    
+
     def visit_ClassDef(self, node):
         """Visit a class definition node."""
         return self._visit_named_node(node)
@@ -107,6 +107,7 @@ class ScopeTransformer(ast.NodeTransformer):
         self.success = False
         self.line_match_count = 0
         self.all_tokens = {**self.file_tokens, **self.new_tokens}
+        self.ambiguity_error = None  # Store ambiguity error messages
 
     def visit_ClassDef(self, node):
         """Visit a class definition node."""
@@ -200,6 +201,10 @@ class ScopeTransformer(ast.NodeTransformer):
             return node
         if self.insert_after == "__FILE_START__":
             return node
+            
+        # Check if this is a quoted expression
+        if self._is_quoted_expression(self.insert_after):
+            return self._handle_expression_insertion(node)
         if "::" in self.insert_after:
             target_path = self.insert_after.split("::")
             current_path = self.current_path
@@ -269,6 +274,15 @@ class ScopeTransformer(ast.NodeTransformer):
                 break
         for i, new_node in enumerate(self.new_nodes):
             node.body.insert(insert_index + i, new_node)
+
+    def _is_quoted_expression(self, text):
+        """Check if text is a quoted expression."""
+        text = text.strip()
+        double_quote = '"'
+        single_quote = "'"
+        double_quoted = text.startswith(double_quote) and text.endswith(double_quote) and (len(text) >= 2)
+        single_quoted = text.startswith(single_quote) and text.endswith(single_quote) and (len(text) >= 2)
+        return double_quoted or single_quoted
 
 
 @handle_errors
@@ -442,6 +456,8 @@ def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> st
         if not path_elements:
             if insert_after:
                 # File-level insert_after: find the target and insert after it
+
+                # Check for quoted expressions first
                 target_found = False
                 insert_index = len(non_imports)  # Default to end if not found
 
@@ -480,6 +496,9 @@ def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> st
         tree.body = deduplicated_imports + non_imports
         transformer = ScopeTransformer(path_elements, code_nodes, insert_after, file_lines, file_tokens, new_code_tokens)
         modified_tree = transformer.visit(tree)
+        if transformer.ambiguity_error:
+            return _process_error(ValueError(transformer.ambiguity_error))
+        
         if not transformer.success:
             if insert_after:
                 return _process_error(ValueError(f"Insert point not found: {insert_after}"))
@@ -1465,4 +1484,17 @@ def _deduplicate_imports(existing_imports: List[ast.stmt], new_imports: List[ast
         if sig and sig not in new_signatures:
             result_imports.append(imp)
     return result_imports
+
+
+
+
+
+
+
+
+
+
+
+
+
 
