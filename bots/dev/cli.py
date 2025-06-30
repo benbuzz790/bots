@@ -1,3 +1,19 @@
+import argparse
+import inspect
+import json
+import os
+import platform
+import re
+import sys
+import textwrap
+from typing import Any, Callable, Dict, List, Optional
+import bots.flows.functional_prompts as fp
+import bots.flows.recombinators as recombinators
+import bots.tools.code_tools
+import bots.tools.python_edit
+import bots.tools.terminal_tools
+from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.base import Bot, ConversationNode
 """
 CLI for bot interactions with improved architecture and dynamic parameter collection.
 
@@ -8,32 +24,12 @@ Architecture:
 - Robust error handling with conversation backup
 - Configuration support for CLI settings
 """
-
-import argparse
-import inspect
-import json
-import os
-import platform
-import re
-import sys
-import textwrap
-from typing import Any, Callable, Dict, List, Optional
-
-import bots.flows.functional_prompts as fp
-import bots.flows.recombinators as recombinators
-import bots.tools.code_tools
-import bots.tools.python_edit
-import bots.tools.terminal_tools
-from bots.foundation.anthropic_bots import AnthropicBot
-from bots.foundation.base import Bot, ConversationNode
-
 if platform.system() == "Windows":
     import msvcrt
 else:
     import select
     import termios
     import tty
-
 COLOR_USER = '\033[36m'             # Cyan
 COLOR_ASSISTANT = '\033[36m'        # Cyan
 COLOR_SYSTEM = '\033[33m'           # Yellow
@@ -269,7 +265,7 @@ class CLICallbacks:
 
         def message_only_callback(responses, nodes):
             if responses and responses[-1]:
-                pretty(responses[-1], self.context.bot_instance.name if self.context.bot_instance else "Bot", self.context.config.width, self.context.config.indent)
+                pretty(responses[-1], self.context.bot_instance.name if self.context.bot_instance else "Bot", self.context.config.width, self.context.config.indent, COLOR_ASSISTANT)
         return message_only_callback
 
     def create_verbose_callback(self):
@@ -282,13 +278,13 @@ class CLICallbacks:
                 results = bot.tool_handler.results
                 if requests:
                     request_str = "".join((clean_dict(r) for r in requests))
-                    pretty(f"Tool Requests\n\n{request_str}", "Tool Requests", self.context.config.width, self.context.config.indent)
+                    pretty(f"Tool Requests\n\n{request_str}", "Tool Requests", self.context.config.width, self.context.config.indent, COLOR_TOOL_REQUEST)
                 if results:
                     result_str = "".join((clean_dict(r) for r in results))
                     if result_str.strip():
-                        pretty(f"Tool Results\n\n{result_str}", "Tool Results", self.context.config.width, self.context.config.indent)
+                        pretty(f"Tool Results\n\n{result_str}", "Tool Results", self.context.config.width, self.context.config.indent, COLOR_TOOL_RESULT)
             if responses and responses[-1]:
-                pretty(responses[-1], self.context.bot_instance.name if self.context.bot_instance else "Bot", self.context.config.width, self.context.config.indent)
+                pretty(responses[-1], self.context.bot_instance.name if self.context.bot_instance else "Bot", self.context.config.width, self.context.config.indent, COLOR_ASSISTANT)
         return verbose_callback
 
     def create_quiet_callback(self):
@@ -305,9 +301,9 @@ class CLICallbacks:
                         elif "name" in tool_call:
                             tool_names.append(tool_call["name"])
                     if tool_names:
-                        pretty(f"Used tools: {', '.join(set(tool_names))}", "System", self.context.config.width, self.context.config.indent)
+                        pretty(f"Used tools: {', '.join(set(tool_names))}", "System", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
             if responses and responses[-1]:
-                pretty(responses[-1], self.context.bot_instance.name if self.context.bot_instance else "Bot", self.context.config.width, self.context.config.indent)
+                pretty(responses[-1], self.context.bot_instance.name if self.context.bot_instance else "Bot", self.context.config.width, self.context.config.indent, COLOR_ASSISTANT)
         return quiet_callback
 
     def get_standard_callback(self):
@@ -524,7 +520,7 @@ class ConversationHandler:
             context.conversation_backup = bot.conversation
             print(f"Combining {len(leaves)} leaves using {recombinator_name}...")
             final_response, final_node = fp.recombine(bot, responses, leaves, recombinator_func)
-            pretty(final_response, bot.name, context.config.width, context.config.indent)
+            pretty(final_response, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
             return f"Successfully combined {len(leaves)} leaves using {recombinator_name}"
         except Exception as e:
             return f"Error combining leaves: {str(e)}"
@@ -555,6 +551,22 @@ class ConversationHandler:
             return None
         depth = find_path_length(start_node, target_node)
         return depth if depth is not None else 0
+
+    def _ensure_assistant_node(self, bot: Bot) -> bool:
+        """Ensure we're on an assistant node, move to one if needed."""
+        if bot.conversation.role == "assistant":
+            return True
+        if bot.conversation.replies:
+            for reply in bot.conversation.replies:
+                if reply.role == "assistant":
+                    bot.conversation = reply
+                    return True
+        return False
+
+    def _display_conversation_context(self, bot: Bot, context: CLIContext):
+        """Display current conversation context."""
+        if bot.conversation.content:
+            pretty(bot.conversation.content, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
 
 class StateHandler:
     """Handler for bot state management commands."""
@@ -731,15 +743,15 @@ class DynamicFunctionalPromptHandler:
             if _callback_type == "single":
 
                 def single_callback(response: str, node):
-                    pretty(response, context.bot_instance.name if context.bot_instance else "Bot", context.config.width, context.config.indent)
+                    pretty(response, context.bot_instance.name if context.bot_instance else "Bot", context.config.width, context.config.indent, COLOR_ASSISTANT)
                     if hasattr(context, "bot_instance") and context.bot_instance and context.config.verbose:
                         if hasattr(node, "tool_calls") and node.tool_calls:
                             tool_calls_str = "".join((clean_dict(call) for call in node.tool_calls))
-                            pretty(f"Tool Requests\n\n{tool_calls_str}", "System", context.config.width, context.config.indent)
+                            pretty(f"Tool Requests\n\n{tool_calls_str}", "System", context.config.width, context.config.indent, COLOR_TOOL_REQUEST)
                         if hasattr(node, "tool_results") and node.tool_results:
                             tool_results_str = "".join((clean_dict(result) for result in node.tool_results))
                             if tool_results_str.strip():
-                                pretty(f"Tool Results\n\n{tool_results_str}", "System", context.config.width, context.config.indent)
+                                pretty(f"Tool Results\n\n{tool_results_str}", "System", context.config.width, context.config.indent, COLOR_TOOL_RESULT)
                 params["callback"] = single_callback
             else:
                 callback = context.callbacks.get_standard_callback()
@@ -750,11 +762,11 @@ class DynamicFunctionalPromptHandler:
                 if isinstance(responses, list):
                     for i, response in enumerate(responses):
                         if response:
-                            pretty(f"Response {i+1}: {response}", bot.name, context.config.width, context.config.indent)
+                            pretty(f"Response {i+1}: {response}", bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
                     return f"Functional prompt '{fp_name}' completed with {len(responses)} responses"
                 else:
                     if responses:
-                        pretty(responses, bot.name, context.config.width, context.config.indent)
+                        pretty(responses, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
                     return f"Functional prompt '{fp_name}' completed"
             else:
                 return f"Functional prompt '{fp_name}' completed with result: {result}"
@@ -895,33 +907,17 @@ def display_tool_results(bot: Bot, context: CLIContext):
     if requests and context.config.verbose:
         request_str = "".join((clean_dict(r) for r in requests))
         result_str = "".join((clean_dict(r) for r in results))
-        pretty(f"Tool Requests\n\n{request_str}", "System", context.config.width, context.config.indent)
-        pretty(f"Tool Results\n\n{result_str}", "System", context.config.width, context.config.indent)
+        pretty(f"Tool Requests\n\n{request_str}", "System", context.config.width, context.config.indent, COLOR_TOOL_REQUEST)
+        pretty(f"Tool Results\n\n{result_str}", "System", context.config.width, context.config.indent, COLOR_TOOL_RESULT)
     elif requests and (not context.config.verbose):
         for request in requests:
             tool_name, _ = bot.tool_handler.tool_name_and_input(request)
-            pretty(f"{bot.name} used {tool_name}", "System", context.config.width, context.config.indent)
-    pretty(bot.conversation.content, bot.name, context.config.width, context.config.indent)
+            pretty(f"{bot.name} used {tool_name}", "System", context.config.width, context.config.indent, COLOR_SYSTEM)
+    pretty(bot.conversation.content, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
 
-def pretty(string: str, name: Optional[str]=None, width: int=1000, indent: int=4, color: str=None) -> None:
-    """Print a string nicely formatted with optional color."""
+def pretty(string: str, name: Optional[str]=None, width: int=1000, indent: int=4, color: str=COLOR_RESET) -> None:
+    """Print a string nicely formatted with explicit color."""
     print()
-    if color is None:
-        if name and name.lower() in ['user', 'human']:
-            color = COLOR_USER
-        elif name and name.lower() in ['assistant', 'bot']:
-            color = COLOR_ASSISTANT
-        elif name and name.lower() == 'system':
-            if string and ('Tool Requests' in string or 'tool request' in string.lower()):
-                color = COLOR_TOOL_REQUEST
-            elif string and ('Tool Results' in string or 'tool result' in string.lower()):
-                color = COLOR_TOOL_RESULT
-            else:
-                color = COLOR_SYSTEM
-        elif name and name.lower() == 'error':
-            color = COLOR_ERROR
-        else:
-            color = COLOR_RESET
     prefix = f"{color}{COLOR_BOLD}{name}: {COLOR_RESET}{color}" if name is not None else color
     if not isinstance(string, str):
         string = str(string)
@@ -968,7 +964,7 @@ class CLI:
                 else:
                     print(result)
                     if self.context.bot_instance:
-                        pretty(f"Bot loaded: {self.context.bot_instance.name}", "System")
+                        pretty(f"Bot loaded: {self.context.bot_instance.name}", "System", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
             else:
                 self._initialize_new_bot()
             print("CLI started. Type /help for commands or chat normally.")
@@ -994,7 +990,7 @@ class CLI:
                         msg = user_input
                     if command:
                         if command not in self.commands:
-                            pretty("Unrecognized command. Try /help.", "System", self.context.config.width, self.context.config.indent)
+                            pretty("Unrecognized command. Try /help.", "System", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
                             continue
                         if msg:
                             if command in ["/help", "/verbose", "/quiet", "/config", "/save", "/load", "/up", "/down", "/left", "/right", "/root", "/label", "/goto", "/showlabels", "/leaf", "/combine_leaves"]:
@@ -1047,14 +1043,14 @@ class CLI:
             try:
                 result = self.commands[command](bot, self.context, args)
                 if result:
-                    pretty(result, "System", self.context.config.width, self.context.config.indent)
+                    pretty(result, "System", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
             except Exception as e:
-                pretty(f"Command error: {str(e)}", "Error", self.context.config.width, self.context.config.indent)
+                pretty(f"Command error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
                 if self.context.conversation_backup:
                     bot.conversation = self.context.conversation_backup
-                    pretty("Restored conversation from backup", "System")
+                    pretty("Restored conversation from backup", "System", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
         else:
-            pretty("Unrecognized command. Try /help.", "System", self.context.config.width, self.context.config.indent)
+            pretty("Unrecognized command. Try /help.", "System", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
 
     def _handle_chat(self, bot: Bot, user_input: str):
         """Handle chat input."""
@@ -1066,10 +1062,10 @@ class CLI:
             responses, nodes = fp.chain(bot, [user_input], callback=callback)
             pass
         except Exception as e:
-            pretty(f"Chat error: {str(e)}", "Error", self.context.config.width, self.context.config.indent)
+            pretty(f"Chat error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
             if self.context.conversation_backup:
                 bot.conversation = self.context.conversation_backup
-                pretty("Restored conversation from backup", "System")
+                pretty("Restored conversation from backup", "System", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
 
 def parse_args():
     """Parse command line arguments."""
