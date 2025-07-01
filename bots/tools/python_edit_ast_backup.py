@@ -7,9 +7,6 @@ from typing import Dict, List, Tuple
 from bots.dev.decorators import handle_errors
 from bots.utils.helpers import _clean, _process_error, _py_ast_to_source
 from bots.utils.unicode_utils import clean_unicode_string
-import libcst as cst
-from typing import Optional, Union, List, Tuple
-from bots.utils.helpers import _process_error
 
 def _read_file_bom_safe(file_path: str) -> str:
     """Read a file with BOM protection."""
@@ -348,20 +345,22 @@ class ScopeTransformer(ast.NodeTransformer):
 def python_view(target_scope: str) -> str:
     """
     View Python code using pytest-style scope syntax.
-
+    
     Parameters:
-    -----------
+    ----------
     target_scope : str
         Location to view in pytest-style scope syntax:
         - "file.py" (whole file)
         - "file.py::MyClass" (class)
         - "file.py::my_function" (function)
         - "file.py::MyClass::method" (method)
+        - "file.py::Outer::Inner::method" (nested)
+        - "file.py::utils::helper_func" (nested function)
 
     Returns:
     --------
     str
-        The source code at the specified scope, or error message
+        The source code of the specified scope or error message
     """
     try:
         file_path, *path_elements = target_scope.split('::')
@@ -374,47 +373,55 @@ def python_view(target_scope: str) -> str:
         if not os.path.exists(abs_path):
             return _process_error(FileNotFoundError(f'File not found: {abs_path}'))
         try:
-            source_code = _read_file_bom_safe(abs_path)
-            if not source_code.strip():
+            original_content = _read_file_bom_safe(abs_path)
+            if not original_content.strip():
                 return f"File '{abs_path}' is empty."
+            content_without_comments, top_comments = _extract_top_level_comments(original_content)
+            if not path_elements:
+                return original_content
+            tokenized_content, file_tokens = _tokenize_source(content_without_comments) if content_without_comments.strip() else ('', {})
+            tree = ast.parse(tokenized_content) if content_without_comments.strip() else ast.Module(body=[], type_ignores=[])
         except Exception as e:
-            return _process_error(ValueError(f'Error reading file {abs_path}: {str(e)}'))
-        if not path_elements:
-            return source_code
-        try:
-            wrapper = cst.MetadataWrapper(cst.parse_module(source_code))
-        except Exception as e:
-            return _process_error(ValueError(f'Error parsing file {abs_path}: {str(e)}'))
-        finder = ScopeFinder(path_elements)
-        wrapper.visit(finder)
-        if not finder.target_node:
+            return _process_error(ValueError(f'Error reading/parsing file {abs_path}: {str(e)}'))
+        viewer = ScopeViewer(path_elements)
+        target_node = viewer.find_target(tree)
+        if not target_node:
             return _process_error(ValueError(f'Target scope not found: {target_scope}'))
-        return wrapper.module.code_for_node(finder.target_node)
+        try:
+            node_source = _py_ast_to_source(target_node)
+            final_content = _detokenize_source(node_source, file_tokens)
+            return final_content
+        except Exception as e:
+            return _process_error(ValueError(f'Error converting scope to source: {str(e)}'))
     except Exception as e:
         return _process_error(e)
 
-@handle_errors
 def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
     """
     Edit Python code using pytest-style scope syntax.
+    Default behavior: Replace entire target scope.
 
     Parameters:
-    -----------
+    ----------
     target_scope : str
         Location to edit in pytest-style scope syntax:
         - "file.py" (whole file)
         - "file.py::MyClass" (class)
         - "file.py::my_function" (function)
         - "file.py::MyClass::method" (method)
+        - "file.py::Outer::Inner::method" (nested)
+        - "file.py::utils::helper_func" (nested function)
 
     code : str
-        Python code to insert/replace. Will be dedented automatically.
+        Python code to insert/replace. Will be cleaned/dedented.
+        Import statements will be automatically extracted and handled.
 
     insert_after : str, optional
         Scope to insert the code after, using the same syntax as target_scope:
         - "__FILE_START__" (special token for file beginning)
         - "MyClass::method" (insert after this method within the target scope)
-        - '"expression"' (insert after a line matching this expression)
+        - "MyClass" (insert after this class within the target scope)
+        If not specified, replaces the entire target_scope.
 
     Returns:
     --------
@@ -429,74 +436,155 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
             if not element.isidentifier():
                 return _process_error(ValueError(f'Invalid identifier in path: {element}'))
         abs_path = _make_file(file_path)
+        cleaned_code, prep_error = prep_input(code)
+        if prep_error:
+            return f'Tool Failed: Input code validation failed:\n{prep_error}'
+        lines = cleaned_code.split('\n')
+        non_comment_lines = [line for line in lines if line.strip() and (not line.strip().startswith('#'))]
+        is_comment_only = not non_comment_lines
+        if is_comment_only and insert_after and insert_after.strip().startswith('"') and insert_after.strip().endswith('"'):
+            return _handle_comment_only_insertion(abs_path, cleaned_code, insert_after, path_elements)
+        original_cleaned_code = cleaned_code
+        if is_comment_only:
+            cleaned_code = cleaned_code + '\npass'
+        tokenized_code, new_code_tokens = _tokenize_source(cleaned_code)
         try:
-            original_content = _read_file_bom_safe(abs_path)
-            was_originally_empty = not original_content.strip()
-        except Exception as e:
-            return _process_error(ValueError(f'Error reading file {abs_path}: {str(e)}'))
-        try:
-            import textwrap
-            cleaned_code = textwrap.dedent(code).strip()
-            if not cleaned_code:
-                return _process_error(ValueError('Code to insert/replace is empty'))
-            if was_originally_empty and (not path_elements):
-                _write_file_bom_safe(abs_path, cleaned_code)
-                return f"Code added to '{abs_path}'."
-            try:
-                new_module = cst.parse_module(cleaned_code)
-            except Exception as e:
-                return _process_error(ValueError(f'Error parsing new code: {str(e)}'))
-        except Exception as e:
-            return _process_error(ValueError(f'Error processing new code: {str(e)}'))
-        try:
-            if original_content.strip():
-                tree = cst.parse_module(original_content)
-            else:
-                tree = cst.parse_module('')
-        except Exception as e:
-            return _process_error(ValueError(f'Error parsing file {abs_path}: {str(e)}'))
-        if insert_after == '__FILE_START__':
-            return _handle_file_start_insertion(abs_path, tree, new_module)
-        elif not path_elements:
-            if insert_after:
-                return _handle_file_level_insertion(abs_path, tree, new_module, insert_after)
-            else:
-                _write_file_bom_safe(abs_path, cleaned_code)
-                return f"File '{abs_path}' content replaced."
-        else:
-            replacer = ScopeReplacer(path_elements, new_module, insert_after, tree)
-            modified_tree = tree.visit(replacer)
-            if not replacer.modified:
-                if insert_after:
-                    return _process_error(ValueError(f'Insert point not found: {insert_after}'))
+            new_tree = ast.parse(tokenized_code)
+            import_nodes = []
+            code_nodes = []
+            for node in new_tree.body:
+                if isinstance(node, (ast.Import, ast.ImportFrom)):
+                    import_nodes.append(node)
                 else:
-                    return _process_error(ValueError(f'Target scope not found: {target_scope}'))
-            _write_file_bom_safe(abs_path, modified_tree.code)
+                    if is_comment_only and isinstance(node, ast.Pass):
+                        node._is_comment_placeholder = True
+                        node._original_comment_code = original_cleaned_code
+                    code_nodes.append(node)
+        except Exception as e:
+            return _process_error(ValueError(f'Error parsing new code: {str(e)}'))
+        try:
+            with open(abs_path, 'r', encoding='utf-8') as file:
+                original_content = file.read()
+            was_originally_empty = not original_content.strip()
+            top_level_comments = []
+            if original_content.strip():
+                original_content, top_level_comments = _extract_top_level_comments(original_content)
+            tokenized_content, file_tokens = _tokenize_source(original_content) if original_content.strip() else ('', {})
+            file_lines = tokenized_content.split('\n')
+            tree = ast.parse(tokenized_content) if original_content.strip() else ast.Module(body=[], type_ignores=[])
+        except Exception as e:
+            return _process_error(ValueError(f'Error reading/parsing file {abs_path}: {str(e)}'))
+        existing_imports = []
+        non_imports = []
+        for node in tree.body:
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                existing_imports.append(node)
+            else:
+                non_imports.append(node)
+        deduplicated_imports = _deduplicate_imports(existing_imports, import_nodes)
+        if insert_after == '__FILE_START__':
+            tree.body = import_nodes + code_nodes + existing_imports + non_imports
+            try:
+                updated_content = _py_ast_to_source_with_comment_handling(tree)
+                all_tokens = {**file_tokens, **new_code_tokens}
+                final_content = _detokenize_source(updated_content, all_tokens)
+                final_content = _preserve_blank_lines(final_content, original_content)
+                final_content = _restore_top_level_comments(final_content, top_level_comments)
+                with open(abs_path, 'w', encoding='utf-8') as file:
+                    file.write(final_content)
+                return f"Code inserted at start of '{abs_path}'."
+            except Exception as e:
+                return _process_error(e)
+        if not path_elements:
+            if insert_after:
+
+                def is_quoted_expression(text):
+                    text = text.strip()
+                    double_quote = '"'
+                    single_quote = "'"
+                    double_quoted = text.startswith(double_quote) and text.endswith(double_quote) and (len(text) >= 2)
+                    single_quoted = text.startswith(single_quote) and text.endswith(single_quote) and (len(text) >= 2)
+                    return double_quoted or single_quoted
+                if is_quoted_expression(insert_after):
+                    transformer = ScopeTransformer([], code_nodes, insert_after, file_lines, file_tokens, new_code_tokens)
+                    transformer._is_comment_only_insertion = is_comment_only
+                    temp_module = ast.Module(body=non_imports, type_ignores=[])
+                    temp_module = transformer._handle_expression_insertion(temp_module)
+                    if transformer.success:
+                        tree.body = deduplicated_imports + temp_module.body
+                    elif transformer.ambiguity_error:
+                        return _process_error(ValueError(transformer.ambiguity_error))
+                    else:
+                        return _process_error(ValueError(f'Insert point not found at file level: {insert_after}'))
+                else:
+                    target_found = False
+                    insert_index = len(non_imports)
+                    for i, node in enumerate(non_imports):
+                        if hasattr(node, 'name') and node.name == insert_after:
+                            insert_index = i + 1
+                            target_found = True
+                            break
+                    if not target_found:
+                        return _process_error(ValueError(f'Insert point not found at file level: {insert_after}'))
+                    new_non_imports = non_imports[:insert_index] + code_nodes + non_imports[insert_index:]
+                    tree.body = deduplicated_imports + new_non_imports
+            else:
+                tree.body = deduplicated_imports + code_nodes
+            try:
+                updated_content = _py_ast_to_source_with_comment_handling(tree)
+                all_tokens = {**file_tokens, **new_code_tokens}
+                final_content = _detokenize_source(updated_content, all_tokens)
+                final_content = _preserve_blank_lines(final_content, original_content)
+                final_content = _restore_top_level_comments(final_content, top_level_comments)
+                with open(abs_path, 'w', encoding='utf-8') as file:
+                    file.write(final_content)
+                if was_originally_empty:
+                    return f"Code added to '{abs_path}'."
+                else:
+                    return f"Code inserted at file level in '{abs_path}'."
+            except Exception as e:
+                return _process_error(e)
+        transformer = ScopeTransformer(path_elements, code_nodes, insert_after, file_lines, file_tokens, new_code_tokens)
+        transformer._is_comment_only_insertion = is_comment_only
+        tree = transformer.visit(tree)
+        if not transformer.success:
+            if transformer.ambiguity_error:
+                return _process_error(ValueError(transformer.ambiguity_error))
+            elif insert_after:
+                return _process_error(ValueError(f'Insert point not found: {insert_after}'))
+            else:
+                return _process_error(ValueError(f'Target scope not found: {target_scope}'))
+        try:
+            updated_content = _py_ast_to_source_with_comment_handling(tree)
+            all_tokens = {**file_tokens, **new_code_tokens}
+            final_content = _detokenize_source(updated_content, all_tokens)
+            final_content = _preserve_blank_lines(final_content, original_content)
+            final_content = _restore_top_level_comments(final_content, top_level_comments)
+            with open(abs_path, 'w', encoding='utf-8') as file:
+                file.write(final_content)
             if insert_after:
                 return f"Code inserted after '{insert_after}' in '{abs_path}'."
             else:
                 return f"Code replaced at '{target_scope}'."
+        except Exception as e:
+            return _process_error(e)
     except Exception as e:
         return _process_error(e)
 
 def _make_file(file_path: str) -> str:
     """
-    Create a file and its parent directories if they don't exist.
+    Creates a file and its parent directories if they don't exist.
+    Converts relative paths to absolute paths.
 
     Parameters:
-    -----------
-    file_path : str
-        Path to the file to create
+    - file_path (str): The path to the file to be created
 
     Returns:
-    --------
-    str
-        Absolute path to the created/existing file
+    - str: The absolute path to the file
 
     Raises:
-    -------
-    ValueError
-        If there's an error creating the file or directories
+    - ValueError: If there's an error creating the file or directories,
+                 or if the file_path is empty
     """
     if not file_path:
         raise ValueError('File path cannot be empty')
@@ -1433,401 +1521,3 @@ def _handle_comment_only_insertion(abs_path: str, comment_code: str, insert_afte
         return f"Code inserted after '{insert_after}' in '{abs_path}'."
     except Exception as e:
         return _process_error(e)
-
-class ScopeFinder(cst.CSTVisitor):
-    """
-    Visitor to find a specific scope in the CST based on a path.
-    """
-
-    def __init__(self, path_elements: List[str]):
-        self.path_elements = path_elements
-        self.current_path = []
-        self.target_node = None
-        self.parent_stack = []
-
-    def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
-        """Visit a class definition."""
-        return self._visit_scope_node(node)
-
-    def leave_ClassDef(self, node: cst.ClassDef) -> None:
-        """Leave a class definition."""
-        if self.current_path and self.current_path[-1] == node.name.value:
-            self.current_path.pop()
-            self.parent_stack.pop()
-
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> Optional[bool]:
-        """Visit a function definition."""
-        return self._visit_scope_node(node)
-
-    def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
-        """Leave a function definition."""
-        if self.current_path and self.current_path[-1] == node.name.value:
-            self.current_path.pop()
-            self.parent_stack.pop()
-
-    def _visit_scope_node(self, node: Union[cst.ClassDef, cst.FunctionDef]) -> Optional[bool]:
-        """Common logic for visiting scope nodes."""
-        if len(self.current_path) < len(self.path_elements):
-            expected_name = self.path_elements[len(self.current_path)]
-            if node.name.value == expected_name:
-                self.current_path.append(node.name.value)
-                self.parent_stack.append(node)
-                if len(self.current_path) == len(self.path_elements):
-                    self.target_node = node
-                    return False
-                return True
-        return False
-
-class ScopeReplacer(cst.CSTTransformer):
-    """
-    Transformer to replace or modify a specific scope in the CST.
-    """
-
-    def __init__(self, path_elements: List[str], new_code: Optional[cst.CSTNode]=None, insert_after: Optional[str]=None, module: Optional[cst.Module]=None):
-        self.path_elements = path_elements
-        self.new_code = new_code
-        self.insert_after = insert_after
-        self.current_path = []
-        self.modified = False
-        self.module = module
-
-    def visit_ClassDef(self, node: cst.ClassDef) -> None:
-        """Track when entering a class."""
-        self.current_path.append(node.name.value)
-
-    def leave_ClassDef(self, original_node: cst.ClassDef, updated_node: cst.ClassDef) -> cst.ClassDef:
-        """Handle leaving a class definition."""
-        result = self._handle_scope_node(original_node, updated_node)
-        if self.current_path and self.current_path[-1] == original_node.name.value:
-            self.current_path.pop()
-        return result
-
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
-        """Track when entering a function."""
-        self.current_path.append(node.name.value)
-
-    def leave_FunctionDef(self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef) -> cst.FunctionDef:
-        """Handle leaving a function definition."""
-        result = self._handle_scope_node(original_node, updated_node)
-        if self.current_path and self.current_path[-1] == original_node.name.value:
-            self.current_path.pop()
-        return result
-
-    def _handle_scope_node(self, original_node: Union[cst.ClassDef, cst.FunctionDef], updated_node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef]:
-        """Common logic for handling scope nodes."""
-        if self.current_path == self.path_elements:
-            self.modified = True
-            if self.insert_after:
-                return self._handle_insertion(updated_node)
-            elif self.new_code is not None:
-                return self.new_code
-        return updated_node
-
-    def _handle_insertion(self, node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef]:
-        """Handle inserting code after a specific element within a scope."""
-        if self.insert_after.startswith('"') and self.insert_after.endswith('"'):
-            pattern = self.insert_after[1:-1]
-            return self._insert_after_expression(node, pattern)
-        else:
-            return self._insert_after_named_scope(node)
-
-    def _insert_after_expression(self, node: Union[cst.ClassDef, cst.FunctionDef], pattern: str) -> Union[cst.ClassDef, cst.FunctionDef]:
-        """Insert code after a line matching the expression pattern within the scope."""
-        if isinstance(node, (cst.FunctionDef, cst.ClassDef)):
-            body = node.body
-            if isinstance(body, cst.IndentedBlock):
-                new_body_nodes = []
-                pattern_found = False
-                for i, stmt in enumerate(body.body):
-                    new_body_nodes.append(stmt)
-                    if self.module:
-                        try:
-                            stmt_code = self.module.code_for_node(stmt).strip()
-                        except:
-                            temp_module = cst.Module(body=[stmt])
-                            stmt_code = temp_module.code.strip()
-                    else:
-                        temp_module = cst.Module(body=[stmt])
-                        stmt_code = temp_module.code.strip()
-                    if pattern in stmt_code or stmt_code.startswith(pattern):
-                        if self.new_code:
-                            new_code_str = self.new_code.code.strip()
-                            if new_code_str.startswith('#') or new_code_str.startswith('    #'):
-                                comment_stmt = _create_statement_with_comment(new_code_str)
-                                new_body_nodes.append(comment_stmt)
-                            elif hasattr(self.new_code, 'body'):
-                                for new_stmt in self.new_code.body:
-                                    new_body_nodes.append(new_stmt)
-                            else:
-                                new_body_nodes.append(self.new_code)
-                        pattern_found = True
-                if pattern_found:
-                    new_body = body.with_changes(body=new_body_nodes)
-                    return node.with_changes(body=new_body)
-        return node
-
-    def _insert_after_named_scope(self, node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef]:
-        """Insert code after a named element within the scope."""
-        target_parts = self.insert_after.split('::')
-        target_name = target_parts[-1]
-        body = node.body
-        if isinstance(body, cst.IndentedBlock):
-            new_body_nodes = []
-            inserted = False
-            for stmt in body.body:
-                new_body_nodes.append(stmt)
-                if isinstance(stmt, (cst.FunctionDef, cst.ClassDef)):
-                    if stmt.name.value == target_name:
-                        if self.new_code and hasattr(self.new_code, 'body'):
-                            new_body_nodes.extend(self.new_code.body)
-                        inserted = True
-            if inserted:
-                new_body = body.with_changes(body=new_body_nodes)
-                return node.with_changes(body=new_body)
-        return node
-
-@handle_errors
-def python_view(target_scope: str) -> str:
-    """
-    View Python code using pytest-style scope syntax.
-
-    Parameters:
-    -----------
-    target_scope : str
-        Location to view in pytest-style scope syntax:
-        - "file.py" (whole file)
-        - "file.py::MyClass" (class)
-        - "file.py::my_function" (function)
-        - "file.py::MyClass::method" (method)
-
-    Returns:
-    --------
-    str
-        The source code at the specified scope, or error message
-    """
-    try:
-        file_path, *path_elements = target_scope.split('::')
-        if not file_path.endswith('.py'):
-            return _process_error(ValueError(f'File path must end with .py: {file_path}'))
-        for element in path_elements:
-            if not element.isidentifier():
-                return _process_error(ValueError(f'Invalid identifier in path: {element}'))
-        abs_path = os.path.abspath(file_path)
-        if not os.path.exists(abs_path):
-            return _process_error(FileNotFoundError(f'File not found: {abs_path}'))
-        try:
-            source_code = _read_file_bom_safe(abs_path)
-            if not source_code.strip():
-                return f"File '{abs_path}' is empty."
-        except Exception as e:
-            return _process_error(ValueError(f'Error reading file {abs_path}: {str(e)}'))
-        if not path_elements:
-            return source_code
-        try:
-            wrapper = cst.MetadataWrapper(cst.parse_module(source_code))
-        except Exception as e:
-            return _process_error(ValueError(f'Error parsing file {abs_path}: {str(e)}'))
-        finder = ScopeFinder(path_elements)
-        wrapper.visit(finder)
-        if not finder.target_node:
-            return _process_error(ValueError(f'Target scope not found: {target_scope}'))
-        return wrapper.module.code_for_node(finder.target_node)
-    except Exception as e:
-        return _process_error(e)
-
-@handle_errors
-def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
-    """
-    Edit Python code using pytest-style scope syntax.
-
-    Parameters:
-    -----------
-    target_scope : str
-        Location to edit in pytest-style scope syntax:
-        - "file.py" (whole file)
-        - "file.py::MyClass" (class)
-        - "file.py::my_function" (function)
-        - "file.py::MyClass::method" (method)
-
-    code : str
-        Python code to insert/replace. Will be dedented automatically.
-
-    insert_after : str, optional
-        Scope to insert the code after, using the same syntax as target_scope:
-        - "__FILE_START__" (special token for file beginning)
-        - "MyClass::method" (insert after this method within the target scope)
-        - '"expression"' (insert after a line matching this expression)
-
-    Returns:
-    --------
-    str
-        Description of what was modified or error message
-    """
-    try:
-        file_path, *path_elements = target_scope.split('::')
-        if not file_path.endswith('.py'):
-            return _process_error(ValueError(f'File path must end with .py: {file_path}'))
-        for element in path_elements:
-            if not element.isidentifier():
-                return _process_error(ValueError(f'Invalid identifier in path: {element}'))
-        abs_path = _make_file(file_path)
-        try:
-            original_content = _read_file_bom_safe(abs_path)
-            was_originally_empty = not original_content.strip()
-        except Exception as e:
-            return _process_error(ValueError(f'Error reading file {abs_path}: {str(e)}'))
-        try:
-            import textwrap
-            cleaned_code = textwrap.dedent(code).strip()
-            if not cleaned_code:
-                return _process_error(ValueError('Code to insert/replace is empty'))
-            if was_originally_empty and (not path_elements):
-                _write_file_bom_safe(abs_path, cleaned_code)
-                return f"Code added to '{abs_path}'."
-            try:
-                new_module = cst.parse_module(cleaned_code)
-            except Exception as e:
-                return _process_error(ValueError(f'Error parsing new code: {str(e)}'))
-        except Exception as e:
-            return _process_error(ValueError(f'Error processing new code: {str(e)}'))
-        try:
-            if original_content.strip():
-                tree = cst.parse_module(original_content)
-            else:
-                tree = cst.parse_module('')
-        except Exception as e:
-            return _process_error(ValueError(f'Error parsing file {abs_path}: {str(e)}'))
-        if insert_after == '__FILE_START__':
-            return _handle_file_start_insertion(abs_path, tree, new_module)
-        elif not path_elements:
-            if insert_after:
-                return _handle_file_level_insertion(abs_path, tree, new_module, insert_after)
-            else:
-                _write_file_bom_safe(abs_path, cleaned_code)
-                return f"File '{abs_path}' content replaced."
-        else:
-            replacer = ScopeReplacer(path_elements, new_module, insert_after, tree)
-            modified_tree = tree.visit(replacer)
-            if not replacer.modified:
-                if insert_after:
-                    return _process_error(ValueError(f'Insert point not found: {insert_after}'))
-                else:
-                    return _process_error(ValueError(f'Target scope not found: {target_scope}'))
-            _write_file_bom_safe(abs_path, modified_tree.code)
-            if insert_after:
-                return f"Code inserted after '{insert_after}' in '{abs_path}'."
-            else:
-                return f"Code replaced at '{target_scope}'."
-    except Exception as e:
-        return _process_error(e)
-
-def _handle_file_start_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module) -> str:
-    """Handle insertion at the beginning of a file."""
-    new_body = list(new_module.body) + list(tree.body)
-    modified_tree = tree.with_changes(body=new_body)
-    _write_file_bom_safe(abs_path, modified_tree.code)
-    return f"Code inserted at start of '{abs_path}'."
-
-def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module, insert_after: str) -> str:
-    """Handle insertion at file level after a specific pattern."""
-    if insert_after.strip().startswith('"') and insert_after.strip().endswith('"'):
-        pattern = insert_after.strip()[1:-1]
-        return _handle_expression_insertion(abs_path, tree, new_module, pattern)
-    else:
-        inserter = FileInserter(insert_after, new_module.body)
-        modified_tree = tree.visit(inserter)
-        if not inserter.modified:
-            return _process_error(ValueError(f'Insert point not found at file level: {insert_after}'))
-        _write_file_bom_safe(abs_path, modified_tree.code)
-        return f"Code inserted after '{insert_after}' in '{abs_path}'."
-
-def _handle_expression_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module, pattern: str) -> str:
-    """Handle insertion after a quoted expression pattern."""
-    inserter = ExpressionInserter(pattern, new_module.body)
-    modified_tree = tree.visit(inserter)
-    if not inserter.modified:
-        return _process_error(ValueError(f'Insert point not found: "{pattern}"'))
-    _write_file_bom_safe(abs_path, modified_tree.code)
-    return f"Code inserted after '{pattern}' in '{abs_path}'."
-
-class FileInserter(cst.CSTTransformer):
-    """
-    Transformer to insert code after a specific top-level definition.
-    """
-
-    def __init__(self, target_name: str, new_nodes: List[cst.BaseSmallStatement]):
-        self.target_name = target_name
-        self.new_nodes = new_nodes
-        self.modified = False
-        self.insert_after_next = False
-
-    def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
-        """Process the module to insert nodes."""
-        new_body = []
-        for i, node in enumerate(updated_node.body):
-            new_body.append(node)
-            if isinstance(node, (cst.FunctionDef, cst.ClassDef)):
-                if node.name.value == self.target_name:
-                    new_body.extend(self.new_nodes)
-                    self.modified = True
-        if self.modified:
-            return updated_node.with_changes(body=new_body)
-        return updated_node
-
-class ExpressionInserter(cst.CSTTransformer):
-    """
-    Transformer to insert code after a line matching a specific expression pattern.
-    """
-
-    def __init__(self, pattern: str, new_nodes: List[cst.BaseSmallStatement]):
-        self.pattern = pattern
-        self.new_nodes = new_nodes
-        self.modified = False
-        self.pattern_lines = pattern.split('\n')
-        self.is_multiline = len(self.pattern_lines) > 1
-
-    def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
-        """Process the module to find and insert after the pattern."""
-        module_lines = updated_node.code.split('\n')
-        insert_index = self._find_pattern(module_lines)
-        if insert_index is None:
-            return updated_node
-        new_body = []
-        current_line = 0
-        for node in updated_node.body:
-            new_body.append(node)
-            node_code = node.code
-            node_lines = node_code.count('\n') + 1
-            node_end_line = current_line + node_lines
-            if current_line <= insert_index < node_end_line:
-                new_body.extend(self.new_nodes)
-                self.modified = True
-            current_line = node_end_line
-        if self.modified:
-            return updated_node.with_changes(body=new_body)
-        return updated_node
-
-    def _find_pattern(self, lines: List[str]) -> Optional[int]:
-        """Find the line index where the pattern matches."""
-        if self.is_multiline:
-            pattern_normalized = '\n'.join((line.strip() for line in self.pattern_lines))
-            for i in range(len(lines) - len(self.pattern_lines) + 1):
-                chunk = lines[i:i + len(self.pattern_lines)]
-                chunk_normalized = '\n'.join((line.strip() for line in chunk))
-                if chunk_normalized == pattern_normalized:
-                    return i + len(self.pattern_lines) - 1
-        else:
-            pattern_stripped = self.pattern_lines[0].strip()
-            for i, line in enumerate(lines):
-                if line.strip().startswith(pattern_stripped):
-                    return i
-        return None
-
-def _create_statement_with_comment(comment_text: str, indent_level: int=0) -> cst.SimpleStatementLine:
-    """
-    Create a statement that contains just a comment.
-    Since LibCST requires statements to have actual code, we create a pass statement
-    with a trailing comment.
-    """
-    comment = cst.Comment(f"# {comment_text.strip().lstrip('#').strip()}")
-    return cst.SimpleStatementLine(body=[cst.Pass()], trailing_whitespace=cst.TrailingWhitespace(whitespace=cst.SimpleWhitespace('  '), comment=comment))
