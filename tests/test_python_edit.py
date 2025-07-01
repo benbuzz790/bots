@@ -5,7 +5,7 @@ from textwrap import dedent
 
 import pytest
 
-from bots.tools.python_edit import _detokenize_source, _tokenize_source, python_edit
+from bots.tools.python_edit import python_edit
 
 def setup_test_file(tmp_path, content):
     """Helper to create a test file with given content"""
@@ -916,7 +916,7 @@ def test_tokenization_edge_cases():
             f.write(test_code)
             test_file = f.name
         try:
-            from bots.tools.python_edit import _detokenize_source, _tokenize_source
+            # Tokenization functions removed
 
             tokenized, token_map = _tokenize_source(test_code)
             for token_name, token_data in token_map.items():
@@ -933,7 +933,7 @@ def test_tokenization_edge_cases():
 
 def debug_string_locations(line):
     """Debug helper to see what strings are found in a line."""
-    from bots.tools.python_edit import _find_all_string_locations
+    # String location functions removed
 
     print(f"Analyzing line: {repr(line)}")
     locations = _find_all_string_locations(line)
