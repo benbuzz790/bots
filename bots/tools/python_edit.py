@@ -418,15 +418,13 @@ class ScopeReplacer(cst.CSTTransformer):
                 self.modified = True
                 return self.new_code
         return updated_node
-
     def _handle_insertion(self, node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef]:
         """Handle inserting code after a specific element within a scope."""
-        if self.insert_after.startswith('"') and self.insert_after.endswith('"'):
+        if (self.insert_after.startswith('"') and self.insert_after.endswith('"')) or (self.insert_after.startswith("'") and self.insert_after.endswith("'")):
             pattern = self.insert_after[1:-1]
             return self._insert_after_expression(node, pattern)
         else:
             return self._insert_after_named_scope(node)
-
     def _insert_after_expression(self, node: Union[cst.ClassDef, cst.FunctionDef], pattern: str) -> Union[cst.ClassDef, cst.FunctionDef]:
         """Insert code after a line matching the expression pattern within the scope."""
         if isinstance(node, (cst.FunctionDef, cst.ClassDef)):
@@ -670,7 +668,7 @@ def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cs
     """Handle insertion at file level after a specific pattern."""
     # Remove quotes if present - GenericPatternInserter handles all patterns uniformly
     pattern = insert_after.strip()
-    if pattern.startswith('"') and pattern.endswith('"'):
+    if (pattern.startswith('"') and pattern.endswith('"')) or (pattern.startswith("'") and pattern.endswith("'")):
         pattern = pattern[1:-1]
 
     inserter = GenericPatternInserter(pattern, new_module.body, tree)
@@ -679,6 +677,7 @@ def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cs
         return _process_error(ValueError(f'Insert point not found at file level: {insert_after}'))
     _write_file_bom_safe(abs_path, modified_tree.code)
     return f"Code inserted after '{insert_after}' in '{abs_path}'."
+
 class GenericPatternInserter(cst.CSTTransformer):
     """
     Generic CST transformer that can insert code after any pattern,
