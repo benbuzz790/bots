@@ -66,7 +66,17 @@ class ScopeViewer(ast.NodeVisitor):
             pass
         else:
             return
-# TokenType enum removed - tokenization system eliminated in favor of native CST handling
+
+class TokenType(Enum):
+    """Types of tokens for metadata-driven processing"""
+    STANDALONE_COMMENT = 'standalone_comment'
+    INLINE_COMMENT = 'inline_comment'
+    IMPORT_COMMENT = 'import_comment'
+    COMPOUND_COMMENT = 'compound_comment'
+    STRING_LITERAL = 'string_literal'
+    FSTRING_LITERAL = 'fstring_literal'
+    MULTILINE_STRING = 'multiline_string'
+
 class ScopeTransformer(ast.NodeTransformer):
     """AST transformer that handles scope-based Python code modifications."""
 
@@ -286,7 +296,7 @@ class ScopeTransformer(ast.NodeTransformer):
 
     def _handle_expression_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module, pattern: str) -> str:
         """Handle insertion after a quoted expression pattern."""
-        # This function is no longer used - replaced by GenericPatternInserter
+        inserter = ExpressionInserter(pattern, new_module.body)
         modified_tree = tree.visit(inserter)
         if not inserter.modified:
             return _process_error(ValueError(f'Insert point not found: "{pattern}"'))
@@ -666,149 +676,122 @@ def _handle_file_start_insertion(abs_path: str, tree: cst.Module, new_module: cs
     modified_tree = tree.with_changes(body=new_body)
     _write_file_bom_safe(abs_path, modified_tree.code)
     return f"Code inserted at start of '{abs_path}'."
+
 def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module, insert_after: str) -> str:
     """Handle insertion at file level after a specific pattern."""
-    # Remove quotes if present - GenericPatternInserter handles all patterns uniformly
-    pattern = insert_after.strip()
-    if pattern.startswith('"') and pattern.endswith('"'):
-        pattern = pattern[1:-1]
+    if insert_after.strip().startswith('"') and insert_after.strip().endswith('"'):
+        pattern = insert_after.strip()[1:-1]
+        return _handle_expression_insertion(abs_path, tree, new_module, pattern)
+    else:
+        inserter = FileInserter(insert_after, new_module.body)
+        modified_tree = tree.visit(inserter)
+        if not inserter.modified:
+            return _process_error(ValueError(f'Insert point not found at file level: {insert_after}'))
+        _write_file_bom_safe(abs_path, modified_tree.code)
+        return f"Code inserted after '{insert_after}' in '{abs_path}'."
 
-    inserter = GenericPatternInserter(pattern, new_module.body, tree)
+def _handle_expression_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module, pattern: str) -> str:
+    """Handle insertion after a quoted expression pattern."""
+    inserter = ExpressionInserter(pattern, new_module.body)
     modified_tree = tree.visit(inserter)
     if not inserter.modified:
-        return _process_error(ValueError(f'Insert point not found at file level: {insert_after}'))
+        return _process_error(ValueError(f'Insert point not found: "{pattern}"'))
     _write_file_bom_safe(abs_path, modified_tree.code)
-    return f"Code inserted after '{insert_after}' in '{abs_path}'."
-class GenericPatternInserter(cst.CSTTransformer):
+    return f"Code inserted after '{pattern}' in '{abs_path}'."
+
+class FileInserter(cst.CSTTransformer):
     """
-    Generic CST transformer that can insert code after any pattern,
-    regardless of node type or nesting level.
+    Transformer to insert code after a specific top-level definition.
     """
 
-    def __init__(self, pattern: str, new_nodes: List[cst.CSTNode], module: cst.Module):
-        self.pattern = pattern.strip()
+    def __init__(self, target_name: str, new_nodes: List[cst.BaseSmallStatement]):
+        self.target_name = target_name
         self.new_nodes = new_nodes
-        self.module = module
         self.modified = False
-        self.pattern_lines = self.pattern.split('\n')
-        self.is_multiline = len(self.pattern_lines) > 1
+        self.insert_after_next = False
 
     def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
-        """Handle the module level."""
-        new_body = self._process_statement_list(updated_node.body)
+        """Process the module to insert nodes."""
+        new_body = []
+        for i, node in enumerate(updated_node.body):
+            new_body.append(node)
+            if isinstance(node, (cst.FunctionDef, cst.ClassDef)):
+                if node.name.value == self.target_name:
+                    new_body.extend(self.new_nodes)
+                    self.modified = True
         if self.modified:
             return updated_node.with_changes(body=new_body)
         return updated_node
 
-    def leave_If(self, original_node: cst.If, updated_node: cst.If) -> cst.If:
-        """Handle If statements."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
+class ExpressionInserter(cst.CSTTransformer):
+    """
+    Transformer to insert code after a line matching a specific expression pattern.
+    """
+
+    def __init__(self, pattern: str, new_nodes: List[cst.BaseSmallStatement]):
+        self.pattern = pattern
+        self.new_nodes = new_nodes
+        self.modified = False
+        self.pattern_lines = pattern.split('\n')
+        self.is_multiline = len(self.pattern_lines) > 1
+
+    def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
+        """Process the module to find and insert after the pattern."""
+        module_lines = updated_node.code.split('\n')
+        insert_index = self._find_pattern(module_lines)
+        if insert_index is None:
+            return updated_node
+        new_body = []
+        current_line = 0
+        for node in updated_node.body:
+            new_body.append(node)
+            node_code = updated_node.code_for_node(node)
+            node_lines = node_code.count('\n') + 1
+            node_end_line = current_line + node_lines
+            if current_line <= insert_index < node_end_line:
+                new_body.extend(self.new_nodes)
+                self.modified = True
+            current_line = node_end_line
+        if self.modified:
+            return updated_node.with_changes(body=new_body)
         return updated_node
 
-    def leave_FunctionDef(self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef) -> cst.FunctionDef:
-        """Handle function definitions."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
-        return updated_node
-
-    def leave_ClassDef(self, original_node: cst.ClassDef, updated_node: cst.ClassDef) -> cst.ClassDef:
-        """Handle class definitions."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
-        return updated_node
-
-    def leave_For(self, original_node: cst.For, updated_node: cst.For) -> cst.For:
-        """Handle For loops."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
-        return updated_node
-
-    def leave_While(self, original_node: cst.While, updated_node: cst.While) -> cst.While:
-        """Handle While loops."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
-        return updated_node
-
-    def leave_With(self, original_node: cst.With, updated_node: cst.With) -> cst.With:
-        """Handle With statements."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
-        return updated_node
-
-    def leave_Try(self, original_node: cst.Try, updated_node: cst.Try) -> cst.Try:
-        """Handle Try statements."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
-        return updated_node
-    def _process_statement_list(self, statements: List[cst.CSTNode]) -> List[cst.CSTNode]:
-        """Process a list of statements, inserting after pattern matches."""
-        new_statements = []
-        match_count = 0
-
-        for stmt in statements:
-            new_statements.append(stmt)
-
-            # Get the source code for this statement
-            try:
-                stmt_code = self.module.code_for_node(stmt).strip()
-            except Exception:
-                continue
-
-            # Check if this statement matches our pattern
-            if self._matches_pattern(stmt_code):
-                match_count += 1
-                if match_count == 1:
-                    new_statements.extend(self.new_nodes)
-                    self.modified = True
-                elif match_count == 2:
-                    # Ambiguous match detected
-                    raise ValueError(f"Ambiguous pattern '{self.pattern}' - multiple matches found")
-
-        return new_statements
-    def _matches_pattern(self, stmt_code: str) -> bool:
-        """Check if statement code matches the pattern."""
+    def _find_pattern(self, lines: List[str]) -> Optional[int]:
+        """Find the line index where the pattern matches."""
         if self.is_multiline:
-            # For multiline patterns, do structural comparison
-            stmt_lines = stmt_code.split('\n')
-            if len(stmt_lines) < len(self.pattern_lines):
-                return False
 
-            # Compare structure and content (simplified version)
-            for i, pattern_line in enumerate(self.pattern_lines):
-                if i >= len(stmt_lines):
-                    return False
-                if pattern_line.strip() not in stmt_lines[i]:
-                    return False
-            return True
+            def get_structure_and_content(lines):
+                """Get relative indentation structure and content"""
+                result = []
+                indent_levels = []
+                for line in lines:
+                    if line.strip():
+                        indent = len(line) - len(line.lstrip())
+                        indent_levels.append(indent)
+                unique_levels = sorted(set(indent_levels)) if indent_levels else [0]
+                for line in lines:
+                    if line.strip():
+                        indent = len(line) - len(line.lstrip())
+                        level = unique_levels.index(indent)
+                        content = line.strip()
+                        result.append((level, content))
+                    else:
+                        result.append((0, ''))
+                return result
+            pattern_structure = get_structure_and_content(self.pattern_lines)
+            for i in range(len(lines) - len(self.pattern_lines) + 1):
+                chunk = lines[i:i + len(self.pattern_lines)]
+                chunk_structure = get_structure_and_content(chunk)
+                if pattern_structure == chunk_structure:
+                    return i + len(self.pattern_lines) - 1
         else:
-            # Single line: exact match or starts-with
             pattern_stripped = self.pattern_lines[0].strip()
-            stmt_stripped = stmt_code.strip()
-            return (stmt_stripped == pattern_stripped or 
-                    stmt_stripped.startswith(pattern_stripped))
-# ExpressionInserter class removed - functionality merged into GenericPatternInserter
+            for i, line in enumerate(lines):
+                line_stripped = line.strip()
+                if line_stripped == pattern_stripped or line_stripped.startswith(pattern_stripped):
+                    return i
+        return None
+
 def _create_statement_with_comment(comment_text: str, indent_level: int=0) -> cst.SimpleStatementLine:
     """
     Create a statement that contains just a comment.
