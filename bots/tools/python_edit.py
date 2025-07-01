@@ -294,55 +294,14 @@ class ScopeTransformer(ast.NodeTransformer):
             pattern_normalized = '\n'.join((line.rstrip() for line in pattern_lines))
             return source_normalized.strip() == pattern_normalized.strip()
 
-    def _handle_expression_insertion(self, node):
+    def _handle_expression_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module, pattern: str) -> str:
         """Handle insertion after a quoted expression pattern."""
-        if not hasattr(node, 'body'):
-            return node
-        pattern = self._extract_expression_pattern(self.insert_after)
-        pattern_stripped = pattern.strip()
-        pattern_lines = pattern.split('\n')
-        is_multiline_pattern = len(pattern_lines) > 1
-        matches = []
-        for idx, child in enumerate(node.body):
-            try:
-                if hasattr(child, 'lineno') and hasattr(child, 'end_lineno') and self.file_lines:
-                    start_line = child.lineno - 1
-                    end_line = child.end_lineno
-                    if 0 <= start_line < len(self.file_lines) and end_line <= len(self.file_lines):
-                        if is_multiline_pattern:
-                            pattern_line_count = len(pattern_lines)
-                            potential_end_line = min(start_line + pattern_line_count, len(self.file_lines))
-                            node_lines = self.file_lines[start_line:potential_end_line]
-                        else:
-                            node_lines = self.file_lines[start_line:end_line]
-                        tokenized_source = '\n'.join(node_lines)
-                        child_source = _detokenize_source(tokenized_source, self.all_tokens).strip()
-                    else:
-                        child_source = _py_ast_to_source(child).strip()
-                else:
-                    child_source = _py_ast_to_source(child).strip()
-                if self._matches_expression_pattern(child_source, pattern_stripped):
-                    matches.append((idx, child, child_source))
-            except Exception:
-                continue
-        if len(matches) == 0:
-            return node
-        elif len(matches) > 1:
-            if is_multiline_pattern:
-                exact_matches = [(idx, child, source) for idx, child, source in matches if source.strip() == pattern_stripped]
-                if len(exact_matches) == 1:
-                    matches = exact_matches
-                else:
-                    self.ambiguity_error = f'Ambiguous expression match: Multi-line expressions need a 100% match to work (excluding whitespace). Found {len(matches)} matches for pattern.'
-                    return node
-        insert_index = matches[0][0] + 1
-        matched_node = matches[0][1]
-        if hasattr(matched_node, 'end_lineno'):
-            self._insert_after_line = matched_node.end_lineno
-        for i, new_node in enumerate(self.new_nodes):
-            node.body.insert(insert_index + i, new_node)
-        self.success = True
-        return node
+        inserter = ExpressionInserter(pattern, new_module.body)
+        modified_tree = tree.visit(inserter)
+        if not inserter.modified:
+            return _process_error(ValueError(f'Insert point not found: "{pattern}"'))
+        _write_file_bom_safe(abs_path, modified_tree.code)
+        return f"Code inserted after '{pattern}' in '{abs_path}'."
 
 @handle_errors
 def python_view(target_scope: str) -> str:
@@ -462,7 +421,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 return _handle_file_level_insertion(abs_path, tree, new_module, insert_after)
             else:
                 _write_file_bom_safe(abs_path, cleaned_code)
-                return f"File '{abs_path}' content replaced."
+                return f"Code replaced at file level in '{abs_path}'."
         else:
             replacer = ScopeReplacer(path_elements, new_module, insert_after, tree)
             modified_tree = tree.visit(replacer)
@@ -1516,10 +1475,11 @@ class ScopeReplacer(cst.CSTTransformer):
     def _handle_scope_node(self, original_node: Union[cst.ClassDef, cst.FunctionDef], updated_node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef]:
         """Common logic for handling scope nodes."""
         if self.current_path == self.path_elements:
-            self.modified = True
             if self.insert_after:
-                return self._handle_insertion(updated_node)
+                result = self._handle_insertion(updated_node)
+                return result
             elif self.new_code is not None:
+                self.modified = True
                 return self.new_code
         return updated_node
 
@@ -1562,6 +1522,7 @@ class ScopeReplacer(cst.CSTTransformer):
                                 new_body_nodes.append(self.new_code)
                         pattern_found = True
                 if pattern_found:
+                    self.modified = True
                     new_body = body.with_changes(body=new_body_nodes)
                     return node.with_changes(body=new_body)
         return node
@@ -1569,7 +1530,13 @@ class ScopeReplacer(cst.CSTTransformer):
     def _insert_after_named_scope(self, node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef]:
         """Insert code after a named element within the scope."""
         target_parts = self.insert_after.split('::')
-        target_name = target_parts[-1]
+        if len(target_parts) > 1:
+            scope_prefix = target_parts[:-1]
+            if self.current_path != self.path_elements or scope_prefix != self.path_elements[-len(scope_prefix):]:
+                return node
+            target_name = target_parts[-1]
+        else:
+            target_name = target_parts[0]
         body = node.body
         if isinstance(body, cst.IndentedBlock):
             new_body_nodes = []
@@ -1577,10 +1544,11 @@ class ScopeReplacer(cst.CSTTransformer):
             for stmt in body.body:
                 new_body_nodes.append(stmt)
                 if isinstance(stmt, (cst.FunctionDef, cst.ClassDef)):
-                    if stmt.name.value == target_name:
+                    if hasattr(stmt, 'name') and stmt.name.value == target_name:
                         if self.new_code and hasattr(self.new_code, 'body'):
                             new_body_nodes.extend(self.new_code.body)
                         inserted = True
+                        self.modified = True
             if inserted:
                 new_body = body.with_changes(body=new_body_nodes)
                 return node.with_changes(body=new_body)
@@ -1704,7 +1672,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
                 return _handle_file_level_insertion(abs_path, tree, new_module, insert_after)
             else:
                 _write_file_bom_safe(abs_path, cleaned_code)
-                return f"File '{abs_path}' content replaced."
+                return f"Code replaced at file level in '{abs_path}'."
         else:
             replacer = ScopeReplacer(path_elements, new_module, insert_after, tree)
             modified_tree = tree.visit(replacer)
@@ -1796,7 +1764,7 @@ class ExpressionInserter(cst.CSTTransformer):
         current_line = 0
         for node in updated_node.body:
             new_body.append(node)
-            node_code = node.code
+            node_code = updated_node.code_for_node(node)
             node_lines = node_code.count('\n') + 1
             node_end_line = current_line + node_lines
             if current_line <= insert_index < node_end_line:
@@ -1829,5 +1797,11 @@ def _create_statement_with_comment(comment_text: str, indent_level: int=0) -> cs
     Since LibCST requires statements to have actual code, we create a pass statement
     with a trailing comment.
     """
-    comment = cst.Comment(f"# {comment_text.strip().lstrip('#').strip()}")
+    lines = comment_text.strip().split('\n')
+    if len(lines) > 1:
+        comment_text = lines[0]
+    comment_text = comment_text.strip()
+    if comment_text.startswith('#'):
+        comment_text = comment_text[1:].strip()
+    comment = cst.Comment(f'# {comment_text}')
     return cst.SimpleStatementLine(body=[cst.Pass()], trailing_whitespace=cst.TrailingWhitespace(whitespace=cst.SimpleWhitespace('  '), comment=comment))

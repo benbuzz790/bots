@@ -5,3 +5,4 @@ typing_extensions==4.12.2
 pytest-xdist
 psutil
 #ghcli recommended
+libcst

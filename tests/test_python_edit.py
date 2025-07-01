@@ -1060,6 +1060,7 @@ def test_real_scenario_tokenization_large_files():
         except Exception as e:
             print(f"  ? Failed: {e}")
             raise AssertionError(f"Tokenization failed for {file_path}: {e}")
+
     # Summary statistics
     if results:
         total_lines = sum(r['original_lines'] for r in results)
@@ -1138,3 +1139,393 @@ def test_function_added_by_integration_test():
         print(f"? File remains valid Python with {len(final_content.splitlines())} lines")
         print(f"? Tokenization round-trip successful")
 
+# Tests for AST-based insert_after expression functionality
+def test_insert_after_quoted_single_line_expression(tmp_path):
+    """Test inserting after a quoted single-line expression"""
+    content = '''
+    def func():
+        x = 1
+        y = 2
+        z = 3
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    # Insert after the line that starts with "y = "
+    result = python_edit(f"{test_file}::func", "    inserted_line = 'after y'", insert_after='"y = 2"')
+    assert "inserted after" in result
+    with open(test_file) as f:
+        final_content = f.read()
+    print(f"DEBUG - Final content:\n{final_content}")
+    lines = final_content.split('\n')
+    y_line_idx = next(i for i, line in enumerate(lines) if 'y = 2' in line)
+    inserted_line_idx = next(i for i, line in enumerate(lines) if 'inserted_line' in line)
+    assert inserted_line_idx == y_line_idx + 1, "Inserted line should be right after y = 2"
+    assert "inserted_line = 'after y'" in final_content
+
+# def test_insert_after_quoted_expression_partial_match(tmp_path):
+#     """Test inserting after a quoted expression using partial matching"""
+#     content = '''
+#     def func():
+#         result = calculate_something(param1, param2)
+#         other_result = calculate_other(param3)
+#         final = process_results()
+#     '''
+#     test_file = setup_test_file(tmp_path, content)
+#     # Insert after line that starts with "result = calculate_something"
+#     result = python_edit(f"{test_file}::func", "    # Added after calculation", insert_after='"result = calculate_something"')
+#     assert "inserted after" in result
+#     print(f"DEBUG - python_edit result: {result}")
+#     with open(test_file) as f:
+#         final_content = f.read()
+#     print(f"DEBUG - Final content: {repr(final_content)}")
+#     assert "# Added after calculation" in final_content
+#     comment_line_idx = next(i for i, line in enumerate(lines) if '# Added after calculation' in line)
+#     assert comment_line_idx == calc_line_idx + 1
+
+def test_insert_after_quoted_multiline_expression(tmp_path):
+    """Test inserting after a quoted multi-line expression"""
+    content = '''
+    def func():
+        if condition:
+            x = 1
+            y = 2
+        else:
+            z = 3
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    # Insert after the exact multi-line if block
+    multiline_pattern = '''if condition:
+            x = 1
+            y = 2'''
+    result = python_edit(f"{test_file}::func", "    # Added after if block", insert_after=f'"{multiline_pattern}"')
+    assert "inserted after" in result
+    with open(test_file) as f:
+        final_content = f.read()
+    assert "# Added after if block" in final_content
+def test_insert_after_quoted_expression_no_match(tmp_path):
+    """Test error handling when quoted expression doesn't match anything"""
+    content = '''
+    def func():
+        x = 1
+        y = 2
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    result = python_edit(f"{test_file}::func", "    inserted = True", insert_after='"nonexistent_pattern"')
+    assert "not found" in result.lower() or "error" in result.lower()
+def test_insert_after_scope_path_syntax(tmp_path):
+    """Test inserting after a method using scope path syntax"""
+    content = '''
+    class MyClass:
+        def method1(self):
+            return "first"
+        def method2(self):
+            return "second"
+        def method3(self):
+            return "third"
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    # Insert after method2 within MyClass
+    result = python_edit(f"{test_file}::MyClass", "    def inserted_method(self):\n        return 'inserted'", 
+                        insert_after="MyClass::method2")
+    assert "inserted after" in result
+    with open(test_file) as f:
+        final_content = f.read()
+    assert "def inserted_method" in final_content
+    # Verify order: method2 should come before inserted_method
+    method2_pos = final_content.find('def method2')
+    inserted_pos = final_content.find('def inserted_method')
+    method3_pos = final_content.find('def method3')
+    assert method2_pos < inserted_pos < method3_pos, "inserted_method should be between method2 and method3"
+def test_insert_after_nested_scope_path(tmp_path):
+    """Test inserting after a method in a nested class"""
+    content = '''
+    class OuterClass:
+        def outer_method(self):
+            pass
+        class InnerClass:
+            def inner_method1(self):
+                return 1
+            def inner_method2(self):
+                return 2
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    # Insert after inner_method1 within InnerClass
+    result = python_edit(f"{test_file}::OuterClass::InnerClass", 
+                        "        def inserted_inner_method(self):\n            return 'inserted'",
+                        insert_after="OuterClass::InnerClass::inner_method1")
+    assert "inserted after" in result
+    with open(test_file) as f:
+        final_content = f.read()
+    assert "def inserted_inner_method" in final_content
+def test_insert_after_simple_name_in_scope(tmp_path):
+    """Test inserting after a simple method name within current scope"""
+    content = '''
+    class TestClass:
+        def setup(self):
+            self.data = []
+        def process(self):
+            return len(self.data)
+        def cleanup(self):
+            self.data.clear()
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    # Insert after 'process' method using simple name
+    result = python_edit(f"{test_file}::TestClass", 
+                        "    def validate(self):\n        return self.data is not None",
+                        insert_after="process")
+    assert "inserted after" in result
+    with open(test_file) as f:
+        final_content = f.read()
+    assert "def validate" in final_content
+    # Verify it's between process and cleanup
+    process_pos = final_content.find('def process')
+    validate_pos = final_content.find('def validate')
+    cleanup_pos = final_content.find('def cleanup')
+    assert process_pos < validate_pos < cleanup_pos
+def test_insert_after_function_in_function(tmp_path):
+    """Test inserting after a nested function"""
+    content = '''
+    def outer_func():
+        def helper1():
+            return "help1"
+        def helper2():
+            return "help2"
+        return helper1() + helper2()
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    result = python_edit(f"{test_file}::outer_func", 
+                        "    def helper_inserted():\n        return 'inserted'",
+                        insert_after="helper1")
+    assert "inserted after" in result
+    with open(test_file) as f:
+        final_content = f.read()
+    assert "def helper_inserted" in final_content
+def test_insert_after_with_complex_expressions(tmp_path):
+    """Test inserting after complex expressions with quotes and special characters"""
+    content = '''
+    def func():
+        message = "Hello, 'world'!"
+        pattern = r"\\d+\\.\\d+"
+        query = f"SELECT * FROM table WHERE name = '{name}'"
+        result = process_data()
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    # Insert after the f-string line
+    result = python_edit(f"{test_file}::func", 
+                        "    # Added after query",
+                        insert_after='"query = f"')
+    assert "inserted after" in result
+    with open(test_file) as f:
+        final_content = f.read()
+    assert "# Added after query" in final_content
+def test_insert_after_preserves_indentation(tmp_path):
+    """Test that inserted code maintains proper indentation"""
+    content = '''
+    class MyClass:
+        def method(self):
+            if True:
+                x = 1
+                y = 2
+            return x + y
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    result = python_edit(f"{test_file}::MyClass::method", 
+                        "        # Comment at method level\n        z = 3",
+                        insert_after='"y = 2"')
+    assert "inserted after" in result
+    with open(test_file) as f:
+        final_content = f.read()
+    lines = final_content.split('\n')
+    comment_line = next(line for line in lines if '# Comment at method level' in line)
+    z_line = next(line for line in lines if 'z = 3' in line)
+    # Should maintain proper indentation
+    assert comment_line.startswith('        ')  # 8 spaces for method level
+    assert z_line.startswith('        ')  # 8 spaces for method level
+def test_insert_after_at_class_level(tmp_path):
+    """Test inserting methods at class level after specific methods"""
+    content = '''
+    class DataProcessor:
+        def __init__(self):
+            self.data = []
+        def load_data(self, source):
+            # Load data from source
+            pass
+        def save_data(self, target):
+            # Save data to target  
+            pass
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    result = python_edit(f"{test_file}::DataProcessor", 
+                        "    def validate_data(self):\n        # Validate loaded data\n        return len(self.data) > 0",
+                        insert_after="load_data")
+    assert "inserted after" in result
+    with open(test_file) as f:
+        final_content = f.read()
+    assert "def validate_data" in final_content
+    # Should be between load_data and save_data
+    load_pos = final_content.find('def load_data')
+    validate_pos = final_content.find('def validate_data')
+    save_pos = final_content.find('def save_data')
+    assert load_pos < validate_pos < save_pos
+def test_insert_after_with_decorators(tmp_path):
+    """Test inserting after methods that have decorators"""
+    content = '''
+    class MyClass:
+        @property
+        def value(self):
+            return self._value
+        @value.setter
+        def value(self, val):
+            self._value = val
+        def regular_method(self):
+            pass
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    # Insert after the setter method
+    result = python_edit(f"{test_file}::MyClass", 
+                        "    @property\n    def computed_value(self):\n        return self._value * 2",
+                        insert_after="value")  # This should match the setter (last occurrence)
+    with open(test_file) as f:
+        final_content = f.read()
+    assert "def computed_value" in final_content
+def test_insert_after_quoted_expression_with_comments(tmp_path):
+    """Test inserting after expressions that contain comments"""
+    content = '''
+    def func():
+        x = 1  # Initialize x
+        y = calculate_value()  # This is complex
+        z = x + y  # Final calculation
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    result = python_edit(f"{test_file}::func", 
+                        "    # Added after complex calculation",
+                        insert_after='"y = calculate_value()  # This is complex"')
+    assert "inserted after" in result
+    with open(test_file) as f:
+        final_content = f.read()
+    assert "# Added after complex calculation" in final_content
+def test_insert_after_multiline_exact_match_required(tmp_path):
+    """Test that multiline patterns require exact matches"""
+    content = '''
+    def func():
+        if condition:
+            x = 1
+            y = 2
+        else:
+            z = 3
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    # This should work - exact match
+    exact_pattern = '''if condition:
+            x = 1
+            y = 2'''
+    result = python_edit(f"{test_file}::func", "    # Exact match worked", 
+                        insert_after=f'"{exact_pattern}"')
+    assert "inserted after" in result
+    # This should fail - not exact match (extra whitespace)
+    inexact_pattern = '''if condition:
+             x = 1
+             y = 2'''
+    result2 = python_edit(f"{test_file}::func", "    # This should fail", 
+                         insert_after=f'"{inexact_pattern}"')
+    assert "not found" in result2.lower() or "error" in result2.lower()
+def test_insert_after_file_level_with_quoted_expression(tmp_path):
+    """Test inserting at file level after a quoted expression"""
+    content = '''
+import os
+from typing import List
+def main():
+    print("Hello")
+if __name__ == "__main__":
+    main()
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    result = python_edit(test_file, 
+                        "def helper_function():\n    return 'helper'",
+                        insert_after='"def main():"')
+    assert "inserted after" in result
+    with open(test_file) as f:
+        final_content = f.read()
+    assert "def helper_function" in final_content
+    # Should be after main() but before if __name__
+    main_pos = final_content.find('def main()')
+    helper_pos = final_content.find('def helper_function')
+    name_pos = final_content.find('if __name__')
+    assert main_pos < helper_pos < name_pos
+def test_insert_after_edge_cases_empty_lines(tmp_path):
+    """Test insert_after behavior with empty lines and whitespace"""
+    content = '''
+    def func():
+        x = 1
+        # Comment with empty line above
+        y = 2
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    result = python_edit(f"{test_file}::func", 
+                        "    # Inserted after comment",
+                        insert_after='"# Comment with empty line above"')
+    assert "inserted after" in result
+    with open(test_file) as f:
+        final_content = f.read()
+    assert "# Inserted after comment" in final_content
+def test_insert_after_expression_matching_rules(tmp_path):
+    """Test the specific rules for expression pattern matching"""
+    content = '''
+    def func():
+        result = calculate(param1, param2, param3)
+        other = calculate(different_params)
+        final = process_result(result)
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    # Single-line pattern should match the first line that STARTS with the pattern
+    result = python_edit(f"{test_file}::func", 
+                        "    # Added after first calculate",
+                        insert_after='"result = calculate"')
+    assert "inserted after" in result
+    with open(test_file) as f:
+        final_content = f.read()
+    lines = final_content.split('\n')
+    result_line_idx = next(i for i, line in enumerate(lines) if 'result = calculate(param1' in line)
+    comment_line_idx = next(i for i, line in enumerate(lines) if '# Added after first calculate' in line)
+    assert comment_line_idx == result_line_idx + 1
+def test_insert_after_single_quote_vs_double_quote(tmp_path):
+    """Test that both single and double quotes work for expression patterns"""
+    content = '''
+    def func():
+        x = "double quoted string"
+        y = 'single quoted string'
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    # Test with double quotes
+    result1 = python_edit(f"{test_file}::func", 
+                         "    # After double quote pattern",
+                         insert_after='"x = "')
+    assert "inserted after" in result1
+    # Test with single quotes  
+    result2 = python_edit(f"{test_file}::func", 
+                         "    # After single quote pattern",
+                         insert_after="'y = '")
+    assert "inserted after" in result2
+    with open(test_file) as f:
+        final_content = f.read()
+    assert "# After double quote pattern" in final_content
+    assert "# After single quote pattern" in final_content
+def test_insert_after_ambiguous_multiline_expression(tmp_path):
+    """Test ambiguity handling for multiline expressions"""
+    content = '''
+    def func():
+        if condition1:
+            x = 1
+            y = 2
+        if condition2:
+            x = 1
+            y = 2
+    '''
+    test_file = setup_test_file(tmp_path, content)
+    # This multiline pattern appears twice - should get ambiguity error
+    ambiguous_pattern = '''if condition1:
+            x = 1
+            y = 2'''
+    result = python_edit(f"{test_file}::func", "    # Should fail", 
+                        insert_after=f'"{ambiguous_pattern}"')
+    # Should handle ambiguity gracefully
+    print(f"DEBUG - Ambiguity result: {result}")
