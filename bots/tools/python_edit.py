@@ -353,7 +353,7 @@ def python_view(target_scope: str) -> str:
         return _process_error(e)
 
 @handle_errors
-def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
+def _python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
     """
     Edit Python code using pytest-style scope syntax.
 
@@ -474,7 +474,7 @@ def _make_file(file_path: str) -> str:
             raise ValueError(f'Error creating file {abs_path}: {str(e)}')
     return abs_path
 
-def prep_input(code: str) -> tuple[str, str | None]:
+def _prep_input(code: str) -> tuple[str, str | None]:
     """
     Prepare and validate input code with informative error messages.
 
@@ -1485,7 +1485,7 @@ class ScopeReplacer(cst.CSTTransformer):
 
     def _handle_insertion(self, node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef]:
         """Handle inserting code after a specific element within a scope."""
-        if self.insert_after.startswith('"') and self.insert_after.endswith('"') or (self.insert_after.startswith("'") and self.insert_after.endswith("'")):
+        if self.insert_after.startswith('"') and self.insert_after.endswith('"'):
             pattern = self.insert_after[1:-1]
             return self._insert_after_expression(node, pattern)
         else:
@@ -1547,41 +1547,10 @@ class ScopeReplacer(cst.CSTTransformer):
                     if pattern_found:
                         if self.new_code:
                             new_code_str = self.new_code.code.strip()
-                            lines = new_code_str.split('\n')
-                            comment_lines = []
-                            code_lines = []
-                            for line in lines:
-                                if line.strip().startswith('#'):
-                                    comment_lines.append(line)
-                                else:
-                                    code_lines.append(line)
-                            if comment_lines and code_lines:
-                                leading_lines = []
-                                for comment_line in comment_lines:
-                                    comment_text = comment_line.strip()
-                                    comment = cst.Comment(comment_text)
-                                    empty_line = cst.EmptyLine(whitespace=cst.SimpleWhitespace(''), comment=comment)
-                                    leading_lines.append(empty_line)
-                                code_str = '\n'.join(code_lines)
-                                try:
-                                    code_module = cst.parse_module(code_str)
-                                    if code_module.body:
-                                        first_stmt = code_module.body[0]
-                                        if hasattr(first_stmt, 'leading_lines'):
-                                            first_stmt = first_stmt.with_changes(leading_lines=leading_lines + list(first_stmt.leading_lines))
-                                        else:
-                                            first_stmt = first_stmt.with_changes(leading_lines=leading_lines)
-                                        new_body_nodes.append(first_stmt)
-                                        new_body_nodes.extend(code_module.body[1:])
-                                except:
-                                    if hasattr(self.new_code, 'body') and self.new_code.body:
-                                        for new_stmt in self.new_code.body:
-                                            new_body_nodes.append(new_stmt)
-                            elif comment_lines and (not code_lines):
-                                for comment_line in comment_lines:
-                                    comment_stmt = _create_statement_with_comment(comment_line.strip())
-                                    new_body_nodes.append(comment_stmt)
-                            elif hasattr(self.new_code, 'body') and self.new_code.body:
+                            if new_code_str.startswith('#') or new_code_str.startswith('    #'):
+                                comment_stmt = _create_statement_with_comment(new_code_str)
+                                new_body_nodes.append(comment_stmt)
+                            elif hasattr(self.new_code, 'body'):
                                 for new_stmt in self.new_code.body:
                                     new_body_nodes.append(new_stmt)
                             else:
@@ -1764,9 +1733,8 @@ def _handle_file_start_insertion(abs_path: str, tree: cst.Module, new_module: cs
 
 def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module, insert_after: str) -> str:
     """Handle insertion at file level after a specific pattern."""
-    insert_after_stripped = insert_after.strip()
-    if insert_after_stripped.startswith('"') and insert_after_stripped.endswith('"') or (insert_after_stripped.startswith("'") and insert_after_stripped.endswith("'")):
-        pattern = insert_after_stripped[1:-1]
+    if insert_after.strip().startswith('"') and insert_after.strip().endswith('"'):
+        pattern = insert_after.strip()[1:-1]
         return _handle_expression_insertion(abs_path, tree, new_module, pattern)
     else:
         inserter = FileInserter(insert_after, new_module.body)
@@ -1829,19 +1797,15 @@ class ExpressionInserter(cst.CSTTransformer):
             return updated_node
         new_body = []
         current_line = 0
-        inserted = False
-        for i, node in enumerate(updated_node.body):
-            node_code = updated_node.code_for_node(node)
-            node_lines = node_code.count('\n')
-            if node_lines == 0:
-                node_lines = 1
-            node_end_line = current_line + node_lines - 1
+        for node in updated_node.body:
             new_body.append(node)
-            if not inserted and current_line <= insert_index <= node_end_line:
+            node_code = updated_node.code_for_node(node)
+            node_lines = node_code.count('\n') + 1
+            node_end_line = current_line + node_lines
+            if current_line <= insert_index < node_end_line:
                 new_body.extend(self.new_nodes)
                 self.modified = True
-                inserted = True
-            current_line = node_end_line + 1
+            current_line = node_end_line
         if self.modified:
             return updated_node.with_changes(body=new_body)
         return updated_node
@@ -1885,37 +1849,14 @@ class ExpressionInserter(cst.CSTTransformer):
 def _create_statement_with_comment(comment_text: str, indent_level: int=0) -> cst.SimpleStatementLine:
     """
     Create a statement that contains just a comment.
-    We create a pass statement with a leading comment line for better formatting.
+    Since LibCST requires statements to have actual code, we create a pass statement
+    with a trailing comment.
     """
     lines = comment_text.strip().split('\n')
     if len(lines) > 1:
         comment_text = lines[0]
     comment_text = comment_text.strip()
-    if not comment_text.startswith('#'):
-        comment_text = f'# {comment_text}'
-    comment_line = cst.EmptyLine(whitespace=cst.SimpleWhitespace(''), comment=cst.Comment(comment_text))
-    return cst.SimpleStatementLine(body=[cst.Pass()], leading_lines=[comment_line])
-
-def _parse_code_preserving_comments(code: str) -> List[cst.BaseSmallStatement]:
-    """
-    Parse code and preserve comments by attaching them as leading lines to statements.
-    """
-    module = cst.parse_module(code)
-    lines = code.split('\n')
-    comment_lines = []
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith('#'):
-            comment = cst.Comment(stripped)
-            comment_line = cst.EmptyLine(whitespace=cst.SimpleWhitespace(''), comment=comment)
-            comment_lines.append(comment_line)
-        elif stripped:
-            break
-    if comment_lines and module.body:
-        first_stmt = module.body[0]
-        if hasattr(first_stmt, 'leading_lines'):
-            first_stmt = first_stmt.with_changes(leading_lines=comment_lines + list(first_stmt.leading_lines))
-        else:
-            first_stmt = first_stmt.with_changes(leading_lines=comment_lines)
-        return [first_stmt] + list(module.body[1:])
-    return list(module.body)
+    if comment_text.startswith('#'):
+        comment_text = comment_text[1:].strip()
+    comment = cst.Comment(f'# {comment_text}')
+    return cst.SimpleStatementLine(body=[cst.Pass()], trailing_whitespace=cst.TrailingWhitespace(whitespace=cst.SimpleWhitespace('  '), comment=comment))
