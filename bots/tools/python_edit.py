@@ -738,7 +738,7 @@ class ScopeReplacer(cst.CSTTransformer):
 @handle_errors
 def python_view(target_scope: str, max_lines: int = 500) -> str:
     """
-    View Python code using pytest-style scope syntax.
+    View Python code using pytest-style scope syntax with scope-aware truncation.
 
     Parameters:
     -----------
@@ -749,8 +749,8 @@ def python_view(target_scope: str, max_lines: int = 500) -> str:
         - "file.py::my_function" (function)
         - "file.py::MyClass::method" (method)
     max_lines : int, optional
-        Maximum number of lines in output. If exceeded, output will be truncated.
-        Default 500.
+        Maximum number of lines in output. If exceeded, deeper scopes will be
+        progressively truncated to create an outline view. Default 500.
 
     Returns:
     --------
@@ -773,15 +773,13 @@ def python_view(target_scope: str, max_lines: int = 500) -> str:
                 return f"File '{abs_path}' is empty."
         except Exception as e:
             return _process_error(ValueError(f'Error reading file {abs_path}: {str(e)}'))
+
         if not path_elements:
-            # Apply max_lines truncation to whole file view
+            # Whole file view - apply scope-aware truncation
             if max_lines and max_lines > 0:
-                lines = source_code.splitlines()
-                if len(lines) > max_lines:
-                    truncated_lines = lines[:max_lines]
-                    truncated_lines.append(f"... (truncated: showing {max_lines} of {len(lines)} lines)")
-                    return '\n'.join(truncated_lines)
+                return _apply_scope_aware_truncation(source_code, max_lines)
             return source_code
+
         try:
             wrapper = cst.MetadataWrapper(cst.parse_module(source_code))
         except Exception as e:
@@ -793,13 +791,9 @@ def python_view(target_scope: str, max_lines: int = 500) -> str:
 
         result_code = wrapper.module.code_for_node(finder.target_node)
 
-        # Apply max_lines truncation to scoped view
+        # Apply scope-aware truncation to scoped view
         if max_lines and max_lines > 0:
-            lines = result_code.splitlines()
-            if len(lines) > max_lines:
-                truncated_lines = lines[:max_lines]
-                truncated_lines.append(f"... (truncated: showing {max_lines} of {len(lines)} lines)")
-                return '\n'.join(truncated_lines)
+            return _apply_scope_aware_truncation(result_code, max_lines)
 
         return result_code
     except Exception as e:
@@ -1070,3 +1064,83 @@ def _create_statement_with_comment(comment_text: str, indent_level: int=0) -> cs
         comment_text = comment_text[1:].strip()
     comment = cst.Comment(f'# {comment_text}')
     return cst.SimpleStatementLine(body=[cst.Pass()], trailing_whitespace=cst.TrailingWhitespace(whitespace=cst.SimpleWhitespace('  '), comment=comment))
+def _apply_scope_aware_truncation(source_code: str, max_lines: int) -> str:
+    '''Apply scope-aware truncation to Python source code.'''
+    if not source_code.strip():
+        return source_code
+    lines = source_code.splitlines()
+    if len(lines) <= max_lines:
+        return source_code
+    try:
+        import ast
+        tree = ast.parse(source_code)
+    except SyntaxError:
+        # If we can't parse, fall back to simple truncation
+        truncated_lines = lines[:max_lines]
+        truncated_lines.append(f'... (truncated: showing {max_lines} of {len(lines)} lines)')
+        return '\n'.join(truncated_lines)
+    # Create scope-aware outline
+    scope_entries = []
+    _collect_scope_entries(tree, scope_entries, 0)
+    if not scope_entries:
+        # No scopes found, fall back to simple truncation
+        truncated_lines = lines[:max_lines]
+        truncated_lines.append(f'... (truncated: showing {max_lines} of {len(lines)} lines)')
+        return '\n'.join(truncated_lines)
+    # Try progressive truncation by scope depth
+    max_depth = max((entry['depth'] for entry in scope_entries), default=0)
+    for current_depth_limit in range(max_depth, -1, -1):
+        result_lines = _create_outline_view(scope_entries, current_depth_limit, lines)
+        if len(result_lines) <= max_lines:
+            return '\n'.join(result_lines)
+    # Fallback to simple truncation
+    truncated_lines = lines[:max_lines]
+    truncated_lines.append(f'... (truncated: showing {max_lines} of {len(lines)} lines)')
+    return '\n'.join(truncated_lines)
+def _collect_scope_entries(node, entries, depth):
+    '''Collect information about scopes (classes, functions) in the AST.'''
+    import ast
+    for child in ast.iter_child_nodes(node):
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            start_line = child.lineno - 1  # Convert to 0-based
+            end_line = child.end_lineno - 1 if child.end_lineno else start_line
+            entries.append({
+                'type': type(child).__name__,
+                'name': child.name,
+                'start_line': start_line,
+                'end_line': end_line,
+                'depth': depth
+            })
+            # Recursively collect nested scopes
+            _collect_scope_entries(child, entries, depth + 1)
+def _create_outline_view(scope_entries, max_depth, lines):
+    '''Create an outline view by truncating scopes deeper than max_depth.'''
+    result_lines = lines.copy()
+
+    # Find scopes that should be truncated (deeper than max_depth)
+    scopes_to_truncate = [
+        entry for entry in scope_entries 
+        if entry['depth'] > max_depth and entry['start_line'] < len(lines)
+    ]
+
+    # Sort by start line in reverse order to avoid index shifting issues
+    scopes_to_truncate.sort(key=lambda x: x['start_line'], reverse=True)
+
+    for entry in scopes_to_truncate:
+        start_line = entry['start_line']
+        end_line = min(entry['end_line'], len(result_lines) - 1)
+
+        if start_line >= len(result_lines) or start_line > end_line:
+            continue
+
+        # Keep the definition line and add truncation indicator
+        if start_line < len(result_lines):
+            def_line = result_lines[start_line]
+            indent = len(def_line) - len(def_line.lstrip())
+            truncation_line = ' ' * (indent + 4) + '...'
+
+            # Replace the body with just the truncation indicator
+            if start_line + 1 <= end_line:
+                result_lines[start_line + 1:end_line + 1] = [truncation_line]
+
+    return result_lines
