@@ -1,8 +1,9 @@
-import difflib
+﻿import difflib
+import codecs
 import os
 import textwrap
 
-from bots.dev.decorators import handle_errors
+from bots.dev.decorators import handle_errors, log_errors
 from bots.utils.unicode_utils import clean_unicode_string
 
 
@@ -175,6 +176,14 @@ def view_dir(start_path: str = ".", output_file=None, target_extensions: str = "
             file.write("\n".join(output_text))
     return "\n".join(output_text)
 
+@log_errors
+@handle_errors
+def _detect_and_remove_bom(file_path: str) -> tuple[str, bool]:
+def _remove_bom_from_content(content: str) -> str:
+    "Remove BOM from content if present."
+    if content.startswith('\ufeff'):
+        return content[1:]
+    return content
 
 @handle_errors
 def patch_edit(file_path: str, patch_content: str):
@@ -195,6 +204,7 @@ def patch_edit(file_path: str, patch_content: str):
     """
     file_path = _normalize_path(file_path)
     encodings = ["utf-8", "utf-16", "utf-16le", "ascii", "cp1252", "iso-8859-1"]
+
     content = None
     used_encoding = "utf-8"
 
@@ -207,17 +217,17 @@ def patch_edit(file_path: str, patch_content: str):
     if not os.path.exists(file_path):
         content = ""
     else:
+        # Read file with encoding detection and BOM removal
         for encoding in encodings:
             try:
                 with open(file_path, "r", encoding=encoding) as file:
                     content = file.read()
                     used_encoding = encoding
+                    # Remove BOM if present
+                    content = _remove_bom_from_content(content)
                     break
             except UnicodeDecodeError:
                 continue
-
-    if content is None and os.path.exists(file_path):
-        return f"Error: Unable to read existing file with any of the attempted encodings: {', '.join(encodings)}"
 
     if not patch_content.strip():
         return "Error: patch_content is empty."
@@ -312,9 +322,9 @@ def patch_edit(file_path: str, patch_content: str):
         if not new_content.endswith("\n"):
             new_content += "\n"
 
+        # Write file without BOM
         with open(file_path, "w", encoding=used_encoding) as file:
             file.write(new_content)
-
         return "Successfully applied patches:\n" + "\n".join(changes_made)
 
     return "No changes were applied"
@@ -646,3 +656,4 @@ def _normalize_header_lines(lines):
                 line = f"@@ {ranges} @@"
         normalized.append(line)
     return normalized
+
