@@ -334,7 +334,7 @@ class ConversationHandler:
             context.conversation_backup = bot.conversation
             bot.conversation = bot.conversation.parent.parent
             if not self._ensure_assistant_node(bot):
-                return "Warning: Ended up on user node with no assistant response"
+                return "Warning: Ended up on user node with no assistant response. Bumped to previous assistant node."
             self._display_conversation_context(bot, context)
             return "Moved up conversation tree"
         return "At root - can't go up"
@@ -1024,7 +1024,7 @@ class CLI:
         from bots.tools.code_tools import view, view_dir
         from bots.tools.self_tools import branch_self
         
-        bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit)
+        bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, view, view_dir)
         #This works well as a fallback:
         #bot.add_tools(bots.tools.terminal_tools, view, view_dir)
 
