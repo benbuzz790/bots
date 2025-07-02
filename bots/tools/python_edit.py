@@ -736,7 +736,7 @@ class ScopeReplacer(cst.CSTTransformer):
         return node
 
 @handle_errors
-def python_view(target_scope: str) -> str:
+def python_view(target_scope: str, max_lines: int = 500) -> str:
     """
     View Python code using pytest-style scope syntax.
 
@@ -748,6 +748,9 @@ def python_view(target_scope: str) -> str:
         - "file.py::MyClass" (class)
         - "file.py::my_function" (function)
         - "file.py::MyClass::method" (method)
+    max_lines : int, optional
+        Maximum number of lines in output. If exceeded, output will be truncated.
+        Default 500.
 
     Returns:
     --------
@@ -771,6 +774,13 @@ def python_view(target_scope: str) -> str:
         except Exception as e:
             return _process_error(ValueError(f'Error reading file {abs_path}: {str(e)}'))
         if not path_elements:
+            # Apply max_lines truncation to whole file view
+            if max_lines and max_lines > 0:
+                lines = source_code.splitlines()
+                if len(lines) > max_lines:
+                    truncated_lines = lines[:max_lines]
+                    truncated_lines.append(f"... (truncated: showing {max_lines} of {len(lines)} lines)")
+                    return '\n'.join(truncated_lines)
             return source_code
         try:
             wrapper = cst.MetadataWrapper(cst.parse_module(source_code))
@@ -780,7 +790,18 @@ def python_view(target_scope: str) -> str:
         wrapper.visit(finder)
         if not finder.target_node:
             return _process_error(ValueError(f'Target scope not found: {target_scope}'))
-        return wrapper.module.code_for_node(finder.target_node)
+
+        result_code = wrapper.module.code_for_node(finder.target_node)
+
+        # Apply max_lines truncation to scoped view
+        if max_lines and max_lines > 0:
+            lines = result_code.splitlines()
+            if len(lines) > max_lines:
+                truncated_lines = lines[:max_lines]
+                truncated_lines.append(f"... (truncated: showing {max_lines} of {len(lines)} lines)")
+                return '\n'.join(truncated_lines)
+
+        return result_code
     except Exception as e:
         return _process_error(e)
 

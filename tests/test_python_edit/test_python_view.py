@@ -299,6 +299,97 @@ class DecoratedClass:
         self.assertIn("def decorated_method(self):", result)
         self.assertIn("A decorated method.", result)
         self.assertIn("This does something", result)
+    def test_max_lines_whole_file_no_truncation(self):
+        """Test max_lines parameter with whole file when no truncation needed."""
+        self._write_test_file()
+        result = python_view(self.test_file, max_lines=100)
+        # Should return the entire file content since it's under 100 lines
+        self.assertEqual(result.rstrip(), self.sample_code.rstrip())
+        self.assertNotIn("truncated", result)
+    def test_max_lines_whole_file_with_truncation(self):
+        """Test max_lines parameter with whole file when truncation is needed."""
+        self._write_test_file()
+        result = python_view(self.test_file, max_lines=10)
+        # Should be truncated
+        lines = result.splitlines()
+        self.assertEqual(len(lines), 11)  # 10 lines + 1 truncation message
+        self.assertIn("truncated: showing 10 of", lines[-1])
+        # Should contain the first 10 lines of the original
+        original_lines = self.sample_code.splitlines()
+        for i in range(10):
+            self.assertEqual(lines[i], original_lines[i])
+    def test_max_lines_scoped_view_no_truncation(self):
+        """Test max_lines parameter with scoped view when no truncation needed."""
+        self._write_test_file()
+        result = python_view(f"{self.test_file}::standalone_function", max_lines=50)
+        # Should return the entire function since it's under 50 lines
+        self.assertIn("def standalone_function():", result)
+        self.assertIn('return "hello"', result)
+        self.assertNotIn("truncated", result)
+    def test_max_lines_scoped_view_with_truncation(self):
+        """Test max_lines parameter with scoped view when truncation is needed."""
+        self._write_test_file()
+        result = python_view(f"{self.test_file}::OuterClass", max_lines=5)
+
+        # Should be truncated
+        lines = result.splitlines()
+        self.assertEqual(len(lines), 6)  # 5 lines + 1 truncation message
+        self.assertIn("truncated: showing 5 of", lines[-1])
+
+        # Should contain the class definition somewhere in the first few lines
+        self.assertIn("class OuterClass:", result)
+    def test_max_lines_zero_disables_truncation(self):
+        """Test that max_lines=0 disables truncation."""
+        self._write_test_file()
+        result = python_view(self.test_file, max_lines=0)
+        # Should return the entire file content
+        self.assertEqual(result.rstrip(), self.sample_code.rstrip())
+        self.assertNotIn("truncated", result)
+    def test_max_lines_negative_disables_truncation(self):
+        """Test that negative max_lines disables truncation."""
+        self._write_test_file()
+        result = python_view(self.test_file, max_lines=-1)
+        # Should return the entire file content
+        self.assertEqual(result.rstrip(), self.sample_code.rstrip())
+        self.assertNotIn("truncated", result)
+    def test_max_lines_default_value(self):
+        """Test that the default max_lines value is 500."""
+        # Create a file with exactly 600 lines to test default truncation
+        large_code = "\n".join([f"# Line {i+1}" for i in range(600)])
+        self._write_test_file(large_code)
+        result = python_view(self.test_file)  # No max_lines specified, should use default 500
+        lines = result.splitlines()
+        self.assertEqual(len(lines), 501)  # 500 lines + 1 truncation message
+        self.assertIn("truncated: showing 500 of 600", lines[-1])
+    def test_max_lines_truncation_message_format(self):
+        """Test that the truncation message format is correct."""
+        # Create a file with exactly 25 lines
+        test_code = "\n".join([f"# Line {i+1}" for i in range(25)])
+        self._write_test_file(test_code)
+        result = python_view(self.test_file, max_lines=10)
+        lines = result.splitlines()
+        truncation_message = lines[-1]
+        # Should match the exact format
+        self.assertEqual(truncation_message, "... (truncated: showing 10 of 25 lines)")
+    def test_max_lines_with_empty_lines(self):
+        """Test max_lines counting includes empty lines."""
+        # Create code with empty lines
+        code_with_empty_lines = '''def func1():
+    pass
+def func2():
+    pass
+def func3():
+    pass
+'''
+        self._write_test_file(code_with_empty_lines)
+        result = python_view(self.test_file, max_lines=5)
+        lines = result.splitlines()
+        self.assertEqual(len(lines), 6)  # 5 lines + 1 truncation message
+        # Verify it includes empty lines in the count
+        original_lines = code_with_empty_lines.splitlines()
+        for i in range(5):
+            self.assertEqual(lines[i], original_lines[i])
+
 
 
 class TestScopeViewer(unittest.TestCase):
