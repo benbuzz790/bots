@@ -787,7 +787,7 @@ def python_view(target_scope: str) -> str:
 @handle_errors
 def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
     """
-    Edit Python code using pytest-style scope syntax.
+    Edit Python code using pytest-style scope syntax and optional expression matching.
 
     Parameters:
     -----------
@@ -799,10 +799,25 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
         - "file.py::MyClass::method" (method)
 
     code : str
-        Python code to insert/replace. Will be dedented automatically.
+        Python code to insert (default) or replace (if insert_after is specified). 
+        Some automatic formatting happens including dedenting to match to scope.
 
     insert_after : str, optional
-        Scope to insert the code after, using the same syntax as target_scope:
+        If specified, code is inserted after, and in the same scope as, the specified code.
+        example)
+            
+            Scope:
+                - a
+                - b
+             
+            - python edit called with insert_after = "a", code = "- c" - 
+
+            Scope:
+                - a
+                - c
+                - b
+
+        Uses the same syntax as target_scope with optional expression at the end in quotes.
         - "__FILE_START__" (special token for file beginning)
         - "MyClass::method" (insert after this method within the target scope)
         - '"expression"' (insert after a line matching this expression)
