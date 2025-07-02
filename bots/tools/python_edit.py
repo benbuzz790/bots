@@ -284,15 +284,6 @@ class ScopeTransformer(ast.NodeTransformer):
             pattern_normalized = '\n'.join((line.rstrip() for line in pattern_lines))
             return source_normalized.strip() == pattern_normalized.strip()
 
-    def _handle_expression_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module, pattern: str) -> str:
-        """Handle insertion after a quoted expression pattern."""
-        # This function is no longer used - replaced by GenericPatternInserter
-        modified_tree = tree.visit(inserter)
-        if not inserter.modified:
-            return _process_error(ValueError(f'Insert point not found: "{pattern}"'))
-        _write_file_bom_safe(abs_path, modified_tree.code)
-        return f"Code inserted after '{pattern}' in '{abs_path}'."
-
 def _make_file(file_path: str) -> str:
     """
     Create a file and its parent directories if they don't exist.
@@ -372,7 +363,6 @@ class ScopeFinder(cst.CSTVisitor):
                     return False
                 return True
         return False
-
 class ScopeReplacer(cst.CSTTransformer):
     """
     Transformer to replace or modify a specific scope in the CST.
@@ -385,6 +375,46 @@ class ScopeReplacer(cst.CSTTransformer):
         self.current_path = []
         self.modified = False
         self.module = module
+        self.replaced_at_top_level = False
+        self.replacement_index = -1
+
+    def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
+        """Handle module-level whitespace after replacements."""
+        if self.replaced_at_top_level and self.replacement_index >= 0:
+            # Ensure proper spacing after top-level function/class replacements
+            new_body = list(updated_node.body)
+
+            # If there's a statement after the replaced one, ensure it has proper leading lines
+            if self.replacement_index + 1 < len(new_body):
+                next_stmt = new_body[self.replacement_index + 1]
+
+                # Add a blank line before the next statement if it's a class or function
+                if isinstance(next_stmt, (cst.ClassDef, cst.FunctionDef)):
+                    # Create a blank line
+                    blank_line = cst.SimpleStatementLine(
+                        body=[],
+                        leading_lines=[cst.EmptyLine(indent="", whitespace=cst.SimpleWhitespace(""), comment=None, newline=cst.Newline())],
+                        trailing_whitespace=cst.TrailingWhitespace(
+                            whitespace=cst.SimpleWhitespace(""),
+                            comment=None,
+                            newline=cst.Newline()
+                        )
+                    )
+
+                    # Actually, let's use leading_lines on the next statement instead
+                    if not next_stmt.leading_lines:
+                        # Add a blank line before this statement
+                        blank_line_node = cst.EmptyLine(
+                            indent="",
+                            whitespace=cst.SimpleWhitespace(""),
+                            comment=None,
+                            newline=cst.Newline()
+                        )
+                        new_leading_lines = (blank_line_node,)
+                        new_body[self.replacement_index + 1] = next_stmt.with_changes(leading_lines=new_leading_lines)
+
+            return updated_node.with_changes(body=new_body)
+        return updated_node
 
     def visit_ClassDef(self, node: cst.ClassDef) -> None:
         """Track when entering a class."""
@@ -400,14 +430,12 @@ class ScopeReplacer(cst.CSTTransformer):
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
         """Track when entering a function."""
         self.current_path.append(node.name.value)
-
     def leave_FunctionDef(self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef) -> cst.FunctionDef:
         """Handle leaving a function definition."""
         result = self._handle_scope_node(original_node, updated_node)
         if self.current_path and self.current_path[-1] == original_node.name.value:
             self.current_path.pop()
         return result
-
     def _handle_scope_node(self, original_node: Union[cst.ClassDef, cst.FunctionDef], updated_node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef]:
         """Common logic for handling scope nodes."""
         if self.current_path == self.path_elements:
@@ -416,8 +444,42 @@ class ScopeReplacer(cst.CSTTransformer):
                 return result
             elif self.new_code is not None:
                 self.modified = True
-                return self.new_code
+
+                # Track if this is a top-level replacement
+                if len(self.path_elements) == 1:  # Top-level scope
+                    self.replaced_at_top_level = True
+                    # Find the index of this node in the module
+                    if self.module:
+                        for i, stmt in enumerate(self.module.body):
+                            if stmt is original_node:
+                                self.replacement_index = i
+                                break
+
+                # Extract the actual function/class definition from the module
+                if hasattr(self.new_code, 'body') and len(self.new_code.body) > 0:
+                    # Find the matching function/class definition, not just the first element
+                    target_name = original_node.name.value
+                    new_node = None
+
+                    for stmt in self.new_code.body:
+                        if isinstance(stmt, type(original_node)) and hasattr(stmt, 'name') and stmt.name.value == target_name:
+                            new_node = stmt
+                            break
+
+                    # Fallback to first element if no matching name found
+                    if new_node is None:
+                        new_node = self.new_code.body[0]
+
+                    # Preserve the original node's leading lines
+                    if hasattr(original_node, 'leading_lines'):
+                        new_node = new_node.with_changes(leading_lines=original_node.leading_lines)
+
+                    return new_node
+                else:
+                    # Fallback to original behavior if no body
+                    return self.new_code
         return updated_node
+
     def _handle_insertion(self, node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef]:
         """Handle inserting code after a specific element within a scope."""
         if (self.insert_after.startswith('"') and self.insert_after.endswith('"')) or (self.insert_after.startswith("'") and self.insert_after.endswith("'")):
@@ -425,6 +487,156 @@ class ScopeReplacer(cst.CSTTransformer):
             return self._insert_after_expression(node, pattern)
         else:
             return self._insert_after_named_scope(node)
+    
+    def _insert_after_expression(self, node: Union[cst.ClassDef, cst.FunctionDef], pattern: str) -> Union[cst.ClassDef, cst.FunctionDef]:
+        """Insert code after a line matching the expression pattern within the scope."""
+        if isinstance(node, (cst.FunctionDef, cst.ClassDef)):
+            body = node.body
+            if isinstance(body, cst.IndentedBlock):
+                new_body_nodes = []
+                pattern_found = False
+                pattern_lines = pattern.split('\n')
+                is_multiline = len(pattern_lines) > 1
+                for i, stmt in enumerate(body.body):
+                    new_body_nodes.append(stmt)
+                    if self.module:
+                        try:
+                            stmt_code = self.module.code_for_node(stmt)
+                        except:
+                            temp_module = cst.Module(body=[stmt])
+                            stmt_code = temp_module.code
+                    else:
+                        temp_module = cst.Module(body=[stmt])
+                        stmt_code = temp_module.code
+                    stmt_code = stmt_code.rstrip('\n')
+                    if is_multiline:
+                        stmt_lines = stmt_code.split('\n')
+                        if len(stmt_lines) >= len(pattern_lines):
+
+                            def get_structure_and_content(lines):
+                                """Get relative indentation structure and content"""
+                                result = []
+                                indent_levels = []
+                                for line in lines:
+                                    if line.strip():
+                                        indent = len(line) - len(line.lstrip())
+                                        indent_levels.append(indent)
+                                unique_levels = sorted(set(indent_levels)) if indent_levels else [0]
+                                for line in lines:
+                                    if line.strip():
+                                        indent = len(line) - len(line.lstrip())
+                                        level = unique_levels.index(indent)
+                                        content = line.strip()
+                                        result.append((level, content))
+                                    else:
+                                        result.append((0, ''))
+                                return result
+                            pattern_structure = get_structure_and_content(pattern_lines)
+                            stmt_prefix_lines = stmt_lines[:len(pattern_lines)]
+                            stmt_structure = get_structure_and_content(stmt_prefix_lines)
+                            if pattern_structure == stmt_structure:
+                                pattern_found = True
+                    else:
+                        pattern_stripped = pattern.strip()
+                        stmt_code_stripped = stmt_code.strip()
+                        if pattern_stripped in stmt_code_stripped or stmt_code_stripped.startswith(pattern_stripped):
+                            pattern_found = True
+                    if pattern_found:
+                        if self.new_code:
+                            new_code_str = self.new_code.code.strip()
+                            if new_code_str.startswith('#') or new_code_str.startswith('    #'):
+                                comment_stmt = _create_statement_with_comment(new_code_str)
+                                new_body_nodes.append(comment_stmt)
+                            elif hasattr(self.new_code, 'body'):
+                                for new_stmt in self.new_code.body:
+                                    new_body_nodes.append(new_stmt)
+                            else:
+                                new_body_nodes.append(self.new_code)
+                        pattern_found = False
+                        self.modified = True
+                if self.modified:
+                    new_body = body.with_changes(body=new_body_nodes)
+                    return node.with_changes(body=new_body)
+        return node
+
+    def _handle_insertion(self, node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef]:
+        """Handle inserting code after a specific element within a scope."""
+        if (self.insert_after.startswith('"') and self.insert_after.endswith('"')) or (self.insert_after.startswith("'") and self.insert_after.endswith("'")):
+            pattern = self.insert_after[1:-1]
+            return self._insert_after_expression(node, pattern)
+        else:
+            return self._insert_after_named_scope(node)
+    
+    def _insert_after_expression(self, node: Union[cst.ClassDef, cst.FunctionDef], pattern: str) -> Union[cst.ClassDef, cst.FunctionDef]:
+        """Insert code after a line matching the expression pattern within the scope."""
+        if isinstance(node, (cst.FunctionDef, cst.ClassDef)):
+            body = node.body
+            if isinstance(body, cst.IndentedBlock):
+                new_body_nodes = []
+                pattern_found = False
+                pattern_lines = pattern.split('\n')
+                is_multiline = len(pattern_lines) > 1
+                for i, stmt in enumerate(body.body):
+                    new_body_nodes.append(stmt)
+                    if self.module:
+                        try:
+                            stmt_code = self.module.code_for_node(stmt)
+                        except:
+                            temp_module = cst.Module(body=[stmt])
+                            stmt_code = temp_module.code
+                    else:
+                        temp_module = cst.Module(body=[stmt])
+                        stmt_code = temp_module.code
+                    stmt_code = stmt_code.rstrip('\n')
+                    if is_multiline:
+                        stmt_lines = stmt_code.split('\n')
+                        if len(stmt_lines) >= len(pattern_lines):
+
+                            def get_structure_and_content(lines):
+                                """Get relative indentation structure and content"""
+                                result = []
+                                indent_levels = []
+                                for line in lines:
+                                    if line.strip():
+                                        indent = len(line) - len(line.lstrip())
+                                        indent_levels.append(indent)
+                                unique_levels = sorted(set(indent_levels)) if indent_levels else [0]
+                                for line in lines:
+                                    if line.strip():
+                                        indent = len(line) - len(line.lstrip())
+                                        level = unique_levels.index(indent)
+                                        content = line.strip()
+                                        result.append((level, content))
+                                    else:
+                                        result.append((0, ''))
+                                return result
+                            pattern_structure = get_structure_and_content(pattern_lines)
+                            stmt_prefix_lines = stmt_lines[:len(pattern_lines)]
+                            stmt_structure = get_structure_and_content(stmt_prefix_lines)
+                            if pattern_structure == stmt_structure:
+                                pattern_found = True
+                    else:
+                        pattern_stripped = pattern.strip()
+                        stmt_code_stripped = stmt_code.strip()
+                        if pattern_stripped in stmt_code_stripped or stmt_code_stripped.startswith(pattern_stripped):
+                            pattern_found = True
+                    if pattern_found:
+                        if self.new_code:
+                            new_code_str = self.new_code.code.strip()
+                            if new_code_str.startswith('#') or new_code_str.startswith('    #'):
+                                comment_stmt = _create_statement_with_comment(new_code_str)
+                                new_body_nodes.append(comment_stmt)
+                            elif hasattr(self.new_code, 'body'):
+                                for new_stmt in self.new_code.body:
+                                    new_body_nodes.append(new_stmt)
+                            else:
+                                new_body_nodes.append(self.new_code)
+                        pattern_found = False
+                        self.modified = True
+                if self.modified:
+                    new_body = body.with_changes(body=new_body_nodes)
+                    return node.with_changes(body=new_body)
+        return node    
     def _insert_after_expression(self, node: Union[cst.ClassDef, cst.FunctionDef], pattern: str) -> Union[cst.ClassDef, cst.FunctionDef]:
         """Insert code after a line matching the expression pattern within the scope."""
         if isinstance(node, (cst.FunctionDef, cst.ClassDef)):
