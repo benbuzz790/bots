@@ -736,7 +736,7 @@ class ScopeReplacer(cst.CSTTransformer):
         return node
 
 @handle_errors
-def python_view(target_scope: str, max_lines: int = 500) -> str:
+def python_view(target_scope: str, max_lines: str = "500") -> str:
     """
     View Python code using pytest-style scope syntax with scope-aware truncation.
 
@@ -757,6 +757,7 @@ def python_view(target_scope: str, max_lines: int = 500) -> str:
     str
         The source code at the specified scope, or error message
     """
+    max_lines = int(max_lines)
     try:
         file_path, *path_elements = target_scope.split('::')
         if not file_path.endswith('.py'):
@@ -1071,32 +1072,27 @@ def _apply_scope_aware_truncation(source_code: str, max_lines: int) -> str:
     lines = source_code.splitlines()
     if len(lines) <= max_lines:
         return source_code
-    try:
-        import ast
-        tree = ast.parse(source_code)
-    except SyntaxError:
-        # If we can't parse, fall back to simple truncation
-        truncated_lines = lines[:max_lines]
-        truncated_lines.append(f'... (truncated: showing {max_lines} of {len(lines)} lines)')
-        return '\n'.join(truncated_lines)
+
+    import ast
+    tree = ast.parse(source_code)
+
     # Create scope-aware outline
     scope_entries = []
     _collect_scope_entries(tree, scope_entries, 0)
-    if not scope_entries:
-        # No scopes found, fall back to simple truncation
-        truncated_lines = lines[:max_lines]
-        truncated_lines.append(f'... (truncated: showing {max_lines} of {len(lines)} lines)')
-        return '\n'.join(truncated_lines)
+
     # Try progressive truncation by scope depth
     max_depth = max((entry['depth'] for entry in scope_entries), default=0)
     for current_depth_limit in range(max_depth, -1, -1):
         result_lines = _create_outline_view(scope_entries, current_depth_limit, lines)
         if len(result_lines) <= max_lines:
             return '\n'.join(result_lines)
-    # Fallback to simple truncation
-    truncated_lines = lines[:max_lines]
-    truncated_lines.append(f'... (truncated: showing {max_lines} of {len(lines)} lines)')
-    return '\n'.join(truncated_lines)
+
+    # No fallback - if we can't fit it, return the most aggressive truncation
+    result_lines = _create_outline_view(scope_entries, 0, lines)
+    if len(result_lines) > max_lines:
+        result_lines = result_lines[:max_lines]
+    return '\n'.join(result_lines)
+
 def _collect_scope_entries(node, entries, depth):
     '''Collect information about scopes (classes, functions) in the AST.'''
     import ast
