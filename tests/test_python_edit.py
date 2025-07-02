@@ -755,3 +755,27 @@ def test_insert_after_ambiguous_multiline_expression(tmp_path):
                         insert_after=f'"{ambiguous_pattern}"')
     # Should handle ambiguity gracefully
     print(f"DEBUG - Ambiguity result: {result}")
+def test_newline_preservation_after_scope_replacement(tmp_path):
+    """Test that proper newlines are preserved when replacing scopes followed by definitions"""
+    content = '''def function_one():
+    return "something"
+class ExistingClass:
+    pass
+def another_function():
+    return "other"'''
+    test_file = setup_test_file(tmp_path, content)
+    # Replace function_one with new code that ends with return
+    new_function = '''def function_one():
+    x = 1
+    return f"result: {x}"'''
+    result = python_edit(f"{test_file}::function_one", new_function)
+    assert "replaced" in result.lower()
+    with open(test_file, 'r') as f:
+        final_content = f.read()
+    # Check that there are proper newlines between function and class
+    # Should have at least one blank line between definitions
+    assert 'return f"result: {x}"\n\nclass ExistingClass:' in final_content, \
+        f"Missing proper newline separation. Content: {repr(final_content)}"
+    # Also verify the class is still intact
+    assert "class ExistingClass:" in final_content
+    assert "def another_function():" in final_content
