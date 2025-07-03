@@ -1,4 +1,4 @@
-﻿import difflib
+import difflib
 import codecs
 import os
 import textwrap
@@ -176,9 +176,6 @@ def view_dir(start_path: str = ".", output_file=None, target_extensions: str = "
             file.write("\n".join(output_text))
     return "\n".join(output_text)
 
-@log_errors
-@handle_errors
-def _detect_and_remove_bom(file_path: str) -> tuple[str, bool]:
 def _remove_bom_from_content(content: str) -> str:
     "Remove BOM from content if present."
     if content.startswith('\ufeff'):
@@ -420,7 +417,50 @@ def _find_match_with_hierarchy(current_lines, expected_line, context_before, rem
     # Step 5: Fuzzy matching - find best partial match
     if context_before:
         _, best_line, match_quality, _ = _find_block_in_content(current_lines, context_before, ignore_whitespace=True)
-        if match_quality > 0.05:
+        if match_quality >= 0.95:  # High-quality match, apply the patch
+            # Convert to 0-based indexing
+            match_line = best_line - 1
+        
+            # Validate that removal lines exist at this position
+            if removals:
+                removal_pos = match_line + len(context_before)
+                if removal_pos + len(removals) > len(current_lines):
+                    # Can't remove lines that don't exist, fall through to error reporting
+                    pass
+                else:
+                    # Check if removal lines match (with whitespace tolerance)
+                    removal_match = all(
+                        current_lines[removal_pos + i].strip() == rem_line.strip()
+                        for i, rem_line in enumerate(removals)
+                    )
+                    if removal_match:
+                        adjusted_additions = _adjust_additions_to_context(current_lines, match_line, context_before, additions)
+                        return {
+                            "found": True,
+                            "line": match_line,
+                            "additions": adjusted_additions,
+                            "message": (
+                                f"Applied hunk with fuzzy match at line {best_line} "
+                                f"(different from specified line {expected_line + 1}) "
+                                f"with match quality {match_quality:.2f}"
+                            ),
+                            "error": None,
+                        }
+            else:
+                # No removals, just apply additions
+                adjusted_additions = _adjust_additions_to_context(current_lines, match_line, context_before, additions)
+                return {
+                "found": True,
+                "line": match_line,
+                "additions": adjusted_additions,
+                "message": (
+                    f"Applied hunk with fuzzy match at line {best_line} "
+                    f"(different from specified line {expected_line + 1}) "
+                    f"with match quality {match_quality:.2f}"
+                ),
+                "error": None,
+            }
+        elif match_quality > 0.05:  # Lower quality match, report error with context
             context = _get_context(current_lines, best_line - 1, 2)
             return {
                 "found": False,
@@ -656,4 +696,3 @@ def _normalize_header_lines(lines):
                 line = f"@@ {ranges} @@"
         normalized.append(line)
     return normalized
-
