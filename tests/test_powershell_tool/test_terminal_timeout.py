@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+import textwrap
 import time
 import unittest
 
@@ -48,9 +49,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
     def test_here_string_basic(self):
         """Test basic here-string functionality"""
         print("\n=== Testing Basic Here-String ===")
-        command = """@'
-        Hello World
-        '@"""
+        command = "@'\nHello World\n'@"
         session = PowerShellSession()
         with session:
             start_time = time.time()
@@ -68,9 +67,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
     def test_here_string_with_pipe(self):
         """Test here-string with pipe to Out-File"""
         print("\n=== Testing Here-String with Pipe ===")
-        command = """@'
-        Test Content
-        '@ | Out-File test.txt -Encoding UTF8"""
+        command = "@'\nTest Content\n'@ | Out-File test.txt -Encoding UTF8"
         session = PowerShellSession()
         with session:
             start_time = time.time()
@@ -95,11 +92,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
     def test_here_string_multiline(self):
         """Test multiline here-string (the problematic case)"""
         print("\n=== Testing Multiline Here-String ===")
-        command = """@'
-        Line 1
-        Line 2
-        Line 3
-        '@"""
+        command = "@'\nLine 1\nLine 2\nLine 3\n'@"
         session = PowerShellSession()
         with session:
             start_time = time.time()
@@ -120,11 +113,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
     def test_here_string_with_special_chars(self):
         """Test here-string with special characters"""
         print("\n=== Testing Here-String with Special Characters ===")
-        command = """@'
-        Special chars: "quotes" and 'apostrophes'
-        Unicode: café résumé naïve
-        Symbols: $variable @array %hash
-        '@"""
+        command = "@'\nSpecial chars: \"quotes\" and 'apostrophes'\nUnicode: café résumé naïve\nSymbols: $variable @array %hash\n'@"
         session = PowerShellSession()
         with session:
             start_time = time.time()
@@ -144,13 +133,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
     def test_here_string_with_empty_lines(self):
         """Test here-string with empty lines"""
         print("\n=== Testing Here-String with Empty Lines ===")
-        command = """@'
-        Line 1
-
-        Line 3
-
-        Line 5
-        '@"""
+        command = "@'\nLine 1\n\nLine 3\n\nLine 5\n'@"
         session = PowerShellSession()
         with session:
             start_time = time.time()
