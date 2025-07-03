@@ -561,84 +561,6 @@ def _get_active_sessions() -> list:
                 sessions.append({"bot_id": manager.bot_id, "thread_name": thread.name, "created_at": manager.created_at.isoformat(), "active": hasattr(manager._thread_local, "session")})
     return sessions
 
-@handle_errors
-def _execute_powershell_stateless(code: str, output_length_limit: str="120"):
-    """
-    Executes PowerShell code in a stateless environment with BOM removal
-
-    Use when you need to run PowerShell commands and capture their output. If
-    you have other tools available, you should use this as a fallback when the
-    other tools fail. Coerces to utf-8 encoding without BOM.
-
-    Potential use cases:
-    - git commands
-    - gh cli
-    - other cli (which you may need to install using this tool)
-
-    Parameters:
-    - code (str): PowerShell code to execute.
-    - output_length_limit (int, optional): Maximum number of lines in the output.
-      If set, output exceeding this limit will be truncated. Default 60.
-
-    Returns command output or an error message.
-    """
-
-    def _process_error(error):
-        error_message = f"Tool Failed: {str(error)}\n"
-        error_message += f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}"
-        return error_message
-    output = ""
-    current_dir = os.getcwd()
-    try:
-        processed_code = _process_commands(code)
-        setup_encoding = """
-        $PSDefaultParameterValues['*:Encoding'] = 'utf8NoBOM'
-        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-        [Console]::InputEncoding = [System.Text.Encoding]::UTF8
-        $OutputEncoding = [System.Text.Encoding]::UTF8
-        $env:PYTHONIOENCODING = "utf-8"
-        """
-        wrapped_code = f"{setup_encoding}; {processed_code}"
-        startupinfo = None
-        if os.name == "nt":
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        process = subprocess.Popen(["powershell", "-NoProfile", "-NonInteractive", "-Command", wrapped_code], stdout=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo, encoding="utf-8", errors="replace")
-        stdout, stderr = process.communicate(timeout=300)
-        output = stdout
-        if stderr:
-            output += stderr
-        try:
-            session = PowerShellSession()
-            bom_count = session._post_execution_bom_cleanup(code, current_dir)
-            if bom_count > 0:
-                output += f"\n[BOM cleanup: {bom_count} files processed]"
-        except Exception as e:
-            print(f"[BOM] Error during stateless cleanup: {str(e)}")
-    except subprocess.TimeoutExpired:
-        process.kill()
-        output += "Error: Command execution timed out after 300 seconds."
-    except Exception as e:
-        output += _process_error(e)
-    if output_length_limit is not None and output:
-        output_length_limit = int(output_length_limit)
-        lines = output.splitlines()
-        if len(lines) > output_length_limit:
-            half_limit = output_length_limit // 2
-            start_lines = lines[:half_limit]
-            end_lines = lines[-half_limit:]
-            lines_omitted = len(lines) - output_length_limit
-            truncated_output = "\n".join(start_lines)
-            truncated_output += f"\n\n... {lines_omitted} lines omitted ...\n\n"
-            truncated_output += "\n".join(end_lines)
-            output_file = os.path.join(os.getcwd(), "ps_output.txt")
-            with open(output_file, "w", encoding="utf-8", errors="replace", newline="") as f:
-                f.write(output)
-            BOMRemover.remove_bom_from_file(output_file)
-            truncated_output += f"\nFull output saved to {output_file}"
-            return truncated_output
-    return output
-
 def _process_commands(code: str) -> str:
     """
     Process PowerShell commands separated by &&, ensuring each command only
@@ -687,8 +609,7 @@ def _process_commands(code: str) -> str:
         processed_commands.append(wrapped_cmd)
     return "; ".join([processed_commands[0]] + [f"if ($LastSuccess) {{ {cmd} }}" for cmd in processed_commands[1:]])
 
-@handle_errors
-def remove_bom_from_current_directory(recursive: bool=True) -> str:
+def _remove_bom_from_current_directory(recursive: bool=True) -> str:
     """
     Manually remove BOMs from all eligible files in the current directory.
 
