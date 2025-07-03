@@ -1,4 +1,4 @@
-"""Anthropic-specific bot implementation for the bots framework.
+﻿"""Anthropic-specific bot implementation for the bots framework.
 
 This module provides the necessary classes to interact with Anthropic's
 Claude models,
@@ -243,30 +243,31 @@ class AnthropicMailbox(Mailbox):
         self.last_message: Optional[Dict[str, Any]] = None
         self.client: Optional[anthropic.Anthropic] = None
 
-    def send_message(self, bot: "AnthropicBot") -> Dict[str, Any]:
+    def send_message(self, bot: "AnthropicBot", timeout: int = 120) -> Dict[str, Any]:
         """Sends a message using the Anthropic API.
-
         Handles API key setup, message formatting, and implements
         exponential backoff
-        retry logic for API errors.
-
+        retry logic for API errors with configurable timeout.
         Args:
             bot: The AnthropicBot instance making the request
-
+            timeout: Request timeout in seconds (default: 120)
         Returns:
             The API response dictionary
-
         Raises:
             ValueError: If no API key is found
+            anthropic.APITimeoutError: If request times out after retries
             Exception: If max retries are reached
         """
+        print("mailbox send called")
         api_key: Optional[str] = bot.api_key
         if not api_key:
             try:
                 api_key = os.getenv("ANTHROPIC_API_KEY")
             except Exception:
+                print("mailbox send error")
                 raise ValueError("Anthropic API key not found. Set up 'ANTHROPIC_API_KEY' " "environment variable.")
-        self.client = anthropic.Anthropic(api_key=api_key)
+        # Initialize client with timeout
+        self.client = anthropic.Anthropic(api_key=api_key, timeout=timeout)
         conversation: AnthropicNode = bot.conversation
         tools: Optional[List[Dict[str, Any]]] = None
         if bot.tool_handler and bot.tool_handler.tools:
@@ -274,7 +275,6 @@ class AnthropicMailbox(Mailbox):
             #     bot.tool_handler.tools.append(AnthropicTools.web_search())
             tools = bot.tool_handler.tools
             tools[-1]["cache_control"] = {"type": "ephemeral"}
-
         messages: List[Dict[str, Any]] = conversation._build_messages()
         cc = CacheController()
         messages = cc.manage_cache_controls(messages)
@@ -294,12 +294,26 @@ class AnthropicMailbox(Mailbox):
             "messages": messages,
         }
         create_dict.update(**non_optional)
+        # Timeout-specific retry logic
+        timeout_retries: int = 3
+        timeout_base_delay: float = 2.0
         max_retries: int = 25
         base_delay: float = 1
         for attempt in range(max_retries):
             try:
                 response = self.client.messages.create(**create_dict)
+                print("mailbox send return")
                 return response
+            except anthropic.APITimeoutError as e:
+                # Special handling for timeout errors
+                if attempt < timeout_retries:
+                    timeout_delay = timeout_base_delay * (attempt + 1)
+                    print(f"Timeout on attempt {attempt + 1}. Retrying in {timeout_delay:.1f} seconds...")
+                    time.sleep(timeout_delay)
+                    continue
+                else:
+                    print(f"Max timeout retries ({timeout_retries}) reached.")
+                    raise e
             except (
                 anthropic.InternalServerError,
                 anthropic.RateLimitError,
@@ -313,7 +327,9 @@ class AnthropicMailbox(Mailbox):
                 delay: float = base_delay * 2**attempt + random.uniform(0.71 * 2**attempt, 1.41 * 2**attempt)
                 print(f"Attempt {attempt + 1} failed with {e.__class__.__name__}. " f"Retrying in {delay:.2f} seconds...")
                 time.sleep(delay)
+        print("mailbox send error")
         raise Exception("Max retries reached. Unable to send message.")
+
 
     def process_response(self, response: Dict[str, Any], bot: "AnthropicBot") -> Tuple[str, str, Dict[str, Any]]:
         """Process the API response and handle incomplete responses.
@@ -334,6 +350,7 @@ class AnthropicMailbox(Mailbox):
         Raises:
             anthropic.BadRequestError: If the API returns a 400 error
         """
+        print('process response called')
         try:
 
             def should_continue(response) -> bool:
@@ -371,8 +388,11 @@ class AnthropicMailbox(Mailbox):
             response_text: str = getattr(response.content[0], "text", "~")
         except anthropic.BadRequestError as e:
             if e.status_code == 400:
+                print('process response 400 error')
                 pass
+            print('process response error')
             raise e
+        print('process response returned')
         return (response_text, response_role, {})
 
 
@@ -738,3 +758,4 @@ class CacheController:
                     for pos in cache_control_positions[2:]:
                         self.remove_cache_control_at_position(messages, pos)
         return messages
+
