@@ -384,16 +384,14 @@ class PowerShellSession:
         Safely wrap code for execution, handling complex strings and
         multiline code.
         """
-        return textwrap.dedent(f"""
-        $ErrorActionPreference = 'Stop'
+        return f"""$ErrorActionPreference = 'Stop'
 
-        # Execute in main scope
-        {code}
+# Execute in main scope
+{code}
 
-        # Collect output after execution
-        # Send completion delimiter
-        Write-Output '{delimiter}'
-        """)
+# Collect output after execution
+# Send completion delimiter
+Write-Output '{delimiter}'"""
 
 class PowerShellManager:
     """
