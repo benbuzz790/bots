@@ -1,4 +1,4 @@
-﻿"""Anthropic-specific bot implementation for the bots framework.
+"""Anthropic-specific bot implementation for the bots framework.
 
 This module provides the necessary classes to interact with Anthropic's
 Claude models,
@@ -83,14 +83,14 @@ class AnthropicNode(ConversationNode):
     def _build_messages(self) -> List[Dict[str, Any]]:
         """Build message list for Anthropic API.
 
-        Constructs the message history in Anthropic's expected format,
-        properly handling
-        empty nodes and tool calls. Empty nodes are preserved in the structure but
-        filtered from API messages.
+    Constructs the message history in Anthropic's expected format,
+    properly handling
+    empty nodes and tool calls. Empty nodes are preserved in the structure but
+    filtered from API messages.
 
-        Returns:
-            List of message dictionaries formatted for Anthropic's API
-        """
+    Returns:
+        List of message dictionaries formatted for Anthropic's API
+    """
         node = self
         conversation_dict = []
         while node:
@@ -105,10 +105,20 @@ class AnthropicNode(ConversationNode):
                     for result in node.tool_results:
                         sub_entry = {"type": "tool_result", **result}
                         content_list.insert(0, sub_entry)
-                        node._sync_tool_context()
+                        # Don't sync tool context here - causes duplicate tool results
                 entry["content"] = content_list
                 conversation_dict = [entry] + conversation_dict
             node = node.parent
+
+        # Debug: Print messages with tool results
+        for i, msg in enumerate(conversation_dict):
+            tool_result_ids = []
+            for content in msg.get("content", []):
+                if content.get("type") == "tool_result":
+                    tool_result_ids.append(content.get("tool_use_id"))
+            if tool_result_ids:
+                print(f"DEBUG _build_messages: Message {i} (role={msg['role']}) has tool results: {tool_result_ids}")
+
         return conversation_dict
 
 
@@ -758,4 +768,3 @@ class CacheController:
                     for pos in cache_control_positions[2:]:
                         self.remove_cache_control_at_position(messages, pos)
         return messages
-

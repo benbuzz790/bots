@@ -327,49 +327,71 @@ class ConversationNode:
         """
         return self.role == "empty" and self.content == ""
 
-    def _add_reply(self, **kwargs) -> "ConversationNode":
+    def _add_reply(self, sync_tools=True, **kwargs) -> "ConversationNode":
         """Add a new reply node to this conversation node.
 
-        Creates a new node as a child of this one, handling tool context
-        synchronization between siblings.
+    Creates a new node as a child of this one, handling tool context
+    synchronization between siblings.
 
-        Parameters:
-            **kwargs: Attributes to set on the new node (content, role, etc.)
+    Parameters:
+        sync_tools (bool): Whether to synchronize tool results with siblings
+        **kwargs: Attributes to set on the new node (content, role, etc.)
 
-        Returns:
-            ConversationNode: The newly created reply node
+    Returns:
+        ConversationNode: The newly created reply node
 
-        Example:
-            ```python
-            node = root._add_reply(content="Hello", role="user")
-            response = node._add_reply(content="Hi!", role="assistant")
-            ```
-        """
+    Example:
+        ```python
+        node = root._add_reply(content="Hello", role="user")
+        response = node._add_reply(content="Hi!", role="assistant")
+        ```
+    """
         reply = type(self)(**kwargs)
         reply.parent = self
         self.replies.append(reply)
         if self.pending_results:
             reply.tool_results = self.pending_results.copy()
             self.pending_results = []
-        reply._sync_tool_context()
+        if sync_tools:
+            reply._sync_tool_context()
         return reply
 
     def _sync_tool_context(self) -> None:
         """Synchronize tool results across all sibling nodes.
 
-        Use when tool results need to be shared between parallel conversation branches.
-        Takes the union of all tool results from sibling nodes and ensures each sibling
-        has access to all results.
+    Use when tool results need to be shared between parallel conversation branches.
+    Takes the union of all tool results from sibling nodes and ensures each sibling
+    has access to all results.
 
-        Side Effects:
-            Updates tool_results for all sibling nodes to include all unique results.
-        """
+    Side Effects:
+        Updates tool_results for all sibling nodes to include all unique results.
+    """
+        # Only sync tool results if this is appropriate for the conversation structure
+        # Tool results should only appear in user nodes that immediately follow assistant nodes with tool_use
+        if self.role != "user":
+            return  # Only user nodes should have tool results
+
+        if not self.parent or self.parent.role != "assistant":
+            return  # Tool results only make sense after assistant messages
+
+        if not self.parent.tool_calls:
+            return  # No tool calls to respond to
+
+        # Original sync logic
         if self.parent and self.parent.replies:
             all_tool_results = []
             for sibling in self.parent.replies:
                 for result in sibling.tool_results:
                     if result not in all_tool_results: # Content comparison of JSON strings
                         all_tool_results.append(result)
+
+            # Debug: Print when sync would cause duplication
+            if len(all_tool_results) > len(self.tool_results):
+                print(f"DEBUG _sync_tool_context: Syncing {len(all_tool_results)} tool results to node with {len(self.tool_results)} results")
+                print(f"  Node: role={self.role}, content={self.content[:50] if self.content else 'None'}...")
+                print(f"  Tool result IDs before: {[r.get('tool_use_id') for r in self.tool_results]}")
+                print(f"  Tool result IDs after sync: {[r.get('tool_use_id') for r in all_tool_results]}")
+
             for sibling in self.parent.replies:
                 sibling.tool_results = all_tool_results.copy()
 
@@ -2035,30 +2057,30 @@ class Bot(ABC):
     def respond(self, prompt: str, role: str = "user") -> str:
         """Send a prompt to the bot and get its response.
 
-        This is the primary interface for interacting with the bot. The method:
-        1. Adds the prompt to the conversation history
-        2. Sends the conversation to the LLM
-        3. Processes any tool usage requests
-        4. Returns the final response
+    This is the primary interface for interacting with the bot. The method:
+    1. Adds the prompt to the conversation history
+    2. Sends the conversation to the LLM
+    3. Processes any tool usage requests
+    4. Returns the final response
 
-        Parameters:
-            prompt (str): The message to send to the bot
-            role (str): Role of the message sender (defaults to 'user')
+    Parameters:
+        prompt (str): The message to send to the bot
+        role (str): Role of the message sender (defaults to 'user')
 
-        Returns:
-            str: The bot's response text
+    Returns:
+        str: The bot's response text
 
-        Note:
-            - Automatically saves state if autosave is enabled
-            - Tool usage is handled automatically if tools are available
-            - Full conversation context is maintained
+    Note:
+        - Automatically saves state if autosave is enabled
+        - Tool usage is handled automatically if tools are available
+        - Full conversation context is maintained
 
-        Example:
-            ```python
-            bot.add_tools(file_tools)
-            response = bot.respond("Please read config.json")
-            ```
-        """
+    Example:
+        ```python
+        bot.add_tools(file_tools)
+        response = bot.respond("Please read config.json")
+        ```
+    """
         self.conversation = self.conversation._add_reply(content=prompt, role=role)
         if self.autosave:
             self.save(f"{self.name}")
