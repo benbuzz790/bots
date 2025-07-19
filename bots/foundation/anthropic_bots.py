@@ -110,15 +110,6 @@ class AnthropicNode(ConversationNode):
                 conversation_dict = [entry] + conversation_dict
             node = node.parent
 
-        # Debug: Print messages with tool results
-        for i, msg in enumerate(conversation_dict):
-            tool_result_ids = []
-            for content in msg.get("content", []):
-                if content.get("type") == "tool_result":
-                    tool_result_ids.append(content.get("tool_use_id"))
-            if tool_result_ids:
-                print(f"DEBUG _build_messages: Message {i} (role={msg['role']}) has tool results: {tool_result_ids}")
-
         return conversation_dict
 
 
