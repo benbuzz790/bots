@@ -1024,7 +1024,7 @@ class CLI:
         from bots.tools.code_tools import view, view_dir
         from bots.tools.self_tools import branch_self
         
-        bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, view, view_dir)
+        bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools)
         #This works well as a fallback:
         #bot.add_tools(bots.tools.terminal_tools, view, view_dir)
 
