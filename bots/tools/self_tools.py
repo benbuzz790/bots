@@ -82,8 +82,11 @@ def _modify_own_settings(temperature: str=None, max_tokens: str=None) -> str:
 @handle_errors
 def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False", recombine: str="none") -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
-    Each branch gets its own copy of the conversation up to this point, then follows
-    the prompt you give it. The branches run one after another if parallel is "False" (default).
+
+    Following the idealized design from branch_self.md with minimal complexity:
+    1. Add dummy tool result immediately for API compliance and recursion prevention
+    2. Use existing sync mechanism to update results across branches
+
     Args:
         self_prompts (str): List of prompts as a string array, like ['task 1', 'task 2', 'task 3']
                            Each prompt becomes a separate conversation branch
@@ -92,40 +95,19 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
         parallel (str): 'True' to let branches work in parallel, 'False' for sequential (default).
         recombine (str): One of ('concatenate', 'llm_merge', 'llm_vote', 'llm_judge'). If specified
                          combines the final messages from each branch using that method.
+
     Returns:
         str: Success message with branch count, or error details if something went wrong
-    Writing effective branch prompts:
-        Each prompt should be a complete, self-contained instruction that includes:
-        REQUIRED:
-        - Task instruction: What specific action to take
-        - Definition of done: How to know when the task is complete, typically in
-        terms of a specific side effect or set of side effects on files or achieved
-        through use of your available tools.
-        OPTIONAL:
-        - Tool suggestions: Which tools of yours might be helpful.
-        - Context to gather: What information to look up or files to examine first
-        - Output format: Specific system side effect, with specific qualities
-        - Success criteria: What makes a good vs. poor result
-        Good prompt examples:
-        - "Search for recent AI safety research papers, then create a summary report
-           highlighting key findings and methodologies. Done when I have a 2-page
-           summary with at least 5 recent citations."
-        - "Analyze our Q3 sales data from Google Drive, identify top 3 performance
-           trends, and create visualizations. Use artifacts for charts. Done when
-           I have clear charts showing trends with actionable insights."
-    Example usage:
-        branch_self("['Analyze the data for trends', 'Create visualizations', 'Write summary report']")
     """
     import json
     import os
     from concurrent.futures import ThreadPoolExecutor, as_completed
+    from bots.flows import functional_prompts as fp
     from bots.foundation.base import Bot
 
     bot = _get_calling_bot()
     if not bot:
         return "Error: Could not find calling bot"
-
-    original_conversation_node = bot.conversation
 
     # Parse parameters
     allow_work = allow_work.lower() == "true"
@@ -137,65 +119,66 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
         return f"Error: Invalid recombine option. Valid: {valid_recombine_options}"
 
     # Process the prompts
-    message_list = _process_string_array(self_prompts)
-    if not message_list:
-        return "Error: No valid messages provided"
+    try:
+        message_list = _process_string_array(self_prompts)
+        if not message_list:
+            return "Error: No valid messages provided"
+    except Exception as e:
+        return f"Error parsing prompts: {str(e)}"
 
     # Add self-prompt prefix
-    for i, item in enumerate(message_list):
-        message_list[i] = f"(self-prompt): {item}"
+    prefixed_prompts = [f"(self-prompt): {prompt}" for prompt in message_list]
 
     try:
-        # Save the current bot state to create copies
-        original_autosave = bot.autosave
-        bot.autosave = False
+        # Store original conversation point
+        original_node = bot.conversation
 
-        # CRITICAL: Add dummy tool result BEFORE saving to prevent recursive calls
-        # The assistant node has an unresolved branch_self tool call
-        # We need to add a user node with a dummy result so branch bots don't try to call it again
-        save_conversation_node = original_conversation_node
-        dummy_user_node = None
-
-        if original_conversation_node.tool_calls:
-            # Find the branch_self tool call
-            tool_call = None
-            for tc in original_conversation_node.tool_calls:
+        # Get the tool call ID for proper tool result handling
+        tool_call_id = None
+        if original_node.tool_calls:
+            for tc in original_node.tool_calls:
                 if tc.get('name') == 'branch_self':
-                    tool_call = tc
+                    tool_call_id = tc['id']
                     break
 
-            if tool_call:
-                # Create user node with dummy tool result
-                dummy_result = {
-                    'tool_use_id': tool_call['id'],
-                    'content': 'Branching in progress...'
-                }
-                dummy_user_node = original_conversation_node._add_reply(
-                    role="user",
-                    content="Executing branches...",  # Non-empty content required by API
-                    tool_results=[dummy_result],
-                    sync_tools=False  # Don't sync tool results
-                )
-                save_conversation_node = dummy_user_node
-                bot.conversation = dummy_user_node
+        if not tool_call_id:
+            return "Error: Could not find branch_self tool call"
 
-        # Save bot state
+        # STEP 1: Add dummy tool result immediately for API compliance and recursion prevention
+        dummy_result = {
+            'tool_use_id': tool_call_id,
+            'content': 'Branching in progress...'
+        }
+
+        # Create user node with dummy result to satisfy API and prevent recursion
+        dummy_user_node = original_node._add_reply(
+            role="user",
+            content="Executing branches...",
+            tool_results=[dummy_result],
+            sync_tools=False
+        )
+
+        # Update bot's conversation pointer to include the dummy result
+        bot.conversation = dummy_user_node
+
+        # Save bot state with dummy result in place
+        original_autosave = bot.autosave
+        bot.autosave = False
         temp_file = "temp_branch_self_bot.bot"
         bot.save(temp_file)
 
-        # Restore bot's conversation pointer to original position
-        bot.conversation = original_conversation_node
+        # Restore bot's conversation pointer to original position for branch creation
+        bot.conversation = original_node
 
-        def execute_branch(index, prompt):
+        def execute_branch(prompt):
             """Execute a single branch with the given prompt."""
             try:
-                # Create a fresh bot copy for this branch
+                # Create a fresh bot copy for this branch (includes dummy result)
                 branch_bot = Bot.load(temp_file)
                 branch_bot.autosave = False
 
                 if allow_work:
                     # Use iterative approach for work
-                    from bots.flows import functional_prompts as fp
                     response = branch_bot.respond(prompt)
                     while not fp.conditions.tool_not_used(branch_bot):
                         response = branch_bot.respond("ok")
@@ -203,32 +186,30 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
                     # Single response
                     response = branch_bot.respond(prompt)
 
-                return index, response, branch_bot
+                return response, branch_bot.conversation
             except Exception as e:
                 import traceback
                 traceback.print_exc()
-                return index, None, None
+                return None, None
 
         # Execute branches
-        responses = [None] * len(message_list)
-        branch_bots = [None] * len(message_list)
+        responses = []
+        branch_nodes = []
 
         if parallel:
             # Parallel execution
             with ThreadPoolExecutor() as executor:
-                futures = [executor.submit(execute_branch, i, prompt)
-                          for i, prompt in enumerate(message_list)]
-
+                futures = [executor.submit(execute_branch, prompt) for prompt in prefixed_prompts]
                 for future in as_completed(futures):
-                    index, response, result_bot = future.result()
-                    responses[index] = response
-                    branch_bots[index] = result_bot
+                    response, node = future.result()
+                    responses.append(response)
+                    branch_nodes.append(node)
         else:
             # Sequential execution
-            for i, prompt in enumerate(message_list):
-                index, response, result_bot = execute_branch(i, prompt)
-                responses[index] = response
-                branch_bots[index] = result_bot
+            for prompt in prefixed_prompts:
+                response, node = execute_branch(prompt)
+                responses.append(response)
+                branch_nodes.append(node)
 
         # Restore original bot settings
         bot.autosave = original_autosave
@@ -239,33 +220,54 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
         except OSError:
             pass
 
-        # Check if all branches succeeded
-        failed_count = sum(1 for r in responses if r is None)
-        if failed_count == len(responses):
+        # Count successful branches
+        success_count = sum(1 for r in responses if r is not None)
+        if success_count == 0:
             return "Error: All branches failed to execute"
-        elif failed_count > 0:
-            print(f"Warning: {failed_count} branches failed")
 
-        # Merge the branch trees back into the original conversation
-        final_container = merge_branch_trees(original_conversation_node, branch_bots, message_list, responses, dummy_user_node)
+        # Create success message
+        exec_type = "parallel" if parallel else "sequential"
+        work_type = "iterative" if allow_work else "single-response"
+        result_content = f"Successfully created {success_count} {exec_type} {work_type} branches"
 
-        # CRITICAL: Update bot's conversation pointer to the final container node
-        # This prevents duplicate tool results when the next message is added
-        if final_container:
-            bot.conversation = final_container
-        elif dummy_user_node and dummy_user_node.replies:
-            # Find the container node
-            for reply in dummy_user_node.replies:
-                if reply.role == "assistant" and "branches:" in reply.content:
-                    bot.conversation = reply
-                    break
+        # STEP 2: Create branches as direct children with dummy results, then update via sync
+        final_result = {
+            'tool_use_id': tool_call_id,
+            'content': result_content
+        }
+
+        branch_user_nodes = []
+        for i, (prompt, response, branch_node) in enumerate(zip(prefixed_prompts, responses, branch_nodes)):
+            if response is not None:
+                # Create user node as direct child of original assistant with dummy result
+                user_node = original_node._add_reply(
+                    role="user",
+                    content=prompt,
+                    tool_results=[dummy_result.copy()],
+                    sync_tools=False
+                )
+
+                # Create assistant response node
+                assistant_node = user_node._add_reply(
+                    role="assistant", 
+                    content=response,
+                    sync_tools=False
+                )
+
+                branch_user_nodes.append(user_node)
+
+        # STEP 3: Update all branch tool results with final result using sync mechanism
+        # Replace dummy results with final results in all branch nodes
+        for user_node in branch_user_nodes:
+            user_node.tool_results = [final_result.copy()]
 
         # Handle recombination if requested
         if recombine != "none" and responses:
-            # Filter out None responses
             valid_responses = [r for r in responses if r is not None]
+
             if valid_responses:
                 from bots.flows.recombinators import recombinators as recomb
+
                 # Get the appropriate recombinator method
                 if recombine == "concatenate":
                     combined, _ = recomb.concatenate(valid_responses, [])
@@ -279,17 +281,17 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
                     combined = "Unknown recombination method"
 
                 # Add the combined result as a new assistant message
-                bot.conversation = bot.conversation._add_reply(
-                    role="assistant",
-                    content=f"[Combined result using {recombine}]:\n{combined}",
-                    sync_tools=False
-                )
+                if branch_user_nodes:
+                    last_branch = branch_user_nodes[-1]
+                    if last_branch.replies:
+                        recombined_node = last_branch.replies[-1]._add_reply(
+                            role="assistant",
+                            content=f"[Combined result using {recombine}]:\n{combined}",
+                            sync_tools=False
+                        )
+                        bot.conversation = recombined_node
 
-        # Return success message
-        exec_type = "parallel" if parallel else "sequential"
-        work_type = "iterative" if allow_work else "single-response"
-        success_count = len(responses) - failed_count
-        return f"Successfully created {success_count} {exec_type} {work_type} branches"
+        return result_content
 
     except Exception as e:
         import traceback
@@ -363,134 +365,76 @@ def merge_branch_trees(branch_point, branch_bots, branch_prompts, responses, dum
         responses: List of responses from each branch
         dummy_user_node: The user node with dummy tool result (if created)
     """
-    print(f"DEBUG merge_branch_trees: Starting merge")
     # The branch_point is the assistant node with the unresolved branch_self tool call
-    # Check if we already have a user node with the tool result (from dummy result)
+    # We need to create the correct flat structure where all branch user nodes are direct children
 
-    # Look for existing user node with tool result
-    user_node = dummy_user_node
-    container_node = None
-
-    if not user_node and branch_point.replies:
-        for reply in branch_point.replies:
-            if reply.role == "user" and reply.tool_results:
-                # This is our dummy result node
-                user_node = reply
+    # Get the tool_call_id for the branch_self call
+    tool_call_id = None
+    if branch_point.tool_calls:
+        for tool_call in branch_point.tool_calls:
+            if tool_call.get('name') == 'branch_self':
+                tool_call_id = tool_call['id']
                 break
 
-    if user_node:
-        print(f"DEBUG merge_branch_trees: Found user node with {len(user_node.tool_results)} tool results")
-        # Update the dummy tool result with the final result
-        if user_node.tool_results and branch_point.tool_calls:
-            tool_call_id = branch_point.tool_calls[0]['id']
-            for i, result in enumerate(user_node.tool_results):
-                if result.get('tool_use_id') == tool_call_id and result.get('content') == 'Branching in progress...':
-                    # Update the dummy result with the final result
-                    exec_type = "parallel" if len(responses) > 1 else "sequential"
-                    work_type = "iterative" if any("ok" in str(b.conversation) for b in branch_bots if b) else "single-response"
-                    result_content = f"Successfully created {len(responses)} {exec_type} {work_type} branches"
-                    user_node.tool_results[i]['content'] = result_content
-                    print(f"DEBUG merge_branch_trees: Updated tool result content")
-                    break
+    if not tool_call_id:
+        return None  # No branch_self tool call found
 
-        # Check if we already have a container node
-        if user_node.replies:
-            for user_reply in user_node.replies:
-                if user_reply.role == "assistant" and "Processing branches" in user_reply.content:
-                    container_node = user_reply
-                    break
+    # Create the final tool result content
+    exec_type = "parallel" if len(responses) > 1 else "sequential"
+    work_type = "iterative" if any("ok" in str(b.conversation) for b in branch_bots if b) else "single-response"
+    final_result_content = f"Successfully created {len(responses)} {exec_type} {work_type} branches"
 
-    if not user_node:
-        # No existing user node, we need to create one
-        # This shouldn't happen if branch_self added the dummy result correctly
-        tool_call_id = None
-        if branch_point.tool_calls:
-            for tool_call in branch_point.tool_calls:
-                if tool_call.get('name') == 'branch_self':
-                    tool_call_id = tool_call['id']
-                    break
+    # Create the initial tool result that will be used by all branch nodes
+    initial_tool_result = {
+        'tool_use_id': tool_call_id,
+        'content': "Branching in progress..."
+    }
 
-        if tool_call_id:
-            # Create the final tool result
-            exec_type = "parallel" if len(responses) > 1 else "sequential"
-            work_type = "iterative" if any("ok" in str(b.conversation) for b in branch_bots if b) else "single-response"
-            result_content = f"Successfully created {len(responses)} {exec_type} {work_type} branches"
+    # Create the final tool result for updating later
+    final_tool_result = {
+        'tool_use_id': tool_call_id,
+        'content': final_result_content
+    }
 
-            tool_result = {
-                'tool_use_id': tool_call_id,
-                'content': result_content
-            }
+    # Add each branch as a direct child of the branch_point (Assistant node)
+    branch_nodes = []
+    for i, (branch_bot, prompt, response) in enumerate(zip(branch_bots, branch_prompts, responses)):
+        if branch_bot is None or response is None:
+            continue  # Skip failed branches
 
-            # Add user node with tool result
-            user_node = branch_point._add_reply(
-                role="user",
-                content="Branch execution completed.",  # Non-empty content required by API
-                tool_results=[tool_result],
-                sync_tools=False  # Don't sync to avoid duplicates
-            )
-        else:
-            # No branch_self tool call, just use branch_point
-            user_node = branch_point
-
-    # If we don't have a container node yet, create one
-    if not container_node:
-        # Update the container content to reflect the final state
-        container_node = user_node._add_reply(
-            role="assistant",
-            content=f"Executed {len(responses)} branches:",
-            sync_tools=False  # Don't sync to avoid duplicates
+        # Create branch user node as direct child of Assistant node
+        branch_user = branch_point._add_reply(
+            role="user",
+            content=prompt,  # "(self-prompt): task"
+            tool_results=[initial_tool_result.copy()],  # Each gets the initial tool result
+            sync_tools=False  # Don't sync to avoid interference
         )
-    else:
-        # Update the existing container node's content
-        container_node.content = f"Executed {len(responses)} branches:"
 
-    print(f"DEBUG merge_branch_trees: After creating container, user node has {len(user_node.tool_results)} tool results")
+        # Add the branch response as child of the branch user node
+        branch_assistant = branch_user._add_reply(
+            role="assistant",
+            content=response,
+            sync_tools=False
+        )
 
-    # The branches should have already added their responses to the container node
-    # We just need to make sure they're properly structured
-    # If branches were added elsewhere, we need to move them
+        # If the branch did more work (has replies), copy those too
+        branch_conversation = branch_bot.conversation
+        if branch_conversation.replies:
+            merge_sub_branches(branch_assistant, branch_conversation.replies)
 
-    # Check if branches were added to the container
-    existing_branch_count = 0
-    for reply in container_node.replies:
-        if reply.role == "user" and "(self-prompt):" in reply.content:
-            existing_branch_count += 1
+        branch_nodes.append(branch_user)
 
-    # Only add branches if they weren't already added
-    if existing_branch_count < len(responses):
-        for i, (branch_bot, prompt, response) in enumerate(zip(branch_bots, branch_prompts, responses)):
-            if branch_bot is None or response is None:
-                continue  # Skip failed branches
+    # Now update all branch user nodes with the final tool result
+    # This simulates the pending_results mechanism without actually using pending_results
+    for branch_user in branch_nodes:
+        # Update the tool result content from "Branching in progress..." to final result
+        for i, result in enumerate(branch_user.tool_results):
+            if result.get('tool_use_id') == tool_call_id:
+                branch_user.tool_results[i] = final_tool_result.copy()
+                break
 
-            # Check if this branch was already added
-            branch_exists = False
-            for reply in container_node.replies:
-                if reply.role == "user" and reply.content == prompt:
-                    branch_exists = True
-                    break
-
-            if not branch_exists:
-                # Add the branch prompt as a user node
-                branch_user = container_node._add_reply(
-                    role="user", 
-                    content=prompt,
-                    sync_tools=False  # Don't sync to avoid duplicates
-                )
-
-                # Add the branch response as an assistant node
-                branch_assistant = branch_user._add_reply(
-                    role="assistant",
-                    content=response,
-                    sync_tools=False  # Don't sync to avoid duplicates
-                )
-
-                # If the branch did more work (has replies), copy those too
-                branch_conversation = branch_bot.conversation
-                if branch_conversation.replies:
-                    merge_sub_branches(branch_assistant, branch_conversation.replies)
-
-    print(f"DEBUG merge_branch_trees: Final user node has {len(user_node.tool_results)} tool results")
-    return container_node
+    # Return the branch_point (Assistant node) as the container
+    return branch_point
 
 
 def merge_sub_branches(target_node, source_replies):

@@ -1,3 +1,4 @@
+import bots
 import io
 import tempfile
 import unittest
@@ -7,6 +8,7 @@ from unittest.mock import patch
 import bots.tools.self_tools as self_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
+from bots.flows.functional_prompts import prompt_while
 
 class TestSelfTools(unittest.TestCase):
     """Test suite for self_tools module functionality.
@@ -53,6 +55,15 @@ class TestSelfTools(unittest.TestCase):
         self.assertIn("two", response.lower())
         follow_up = self.bot.respond("What happened with the branching?")
         self.assertIn("branch", follow_up.lower())
+    
+    def test_branch_self_recursive(self) -> None:
+        """Test that branch_self works when branches branch"""
+        self.bot.add_tools(bots.tools.terminal_tools)
+        prompt = "I'd like to try out your branch_self tool. Would you please create three branches, have each of those create a new directory, and then have each of them branch three times, and have each of those branches create a new file in the created directory?"
+        self.bot.respond(prompt)
+        prompt2 = "Please use powershell to see if your directories and files were all created. Respond with either 'YES' or 'NO'"
+        responses, _ = prompt_while(self.bot, prompt2)
+        self.assertIn("YES", responses[-1])
 
     def test_branch_self_debug_printing(self) -> None:
         """Test that branch_self function works correctly with multiple prompts."""

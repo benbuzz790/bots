@@ -382,7 +382,19 @@ class ConversationNode:
             all_tool_results = []
             for sibling in self.parent.replies:
                 for result in sibling.tool_results:
-                    if result not in all_tool_results: # Content comparison of JSON strings
+                    # Check if we already have a result with this tool_use_id
+                    tool_id = result.get('tool_use_id')
+                    existing_index = None
+                    for i, existing_result in enumerate(all_tool_results):
+                        if existing_result.get('tool_use_id') == tool_id:
+                            existing_index = i
+                            break
+                
+                    if existing_index is not None:
+                        # Overwrite existing result with same tool_use_id
+                        all_tool_results[existing_index] = result
+                    else:
+                        # Add new result
                         all_tool_results.append(result)
 
             # Debug: Print when sync would cause duplication
