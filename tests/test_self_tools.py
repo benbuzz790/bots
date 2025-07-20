@@ -9,6 +9,7 @@ import bots.tools.self_tools as self_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 from bots.flows.functional_prompts import prompt_while
+from bots.tools.self_tools import branch_self
 
 class TestSelfTools(unittest.TestCase):
     """Test suite for self_tools module functionality.
