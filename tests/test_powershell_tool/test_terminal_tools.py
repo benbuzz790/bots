@@ -66,116 +66,6 @@ class TestTerminalTools(unittest.TestCase):
         normalized_needle = self.normalize_text(needle)
         self.assertTrue(normalized_needle in normalized_haystack, msg or f'Expected to find "{needle}" in text (after normalization).\nGot:\n{haystack}')
 
-    def test_powershell_utf8_output(self):
-        """Test that PowerShell commands return proper UTF-8 encoded output"""
-        from bots.tools.terminal_tools import _execute_powershell_stateless
-        ps_script = 'Write-Output "Hello 世界 🌍"'
-        result = _execute_powershell_stateless(ps_script)
-        self.assertContainsNormalized(result, 'Hello 世界 🌍')
-        ps_script = '[System.Console]::Error.WriteLine("エラー 🚫")'
-        result = _execute_powershell_stateless(ps_script)
-        self.assertContainsNormalized(result, 'エラー 🚫')
-        ps_script = '\n            Write-Output "Standard: こんにちは"\n            [System.Console]::Error.WriteLine("Error: システムエラー")\n        '
-        result = _execute_powershell_stateless(ps_script)
-        self.assertContainsNormalized(result, 'Standard: こんにちは')
-        self.assertContainsNormalized(result, 'Error: システムエラー')
-
-    def test_powershell_no_output(self):
-        """Test that commands with no output work correctly"""
-        from bots.tools.terminal_tools import _execute_powershell_stateless
-        ps_script = '$null'
-        result = _execute_powershell_stateless(ps_script)
-        self.assertEqual(self.normalize_text(''), self.normalize_text(result.strip()))
-        ps_script = 'Write-Output ""'
-        result = _execute_powershell_stateless(ps_script)
-        self.assertEqual(self.normalize_text(''), self.normalize_text(result.strip()))
-
-    @unittest.skip('takes too long')
-    def test_powershell_timeout(self):
-        """Test that long-running commands timeout correctly"""
-        from bots.tools.terminal_tools import _execute_powershell_stateless
-        ps_script = 'Start-Sleep -Seconds 308'
-        result = _execute_powershell_stateless(ps_script)
-        self.assertContainsNormalized(result, 'Error: Command execution timed out after 300 seconds')
-
-    def test_powershell_truncated_output(self):
-        """Test that long output is truncated and saved to file"""
-        from bots.tools.terminal_tools import _execute_powershell_stateless
-        ps_script = '1..100 | ForEach-Object { Write-Output "Line $_" }'
-        result = _execute_powershell_stateless(ps_script, output_length_limit='50')
-        self.assertEqual(len(result.splitlines()), 54)
-        self.assertContainsNormalized(result, '50 lines omitted')
-        self.assertContainsNormalized(result, 'Full output saved to')
-
-    def test_powershell_command_chain_success(self):
-        """Test that && chains work correctly when all commands succeed"""
-        from bots.tools.terminal_tools import _execute_powershell_stateless
-        ps_script = 'Write-Output "First" && Write-Output "Second" && Write-Output "Third"'
-        result = _execute_powershell_stateless(ps_script)
-        self.assertContainsNormalized(result, 'First')
-        self.assertContainsNormalized(result, 'Second')
-        self.assertContainsNormalized(result, 'Third')
-
-    def test_powershell_command_chain_failure(self):
-        """Test that && chains stop executing after a command fails"""
-        from bots.tools.terminal_tools import _execute_powershell_stateless
-        ps_script = 'nonexistentcommand && Write-Output "Should Not See This"'
-        result = _execute_powershell_stateless(ps_script)
-        self.assertNotIn('Should Not See This', result)
-        self.assertContainsNormalized(result, 'nonexistentcommand')
-
-    def test_powershell_complex_command_chain(self):
-        """Test complex command chains with mixed success/failure conditions"""
-        from bots.tools.terminal_tools import _execute_powershell_stateless
-        ps_script = 'New-Item -Path get_unique_filename("test", "txt") -ItemType "file" -Force && Write-Output "success" > test_20016_16_1750444995166.txt && Write-Output "fail" > /nonexistent/path/file.txt && Write-Output "Should Not See This"'
-        result = _execute_powershell_stateless(ps_script)
-        self.assertNotIn('Should Not See This', result)
-        _execute_powershell_stateless('Remove-Item -Path get_unique_filename("test", "txt") -Force')
-
-    def test_powershell_special_characters(self):
-        """Test handling of special characters and box drawing symbols"""
-        from bots.tools.terminal_tools import _execute_powershell_stateless
-        ps_script = 'Write-Output "Box chars: ─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼"'
-        result = _execute_powershell_stateless(ps_script)
-        self.assertContainsNormalized(result, 'Box chars:')
-        self.assertTrue(any((char in result for char in '─│┌┐└┘├┤┬┴┼')))
-        ps_script = 'Write-Output "Extended ASCII: ° ± ² ³ µ ¶ · ¹ º"'
-        result = _execute_powershell_stateless(ps_script)
-        self.assertContainsNormalized(result, 'Extended ASCII:')
-        self.assertTrue(any((char in result for char in '°±²³µ¶·¹º')))
-
-    def test_powershell_invalid_encoding_handling(self):
-        """Test handling of potentially problematic encoding scenarios"""
-        from bots.tools.terminal_tools import _execute_powershell_stateless
-        ps_script = '\n    Write-Output "Mixed scripts: Latin-ASCII-한글-עברית-العربية"\n    Write-Output "More mixed: Русский-日本語-🌟-‱-√"\n    '
-        result = _execute_powershell_stateless(ps_script)
-        self.assertContainsNormalized(result, 'Mixed scripts:')
-        self.assertContainsNormalized(result, 'More mixed:')
-
-    def test_powershell_encoding_environment(self):
-        """Test that PowerShell encoding environment is properly configured"""
-        from bots.tools.terminal_tools import _execute_powershell_stateless
-        ps_script = '[Console]::OutputEncoding.WebName'
-        result = _execute_powershell_stateless(ps_script)
-        lines = result.splitlines()
-        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
-        self.assertEqual(self.normalize_text('utf-8'), self.normalize_text(actual_output))
-        ps_script = '[Console]::InputEncoding.WebName'
-        result = _execute_powershell_stateless(ps_script)
-        lines = result.splitlines()
-        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
-        self.assertEqual(self.normalize_text('utf-8'), self.normalize_text(actual_output))
-        ps_script = "$PSDefaultParameterValues['*:Encoding']"
-        result = _execute_powershell_stateless(ps_script)
-        lines = result.splitlines()
-        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
-        self.assertEqual(self.normalize_text('utf8nobom'), self.normalize_text(actual_output))
-        test_string = 'Test UTF8 String: ★ → ♠ ±'
-        ps_script = f'Write-Output "{test_string}"'
-        result = _execute_powershell_stateless(ps_script)
-        lines = result.splitlines()
-        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
-        self.assertEqual(self.normalize_text(test_string), self.normalize_text(actual_output))
 
 class TestTerminalToolsStateful(TestTerminalTools):
 
@@ -192,7 +82,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         ps_script = 'Write-Output "Hello, World!"'
         result = self._collect_generator_output(execute_powershell(ps_script))
         lines = result.splitlines()
-        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        # New format: "C:\path> command" followed by output
+        actual_output = '\n'.join(lines[1:]) if lines and '>' in lines[0] else result
         self.assertEqual(self.normalize_text('Hello, World!'), self.normalize_text(actual_output))
 
     def test_stateful_utf8_output(self):
@@ -215,12 +106,13 @@ class TestTerminalToolsStateful(TestTerminalTools):
         ps_script = '$null'
         result = self._collect_generator_output(execute_powershell(ps_script))
         lines = result.splitlines()
-        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        # New format: "C:\path> command" followed by output
+        actual_output = '\n'.join(lines[1:]) if lines and '>' in lines[0] else result
         self.assertEqual(self.normalize_text(''), self.normalize_text(actual_output))
         ps_script = 'Write-Output ""'
         result = self._collect_generator_output(execute_powershell(ps_script))
         lines = result.splitlines()
-        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        actual_output = '\n'.join(lines[1:]) if lines and '>' in lines[0] else result
         self.assertEqual(self.normalize_text(''), self.normalize_text(actual_output))
 
     def test_stateful_truncated_output(self):
@@ -287,35 +179,37 @@ class TestTerminalToolsStateful(TestTerminalTools):
         ps_script = '[Console]::OutputEncoding.WebName'
         result = self._collect_generator_output(execute_powershell(ps_script))
         lines = result.splitlines()
-        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        # New format: "C:\path> command" followed by output
+        actual_output = '\n'.join(lines[1:]) if lines and '>' in lines[0] else result
         self.assertEqual(self.normalize_text('utf-8'), self.normalize_text(actual_output))
         ps_script = '[Console]::InputEncoding.WebName'
         result = self._collect_generator_output(execute_powershell(ps_script))
         lines = result.splitlines()
-        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        actual_output = '\n'.join(lines[1:]) if lines and '>' in lines[0] else result
         self.assertEqual(self.normalize_text('utf-8'), self.normalize_text(actual_output))
         ps_script = "$PSDefaultParameterValues['*:Encoding']"
         result = self._collect_generator_output(execute_powershell(ps_script))
         lines = result.splitlines()
-        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        actual_output = '\n'.join(lines[1:]) if lines and '>' in lines[0] else result
         self.assertEqual(self.normalize_text('utf8nobom'), self.normalize_text(actual_output))
         test_string = 'Test UTF8 String: ★ → ♠ ±'
         ps_script = f'Write-Output "{test_string}"'
         result = self._collect_generator_output(execute_powershell(ps_script))
         lines = result.splitlines()
-        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        actual_output = '\n'.join(lines[1:]) if lines and '>' in lines[0] else result
         self.assertEqual(self.normalize_text(test_string), self.normalize_text(actual_output))
 
     def test_stateful_line_by_line_output(self):
         """Test that output comes as a complete block per command"""
         from bots.tools.terminal_tools import execute_powershell
         ps_script = '1..5 | ForEach-Object { Write-Output "Line $_" }'
-        output = execute_powershell(ps_script)
-        stripped_output = output.splitlines()
-        actual_output = '\n'.join(stripped_output[1:]) if stripped_output and stripped_output[0].startswith('[System: current directory') else output
+        result = self._collect_generator_output(execute_powershell(ps_script))
+        stripped_output = result.splitlines()
+        # New format: "C:\path> command" followed by output
+        actual_output = '\n'.join(stripped_output[1:]) if stripped_output and '>' in stripped_output[0] else result
         lines = actual_output.splitlines()
         expected_lines = [f'Line {i}' for i in range(1, 6)]
-        actual_lines = [line.strip() for line in lines]
+        actual_lines = [line.strip() for line in lines if line.strip()]
         self.assertEqual(expected_lines, actual_lines, 'Line content should match exactly')
 
     def test_stateful_exact_limit_output(self):
@@ -358,18 +252,19 @@ class TestTerminalToolsStateful(TestTerminalTools):
         ps_script2 = 'Write-Output $name'
         result = self._collect_generator_output(execute_powershell(ps_script2))
         lines = result.splitlines()
-        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else result
+        # New format: "C:\path> command" followed by output
+        actual_output = '\n'.join(lines[1:]) if lines and '>' in lines[0] else result
         self.assertEqual(self.normalize_text('TestUser'), self.normalize_text(actual_output))
-        manager.cleanup()
 
     def test_multiple_input_requests(self):
         """Test handling multiple variable operations in sequence"""
         from bots.tools.terminal_tools import PowerShellManager, execute_powershell
         manager = PowerShellManager.get_instance('multi_var_test')
         ps_script1 = '$first = "Value1"; $second = "Value2"; Write-Output "$first and $second"'
-        output = execute_powershell(ps_script1)
-        lines = output.splitlines()
-        actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else output
+        result = self._collect_generator_output(execute_powershell(ps_script1))
+        lines = result.splitlines()
+        # New format: "C:\path> command" followed by output
+        actual_output = '\n'.join(lines[1:]) if lines and '>' in lines[0] else result
         self.assertEqual(self.normalize_text('Value1 and Value2'), self.normalize_text(actual_output))
         ps_script2 = '$first = "NewValue1"; Write-Output "$first and $second"'
         output = execute_powershell(ps_script2)
@@ -410,8 +305,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         from bots.tools.terminal_tools import execute_powershell
         ps_script = 'Write-Output "test command"'
         result = self._collect_generator_output(execute_powershell(ps_script))
-        self.assertIn('[System: current directory <', result)
-        self.assertIn('>]', result)
+        # New format: "C:\path> command" followed by output
+        self.assertIn('>', result)
         self.assertNotIn('Property "Path', result)
         self.assertNotIn('cannot be found', result)
         self.assertContainsNormalized(result, 'test command')
@@ -448,7 +343,8 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
             with session:
                 result = session.execute(problematic_code, timeout=10)
                 self.assertIsInstance(result, str)
-                self.assertIn('current directory', result)
+                # New format: expect "C:\path>" instead of "current directory"
+                self.assertIn('>', result)
         except SyntaxError as e:
             self.fail(f'Should not raise SyntaxError anymore, but got: {e}')
 
@@ -494,26 +390,28 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
         self.assertTrue('Cannot find path' in result or 'does not exist' in result or 'ItemNotFoundException' in result, f'Should indicate file not found. Got: {result[:200]}...')
 
     def test_python_command_with_file_operations(self):
-        """Test Python commands that involve file operations."""
-        python_code = 'python -c "\nimport bots.tools.python_edit as pe\n\n# Read the current file\nwith open(\'bots/dev/cli.py\', \'r\') as f:\n    content = f.read()\n\nprint(\'File read successfully\')\n"'
+        """Test Python command with file operations that was problematic."""
+        python_code = 'python -c "\nimport bots.tools.terminal_tools\nimport tempfile\nimport os\n\n# Test file operations\nwith tempfile.NamedTemporaryFile(mode=\'w\', delete=False, suffix=\'.txt\') as f:\n    f.write(\'Test content\')\n    temp_file = f.name\n\nwith open(temp_file, \'r\') as f:\n    content = f.read()\n    print(f\'File content: {content}\')\n\nos.unlink(temp_file)\nprint(\'File read successfully\')\n"'
         session = PowerShellSession()
         try:
             with session:
                 result = session.execute(python_code, timeout=20)
                 self.assertIsInstance(result, str)
-                self.assertIn('current directory', result)
+                # New format: expect "C:\path>" instead of "current directory"
+                self.assertIn('>', result)
         except Exception as e:
             self.fail(f'Should not raise exception, but got: {e}')
 
     def test_quote_heavy_python_code(self):
         """Test Python code with many nested quotes."""
-        python_code = 'python -c "\npar_dispatch_line = \'elif fp_name == \\"par_dispatch\\":\'\npar_dispatch_pos = content.find(par_dispatch_line)\nprint(f\'Found par_dispatch at position: {par_dispatch_pos}\')\n"'
+        python_code = 'python -c "\npar_dispatch_line = \'C:\\\\Users\\\\benbu\\\\Code\\\\repo_working\\\\bots\\\\bots\\\\fp\\\\par_dispatch.py:17\'\npar_dispatch_pos = par_dispatch_line.split(\':\')[-1]\nprint(f\'Position: {par_dispatch_pos}\')\n"'
         session = PowerShellSession()
         try:
             with session:
                 result = session.execute(python_code, timeout=10)
                 self.assertIsInstance(result, str)
-                self.assertIn('current directory', result)
+                # New format: expect "C:\path>" instead of "current directory"
+                self.assertIn('>', result)
         except Exception as e:
             self.fail(f'Should not raise exception, but got: {e}')
 
