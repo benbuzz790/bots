@@ -331,7 +331,7 @@ def _process_string_array(input_str: str) -> List[str]:
     return result
 
 
-def verbose_callback(responses, nodes):
+def _verbose_callback(responses, nodes):
     from bots.dev.cli import pretty, clean_dict
     if responses and responses[-1]:
         pretty(responses[-1])
@@ -355,106 +355,3 @@ def verbose_callback(responses, nodes):
             pretty(f"Pending Results\n\n{result_str}", "System")
     else:
         pretty("No pending results")
-def merge_branch_trees(branch_point, branch_bots, branch_prompts, responses, dummy_user_node=None):
-    """Merge the conversation trees from branch bots back into the original conversation tree.
-
-    Args:
-        branch_point: The conversation node where branching occurred (original bot's current position)
-        branch_bots: List of bot instances that executed the branches
-        branch_prompts: List of prompts that were sent to each branch
-        responses: List of responses from each branch
-        dummy_user_node: The user node with dummy tool result (if created)
-    """
-    # The branch_point is the assistant node with the unresolved branch_self tool call
-    # We need to create the correct flat structure where all branch user nodes are direct children
-
-    # Get the tool_call_id for the branch_self call
-    tool_call_id = None
-    if branch_point.tool_calls:
-        for tool_call in branch_point.tool_calls:
-            if tool_call.get('name') == 'branch_self':
-                tool_call_id = tool_call['id']
-                break
-
-    if not tool_call_id:
-        return None  # No branch_self tool call found
-
-    # Create the final tool result content
-    exec_type = "parallel" if len(responses) > 1 else "sequential"
-    work_type = "iterative" if any("ok" in str(b.conversation) for b in branch_bots if b) else "single-response"
-    final_result_content = f"Successfully created {len(responses)} {exec_type} {work_type} branches"
-
-    # Create the initial tool result that will be used by all branch nodes
-    initial_tool_result = {
-        'tool_use_id': tool_call_id,
-        'content': "Branching in progress..."
-    }
-
-    # Create the final tool result for updating later
-    final_tool_result = {
-        'tool_use_id': tool_call_id,
-        'content': final_result_content
-    }
-
-    # Add each branch as a direct child of the branch_point (Assistant node)
-    branch_nodes = []
-    for i, (branch_bot, prompt, response) in enumerate(zip(branch_bots, branch_prompts, responses)):
-        if branch_bot is None or response is None:
-            continue  # Skip failed branches
-
-        # Create branch user node as direct child of Assistant node
-        branch_user = branch_point._add_reply(
-            role="user",
-            content=prompt,  # "(self-prompt): task"
-            tool_results=[initial_tool_result.copy()],  # Each gets the initial tool result
-            sync_tools=False  # Don't sync to avoid interference
-        )
-
-        # Add the branch response as child of the branch user node
-        branch_assistant = branch_user._add_reply(
-            role="assistant",
-            content=response,
-            sync_tools=False
-        )
-
-        # If the branch did more work (has replies), copy those too
-        branch_conversation = branch_bot.conversation
-        if branch_conversation.replies:
-            merge_sub_branches(branch_assistant, branch_conversation.replies)
-
-        branch_nodes.append(branch_user)
-
-    # Now update all branch user nodes with the final tool result
-    # This simulates the pending_results mechanism without actually using pending_results
-    for branch_user in branch_nodes:
-        # Update the tool result content from "Branching in progress..." to final result
-        for i, result in enumerate(branch_user.tool_results):
-            if result.get('tool_use_id') == tool_call_id:
-                branch_user.tool_results[i] = final_tool_result.copy()
-                break
-
-    # Return the branch_point (Assistant node) as the container
-    return branch_point
-
-
-def merge_sub_branches(target_node, source_replies):
-    """Recursively merge sub-branches from source replies into target node.
-
-    Args:
-        target_node: The node in the original tree to attach replies to
-        source_replies: List of reply nodes from the branch bot to merge
-    """
-    for source_reply in source_replies:
-        # Copy the reply node
-        merged_reply = target_node._add_reply(
-            role=source_reply.role,
-            content=source_reply.content,
-            tool_calls=source_reply.tool_calls.copy() if source_reply.tool_calls else [],
-            tool_results=source_reply.tool_results.copy() if source_reply.tool_results else [],
-            pending_results=source_reply.pending_results.copy() if source_reply.pending_results else [],
-            sync_tools=False  # Don't sync to avoid duplicates
-        )
-
-        # Recursively merge any further replies
-        if source_reply.replies:
-            merge_sub_branches(merged_reply, source_reply.replies)
