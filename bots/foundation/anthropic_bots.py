@@ -83,17 +83,18 @@ class AnthropicNode(ConversationNode):
     def _build_messages(self) -> List[Dict[str, Any]]:
         """Build message list for Anthropic API.
 
-    Constructs the message history in Anthropic's expected format,
-    properly handling
-    empty nodes and tool calls. Empty nodes are preserved in the structure but
-    filtered from API messages.
+        Constructs the message history in Anthropic's expected format,
+        properly handling
+        empty nodes and tool calls. Empty nodes are preserved in the structure but
+        filtered from API messages.
 
-    Returns:
-        List of message dictionaries formatted for Anthropic's API
-    """
+        Returns:
+            List of message dictionaries formatted for Anthropic's API
+        """
         node = self
         conversation_dict = []
         while node:
+            node._sync_tool_context()
             if not node._is_empty():
                 entry = {"role": node.role}
                 content_list = [{"type": "text", "text": node.content}]
@@ -105,7 +106,6 @@ class AnthropicNode(ConversationNode):
                     for result in node.tool_results:
                         sub_entry = {"type": "tool_result", **result}
                         content_list.insert(0, sub_entry)
-                        # Don't sync tool context here - causes duplicate tool results
                 entry["content"] = content_list
                 conversation_dict = [entry] + conversation_dict
             node = node.parent
