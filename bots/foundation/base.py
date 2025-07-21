@@ -359,13 +359,13 @@ class ConversationNode:
     def _sync_tool_context(self) -> None:
         """Synchronize tool results across all sibling nodes.
 
-    Use when tool results need to be shared between parallel conversation branches.
-    Takes the union of all tool results from sibling nodes and ensures each sibling
-    has access to all results.
+        Use when tool results need to be shared between parallel conversation branches.
+        Takes the union of all tool results from sibling nodes and ensures each sibling
+        has access to all results.
 
-    Side Effects:
-        Updates tool_results for all sibling nodes to include all unique results.
-    """
+        Side Effects:
+            Updates tool_results for all sibling nodes to include all unique results.
+        """
         # Only sync tool results if this is appropriate for the conversation structure
         # Tool results should only appear in user nodes that immediately follow assistant nodes with tool_use
         if self.role != "user":
@@ -377,33 +377,20 @@ class ConversationNode:
         if not self.parent.tool_calls:
             return  # No tool calls to respond to
 
-        # Original sync logic
         if self.parent and self.parent.replies:
-            all_tool_results = []
-            for sibling in self.parent.replies:
-                for result in sibling.tool_results:
-                    # Check if we already have a result with this tool_use_id
+            # Use dict to automatically handle overwrites by tool_use_id
+            tool_results_dict = {}
+
+            # Prioritize this node's results over other nodes by letting it overwrite last
+            siblings = [node for node in self.parent.replies if node != self] + [self]
+            
+            for node in siblings:
+                for result in node.tool_results:
                     tool_id = result.get('tool_use_id')
-                    existing_index = None
-                    for i, existing_result in enumerate(all_tool_results):
-                        if existing_result.get('tool_use_id') == tool_id:
-                            existing_index = i
-                            break
-                
-                    if existing_index is not None:
-                        # Overwrite existing result with same tool_use_id
-                        all_tool_results[existing_index] = result
-                    else:
-                        # Add new result
-                        all_tool_results.append(result)
+                    tool_results_dict[tool_id] = result
 
-            # Debug: Print when sync would cause duplication
-            if len(all_tool_results) > len(self.tool_results):
-                print(f"DEBUG _sync_tool_context: Syncing {len(all_tool_results)} tool results to node with {len(self.tool_results)} results")
-                print(f"  Node: role={self.role}, content={self.content[:50] if self.content else 'None'}...")
-                print(f"  Tool result IDs before: {[r.get('tool_use_id') for r in self.tool_results]}")
-                print(f"  Tool result IDs after sync: {[r.get('tool_use_id') for r in all_tool_results]}")
-
+            # Convert back to list and apply to all siblings
+            all_tool_results = list(tool_results_dict.values())
             for sibling in self.parent.replies:
                 sibling.tool_results = all_tool_results.copy()
 
