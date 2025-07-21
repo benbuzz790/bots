@@ -36,7 +36,7 @@ class recombinators:
         if not valid_responses:
             return ("No valid responses to combine", nodes[0] if nodes else None)
         # Create formatted combination
-        combined = "Combined Analysis:\n\n"
+        combined = "Combined Result:\n\n"
         for i, response in enumerate(valid_responses, 1):
             combined += f"Response {i}:\n{response}\n\n"
         return (combined.strip(), nodes[0] if nodes else None)
