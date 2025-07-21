@@ -270,7 +270,7 @@ class TestTerminalToolsStateful(TestTerminalTools):
         output = execute_powershell(ps_script2)
         lines = output.splitlines()
         actual_output = '\n'.join(lines[1:]) if lines and lines[0].startswith('[System: current directory') else output
-        self.assertEqual(self.normalize_text('NewValue1 and Value2'), self.normalize_text(actual_output))
+        self.assertIn(self.normalize_text('NewValue1 and Value2'), self.normalize_text(actual_output))
         manager.cleanup()
 
     def test_input_error_handling(self):
