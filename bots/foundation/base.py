@@ -327,37 +327,31 @@ class ConversationNode:
         """
         return self.role == "empty" and self.content == ""
 
-    def _add_reply(self, sync_tools=True, **kwargs) -> "ConversationNode":
+    def _add_reply(self, **kwargs) -> "ConversationNode":
         """Add a new reply node to this conversation node.
 
-    Creates a new node as a child of this one, handling tool context
-    synchronization between siblings.
+        Creates a new node as a child of this one, handling tool context
+        synchronization between siblings.
 
-    Parameters:
-        sync_tools (bool): Whether to synchronize tool results with siblings
-        **kwargs: Attributes to set on the new node (content, role, etc.)
+        Returns:
+            ConversationNode: The newly created reply node
 
-    Returns:
-        ConversationNode: The newly created reply node
-
-    Example:
-        ```python
-        node = root._add_reply(content="Hello", role="user")
-        response = node._add_reply(content="Hi!", role="assistant")
-        ```
-    """
+        Example:
+            ```python
+            node = root._add_reply(content="Hello", role="user")
+            response = node._add_reply(content="Hi!", role="assistant")
+            ```
+        """
         reply = type(self)(**kwargs)
         reply.parent = self
         self.replies.append(reply)
         if self.pending_results:
-            reply.tool_results = self.pending_results.copy()
+            reply.tool_results.extend(self.pending_results) # Don't sync here
             self.pending_results = []
-        if sync_tools:
-            reply._sync_tool_context()
         return reply
 
     def _sync_tool_context(self) -> None:
-        """Synchronize tool results across all sibling nodes.
+        """Synchronize tool results across all sibling nodes of self.
 
         Use when tool results need to be shared between parallel conversation branches.
         Takes the union of all tool results from sibling nodes and ensures each sibling
@@ -417,7 +411,14 @@ class ConversationNode:
             - Updates this node's tool_results
             - Synchronizes results across sibling nodes
         """
-        self.tool_results.extend(results)
+        # Deduplicate: existing results first, then new results (new ones win)
+        existing_dict = {r.get('tool_use_id'): r for r in self.tool_results if r.get('tool_use_id')}
+        new_dict = {r.get('tool_use_id'): r for r in results if r.get('tool_use_id')}
+        
+        # Merge with new results taking priority
+        merged_dict = {**existing_dict, **new_dict}
+        
+        self.tool_results = list(merged_dict.values())
         self._sync_tool_context()
 
     def _find_root(self) -> "ConversationNode":

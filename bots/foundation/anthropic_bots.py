@@ -67,18 +67,25 @@ class AnthropicNode(ConversationNode):
     def _add_tool_results(self, results: List[Dict[str, Any]]) -> None:
         """Add tool execution results to the conversation node.
 
-        For Anthropic bots, tool results need to be propagated to the
-        replies or stored as
-        pending to be moved to the replies when a reply is added.
+        For Anthropic bots, tool results need to either be in user nodes
+        or stored as pending to be moved to the replies when a 
+        reply is added.
 
         Args:
             results: List of tool execution result dictionaries
         """
-        if self.replies:
-            self.replies[0].tool_results.extend(results)
-            self.replies[0]._sync_tool_context()
+        if self.role == 'user':
+            super()._add_tool_results(results)
+            self._sync_tool_context()
         else:
-            self.pending_results.extend(results)
+            # Deduplicate: existing pending results first, then new results (new ones win)
+            existing_dict = {r.get('tool_use_id'): r for r in self.pending_results if r.get('tool_use_id')}
+            new_dict = {r.get('tool_use_id'): r for r in results if r.get('tool_use_id')}
+            
+            # Merge with new results taking priority
+            merged_dict = {**existing_dict, **new_dict}
+            
+            self.pending_results = list(merged_dict.values())
 
     def _build_messages(self) -> List[Dict[str, Any]]:
         """Build message list for Anthropic API.
@@ -94,7 +101,7 @@ class AnthropicNode(ConversationNode):
         node = self
         conversation_dict = []
         while node:
-            node._sync_tool_context()
+            #node._sync_tool_context() Don't sync here either
             if not node._is_empty():
                 entry = {"role": node.role}
                 content_list = [{"type": "text", "text": node.content}]

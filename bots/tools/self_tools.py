@@ -153,8 +153,7 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
         }
 
         # Update bot's results to include the dummy result
-        bot.conversation.pending_results.append(dummy_result)
-
+        bot.conversation._add_tool_results([dummy_result])
         # Save bot state with dummy result in place
         original_autosave = bot.autosave
         bot.autosave = False
@@ -184,16 +183,6 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
                 for node in branching_node.replies:
                     node.parent = parent_bot_node
 
-                # Remove dummy result
-                parent_bot_node.pending_tool_results = [
-                    result for result in parent_bot_node.pending_tool_results
-                    if result.get('content')!= dummy_content
-                ]                    
-                for node in parent_bot_node.replies:
-                    node.tool_results = [
-                        result for result in node.tool_results 
-                        if result.get('content') != dummy_content
-                    ]
                 return response, branch_bot.conversation
 
             except Exception as e:
@@ -231,12 +220,8 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
 
         # Count successful branches
         success_count = sum(1 for r in responses if r is not None)
-        if success_count == 0:
-            return "Error: All branches failed to execute"
 
-        # Create success message
-
-        # Handle recombination if requested
+        # Create success message, handle recombination if requested
         combined = "No recombinator selected"
         if recombine != "none" and responses:
             valid_responses = [r for r in responses if r is not None]
@@ -258,7 +243,7 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
 
         exec_type = "parallel" if parallel else "sequential"
         work_type = "iterative" if allow_work else "single-response"
-        result_content = f"Successfully completed {success_count} {exec_type} {work_type} branches. Recombination result:\n\n{combined}"
+        result_content = f"Successfully completed {success_count}/{len(message_list)} {exec_type} {work_type} branches. Recombination result:\n\n{combined}"
 
         return result_content
 
@@ -266,6 +251,7 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
         import traceback
         traceback.print_exc()
         return f"Error in branch_self: {str(e)}"
+
 
 @handle_errors
 def add_tools(filepath: str) -> str:
@@ -324,3 +310,21 @@ def _verbose_callback(responses, nodes):
             pretty(f"Pending Results\n\n{result_str}", "System")
     else:
         pretty("No pending results")
+
+
+def _remove_dummy_from_tree(node, dummy_content):
+    if hasattr(node, 'pending_tool_results'):
+        node.pending_tool_results = [
+            result for result in node.pending_tool_results
+            if result.get('content') != dummy_content
+        ]
+    
+    if hasattr(node, 'tool_results'):
+        node.tool_results = [
+            result for result in node.tool_results 
+            if result.get('content') != dummy_content
+        ]
+    
+    if hasattr(node, 'replies'):
+        for child in node.replies:
+            _remove_dummy_from_tree(child, dummy_content)
