@@ -346,7 +346,7 @@ class ConversationNode:
         reply.parent = self
         self.replies.append(reply)
         if self.pending_results:
-            reply.tool_results.extend(self.pending_results) # Don't sync here
+            reply.tool_results.extend(self.pending_results)
             self.pending_results = []
         return reply
 
@@ -370,9 +370,9 @@ class ConversationNode:
 
         if not self.parent.tool_calls:
             return  # No tool calls to respond to
-
+        
         if self.parent and self.parent.replies:
-            # Use dict to automatically handle overwrites by tool_use_id
+            # Use dict to automatically handle overwrites
             tool_results_dict = {}
 
             # Prioritize this node's results over other nodes by letting it overwrite last
@@ -380,7 +380,10 @@ class ConversationNode:
             
             for node in siblings:
                 for result in node.tool_results:
-                    tool_id = result.get('tool_use_id')
+                    import hashlib
+                    # Create hash of the result for provider-agnostic deduplication
+                    result_str = str(sorted(result.items()))
+                    tool_id = hashlib.md5(result_str.encode()).hexdigest()
                     tool_results_dict[tool_id] = result
 
             # Convert back to list and apply to all siblings
@@ -411,9 +414,15 @@ class ConversationNode:
             - Updates this node's tool_results
             - Synchronizes results across sibling nodes
         """
+        
+        def make_hash(result):
+            """Create hash of result for deduplication."""
+            result_str = str(sorted(result.items()))
+            return hashlib.md5(result_str.encode()).hexdigest()
+        
         # Deduplicate: existing results first, then new results (new ones win)
-        existing_dict = {r.get('tool_use_id'): r for r in self.tool_results if r.get('tool_use_id')}
-        new_dict = {r.get('tool_use_id'): r for r in results if r.get('tool_use_id')}
+        existing_dict = {make_hash(r): r for r in self.tool_results}
+        new_dict = {make_hash(r): r for r in results}
         
         # Merge with new results taking priority
         merged_dict = {**existing_dict, **new_dict}
