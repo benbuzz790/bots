@@ -1,6 +1,7 @@
 import ast
 import inspect
 import json
+import uuid
 from typing import List, Optional
 from bots.dev.decorators import handle_errors
 from bots.flows import functional_prompts as fp
@@ -80,7 +81,7 @@ def _modify_own_settings(temperature: str=None, max_tokens: str=None) -> str:
     return f"Settings updated successfully. Current settings: temperature={bot.temperature}, max_tokens={bot.max_tokens}"
 
 @handle_errors
-def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False", recombine: str="none") -> str:
+def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False", recombine: str="concatenate") -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
 
     Following the idealized design from branch_self.md with minimal complexity:
@@ -93,8 +94,8 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
         allow_work (str): 'True' to let each branch use tools and continue working until done
                          'False' (default) for single-response branches
         parallel (str): 'True' to let branches work in parallel, 'False' for sequential (default).
-        recombine (str): One of ('concatenate', 'llm_merge', 'llm_vote', 'llm_judge'). If specified
-                         combines the final messages from each branch using that method.
+        recombine (str): One of ('none', 'concatenate', 'llm_merge', 'llm_vote', 'llm_judge'), default 'concatenate'. 
+                         Combines the final messages from each branch using that method.
 
     Returns:
         str: Success message with branch count, or error details if something went wrong
@@ -145,37 +146,29 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
             return "Error: Could not find branch_self tool call"
 
         # STEP 1: Add dummy tool result immediately for API compliance and recursion prevention
+        dummy_content = "Branching in progress..."
         dummy_result = {
             'tool_use_id': tool_call_id,
-            'content': 'Branching in progress...'
+            'content': dummy_content
         }
 
-        # Create user node with dummy result to satisfy API and prevent recursion
-        dummy_user_node = original_node._add_reply(
-            role="user",
-            content="Executing branches...",
-            tool_results=[dummy_result],
-            sync_tools=False
-        )
-
-        # Update bot's conversation pointer to include the dummy result
-        bot.conversation = dummy_user_node
+        # Update bot's results to include the dummy result
+        bot.conversation.pending_results.append(dummy_result)
 
         # Save bot state with dummy result in place
         original_autosave = bot.autosave
         bot.autosave = False
-        temp_file = "temp_branch_self_bot.bot"
+        temp_id = str(uuid.uuid4())[:8]
+        temp_file = f"branch_self_{temp_id}.bot"
         bot.save(temp_file)
 
-        # Restore bot's conversation pointer to original position for branch creation
-        bot.conversation = original_node
-
-        def execute_branch(prompt):
+        def execute_branch(prompt, parent_bot_node):
             """Execute a single branch with the given prompt."""
             try:
                 # Create a fresh bot copy for this branch (includes dummy result)
                 branch_bot = Bot.load(temp_file)
                 branch_bot.autosave = False
+                branching_node = branch_bot.conversation
 
                 if allow_work:
                     # Use iterative approach for work
@@ -186,7 +179,23 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
                     # Single response
                     response = branch_bot.respond(prompt)
 
+                # Stitch completed conversation back onto bot conversation
+                parent_bot_node.replies.extend(branching_node.replies)
+                for node in branching_node.replies:
+                    node.parent = parent_bot_node
+
+                # Remove dummy result
+                parent_bot_node.pending_tool_results = [
+                    result for result in parent_bot_node.pending_tool_results
+                    if result.get('content')!= dummy_content
+                ]                    
+                for node in parent_bot_node.replies:
+                    node.tool_results = [
+                        result for result in node.tool_results 
+                        if result.get('content') != dummy_content
+                    ]
                 return response, branch_bot.conversation
+
             except Exception as e:
                 import traceback
                 traceback.print_exc()
@@ -199,7 +208,7 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
         if parallel:
             # Parallel execution
             with ThreadPoolExecutor() as executor:
-                futures = [executor.submit(execute_branch, prompt) for prompt in prefixed_prompts]
+                futures = [executor.submit(execute_branch, prompt, original_node) for prompt in prefixed_prompts]
                 for future in as_completed(futures):
                     response, node = future.result()
                     responses.append(response)
@@ -207,7 +216,7 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
         else:
             # Sequential execution
             for prompt in prefixed_prompts:
-                response, node = execute_branch(prompt)
+                response, node = execute_branch(prompt, original_node)
                 responses.append(response)
                 branch_nodes.append(node)
 
@@ -226,42 +235,9 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
             return "Error: All branches failed to execute"
 
         # Create success message
-        exec_type = "parallel" if parallel else "sequential"
-        work_type = "iterative" if allow_work else "single-response"
-        result_content = f"Successfully created {success_count} {exec_type} {work_type} branches"
-
-        # STEP 2: Create branches as direct children with dummy results, then update via sync
-        final_result = {
-            'tool_use_id': tool_call_id,
-            'content': result_content
-        }
-
-        branch_user_nodes = []
-        for i, (prompt, response, branch_node) in enumerate(zip(prefixed_prompts, responses, branch_nodes)):
-            if response is not None:
-                # Create user node as direct child of original assistant with dummy result
-                user_node = original_node._add_reply(
-                    role="user",
-                    content=prompt,
-                    tool_results=[dummy_result.copy()],
-                    sync_tools=False
-                )
-
-                # Create assistant response node
-                assistant_node = user_node._add_reply(
-                    role="assistant", 
-                    content=response,
-                    sync_tools=False
-                )
-
-                branch_user_nodes.append(user_node)
-
-        # STEP 3: Update all branch tool results with final result using sync mechanism
-        # Replace dummy results with final results in all branch nodes
-        for user_node in branch_user_nodes:
-            user_node.tool_results = [final_result.copy()]
 
         # Handle recombination if requested
+        combined = "No recombinator selected"
         if recombine != "none" and responses:
             valid_responses = [r for r in responses if r is not None]
 
@@ -280,16 +256,9 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
                 else:
                     combined = "Unknown recombination method"
 
-                # Add the combined result as a new assistant message
-                if branch_user_nodes:
-                    last_branch = branch_user_nodes[-1]
-                    if last_branch.replies:
-                        recombined_node = last_branch.replies[-1]._add_reply(
-                            role="assistant",
-                            content=f"[Combined result using {recombine}]:\n{combined}",
-                            sync_tools=False
-                        )
-                        bot.conversation = recombined_node
+        exec_type = "parallel" if parallel else "sequential"
+        work_type = "iterative" if allow_work else "single-response"
+        result_content = f"Successfully completed {success_count} {exec_type} {work_type} branches. Recombination result:\n\n{combined}"
 
         return result_content
 

@@ -60,7 +60,7 @@ class TestSelfTools(unittest.TestCase):
     def test_branch_self_recursive(self) -> None:
         """Test that branch_self works when branches branch"""
         self.bot.add_tools(bots.tools.terminal_tools)
-        prompt = "I'd like to try out your branch_self tool. Would you please create three branches, have each of those create a new directory, and then have each of them branch three times, and have each of those branches create a new file in the created directory?"
+        prompt = "I'd like to try out your branch_self tool. Would you please create three branches, have each of those create a new directory (dir1, dir2, dir3)? Then, after that instance of you has created a directory, it should create three branches, each of which makes one file (f1, f2, f3). Please be brief through all branching."
         self.bot.respond(prompt)
         prompt2 = "Please use powershell to see if your directories and files were all created. Respond with either 'YES' or 'NO'"
         responses, _ = prompt_while(self.bot, prompt2)
