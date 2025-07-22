@@ -44,3 +44,17 @@ cli_config.json
 Claude.bot
 large_refactor_tasks.md
 __*
+test_functions.py
+test_insert.py
+test_nested.py
+test_output.json
+test_replace_behavior.py
+Test*.bot
+.*
+tmp/
+rapid.txt
+test_bom.py
+complex_test.txt
+dir1/
+dir2/
+dir3/
