@@ -13,6 +13,7 @@ exclude =
     tests/test_decorators.py,
    issue103,
    tests/test_python_edit.py,
+   tests/test_patch_edit.py,
    tests/test_python_edit/test_python_edit.py,
    tests/test_terminal_tools.py
 per-file-ignores =
