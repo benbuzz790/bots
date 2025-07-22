@@ -1,14 +1,12 @@
 import ast
-import hashlib
 import os
 import textwrap
-from enum import Enum
-from typing import Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 import libcst as cst
 
 from bots.dev.decorators import handle_errors
-from bots.utils.helpers import _clean, _process_error, _py_ast_to_source
+from bots.utils.helpers import _process_error, _py_ast_to_source
 from bots.utils.unicode_utils import clean_unicode_string
 
 
@@ -553,7 +551,7 @@ class ScopeReplacer(cst.CSTTransformer):
                 # Add a blank line before the next statement if it's a class or function
                 if isinstance(next_stmt, (cst.ClassDef, cst.FunctionDef)):
                     # Create a blank line
-                    blank_line = cst.SimpleStatementLine(
+                    cst.SimpleStatementLine(
                         body=[],
                         leading_lines=[
                             cst.EmptyLine(indent="", whitespace=cst.SimpleWhitespace(""), comment=None, newline=cst.Newline())
@@ -625,7 +623,6 @@ class ScopeReplacer(cst.CSTTransformer):
                         # Replace the target node and insert any additional statements (like imports)
                         target_name = original_node.name.value
                         new_node = None
-                        additional_statements = []
 
                         for stmt in self.new_code.body:
                             if (
@@ -695,7 +692,7 @@ class ScopeReplacer(cst.CSTTransformer):
                     if self.module:
                         try:
                             stmt_code = self.module.code_for_node(stmt)
-                        except:
+                        except Exception:
                             temp_module = cst.Module(body=[stmt])
                             stmt_code = temp_module.code
                     else:
