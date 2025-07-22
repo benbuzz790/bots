@@ -377,9 +377,26 @@ class ScopeReplacer(cst.CSTTransformer):
         self.module = module
         self.replaced_at_top_level = False
         self.replacement_index = -1
+        self.imports_to_add = []
 
     def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
         """Handle module-level whitespace after replacements."""
+        # Add any imports that were collected during replacement
+        if self.imports_to_add:
+            # Find the position to insert imports (after existing imports)
+            insert_pos = 0
+            for i, stmt in enumerate(updated_node.body):
+                if isinstance(stmt, (cst.SimpleStatementLine,)) and any(isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body):
+                    insert_pos = i + 1
+                elif not isinstance(stmt, (cst.SimpleStatementLine,)) or not any(isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body):
+                    break
+            
+            # Insert the new imports
+            new_body = list(updated_node.body)
+            for imp in reversed(self.imports_to_add):  # Insert in reverse order to maintain order
+                new_body.insert(insert_pos, imp)
+            updated_node = updated_node.with_changes(body=new_body)
+        
         if self.replaced_at_top_level and self.replacement_index >= 0:
             # Ensure proper spacing after top-level function/class replacements
             new_body = list(updated_node.body)
@@ -457,18 +474,34 @@ class ScopeReplacer(cst.CSTTransformer):
 
                 # Extract the actual function/class definition from the module
                 if hasattr(self.new_code, 'body') and len(self.new_code.body) > 0:
-                    # Find the matching function/class definition, not just the first element
-                    target_name = original_node.name.value
-                    new_node = None
-
-                    for stmt in self.new_code.body:
-                        if isinstance(stmt, type(original_node)) and hasattr(stmt, 'name') and stmt.name.value == target_name:
-                            new_node = stmt
-                            break
-
-                    # Fallback to first element if no matching name found
-                    if new_node is None:
-                        new_node = self.new_code.body[0]
+                    # For top-level replacements, we need to handle imports and other statements
+                    if self.module:  # Handle imports for any replacement, not just top-level
+                        # Replace the target node and insert any additional statements (like imports)
+                        target_name = original_node.name.value
+                        new_node = None
+                        additional_statements = []
+                            
+                        for stmt in self.new_code.body:
+                            if isinstance(stmt, type(original_node)) and hasattr(stmt, 'name') and stmt.name.value == target_name:
+                                new_node = stmt
+                            else:
+                                    # This is an import or other statement that should be added to the module later
+                                    if isinstance(stmt, (cst.SimpleStatementLine,)) and any(isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body):
+                                        self.imports_to_add.append(stmt)
+                            
+                        # Use the matching function/class or fallback to first element
+                        if new_node is None:
+                            new_node = self.new_code.body[0]
+                    else:
+                        # For non-top-level replacements, find the matching function/class definition
+                        target_name = original_node.name.value
+                        new_node = None
+                        for stmt in self.new_code.body:
+                            if isinstance(stmt, type(original_node)) and hasattr(stmt, 'name') and stmt.name.value == target_name:
+                                new_node = stmt
+                                break
+                        if new_node is None:
+                            new_node = self.new_code.body[0]
 
                     # Preserve the original node's leading lines
                     if hasattr(original_node, 'leading_lines'):
@@ -914,7 +947,41 @@ def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cs
     if (pattern.startswith('"') and pattern.endswith('"')) or (pattern.startswith("'") and pattern.endswith("'")):
         pattern = pattern[1:-1]
 
-    inserter = GenericPatternInserter(pattern, new_module.body, tree)
+    # Use a simple file-level only inserter instead of GenericPatternInserter
+    # to avoid cross-scope pattern matching issues
+    class FileOnlyInserter(cst.CSTTransformer):
+        def __init__(self, pattern: str, new_nodes: List[cst.CSTNode]):
+            self.pattern = pattern.strip()
+            self.new_nodes = new_nodes
+            self.modified = False
+            
+        def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
+            new_body = []
+            for stmt in updated_node.body:
+                new_body.append(stmt)
+                # Check if this statement matches our pattern
+                match_found = False
+                
+                # Check for function/class name match
+                if isinstance(stmt, (cst.FunctionDef, cst.ClassDef)) and stmt.name.value == self.pattern:
+                    match_found = True
+                else:
+                    # Check for quoted expression match in statement source
+                    try:
+                        stmt_code = updated_node.code_for_node(stmt).strip()
+                        if self.pattern in stmt_code:
+                            match_found = True
+                    except Exception:
+                        pass
+                
+                if match_found:
+                    new_body.extend(self.new_nodes)
+                    self.modified = True
+            if self.modified:
+                return updated_node.with_changes(body=new_body)
+            return updated_node
+    
+    inserter = FileOnlyInserter(pattern, new_module.body)
     modified_tree = tree.visit(inserter)
     if not inserter.modified:
         return _process_error(ValueError(f'Insert point not found at file level: {insert_after}'))
@@ -1007,7 +1074,6 @@ class GenericPatternInserter(cst.CSTTransformer):
     def _process_statement_list(self, statements: List[cst.CSTNode]) -> List[cst.CSTNode]:
         """Process a list of statements, inserting after pattern matches."""
         new_statements = []
-        match_count = 0
 
         for stmt in statements:
             new_statements.append(stmt)
@@ -1020,13 +1086,9 @@ class GenericPatternInserter(cst.CSTTransformer):
 
             # Check if this statement matches our pattern
             if self._matches_pattern(stmt_code):
-                match_count += 1
-                if match_count == 1:
-                    new_statements.extend(self.new_nodes)
-                    self.modified = True
-                elif match_count == 2:
-                    # Ambiguous match detected
-                    raise ValueError(f"Ambiguous pattern '{self.pattern}' - multiple matches found")
+                new_statements.extend(self.new_nodes)
+                self.modified = True
+                break  # Only insert after the first match to avoid duplicates
 
         return new_statements
     def _matches_pattern(self, stmt_code: str) -> bool:
