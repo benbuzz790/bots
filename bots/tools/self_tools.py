@@ -3,10 +3,10 @@ import inspect
 import json
 import uuid
 from typing import List, Optional
+
 from bots.dev.decorators import handle_errors
-from bots.flows import functional_prompts as fp
-from bots.flows import recombinators
 from bots.foundation.base import Bot
+
 
 def _get_calling_bot() -> Optional[Bot]:
     """Helper function to get a reference to the calling bot.
@@ -21,6 +21,7 @@ def _get_calling_bot() -> Optional[Bot]:
                 return potential_bot
         frame = frame.f_back
     return None
+
 
 def get_own_info() -> str:
     """Get information about yourself.
@@ -38,11 +39,20 @@ def get_own_info() -> str:
     bot = _get_calling_bot()
     if not bot:
         return "Error: Could not find calling bot"
-    info = {"name": bot.name, "role": bot.role, "role_description": bot.role_description, "model_engine": bot.model_engine.value, "temperature": bot.temperature, "max_tokens": bot.max_tokens, "tool_count": len(bot.tool_handler.tools) if bot.tool_handler else 0}
+    info = {
+        "name": bot.name,
+        "role": bot.role,
+        "role_description": bot.role_description,
+        "model_engine": bot.model_engine.value,
+        "temperature": bot.temperature,
+        "max_tokens": bot.max_tokens,
+        "tool_count": len(bot.tool_handler.tools) if bot.tool_handler else 0,
+    }
     return json.dumps(info)
 
+
 @handle_errors
-def _modify_own_settings(temperature: str=None, max_tokens: str=None) -> str:
+def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str:
     """Modify your settings.
     Use when you need to adjust your configuration parameters.
     Parameters:
@@ -54,6 +64,7 @@ def _modify_own_settings(temperature: str=None, max_tokens: str=None) -> str:
         str: Description of changes made or error message
     """
     import inspect
+
     from bots.foundation.base import Bot
 
     def _get_calling_bot_local():
@@ -65,6 +76,7 @@ def _modify_own_settings(temperature: str=None, max_tokens: str=None) -> str:
                     return potential_bot
             frame = frame.f_back
         return None
+
     bot = _get_calling_bot_local()
     if not bot:
         return "Error: Could not find calling bot"
@@ -80,8 +92,9 @@ def _modify_own_settings(temperature: str=None, max_tokens: str=None) -> str:
         bot.max_tokens = tokens_int
     return f"Settings updated successfully. Current settings: temperature={bot.temperature}, max_tokens={bot.max_tokens}"
 
+
 @handle_errors
-def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False", recombine: str="concatenate") -> str:
+def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "False", recombine: str = "concatenate") -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
 
     Following the idealized design from branch_self.md with minimal complexity:
@@ -94,15 +107,15 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
         allow_work (str): 'True' to let each branch use tools and continue working until done
                          'False' (default) for single-response branches
         parallel (str): 'True' to let branches work in parallel, 'False' for sequential (default).
-        recombine (str): One of ('none', 'concatenate', 'llm_merge', 'llm_vote', 'llm_judge'), default 'concatenate'. 
+        recombine (str): One of ('none', 'concatenate', 'llm_merge', 'llm_vote', 'llm_judge'), default 'concatenate'.
                          Combines the final messages from each branch using that method.
 
     Returns:
         str: Success message with branch count, or error details if something went wrong
     """
-    import json
     import os
     from concurrent.futures import ThreadPoolExecutor, as_completed
+
     from bots.flows import functional_prompts as fp
     from bots.foundation.base import Bot
 
@@ -138,8 +151,8 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
         tool_call_id = None
         if original_node.tool_calls:
             for tc in original_node.tool_calls:
-                if tc.get('name') == 'branch_self':
-                    tool_call_id = tc['id']
+                if tc.get("name") == "branch_self":
+                    tool_call_id = tc["id"]
                     break
 
         if not tool_call_id:
@@ -147,10 +160,7 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
 
         # STEP 1: Add dummy tool result immediately for API compliance and recursion prevention
         dummy_content = "Branching in progress..."
-        dummy_result = {
-            'tool_use_id': tool_call_id,
-            'content': dummy_content
-        }
+        dummy_result = {"tool_use_id": tool_call_id, "content": dummy_content}
 
         # Update bot's results to include the dummy result
         bot.conversation._add_tool_results([dummy_result])
@@ -185,8 +195,9 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
 
                 return response, branch_bot.conversation
 
-            except Exception as e:
+            except Exception:
                 import traceback
+
                 traceback.print_exc()
                 return None, None
 
@@ -243,12 +254,16 @@ def branch_self(self_prompts: str, allow_work: str="False", parallel: str="False
 
         exec_type = "parallel" if parallel else "sequential"
         work_type = "iterative" if allow_work else "single-response"
-        result_content = f"Successfully completed {success_count}/{len(message_list)} {exec_type} {work_type} branches. Recombination result:\n\n{combined}"
+        result_content = (
+            f"Successfully completed {success_count}/{len(message_list)} {exec_type} {work_type} branches. "
+            f"Recombination result:\n\n{combined}"
+        )
 
         return result_content
 
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         return f"Error in branch_self: {str(e)}"
 
@@ -268,7 +283,7 @@ def add_tools(filepath: str) -> str:
     """
     bot = _get_calling_bot()
     bot.add_tools(filepath)
-    
+
 
 def _process_string_array(input_str: str) -> List[str]:
     """Parse a string representation of an array into a list of strings.
@@ -287,7 +302,8 @@ def _process_string_array(input_str: str) -> List[str]:
 
 
 def _verbose_callback(responses, nodes):
-    from bots.dev.cli import pretty, clean_dict
+    from bots.dev.cli import clean_dict, pretty
+
     if responses and responses[-1]:
         pretty(responses[-1])
     requests = nodes[-1].requests
@@ -313,18 +329,12 @@ def _verbose_callback(responses, nodes):
 
 
 def _remove_dummy_from_tree(node, dummy_content):
-    if hasattr(node, 'pending_tool_results'):
-        node.pending_tool_results = [
-            result for result in node.pending_tool_results
-            if result.get('content') != dummy_content
-        ]
-    
-    if hasattr(node, 'tool_results'):
-        node.tool_results = [
-            result for result in node.tool_results 
-            if result.get('content') != dummy_content
-        ]
-    
-    if hasattr(node, 'replies'):
+    if hasattr(node, "pending_tool_results"):
+        node.pending_tool_results = [result for result in node.pending_tool_results if result.get("content") != dummy_content]
+
+    if hasattr(node, "tool_results"):
+        node.tool_results = [result for result in node.tool_results if result.get("content") != dummy_content]
+
+    if hasattr(node, "replies"):
         for child in node.replies:
             _remove_dummy_from_tree(child, dummy_content)

@@ -26,9 +26,11 @@ The test suite ensures that bots can be properly serialized and
 deserialized while maintaining their complete state and functionality.
 """
 
+
 def simple_addition(x, y) -> str:
     """Returns x + y with appropriate type conversion"""
     return str(int(x) + int(y))
+
 
 class TestSaveLoadAnthropic(unittest.TestCase):
     """Test suite for AnthropicBot save and load functionality.
@@ -328,7 +330,6 @@ class TestSaveLoadAnthropic(unittest.TestCase):
                 f"Function {func_name} is not callable after two save/load cycles",
             )
 
-
     def test_callable_tool_persistence(self) -> None:
         """Test callabe-based tool persistence through multiple save/load cycles.
 
@@ -356,7 +357,8 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             Uses python_editing_tools callables as test subject and performs
             multiple save/load cycles to ensure stability
         """
-        from bots.tools.python_editing_tools import replace_class, replace_function, add_imports
+        from bots.tools.python_editing_tools import add_imports, replace_class, replace_function
+
         self.bot.add_tools(replace_class, replace_function, add_imports)
         initial_tool_count = len(self.bot.tool_handler.tools)
         initial_function_names = set(self.bot.tool_handler.function_map.keys())
@@ -375,7 +377,6 @@ class TestSaveLoadAnthropic(unittest.TestCase):
                 callable(loaded_bot2.tool_handler.function_map[func_name]),
                 f"Function {func_name} is not callable after two save/load cycles",
             )
-
 
     def test_save_load_empty_bot(self) -> None:
         """Test save/load operations on a bot with no conversation history.
@@ -787,297 +788,306 @@ class TestDebugImports(unittest.TestCase):
         self.bot = AnthropicBot(name="DebugBot", model_engine=Engines.CLAUDE35_SONNET_20240620)
 
     def tearDown(self):
-        import sys
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_simple_json_function(self):
         """Test a simple function that uses json to see what imports are captured."""
-        
+
         import json  # Import json in this scope
-        
+
         def test_json_func(data: str) -> str:
             """Test function that uses json.dumps"""
             return json.dumps({"result": data})
-        
+
         # Add the tool
         self.bot.add_tools(test_json_func)
-        
+
         # Print what got captured in the module
         module_context = list(self.bot.tool_handler.modules.values())[0]
         print("\n=== ORIGINAL SOURCE ===")
         print(module_context.source)
-        
+
         print("\n=== ENHANCED SOURCE ===")
         enhanced = self.bot.tool_handler._add_imports_to_source(module_context)
         print(enhanced)
-        
+
         # Save and reload
         save_path = os.path.join(self.temp_dir, "debug_bot")
         self.bot.save(save_path)
-        
+
         try:
             loaded_bot = Bot.load(save_path + ".bot")
             print("\n=== LOAD SUCCESSFUL ===")
-            
+
             # Try to use the tool
             response = loaded_bot.respond("Convert 'hello' to JSON")
             print(f"Response: {response}")
-            
+
         except Exception as e:
-            print(f"\n=== LOAD FAILED ===")
+            print("\\n=== LOAD FAILED ===")
             print(f"Error: {e}")
-            
+
             # Print the saved module data for debugging
             with open(save_path + ".bot", "r") as f:
                 bot_data = json.load(f)
-            
+
             for module_path, module_data in bot_data.get("modules", {}).items():
                 print(f"\n=== SAVED MODULE: {module_path} ===")
                 print(module_data["source"][:500] + "..." if len(module_data["source"]) > 500 else module_data["source"])
+        print("\n=== LOAD FAILED ===")
 
     def test_self_tools_module_investigation(self):
         """Investigate the self_tools module itself to see what's going wrong."""
-        
+
         print("\n=== DIRECT MODULE INSPECTION ===")
-        
+
         # First, let's check the module directly
         try:
             import bots.tools.self_tools as self_tools_module
+
             print(f"Module: {self_tools_module}")
             print(f"Module file: {getattr(self_tools_module, '__file__', 'No __file__')}")
-            
+
             # Check what's in the module's namespace
             module_dict = vars(self_tools_module)
             print(f"Total items in module: {len(module_dict)}")
-            
-            has_json_in_module = 'json' in module_dict
+
+            has_json_in_module = "json" in module_dict
             print(f"Has 'json' in module namespace: {has_json_in_module}")
-            
+
             if has_json_in_module:
                 print(f"json value in module: {module_dict['json']}")
             else:
                 print("JSON NOT in module namespace!")
-                
+
             # Show all non-dunder items in module
-            non_dunder = [k for k in module_dict.keys() if not k.startswith('__')]
+            non_dunder = [k for k in module_dict.keys() if not k.startswith("__")]
             print(f"Module items: {sorted(non_dunder)}")
-            
+
             # Check specifically for branch_self function
-            if hasattr(self_tools_module, 'branch_self'):
+            if hasattr(self_tools_module, "branch_self"):
                 branch_func = self_tools_module.branch_self
                 print(f"\nFound branch_self function: {branch_func}")
-                
+
                 # Check the function's globals
                 func_globals = branch_func.__globals__
                 print(f"Function's __globals__ id: {id(func_globals)}")
                 print(f"Module's namespace id: {id(module_dict)}")
                 print(f"Are they the same object? {func_globals is module_dict}")
-                
-                has_json_in_func_globals = 'json' in func_globals
+
+                has_json_in_func_globals = "json" in func_globals
                 print(f"Has 'json' in function __globals__: {has_json_in_func_globals}")
-                
+
                 if has_json_in_func_globals:
                     print(f"json in function globals: {func_globals['json']}")
                 else:
                     print("JSON NOT in function globals!")
                     # Check what IS in function globals
-                    func_non_dunder = [k for k in func_globals.keys() if not k.startswith('__')]
+                    func_non_dunder = [k for k in func_globals.keys() if not k.startswith("__")]
                     print(f"Function globals items: {sorted(func_non_dunder)}")
-                    
+
                     # Check if there are differences
                     module_keys = set(non_dunder)
                     func_keys = set(func_non_dunder)
                     only_in_module = module_keys - func_keys
                     only_in_func = func_keys - module_keys
-                    
+
                     if only_in_module:
                         print(f"Only in module (not in function globals): {sorted(only_in_module)}")
                     if only_in_func:
                         print(f"Only in function globals (not in module): {sorted(only_in_func)}")
-            
+
         except Exception as e:
             print(f"Error importing self_tools: {e}")
             import traceback
+
             traceback.print_exc()
-            
+
         # Try a different approach - import and check immediately
         print("\n=== FRESH IMPORT TEST ===")
         try:
             # Force a fresh import
             import importlib
-            if 'bots.tools.self_tools' in sys.modules:
-                importlib.reload(sys.modules['bots.tools.self_tools'])
-            
+
+            if "bots.tools.self_tools" in sys.modules:
+                importlib.reload(sys.modules["bots.tools.self_tools"])
+
             import bots.tools.self_tools as fresh_self_tools
-            
-            fresh_has_json = 'json' in vars(fresh_self_tools)
+
+            fresh_has_json = "json" in vars(fresh_self_tools)
             print(f"Fresh import has json: {fresh_has_json}")
-            
-            if hasattr(fresh_self_tools, 'branch_self'):
+
+            if hasattr(fresh_self_tools, "branch_self"):
                 fresh_branch = fresh_self_tools.branch_self
-                fresh_func_json = 'json' in fresh_branch.__globals__
+                fresh_func_json = "json" in fresh_branch.__globals__
                 print(f"Fresh function has json in globals: {fresh_func_json}")
-                
+
         except Exception as e:
             print(f"Fresh import error: {e}")
 
     def test_branch_self_globals_investigation(self):
         """Deep dive into branch_self's actual globals to see why json is missing."""
-        
+
         import bots.tools.self_tools as self_tools
-        
+
         # Check the function's globals before adding as tool
         branch_func = self_tools.branch_self
-        
+
         print("\n=== BRANCH_SELF FUNCTION GLOBALS ===")
         print(f"Function: {branch_func.__name__}")
         print(f"Module: {branch_func.__module__}")
-        
-        if hasattr(branch_func, '__globals__'):
+
+        if hasattr(branch_func, "__globals__"):
             globals_dict = branch_func.__globals__
             print(f"Total items in __globals__: {len(globals_dict)}")
-            
+
             # Check specifically for json
-            has_json = 'json' in globals_dict
+            has_json = "json" in globals_dict
             print(f"Has 'json' in __globals__: {has_json}")
-            
+
             if has_json:
                 print(f"json value: {globals_dict['json']}")
             else:
                 print("json is NOT in __globals__!")
-                
+
             # Show all non-dunder keys
-            non_dunder_keys = [k for k in globals_dict.keys() if not k.startswith('__')]
+            non_dunder_keys = [k for k in globals_dict.keys() if not k.startswith("__")]
             print(f"Non-dunder keys in __globals__: {sorted(non_dunder_keys)}")
-            
+
             # Look for anything json-related
-            json_related = [k for k in globals_dict.keys() if 'json' in k.lower()]
+            json_related = [k for k in globals_dict.keys() if "json" in k.lower()]
             print(f"JSON-related keys: {json_related}")
-        
+
         # Now add as tool and see what gets captured
         print("\n=== AFTER ADDING AS TOOL ===")
         self.bot.add_tools(branch_func)
-        
+
         module_context = list(self.bot.tool_handler.modules.values())[0]
-        namespace_dict = module_context.namespace.__dict__ if hasattr(module_context.namespace, '__dict__') else module_context.namespace
-        
+        namespace_dict = (
+            module_context.namespace.__dict__ if hasattr(module_context.namespace, "__dict__") else module_context.namespace
+        )
+
         print(f"Items captured in namespace: {len(namespace_dict)}")
-        has_json_captured = 'json' in namespace_dict
+        has_json_captured = "json" in namespace_dict
         print(f"Has 'json' in captured namespace: {has_json_captured}")
-        
+
         if not has_json_captured:
             print("JSON NOT CAPTURED! Checking what got filtered out...")
             original_globals = set(branch_func.__globals__.keys())
             captured_keys = set(namespace_dict.keys())
             missing_keys = original_globals - captured_keys
             print(f"Keys in original but missing from captured: {sorted(missing_keys)}")
-            
+
             # Check if json was in original but filtered out
-            if 'json' in missing_keys:
+            if "json" in missing_keys:
                 print(f"JSON WAS FILTERED OUT! Original value was: {branch_func.__globals__['json']}")
-        
+
         return branch_func
 
     def test_import_addition_detailed(self):
         """Deep dive into what _add_imports_to_source is actually doing."""
-        
+
         import json
-        
+
         def test_func(data: str) -> str:
             """Function that uses both json and type hints"""
             result: dict = json.loads(data)
             return json.dumps(result)
-        
+
         # Add the tool
         self.bot.add_tools(test_func)
         module_context = list(self.bot.tool_handler.modules.values())[0]
-        
+
         print("\n=== DETAILED IMPORT ANALYSIS ===")
         print(f"Original source:\n{module_context.source}")
-        
+
         # Let's manually walk through what _add_imports_to_source should do
         import ast
-        
+
         # Parse the source
         try:
             tree = ast.parse(module_context.source)
-            print(f"\nAST parsed successfully")
+            print("\\nAST parsed successfully")
         except Exception as e:
             print(f"AST parse failed: {e}")
             return
-            
+
         # Find all names used in the code
         class NameCollector(ast.NodeVisitor):
             def __init__(self):
                 self.names = set()
-                
+
             def visit_Name(self, node):
                 if isinstance(node.ctx, ast.Load):
                     self.names.add(node.id)
                 self.generic_visit(node)
-                
+
             def visit_Attribute(self, node):
                 if isinstance(node.value, ast.Name):
                     self.names.add(node.value.id)
                 self.generic_visit(node)
-        
+
         collector = NameCollector()
         collector.visit(tree)
         print(f"Names found in AST: {sorted(collector.names)}")
-        
+
         # Check what's available in namespace
         available_names = set(module_context.namespace.__dict__.keys())
         print(f"Names in namespace: {sorted(available_names)}")
-        
+
         # Find undefined names that are in namespace
         undefined_but_available = collector.names & available_names
         print(f"Undefined names that exist in namespace: {sorted(undefined_but_available)}")
-        
+
         # Now call the actual method and see what it produces
         enhanced = self.bot.tool_handler._add_imports_to_source(module_context)
         print(f"\nEnhanced source:\n{enhanced}")
-        
+
         # Check if imports were actually added
-        import_lines = [line.strip() for line in enhanced.split('\n') if line.strip().startswith('import ') or line.strip().startswith('from ')]
+        import_lines = [
+            line.strip()
+            for line in enhanced.split("\n")
+            if line.strip().startswith("import ") or line.strip().startswith("from ")
+        ]
         print(f"\nImport lines found: {import_lines}")
 
     def test_namespace_contents(self):
         """Check what's actually in the function's namespace when we capture it."""
-        
+
         import json  # Import json in this scope
-        
+
         def test_func() -> str:
             """Function that uses json"""
             return json.dumps({"test": "value"})
-        
+
         # Check what's in the function's globals before adding as tool
         print("\n=== FUNCTION GLOBALS ANALYSIS ===")
         print(f"Function name: {test_func.__name__}")
         print(f"Function module: {test_func.__module__}")
-        
-        if hasattr(test_func, '__globals__'):
+
+        if hasattr(test_func, "__globals__"):
             print("Keys in __globals__:")
             for key in sorted(test_func.__globals__.keys()):
                 value = test_func.__globals__[key]
                 print(f"  {key}: {type(value)} = {str(value)[:50]}...")
-                
+
             # Check specifically for json
-            has_json = 'json' in test_func.__globals__
+            has_json = "json" in test_func.__globals__
             print(f"\nHas 'json' in globals: {has_json}")
             if has_json:
                 print(f"json value: {test_func.__globals__['json']}")
-        
+
         # Now add as tool and see what gets captured
         self.bot.add_tools(test_func)
-        
+
         module_context = list(self.bot.tool_handler.modules.values())[0]
-        print(f"\n=== CAPTURED NAMESPACE ===")
+        print("\\n=== CAPTURED NAMESPACE ===")
         print("Keys in captured namespace:")
         for key in sorted(module_context.namespace.__dict__.keys()):
-            if not key.startswith('__'):
+            if not key.startswith("__"):
                 value = module_context.namespace.__dict__[key]
                 print(f"  {key}: {type(value)}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

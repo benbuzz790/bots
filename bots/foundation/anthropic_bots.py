@@ -68,23 +68,23 @@ class AnthropicNode(ConversationNode):
         """Add tool execution results to the conversation node.
 
         For Anthropic bots, tool results need to either be in user nodes
-        or stored as pending to be moved to the replies when a 
+        or stored as pending to be moved to the replies when a
         reply is added.
 
         Args:
             results: List of tool execution result dictionaries
         """
-        if self.role == 'user':
+        if self.role == "user":
             super()._add_tool_results(results)
             self._sync_tool_context()
         else:
             # Deduplicate: existing pending results first, then new results (new ones win)
-            existing_dict = {r.get('tool_use_id'): r for r in self.pending_results if r.get('tool_use_id')}
-            new_dict = {r.get('tool_use_id'): r for r in results if r.get('tool_use_id')}
-            
+            existing_dict = {r.get("tool_use_id"): r for r in self.pending_results if r.get("tool_use_id")}
+            new_dict = {r.get("tool_use_id"): r for r in results if r.get("tool_use_id")}
+
             # Merge with new results taking priority
             merged_dict = {**existing_dict, **new_dict}
-            
+
             self.pending_results = list(merged_dict.values())
 
     def _build_messages(self) -> List[Dict[str, Any]]:
@@ -101,7 +101,7 @@ class AnthropicNode(ConversationNode):
         node = self
         conversation_dict = []
         while node:
-            #node._sync_tool_context() Don't sync here either
+            # node._sync_tool_context() Don't sync here either
             if not node._is_empty():
                 entry = {"role": node.role}
                 content_list = [{"type": "text", "text": node.content}]
@@ -338,7 +338,6 @@ class AnthropicMailbox(Mailbox):
         print("mailbox send error")
         raise Exception("Max retries reached. Unable to send message.")
 
-
     def process_response(self, response: Dict[str, Any], bot: "AnthropicBot") -> Tuple[str, str, Dict[str, Any]]:
         """Process the API response and handle incomplete responses.
 
@@ -358,7 +357,7 @@ class AnthropicMailbox(Mailbox):
         Raises:
             anthropic.BadRequestError: If the API returns a 400 error
         """
-        print('process response called')
+        print("process response called")
         try:
 
             def should_continue(response) -> bool:
@@ -371,8 +370,8 @@ class AnthropicMailbox(Mailbox):
                     bool: True if the response was truncated and contains no
                     tool calls
                 """
-                return False # FEATURE DISABLED - some weird interaction with max_tokens and
-                             # the new api makes this hang indefinitely
+                return False  # FEATURE DISABLED - some weird interaction with max_tokens and
+                # the new api makes this hang indefinitely
                 return response.stop_reason == "max_tokens" and any(
                     isinstance(block, anthropic.types.ToolUseBlock) for block in response.content
                 )
@@ -396,11 +395,11 @@ class AnthropicMailbox(Mailbox):
             response_text: str = getattr(response.content[0], "text", "~")
         except anthropic.BadRequestError as e:
             if e.status_code == 400:
-                print('process response 400 error')
+                print("process response 400 error")
                 pass
-            print('process response error')
+            print("process response error")
             raise e
-        print('process response returned')
+        print("process response returned")
         return (response_text, response_role, {})
 
 

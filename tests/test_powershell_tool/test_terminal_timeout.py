@@ -1,7 +1,6 @@
 import os
 import shutil
 import tempfile
-import textwrap
 import time
 import unittest
 
@@ -113,7 +112,9 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
     def test_here_string_with_special_chars(self):
         """Test here-string with special characters"""
         print("\n=== Testing Here-String with Special Characters ===")
-        command = "@'\nSpecial chars: \"quotes\" and 'apostrophes'\nUnicode: café résumé naïve\nSymbols: $variable @array %hash\n'@"
+        command = (
+            "@'\nSpecial chars: \"quotes\" and 'apostrophes'\nUnicode: café résumé naïve\nSymbols: $variable @array %hash\n'@"
+        )
         session = PowerShellSession()
         with session:
             start_time = time.time()

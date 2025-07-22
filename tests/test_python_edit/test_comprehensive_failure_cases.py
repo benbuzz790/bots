@@ -1,13 +1,15 @@
 import os
 import tempfile
 from textwrap import dedent
+
 from bots.tools.python_edit import python_edit
-import pytest
+
 
 def setup_test_file(content):
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(dedent(content))
         return f.name
+
 
 def test_comprehensive_failure_cases():
     """Test all the major failure cases discovered during testing"""
@@ -34,5 +36,7 @@ def test_comprehensive_failure_cases():
     finally:
         if os.path.exists(test_file1):
             os.unlink(test_file1)
+
+
 if __name__ == "__main__":
     test_comprehensive_failure_cases()

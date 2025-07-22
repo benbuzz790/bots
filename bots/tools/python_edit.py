@@ -11,6 +11,43 @@ import libcst as cst
 from typing import Optional, Union, List, Tuple
 from bots.utils.helpers import _process_error
 
+
+def _make_file(file_path: str) -> str:
+    """
+    Create a file and its parent directories if they don't exist.
+
+    Parameters:
+    -----------
+    file_path : str
+        Path to the file to create
+
+    Returns:
+    --------
+    str
+        Absolute path to the created/existing file
+
+    Raises:
+    -------
+    ValueError
+        If there's an error creating the file or directories
+    """
+    if not file_path:
+        raise ValueError('File path cannot be empty')
+    abs_path = os.path.abspath(file_path)
+    dir_path = os.path.dirname(abs_path)
+    if dir_path:
+        try:
+            os.makedirs(dir_path, exist_ok=True)
+        except Exception as e:
+            raise ValueError(f'Error creating directories {dir_path}: {str(e)}')
+    if not os.path.exists(abs_path):
+        try:
+            with open(abs_path, 'w', encoding='utf-8') as f:
+                f.write('')
+        except Exception as e:
+            raise ValueError(f'Error creating file {abs_path}: {str(e)}')
+    return abs_path
+
 def _read_file_bom_safe(file_path: str) -> str:
     """Read a file with BOM protection."""
     with open(file_path, 'r', encoding='utf-8') as file:
@@ -66,7 +103,7 @@ class ScopeViewer(ast.NodeVisitor):
             pass
         else:
             return
-# TokenType enum removed - tokenization system eliminated in favor of native CST handling
+
 class ScopeTransformer(ast.NodeTransformer):
     """AST transformer that handles scope-based Python code modifications."""
 
@@ -284,41 +321,132 @@ class ScopeTransformer(ast.NodeTransformer):
             pattern_normalized = '\n'.join((line.rstrip() for line in pattern_lines))
             return source_normalized.strip() == pattern_normalized.strip()
 
-def _make_file(file_path: str) -> str:
+
+class GenericPatternInserter(cst.CSTTransformer):
     """
-    Create a file and its parent directories if they don't exist.
-
-    Parameters:
-    -----------
-    file_path : str
-        Path to the file to create
-
-    Returns:
-    --------
-    str
-        Absolute path to the created/existing file
-
-    Raises:
-    -------
-    ValueError
-        If there's an error creating the file or directories
+    Generic CST transformer that can insert code after any pattern,
+    regardless of node type or nesting level.
     """
-    if not file_path:
-        raise ValueError('File path cannot be empty')
-    abs_path = os.path.abspath(file_path)
-    dir_path = os.path.dirname(abs_path)
-    if dir_path:
-        try:
-            os.makedirs(dir_path, exist_ok=True)
-        except Exception as e:
-            raise ValueError(f'Error creating directories {dir_path}: {str(e)}')
-    if not os.path.exists(abs_path):
-        try:
-            with open(abs_path, 'w', encoding='utf-8') as f:
-                f.write('')
-        except Exception as e:
-            raise ValueError(f'Error creating file {abs_path}: {str(e)}')
-    return abs_path
+
+    def __init__(self, pattern: str, new_nodes: List[cst.CSTNode], module: cst.Module):
+        self.pattern = pattern.strip()
+        self.new_nodes = new_nodes
+        self.module = module
+        self.modified = False
+        self.pattern_lines = self.pattern.split('\n')
+        self.is_multiline = len(self.pattern_lines) > 1
+
+    def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
+        """Handle the module level."""
+        new_body = self._process_statement_list(updated_node.body)
+        if self.modified:
+            return updated_node.with_changes(body=new_body)
+        return updated_node
+
+    def leave_If(self, original_node: cst.If, updated_node: cst.If) -> cst.If:
+        """Handle If statements."""
+        if hasattr(updated_node.body, 'body'):
+            new_body_list = self._process_statement_list(updated_node.body.body)
+            if self.modified:
+                new_body = updated_node.body.with_changes(body=new_body_list)
+                return updated_node.with_changes(body=new_body)
+        return updated_node
+
+    def leave_FunctionDef(self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef) -> cst.FunctionDef:
+        """Handle function definitions."""
+        if hasattr(updated_node.body, 'body'):
+            new_body_list = self._process_statement_list(updated_node.body.body)
+            if self.modified:
+                new_body = updated_node.body.with_changes(body=new_body_list)
+                return updated_node.with_changes(body=new_body)
+        return updated_node
+
+    def leave_ClassDef(self, original_node: cst.ClassDef, updated_node: cst.ClassDef) -> cst.ClassDef:
+        """Handle class definitions."""
+        if hasattr(updated_node.body, 'body'):
+            new_body_list = self._process_statement_list(updated_node.body.body)
+            if self.modified:
+                new_body = updated_node.body.with_changes(body=new_body_list)
+                return updated_node.with_changes(body=new_body)
+        return updated_node
+
+    def leave_For(self, original_node: cst.For, updated_node: cst.For) -> cst.For:
+        """Handle For loops."""
+        if hasattr(updated_node.body, 'body'):
+            new_body_list = self._process_statement_list(updated_node.body.body)
+            if self.modified:
+                new_body = updated_node.body.with_changes(body=new_body_list)
+                return updated_node.with_changes(body=new_body)
+        return updated_node
+
+    def leave_While(self, original_node: cst.While, updated_node: cst.While) -> cst.While:
+        """Handle While loops."""
+        if hasattr(updated_node.body, 'body'):
+            new_body_list = self._process_statement_list(updated_node.body.body)
+            if self.modified:
+                new_body = updated_node.body.with_changes(body=new_body_list)
+                return updated_node.with_changes(body=new_body)
+        return updated_node
+
+    def leave_With(self, original_node: cst.With, updated_node: cst.With) -> cst.With:
+        """Handle With statements."""
+        if hasattr(updated_node.body, 'body'):
+            new_body_list = self._process_statement_list(updated_node.body.body)
+            if self.modified:
+                new_body = updated_node.body.with_changes(body=new_body_list)
+                return updated_node.with_changes(body=new_body)
+        return updated_node
+
+    def leave_Try(self, original_node: cst.Try, updated_node: cst.Try) -> cst.Try:
+        """Handle Try statements."""
+        if hasattr(updated_node.body, 'body'):
+            new_body_list = self._process_statement_list(updated_node.body.body)
+            if self.modified:
+                new_body = updated_node.body.with_changes(body=new_body_list)
+                return updated_node.with_changes(body=new_body)
+        return updated_node
+    def _process_statement_list(self, statements: List[cst.CSTNode]) -> List[cst.CSTNode]:
+        """Process a list of statements, inserting after pattern matches."""
+        new_statements = []
+
+        for stmt in statements:
+            new_statements.append(stmt)
+
+            # Get the source code for this statement
+            try:
+                stmt_code = self.module.code_for_node(stmt).strip()
+            except Exception:
+                continue
+
+            # Check if this statement matches our pattern
+            if self._matches_pattern(stmt_code):
+                new_statements.extend(self.new_nodes)
+                self.modified = True
+                break  # Only insert after the first match to avoid duplicates
+
+        return new_statements
+    def _matches_pattern(self, stmt_code: str) -> bool:
+        """Check if statement code matches the pattern."""
+        if self.is_multiline:
+            # For multiline patterns, do structural comparison
+            stmt_lines = stmt_code.split('\n')
+            if len(stmt_lines) < len(self.pattern_lines):
+                return False
+
+            # Compare structure and content (simplified version)
+            for i, pattern_line in enumerate(self.pattern_lines):
+                if i >= len(stmt_lines):
+                    return False
+                if pattern_line.strip() not in stmt_lines[i]:
+                    return False
+            return True
+        else:
+            # Single line: exact match or starts-with
+            pattern_stripped = self.pattern_lines[0].strip()
+            stmt_stripped = stmt_code.strip()
+            return (stmt_stripped == pattern_stripped or 
+                    stmt_stripped.startswith(pattern_stripped))
+
 
 class ScopeFinder(cst.CSTVisitor):
     """
@@ -447,12 +575,14 @@ class ScopeReplacer(cst.CSTTransformer):
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
         """Track when entering a function."""
         self.current_path.append(node.name.value)
+    
     def leave_FunctionDef(self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef) -> cst.FunctionDef:
         """Handle leaving a function definition."""
         result = self._handle_scope_node(original_node, updated_node)
         if self.current_path and self.current_path[-1] == original_node.name.value:
             self.current_path.pop()
         return result
+
     def _handle_scope_node(self, original_node: Union[cst.ClassDef, cst.FunctionDef], updated_node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef]:
         """Common logic for handling scope nodes."""
         if self.current_path == self.path_elements:
@@ -521,155 +651,6 @@ class ScopeReplacer(cst.CSTTransformer):
         else:
             return self._insert_after_named_scope(node)
     
-    def _insert_after_expression(self, node: Union[cst.ClassDef, cst.FunctionDef], pattern: str) -> Union[cst.ClassDef, cst.FunctionDef]:
-        """Insert code after a line matching the expression pattern within the scope."""
-        if isinstance(node, (cst.FunctionDef, cst.ClassDef)):
-            body = node.body
-            if isinstance(body, cst.IndentedBlock):
-                new_body_nodes = []
-                pattern_found = False
-                pattern_lines = pattern.split('\n')
-                is_multiline = len(pattern_lines) > 1
-                for i, stmt in enumerate(body.body):
-                    new_body_nodes.append(stmt)
-                    if self.module:
-                        try:
-                            stmt_code = self.module.code_for_node(stmt)
-                        except:
-                            temp_module = cst.Module(body=[stmt])
-                            stmt_code = temp_module.code
-                    else:
-                        temp_module = cst.Module(body=[stmt])
-                        stmt_code = temp_module.code
-                    stmt_code = stmt_code.rstrip('\n')
-                    if is_multiline:
-                        stmt_lines = stmt_code.split('\n')
-                        if len(stmt_lines) >= len(pattern_lines):
-
-                            def get_structure_and_content(lines):
-                                """Get relative indentation structure and content"""
-                                result = []
-                                indent_levels = []
-                                for line in lines:
-                                    if line.strip():
-                                        indent = len(line) - len(line.lstrip())
-                                        indent_levels.append(indent)
-                                unique_levels = sorted(set(indent_levels)) if indent_levels else [0]
-                                for line in lines:
-                                    if line.strip():
-                                        indent = len(line) - len(line.lstrip())
-                                        level = unique_levels.index(indent)
-                                        content = line.strip()
-                                        result.append((level, content))
-                                    else:
-                                        result.append((0, ''))
-                                return result
-                            pattern_structure = get_structure_and_content(pattern_lines)
-                            stmt_prefix_lines = stmt_lines[:len(pattern_lines)]
-                            stmt_structure = get_structure_and_content(stmt_prefix_lines)
-                            if pattern_structure == stmt_structure:
-                                pattern_found = True
-                    else:
-                        pattern_stripped = pattern.strip()
-                        stmt_code_stripped = stmt_code.strip()
-                        if pattern_stripped in stmt_code_stripped or stmt_code_stripped.startswith(pattern_stripped):
-                            pattern_found = True
-                    if pattern_found:
-                        if self.new_code:
-                            new_code_str = self.new_code.code.strip()
-                            if new_code_str.startswith('#') or new_code_str.startswith('    #'):
-                                comment_stmt = _create_statement_with_comment(new_code_str)
-                                new_body_nodes.append(comment_stmt)
-                            elif hasattr(self.new_code, 'body'):
-                                for new_stmt in self.new_code.body:
-                                    new_body_nodes.append(new_stmt)
-                            else:
-                                new_body_nodes.append(self.new_code)
-                        pattern_found = False
-                        self.modified = True
-                if self.modified:
-                    new_body = body.with_changes(body=new_body_nodes)
-                    return node.with_changes(body=new_body)
-        return node
-
-    def _handle_insertion(self, node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef]:
-        """Handle inserting code after a specific element within a scope."""
-        if (self.insert_after.startswith('"') and self.insert_after.endswith('"')) or (self.insert_after.startswith("'") and self.insert_after.endswith("'")):
-            pattern = self.insert_after[1:-1]
-            return self._insert_after_expression(node, pattern)
-        else:
-            return self._insert_after_named_scope(node)
-    
-    def _insert_after_expression(self, node: Union[cst.ClassDef, cst.FunctionDef], pattern: str) -> Union[cst.ClassDef, cst.FunctionDef]:
-        """Insert code after a line matching the expression pattern within the scope."""
-        if isinstance(node, (cst.FunctionDef, cst.ClassDef)):
-            body = node.body
-            if isinstance(body, cst.IndentedBlock):
-                new_body_nodes = []
-                pattern_found = False
-                pattern_lines = pattern.split('\n')
-                is_multiline = len(pattern_lines) > 1
-                for i, stmt in enumerate(body.body):
-                    new_body_nodes.append(stmt)
-                    if self.module:
-                        try:
-                            stmt_code = self.module.code_for_node(stmt)
-                        except:
-                            temp_module = cst.Module(body=[stmt])
-                            stmt_code = temp_module.code
-                    else:
-                        temp_module = cst.Module(body=[stmt])
-                        stmt_code = temp_module.code
-                    stmt_code = stmt_code.rstrip('\n')
-                    if is_multiline:
-                        stmt_lines = stmt_code.split('\n')
-                        if len(stmt_lines) >= len(pattern_lines):
-
-                            def get_structure_and_content(lines):
-                                """Get relative indentation structure and content"""
-                                result = []
-                                indent_levels = []
-                                for line in lines:
-                                    if line.strip():
-                                        indent = len(line) - len(line.lstrip())
-                                        indent_levels.append(indent)
-                                unique_levels = sorted(set(indent_levels)) if indent_levels else [0]
-                                for line in lines:
-                                    if line.strip():
-                                        indent = len(line) - len(line.lstrip())
-                                        level = unique_levels.index(indent)
-                                        content = line.strip()
-                                        result.append((level, content))
-                                    else:
-                                        result.append((0, ''))
-                                return result
-                            pattern_structure = get_structure_and_content(pattern_lines)
-                            stmt_prefix_lines = stmt_lines[:len(pattern_lines)]
-                            stmt_structure = get_structure_and_content(stmt_prefix_lines)
-                            if pattern_structure == stmt_structure:
-                                pattern_found = True
-                    else:
-                        pattern_stripped = pattern.strip()
-                        stmt_code_stripped = stmt_code.strip()
-                        if pattern_stripped in stmt_code_stripped or stmt_code_stripped.startswith(pattern_stripped):
-                            pattern_found = True
-                    if pattern_found:
-                        if self.new_code:
-                            new_code_str = self.new_code.code.strip()
-                            if new_code_str.startswith('#') or new_code_str.startswith('    #'):
-                                comment_stmt = _create_statement_with_comment(new_code_str)
-                                new_body_nodes.append(comment_stmt)
-                            elif hasattr(self.new_code, 'body'):
-                                for new_stmt in self.new_code.body:
-                                    new_body_nodes.append(new_stmt)
-                            else:
-                                new_body_nodes.append(self.new_code)
-                        pattern_found = False
-                        self.modified = True
-                if self.modified:
-                    new_body = body.with_changes(body=new_body_nodes)
-                    return node.with_changes(body=new_body)
-        return node    
     def _insert_after_expression(self, node: Union[cst.ClassDef, cst.FunctionDef], pattern: str) -> Union[cst.ClassDef, cst.FunctionDef]:
         """Insert code after a line matching the expression pattern within the scope."""
         if isinstance(node, (cst.FunctionDef, cst.ClassDef)):
@@ -934,12 +915,105 @@ def python_edit(target_scope: str, code: str, *, insert_after: str=None) -> str:
     except Exception as e:
         return _process_error(e)
 
+def _create_statement_with_comment(comment_text: str, indent_level: int=0) -> cst.SimpleStatementLine:
+    """
+    Create a statement that contains just a comment.
+    Since LibCST requires statements to have actual code, we create a pass statement
+    with a trailing comment.
+    """
+    lines = comment_text.strip().split('\n')
+    if len(lines) > 1:
+        comment_text = lines[0]
+    comment_text = comment_text.strip()
+    if comment_text.startswith('#'):
+        comment_text = comment_text[1:].strip()
+    comment = cst.Comment(f'# {comment_text}')
+    return cst.SimpleStatementLine(body=[cst.Pass()], trailing_whitespace=cst.TrailingWhitespace(whitespace=cst.SimpleWhitespace('  '), comment=comment))
+
+def _apply_scope_aware_truncation(source_code: str, max_lines: int) -> str:
+    '''Apply scope-aware truncation to Python source code.'''
+    if not source_code.strip():
+        return source_code
+    lines = source_code.splitlines()
+    if len(lines) <= max_lines:
+        return source_code
+
+    import ast
+    tree = ast.parse(source_code)
+
+    # Create scope-aware outline
+    scope_entries = []
+    _collect_scope_entries(tree, scope_entries, 0)
+
+    # Try progressive truncation by scope depth
+    max_depth = max((entry['depth'] for entry in scope_entries), default=0)
+    for current_depth_limit in range(max_depth, -1, -1):
+        result_lines = _create_outline_view(scope_entries, current_depth_limit, lines)
+        if len(result_lines) <= max_lines:
+            return '\n'.join(result_lines)
+
+    # No fallback - if we can't fit it, return the most aggressive truncation
+    result_lines = _create_outline_view(scope_entries, 0, lines)
+    if len(result_lines) > max_lines:
+        result_lines = result_lines[:max_lines]
+    return '\n'.join(result_lines)
+
+def _collect_scope_entries(node, entries, depth):
+    '''Collect information about scopes (classes, functions) in the AST.'''
+    import ast
+    for child in ast.iter_child_nodes(node):
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            start_line = child.lineno - 1  # Convert to 0-based
+            end_line = child.end_lineno - 1 if child.end_lineno else start_line
+            entries.append({
+                'type': type(child).__name__,
+                'name': child.name,
+                'start_line': start_line,
+                'end_line': end_line,
+                'depth': depth
+            })
+            # Recursively collect nested scopes
+            _collect_scope_entries(child, entries, depth + 1)
+
+def _create_outline_view(scope_entries, max_depth, lines):
+    '''Create an outline view by truncating scopes deeper than max_depth.'''
+    result_lines = lines.copy()
+
+    # Find scopes that should be truncated (deeper than max_depth)
+    scopes_to_truncate = [
+        entry for entry in scope_entries 
+        if entry['depth'] > max_depth and entry['start_line'] < len(lines)
+    ]
+
+    # Sort by start line in reverse order to avoid index shifting issues
+    scopes_to_truncate.sort(key=lambda x: x['start_line'], reverse=True)
+
+    for entry in scopes_to_truncate:
+        start_line = entry['start_line']
+        end_line = min(entry['end_line'], len(result_lines) - 1)
+
+        if start_line >= len(result_lines) or start_line > end_line:
+            continue
+
+        # Keep the definition line and add truncation indicator
+        if start_line < len(result_lines):
+            def_line = result_lines[start_line]
+            indent = len(def_line) - len(def_line.lstrip())
+            truncation_line = ' ' * (indent + 4) + '...'
+
+            # Replace the body with just the truncation indicator
+            if start_line + 1 <= end_line:
+                result_lines[start_line + 1:end_line + 1] = [truncation_line]
+
+    return result_lines
+
 def _handle_file_start_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module) -> str:
     """Handle insertion at the beginning of a file."""
     new_body = list(new_module.body) + list(tree.body)
     modified_tree = tree.with_changes(body=new_body)
     _write_file_bom_safe(abs_path, modified_tree.code)
     return f"Code inserted at start of '{abs_path}'."
+
 def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module, insert_after: str) -> str:
     """Handle insertion at file level after a specific pattern."""
     # Remove quotes if present - GenericPatternInserter handles all patterns uniformly
@@ -987,218 +1061,3 @@ def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cs
         return _process_error(ValueError(f'Insert point not found at file level: {insert_after}'))
     _write_file_bom_safe(abs_path, modified_tree.code)
     return f"Code inserted after '{insert_after}' in '{abs_path}'."
-
-class GenericPatternInserter(cst.CSTTransformer):
-    """
-    Generic CST transformer that can insert code after any pattern,
-    regardless of node type or nesting level.
-    """
-
-    def __init__(self, pattern: str, new_nodes: List[cst.CSTNode], module: cst.Module):
-        self.pattern = pattern.strip()
-        self.new_nodes = new_nodes
-        self.module = module
-        self.modified = False
-        self.pattern_lines = self.pattern.split('\n')
-        self.is_multiline = len(self.pattern_lines) > 1
-
-    def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
-        """Handle the module level."""
-        new_body = self._process_statement_list(updated_node.body)
-        if self.modified:
-            return updated_node.with_changes(body=new_body)
-        return updated_node
-
-    def leave_If(self, original_node: cst.If, updated_node: cst.If) -> cst.If:
-        """Handle If statements."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
-        return updated_node
-
-    def leave_FunctionDef(self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef) -> cst.FunctionDef:
-        """Handle function definitions."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
-        return updated_node
-
-    def leave_ClassDef(self, original_node: cst.ClassDef, updated_node: cst.ClassDef) -> cst.ClassDef:
-        """Handle class definitions."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
-        return updated_node
-
-    def leave_For(self, original_node: cst.For, updated_node: cst.For) -> cst.For:
-        """Handle For loops."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
-        return updated_node
-
-    def leave_While(self, original_node: cst.While, updated_node: cst.While) -> cst.While:
-        """Handle While loops."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
-        return updated_node
-
-    def leave_With(self, original_node: cst.With, updated_node: cst.With) -> cst.With:
-        """Handle With statements."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
-        return updated_node
-
-    def leave_Try(self, original_node: cst.Try, updated_node: cst.Try) -> cst.Try:
-        """Handle Try statements."""
-        if hasattr(updated_node.body, 'body'):
-            new_body_list = self._process_statement_list(updated_node.body.body)
-            if self.modified:
-                new_body = updated_node.body.with_changes(body=new_body_list)
-                return updated_node.with_changes(body=new_body)
-        return updated_node
-    def _process_statement_list(self, statements: List[cst.CSTNode]) -> List[cst.CSTNode]:
-        """Process a list of statements, inserting after pattern matches."""
-        new_statements = []
-
-        for stmt in statements:
-            new_statements.append(stmt)
-
-            # Get the source code for this statement
-            try:
-                stmt_code = self.module.code_for_node(stmt).strip()
-            except Exception:
-                continue
-
-            # Check if this statement matches our pattern
-            if self._matches_pattern(stmt_code):
-                new_statements.extend(self.new_nodes)
-                self.modified = True
-                break  # Only insert after the first match to avoid duplicates
-
-        return new_statements
-    def _matches_pattern(self, stmt_code: str) -> bool:
-        """Check if statement code matches the pattern."""
-        if self.is_multiline:
-            # For multiline patterns, do structural comparison
-            stmt_lines = stmt_code.split('\n')
-            if len(stmt_lines) < len(self.pattern_lines):
-                return False
-
-            # Compare structure and content (simplified version)
-            for i, pattern_line in enumerate(self.pattern_lines):
-                if i >= len(stmt_lines):
-                    return False
-                if pattern_line.strip() not in stmt_lines[i]:
-                    return False
-            return True
-        else:
-            # Single line: exact match or starts-with
-            pattern_stripped = self.pattern_lines[0].strip()
-            stmt_stripped = stmt_code.strip()
-            return (stmt_stripped == pattern_stripped or 
-                    stmt_stripped.startswith(pattern_stripped))
-# ExpressionInserter class removed - functionality merged into GenericPatternInserter
-def _create_statement_with_comment(comment_text: str, indent_level: int=0) -> cst.SimpleStatementLine:
-    """
-    Create a statement that contains just a comment.
-    Since LibCST requires statements to have actual code, we create a pass statement
-    with a trailing comment.
-    """
-    lines = comment_text.strip().split('\n')
-    if len(lines) > 1:
-        comment_text = lines[0]
-    comment_text = comment_text.strip()
-    if comment_text.startswith('#'):
-        comment_text = comment_text[1:].strip()
-    comment = cst.Comment(f'# {comment_text}')
-    return cst.SimpleStatementLine(body=[cst.Pass()], trailing_whitespace=cst.TrailingWhitespace(whitespace=cst.SimpleWhitespace('  '), comment=comment))
-def _apply_scope_aware_truncation(source_code: str, max_lines: int) -> str:
-    '''Apply scope-aware truncation to Python source code.'''
-    if not source_code.strip():
-        return source_code
-    lines = source_code.splitlines()
-    if len(lines) <= max_lines:
-        return source_code
-
-    import ast
-    tree = ast.parse(source_code)
-
-    # Create scope-aware outline
-    scope_entries = []
-    _collect_scope_entries(tree, scope_entries, 0)
-
-    # Try progressive truncation by scope depth
-    max_depth = max((entry['depth'] for entry in scope_entries), default=0)
-    for current_depth_limit in range(max_depth, -1, -1):
-        result_lines = _create_outline_view(scope_entries, current_depth_limit, lines)
-        if len(result_lines) <= max_lines:
-            return '\n'.join(result_lines)
-
-    # No fallback - if we can't fit it, return the most aggressive truncation
-    result_lines = _create_outline_view(scope_entries, 0, lines)
-    if len(result_lines) > max_lines:
-        result_lines = result_lines[:max_lines]
-    return '\n'.join(result_lines)
-
-def _collect_scope_entries(node, entries, depth):
-    '''Collect information about scopes (classes, functions) in the AST.'''
-    import ast
-    for child in ast.iter_child_nodes(node):
-        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            start_line = child.lineno - 1  # Convert to 0-based
-            end_line = child.end_lineno - 1 if child.end_lineno else start_line
-            entries.append({
-                'type': type(child).__name__,
-                'name': child.name,
-                'start_line': start_line,
-                'end_line': end_line,
-                'depth': depth
-            })
-            # Recursively collect nested scopes
-            _collect_scope_entries(child, entries, depth + 1)
-def _create_outline_view(scope_entries, max_depth, lines):
-    '''Create an outline view by truncating scopes deeper than max_depth.'''
-    result_lines = lines.copy()
-
-    # Find scopes that should be truncated (deeper than max_depth)
-    scopes_to_truncate = [
-        entry for entry in scope_entries 
-        if entry['depth'] > max_depth and entry['start_line'] < len(lines)
-    ]
-
-    # Sort by start line in reverse order to avoid index shifting issues
-    scopes_to_truncate.sort(key=lambda x: x['start_line'], reverse=True)
-
-    for entry in scopes_to_truncate:
-        start_line = entry['start_line']
-        end_line = min(entry['end_line'], len(result_lines) - 1)
-
-        if start_line >= len(result_lines) or start_line > end_line:
-            continue
-
-        # Keep the definition line and add truncation indicator
-        if start_line < len(result_lines):
-            def_line = result_lines[start_line]
-            indent = len(def_line) - len(def_line.lstrip())
-            truncation_line = ' ' * (indent + 4) + '...'
-
-            # Replace the body with just the truncation indicator
-            if start_line + 1 <= end_line:
-                result_lines[start_line + 1:end_line + 1] = [truncation_line]
-
-    return result_lines

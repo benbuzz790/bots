@@ -2,7 +2,6 @@ import codecs
 import glob
 import os
 import subprocess
-import textwrap
 import threading
 import time
 import traceback
@@ -10,15 +9,66 @@ from datetime import datetime
 from queue import Empty, Queue
 from threading import Lock, Thread, local
 from typing import Dict, Generator, List
+
 from bots.dev.decorators import handle_errors, log_errors
+
 
 class BOMRemover:
     """
     Utility class for removing BOMs from files automatically.
     Integrated into PowerShell execution pipeline.
     """
-    TEXT_EXTENSIONS = {".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".htm", ".css", ".scss", ".sass", ".json", ".xml", ".yaml", ".yml", ".md", ".txt", ".csv", ".sql", ".sh", ".ps1", ".bat", ".cmd", ".ini", ".cfg", ".conf", ".log", ".gitignore", ".gitattributes", ".dockerignore", ".editorconfig", ".env", ".properties", ".toml", ".lock"}
-    SKIP_DIRS = {".git", ".svn", ".hg", "__pycache__", "node_modules", ".vscode", ".idea", ".pytest_cache", ".mypy_cache", "venv", ".venv", "env"}
+
+    TEXT_EXTENSIONS = {
+        ".py",
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".html",
+        ".htm",
+        ".css",
+        ".scss",
+        ".sass",
+        ".json",
+        ".xml",
+        ".yaml",
+        ".yml",
+        ".md",
+        ".txt",
+        ".csv",
+        ".sql",
+        ".sh",
+        ".ps1",
+        ".bat",
+        ".cmd",
+        ".ini",
+        ".cfg",
+        ".conf",
+        ".log",
+        ".gitignore",
+        ".gitattributes",
+        ".dockerignore",
+        ".editorconfig",
+        ".env",
+        ".properties",
+        ".toml",
+        ".lock",
+    }
+    SKIP_DIRS = {
+        ".git",
+        ".svn",
+        ".hg",
+        "__pycache__",
+        "node_modules",
+        ".vscode",
+        ".idea",
+        ".pytest_cache",
+        ".mypy_cache",
+        "venv",
+        ".venv",
+        "env",
+    }
 
     @staticmethod
     def should_process_file(file_path: str) -> bool:
@@ -56,7 +106,7 @@ class BOMRemover:
                 content = file.read()
             if content.startswith(codecs.BOM_UTF8):
                 with open(file_path, "wb") as file:
-                    file.write(content[len(codecs.BOM_UTF8):])
+                    file.write(content[len(codecs.BOM_UTF8) :])
                 print(f"[BOM] Removed BOM from: {file_path}")
                 return True
         except Exception as e:
@@ -64,7 +114,7 @@ class BOMRemover:
         return False
 
     @staticmethod
-    def remove_bom_from_directory(directory: str, recursive: bool=True) -> int:
+    def remove_bom_from_directory(directory: str, recursive: bool = True) -> int:
         """
         Remove BOMs from all eligible files in a directory.
 
@@ -115,9 +165,10 @@ class BOMRemover:
             print(f"[BOM] Error processing pattern {pattern}: {str(e)}")
         return bom_count
 
+
 @log_errors
 @handle_errors
-def execute_powershell(command: str, output_length_limit: str="1000", timeout: str="60") -> str:
+def execute_powershell(command: str, output_length_limit: str = "1000", timeout: str = "60") -> str:
     """
     Executes PowerShell commands in a stateful environment with automatic BOM removal
 
@@ -142,6 +193,7 @@ def execute_powershell(command: str, output_length_limit: str="1000", timeout: s
     output = "".join(manager.execute(command, int(output_length_limit), float(timeout)))
     return output
 
+
 class PowerShellSession:
     """
     Manages a persistent PowerShell process for stateful command execution.
@@ -152,7 +204,7 @@ class PowerShellSession:
     Now includes automatic BOM removal after file operations.
     """
 
-    def __init__(self, timeout: float=300):
+    def __init__(self, timeout: float = 300):
         self._process = None
         self._command_counter = 0
         self._output_queue = Queue()
@@ -174,15 +226,40 @@ class PowerShellSession:
                     queue.put(line.rstrip("\n\r"))
             finally:
                 queue.put(None)
-        self._reader_threads = [Thread(target=reader_thread, args=(self._process.stdout, self._output_queue), daemon=True), Thread(target=reader_thread, args=(self._process.stderr, self._error_queue), daemon=True)]
+
+        self._reader_threads = [
+            Thread(target=reader_thread, args=(self._process.stdout, self._output_queue), daemon=True),
+            Thread(target=reader_thread, args=(self._process.stderr, self._error_queue), daemon=True),
+        ]
         for thread in self._reader_threads:
             thread.start()
 
     def __enter__(self):
         if not self._process:
-            self._process = subprocess.Popen(["powershell", "-NoProfile", "-NoLogo", "-NonInteractive", "-Command", "-"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=self.startupinfo, encoding="utf-8", errors="replace", bufsize=1)
+            self._process = subprocess.Popen(
+                ["powershell", "-NoProfile", "-NoLogo", "-NonInteractive", "-Command", "-"],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                startupinfo=self.startupinfo,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+            )
             self._start_reader_threads()
-            init_commands = ["$VerbosePreference='SilentlyContinue'", "$DebugPreference='SilentlyContinue'", "$ProgressPreference='SilentlyContinue'", "$WarningPreference='SilentlyContinue'", "$ErrorActionPreference='Stop'", "function prompt { '' }", "$PSDefaultParameterValues['*:Encoding']='utf8NoBOM'", '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8', '[Console]::InputEncoding=[System.Text.Encoding]::UTF8', '$OutputEncoding=[System.Text.Encoding]::UTF8', "$env:PYTHONIOENCODING='utf-8'", """
+            init_commands = [
+                "$VerbosePreference='SilentlyContinue'",
+                "$DebugPreference='SilentlyContinue'",
+                "$ProgressPreference='SilentlyContinue'",
+                "$WarningPreference='SilentlyContinue'",
+                "$ErrorActionPreference='Stop'",
+                "function prompt { '' }",
+                "$PSDefaultParameterValues['*:Encoding']='utf8NoBOM'",
+                "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8",
+                "[Console]::InputEncoding=[System.Text.Encoding]::UTF8",
+                "$OutputEncoding=[System.Text.Encoding]::UTF8",
+                "$env:PYTHONIOENCODING='utf-8'",
+                """
             function Invoke-SafeCommand {
                 param([string]$Command)
                 try {
@@ -193,7 +270,8 @@ class PowerShellSession:
                     return $false
                 }
             }
-                            """.strip()]
+                            """.strip(),
+            ]
             for cmd in init_commands:
                 self._process.stdin.write(cmd + "\n")
             self._process.stdin.flush()
@@ -223,7 +301,20 @@ class PowerShellSession:
             List of detected file operations/patterns
         """
         file_operations = []
-        write_cmdlets = ["Out-File", "Set-Content", "Add-Content", "Export-Csv", "Export-Clixml", "Export-Json", "Tee-Object", "Start-Transcript", "ConvertTo-Json", "ConvertTo-Csv", "ConvertTo-Html", "ConvertTo-Xml"]
+        write_cmdlets = [
+            "Out-File",
+            "Set-Content",
+            "Add-Content",
+            "Export-Csv",
+            "Export-Clixml",
+            "Export-Json",
+            "Tee-Object",
+            "Start-Transcript",
+            "ConvertTo-Json",
+            "ConvertTo-Csv",
+            "ConvertTo-Html",
+            "ConvertTo-Xml",
+        ]
         redirection_patterns = [">", ">>", "|", "Tee"]
         code_lower = code.lower()
         for cmdlet in write_cmdlets:
@@ -267,7 +358,7 @@ class PowerShellSession:
             print(f"[BOM] Post-execution cleanup: {bom_count} BOMs removed")
         return bom_count
 
-    def execute(self, code: str, timeout: float=60) -> str:
+    def execute(self, code: str, timeout: float = 60) -> str:
         """
         Execute PowerShell code and return its complete output.
         Includes automatic BOM removal after file operations.
@@ -393,6 +484,7 @@ class PowerShellSession:
 # Send completion delimiter
 Write-Output '{delimiter}'"""
 
+
 class PowerShellManager:
     """
     Thread-safe PowerShell session manager that maintains separate
@@ -401,11 +493,12 @@ class PowerShellManager:
     Includes session recovery logic for lost or failed sessions.
     Now includes integrated BOM removal capabilities.
     """
+
     _instances: Dict[str, "PowerShellManager"] = {}
     _lock = Lock()
 
     @classmethod
-    def get_instance(cls, bot_id: str=None) -> "PowerShellManager":
+    def get_instance(cls, bot_id: str = None) -> "PowerShellManager":
         """
         Get or create a PowerShell manager instance for the given bot_id.
         If no bot_id is provided, uses the current thread name.
@@ -479,7 +572,7 @@ class PowerShellManager:
             print(f"Session validation failed: {str(e)}")
             return False
 
-    def execute(self, code: str, output_length_limit: str="60", timeout: float=60) -> Generator[str, None, None]:
+    def execute(self, code: str, output_length_limit: str = "60", timeout: float = 60) -> Generator[str, None, None]:
         """
         Execute PowerShell code in the session with automatic recovery and BOM removal.
 
@@ -498,6 +591,7 @@ class PowerShellManager:
             error_message = f"Tool Failed: {str(error)}\n"
             error_message += f"Traceback:\n{''.join(traceback.format_tb(error.__traceback__))}"
             return error_message
+
         while retry_count <= max_retries:
             try:
                 processed_code = _process_commands(code)
@@ -545,6 +639,7 @@ class PowerShellManager:
             finally:
                 delattr(self._thread_local, "session")
 
+
 def _get_active_sessions() -> list:
     """
     Get information about all active PowerShell sessions.
@@ -558,8 +653,16 @@ def _get_active_sessions() -> list:
             local_dict = thread._thread_local.__dict__
             if "ps_manager" in local_dict:
                 manager = local_dict["ps_manager"]
-                sessions.append({"bot_id": manager.bot_id, "thread_name": thread.name, "created_at": manager.created_at.isoformat(), "active": hasattr(manager._thread_local, "session")})
+                sessions.append(
+                    {
+                        "bot_id": manager.bot_id,
+                        "thread_name": thread.name,
+                        "created_at": manager.created_at.isoformat(),
+                        "active": hasattr(manager._thread_local, "session"),
+                    }
+                )
     return sessions
+
 
 def _process_commands(code: str) -> str:
     """
@@ -592,7 +695,7 @@ def _process_commands(code: str) -> str:
             elif char == quote_char:
                 in_quotes = False
                 quote_char = None
-        if not in_quotes and i < len(code) - 1 and (code[i:i + 2] == "&&"):
+        if not in_quotes and i < len(code) - 1 and (code[i : i + 2] == "&&"):
             commands.append(current_cmd.strip())
             current_cmd = ""
             i += 2
@@ -605,11 +708,14 @@ def _process_commands(code: str) -> str:
         return code
     processed_commands = []
     for cmd in commands:
-        wrapped_cmd = f'$ErrorActionPreference = "Stop"; try {{ {cmd}; $LastSuccess = $true }} catch {{ $LastSuccess = $false; $_ }}'
+        wrapped_cmd = (
+            f'$ErrorActionPreference = "Stop"; try {{ {cmd}; $LastSuccess = $true }} catch {{ $LastSuccess = $false; $_ }}'
+        )
         processed_commands.append(wrapped_cmd)
     return "; ".join([processed_commands[0]] + [f"if ($LastSuccess) {{ {cmd} }}" for cmd in processed_commands[1:]])
 
-def _remove_bom_from_current_directory(recursive: bool=True) -> str:
+
+def _remove_bom_from_current_directory(recursive: bool = True) -> str:
     """
     Manually remove BOMs from all eligible files in the current directory.
 
@@ -625,6 +731,7 @@ def _remove_bom_from_current_directory(recursive: bool=True) -> str:
         return f"BOM removal completed. {bom_count} files processed in {current_dir}"
     else:
         return f"No BOMs found in {current_dir}"
+
 
 @handle_errors
 def remove_bom_from_files(file_pattern: str) -> str:
@@ -643,8 +750,9 @@ def remove_bom_from_files(file_pattern: str) -> str:
     else:
         return f"No BOMs found in files matching pattern: {file_pattern}"
 
+
 @handle_errors
-def check_files_for_bom(directory: str=None) -> str:
+def check_files_for_bom(directory: str = None) -> str:
     """
     Check files for BOMs without removing them.
 

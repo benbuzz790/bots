@@ -36,7 +36,6 @@ import hashlib
 import importlib
 import inspect
 import json
-import keyword
 import os
 import re
 import sys
@@ -370,17 +369,17 @@ class ConversationNode:
 
         if not self.parent.tool_calls:
             return  # No tool calls to respond to
-        
+
         if self.parent and self.parent.replies:
             # Use dict to automatically handle overwrites
             tool_results_dict = {}
 
             # Prioritize this node's results over other nodes by letting it overwrite last
             siblings = [node for node in self.parent.replies if node != self] + [self]
-            
+
             for node in siblings:
                 for result in node.tool_results:
-                    import hashlib
+
                     # Create hash of the result for provider-agnostic deduplication
                     result_str = str(sorted(result.items()))
                     tool_id = hashlib.md5(result_str.encode()).hexdigest()
@@ -414,19 +413,19 @@ class ConversationNode:
             - Updates this node's tool_results
             - Synchronizes results across sibling nodes
         """
-        
+
         def make_hash(result):
             """Create hash of result for deduplication."""
             result_str = str(sorted(result.items()))
             return hashlib.md5(result_str.encode()).hexdigest()
-        
+
         # Deduplicate: existing results first, then new results (new ones win)
         existing_dict = {make_hash(r): r for r in self.tool_results}
         new_dict = {make_hash(r): r for r in results}
-        
+
         # Merge with new results taking priority
         merged_dict = {**existing_dict, **new_dict}
-        
+
         self.tool_results = list(merged_dict.values())
         self._sync_tool_context()
 
@@ -1061,7 +1060,6 @@ class ToolHandler(ABC):
 
                         # UNION FIX: Capture EVERYTHING from both function globals AND original module
                         import importlib
-                        import types
 
                         # First, add ALL function globals (not just co_names)
                         for name, value in func.__globals__.items():
@@ -1087,7 +1085,6 @@ class ToolHandler(ABC):
                             pass
 
                         # Add all imports from the original module
-                        import types
 
                         for name, value in func.__globals__.items():
                             if isinstance(value, types.ModuleType) or callable(value):
@@ -1337,14 +1334,14 @@ class ToolHandler(ABC):
             raise ModuleLoadError(f"Module {module.__name__} has neither file path nor source. Cannot load.")
 
     def _add_imports_to_source(self, module_context) -> str:
-        """Add necessary imports to module source code by extracting existing imports."""     
+        """Add necessary imports to module source code by extracting existing imports."""
         source = module_context.source
         imports_needed = []
-        
+
         # Extract existing import statements from the source using AST
         try:
             tree = ast.parse(source)
-            
+
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
@@ -1352,7 +1349,7 @@ class ToolHandler(ABC):
                             imports_needed.append(f"import {alias.name} as {alias.asname}")
                         else:
                             imports_needed.append(f"import {alias.name}")
-                            
+
                 elif isinstance(node, ast.ImportFrom):
                     module_name = node.module or ""
                     names = []
@@ -1361,18 +1358,18 @@ class ToolHandler(ABC):
                             names.append(f"{alias.name} as {alias.asname}")
                         else:
                             names.append(alias.name)
-                    
+
                     if names:
                         imports_needed.append(f"from {module_name} import {', '.join(names)}")
-                        
+
         except SyntaxError:
             # Fallback: use regex to extract import statements
             import_patterns = [
-                r'^import\s+[\w\.,\s]+',
-                r'^from\s+[\w\.]+\s+import\s+[\w\.,\s\*]+',
+                r"^import\s+[\w\.,\s]+",
+                r"^from\s+[\w\.]+\s+import\s+[\w\.,\s\*]+",
             ]
-            
-            for line in source.split('\n'):
+
+            for line in source.split("\n"):
                 line = line.strip()
                 for pattern in import_patterns:
                     if re.match(pattern, line):
@@ -1382,33 +1379,33 @@ class ToolHandler(ABC):
         # This fixes the issue where Callable, Any, etc. are used but not imported
         try:
             tree = ast.parse(source)
-            
+
             # Find all names used in type annotations
             annotation_names = set()
-            
+
             class AnnotationVisitor(ast.NodeVisitor):
                 def visit_FunctionDef(self, node):
                     # Check function annotations
                     if node.returns:
                         self._extract_names_from_annotation(node.returns, annotation_names)
-                    
+
                     for arg in node.args.args:
                         if arg.annotation:
                             self._extract_names_from_annotation(arg.annotation, annotation_names)
-                    
+
                     self.generic_visit(node)
-                
+
                 def visit_AsyncFunctionDef(self, node):
                     # Same as FunctionDef but for async functions
                     if node.returns:
                         self._extract_names_from_annotation(node.returns, annotation_names)
-                    
+
                     for arg in node.args.args:
                         if arg.annotation:
                             self._extract_names_from_annotation(arg.annotation, annotation_names)
-                    
+
                     self.generic_visit(node)
-                
+
                 def _extract_names_from_annotation(self, annotation, names_set):
                     """Extract all names from a type annotation."""
                     if isinstance(annotation, ast.Name):
@@ -1420,81 +1417,80 @@ class ToolHandler(ABC):
                     elif isinstance(annotation, ast.Subscript):
                         # For things like List[str], Optional[int]
                         self._extract_names_from_annotation(annotation.value, names_set)
-                        if hasattr(annotation, 'slice'):
+                        if hasattr(annotation, "slice"):
                             if isinstance(annotation.slice, ast.Name):
                                 names_set.add(annotation.slice.id)
-                            elif hasattr(annotation.slice, 'elts'):  # Tuple of types
+                            elif hasattr(annotation.slice, "elts"):  # Tuple of types
                                 for elt in annotation.slice.elts:
                                     self._extract_names_from_annotation(elt, names_set)
                             else:
                                 self._extract_names_from_annotation(annotation.slice, names_set)
-            
+
             visitor = AnnotationVisitor()
             visitor.visit(tree)
-            
+
             # Now check if any of these annotation names are typing objects in the namespace
-            if hasattr(module_context, 'namespace') and hasattr(module_context.namespace, '__dict__'):
+            if hasattr(module_context, "namespace") and hasattr(module_context.namespace, "__dict__"):
                 namespace_dict = module_context.namespace.__dict__
-                
+
                 # Common typing imports that need to be handled
                 typing_imports = []
-                
+
                 for name in annotation_names:
                     if name in namespace_dict:
                         value = namespace_dict[name]
-                        
+
                         # Check if this is a typing object
-                        if hasattr(value, '__module__') and value.__module__ == 'typing':
+                        if hasattr(value, "__module__") and value.__module__ == "typing":
                             typing_imports.append(name)
-                
+
                 # Add typing imports if we found any
                 if typing_imports:
                     typing_import = f"from typing import {', '.join(sorted(typing_imports))}"
                     imports_needed.append(typing_import)
-                    
+
                 # ADDITIONAL FIX: Also check for other common module imports (like functools.wraps)
                 # Look for any names used in the code that exist in the namespace
                 all_names_used = set()
-                
+
                 # Collect all names used in the source (not just annotations)
                 class NameCollector(ast.NodeVisitor):
                     def visit_Name(self, node):
                         if isinstance(node.ctx, ast.Load):
                             all_names_used.add(node.id)
                         self.generic_visit(node)
-                
+
                 name_collector = NameCollector()
                 name_collector.visit(tree)
-                
+
                 # Group imports by module
                 module_imports = {}
-                
+
                 for name in all_names_used:
                     if name in namespace_dict:
                         value = namespace_dict[name]
-                        
+
                         # Check if this has a module and it's a standard library or common module
-                        if hasattr(value, '__module__') and value.__module__:
+                        if hasattr(value, "__module__") and value.__module__:
                             module_name = value.__module__
-                            
+
                             # Only handle common modules to avoid importing everything
-                            if module_name in ['functools', 'itertools', 'collections', 'operator', 're', 'math', 'datetime']:
+                            if module_name in ["functools", "itertools", "collections", "operator", "re", "math", "datetime"]:
                                 if module_name not in module_imports:
                                     module_imports[module_name] = []
                                 module_imports[module_name].append(name)
-                
+
                 # Add the module imports
                 for module_name, names in module_imports.items():
                     if names:
                         module_import = f"from {module_name} import {', '.join(sorted(names))}"
                         imports_needed.append(module_import)
-                    
-        except Exception as e:
+
+        except Exception:
             # If annotation analysis fails, continue without it
             # This ensures we don't break existing functionality
             pass
 
-        
         # Remove duplicates while preserving order
         unique_imports = []
         seen = set()
@@ -1502,12 +1498,12 @@ class ToolHandler(ABC):
             if imp not in seen:
                 unique_imports.append(imp)
                 seen.add(imp)
-        
+
         # Add imports to source if any were found
         if unique_imports:
-            import_block = '\n'.join(unique_imports) + '\n\n'
+            import_block = "\n".join(unique_imports) + "\n\n"
             source = import_block + source
-        
+
         return source
 
     def to_dict(self) -> Dict[str, Any]:
@@ -1560,15 +1556,16 @@ class ToolHandler(ABC):
             "modules": module_details,
             "function_paths": function_paths,
         }
+
     def _serialize_globals(self, namespace_dict: dict) -> dict:
         """Serialize globals including modules and other necessary objects."""
-        import types
+
         serialized = {}
-        
+
         for k, v in namespace_dict.items():
             if k.startswith("__"):
                 continue
-                
+
             # Include basic types
             if isinstance(v, (int, float, str, bool, list, dict)):
                 serialized[k] = v
@@ -1578,15 +1575,14 @@ class ToolHandler(ABC):
                 serialized[k] = {
                     "__module_type__": True,
                     "name": v.__name__,
-                    "spec": getattr(v, "__spec__", None) and v.__spec__.name
+                    "spec": getattr(v, "__spec__", None) and v.__spec__.name,
                 }
             # Include other serializable objects that might be needed
             elif hasattr(v, "__module__") and hasattr(v, "__name__"):
                 # This covers classes and other importable objects
                 pass  # For now, skip these - they're complex to serialize
-                
-        return serialized
 
+        return serialized
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ToolHandler":
@@ -1705,12 +1701,12 @@ class ToolHandler(ABC):
                 continue
 
         return handler
+
     @staticmethod
     def _deserialize_globals(module_dict: dict, serialized_globals: dict):
         """Deserialize globals including module reconstruction."""
-        import types
         import importlib
-        
+
         for k, v in serialized_globals.items():
             if isinstance(v, dict) and v.get("__module_type__"):
                 # This is a serialized module - reconstruct it
@@ -1726,7 +1722,6 @@ class ToolHandler(ABC):
             else:
                 # Regular value - just assign it
                 module_dict[k] = v
-
 
     def get_tools_json(self) -> str:
         """Get a JSON string representation of all registered tools.
@@ -1968,9 +1963,10 @@ class Mailbox(ABC):
         with open(self.log_file, "a", encoding="utf-8") as file:
             file.write(log_entry)
 
+
 # max_tokens and temperature because those were the two
 # sliders on the first openai playground and I found them
-# very useful at the time. Eventually this will change to 
+# very useful at the time. Eventually this will change to
 # a general config file
 class Bot(ABC):
     """Abstract base class for LLM-powered conversational agents.
@@ -2066,30 +2062,30 @@ class Bot(ABC):
     def respond(self, prompt: str, role: str = "user") -> str:
         """Send a prompt to the bot and get its response.
 
-    This is the primary interface for interacting with the bot. The method:
-    1. Adds the prompt to the conversation history
-    2. Sends the conversation to the LLM
-    3. Processes any tool usage requests
-    4. Returns the final response
+        This is the primary interface for interacting with the bot. The method:
+        1. Adds the prompt to the conversation history
+        2. Sends the conversation to the LLM
+        3. Processes any tool usage requests
+        4. Returns the final response
 
-    Parameters:
-        prompt (str): The message to send to the bot
-        role (str): Role of the message sender (defaults to 'user')
+        Parameters:
+            prompt (str): The message to send to the bot
+            role (str): Role of the message sender (defaults to 'user')
 
-    Returns:
-        str: The bot's response text
+        Returns:
+            str: The bot's response text
 
-    Note:
-        - Automatically saves state if autosave is enabled
-        - Tool usage is handled automatically if tools are available
-        - Full conversation context is maintained
+        Note:
+            - Automatically saves state if autosave is enabled
+            - Tool usage is handled automatically if tools are available
+            - Full conversation context is maintained
 
-    Example:
-        ```python
-        bot.add_tools(file_tools)
-        response = bot.respond("Please read config.json")
-        ```
-    """
+        Example:
+            ```python
+            bot.add_tools(file_tools)
+            response = bot.respond("Please read config.json")
+            ```
+        """
         self.conversation = self.conversation._add_reply(content=prompt, role=role)
         if self.autosave:
             self.save(f"{self.name}")
