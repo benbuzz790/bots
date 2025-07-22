@@ -3,13 +3,13 @@ import hashlib
 import os
 import textwrap
 from enum import Enum
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple, Union
+
+import libcst as cst
+
 from bots.dev.decorators import handle_errors
 from bots.utils.helpers import _clean, _process_error, _py_ast_to_source
 from bots.utils.unicode_utils import clean_unicode_string
-import libcst as cst
-from typing import Optional, Union, List, Tuple
-from bots.utils.helpers import _process_error
 
 
 def _make_file(file_path: str) -> str:
