@@ -79,9 +79,9 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
         self.assertLess(self.command_duration, 30, "Simple file creation should not timeout")
         # Check if file was created
         if os.path.exists("hello.txt"):
-            print("✅ File created successfully")
+            print("File created successfully")
         else:
-            print("❌ File was not created")
+            print("File was not created")
 
     @patch("builtins.input")
     def test_powershell_here_string_real_bot(self, mock_input):
@@ -117,12 +117,12 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
             print("🚨 TIMEOUT MESSAGE FOUND in output")
         # Check if file was created despite timeout
         if os.path.exists("test_script.py"):
-            print("✅ File created successfully")
+            print("File created successfully")
             with open("test_script.py", "r") as f:
                 content = f.read()
                 print(f"File content preview: {content[:200]}...")
         else:
-            print("❌ File was not created")
+            print("File was not created")
 
     @patch("builtins.input")
     def test_complex_python_file_real_bot(self, mock_input):
