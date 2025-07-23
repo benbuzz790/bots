@@ -29,7 +29,7 @@ $env:OPENAI_API_KEY="your-api-key-here"
 
 #### Simple Tool Creation and Usage
 
-`python
+```python
 import bots
 def read_file(file_path: str) -> str:
     """Read and return file contents.
@@ -52,19 +52,19 @@ bot.add_tools(read_file)
 # Single interaction
 response = bot.respond("Read the README.md file and summarize it")
 print(response)
-`
+```
 
 #### Interactive Chat
 
-`python
+```python
 # Start interactive terminal chat
 bot.chat()
-`
+```
 
 ### Level 2: Tool Modules and State Management
 
 #### Using Built-in Tool Modules
-`python
+```python
 import bots
 import bots.tools.code_tools as code_tools
 bot = bots.AnthropicBot()
@@ -74,10 +74,10 @@ bot.add_tools(code_tools)  # Adds multiple code-related tools
 # - view_dir()
 # - patch_edit()
 response = bot.respond("Create a Flask app in app.py with basic routing")
-`
+```
 
 #### Bot State Persistence
-`python
+```python
 import bots
 import bots.tools.code_tools as code_tools
 
@@ -95,12 +95,12 @@ bot.save("codebase_expert.bot")
 # Later: Load bot with all context preserved
 expert_bot = bots.load("codebase_expert.bot")
 expert_bot.respond("Create comprehensive tests for the main module")
-`
+```
 ### Level 3: Functional Prompts - Structured Workflows
 
 #### Sequential Processing (Chain)
 
-`python
+```python
 import bots.flows.functional_prompts as fp
 bot = bots.AnthropicBot()
 bot.add_tools(code_tools)
@@ -114,11 +114,11 @@ responses, nodes = fp.chain(bot, [
 # Each step builds on previous context
 for i, response in enumerate(responses):
     print(f"Step {i+1}: {response[:100]}...")
-`
+```
 
 #### Parallel Exploration (Branch)
 
-`python
+```python
 # Explore multiple approaches without cross-contamination
 responses, nodes = fp.branch(bot, [
     "Analyze the code for security issues",
@@ -129,11 +129,11 @@ responses, nodes = fp.branch(bot, [
 # Each analysis starts from the same initial context
 for analysis_type, response in zip(['Security', 'Performance', 'Maintainability', 'Testing'], responses):
     print(f"{analysis_type} Analysis: {response[:100]}...")
-`
+```
 
 #### Iterative Refinement (Autonomous Mode)
 
-`python
+```python
 # Let the bot work autonomously until completion
 responses, nodes = fp.prompt_while(
     bot,
@@ -142,10 +142,10 @@ responses, nodes = fp.prompt_while(
     stop_condition=fp.conditions.tool_not_used  # Stop when bot stops using tools
 )
 print(f"Completed in {len(responses)} iterations")
-`
+```
 ### Level 4: Advanced Patterns and Parallel Processing
 #### Tree-of-Thought Reasoning
-`python
+```python
 def combine_analyses(responses, nodes):
     """Synthesize multiple analysis perspectives"""
     combined = "\\n".join(f"{r}" for r in responses)
@@ -161,10 +161,11 @@ response, node = fp.tree_of_thought(
     ],
     combine_analyses
 )
-`
+```
+
 #### Multi-Bot Parallel Dispatch
 
-`python
+```python
 # Create specialized bots for different tasks
 base_bot = bots.AnthropicBot()
 base_bot.add_tools(code_tools)
@@ -189,10 +190,10 @@ results = fp.par_dispatch(
         "Propose specific solutions with code examples"
     ]
 )
-`
+```
 
 #### Dynamic Prompt Generation
-`python
+```python
 # Generate prompts from data
 files = ["auth.py", "api.py", "models.py", "utils.py"]
 def review_prompt(filename):
@@ -224,10 +225,10 @@ python -m bots.dev.cli my_expert.bot
 >>> /fp      # Interactive functional prompt selection
 # Broadcast a fp to all conversation endpoints
 >>> /broadcast_fp
-`
+```
 
 #### CLI Functional Prompt Integration
-`ps
+```ps
 # In CLI session
 >>> /fp
 Select functional prompt:
@@ -244,11 +245,11 @@ Select stop condition:
 3. said_DONE
 >>> 1
 # Bot executes autonomous workflow
-`
+```
 
 ### Level 6: Runtime Code Generation with @lazy
 #### Basic Lazy Functions
-`python
+```python
 from bots import lazy
 @lazy("Implement quicksort with detailed comments")
 def quicksort(arr: list[int]) -> list[int]:
@@ -256,10 +257,10 @@ def quicksort(arr: list[int]) -> list[int]:
 # First call triggers LLM code generation
 result = quicksort([3, 1, 4, 1, 5, 9, 2, 6])
 print(result)  # [1, 1, 2, 3, 4, 5, 6, 9]
-`
+```
 
 #### Advanced Lazy with Context
-`python
+```python
 @lazy(
     "Implement a thread-safe LRU cache with TTL support",
     context='high',  # Include full codebase context
@@ -270,12 +271,12 @@ class TTLCache:
 # Usage triggers implementation generation
 cache = TTLCache(max_size=100, ttl_seconds=300)
 cache.put("key", "value")
-`
+```
 
 ### Level 7: Production Workflows
 
 #### Complete Project Analysis Pipeline
-`python
+```python
 import bots
 import bots.flows.functional_prompts as fp
 import bots.tools.code_tools as code_tools
@@ -306,10 +307,10 @@ analyses, nodes = fp.par_branch_while(
     continue_prompt="ok"
 )
 print(f"Generated {len(analyses)} comprehensive reports")
-`
+```
 
 #### Continuous Integration Workflow
-`python
+```python
 # CI/CD bot that can be triggered by webhooks
 ci_bot = bots.AnthropicBot(name="ci_assistant")
 ci_bot.add_tools([code_tools, testing_tools, deployment_tools])
@@ -320,7 +321,7 @@ fp.prompt_while(
     continue_prompt="ok",
     stop_condition=fp.conditions.tool_not_used
 )
-`
+```
 
 ## Key Concepts Progression
 1. **Basic**: Single bot, simple tools, direct interaction
