@@ -11,26 +11,24 @@ cd bots
 pip install -e .[dev]
 `
 ### Requirements
-- Python 3.6+
+- Python 3.12+
 - API key from OpenAI or Anthropic
+
 ## API Key Setup
 Set your API key as an environment variable:
-**For Anthropic (Claude):**
-`bash
-export ANTHROPIC_API_KEY="your-api-key-here"
-`
-**For OpenAI (GPT):**
-`bash
-export OPENAI_API_KEY="your-api-key-here"
-`
+
 **Windows PowerShell:**
 `powershell
 $env:ANTHROPIC_API_KEY="your-api-key-here"
 $env:OPENAI_API_KEY="your-api-key-here"
 `
+
 ## Usage Patterns: From Basic to Advanced
+
 ### Level 1: Basic Bot Interaction
+
 #### Simple Tool Creation and Usage
+
 `python
 import bots
 def read_file(file_path: str) -> str:
@@ -46,19 +44,25 @@ def read_file(file_path: str) -> str:
             return f.read()
     except Exception as e:
         return f"Error: {str(e)}"
+        
 # Create bot and add tool
 bot = bots.AnthropicBot()
 bot.add_tools(read_file)
+
 # Single interaction
 response = bot.respond("Read the README.md file and summarize it")
 print(response)
 `
+
 #### Interactive Chat
+
 `python
 # Start interactive terminal chat
 bot.chat()
 `
+
 ### Level 2: Tool Modules and State Management
+
 #### Using Built-in Tool Modules
 `python
 import bots
@@ -71,24 +75,31 @@ bot.add_tools(code_tools)  # Adds multiple code-related tools
 # - patch_edit()
 response = bot.respond("Create a Flask app in app.py with basic routing")
 `
+
 #### Bot State Persistence
 `python
 import bots
 import bots.tools.code_tools as code_tools
+
 # Create and configure bot
 bot = bots.AnthropicBot()
 bot.add_tools(code_tools)
+
 # Build context
 bot.respond("Analyze the current directory structure")
 bot.respond("Read all Python files and understand the codebase")
+
 # Save complete bot state (conversation + tools + context)
 bot.save("codebase_expert.bot")
+
 # Later: Load bot with all context preserved
 expert_bot = bots.load("codebase_expert.bot")
 expert_bot.respond("Create comprehensive tests for the main module")
 `
 ### Level 3: Functional Prompts - Structured Workflows
+
 #### Sequential Processing (Chain)
+
 `python
 import bots.flows.functional_prompts as fp
 bot = bots.AnthropicBot()
@@ -104,7 +115,9 @@ responses, nodes = fp.chain(bot, [
 for i, response in enumerate(responses):
     print(f"Step {i+1}: {response[:100]}...")
 `
+
 #### Parallel Exploration (Branch)
+
 `python
 # Explore multiple approaches without cross-contamination
 responses, nodes = fp.branch(bot, [
@@ -117,7 +130,9 @@ responses, nodes = fp.branch(bot, [
 for analysis_type, response in zip(['Security', 'Performance', 'Maintainability', 'Testing'], responses):
     print(f"{analysis_type} Analysis: {response[:100]}...")
 `
+
 #### Iterative Refinement (Autonomous Mode)
+
 `python
 # Let the bot work autonomously until completion
 responses, nodes = fp.prompt_while(
@@ -148,6 +163,7 @@ response, node = fp.tree_of_thought(
 )
 `
 #### Multi-Bot Parallel Dispatch
+
 `python
 # Create specialized bots for different tasks
 base_bot = bots.AnthropicBot()
@@ -174,6 +190,7 @@ results = fp.par_dispatch(
     ]
 )
 `
+
 #### Dynamic Prompt Generation
 `python
 # Generate prompts from data
@@ -188,9 +205,11 @@ responses, nodes = fp.prompt_for(
     should_branch=True  # Parallel processing
 )
 `
+
 ### Level 5: CLI Integration and Advanced Navigation
+
 #### Advanced CLI Usage
-`bash
+`ps
 # Start CLI with pre-loaded bot
 python -m bots.dev.cli my_expert.bot
 # In CLI - navigate conversation tree
@@ -206,8 +225,9 @@ python -m bots.dev.cli my_expert.bot
 # Broadcast a fp to all conversation endpoints
 >>> /broadcast_fp
 `
+
 #### CLI Functional Prompt Integration
-`bash
+`ps
 # In CLI session
 >>> /fp
 Select functional prompt:
@@ -225,6 +245,7 @@ Select stop condition:
 >>> 1
 # Bot executes autonomous workflow
 `
+
 ### Level 6: Runtime Code Generation with @lazy
 #### Basic Lazy Functions
 `python
@@ -236,6 +257,7 @@ def quicksort(arr: list[int]) -> list[int]:
 result = quicksort([3, 1, 4, 1, 5, 9, 2, 6])
 print(result)  # [1, 1, 2, 3, 4, 5, 6, 9]
 `
+
 #### Advanced Lazy with Context
 `python
 @lazy(
@@ -249,7 +271,9 @@ class TTLCache:
 cache = TTLCache(max_size=100, ttl_seconds=300)
 cache.put("key", "value")
 `
+
 ### Level 7: Production Workflows
+
 #### Complete Project Analysis Pipeline
 `python
 import bots
@@ -283,6 +307,7 @@ analyses, nodes = fp.par_branch_while(
 )
 print(f"Generated {len(analyses)} comprehensive reports")
 `
+
 #### Continuous Integration Workflow
 `python
 # CI/CD bot that can be triggered by webhooks
@@ -296,6 +321,7 @@ fp.prompt_while(
     stop_condition=fp.conditions.tool_not_used
 )
 `
+
 ## Key Concepts Progression
 1. **Basic**: Single bot, simple tools, direct interaction
 2. **Intermediate**: Tool modules, state persistence, conversation management  
