@@ -1005,211 +1005,288 @@ class ToolHandler(ABC):
                         name = annotation.__name__
                         if name in func.__globals__:
                             context[name] = func.__globals__[name]
+    def _build_function_context(self, func: Callable) -> dict:
+        """Build the execution context for a function by capturing all necessary dependencies."""
+        code = func.__code__
+        names = code.co_names
+        context = {name: func.__globals__[name] for name in names if name in func.__globals__}
+
+        # Capture annotation dependencies
+        self._capture_annotation_context(func, context)
+
+        # Add ALL function globals (not just co_names)
+        for name, value in func.__globals__.items():
+            if not name.startswith("__"):
+                context[name] = value
+
+        # Union with the original module namespace
+        context = self._merge_with_original_module(func, context)
+
+        # Add module imports
+        for name, value in func.__globals__.items():
+            if isinstance(value, types.ModuleType) or callable(value):
+                context[name] = value
+
+        return context
+    
+    def _merge_with_original_module(self, func: Callable, context: dict) -> dict:
+        """Merge function context with its original module namespace."""
+        import importlib
+
+        try:
+            original_module = importlib.import_module(func.__module__)
+            for name, value in original_module.__dict__.items():
+                if not name.startswith("__"):
+                    # Module namespace takes precedence over function globals for conflicts
+                    context[name] = value
+        except ImportError:
+            pass
+
+        # Second pass for callables and types not already in context
+        try:
+            original_module = importlib.import_module(func.__module__)
+            for name, value in original_module.__dict__.items():
+                if not name.startswith("__") and name not in context:
+                    if callable(value) or isinstance(value, type):
+                        context[name] = value
+        except ImportError:
+            pass
+
+        return context
+    
+    def _capture_helper_functions(self, func: Callable, source: str, context: dict) -> str:
+        """Capture source code of helper functions that the main function depends on."""
+        helper_functions_source = []
+
+        try:
+            import ast
+            tree = ast.parse(source)
+
+            # Find all function calls in the main function
+            function_calls = set()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call):
+                    if isinstance(node.func, ast.Name):
+                        function_calls.add(node.func.id)
+
+            # For each function call, check if it's a helper function we need to include
+            for func_name in function_calls:
+                if func_name in context and callable(context[func_name]):
+                    helper_func = context[func_name]
+
+                    # Only include functions from the same module that start with underscore (private helpers)
+                    if (hasattr(helper_func, '__module__') and 
+                        helper_func.__module__ == func.__module__ and 
+                        func_name.startswith('_') and
+                        not inspect.isbuiltin(helper_func)):
+
+                        try:
+                            helper_source = inspect.getsource(helper_func)
+                            helper_source = _clean_function_source(helper_source)
+                            helper_functions_source.append(helper_source)
+                        except (TypeError, OSError):
+                            # Can't get source for this helper function, skip it
+                            pass
+
+            # Append helper function sources to the main source (after, not before)
+            if helper_functions_source:
+                source = source + '\n\n' + '\n\n'.join(helper_functions_source)
+
+        except Exception:
+            # If AST parsing fails, continue without helper function capture
+            pass
+
+        return source
+    
+    def _process_decorators(self, func: Callable, source: str, context: dict) -> str:
+        """Process and capture decorator source code and dependencies."""
+        import re
+
+        decorator_matches = re.findall(r"@(\w+)", source)
+        for decorator_name in decorator_matches:
+            if decorator_name in func.__globals__:
+                context[decorator_name] = func.__globals__[decorator_name]
+                source = self._capture_decorator_source(func.__globals__[decorator_name], source, context)
+
+        # Handle locally-defined decorators
+        missing_decorators = [name for name in decorator_matches if name not in func.__globals__]
+        if missing_decorators:
+            source = self._capture_local_decorators(missing_decorators, source, context)
+
+        return source
+    
+    def _capture_decorator_source(self, decorator_func: Callable, source: str, context: dict) -> str:
+        """Capture source code and dependencies for a specific decorator."""
+        if not callable(decorator_func) or inspect.isbuiltin(decorator_func):
+            return source
+
+        try:
+            decorator_source = inspect.getsource(decorator_func)
+
+            # Capture annotation context from decorator
+            self._capture_annotation_context(decorator_func, context)
+
+            # Enhanced decorator dependency capture
+            if hasattr(decorator_func, "__globals__"):
+                for dec_name, dec_value in decorator_func.__globals__.items():
+                    if not dec_name.startswith("__"):
+                        if isinstance(dec_value, (int, float, str, bool, list, dict)):
+                            context[dec_name] = dec_value
+                        elif isinstance(dec_value, types.ModuleType):
+                            context[dec_name] = dec_value
+                        elif hasattr(dec_value, "__module__"):
+                            context[dec_name] = dec_value
+
+            # Handle closure variables
+            decorator_source = self._handle_decorator_closures(decorator_func, decorator_source, context)
+            source = _clean_decorator_source(decorator_source) + "\n\n" + source
+
+        except (TypeError, OSError):
+            # Can't get decorator source, continue with function object
+            pass
+
+        return source
+    
+    def _handle_decorator_closures(self, decorator_func: Callable, decorator_source: str, context: dict) -> str:
+        """Handle closure variables for decorator functions."""
+        if not (hasattr(decorator_func, "__closure__") and decorator_func.__closure__):
+            return decorator_source
+
+        freevars = decorator_func.__code__.co_freevars
+        closure_defs = []
+
+        for k, var_name in enumerate(freevars):
+            if (k < len(decorator_func.__closure__) and 
+                decorator_func.__closure__[k] is not None):
+                try:
+                    closure_value = decorator_func.__closure__[k].cell_contents
+                    closure_defs.append(f"{var_name} = {repr(closure_value)}")
+                    context[var_name] = closure_value
+                except ValueError:
+                    pass
+
+        if closure_defs:
+            decorator_source = "\n".join(closure_defs) + "\n\n" + decorator_source
+
+        return decorator_source
+    
+    def _capture_local_decorators(self, missing_decorators: list, source: str, context: dict) -> str:
+        """Capture locally-defined decorators from the call stack."""
+        frame = inspect.currentframe()
+        try:
+            while frame:
+                frame_locals = frame.f_locals
+
+                for decorator_name in missing_decorators:
+                    if decorator_name in frame_locals:
+                        decorator_func = frame_locals[decorator_name]
+                        if callable(decorator_func):
+                            try:
+                                decorator_source = inspect.getsource(decorator_func)
+
+                                # Capture annotation context from local decorator
+                                self._capture_annotation_context(decorator_func, context)
+
+                                # Handle closure variables
+                                decorator_source = self._handle_decorator_closures(decorator_func, decorator_source, context)
+                                source = _clean_decorator_source(decorator_source) + "\n\n" + source
+
+                            except (TypeError, OSError) as e:
+                                print(f"DEBUG: Could not capture decorator {decorator_name}: {e}")
+
+                frame = frame.f_back
+        finally:
+            del frame
+
+        return source
 
     def add_tool(self, func: Callable) -> None:
         """Add a single Python function as a tool for LLM use.
 
-        Use when you need to make an individual function available as a tool.
-        Handles all necessary context preservation and function wrapping.
+    Use when you need to make an individual function available as a tool.
+    Handles all necessary context preservation and function wrapping.
 
-        Parameters:
-            func (Callable): The function to add as a tool
+    Parameters:
+        func (Callable): The function to add as a tool
 
-        Raises:
-            ValueError: If tool schema generation fails
-            TypeError: If function source cannot be accessed
-            OSError: If there are issues accessing function source
+    Raises:
+        ValueError: If tool schema generation fails
+        TypeError: If function source cannot be accessed
+        OSError: If there are issues accessing function source
 
-        Side Effects:
-            - Creates module context if none exists
-            - Adds function to tool registry
-            - Updates function map
+    Side Effects:
+        - Creates module context if none exists
+        - Adds function to tool registry
+        - Updates function map
 
-        Example:
-            ```python
-            def calculate_area(radius: float) -> float:
-                '''Calculate circle area. Use when...'''
-                return 3.14159 * radius * radius
+    Example:
+        ```python
+        def calculate_area(radius: float) -> float:
+            '''Calculate circle area. Use when...'''
+            return 3.14159 * radius * radius
 
-            handler.add_tool(calculate_area)
-            ```
+        handler.add_tool(calculate_area)
+        ```
 
-        Note:
-            - Preserves function's full context including docstring
-            - Creates wrappers for built-in and dynamic functions
-            - Maintains all necessary dependencies
-        """
+    Note:
+        - Preserves function's full context including docstring
+        - Creates wrappers for built-in and dynamic functions
+        - Maintains all necessary dependencies
+    """
         schema = self.generate_tool_schema(func)
         if not schema:
             raise ValueError("Schema undefined. ToolHandler.generate_tool_schema() may not be implemented.")
+
         if not hasattr(func, "__module_context__"):
-            if inspect.isbuiltin(func) or inspect.ismethoddescriptor(func):
-                source = self._create_builtin_wrapper(func)
-                context = {}
-            else:
-                try:
-                    source = inspect.getsource(func)
-                    source = _clean_function_source(source)
-                    if hasattr(func, "__globals__"):
-                        code = func.__code__
-                        names = code.co_names
-                        context = {name: func.__globals__[name] for name in names if name in func.__globals__}
+            source, context = self._prepare_function_source_and_context(func)
+            func = self._create_module_context_and_function(func, source, context)
 
-                        # CRITICAL: Capture ALL annotation dependencies
-                        self._capture_annotation_context(func, context)
-
-                        # UNION FIX: Capture EVERYTHING from both function globals AND original module
-                        import importlib
-
-                        # First, add ALL function globals (not just co_names)
-                        for name, value in func.__globals__.items():
-                            if not name.startswith("__"):
-                                context[name] = value
-
-                        # Then, union with the original module namespace
-                        try:
-                            original_module = importlib.import_module(func.__module__)
-                            for name, value in original_module.__dict__.items():
-                                if not name.startswith("__"):
-                                    # Module namespace takes precedence over function globals for conflicts
-                                    context[name] = value
-                        except ImportError:
-                            pass
-                        try:
-                            original_module = importlib.import_module(func.__module__)
-                            for name, value in original_module.__dict__.items():
-                                if not name.startswith("__") and name not in context:
-                                    if callable(value) or isinstance(value, type):
-                                        context[name] = value
-                        except ImportError:
-                            pass
-
-                        # Add all imports from the original module
-
-                        for name, value in func.__globals__.items():
-                            if isinstance(value, types.ModuleType) or callable(value):
-                                context[name] = value
-
-                        # Enhanced decorator handling with annotation support
-                        import re
-
-                        decorator_matches = re.findall(r"@(\w+)", source)
-                        for decorator_name in decorator_matches:
-                            if decorator_name in func.__globals__:
-                                context[decorator_name] = func.__globals__[decorator_name]
-
-                                try:
-                                    decorator_func = func.__globals__[decorator_name]
-                                    if callable(decorator_func) and not inspect.isbuiltin(decorator_func):
-                                        decorator_source = inspect.getsource(decorator_func)
-
-                                        # CRITICAL: Capture annotation context from decorator
-                                        self._capture_annotation_context(decorator_func, context)
-
-                                        # Enhanced decorator dependency capture
-                                        if hasattr(decorator_func, "__globals__"):
-                                            # Capture ALL globals that the decorator might need
-                                            for dec_name, dec_value in decorator_func.__globals__.items():
-                                                if not dec_name.startswith("__"):
-                                                    if isinstance(dec_value, (int, float, str, bool, list, dict)):
-                                                        context[dec_name] = dec_value
-                                                    elif isinstance(dec_value, types.ModuleType):
-                                                        context[dec_name] = dec_value
-                                                    # Also capture any objects from decorator's globals
-                                                    elif hasattr(dec_value, "__module__"):
-                                                        context[dec_name] = dec_value
-
-                                        # Handle closure variables
-                                        if hasattr(decorator_func, "__closure__") and decorator_func.__closure__:
-                                            freevars = decorator_func.__code__.co_freevars
-                                            closure_defs = []
-                                            for k, var_name in enumerate(freevars):
-                                                if (
-                                                    k < len(decorator_func.__closure__)
-                                                    and decorator_func.__closure__[k] is not None
-                                                ):
-                                                    try:
-                                                        closure_value = decorator_func.__closure__[k].cell_contents
-                                                        closure_defs.append(f"{var_name} = {repr(closure_value)}")
-                                                        context[var_name] = closure_value
-                                                    except ValueError:
-                                                        pass
-                                            if closure_defs:
-                                                decorator_source = "\n".join(closure_defs) + "\n\n" + decorator_source
-
-                                        source = _clean_decorator_source(decorator_source) + "\n\n" + source
-
-                                except (TypeError, OSError):
-                                    # Can't get decorator source, continue with function object
-                                    pass
-
-                        # Enhanced handling for locally-defined decorators
-                        missing_decorators = [name for name in decorator_matches if name not in func.__globals__]
-                        if missing_decorators:
-                            frame = inspect.currentframe()
-                            try:
-                                while frame:
-                                    frame_locals = frame.f_locals
-
-                                    for decorator_name in missing_decorators:
-                                        if decorator_name in frame_locals:
-                                            decorator_func = frame_locals[decorator_name]
-                                            if callable(decorator_func):
-                                                try:
-                                                    decorator_source = inspect.getsource(decorator_func)
-
-                                                    # CRITICAL: Capture annotation context from local decorator too
-                                                    self._capture_annotation_context(decorator_func, context)
-
-                                                    # Handle closure variables
-                                                    closure_defs = []
-                                                    if hasattr(decorator_func, "__closure__") and decorator_func.__closure__:
-                                                        freevars = decorator_func.__code__.co_freevars
-                                                        for k, var_name in enumerate(freevars):
-                                                            if (
-                                                                k < len(decorator_func.__closure__)
-                                                                and decorator_func.__closure__[k] is not None
-                                                            ):
-                                                                try:
-                                                                    closure_value = decorator_func.__closure__[k].cell_contents
-                                                                    closure_defs.append(f"{var_name} = {repr(closure_value)}")
-                                                                    context[var_name] = closure_value
-                                                                except ValueError:
-                                                                    pass
-
-                                                    if closure_defs:
-                                                        decorator_source = "\n".join(closure_defs) + "\n\n" + decorator_source
-
-                                                    source = _clean_decorator_source(decorator_source) + "\n\n" + source
-
-                                                except (TypeError, OSError) as e:
-                                                    print(f"DEBUG: Could not capture decorator {decorator_name}: {e}")
-
-                                    frame = frame.f_back
-                            finally:
-                                del frame
-
-                    else:
-                        context = {}
-                except (TypeError, OSError):
-                    source = self._create_dynamic_wrapper(func)
-                    context = {}
-            module_name = f"dynamic_module_{hash(source)}"
-            file_path = f"dynamic_module_{hash(str(func))}"
-            module = ModuleType(module_name)
-            module.__file__ = file_path
-            module.__dict__.update(context)
-            module_context = ModuleContext(
-                name=module_name, source=source, file_path=file_path, namespace=module, code_hash=self._get_code_hash(source)
-            )
-
-            exec(source, module.__dict__)
-            new_func = module.__dict__[func.__name__]
-            new_func.__module_context__ = module_context
-            self.modules[file_path] = module_context
-            func = new_func
         self.tools.append(schema)
         self.function_map[func.__name__] = func
+    def _prepare_function_source_and_context(self, func: Callable) -> tuple[str, dict]:
+        """Prepare the source code and execution context for a function."""
+        if inspect.isbuiltin(func) or inspect.ismethoddescriptor(func):
+            return self._create_builtin_wrapper(func), {}
+
+        try:
+            source = inspect.getsource(func)
+            source = _clean_function_source(source)
+
+            if hasattr(func, "__globals__"):
+                context = self._build_function_context(func)
+                source = self._process_decorators(func, source, context)
+                source = self._capture_helper_functions(func, source, context)
+            else:
+                context = {}
+
+            return source, context
+
+        except (TypeError, OSError):
+            return self._create_dynamic_wrapper(func), {}
+    
+    def _create_module_context_and_function(self, func: Callable, source: str, context: dict) -> Callable:
+        """Create a module context and return the function with context attached."""
+        module_name = f"dynamic_module_{hash(source)}"
+        file_path = f"dynamic_module_{hash(str(func))}"
+
+        module = ModuleType(module_name)
+        module.__file__ = file_path
+        module.__dict__.update(context)
+
+        module_context = ModuleContext(
+            name=module_name, 
+            source=source, 
+            file_path=file_path, 
+            namespace=module, 
+            code_hash=self._get_code_hash(source)
+        )
+
+        exec(source, module.__dict__)
+        new_func = module.__dict__[func.__name__]
+        new_func.__module_context__ = module_context
+        self.modules[file_path] = module_context
+
+        return new_func
 
     def _add_tools_from_file(self, filepath: str) -> None:
         """Add all non-private functions from a Python file as tools.
