@@ -35,8 +35,8 @@ See Also:
 """
 
 # Version and compatibility information
-__version__ = "0.1.0"  # type: str
+__version__ = "2.1.0"  # type: str
 """Package version number, following semantic versioning."""
 __python_requires__ = ">=3.9"
 """Minimum Python version required for this package."""
-__version__ = "0.1.0"
+__version__ = "2.1.0"

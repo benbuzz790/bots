@@ -15,8 +15,8 @@ project = "bots"
 copyright = "2025, benbuzz790"
 author = "benbuzz790"
 
-version = "1.0"
-release = "1.0"
+version = "2.1"
+release = "2.1.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

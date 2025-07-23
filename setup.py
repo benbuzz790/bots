@@ -74,7 +74,7 @@ CLASSIFIERS: List[str] = [
 
 setup(
     name="bots",
-    version="2.0.0",
+    version="2.1.0",
     author="Ben Rinauto",
     author_email="ben.rinauto@gmail.com",
     description="A framework for LLM tool use",
