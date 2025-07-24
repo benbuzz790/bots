@@ -1,0 +1,816 @@
+<template>
+  <div class="conversation-tree-view">
+    <div class="view-header">
+      <h2 class="text-2xl">Interactive Conversation Tree</h2>
+      <div class="controls">
+        <button 
+          @click="centerTree" 
+          class="btn btn-secondary"
+          :disabled="!hasData"
+        >
+          Center View
+        </button>
+        <button 
+          @click="toggleBranchComparison" 
+          class="btn btn-secondary"
+          :disabled="!hasMultipleBranches"
+        >
+          {{ showBranchComparison ? 'Hide' : 'Show' }} Branch Comparison
+        </button>
+        <div class="zoom-controls">
+          <button @click="zoomIn" class="btn btn-sm">+</button>
+          <button @click="zoomOut" class="btn btn-sm">-</button>
+        </div>
+      </div>
+    </div>
+    <div class="tree-container" ref="treeContainer">
+      <svg ref="treeSvg" class="tree-svg">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                  refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+          </marker>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge> 
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <g class="tree-group"></g>
+      </svg>
+      <!-- Node details panel -->
+      <div 
+        v-if="selectedNode" 
+        class="node-details-panel"
+        :style="{ left: detailsPanelPosition.x + 'px', top: detailsPanelPosition.y + 'px' }"
+      >
+        <div class="panel-header">
+          <h4>{{ getRoleDisplayName(selectedNode.role) }}</h4>
+          <button @click="closeDetailsPanel" class="close-btn">&times;</button>
+        </div>
+        <div class="panel-content">
+          <div class="timestamp">{{ formatTimestamp(selectedNode.timestamp) }}</div>
+          <div class="content-preview">{{ selectedNode.content }}</div>
+          <!-- Tool calls section -->
+          <div v-if="selectedNode.toolCalls && selectedNode.toolCalls.length > 0" class="tool-calls">
+            <h5>Tool Calls</h5>
+            <div v-for="toolCall in selectedNode.toolCalls" :key="toolCall.id" class="tool-call">
+              <div class="tool-name">{{ toolCall.name }}</div>
+              <div class="tool-params">{{ formatToolParams(toolCall.parameters) }}</div>
+            </div>
+          </div>
+          <!-- Tool results section -->
+          <div v-if="selectedNode.toolResults && selectedNode.toolResults.length > 0" class="tool-results">
+            <h5>Tool Results</h5>
+            <div v-for="result in selectedNode.toolResults" :key="result.callId" class="tool-result">
+              <div class="result-status" :class="{ success: result.success, error: !result.success }">
+                {{ result.success ? 'checkmark' : 'x' }} {{ result.executionTime }}ms
+              </div>
+              <div class="result-preview">{{ truncateText(result.result, 100) }}</div>
+            </div>
+          </div>
+          <div class="navigation-buttons">
+            <button 
+              v-if="selectedNode.parentId" 
+              @click="navigateToParent" 
+              class="btn btn-sm"
+            >
+              up Parent
+            </button>
+            <button 
+              v-for="childId in selectedNode.childIds" 
+              :key="childId"
+              @click="navigateToChild(childId)" 
+              class="btn btn-sm"
+            >
+              down Child
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Branch comparison panel -->
+    <div v-if="showBranchComparison" class="branch-comparison-panel">
+      <h4>Branch Comparison</h4>
+      <div class="branches">
+        <div v-for="branch in branches" :key="branch.id" class="branch-summary">
+          <div class="branch-header">
+            <span class="branch-name">{{ branch.name }}</span>
+            <span class="branch-stats">{{ branch.nodeCount }} nodes</span>
+          </div>
+          <div class="branch-path">{{ branch.path }}</div>
+        </div>
+      </div>
+    </div>
+    <!-- Loading state -->
+    <div v-if="isLoading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Loading conversation data...</p>
+    </div>
+    <!-- Connection status -->
+    <div v-if="connectionStatus !== 'connected'" class="connection-status">
+      <div class="status-indicator" :class="connectionStatus"></div>
+      <span>{{ getConnectionStatusText() }}</span>
+    </div>
+  </div>
+</template>
+<script>
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
+import { useBotStore } from '../shared/store.js'
+import * as d3 from 'd3'
+import { mockConversationTree, mockBotState } from '../mock-data/sample-data.js'
+export default {
+  name: 'ConversationTreeView',
+  setup() {
+    const botStore = useBotStore()
+    // Template refs
+    const treeContainer = ref(null)
+    const treeSvg = ref(null)
+    // Component state
+    const selectedNode = ref(null)
+    const detailsPanelPosition = ref({ x: 0, y: 0 })
+    const showBranchComparison = ref(false)
+    const currentZoom = ref(1)
+    // D3 objects
+    let svg, g, zoom, simulation
+    const nodeRadius = 25
+    const linkDistance = 100
+    // Computed properties
+    const hasData = computed(() => {
+      return botStore.conversationTree !== null
+    })
+    const hasMultipleBranches = computed(() => {
+      if (!botStore.conversationTree) return false
+      return countBranches(botStore.conversationTree) > 1
+    })
+    const branches = computed(() => {
+      if (!botStore.conversationTree) return []
+      return extractBranches(botStore.conversationTree)
+    })
+    const connectionStatus = computed(() => botStore.connectionStatus)
+    
+    const isLoading = computed(() => {
+      // Show loading only briefly during initial setup
+      return connectionStatus.value === 'connecting' || (connectionStatus.value === 'connected' && !hasData.value && botStore.conversationNodes.size === 0)
+    })
+    // Initialize D3 visualization
+    const initializeVisualization = () => {
+      if (!treeSvg.value || !treeContainer.value) return
+      const container = treeContainer.value
+      const containerRect = container.getBoundingClientRect()
+      svg = d3.select(treeSvg.value)
+        .attr('width', containerRect.width)
+        .attr('height', containerRect.height)
+      g = svg.select('.tree-group')
+      // Set up zoom behavior
+      zoom = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on('zoom', (event) => {
+          g.attr('transform', event.transform)
+          currentZoom.value = event.transform.k
+        })
+      svg.call(zoom)
+      // Initialize force simulation
+      simulation = d3.forceSimulation()
+        .force('link', d3.forceLink().id(d => d.id).distance(linkDistance))
+        .force('charge', d3.forceManyBody().strength(-300))
+        .force('center', d3.forceCenter(containerRect.width / 2, containerRect.height / 2))
+        .force('collision', d3.forceCollide().radius(nodeRadius + 5))
+    }
+    // Convert tree to D3 format
+    const treeToD3Format = (tree) => {
+      const nodes = []
+      const links = []
+      const traverse = (node, depth = 0) => {
+        const d3Node = {
+          ...node,
+          depth,
+          x: 100 + depth * 150, // Initial positioning
+          y: 100 + nodes.length * 80
+        }
+        nodes.push(d3Node)
+        if (node.children) {
+          node.children.forEach(child => {
+            links.push({
+              source: node.id,
+              target: child.id,
+              type: 'conversation'
+            })
+            traverse(child, depth + 1)
+          })
+        }
+      }
+      if (tree) traverse(tree)
+      return { nodes, links }
+    }
+    // Render the tree
+    const renderTree = () => {
+      if (!svg || !g || !botStore.conversationTree) return
+      const { nodes, links } = treeToD3Format(botStore.conversationTree)
+      // Update simulation
+      simulation.nodes(nodes)
+      simulation.force('link').links(links)
+      // Render links
+      const link = g.selectAll('.link')
+        .data(links, d => `${d.source.id || d.source}-${d.target.id || d.target}`)
+      link.exit().remove()
+      const linkEnter = link.enter()
+        .append('line')
+        .attr('class', 'link')
+        .attr('marker-end', 'url(#arrowhead)')
+        .style('stroke', '#666')
+        .style('stroke-width', 2)
+        .style('opacity', 0)
+      linkEnter.transition()
+        .duration(500)
+        .style('opacity', 1)
+      // Render nodes
+      const node = g.selectAll('.node')
+        .data(nodes, d => d.id)
+      node.exit()
+        .transition()
+        .duration(300)
+        .style('opacity', 0)
+        .remove()
+      const nodeEnter = node.enter()
+        .append('g')
+        .attr('class', 'node')
+        .style('opacity', 0)
+        .style('cursor', 'pointer')
+        .call(d3.drag()
+          .on('start', dragStarted)
+          .on('drag', dragged)
+          .on('end', dragEnded))
+        .on('click', handleNodeClick)
+        .on('mouseover', handleNodeMouseOver)
+        .on('mouseout', handleNodeMouseOut)
+      // Add node circles
+      nodeEnter.append('circle')
+        .attr('r', nodeRadius)
+        .attr('class', d => `node-circle ${d.role}`)
+        .style('fill', d => getNodeColor(d))
+        .style('stroke', '#fff')
+        .style('stroke-width', 2)
+      // Add node labels
+      nodeEnter.append('text')
+        .attr('class', 'node-label')
+        .attr('text-anchor', 'middle')
+        .attr('dy', '.35em')
+        .style('font-size', '12px')
+        .style('font-weight', 'bold')
+        .style('fill', '#fff')
+        .style('pointer-events', 'none')
+        .text(d => getRoleAbbreviation(d.role))
+      // Add tool indicator
+      nodeEnter.filter(d => d.toolCalls && d.toolCalls.length > 0)
+        .append('circle')
+        .attr('class', 'tool-indicator')
+        .attr('r', 8)
+        .attr('cx', 15)
+        .attr('cy', -15)
+        .style('fill', '#ff6b35')
+        .style('stroke', '#fff')
+        .style('stroke-width', 1)
+      nodeEnter.filter(d => d.toolCalls && d.toolCalls.length > 0)
+        .append('text')
+        .attr('class', 'tool-count')
+        .attr('x', 15)
+        .attr('y', -15)
+        .attr('text-anchor', 'middle')
+        .attr('dy', '.35em')
+        .style('font-size', '10px')
+        .style('font-weight', 'bold')
+        .style('fill', '#fff')
+        .style('pointer-events', 'none')
+        .text(d => d.toolCalls.length)
+      // Animate new nodes
+      nodeEnter.transition()
+        .duration(500)
+        .style('opacity', 1)
+      // Update existing nodes
+      node.select('.node-circle')
+        .style('fill', d => getNodeColor(d))
+        .classed('current', d => d.id === botStore.currentNodeId)
+        .classed('selected', d => selectedNode.value && d.id === selectedNode.value.id)
+      // Update simulation tick
+      simulation.on('tick', () => {
+        g.selectAll('.link')
+          .attr('x1', d => d.source.x)
+          .attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x)
+          .attr('y2', d => d.target.y)
+        g.selectAll('.node')
+          .attr('transform', d => `translate(${d.x},${d.y})`)
+      })
+      simulation.alpha(0.3).restart()
+    }
+    // Node interaction handlers
+    const handleNodeClick = (event, d) => {
+      event.stopPropagation()
+      selectedNode.value = d
+      const [x, y] = d3.pointer(event, treeContainer.value)
+      detailsPanelPosition.value = {
+        x: Math.min(x + 20, treeContainer.value.clientWidth - 300),
+        y: Math.max(y - 100, 20)
+      }
+      // Navigate to this node in the store
+      botStore.navigateToNode(d.id)
+    }
+    const handleNodeMouseOver = (event, d) => {
+      d3.select(event.currentTarget)
+        .select('.node-circle')
+        .style('filter', 'url(#glow)')
+        .transition()
+        .duration(200)
+        .attr('r', nodeRadius + 5)
+    }
+    const handleNodeMouseOut = (event, d) => {
+      d3.select(event.currentTarget)
+        .select('.node-circle')
+        .style('filter', null)
+        .transition()
+        .duration(200)
+        .attr('r', nodeRadius)
+    }
+    // Drag handlers
+    const dragStarted = (event, d) => {
+      if (!event.active) simulation.alphaTarget(0.3).restart()
+      d.fx = d.x
+      d.fy = d.y
+    }
+    const dragged = (event, d) => {
+      d.fx = event.x
+      d.fy = event.y
+    }
+    const dragEnded = (event, d) => {
+      if (!event.active) simulation.alphaTarget(0)
+      d.fx = null
+      d.fy = null
+    }
+    // Utility functions
+    const getNodeColor = (node) => {
+      const colors = {
+        user: '#4a90e2',
+        assistant: '#7ed321',
+        system: '#f5a623',
+        tool: '#d0021b'
+      }
+      return colors[node.role] || '#9b9b9b'
+    }
+    const getRoleAbbreviation = (role) => {
+      const abbrevs = {
+        user: 'U',
+        assistant: 'A',
+        system: 'S',
+        tool: 'T'
+      }
+      return abbrevs[role] || '?'
+    }
+    const getRoleDisplayName = (role) => {
+      const names = {
+        user: 'User',
+        assistant: 'Assistant',
+        system: 'System',
+        tool: 'Tool'
+      }
+      return names[role] || 'Unknown'
+    }
+    const formatTimestamp = (timestamp) => {
+      return new Date(timestamp).toLocaleString()
+    }
+    const formatToolParams = (params) => {
+      return JSON.stringify(params, null, 2)
+    }
+    const truncateText = (text, maxLength) => {
+      if (text.length <= maxLength) return text
+      return text.substring(0, maxLength) + '...'
+    }
+    const countBranches = (tree) => {
+      let branches = 0
+      const traverse = (node) => {
+        if (node.children && node.children.length > 1) {
+          branches += node.children.length
+        }
+        if (node.children) {
+          node.children.forEach(traverse)
+        }
+      }
+      traverse(tree)
+      return branches
+    }
+    const extractBranches = (tree) => {
+      const branches = []
+      const traverse = (node, path = []) => {
+        const currentPath = [...path, node.role]
+        if (!node.children || node.children.length === 0) {
+          branches.push({
+            id: `branch-${branches.length}`,
+            name: `Branch ${branches.length + 1}`,
+            nodeCount: currentPath.length,
+            path: currentPath.join(' → ')
+          })
+        } else {
+          node.children.forEach(child => traverse(child, currentPath))
+        }
+      }
+      traverse(tree)
+      return branches
+    }
+    const getConnectionStatusText = () => {
+      const statusTexts = {
+        disconnected: 'Disconnected',
+        connecting: 'Connecting...',
+        connected: 'Connected',
+        error: 'Connection Error'
+      }
+      return statusTexts[connectionStatus.value] || 'Unknown'
+    }
+    // Control methods
+    const centerTree = () => {
+      if (!svg || !botStore.conversationTree) return
+      const containerRect = treeContainer.value.getBoundingClientRect()
+      const centerX = containerRect.width / 2
+      const centerY = containerRect.height / 2
+      svg.transition()
+        .duration(750)
+        .call(zoom.transform, d3.zoomIdentity.translate(centerX, centerY).scale(1))
+    }
+    const zoomIn = () => {
+      svg.transition().duration(300).call(zoom.scaleBy, 1.5)
+    }
+    const zoomOut = () => {
+      svg.transition().duration(300).call(zoom.scaleBy, 1 / 1.5)
+    }
+    const toggleBranchComparison = () => {
+      showBranchComparison.value = !showBranchComparison.value
+    }
+    const closeDetailsPanel = () => {
+      selectedNode.value = null
+    }
+    const navigateToParent = () => {
+      if (selectedNode.value && selectedNode.value.parentId) {
+        botStore.navigateToNode(selectedNode.value.parentId)
+      }
+    }
+    const navigateToChild = (childId) => {
+      botStore.navigateToNode(childId)
+    }
+    // Handle window resize
+    const handleResize = () => {
+      if (!treeContainer.value || !svg) return
+      const containerRect = treeContainer.value.getBoundingClientRect()
+      svg.attr('width', containerRect.width)
+        .attr('height', containerRect.height)
+      simulation.force('center', d3.forceCenter(containerRect.width / 2, containerRect.height / 2))
+      simulation.alpha(0.3).restart()
+    }
+    // Load mock data if not connected
+    const loadMockData = () => {
+      // Always load mock data in development mode or if no real conversation data exists
+      if (!botStore.conversationTree || botStore.conversationNodes.size === 0) {
+        console.log('Loading mock conversation data...')
+        botStore.botState = mockBotState
+        // Build conversation tree from mock data
+        const mockTree = mockConversationTree
+        if (mockTree) {
+          const addNodeRecursively = (node) => {
+            botStore.addConversationNode(node)
+            if (node.children) {
+              node.children.forEach(addNodeRecursively)
+            }
+          }
+          addNodeRecursively(mockTree)
+          botStore.currentNodeId = 'node-005' // Set current node
+          console.log('Mock data loaded:', botStore.conversationNodes.size, 'nodes')
+          nextTick(() => renderTree())
+        }
+      }
+    }
+    // Lifecycle hooks
+    onMounted(async () => {
+      await nextTick()
+      initializeVisualization()
+      loadMockData()
+      window.addEventListener('resize', handleResize)
+      // Try to connect to bot system
+      if (connectionStatus.value === 'disconnected') {
+        botStore.connect()
+      }
+    })
+    onUnmounted(() => {
+      window.removeEventListener('resize', handleResize)
+      if (simulation) {
+        simulation.stop()
+      }
+    })
+    // Watch for data changes
+    watch(() => botStore.conversationTree, renderTree, { deep: true })
+    watch(() => botStore.currentNodeId, renderTree)
+    return {
+      // Template refs
+      treeContainer,
+      treeSvg,
+      // State
+      selectedNode,
+      detailsPanelPosition,
+      showBranchComparison,
+      // Computed
+      hasData,
+      hasMultipleBranches,
+      branches,
+      connectionStatus,
+      isLoading,
+      // Methods
+      centerTree,
+      zoomIn,
+      zoomOut,
+      toggleBranchComparison,
+      closeDetailsPanel,
+      navigateToParent,
+      navigateToChild,
+      getRoleDisplayName,
+      formatTimestamp,
+      formatToolParams,
+      truncateText,
+      getConnectionStatusText
+    }
+  }
+}
+</script>
+<style scoped>
+.conversation-tree-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-primary);
+}
+.view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--background-secondary);
+}
+.controls {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+.zoom-controls {
+  display: flex;
+  gap: 2px;
+}
+.tree-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+.tree-svg {
+  width: 100%;
+  height: 100%;
+  background: var(--background-primary);
+}
+/* Node styles */
+:deep(.node-circle.user) {
+  fill: #4a90e2;
+}
+:deep(.node-circle.assistant) {
+  fill: #7ed321;
+}
+:deep(.node-circle.system) {
+  fill: #f5a623;
+}
+:deep(.node-circle.tool) {
+  fill: #d0021b;
+}
+:deep(.node-circle.current) {
+  stroke: #ff6b35;
+  stroke-width: 4px;
+}
+:deep(.node-circle.selected) {
+  stroke: #fff;
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
+}
+:deep(.link) {
+  stroke: #666;
+  stroke-width: 2px;
+  fill: none;
+}
+/* Details panel */
+.node-details-panel {
+  position: absolute;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-lg);
+  width: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--color-primary);
+  color: white;
+}
+.panel-header h4 {
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+.close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.panel-content {
+  padding: var(--spacing-md);
+}
+.timestamp {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+.content-preview {
+  background: var(--background-primary);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+  max-height: 100px;
+  overflow-y: auto;
+  margin-bottom: var(--spacing-md);
+}
+.tool-calls, .tool-results {
+  margin-top: var(--spacing-md);
+}
+.tool-calls h5, .tool-results h5 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+.tool-call, .tool-result {
+  background: var(--background-primary);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+}
+.tool-name {
+  font-weight: bold;
+  color: var(--color-primary);
+}
+.tool-params {
+  color: var(--text-secondary);
+  font-family: monospace;
+  white-space: pre-wrap;
+  max-height: 60px;
+  overflow-y: auto;
+}
+.result-status {
+  font-weight: bold;
+  margin-bottom: var(--spacing-xs);
+}
+.result-status.success {
+  color: #7ed321;
+}
+.result-status.error {
+  color: #d0021b;
+}
+.result-preview {
+  color: var(--text-secondary);
+  font-family: monospace;
+  white-space: pre-wrap;
+  max-height: 60px;
+  overflow-y: auto;
+}
+.navigation-buttons {
+  margin-top: var(--spacing-md);
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+/* Branch comparison panel */
+.branch-comparison-panel {
+  position: absolute;
+  top: 60px;
+  right: var(--spacing-md);
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-lg);
+  width: 250px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 999;
+}
+.branch-comparison-panel h4 {
+  margin: 0;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--color-secondary);
+  color: white;
+  font-size: var(--font-size-md);
+}
+.branches {
+  padding: var(--spacing-sm);
+}
+.branch-summary {
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--border-color);
+}
+.branch-summary:last-child {
+  border-bottom: none;
+}
+.branch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+}
+.branch-name {
+  font-weight: bold;
+  color: var(--text-primary);
+}
+.branch-stats {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+.branch-path {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+/* Loading and connection states */
+.loading-state, .connection-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  color: var(--text-secondary);
+}
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-color);
+  border-top: 2px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+}
+.status-indicator.connected {
+  background: #7ed321;
+}
+.status-indicator.connecting {
+  background: #f5a623;
+  animation: pulse 1s infinite;
+}
+.status-indicator.error {
+  background: #d0021b;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+/* Responsive design */
+@media (max-width: 768px) {
+  .view-header {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    align-items: stretch;
+  }
+  .controls {
+    justify-content: center;
+  }
+  .node-details-panel {
+    width: 280px;
+  }
+  .branch-comparison-panel {
+    width: 220px;
+  }
+}
+</style>
