@@ -58,3 +58,6 @@ complex_test.txt
 dir1/
 dir2/
 dir3/
+
+*node_modules*
+prompts.json
