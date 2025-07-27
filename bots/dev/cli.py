@@ -6,6 +6,23 @@ import platform
 import re
 import sys
 import textwrap
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
+# Try to import readline, with fallback for Windows
+try:
+    import readline
+    HAS_READLINE = True
+except ImportError:
+    HAS_READLINE = False
+import argparse
+import inspect
+import json
+import os
+import platform
+import re
+import sys
+import textwrap
 from typing import Any, Callable, Dict, List, Optional
 
 import bots.flows.functional_prompts as fp
@@ -289,6 +306,124 @@ class CLIConfig:
                 json.dump(config_data, f, indent=2)
         except Exception:
             pass  # Fail silently if config saving fails
+class PromptManager:
+    """Manager for saving, loading, and editing prompts with recency tracking."""
+
+    def __init__(self, prompts_file: str = "bots/prompts.json"):
+        self.prompts_file = Path(prompts_file)
+        self.prompts_data = self._load_prompts()
+
+    def _load_prompts(self) -> Dict[str, Any]:
+        """Load prompts from file or create empty structure."""
+        if self.prompts_file.exists():
+            try:
+                with open(self.prompts_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError):
+                pass
+        return {"recents": [], "prompts": {}}
+
+    def _save_prompts(self):
+        """Save prompts to file."""
+        try:
+            # Ensure directory exists
+            self.prompts_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.prompts_file, 'w', encoding='utf-8') as f:
+                json.dump(self.prompts_data, f, indent=2, ensure_ascii=False)
+        except IOError as e:
+            raise Exception(f"Failed to save prompts: {e}")
+
+    def _update_recents(self, prompt_name: str):
+        """Update recency list, moving prompt to front."""
+        recents = self.prompts_data["recents"]
+        if prompt_name in recents:
+            recents.remove(prompt_name)
+        recents.insert(0, prompt_name)
+        # Keep only first 5
+        self.prompts_data["recents"] = recents[:5]
+
+    def _generate_prompt_name(self, prompt_text: str) -> str:
+        """Generate a name for the prompt using Claude Haiku."""
+        try:
+            from bots.foundation.base import Engines
+            from bots.foundation.anthropic_bots import AnthropicBot
+
+            # Create a quick Haiku bot for naming
+            naming_bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU)
+
+            # Truncate prompt if too long for naming
+            truncated_prompt = prompt_text[:500] + "..." if len(prompt_text) > 500 else prompt_text
+
+            naming_prompt = f"""Generate a short, descriptive name (2-4 words, snake_case) for this prompt:
+
+{truncated_prompt}
+
+Respond with just the name, no explanation."""
+
+            response = naming_bot.prompt(naming_prompt)
+            # Clean up the response - extract just the name
+            name = response.strip().lower()
+            # Remove any non-alphanumeric characters except underscores
+            name = re.sub(r'[^a-z0-9_]', '', name)
+            # Ensure it's not empty
+            if not name:
+                name = "unnamed_prompt"
+            return name
+
+        except Exception:
+            # Fallback to timestamp-based name
+            import time
+            return f"prompt_{int(time.time())}"
+
+    def search_prompts(self, query: str) -> List[tuple]:
+        """Search prompts by name and content. Returns list of (name, content) tuples."""
+        if not query:
+            # Return recents if no query
+            results = []
+            for name in self.prompts_data["recents"]:
+                if name in self.prompts_data["prompts"]:
+                    results.append((name, self.prompts_data["prompts"][name]))
+            return results
+
+        query_lower = query.lower()
+        results = []
+
+        for name, content in self.prompts_data["prompts"].items():
+            # Search in name and content
+            if query_lower in name.lower() or query_lower in content.lower():
+                results.append((name, content))
+
+        return results
+
+    def save_prompt(self, prompt_text: str, name: str = None) -> str:
+        """Save a prompt with optional name. If no name, generate one."""
+        if not name:
+            name = self._generate_prompt_name(prompt_text)
+
+        # Ensure unique name
+        original_name = name
+        counter = 1
+        while name in self.prompts_data["prompts"]:
+            name = f"{original_name}_{counter}"
+            counter += 1
+
+        self.prompts_data["prompts"][name] = prompt_text
+        self._update_recents(name)
+        self._save_prompts()
+        return name
+
+    def load_prompt(self, name: str) -> str:
+        """Load a prompt by name and update recency."""
+        if name not in self.prompts_data["prompts"]:
+            raise KeyError(f"Prompt '{name}' not found")
+
+        self._update_recents(name)
+        self._save_prompts()
+        return self.prompts_data["prompts"][name]
+
+    def get_prompt_names(self) -> List[str]:
+        """Get all prompt names."""
+        return list(self.prompts_data["prompts"].keys())
 
 
 class CLICallbacks:
@@ -401,6 +536,124 @@ class CLIContext:
         self.bot_instance = None
         self.cached_leaves: List[ConversationNode] = []
         self.callbacks = CLICallbacks(self)
+class PromptManager:
+    """Manager for saving, loading, and editing prompts with recency tracking."""
+
+    def __init__(self, prompts_file: str = "bots/prompts.json"):
+        self.prompts_file = Path(prompts_file)
+        self.prompts_data = self._load_prompts()
+
+    def _load_prompts(self) -> Dict[str, Any]:
+        """Load prompts from file or create empty structure."""
+        if self.prompts_file.exists():
+            try:
+                with open(self.prompts_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError):
+                pass
+        return {"recents": [], "prompts": {}}
+
+    def _save_prompts(self):
+        """Save prompts to file."""
+        try:
+            # Ensure directory exists
+            self.prompts_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.prompts_file, 'w', encoding='utf-8') as f:
+                json.dump(self.prompts_data, f, indent=2, ensure_ascii=False)
+        except IOError as e:
+            raise Exception(f"Failed to save prompts: {e}")
+
+    def _update_recents(self, prompt_name: str):
+        """Update recency list, moving prompt to front."""
+        recents = self.prompts_data["recents"]
+        if prompt_name in recents:
+            recents.remove(prompt_name)
+        recents.insert(0, prompt_name)
+        # Keep only first 5
+        self.prompts_data["recents"] = recents[:5]
+
+    def _generate_prompt_name(self, prompt_text: str) -> str:
+        """Generate a name for the prompt using Claude Haiku."""
+        try:
+            from bots.foundation.base import Engines
+            from bots.foundation.anthropic_bots import AnthropicBot
+
+            # Create a quick Haiku bot for naming
+            naming_bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU)
+
+            # Truncate prompt if too long for naming
+            truncated_prompt = prompt_text[:500] + "..." if len(prompt_text) > 500 else prompt_text
+
+            naming_prompt = f"""Generate a short, descriptive name (2-4 words, snake_case) for this prompt:
+
+{truncated_prompt}
+
+Respond with just the name, no explanation."""
+
+            response = naming_bot.prompt(naming_prompt)
+            # Clean up the response - extract just the name
+            name = response.strip().lower()
+            # Remove any non-alphanumeric characters except underscores
+            name = re.sub(r'[^a-z0-9_]', '', name)
+            # Ensure it's not empty
+            if not name:
+                name = "unnamed_prompt"
+            return name
+
+        except Exception:
+            # Fallback to timestamp-based name
+            import time
+            return f"prompt_{int(time.time())}"
+
+    def search_prompts(self, query: str) -> List[tuple]:
+        """Search prompts by name and content. Returns list of (name, content) tuples."""
+        if not query:
+            # Return recents if no query
+            results = []
+            for name in self.prompts_data["recents"]:
+                if name in self.prompts_data["prompts"]:
+                    results.append((name, self.prompts_data["prompts"][name]))
+            return results
+
+        query_lower = query.lower()
+        results = []
+
+        for name, content in self.prompts_data["prompts"].items():
+            # Search in name and content
+            if query_lower in name.lower() or query_lower in content.lower():
+                results.append((name, content))
+
+        return results
+
+    def save_prompt(self, prompt_text: str, name: str = None) -> str:
+        """Save a prompt with optional name. If no name, generate one."""
+        if not name:
+            name = self._generate_prompt_name(prompt_text)
+
+        # Ensure unique name
+        original_name = name
+        counter = 1
+        while name in self.prompts_data["prompts"]:
+            name = f"{original_name}_{counter}"
+            counter += 1
+
+        self.prompts_data["prompts"][name] = prompt_text
+        self._update_recents(name)
+        self._save_prompts()
+        return name
+
+    def load_prompt(self, name: str) -> str:
+        """Load a prompt by name and update recency."""
+        if name not in self.prompts_data["prompts"]:
+            raise KeyError(f"Prompt '{name}' not found")
+
+        self._update_recents(name)
+        self._save_prompts()
+        return self.prompts_data["prompts"][name]
+
+    def get_prompt_names(self) -> List[str]:
+        """Get all prompt names."""
+        return list(self.prompts_data["prompts"].keys())
 
 
 class ConversationHandler:
@@ -742,6 +995,8 @@ class SystemHandler:
             "/fp: Execute functional prompts with dynamic parameter collection",
             "/combine_leaves: Combine all leaves below current node using a recombinator function",
             "/broadcast_fp: Execute functional prompts on all leaf nodes",
+            "/p [search]: Load a saved prompt (searches by name and content, pre-fills input)",
+            "/s [text]: Save a prompt - saves provided text or last user message if no text given",
             "/config: Show or modify CLI configuration",
             "/exit: Exit the program",
             "",
@@ -1003,6 +1258,107 @@ class DynamicFunctionalPromptHandler:
                         leaf.labels.remove(temp_label)
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
+class PromptHandler:
+    """Handler for prompt management commands."""
+
+    def __init__(self):
+        self.prompt_manager = PromptManager()
+
+    def _get_input_with_prefill(self, prompt_text: str, prefill: str = "") -> str:
+        """Get input with pre-filled text using readline if available."""
+        if not HAS_READLINE or not prefill:
+            return input(prompt_text)
+
+        def startup_hook():
+            readline.insert_text(prefill)
+            readline.redisplay()
+
+        readline.set_startup_hook(startup_hook)
+        try:
+            user_input = input(prompt_text)
+            return user_input
+        finally:
+            readline.set_startup_hook(None)
+
+    def load_prompt(self, bot: "Bot", context: "CLIContext", args: List[str]) -> tuple:
+        """Load a prompt with search and selection. Returns (message, prefill_text)."""
+        try:
+            # Get search query
+            if args:
+                query = " ".join(args)
+            else:
+                query = input("Enter prompt search: ").strip()
+
+            # Search for matching prompts
+            matches = self.prompt_manager.search_prompts(query)
+
+            if not matches:
+                return ("No prompts found matching your search.", None)
+
+            if len(matches) == 1:
+                # Single match - load directly
+                name, content = matches[0]
+                self.prompt_manager.load_prompt(name)  # Update recency
+                return (f"Loaded prompt: {name}", content)
+
+            # Multiple matches - show selection
+            print(f"\nFound {len(matches)} matches:")
+            for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
+                # Show preview of content
+                preview = content[:100] + "..." if len(content) > 100 else content
+                preview = preview.replace('\n', ' ')  # Single line preview
+                print(f"  {i}. {name}: {preview}")
+
+            if len(matches) > 10:
+                print(f"  ... and {len(matches) - 10} more matches")
+
+            # Get selection
+            try:
+                choice = input(f"\nSelect prompt (1-{min(len(matches), 10)}): ").strip()
+                if not choice:
+                    return ("Selection cancelled.", None)
+
+                choice_num = int(choice) - 1
+                if choice_num < 0 or choice_num >= min(len(matches), 10):
+                    return (f"Invalid selection. Must be between 1 and {min(len(matches), 10)}.", None)
+
+                name, content = matches[choice_num]
+                self.prompt_manager.load_prompt(name)  # Update recency
+
+                # Display the full prompt for review
+                print(f"\n--- Loaded Prompt: {name} ---")
+                print(content)
+                print("--- End Prompt ---\n")
+
+                return (f"Loaded prompt: {name}", content)
+
+            except ValueError:
+                return ("Invalid selection. Must be a number.", None)
+
+        except Exception as e:
+            return (f"Error loading prompt: {str(e)}", None)
+
+    def save_prompt(self, bot: "Bot", context: "CLIContext", args: List[str], last_user_message: str = None) -> str:
+        """Save a prompt. If args provided, save the args. Otherwise save last user message."""
+        try:
+            if args:
+                # Save the provided text
+                prompt_text = " ".join(args)
+            elif last_user_message:
+                # Save the last user message
+                prompt_text = last_user_message
+            else:
+                return "No prompt to save. Either provide text with /s or use /s after sending a message."
+
+            if not prompt_text.strip():
+                return "Cannot save empty prompt."
+
+            # Generate name and save
+            name = self.prompt_manager.save_prompt(prompt_text)
+            return f"Saved prompt as: {name}"
+
+        except Exception as e:
+            return f"Error saving prompt: {str(e)}"
 
 
 def check_for_interrupt() -> bool:
@@ -1113,7 +1469,10 @@ class CLI:
         self.state = StateHandler()
         self.system = SystemHandler()
         self.fp = DynamicFunctionalPromptHandler(function_filter)
+        self.prompts = PromptHandler()
         self.bot_filename = bot_filename
+        self.last_user_message = None  # Track last user message for /s command
+        self.pending_prefill = None  # Store text to prefill on next input
         self.commands = {
             "/help": self.system.help,
             "/verbose": self.system.verbose,
@@ -1134,6 +1493,8 @@ class CLI:
             "/auto": self.system.auto,
             "/fp": self.fp.execute,
             "/broadcast_fp": self.fp.broadcast_fp,
+            "/p": self._handle_load_prompt,
+            "/s": self._handle_save_prompt,
         }
 
     def run(self):
@@ -1162,7 +1523,7 @@ class CLI:
             print("CLI started. Type /help for commands or chat normally.")
             while True:
                 try:
-                    user_input = input(">>> ").strip()
+                    user_input = self._get_user_input(">>> ").strip()
                     if user_input == "/exit":
                         raise SystemExit(0)
                     if not user_input:
@@ -1180,6 +1541,13 @@ class CLI:
                         msg = " ".join(words[:-1]) if len(words) > 1 else None
                     else:
                         msg = user_input
+                    
+                    # Track user messages for /s command
+                    if not command or command not in ["/s"]:
+                        if msg:
+                            self.last_user_message = msg
+                        elif not command:
+                            self.last_user_message = user_input
                     if command:
                         if command not in self.commands:
                             pretty(
@@ -1212,6 +1580,10 @@ class CLI:
                                 self._handle_command(self.context.bot_instance, user_input)
                                 if command in ["/up", "/down", "/left", "/right", "/root", "/goto", "/leaf"]:
                                     self._handle_chat(self.context.bot_instance, msg)
+                                elif command == "/s":
+                                    # Special handling for /s with text - save the text
+                                    self.last_user_message = msg
+                                    self._handle_command(self.context.bot_instance, user_input)
                             else:
                                 self._handle_chat(self.context.bot_instance, msg)
                                 self._handle_command(self.context.bot_instance, user_input)
@@ -1231,6 +1603,40 @@ class CLI:
         finally:
             restore_terminal(self.context.old_terminal_settings)
             print("Goodbye!")
+    def _handle_load_prompt(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Handle /p command to load prompts."""
+        message, prefill_text = self.prompts.load_prompt(bot, context, args)
+        if prefill_text:
+            self.pending_prefill = prefill_text
+        return message
+    
+    def _handle_save_prompt(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Handle /s command to save prompts."""
+        return self.prompts.save_prompt(bot, context, args, self.last_user_message)
+    
+    def _get_user_input(self, prompt_text: str = ">>> ") -> str:
+        """Get user input, with optional pre-fill support."""
+        if self.pending_prefill and HAS_READLINE:
+            # Use readline to pre-fill the input
+            def startup_hook():
+                readline.insert_text(self.pending_prefill)
+                readline.redisplay()
+
+            readline.set_startup_hook(startup_hook)
+            try:
+                user_input = input(prompt_text)
+                return user_input
+            finally:
+                readline.set_startup_hook(None)
+                self.pending_prefill = None  # Clear after use
+        elif self.pending_prefill:
+            # Fallback for systems without readline
+            print(f"Loaded prompt (edit as needed):\n{self.pending_prefill}")
+            user_input = input(prompt_text)
+            self.pending_prefill = None
+            return user_input
+        else:
+            return input(prompt_text)
 
     def _initialize_new_bot(self):
         """Initialize a new bot with default tools."""
@@ -1300,6 +1706,107 @@ class CLI:
                     self.context.config.indent,
                     COLOR_SYSTEM,
                 )
+class PromptHandler:
+    """Handler for prompt management commands."""
+
+    def __init__(self):
+        self.prompt_manager = PromptManager()
+
+    def _get_input_with_prefill(self, prompt_text: str, prefill: str = "") -> str:
+        """Get input with pre-filled text using readline if available."""
+        if not HAS_READLINE or not prefill:
+            return input(prompt_text)
+
+        def startup_hook():
+            readline.insert_text(prefill)
+            readline.redisplay()
+
+        readline.set_startup_hook(startup_hook)
+        try:
+            user_input = input(prompt_text)
+            return user_input
+        finally:
+            readline.set_startup_hook(None)
+
+    def load_prompt(self, bot: "Bot", context: "CLIContext", args: List[str]) -> tuple:
+        """Load a prompt with search and selection. Returns (message, prefill_text)."""
+        try:
+            # Get search query
+            if args:
+                query = " ".join(args)
+            else:
+                query = input("Enter prompt search: ").strip()
+
+            # Search for matching prompts
+            matches = self.prompt_manager.search_prompts(query)
+
+            if not matches:
+                return ("No prompts found matching your search.", None)
+
+            if len(matches) == 1:
+                # Single match - load directly
+                name, content = matches[0]
+                self.prompt_manager.load_prompt(name)  # Update recency
+                return (f"Loaded prompt: {name}", content)
+
+            # Multiple matches - show selection
+            print(f"\nFound {len(matches)} matches:")
+            for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
+                # Show preview of content
+                preview = content[:100] + "..." if len(content) > 100 else content
+                preview = preview.replace('\n', ' ')  # Single line preview
+                print(f"  {i}. {name}: {preview}")
+
+            if len(matches) > 10:
+                print(f"  ... and {len(matches) - 10} more matches")
+
+            # Get selection
+            try:
+                choice = input(f"\nSelect prompt (1-{min(len(matches), 10)}): ").strip()
+                if not choice:
+                    return ("Selection cancelled.", None)
+
+                choice_num = int(choice) - 1
+                if choice_num < 0 or choice_num >= min(len(matches), 10):
+                    return (f"Invalid selection. Must be between 1 and {min(len(matches), 10)}.", None)
+
+                name, content = matches[choice_num]
+                self.prompt_manager.load_prompt(name)  # Update recency
+
+                # Display the full prompt for review
+                print(f"\n--- Loaded Prompt: {name} ---")
+                print(content)
+                print("--- End Prompt ---\n")
+
+                return (f"Loaded prompt: {name}", content)
+
+            except ValueError:
+                return ("Invalid selection. Must be a number.", None)
+
+        except Exception as e:
+            return (f"Error loading prompt: {str(e)}", None)
+
+    def save_prompt(self, bot: "Bot", context: "CLIContext", args: List[str], last_user_message: str = None) -> str:
+        """Save a prompt. If args provided, save the args. Otherwise save last user message."""
+        try:
+            if args:
+                # Save the provided text
+                prompt_text = " ".join(args)
+            elif last_user_message:
+                # Save the last user message
+                prompt_text = last_user_message
+            else:
+                return "No prompt to save. Either provide text with /s or use /s after sending a message."
+
+            if not prompt_text.strip():
+                return "Cannot save empty prompt."
+
+            # Generate name and save
+            name = self.prompt_manager.save_prompt(prompt_text)
+            return f"Saved prompt as: {name}"
+
+        except Exception as e:
+            return f"Error saving prompt: {str(e)}"
 
 
 def parse_args():
