@@ -349,7 +349,7 @@ class PromptManager:
             from bots.foundation.anthropic_bots import AnthropicBot
 
             # Create a quick Haiku bot for naming
-            naming_bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU)
+            naming_bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
 
             # Truncate prompt if too long for naming
             truncated_prompt = prompt_text[:500] + "..." if len(prompt_text) > 500 else prompt_text
@@ -360,7 +360,7 @@ class PromptManager:
 
 Respond with just the name, no explanation."""
 
-            response = naming_bot.prompt(naming_prompt)
+            response = naming_bot.respond(naming_prompt)
             # Clean up the response - extract just the name
             name = response.strip().lower()
             # Remove any non-alphanumeric characters except underscores
@@ -579,7 +579,7 @@ class PromptManager:
             from bots.foundation.anthropic_bots import AnthropicBot
 
             # Create a quick Haiku bot for naming
-            naming_bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU)
+            naming_bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
 
             # Truncate prompt if too long for naming
             truncated_prompt = prompt_text[:500] + "..." if len(prompt_text) > 500 else prompt_text
@@ -590,7 +590,7 @@ class PromptManager:
 
 Respond with just the name, no explanation."""
 
-            response = naming_bot.prompt(naming_prompt)
+            response = naming_bot.respond(naming_prompt)
             # Clean up the response - extract just the name
             name = response.strip().lower()
             # Remove any non-alphanumeric characters except underscores
@@ -1325,10 +1325,6 @@ class PromptHandler:
                 name, content = matches[choice_num]
                 self.prompt_manager.load_prompt(name)  # Update recency
 
-                # Display the full prompt for review
-                print(f"\n--- Loaded Prompt: {name} ---")
-                print(content)
-                print("--- End Prompt ---\n")
 
                 return (f"Loaded prompt: {name}", content)
 
@@ -1643,7 +1639,7 @@ class CLI:
         bot = AnthropicBot()
         self.context.bot_instance = bot
 
-        bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools)
+        bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools, bots.tools.self_tools)
         # This works well as a fallback:
         # bot.add_tools(bots.tools.terminal_tools, view, view_dir)
 
@@ -1753,7 +1749,7 @@ class PromptHandler:
             print(f"\nFound {len(matches)} matches:")
             for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
                 # Show preview of content
-                preview = content[:100] + "..." if len(content) > 100 else content
+                preview = content[:1000] + "..." if len(content) > 100 else content
                 preview = preview.replace('\n', ' ')  # Single line preview
                 print(f"  {i}. {name}: {preview}")
 
@@ -1773,10 +1769,6 @@ class PromptHandler:
                 name, content = matches[choice_num]
                 self.prompt_manager.load_prompt(name)  # Update recency
 
-                # Display the full prompt for review
-                print(f"\n--- Loaded Prompt: {name} ---")
-                print(content)
-                print("--- End Prompt ---\n")
 
                 return (f"Loaded prompt: {name}", content)
 
