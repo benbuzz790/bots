@@ -50,6 +50,7 @@ Example:
 
 import ast
 import datetime
+import functools
 import inspect
 import logging
 import os
@@ -716,6 +717,159 @@ def log_errors(func: Callable) -> Callable:
             raise
 
     return wrapper
+def toolify(description: str = None):
+    """
+    Convert any function into a bot tool with string-in, string-out interface.
+
+    - Converts string inputs to proper types using type hints
+    - Ensures string output (JSON for complex types)
+    - Wraps in error handling (returns error strings, never raises)
+    - Enhances docstring if description provided
+
+    Args:
+        description (str, optional): Override the function's docstring
+
+    Example:
+        @toolify()
+        def add_numbers(x: int, y: int = 0) -> int:
+            return x + y
+
+        @toolify("Calculate the area of a circle")
+        def area(radius: float) -> float:
+            return 3.14159 * radius * radius
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                # Convert string inputs to proper types using type hints
+                converted_args, converted_kwargs = _convert_tool_inputs(func, args, kwargs)
+
+                # Call original function
+                result = func(*converted_args, **converted_kwargs)
+
+                # Convert result to string
+                return _convert_tool_output(result)
+
+            except Exception as e:
+                return f"Error: {str(e)}"
+
+        # Update docstring if description provided
+        if description:
+            wrapper.__doc__ = description
+        elif not wrapper.__doc__:
+            # Generate minimal docstring from function name
+            wrapper.__doc__ = f"Execute {func.__name__.replace('_', ' ')}"
+
+        # Apply handle_errors to ensure consistent error handling
+        wrapper = handle_errors(wrapper)
+
+        return wrapper
+    return decorator
+
+
+def _convert_tool_inputs(func, args, kwargs):
+    """Convert string inputs to proper types using function's type hints."""
+    import ast
+    import inspect
+
+    sig = inspect.signature(func)
+    bound_args = sig.bind_partial(*args, **kwargs)
+
+    converted_args = []
+    converted_kwargs = {}
+
+    # Convert positional args
+    param_names = list(sig.parameters.keys())
+    for i, arg in enumerate(args):
+        if i < len(param_names):
+            param_name = param_names[i]
+            param = sig.parameters[param_name]
+            converted_value = _convert_string_to_type(arg, param.annotation)
+            converted_args.append(converted_value)
+        else:
+            # No type hint available, keep as string
+            converted_args.append(arg)
+
+    # Convert keyword args
+    for key, value in kwargs.items():
+        if key in sig.parameters:
+            param = sig.parameters[key]
+            converted_value = _convert_string_to_type(value, param.annotation)
+            converted_kwargs[key] = converted_value
+        else:
+            # No type hint available, keep as string
+            converted_kwargs[key] = value
+
+    return tuple(converted_args), converted_kwargs
+
+
+def _convert_string_to_type(value, type_hint):
+    """Convert a string value to the specified type."""
+    import ast
+
+    # If no type hint, return as string
+    if type_hint == inspect.Parameter.empty:
+        return value
+
+    # If already the right type, return as-is
+    if isinstance(value, type_hint):
+        return value
+
+    # Convert string to target type
+    if type_hint == str:
+        return str(value)
+    elif type_hint == int:
+        return int(value)
+    elif type_hint == float:
+        return float(value)
+    elif type_hint == bool:
+        # Handle common boolean string representations
+        if isinstance(value, str):
+            lower_val = value.lower()
+            if lower_val in ('true', '1', 'yes', 'on'):
+                return True
+            elif lower_val in ('false', '0', 'no', 'off'):
+                return False
+        return bool(value)
+    elif type_hint == list:
+        # Parse string as Python list literal
+        if isinstance(value, str):
+            return ast.literal_eval(value)
+        return list(value)
+    elif type_hint == dict:
+        # Parse string as Python dict literal
+        if isinstance(value, str):
+            return ast.literal_eval(value)
+        return dict(value)
+    else:
+        # For other types, try direct conversion or return as string
+        try:
+            return type_hint(value)
+        except (ValueError, TypeError):
+            return value
+
+
+def _convert_tool_output(result):
+    """Convert function result to string output."""
+    import json
+
+    if result is None:
+        return "Tool execution completed without errors"
+    elif isinstance(result, str):
+        return result
+    elif isinstance(result, (int, float, bool)):
+        return str(result)
+    elif isinstance(result, (list, dict)):
+        # JSON serialize complex types
+        try:
+            return json.dumps(result, indent=2, ensure_ascii=False)
+        except (TypeError, ValueError):
+            # Fallback to string representation
+            return str(result)
+    else:
+        # For other types, use string representation
+        return str(result)
 
 
 def _log_error_to_file(function_name: str, error_message: str, args: tuple = None, kwargs: dict = None) -> None:
@@ -785,3 +939,156 @@ def handle_errors(func: Callable) -> Callable:
             return _process_error(e)
 
     return wrapper
+def toolify(description: str = None):
+    """
+    Convert any function into a bot tool with string-in, string-out interface.
+
+    - Converts string inputs to proper types using type hints
+    - Ensures string output (JSON for complex types)
+    - Wraps in error handling (returns error strings, never raises)
+    - Enhances docstring if description provided
+
+    Args:
+        description (str, optional): Override the function's docstring
+
+    Example:
+        @toolify()
+        def add_numbers(x: int, y: int = 0) -> int:
+            return x + y
+
+        @toolify("Calculate the area of a circle")
+        def area(radius: float) -> float:
+            return 3.14159 * radius * radius
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                # Convert string inputs to proper types using type hints
+                converted_args, converted_kwargs = _convert_tool_inputs(func, args, kwargs)
+
+                # Call original function
+                result = func(*converted_args, **converted_kwargs)
+
+                # Convert result to string
+                return _convert_tool_output(result)
+
+            except Exception as e:
+                return f"Error: {str(e)}"
+
+        # Update docstring if description provided
+        if description:
+            wrapper.__doc__ = description
+        elif not wrapper.__doc__:
+            # Generate minimal docstring from function name
+            wrapper.__doc__ = f"Execute {func.__name__.replace('_', ' ')}"
+
+        # Apply handle_errors to ensure consistent error handling
+        wrapper = handle_errors(wrapper)
+
+        return wrapper
+    return decorator
+
+
+def _convert_tool_inputs(func, args, kwargs):
+    """Convert string inputs to proper types using function's type hints."""
+    import ast
+    import inspect
+
+    sig = inspect.signature(func)
+    bound_args = sig.bind_partial(*args, **kwargs)
+
+    converted_args = []
+    converted_kwargs = {}
+
+    # Convert positional args
+    param_names = list(sig.parameters.keys())
+    for i, arg in enumerate(args):
+        if i < len(param_names):
+            param_name = param_names[i]
+            param = sig.parameters[param_name]
+            converted_value = _convert_string_to_type(arg, param.annotation)
+            converted_args.append(converted_value)
+        else:
+            # No type hint available, keep as string
+            converted_args.append(arg)
+
+    # Convert keyword args
+    for key, value in kwargs.items():
+        if key in sig.parameters:
+            param = sig.parameters[key]
+            converted_value = _convert_string_to_type(value, param.annotation)
+            converted_kwargs[key] = converted_value
+        else:
+            # No type hint available, keep as string
+            converted_kwargs[key] = value
+
+    return tuple(converted_args), converted_kwargs
+
+
+def _convert_string_to_type(value, type_hint):
+    """Convert a string value to the specified type."""
+    import ast
+
+    # If no type hint, return as string
+    if type_hint == inspect.Parameter.empty:
+        return value
+
+    # If already the right type, return as-is
+    if isinstance(value, type_hint):
+        return value
+
+    # Convert string to target type
+    if type_hint == str:
+        return str(value)
+    elif type_hint == int:
+        return int(value)
+    elif type_hint == float:
+        return float(value)
+    elif type_hint == bool:
+        # Handle common boolean string representations
+        if isinstance(value, str):
+            lower_val = value.lower()
+            if lower_val in ('true', '1', 'yes', 'on'):
+                return True
+            elif lower_val in ('false', '0', 'no', 'off'):
+                return False
+        return bool(value)
+    elif type_hint == list:
+        # Parse string as Python list literal
+        if isinstance(value, str):
+            return ast.literal_eval(value)
+        return list(value)
+    elif type_hint == dict:
+        # Parse string as Python dict literal
+        if isinstance(value, str):
+            return ast.literal_eval(value)
+        return dict(value)
+    else:
+        # For other types, try direct conversion or return as string
+        try:
+            return type_hint(value)
+        except (ValueError, TypeError):
+            return value
+
+
+def _convert_tool_output(result):
+    """Convert function result to string output."""
+    import json
+
+    if result is None:
+        return "Tool execution completed without errors"
+    elif isinstance(result, str):
+        return result
+    elif isinstance(result, (int, float, bool)):
+        return str(result)
+    elif isinstance(result, (list, dict)):
+        # JSON serialize complex types
+        try:
+            return json.dumps(result, indent=2, ensure_ascii=False)
+        except (TypeError, ValueError):
+            # Fallback to string representation
+            return str(result)
+    else:
+        # For other types, use string representation
+        return str(result)
