@@ -1,3 +1,6 @@
+class ToolExecutionError(Exception):
+    """Custom exception for tool execution failures that should not be treated as user interrupts."""
+    pass
 """Development decorators for enhancing bot functionality and debugging.
 
 This module provides decorators and utilities for:
@@ -751,6 +754,10 @@ def toolify(description: str = None):
                 # Convert result to string
                 return _convert_tool_output(result)
 
+            except KeyboardInterrupt as e:
+                # Convert KeyboardInterrupt to ToolExecutionError to prevent it from 
+                # bubbling up to CLI and being treated as user Ctrl+C
+                return f"Error: Tool execution interrupted: {str(e)}"
             except Exception as e:
                 return f"Error: {str(e)}"
 
@@ -935,10 +942,16 @@ def handle_errors(func: Callable) -> Callable:
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
+        except KeyboardInterrupt as e:
+            # Convert KeyboardInterrupt to ToolExecutionError to prevent it from 
+            # bubbling up to CLI and being treated as user Ctrl+C
+            tool_error = ToolExecutionError(f"Tool execution interrupted: {str(e)}")
+            return _process_error(tool_error)
         except Exception as e:
             return _process_error(e)
 
     return wrapper
+
 def toolify(description: str = None):
     """
     Convert any function into a bot tool with string-in, string-out interface.
@@ -973,6 +986,10 @@ def toolify(description: str = None):
                 # Convert result to string
                 return _convert_tool_output(result)
 
+            except KeyboardInterrupt as e:
+                # Convert KeyboardInterrupt to ToolExecutionError to prevent it from 
+                # bubbling up to CLI and being treated as user Ctrl+C
+                return f"Error: Tool execution interrupted: {str(e)}"
             except Exception as e:
                 return f"Error: {str(e)}"
 
