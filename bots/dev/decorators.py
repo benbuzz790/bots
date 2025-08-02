@@ -947,6 +947,15 @@ def handle_errors(func: Callable) -> Callable:
             # bubbling up to CLI and being treated as user Ctrl+C
             tool_error = ToolExecutionError(f"Tool execution interrupted: {str(e)}")
             return _process_error(tool_error)
+        except TypeError as e:
+            # Check if this is a missing required argument error
+            error_msg = str(e)
+            if "missing" in error_msg and "required" in error_msg and "argument" in error_msg:
+                # Add special message for context length limitation
+                enhanced_error = TypeError(f"{error_msg} - this may be due to a context length limitation, try making smaller edits")
+                return _process_error(enhanced_error)
+            else:
+                return _process_error(e)
         except Exception as e:
             return _process_error(e)
 

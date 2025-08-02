@@ -202,6 +202,47 @@ class TestHandleErrorsDecorator:
         assert "Tool Failed:" in error_result
         assert "AttributeError" in error_result
         assert "Method error" in error_result
+    def test_missing_argument_error_enhancement(self):
+        """Test that missing required argument errors get enhanced with context length message."""
+
+        @handle_errors
+        def function_with_required_args(required_param, optional_param="default"):
+            return f"{required_param}-{optional_param}"
+
+        # Call function without required parameter to trigger TypeError
+        result = function_with_required_args()
+
+        # Verify it's an error string
+        assert isinstance(result, str)
+        assert result.startswith("Tool Failed:")
+
+        # Verify the original TypeError message is present
+        assert "missing" in result
+        assert "required" in result
+        assert "argument" in result
+
+        # Verify our special message was added
+        assert "this may be due to a context length limitation, try making smaller edits" in result
+    
+    def test_other_type_errors_not_enhanced(self):
+        """Test that TypeError not related to missing arguments doesn't get enhanced."""
+
+        @handle_errors
+        def function_with_type_error():
+            # This will raise a TypeError but not about missing arguments
+            return "string" + 123
+
+        result = function_with_type_error()
+
+        # Verify it's an error string
+        assert isinstance(result, str)
+        assert result.startswith("Tool Failed:")
+
+        # Verify the TypeError message is caught (check for the actual error message)
+        assert "can only concatenate str" in result or "unsupported operand type" in result
+
+        # Verify our special message was NOT added (since it's not a missing argument error)
+        assert "this may be due to a context length limitation, try making smaller edits" not in result
 
 
 if __name__ == "__main__":
