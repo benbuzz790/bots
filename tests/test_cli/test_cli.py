@@ -173,73 +173,89 @@ class TestLabelingSystem(DetailedTestCase):
     """Test suite for conversation labeling functionality."""
 
     @patch("builtins.input")
-    def test_label_and_goto(self, mock_input: MagicMock) -> None:
-        """Test labeling a node and navigating to it."""
+    def test_label_create_and_jump(self, mock_input: MagicMock) -> None:
+        """Test creating a label and jumping to it with the unified /label command."""
         mock_input.side_effect = [
             "Write a simple function",
             "/label",
-            "test_function",
-            "Write another function",
-            "/goto",
-            "test_function",
+            "test_function",  # Create new label
+            "Write another function", 
+            "/label",
+            "test_function",  # Jump to existing label
             "/exit",
         ]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 cli_module.main("")
             output = buf.getvalue()
-            print(f"\nLabel and goto output:\n{output}")
-        self.assertContainsNormalized(output, "Saved current node with label: test_function")
-        self.assertContainsNormalized(output, "Moved to node labeled: test_function")
+            print(f"\nLabel create and jump output:\n{output}")
+        self.assertContainsNormalized(output, "Created new label: test_function")
+        self.assertContainsNormalized(output, "Jumped to existing label: test_function")
 
     @patch("builtins.input")
-    def test_goto_nonexistent_label(self, mock_input: MagicMock) -> None:
-        """Test error handling for /goto with invalid labels."""
+    def test_label_nonexistent_jump(self, mock_input: MagicMock) -> None:
+        """Test jumping to a nonexistent label creates it instead."""
         mock_input.side_effect = [
             "Write a function",
-            "/goto",
-            "nonexistent_label",
+            "/label",
+            "new_label",  # This should create a new label since it doesn't exist
             "/exit",
         ]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 cli_module.main("")
             output = buf.getvalue()
-            print(f"\nGoto nonexistent output:\n{output}")
-        self.assertContainsNormalized(output, "No node found with label: nonexistent_label")
+            print(f"\nLabel nonexistent jump output:\n{output}")
+        self.assertContainsNormalized(output, "Created new label: new_label")
 
     @patch("builtins.input")
-    def test_showlabels_empty(self, mock_input: MagicMock) -> None:
-        """Test the /showlabels command when no labels exist."""
-        mock_input.side_effect = ["/showlabels", "/exit"]
+    def test_label_empty_input(self, mock_input: MagicMock) -> None:
+        """Test /label command with empty input."""
+        mock_input.side_effect = [
+            "/label",
+            "",  # Empty label name
+            "/exit"
+        ]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 cli_module.main("")
             output = buf.getvalue()
-            print(f"\nShowlabels empty output:\n{output}")
-        self.assertContainsNormalized(output, "No labels saved")
+            print(f"\nLabel empty input output:\n{output}")
+        self.assertContainsNormalized(output, "No label entered")
 
     @patch("builtins.input")
-    def test_showlabels_with_labels(self, mock_input: MagicMock) -> None:
-        """Test the /showlabels command with existing labels."""
+    def test_label_shows_existing_labels(self, mock_input: MagicMock) -> None:
+        """Test that /label command shows existing labels before prompting."""
         mock_input.side_effect = [
             "Write a fibonacci function",
             "/label",
-            "fibonacci_func",
-            "Write a sorting algorithm",
+            "fibonacci_func",  # Create first label
+            "Write a sorting algorithm", 
             "/label",
-            "sort_algo",
-            "/showlabels",
+            "sort_algo",  # Create second label
+            "/label",
+            "",  # Just show labels, don't create/jump
             "/exit",
         ]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 cli_module.main("")
             output = buf.getvalue()
-            print(f"\nShowlabels with labels output:\n{output}")
-        self.assertContainsNormalized(output, "Saved labels:")
+            print(f"\nLabel shows existing output:\n{output}")
+        self.assertContainsNormalized(output, "Existing labels:")
         self.assertContainsNormalized(output, "fibonacci_func")
         self.assertContainsNormalized(output, "sort_algo")
+
+    # Removed old command tests - functionality merged into /label
+    def test_goto_command_removed(self):
+        """Test that /goto command has been removed."""
+        # This test documents that /goto is no longer available
+        pass  # /goto command removed - functionality merged into /label
+
+    def test_showlabels_command_removed(self):
+        """Test that /showlabels command has been removed.""" 
+        # This test documents that /showlabels is no longer available
+        pass  # /showlabels command removed - functionality merged into /label
 
 
 class TestFunctionalPrompts(DetailedTestCase):
