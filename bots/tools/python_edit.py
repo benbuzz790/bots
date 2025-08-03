@@ -60,6 +60,26 @@ def _write_file_bom_safe(file_path: str, content: str) -> None:
     with open(file_path, "w", encoding="utf-8") as file:
         file.write(clean_content)
 
+def _count_lines_to_be_deleted(original_content: str, new_content: str) -> int:
+    """
+    Count how many lines would be deleted by comparing original vs new content.
+
+    Parameters:
+    -----------
+    original_content : str
+        The original file content
+    new_content : str
+        The new content that would replace it
+
+    Returns:
+    --------
+    int
+        Number of lines that would be deleted
+    """
+    original_lines = len(original_content.splitlines()) if original_content.strip() else 0
+    new_lines = len(new_content.splitlines()) if new_content.strip() else 0
+    return max(0, original_lines - new_lines)
+
 
 class ScopeViewer(ast.NodeVisitor):
     """AST visitor that finds and extracts specific scopes from Python code."""
@@ -845,7 +865,7 @@ def python_view(target_scope: str, max_lines: str = "500") -> str:
 
 
 @handle_errors
-def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> str:
+def python_edit(target_scope: str, code: str, *, insert_after: str = None, delete_a_lot: bool = False) -> str:
     """
     Edit Python code using pytest-style scope syntax and optional expression matching.
 
@@ -881,6 +901,9 @@ def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> st
         - "__FILE_START__" (special token for file beginning)
         - "MyClass::method" (insert after this method within the target scope)
         - '"expression"' (insert after a line matching this expression)
+    delete_a_lot : bool, optional
+        Safety parameter. Must be True to allow operations that delete more than 100 lines.
+        Helps prevent accidental file overwrites. Default False.
 
     Returns:
     --------
@@ -917,7 +940,7 @@ def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> st
                 if insert_after:
                     return _process_error(ValueError("Cannot use empty code with insert_after - nothing to insert"))
                 # For replacement operations, empty code means delete the target
-                return _handle_deletion(abs_path, target_scope, path_elements, original_content, tree)
+                return _handle_deletion(abs_path, target_scope, path_elements, original_content, tree, delete_a_lot)
             elif was_originally_empty and (not path_elements):
                 _write_file_bom_safe(abs_path, cleaned_code)
                 return f"Code added to '{abs_path}'."
@@ -937,6 +960,12 @@ def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> st
             if insert_after:
                 return _handle_file_level_insertion(abs_path, tree, new_module, insert_after)
             else:
+                # Safety check for file-level replacements
+                lines_to_delete = _count_lines_to_be_deleted(original_content, cleaned_code)
+                if lines_to_delete > 100 and not delete_a_lot:
+                    return _process_error(ValueError(
+                        f"Safety check: this operation would delete {lines_to_delete} lines. If intentional, set delete_a_lot=True. "
+                        "Consider using 'insert_after' parameter to add code without deleting existing content."))
                 _write_file_bom_safe(abs_path, cleaned_code)
                 return f"Code replaced at file level in '{abs_path}'."
         else:
@@ -1110,9 +1139,15 @@ def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cs
         return _process_error(ValueError(f"Insert point not found at file level: {insert_after}"))
     _write_file_bom_safe(abs_path, modified_tree.code)
     return f"Code inserted after '{insert_after}' in '{abs_path}'."
-def _handle_deletion(abs_path: str, target_scope: str, path_elements: list, original_content: str, tree: cst.Module) -> str:
+def _handle_deletion(abs_path: str, target_scope: str, path_elements: list, original_content: str, tree: cst.Module, delete_a_lot: bool = False) -> str:
     """Handle deletion of a target section when empty code is provided."""
     try:
+        # Safety check for large deletions
+        lines_to_delete = _count_lines_to_be_deleted(original_content, "")
+        if lines_to_delete > 100 and not delete_a_lot:
+            return _process_error(ValueError(
+                f"Safety check: this operation would delete {lines_to_delete} lines. If intentional, set delete_a_lot=True. "
+                "Consider using 'insert_after' parameter to add code without deleting existing content."))
         if not path_elements:
             # File-level deletion - clear the entire file
             _write_file_bom_safe(abs_path, "")
