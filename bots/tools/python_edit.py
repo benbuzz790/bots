@@ -901,27 +901,36 @@ def python_edit(target_scope: str, code: str, *, insert_after: str = None) -> st
         except Exception as e:
             return _process_error(ValueError(f"Error reading file {abs_path}: {str(e)}"))
         try:
-            import textwrap
-
-            cleaned_code = textwrap.dedent(code).strip()
-            if not cleaned_code:
-                return _process_error(ValueError("Code to insert/replace is empty"))
-            if was_originally_empty and (not path_elements):
-                _write_file_bom_safe(abs_path, cleaned_code)
-                return f"Code added to '{abs_path}'."
-            try:
-                new_module = cst.parse_module(cleaned_code)
-            except Exception as e:
-                return _process_error(ValueError(f"Error parsing new code: {str(e)}"))
-        except Exception as e:
-            return _process_error(ValueError(f"Error processing new code: {str(e)}"))
-        try:
+            # Parse the original file first, before processing new code
             if original_content.strip():
                 tree = cst.parse_module(original_content)
             else:
                 tree = cst.parse_module("")
         except Exception as e:
             return _process_error(ValueError(f"Error parsing file {abs_path}: {str(e)}"))
+        try:
+            import textwrap
+
+            cleaned_code = textwrap.dedent(code).strip()
+            if not cleaned_code:
+                # Handle empty code - delete the target section instead of raising an error
+                if insert_after:
+                    return _process_error(ValueError("Cannot use empty code with insert_after - nothing to insert"))
+                # For replacement operations, empty code means delete the target
+                return _handle_deletion(abs_path, target_scope, path_elements, original_content, tree)
+            elif was_originally_empty and (not path_elements):
+                _write_file_bom_safe(abs_path, cleaned_code)
+                return f"Code added to '{abs_path}'."
+            
+            # Only parse new_module if we have code to parse
+            new_module = None
+            if cleaned_code:
+                try:
+                    new_module = cst.parse_module(cleaned_code)
+                except Exception as e:
+                    return _process_error(ValueError(f"Error parsing new code: {str(e)}"))
+        except Exception as e:
+            return _process_error(ValueError(f"Error processing new code: {str(e)}"))
         if insert_after == "__FILE_START__":
             return _handle_file_start_insertion(abs_path, tree, new_module)
         elif not path_elements:
@@ -1101,3 +1110,58 @@ def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cs
         return _process_error(ValueError(f"Insert point not found at file level: {insert_after}"))
     _write_file_bom_safe(abs_path, modified_tree.code)
     return f"Code inserted after '{insert_after}' in '{abs_path}'."
+def _handle_deletion(abs_path: str, target_scope: str, path_elements: list, original_content: str, tree: cst.Module) -> str:
+    """Handle deletion of a target section when empty code is provided."""
+    try:
+        if not path_elements:
+            # File-level deletion - clear the entire file
+            _write_file_bom_safe(abs_path, "")
+            return f"File '{abs_path}' cleared (deleted all content)."
+        else:
+            # Scope-level deletion - remove the specific scope
+            deleter = ScopeDeleter(path_elements)
+            modified_tree = tree.visit(deleter)
+            if not deleter.modified:
+                return _process_error(ValueError(f"Target scope not found for deletion: {target_scope}"))
+            _write_file_bom_safe(abs_path, modified_tree.code)
+            return f"Deleted scope '{target_scope}' from '{abs_path}'."
+    except Exception as e:
+        return _process_error(e)
+
+
+class ScopeDeleter(cst.CSTTransformer):
+    """Transformer to delete a specific scope from the CST."""
+
+    def __init__(self, path_elements: list):
+        self.path_elements = path_elements
+        self.current_path = []
+        self.modified = False
+
+    def visit_ClassDef(self, node: cst.ClassDef) -> None:
+        """Track when entering a class."""
+        self.current_path.append(node.name.value)
+
+    def leave_ClassDef(self, original_node: cst.ClassDef, updated_node: cst.ClassDef) -> Union[cst.ClassDef, cst.RemovalSentinel]:
+        """Handle leaving a class definition."""
+        result = self._handle_scope_node(original_node, updated_node)
+        if self.current_path and self.current_path[-1] == original_node.name.value:
+            self.current_path.pop()
+        return result
+
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
+        """Track when entering a function."""
+        self.current_path.append(node.name.value)
+
+    def leave_FunctionDef(self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef) -> Union[cst.FunctionDef, cst.RemovalSentinel]:
+        """Handle leaving a function definition."""
+        result = self._handle_scope_node(original_node, updated_node)
+        if self.current_path and self.current_path[-1] == original_node.name.value:
+            self.current_path.pop()
+        return result
+
+    def _handle_scope_node(self, original_node: Union[cst.ClassDef, cst.FunctionDef], updated_node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef, cst.RemovalSentinel]:
+        """Common logic for handling scope nodes - delete if it matches the target path."""
+        if self.current_path == self.path_elements:
+            self.modified = True
+            return cst.RemovalSentinel.REMOVE
+        return updated_node
