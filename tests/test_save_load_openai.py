@@ -41,7 +41,7 @@ class TestSaveLoadOpenAI(unittest.TestCase):
             TestSaveLoadOpenAI: The test class instance
         """
         self.temp_dir = tempfile.mkdtemp()
-        self.bot = ChatGPT_Bot(name="TestGPT", model_engine=Engines.GPT4TURBO)
+        self.bot = ChatGPT_Bot(name="TestGPT", model_engine=Engines.GPT35TURBO)
         return self
 
     def tearDown(self) -> None:
@@ -225,7 +225,7 @@ class TestSaveLoadOpenAI(unittest.TestCase):
         - Bot remains functional after loading
         - Conversation structure develops correctly after loading
         """
-        fresh_bot = ChatGPT_Bot(name="TestGPT", model_engine=Engines.GPT4TURBO)
+        fresh_bot = ChatGPT_Bot(name="TestGPT", model_engine=Engines.GPT35TURBO)
         save_path = os.path.join(self.temp_dir, f"empty_{fresh_bot.name}")
         save_path = fresh_bot.save(save_path)
         loaded_bot = Bot.load(save_path)

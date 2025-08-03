@@ -148,12 +148,10 @@ class Engines(str, Enum):
     """Enum class representing different AI model engines."""
 
     GPT4 = "gpt-4"
+    GPT41 = "gpt-4.1"
     GPT4_0613 = "gpt-4-0613"
     GPT4_32K = "gpt-4-32k"
     GPT4_32K_0613 = "gpt-4-32k-0613"
-    GPT4TURBO = "gpt-4-turbo-preview"
-    GPT4TURBO_0125 = "gpt-4-0125-preview"
-    GPT4TURBO_VISION = "gpt-4-vision-preview"
     GPT35TURBO = "gpt-3.5-turbo"
     GPT35TURBO_16K = "gpt-3.5-turbo-16k"
     GPT35TURBO_0125 = "gpt-3.5-turbo-0125"
@@ -166,6 +164,7 @@ class Engines(str, Enum):
     CLAUDE37_SONNET_20250219 = "claude-3-7-sonnet-20250219"
     CLAUDE4_OPUS = "claude-opus-4-20250514"
     CLAUDE4_SONNET = "claude-sonnet-4-20250514"
+    GEMINI25_FLASH = "gemini-2.5-flash"
 
     @staticmethod
     def get(name: str) -> Optional["Engines"]:
@@ -215,11 +214,14 @@ class Engines(str, Enum):
         """
         from bots.foundation.anthropic_bots import AnthropicBot
         from bots.foundation.openai_bots import ChatGPT_Bot
+        from bots.foundation.gemini_bots import GeminiBot
 
         if model_engine.value.startswith("gpt"):
             return ChatGPT_Bot
         elif model_engine.value.startswith("claude"):
             return AnthropicBot
+        elif model_engine.value.startswith("gemini"):
+            return GeminiBot
         else:
             raise ValueError(f"Unsupported model engine: {model_engine}")
 

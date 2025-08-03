@@ -33,7 +33,7 @@ class TestGPTBot(unittest.TestCase):
         """
         self.temp_dir = tempfile.mkdtemp()
         self.bot = ChatGPT_Bot(
-            model_engine=Engines.GPT4TURBO,
+            model_engine=Engines.GPT35TURBO,
             max_tokens=1000,
             temperature=0.7,
             name="TestBot",
@@ -81,7 +81,7 @@ class TestGPTBot(unittest.TestCase):
             """
             return str(int(x) + int(y))
 
-        bot = ChatGPT_Bot(model_engine=Engines.GPT4TURBO, max_tokens=1000, temperature=0.7)
+        bot = ChatGPT_Bot(model_engine=Engines.GPT35TURBO, max_tokens=1000, temperature=0.7)
         bot.add_tools(simple_addition)
         bot.respond("What is 5 + 3?")
         save_path = os.path.join(self.temp_dir, "tool_test.bot")
@@ -117,7 +117,7 @@ class TestGPTBot(unittest.TestCase):
             """
             return str(int(x) + int(y))
 
-        bot = ChatGPT_Bot(model_engine=Engines.GPT4TURBO, max_tokens=1000, temperature=0.7)
+        bot = ChatGPT_Bot(model_engine=Engines.GPT35TURBO, max_tokens=1000, temperature=0.7)
         bot.add_tools(simple_addition)
         bot.respond("What is 5 + 3?")
         self.assertTrue(
