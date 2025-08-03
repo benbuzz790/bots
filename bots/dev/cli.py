@@ -1377,7 +1377,7 @@ class CLI:
                                 self._handle_command(self.context.bot_instance, user_input)
                             if command in ["/up", "/down", "/left", "/right", "/root", "/label", "/leaf"]:
                                     self._handle_chat(self.context.bot_instance, msg)
-                                elif command == "/s":
+                            elif command == "/s":
                                     # Special handling for /s with text - save the text
                                     self.last_user_message = msg
                                     self._handle_command(self.context.bot_instance, user_input)
