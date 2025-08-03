@@ -306,125 +306,6 @@ class CLIConfig:
                 json.dump(config_data, f, indent=2)
         except Exception:
             pass  # Fail silently if config saving fails
-class PromptManager:
-    """Manager for saving, loading, and editing prompts with recency tracking."""
-
-    def __init__(self, prompts_file: str = "bots/prompts.json"):
-        self.prompts_file = Path(prompts_file)
-        self.prompts_data = self._load_prompts()
-
-    def _load_prompts(self) -> Dict[str, Any]:
-        """Load prompts from file or create empty structure."""
-        if self.prompts_file.exists():
-            try:
-                with open(self.prompts_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, IOError):
-                pass
-        return {"recents": [], "prompts": {}}
-
-    def _save_prompts(self):
-        """Save prompts to file."""
-        try:
-            # Ensure directory exists
-            self.prompts_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.prompts_file, 'w', encoding='utf-8') as f:
-                json.dump(self.prompts_data, f, indent=2, ensure_ascii=False)
-        except IOError as e:
-            raise Exception(f"Failed to save prompts: {e}")
-
-    def _update_recents(self, prompt_name: str):
-        """Update recency list, moving prompt to front."""
-        recents = self.prompts_data["recents"]
-        if prompt_name in recents:
-            recents.remove(prompt_name)
-        recents.insert(0, prompt_name)
-        # Keep only first 5
-        self.prompts_data["recents"] = recents[:5]
-
-    def _generate_prompt_name(self, prompt_text: str) -> str:
-        """Generate a name for the prompt using Claude Haiku."""
-        try:
-            from bots.foundation.base import Engines
-            from bots.foundation.anthropic_bots import AnthropicBot
-
-            # Create a quick Haiku bot for naming
-            naming_bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
-
-            # Truncate prompt if too long for naming
-            truncated_prompt = prompt_text[:500] + "..." if len(prompt_text) > 500 else prompt_text
-
-            naming_prompt = f"""Generate a short, descriptive name (2-4 words, snake_case) for this prompt:
-
-{truncated_prompt}
-
-Respond with just the name, no explanation."""
-
-            response = naming_bot.respond(naming_prompt)
-            # Clean up the response - extract just the name
-            name = response.strip().lower()
-            # Remove any non-alphanumeric characters except underscores
-            name = re.sub(r'[^a-z0-9_]', '', name)
-            # Ensure it's not empty
-            if not name:
-                name = "unnamed_prompt"
-            return name
-
-        except Exception:
-            # Fallback to timestamp-based name
-            import time
-            return f"prompt_{int(time.time())}"
-
-    def search_prompts(self, query: str) -> List[tuple]:
-        """Search prompts by name and content. Returns list of (name, content) tuples."""
-        if not query:
-            # Return recents if no query
-            results = []
-            for name in self.prompts_data["recents"]:
-                if name in self.prompts_data["prompts"]:
-                    results.append((name, self.prompts_data["prompts"][name]))
-            return results
-
-        query_lower = query.lower()
-        results = []
-
-        for name, content in self.prompts_data["prompts"].items():
-            # Search in name and content
-            if query_lower in name.lower() or query_lower in content.lower():
-                results.append((name, content))
-
-        return results
-
-    def save_prompt(self, prompt_text: str, name: str = None) -> str:
-        """Save a prompt with optional name. If no name, generate one."""
-        if not name:
-            name = self._generate_prompt_name(prompt_text)
-
-        # Ensure unique name
-        original_name = name
-        counter = 1
-        while name in self.prompts_data["prompts"]:
-            name = f"{original_name}_{counter}"
-            counter += 1
-
-        self.prompts_data["prompts"][name] = prompt_text
-        self._update_recents(name)
-        self._save_prompts()
-        return name
-
-    def load_prompt(self, name: str) -> str:
-        """Load a prompt by name and update recency."""
-        if name not in self.prompts_data["prompts"]:
-            raise KeyError(f"Prompt '{name}' not found")
-
-        self._update_recents(name)
-        self._save_prompts()
-        return self.prompts_data["prompts"][name]
-
-    def get_prompt_names(self) -> List[str]:
-        """Get all prompt names."""
-        return list(self.prompts_data["prompts"].keys())
-
 
 class CLICallbacks:
     """Centralized callback management for CLI operations."""
@@ -536,6 +417,7 @@ class CLIContext:
         self.bot_instance = None
         self.cached_leaves: List[ConversationNode] = []
         self.callbacks = CLICallbacks(self)
+
 class PromptManager:
     """Manager for saving, loading, and editing prompts with recency tracking."""
 
@@ -737,39 +619,41 @@ class ConversationHandler:
         return "Moved to root of conversation tree"
 
     def label(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Label current conversation node."""
-        label = input("Label: ").strip()
-        if not label:
-            return "Label cannot be empty"
-        context.labeled_nodes[label] = bot.conversation
-        if not hasattr(bot.conversation, "labels"):
-            bot.conversation.labels = []
-        if label not in bot.conversation.labels:
-            bot.conversation.labels.append(label)
-        return f"Saved current node with label: {label}"
+        """Show all labels and create new label or jump to existing one."""
+        # First, show all existing labels (like showlabels)
+        if context.labeled_nodes:
+            print("Existing labels:")
+            for label_name, node in context.labeled_nodes.items():
+                content_preview = node.content[:100] + "..." if len(node.content) > 100 else node.content
+                print(f"  '{label_name}': {content_preview}")
+            print()
+        else:
+            print("No labels saved yet.")
+            print()
 
-    def goto(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Go to labeled conversation node."""
-        label = input("Label: ").strip()
+        # Get label input from user
+        label = input("Enter label name (new to create, existing to jump): ").strip()
+        if not label:
+            return "No label entered"
+
+        # Check if label already exists
         if label in context.labeled_nodes:
+            # Jump to existing label (like goto)
             context.conversation_backup = bot.conversation
             bot.conversation = context.labeled_nodes[label]
             if not self._ensure_assistant_node(bot):
                 return f"Warning: Moved to node labeled '{label}' but ended up on user node with no assistant response"
             self._display_conversation_context(bot, context)
-            return f"Moved to node labeled: {label}"
-        return f"No node found with label: {label}"
-
-    def showlabels(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Show all labeled nodes."""
-        if not context.labeled_nodes:
-            return "No labels saved"
-        result = "Saved labels:\n"
-        for label, node in context.labeled_nodes.items():
-            content_preview = node.content[:100] + "..." if len(node.content) > 100 else node.content
-            result += f"  '{label}': {content_preview}\n"
-        return result.rstrip()
-
+            return f"Jumped to existing label: {label}"
+        else:
+            # Create new label (like original label behavior)
+            context.labeled_nodes[label] = bot.conversation
+            if not hasattr(bot.conversation, "labels"):
+                bot.conversation.labels = []
+            if label not in bot.conversation.labels:
+                bot.conversation.labels.append(label)
+            return f"Created new label: {label}"
+    # showlabels method removed - functionality merged into label method
     def leaf(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Show all leaf nodes and optionally jump to one by number."""
         leaves = self._find_leaves(bot.conversation)
@@ -926,9 +810,30 @@ class StateHandler:
     def load(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Load bot state."""
         try:
-            filename = input("Load filename: ").strip()
+            # Display all .bot files in current directory
+            import glob
+            bot_files = glob.glob("*.bot")
+
+            if bot_files:
+                print("\nAvailable .bot files:")
+                for i, filename in enumerate(bot_files, 1):
+                    print(f"  {i}. {filename}")
+                print()
+            else:
+                print("\nNo .bot files found in current directory.")
+
+            filename = input("Load filename (or number from list): ").strip()
             if not filename:
                 return "Load cancelled - no filename provided"
+
+            # Check if input is a number referring to the list
+            if filename.isdigit() and bot_files:
+                file_index = int(filename) - 1
+                if 0 <= file_index < len(bot_files):
+                    filename = bot_files[file_index]
+                else:
+                    return f"Invalid selection. Must be between 1 and {len(bot_files)}"
+
             return self._load_bot_from_file(filename, context)
         except Exception as e:
             return f"Error loading bot: {str(e)}"
@@ -988,9 +893,7 @@ class SystemHandler:
             "/right: Move to this conversation node's right sibling",
             "/auto: Let the bot work autonomously until it sends a response that doesn't use tools (esc to quit)",
             "/root: Move to the root node of the conversation tree",
-            "/label: Save current node with a label for later reference",
-            "/goto: Move to a previously labeled node",
-            "/showlabels: Show all saved labels and their associated conversation content",
+            "/label: Show all labels, create new label, or jump to existing label",
             "/leaf [number]: Show all conversation endpoints (leaves) and optionally jump to one",
             "/fp: Execute functional prompts with dynamic parameter collection",
             "/combine_leaves: Combine all leaves below current node using a recombinator function",
@@ -1258,104 +1161,6 @@ class DynamicFunctionalPromptHandler:
                         leaf.labels.remove(temp_label)
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
-class PromptHandler:
-    """Handler for prompt management commands."""
-
-    def __init__(self):
-        self.prompt_manager = PromptManager()
-
-    def _get_input_with_prefill(self, prompt_text: str, prefill: str = "") -> str:
-        """Get input with pre-filled text using readline if available."""
-        if not HAS_READLINE or not prefill:
-            return input(prompt_text)
-
-        def startup_hook():
-            readline.insert_text(prefill)
-            readline.redisplay()
-
-        readline.set_startup_hook(startup_hook)
-        try:
-            user_input = input(prompt_text)
-            return user_input
-        finally:
-            readline.set_startup_hook(None)
-
-    def load_prompt(self, bot: "Bot", context: "CLIContext", args: List[str]) -> tuple:
-        """Load a prompt with search and selection. Returns (message, prefill_text)."""
-        try:
-            # Get search query
-            if args:
-                query = " ".join(args)
-            else:
-                query = input("Enter prompt search: ").strip()
-
-            # Search for matching prompts
-            matches = self.prompt_manager.search_prompts(query)
-
-            if not matches:
-                return ("No prompts found matching your search.", None)
-
-            if len(matches) == 1:
-                # Single match - load directly
-                name, content = matches[0]
-                self.prompt_manager.load_prompt(name)  # Update recency
-                return (f"Loaded prompt: {name}", content)
-
-            # Multiple matches - show selection
-            print(f"\nFound {len(matches)} matches:")
-            for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
-                # Show preview of content
-                preview = content[:100] + "..." if len(content) > 100 else content
-                preview = preview.replace('\n', ' ')  # Single line preview
-                print(f"  {i}. {name}: {preview}")
-
-            if len(matches) > 10:
-                print(f"  ... and {len(matches) - 10} more matches")
-
-            # Get selection
-            try:
-                choice = input(f"\nSelect prompt (1-{min(len(matches), 10)}): ").strip()
-                if not choice:
-                    return ("Selection cancelled.", None)
-
-                choice_num = int(choice) - 1
-                if choice_num < 0 or choice_num >= min(len(matches), 10):
-                    return (f"Invalid selection. Must be between 1 and {min(len(matches), 10)}.", None)
-
-                name, content = matches[choice_num]
-                self.prompt_manager.load_prompt(name)  # Update recency
-
-
-                return (f"Loaded prompt: {name}", content)
-
-            except ValueError:
-                return ("Invalid selection. Must be a number.", None)
-
-        except Exception as e:
-            return (f"Error loading prompt: {str(e)}", None)
-
-    def save_prompt(self, bot: "Bot", context: "CLIContext", args: List[str], last_user_message: str = None) -> str:
-        """Save a prompt. If args provided, save the args. Otherwise save last user message."""
-        try:
-            if args:
-                # Save the provided text
-                prompt_text = " ".join(args)
-            elif last_user_message:
-                # Save the last user message
-                prompt_text = last_user_message
-            else:
-                return "No prompt to save. Either provide text with /s or use /s after sending a message."
-
-            if not prompt_text.strip():
-                return "Cannot save empty prompt."
-
-            # Generate name and save
-            name = self.prompt_manager.save_prompt(prompt_text)
-            return f"Saved prompt as: {name}"
-
-        except Exception as e:
-            return f"Error saving prompt: {str(e)}"
-
 
 def check_for_interrupt() -> bool:
     """Check if user pressed Escape without blocking execution."""
@@ -1482,8 +1287,6 @@ class CLI:
             "/right": self.conversation.right,
             "/root": self.conversation.root,
             "/label": self.conversation.label,
-            "/goto": self.conversation.goto,
-            "/showlabels": self.conversation.showlabels,
             "/leaf": self.conversation.leaf,
             "/combine_leaves": self.conversation.combine_leaves,
             "/auto": self.system.auto,
@@ -1568,13 +1371,11 @@ class CLI:
                                 "/right",
                                 "/root",
                                 "/label",
-                                "/goto",
-                                "/showlabels",
                                 "/leaf",
                                 "/combine_leaves",
                             ]:
                                 self._handle_command(self.context.bot_instance, user_input)
-                                if command in ["/up", "/down", "/left", "/right", "/root", "/goto", "/leaf"]:
+                            if command in ["/up", "/down", "/left", "/right", "/root", "/label", "/leaf"]:
                                     self._handle_chat(self.context.bot_instance, msg)
                                 elif command == "/s":
                                     # Special handling for /s with text - save the text
@@ -1636,10 +1437,17 @@ class CLI:
 
     def _initialize_new_bot(self):
         """Initialize a new bot with default tools."""
-        bot = AnthropicBot()
+        bot = AnthropicBot(max_tokens=4096)
         self.context.bot_instance = bot
 
         bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools, bots.tools.self_tools)
+        sys_msg = textwrap.dedent(
+            """You're a coding agent. Please follow these rules:
+                    1. Keep edits and even writing new files to small chunks. You have a low max_token limit and will hit tool errors if you try making too big of a change.
+                    2. Avoid using cd. Your terminal is stateful and will remember if you use cd. Instead, use full relative paths.
+            """)
+        bot.set_system_message(sys_msg)
+        
         # This works well as a fallback:
         # bot.add_tools(bots.tools.terminal_tools, view, view_dir)
 
