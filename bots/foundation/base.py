@@ -229,21 +229,26 @@ class Engines(str, Enum):
     def get_conversation_node_class(class_name: str) -> Type["ConversationNode"]:
         """Get the appropriate ConversationNode subclass by name.
 
-        Use when you need to reconstruct conversation nodes from saved bot state.
+    Use when you need to reconstruct conversation nodes from saved bot state.
 
-        Parameters:
-            class_name (str): Name of the node class ('OpenAINode' or 'AnthropicNode')
+    Parameters:
+        class_name (str): Name of the node class ('OpenAINode', 'AnthropicNode', or 'GeminiNode')
 
-        Returns:
-            Type[ConversationNode]: The ConversationNode subclass
+    Returns:
+        Type[ConversationNode]: The ConversationNode subclass
 
-        Raises:
-            ValueError: If the class name is not a supported node type
-        """
+    Raises:
+        ValueError: If the class name is not a supported node type
+    """
         from bots.foundation.anthropic_bots import AnthropicNode
         from bots.foundation.openai_bots import OpenAINode
+        from bots.foundation.gemini_bots import GeminiNode
 
-        NODE_CLASS_MAP = {"OpenAINode": OpenAINode, "AnthropicNode": AnthropicNode}
+        NODE_CLASS_MAP = {
+            "OpenAINode": OpenAINode, 
+            "AnthropicNode": AnthropicNode,
+            "GeminiNode": GeminiNode
+        }
         node_class = NODE_CLASS_MAP.get(class_name)
         if node_class is None:
             raise ValueError(f"Unsupported conversation node type: {class_name}")
