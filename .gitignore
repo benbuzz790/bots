@@ -61,3 +61,5 @@ dir3/
 
 *node_modules*
 prompts.json
+test_results_*_*.txt
+*archive*/
