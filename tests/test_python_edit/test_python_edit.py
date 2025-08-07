@@ -10,16 +10,17 @@ from bots.tools.python_edit import python_edit
 
 def setup_test_file(tmp_path, content):
     """Helper to create a test file with given content"""
-    from tests.conftest import get_unique_filename
+    from tests.conftest import create_safe_test_file, get_unique_filename
 
     if isinstance(tmp_path, str):
-        os.makedirs(tmp_path, exist_ok=True)
-        test_file = os.path.join(tmp_path, get_unique_filename("test_file", "py"))
+        # Use safe test file creation for string paths
+        return create_safe_test_file(dedent(content), "test_file", "py", tmp_path)
     else:
+        # For pytest tmp_path fixture, use the standard approach (it auto-cleans)
         test_file = os.path.join(str(tmp_path), get_unique_filename("test_file", "py"))
-    with open(test_file, "w", encoding="utf-8") as f:
-        f.write(dedent(content))
-    return test_file
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write(dedent(content))
+        return test_file
 
 
 @pytest.fixture
@@ -247,6 +248,76 @@ def test_file_start_insertion_multiple():
     assert "import os\n" == lines[0]
     assert "import sys\n" == lines[1]
     assert "x = 1" in lines[-1]
+def test_file_end_insertion(test_file):
+    """Test inserting at file end"""
+    result = python_edit(test_file, "# End of file comment", coscope_with="__FILE_END__")
+    assert "end" in result
+    with open(test_file) as f:
+        lines = f.readlines()
+        assert "# End of file comment" in lines[-1]
+
+
+def test_file_end_insertion_empty():
+    """Test inserting at end of empty file"""
+    test_file = setup_test_file("tmp", "")
+    _result = python_edit(test_file, "print('hello world')", coscope_with="__FILE_END__")
+    with open(test_file) as f:
+        content = f.read()
+    assert content.strip() == "print('hello world')"
+
+
+def test_file_end_insertion_with_existing_code():
+    """Test inserting at end of file that already has code"""
+    content = "\nimport os\nfrom typing import List\n\nx = 1\n"
+    test_file = setup_test_file("tmp", content)
+    _result = python_edit(test_file, "y = 2", coscope_with="__FILE_END__")
+    with open(test_file) as f:
+        lines = f.readlines()
+    print(f"DEBUG - File lines: {lines}")
+    assert "y = 2\n" == lines[-1]
+    assert "import os\n" in lines
+    assert "x = 1\n" in lines
+
+
+def test_file_end_insertion_multiple():
+    """Test multiple insertions at file end come in correct order"""
+    content = "x = 1"
+    test_file = setup_test_file("tmp", content)
+    python_edit(test_file, "y = 2", coscope_with="__FILE_END__")
+    python_edit(test_file, "z = 3", coscope_with="__FILE_END__")
+    with open(test_file) as f:
+        lines = f.readlines()
+    print(f"DEBUG - File lines: {lines}")
+    assert "x = 1" in lines[0]
+    assert "y = 2\n" == lines[1]
+    assert "z = 3\n" == lines[2]
+
+
+def test_file_end_insertion_with_functions():
+    """Test inserting at end of file with existing functions"""
+    content = """
+def existing_function():
+    return "existing"
+
+class ExistingClass:
+    def method(self):
+        pass
+"""
+    test_file = setup_test_file("tmp", content)
+    new_function = """
+def new_function():
+    return "new"
+"""
+    _result = python_edit(test_file, new_function.strip(), coscope_with="__FILE_END__")
+    with open(test_file) as f:
+        content_after = f.read()
+    print(f"DEBUG - Content after: {content_after}")
+    assert "def existing_function():" in content_after
+    assert "class ExistingClass:" in content_after
+    assert "def new_function():" in content_after
+    # Verify the new function is at the end
+    lines = content_after.splitlines()
+    assert 'return "new"' in lines[-1]
 
 
 # Removed test_line_insert_basic - line-based insertion descoped
@@ -471,9 +542,24 @@ def test_function_added_by_integration_test():
                 import_line_found = True
                 break
         assert import_line_found, "Import was not added at file start"
-        # Test 3: Verify tokenization handled the complex real file correctly
-        print(f"? Successfully performed {len([result1, result2])} edits on real file")
-        print(f"? File remains valid Python with {len(final_content.splitlines())} lines")
+result3 = python_edit(test_file, "# End marker added by integration test", coscope_with="__FILE_END__")
+assert "error" not in result3.lower(), f"Edit 3 failed: {result3}"
+# Verify code was added at the end
+with open(test_file, "r") as f:
+    final_content_with_end = f.read()
+ast.parse(final_content_with_end)  # Should not raise
+lines = final_content_with_end.splitlines()
+# Find the end marker line
+end_marker_found = False
+for i, line in enumerate(lines[-5:]):  # Check last 5 lines
+    if "End marker added by integration test" in line:
+        end_marker_found = True
+        break
+assert end_marker_found, "End marker was not added at file end"
+# Test 4: Verify tokenization handled the complex real file correctly
+print(f"? Successfully performed {len([result1, result2, result3])} edits on real file")
+print(f"? File remains valid Python with {len(final_content_with_end.splitlines())} lines")
+assert end_marker_found, "End marker was not added at file end"
 
 
 # Tests for AST-based insert_after expression functionality
