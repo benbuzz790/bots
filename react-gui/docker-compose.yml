@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  bot-gui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - BOT_STORAGE_DIR=/app/storage
+      - LOG_LEVEL=INFO
+      - RELOAD=false
+    volumes:
+      - bot_storage:/app/storage
+      - bot_logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - bot_network
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - bot-gui
+    restart: unless-stopped
+    networks:
+      - bot_network
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    networks:
+      - bot_network
+
+volumes:
+  bot_storage:
+  bot_logs:
+  prometheus_data:
+
+networks:
+  bot_network:
+version: '3.8'
+
+services:
+  # Production service
+  bots-gui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - BOT_STORAGE_DIR=/app/storage
+      - LOG_LEVEL=INFO
+      - MAX_STORAGE_BYTES=1073741824  # 1GB
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    volumes:
+      - bot_storage:/app/storage
+      - app_logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/api/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - bots-network
+
+  # Development service
+  bots-gui-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8001:8000"
+    environment:
+      - ENVIRONMENT=development
+      - BOT_STORAGE_DIR=/app/storage
+      - LOG_LEVEL=DEBUG
+      - MAX_STORAGE_BYTES=1073741824  # 1GB
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    volumes:
+      - ./backend:/app/backend
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - bots-network
+    profiles:
+      - dev
+
+  # Nginx reverse proxy for production
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - bots-gui
+    restart: unless-stopped
+    networks:
+      - bots-network
+    profiles:
+      - production
+
+  # Monitoring with Prometheus (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - bots-network
+    profiles:
+      - monitoring
+
+volumes:
+  bot_storage:
+    driver: local
+  app_logs:
+    driver: local
+
+networks:
+  bots-network:
+    driver: bridge
+    driver: bridge
