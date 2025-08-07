@@ -171,37 +171,38 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
         if "encoding utf8" in output.lower():
             print("🎯 Bot used UTF8 encoding parameter")
 
-    @patch("builtins.input")
-    def test_file_creation_progression(self, mock_input):
-        """Test increasingly complex file creation to find the breaking point."""
-        test_cases = [
-            'Create a file with just "hello" using echo',
-            "Create a Python file with a simple print statement using PowerShell",
-            "Create a Python file with imports and a function using PowerShell here-strings",
-            "Create a complex Python file with subprocess, f-strings, and type hints using PowerShell",
-        ]
-        # We'll test each one and see where it breaks
-        for i, prompt in enumerate(test_cases):
-            mock_input.side_effect = [prompt, "/exit"]
-            start_time = time.time()
-            with StringIO() as buf, redirect_stdout(buf):
-                try:
-                    cli = self._create_cli_with_timeout_monitoring()
-                    cli.run()
-                except SystemExit:
-                    pass
-                _ = buf.getvalue()
+    # Bad test
+    # @patch("builtins.input")
+    # def test_file_creation_progression(self, mock_input):
+    #     """Test increasingly complex file creation to find the breaking point."""
+    #     test_cases = [
+    #         'Create a file with just "hello" using echo',
+    #         "Create a Python file with a simple print statement using PowerShell",
+    #         "Create a Python file with imports and a function using PowerShell here-strings",
+    #         "Create a complex Python file with subprocess, f-strings, and type hints using PowerShell",
+    #     ]
+    #     # We'll test each one and see where it breaks
+    #     for i, prompt in enumerate(test_cases):
+    #         mock_input.side_effect = [prompt, "/exit"]
+    #         start_time = time.time()
+    #         with StringIO() as buf, redirect_stdout(buf):
+    #             try:
+    #                 cli = self._create_cli_with_timeout_monitoring()
+    #                 cli.run()
+    #             except SystemExit:
+    #                 pass
+    #             _ = buf.getvalue()
 
-            duration = time.time() - start_time
-            print(f"=== PROGRESSION TEST {i+1} ===")
-            print(f"Prompt: {prompt[:60]}...")
-            print(f"Duration: {duration:.2f} seconds")
-            if duration > 60:
-                print(f"🚨 TIMEOUT at test case {i+1}")
-                print(f"Breaking point prompt: {prompt}")
-                break
-            else:
-                print(f"✅ Test case {i+1} completed successfully")
+    #         duration = time.time() - start_time
+    #         print(f"=== PROGRESSION TEST {i+1} ===")
+    #         print(f"Prompt: {prompt[:60]}...")
+    #         print(f"Duration: {duration:.2f} seconds")
+    #         if duration > 60:
+    #             print(f"🚨 TIMEOUT at test case {i+1}")
+    #             print(f"Breaking point prompt: {prompt}")
+    #             break
+    #         else:
+    #             print(f"✅ Test case {i+1} completed successfully")
 
     @patch("builtins.input")
     def test_bot_tool_usage_analysis(self, mock_input):

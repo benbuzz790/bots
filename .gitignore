@@ -63,3 +63,4 @@ dir3/
 prompts.json
 test_results_*_*.txt
 *archive*/
+*trash*/
