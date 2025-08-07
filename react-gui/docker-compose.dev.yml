@@ -10,6 +10,10 @@ services:
     volumes:
       - ..:/app
       - /app/react-gui/backend/__pycache__
+      - ../test_output:/app/test_output
+      - ../temp_files:/app/temp_files
+      - ../storage:/app/storage
+      - ../logs:/app/logs
     environment:
       - PYTHONPATH=/app
       - PYTHONUNBUFFERED=1

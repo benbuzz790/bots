@@ -26,6 +26,11 @@ COPY . /app/
 
 # Set Python path
 ENV PYTHONPATH="/app:/app/bots:$PYTHONPATH"
+# Create test directories with proper permissions
+RUN mkdir -p /app/test_output /app/temp_files /app/storage /app/logs && \
+    chmod -R 777 /app/test_output /app/temp_files /app/storage /app/logs && \
+    chmod -R 755 /app
+
 
 # Default command (overridden in docker-compose)
 CMD ["python", "react-gui/backend/main.py"]

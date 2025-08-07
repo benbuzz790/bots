@@ -16,6 +16,10 @@ services:
     volumes:
       - bot_storage:/app/storage
       - bot_logs:/app/logs
+      - ../test_output:/app/test_output
+      - ../temp_files:/app/temp_files
+      - ../storage:/app/host_storage
+      - ../logs:/app/host_logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]

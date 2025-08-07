@@ -131,6 +131,10 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist/
 # Create directories for bot storage and logs
 RUN mkdir -p /app/storage /app/logs
 
+# Create test directories with proper permissions
+RUN mkdir -p /app/test_output /app/temp_files /app/host_storage /app/host_logs && \
+    chmod -R 777 /app/test_output /app/temp_files /app/host_storage /app/host_logs /app/storage /app/logs
+
 # Set ownership
 RUN chown -R botuser:botuser /app
 
