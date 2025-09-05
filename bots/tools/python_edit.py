@@ -5,7 +5,7 @@ from typing import List, Optional, Union
 
 import libcst as cst
 
-from bots.dev.decorators import handle_errors
+from bots.dev.decorators import toolify
 from bots.utils.helpers import _process_error, _py_ast_to_source
 from bots.utils.unicode_utils import clean_unicode_string
 
@@ -798,7 +798,7 @@ class ScopeReplacer(cst.CSTTransformer):
         return node
 
 
-@handle_errors
+@toolify()
 def python_view(target_scope: str, max_lines: str = "500") -> str:
     """
     View Python code using pytest-style scope syntax with scope-aware truncation.
@@ -864,7 +864,7 @@ def python_view(target_scope: str, max_lines: str = "500") -> str:
         return _process_error(e)
 
 
-@handle_errors
+@toolify()
 def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delete_a_lot: bool = False) -> str:
     """
     Edit Python code using pytest-style scope syntax and optional expression matching.
@@ -964,15 +964,15 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
                 return _handle_file_level_insertion(abs_path, tree, new_module, coscope_with)
         elif coscope_with == "__FILE_END__":
             return _handle_file_end_insertion(abs_path, tree, new_module)
-            else:
-                # Safety check for file-level replacements
-                lines_to_delete = _count_lines_to_be_deleted(original_content, cleaned_code)
-                if lines_to_delete > 100 and not delete_a_lot:
-                    return _process_error(ValueError(
-                        f"Safety check: this operation would delete {lines_to_delete} lines. If intentional, set delete_a_lot=True. "
-                        "Consider using 'insert_after' parameter to add code without deleting existing content."))
-                _write_file_bom_safe(abs_path, cleaned_code)
-                return f"Code replaced at file level in '{abs_path}'."
+        # else:
+        #     # Safety check for file-level replacements
+        #     lines_to_delete = _count_lines_to_be_deleted(original_content, cleaned_code)
+        #     if lines_to_delete > 100 and not delete_a_lot:
+        #         return _process_error(ValueError(
+        #             f"Safety check: this operation would delete {lines_to_delete} lines. If intentional, set delete_a_lot=True. "
+        #             "Consider using 'insert_after' parameter to add code without deleting existing content."))
+        #     _write_file_bom_safe(abs_path, cleaned_code)
+        #     return f"Code replaced at file level in '{abs_path}'."
         else:
             replacer = ScopeReplacer(path_elements, new_module, coscope_with, tree)
             modified_tree = tree.visit(replacer)

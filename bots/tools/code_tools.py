@@ -2,7 +2,7 @@ import difflib
 import os
 import textwrap
 
-from bots.dev.decorators import handle_errors
+from bots.dev.decorators import toolify
 from bots.utils.unicode_utils import clean_unicode_string
 
 
@@ -21,7 +21,7 @@ def _write_file_bom_safe(file_path: str, content: str) -> None:
         file.write(clean_content)
 
 
-@handle_errors
+@toolify()
 def view(
     file_path: str, start_line: str = None, end_line: str = None, around_str_match: str = None, dist_from_match: str = "10"
 ):
@@ -87,7 +87,7 @@ def view(
     return f"Error: Unable to read file with any of the attempted encodings: {', '.join(encodings)}"
 
 
-@handle_errors
+@toolify()
 def view_dir(start_path: str = ".", output_file=None, target_extensions: str = "['py', 'txt', 'md']", max_lines: int = 500):
     """
     Creates a summary of the directory structure starting from the given path, writing only files
@@ -183,7 +183,7 @@ def _remove_bom_from_content(content: str) -> str:
     return content
 
 
-@handle_errors
+@toolify()
 def patch_edit(file_path: str, patch_content: str):
     """
     Apply a git-style unified diff patch to a file.

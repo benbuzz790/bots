@@ -32,6 +32,555 @@ import bots.tools.python_edit
 import bots.tools.terminal_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, ConversationNode
+"""
+CLI for bot interactions with improved architecture and dynamic parameter collection.
+
+Architecture:
+- Handler classes for logical command grouping
+- Command registry for easy extensibility
+- Dynamic parameter collection for functional prompts
+- Robust error handling with conversation backup
+- Configuration support for CLI settings
+"""
+if platform.system() == "Windows":
+    import msvcrt
+else:
+    import select
+    import termios
+    import tty
+COLOR_USER = "\033[36m"  # Cyan
+COLOR_ASSISTANT = "\033[36m"  # Cyan
+COLOR_SYSTEM = "\033[33m"  # Yellow
+COLOR_ERROR = "\033[31m"  # Red
+COLOR_RESET = "\033[0m"  # Reset
+COLOR_BOLD = "\033[1m"  # Bold
+COLOR_DIM = "\033[2m"  # Dim
+COLOR_TOOL_REQUEST = "\033[34m"  # Blue
+COLOR_TOOL_RESULT = "\033[32m"  # Green
+def create_auto_stash() -> str:
+    """Create an automatic git stash with AI-generated message based on current diff."""
+    import subprocess
+    from bots.foundation.base import Engines
+
+    try:
+        # Check for staged changes first
+        staged_diff_result = subprocess.run(
+            ["git", "diff", "--cached"], 
+            capture_output=True, 
+            text=True, 
+            timeout=10
+        )
+
+        # Check for unstaged changes
+        unstaged_diff_result = subprocess.run(
+            ["git", "diff"], 
+            capture_output=True, 
+            text=True, 
+            timeout=10
+        )
+
+        if staged_diff_result.returncode != 0 or unstaged_diff_result.returncode != 0:
+            return f"Error getting git diff: {staged_diff_result.stderr or unstaged_diff_result.stderr}"
+
+        staged_diff = staged_diff_result.stdout.strip()
+        unstaged_diff = unstaged_diff_result.stdout.strip()
+
+        # Combine both diffs for analysis, but prefer staged if available
+        diff_content = staged_diff if staged_diff else unstaged_diff
+
+        if not diff_content:
+            return "No changes to stash"
+
+        # Generate stash message using Haiku
+        stash_message = "WIP: auto-stash before user message"  # fallback
+
+        try:
+            # Create a Haiku bot instance - use the module-level import
+            haiku_bot = AnthropicBot(engine=Engines.HAIKU)
+
+            # Create a prompt for generating the stash message
+            prompt = f"""Based on this git diff, generate a concise commit-style message (under 50 chars) describing the changes. Start with "WIP: " if not already present:
+
+{diff_content}
+
+Respond with just the message, nothing else."""
+
+            ai_message = haiku_bot.respond(prompt)
+            if ai_message and ai_message.strip():
+                ai_message = ai_message.strip()
+                # Ensure it starts with WIP: if not already
+                if not ai_message.startswith("WIP:"):
+                    ai_message = f"WIP: {ai_message}"
+                # Limit length
+                if len(ai_message) > 72:
+                    ai_message = ai_message[:69] + "..."
+                stash_message = ai_message
+
+        except Exception:
+            # Use fallback message if AI generation fails
+            pass
+
+        # Create the stash - this will stash both staged and unstaged changes
+        stash_result = subprocess.run(
+            ["git", "stash", "push", "-m", stash_message],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if stash_result.returncode != 0:
+            return f"Error creating stash: {stash_result.stderr}"
+
+        return f"Auto-stash created: {stash_message}"
+
+    except subprocess.TimeoutExpired:
+        return "Git command timed out"
+    except Exception as e:
+        return f"Error in auto-stash: {str(e)}"
+"""
+CLI for bot interactions with improved architecture and dynamic parameter collection.
+
+Architecture:
+- Handler classes for logical command grouping
+- Command registry for easy extensibility
+- Dynamic parameter collection for functional prompts
+- Robust error handling with conversation backup
+- Configuration support for CLI settings
+"""
+if platform.system() == "Windows":
+    import msvcrt
+else:
+    import select
+    import termios
+    import tty
+COLOR_USER = "\033[36m"  # Cyan
+COLOR_ASSISTANT = "\033[36m"  # Cyan
+COLOR_SYSTEM = "\033[33m"  # Yellow
+COLOR_ERROR = "\033[31m"  # Red
+COLOR_RESET = "\033[0m"  # Reset
+COLOR_BOLD = "\033[1m"  # Bold
+COLOR_DIM = "\033[2m"  # Dim
+COLOR_TOOL_REQUEST = "\033[34m"  # Blue
+COLOR_TOOL_RESULT = "\033[32m"  # Green
+def create_auto_stash() -> str:
+    """Create an automatic git stash with AI-generated message based on current diff."""
+    import subprocess
+    from bots.foundation.anthropic_bots import AnthropicBot
+    from bots.foundation.base import Engines
+
+    try:
+        # Get git diff to check if there are changes
+        diff_result = subprocess.run(
+            ["git", "diff", "--cached"], 
+            capture_output=True, 
+            text=True, 
+            timeout=10
+        )
+
+        if diff_result.returncode != 0:
+            # Try unstaged changes if no staged changes
+            diff_result = subprocess.run(
+                ["git", "diff"], 
+                capture_output=True, 
+                text=True, 
+                timeout=10
+            )
+
+        if diff_result.returncode != 0:
+            return f"Error getting git diff: {diff_result.stderr}"
+
+        diff_content = diff_result.stdout.strip()
+
+        if not diff_content:
+            return "No changes to stash"
+
+        # Generate stash message using Haiku
+        stash_message = "WIP: auto-stash before user message"  # fallback
+
+        try:
+            # Create a Haiku bot instance
+            haiku_bot = AnthropicBot(engine=Engines.HAIKU)
+
+            # Create a prompt for generating the stash message
+            prompt = f"""Based on this git diff, generate a concise commit-style message (under 50 chars) describing the changes. Start with "WIP: " if not already present:
+
+{diff_content}
+
+Respond with just the message, nothing else."""
+
+            ai_message = haiku_bot.respond(prompt)
+            if ai_message and ai_message.strip():
+                ai_message = ai_message.strip()
+                # Ensure it starts with WIP: if not already
+                if not ai_message.startswith("WIP:"):
+                    ai_message = f"WIP: {ai_message}"
+                # Limit length
+                if len(ai_message) > 72:
+                    ai_message = ai_message[:69] + "..."
+                stash_message = ai_message
+
+        except Exception:
+            # Use fallback message if AI generation fails
+            pass
+
+        # Create the stash
+        stash_result = subprocess.run(
+            ["git", "stash", "push", "-m", stash_message],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if stash_result.returncode != 0:
+            return f"Error creating stash: {stash_result.stderr}"
+
+        return f"Auto-stash created: {stash_message}"
+
+    except subprocess.TimeoutExpired:
+        return "Git command timed out"
+    except Exception as e:
+        return f"Error in auto-stash: {str(e)}"
+"""
+CLI for bot interactions with improved architecture and dynamic parameter collection.
+
+Architecture:
+- Handler classes for logical command grouping
+- Command registry for easy extensibility
+- Dynamic parameter collection for functional prompts
+- Robust error handling with conversation backup
+- Configuration support for CLI settings
+"""
+if platform.system() == "Windows":
+    import msvcrt
+else:
+    import select
+    import termios
+    import tty
+COLOR_USER = "\033[36m"  # Cyan
+COLOR_ASSISTANT = "\033[36m"  # Cyan
+COLOR_SYSTEM = "\033[33m"  # Yellow
+COLOR_ERROR = "\033[31m"  # Red
+COLOR_RESET = "\033[0m"  # Reset
+COLOR_BOLD = "\033[1m"  # Bold
+COLOR_DIM = "\033[2m"  # Dim
+COLOR_TOOL_REQUEST = "\033[34m"  # Blue
+COLOR_TOOL_RESULT = "\033[32m"  # Green
+def create_auto_stash() -> str:
+    """Create an automatic git stash with AI-generated message based on current diff."""
+    import subprocess
+    from bots.foundation.base import Engines
+
+    try:
+        # Check for staged changes first
+        staged_diff_result = subprocess.run(
+            ["git", "diff", "--cached"], 
+            capture_output=True, 
+            text=True, 
+            timeout=10
+        )
+
+        # Check for unstaged changes
+        unstaged_diff_result = subprocess.run(
+            ["git", "diff"], 
+            capture_output=True, 
+            text=True, 
+            timeout=10
+        )
+
+        if staged_diff_result.returncode != 0 or unstaged_diff_result.returncode != 0:
+            return f"Error getting git diff: {staged_diff_result.stderr or unstaged_diff_result.stderr}"
+
+        staged_diff = staged_diff_result.stdout.strip()
+        unstaged_diff = unstaged_diff_result.stdout.strip()
+
+        # Combine both diffs for analysis, but prefer staged if available
+        diff_content = staged_diff if staged_diff else unstaged_diff
+
+        if not diff_content:
+            return "No changes to stash"
+
+        # Generate stash message using Haiku
+        stash_message = "WIP: auto-stash before user message"  # fallback
+
+        try:
+            # Create a Haiku bot instance - use the module-level import
+            haiku_bot = AnthropicBot(engine=Engines.HAIKU)
+
+            # Create a prompt for generating the stash message
+            prompt = f"""Based on this git diff, generate a concise commit-style message (under 50 chars) describing the changes. Start with "WIP: " if not already present:
+
+{diff_content}
+
+Respond with just the message, nothing else."""
+
+            ai_message = haiku_bot.respond(prompt)
+            if ai_message and ai_message.strip():
+                ai_message = ai_message.strip()
+                # Ensure it starts with WIP: if not already
+                if not ai_message.startswith("WIP:"):
+                    ai_message = f"WIP: {ai_message}"
+                # Limit length
+                if len(ai_message) > 72:
+                    ai_message = ai_message[:69] + "..."
+                stash_message = ai_message
+
+        except Exception:
+            # Use fallback message if AI generation fails
+            pass
+
+        # Create the stash - this will stash both staged and unstaged changes
+        stash_result = subprocess.run(
+            ["git", "stash", "push", "-m", stash_message],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if stash_result.returncode != 0:
+            return f"Error creating stash: {stash_result.stderr}"
+
+        return f"Auto-stash created: {stash_message}"
+
+    except subprocess.TimeoutExpired:
+        return "Git command timed out"
+    except Exception as e:
+        return f"Error in auto-stash: {str(e)}"
+"""
+CLI for bot interactions with improved architecture and dynamic parameter collection.
+
+Architecture:
+- Handler classes for logical command grouping
+- Command registry for easy extensibility
+- Dynamic parameter collection for functional prompts
+- Robust error handling with conversation backup
+- Configuration support for CLI settings
+"""
+if platform.system() == "Windows":
+    import msvcrt
+else:
+    import select
+    import termios
+    import tty
+COLOR_USER = "\033[36m"  # Cyan
+COLOR_ASSISTANT = "\033[36m"  # Cyan
+COLOR_SYSTEM = "\033[33m"  # Yellow
+COLOR_ERROR = "\033[31m"  # Red
+COLOR_RESET = "\033[0m"  # Reset
+COLOR_BOLD = "\033[1m"  # Bold
+COLOR_DIM = "\033[2m"  # Dim
+COLOR_TOOL_REQUEST = "\033[34m"  # Blue
+COLOR_TOOL_RESULT = "\033[32m"  # Green
+def create_auto_stash() -> str:
+    """Create an automatic git stash with AI-generated message based on current diff."""
+    import subprocess
+    from bots.foundation.anthropic_bots import AnthropicBot
+    from bots.foundation.base import Engines
+
+    try:
+        # Check for staged changes first
+        staged_diff_result = subprocess.run(
+            ["git", "diff", "--cached"], 
+            capture_output=True, 
+            text=True, 
+            timeout=10
+        )
+
+        # Check for unstaged changes
+        unstaged_diff_result = subprocess.run(
+            ["git", "diff"], 
+            capture_output=True, 
+            text=True, 
+            timeout=10
+        )
+
+        if staged_diff_result.returncode != 0 or unstaged_diff_result.returncode != 0:
+            return f"Error getting git diff: {staged_diff_result.stderr or unstaged_diff_result.stderr}"
+
+        staged_diff = staged_diff_result.stdout.strip()
+        unstaged_diff = unstaged_diff_result.stdout.strip()
+
+        # Combine both diffs for analysis, but prefer staged if available
+        diff_content = staged_diff if staged_diff else unstaged_diff
+
+        if not diff_content:
+            return "No changes to stash"
+
+        # Generate stash message using Haiku
+        stash_message = "WIP: auto-stash before user message"  # fallback
+
+        try:
+            # Create a Haiku bot instance
+            haiku_bot = AnthropicBot(engine=Engines.HAIKU)
+
+            # Create a prompt for generating the stash message
+            prompt = f"""Based on this git diff, generate a concise commit-style message (under 50 chars) describing the changes. Start with "WIP: " if not already present:
+
+{diff_content}
+
+Respond with just the message, nothing else."""
+
+            ai_message = haiku_bot.respond(prompt)
+            if ai_message and ai_message.strip():
+                ai_message = ai_message.strip()
+                # Ensure it starts with WIP: if not already
+                if not ai_message.startswith("WIP:"):
+                    ai_message = f"WIP: {ai_message}"
+                # Limit length
+                if len(ai_message) > 72:
+                    ai_message = ai_message[:69] + "..."
+                stash_message = ai_message
+
+        except Exception:
+            # Use fallback message if AI generation fails
+            pass
+
+        # Create the stash - this will stash both staged and unstaged changes
+        stash_result = subprocess.run(
+            ["git", "stash", "push", "-m", stash_message],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if stash_result.returncode != 0:
+            return f"Error creating stash: {stash_result.stderr}"
+
+        return f"Auto-stash created: {stash_message}"
+
+    except subprocess.TimeoutExpired:
+        return "Git command timed out"
+    except Exception as e:
+        return f"Error in auto-stash: {str(e)}"
+"""
+CLI for bot interactions with improved architecture and dynamic parameter collection.
+
+Architecture:
+- Handler classes for logical command grouping
+- Command registry for easy extensibility
+- Dynamic parameter collection for functional prompts
+- Robust error handling with conversation backup
+- Configuration support for CLI settings
+"""
+if platform.system() == "Windows":
+    import msvcrt
+else:
+    import select
+    import termios
+    import tty
+COLOR_USER = "\033[36m"  # Cyan
+COLOR_ASSISTANT = "\033[36m"  # Cyan
+COLOR_SYSTEM = "\033[33m"  # Yellow
+COLOR_ERROR = "\033[31m"  # Red
+COLOR_RESET = "\033[0m"  # Reset
+COLOR_BOLD = "\033[1m"  # Bold
+COLOR_DIM = "\033[2m"  # Dim
+COLOR_TOOL_REQUEST = "\033[34m"  # Blue
+COLOR_TOOL_RESULT = "\033[32m"  # Green
+def create_auto_stash() -> str:
+    """Create an automatic git stash with AI-generated message based on current diff."""
+    import subprocess
+    from bots.foundation.base import Engines
+
+    try:
+        # Check for staged changes first
+        staged_diff_result = subprocess.run(
+            ["git", "diff", "--cached"], 
+            capture_output=True, 
+            text=True, 
+            timeout=10
+        )
+
+        # Check for unstaged changes
+        unstaged_diff_result = subprocess.run(
+            ["git", "diff"], 
+            capture_output=True, 
+            text=True, 
+            timeout=10
+        )
+
+        if staged_diff_result.returncode != 0 or unstaged_diff_result.returncode != 0:
+            return f"Error getting git diff: {staged_diff_result.stderr or unstaged_diff_result.stderr}"
+
+        staged_diff = staged_diff_result.stdout.strip()
+        unstaged_diff = unstaged_diff_result.stdout.strip()
+
+        # Combine both diffs for analysis, but prefer staged if available
+        diff_content = staged_diff if staged_diff else unstaged_diff
+
+        if not diff_content:
+            return "No changes to stash"
+
+        # Generate stash message using Haiku
+        stash_message = "WIP: auto-stash before user message"  # fallback
+
+        try:
+            # Create a Haiku bot instance - use the module-level import
+            haiku_bot = AnthropicBot(engine=Engines.HAIKU)
+
+            # Create a prompt for generating the stash message
+            prompt = f"""Based on this git diff, generate a concise commit-style message (under 50 chars) describing the changes. Start with "WIP: " if not already present:
+
+{diff_content}
+
+Respond with just the message, nothing else."""
+
+            ai_message = haiku_bot.respond(prompt)
+            if ai_message and ai_message.strip():
+                ai_message = ai_message.strip()
+                # Ensure it starts with WIP: if not already
+                if not ai_message.startswith("WIP:"):
+                    ai_message = f"WIP: {ai_message}"
+                # Limit length
+                if len(ai_message) > 72:
+                    ai_message = ai_message[:69] + "..."
+                stash_message = ai_message
+
+        except Exception:
+            # Use fallback message if AI generation fails
+            pass
+
+        # Create the stash - this will stash both staged and unstaged changes
+        stash_result = subprocess.run(
+            ["git", "stash", "push", "-m", stash_message],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if stash_result.returncode != 0:
+            return f"Error creating stash: {stash_result.stderr}"
+
+        return f"Auto-stash created: {stash_message}"
+
+    except subprocess.TimeoutExpired:
+        return "Git command timed out"
+    except Exception as e:
+        return f"Error in auto-stash: {str(e)}"
+"""
+CLI for bot interactions with improved architecture and dynamic parameter collection.
+
+Architecture:
+- Handler classes for logical command grouping
+- Command registry for easy extensibility
+- Dynamic parameter collection for functional prompts
+- Robust error handling with conversation backup
+- Configuration support for CLI settings
+"""
+if platform.system() == "Windows":
+    import msvcrt
+else:
+    import select
+    import termios
+    import tty
+COLOR_USER = "\033[36m"  # Cyan
+COLOR_ASSISTANT = "\033[36m"  # Cyan
+COLOR_SYSTEM = "\033[33m"  # Yellow
+COLOR_ERROR = "\033[31m"  # Red
+COLOR_RESET = "\033[0m"  # Reset
+COLOR_BOLD = "\033[1m"  # Bold
+COLOR_DIM = "\033[2m"  # Dim
+COLOR_TOOL_REQUEST = "\033[34m"  # Blue
+COLOR_TOOL_RESULT = "\033[32m"  # Green
 
 """
 CLI for bot interactions with improved architecture and dynamic parameter collection.
@@ -283,6 +832,7 @@ class CLIConfig:
         self.verbose = True
         self.width = 1000
         self.indent = 4
+        self.auto_stash = False
         self.config_file = "cli_config.json"
         self.load_config()
 
@@ -295,13 +845,19 @@ class CLIConfig:
                     self.verbose = config_data.get("verbose", True)
                     self.width = config_data.get("width", 1000)
                     self.indent = config_data.get("indent", 4)
+                    self.auto_stash = config_data.get("auto_stash", False)
         except Exception:
             pass  # Use defaults if config loading fails
 
     def save_config(self):
         """Save current configuration to file."""
         try:
-            config_data = {"verbose": self.verbose, "width": self.width, "indent": self.indent}
+            config_data = {
+                "verbose": self.verbose, 
+                "width": self.width, 
+                "indent": self.indent,
+                "auto_stash": self.auto_stash
+            }
             with open(self.config_file, "w") as f:
                 json.dump(config_data, f, indent=2)
         except Exception:
@@ -901,6 +1457,8 @@ class SystemHandler:
             "/p [search]: Load a saved prompt (searches by name and content, pre-fills input)",
             "/s [text]: Save a prompt - saves provided text or last user message if no text given",
             "/config: Show or modify CLI configuration",
+            "/auto_stash: Toggle auto git stash before user messages",
+            "/load_stash <name_or_index>: Load a git stash by name or index",
             "/exit: Exit the program",
             "",
             "Type your messages normally to chat.",
@@ -929,6 +1487,7 @@ class SystemHandler:
                 f"    verbose: {context.config.verbose}",
                 f"    width: {context.config.width}",
                 f"    indent: {context.config.indent}",
+                f"    auto_stash: {context.config.auto_stash}",
                 "Use '/config set <setting> <value>' to modify settings.",
             ]
             return "\n".join(config_lines)
@@ -942,6 +1501,8 @@ class SystemHandler:
                     context.config.width = int(value)
                 elif setting == "indent":
                     context.config.indent = int(value)
+                elif setting == "auto_stash":
+                    context.config.auto_stash = value.lower() in ("true", "1", "yes", "on")
                 else:
                     return f"Unknown setting: {setting}"
                 context.config.save_config()
@@ -972,6 +1533,67 @@ class SystemHandler:
             if context.old_terminal_settings:
                 restore_terminal(context.old_terminal_settings)
             return f"Error during autonomous execution: {str(e)}"
+    def auto_stash(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Toggle auto git stash functionality."""
+        context.config.auto_stash = not context.config.auto_stash
+        context.config.save_config()
+        if context.config.auto_stash:
+            return "Auto git stash enabled"
+        else:
+            return "Auto git stash disabled"
+    def load_stash(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Load a git stash by name or index."""
+        import subprocess
+
+        if not args:
+            return "Usage: /load_stash <stash_name_or_index>"
+
+        stash_identifier = args[0]
+
+        try:
+            # First, get the list of stashes
+            result = subprocess.run(
+                ["git", "stash", "list"], 
+                capture_output=True, 
+                text=True, 
+                check=True
+            )
+            stash_list = result.stdout.strip().split('\n') if result.stdout.strip() else []
+
+            if not stash_list:
+                return "No stashes found"
+
+            # Try to find the stash by index or name pattern
+            stash_to_apply = None
+
+            # Check if it's a numeric index
+            try:
+                index = int(stash_identifier)
+                if 0 <= index < len(stash_list):
+                    stash_to_apply = f"stash@{{{index}}}"
+            except ValueError:
+                # Not a number, search by name pattern
+                for i, stash_line in enumerate(stash_list):
+                    if stash_identifier.lower() in stash_line.lower():
+                        stash_to_apply = f"stash@{{{i}}}"
+                        break
+
+            if not stash_to_apply:
+                return f"Stash '{stash_identifier}' not found"
+
+            # Apply the stash
+            subprocess.run(
+                ["git", "stash", "apply", stash_to_apply], 
+                check=True, 
+                capture_output=True
+            )
+
+            return f"Successfully applied {stash_to_apply}"
+
+        except subprocess.CalledProcessError as e:
+            return f"Git error: {e.stderr.decode() if e.stderr else str(e)}"
+        except Exception as e:
+            return f"Error loading stash: {str(e)}"
 
 
 class DynamicFunctionalPromptHandler:
@@ -1279,6 +1901,8 @@ class CLI:
             "/verbose": self.system.verbose,
             "/quiet": self.system.quiet,
             "/config": self.system.config,
+            "/auto_stash": self.system.auto_stash,
+            "/load_stash": self.system.load_stash,
             "/save": self.state.save,
             "/load": self.state.load,
             "/up": self.conversation.up,
@@ -1440,7 +2064,14 @@ class CLI:
         bot = AnthropicBot(max_tokens=4096)
         self.context.bot_instance = bot
 
-        bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools, bots.tools.self_tools)
+        #bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools, bots.tools.self_tools)
+        from bots.tools.code_tools import view, view_dir
+        from bots.tools.terminal_tools import execute_powershell
+        from bots.tools.python_execution_tool import execute_python
+        from bots.tools.self_tools import branch_self
+        from bots.tools.web_tool import web_search
+
+        bot.add_tools(view, view_dir, execute_powershell, execute_python, branch_self, web_search)
         sys_msg = textwrap.dedent(
             """You're a coding agent. Please follow these rules:
                     1. Keep edits and even writing new files to small chunks. You have a low max_token limit and will hit tool errors if you try making too big of a change.
@@ -1495,6 +2126,27 @@ class CLI:
         if not user_input:
             return
         try:
+            # Auto-stash if enabled
+            if self.context.config.auto_stash:
+                stash_result = create_auto_stash()
+                if "Auto-stash created:" in stash_result:
+                    pretty(
+                        stash_result, 
+                        "System", 
+                        self.context.config.width, 
+                        self.context.config.indent, 
+                        COLOR_SYSTEM
+                    )
+                elif "No changes to stash" not in stash_result:
+                    # Show errors but not "no changes" message
+                    pretty(
+                        stash_result, 
+                        "System", 
+                        self.context.config.width, 
+                        self.context.config.indent, 
+                        COLOR_SYSTEM
+                    )
+
             self.context.conversation_backup = bot.conversation
             callback = self.context.callbacks.get_standard_callback()
             responses, nodes = fp.chain(bot, [user_input], callback=callback)

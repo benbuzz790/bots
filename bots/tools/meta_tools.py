@@ -4,12 +4,12 @@ import bots.flows.functional_prompts as fp
 import bots.tools.code_tools as code_tools
 import bots.tools.python_editing_tools as python_editing_tools
 import bots.tools.terminal_tools as terminal_tools
-from bots.dev.decorators import handle_errors
+from bots.dev.decorators import toolify
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot
 
 
-@handle_errors
+@toolify()
 def message_bot(bot_path, message):
     """
     Loads a bot, sends it a message, and allows it to work.
@@ -55,7 +55,7 @@ def message_bot(bot_path, message):
     return nodes[0].content + ":\n" + tools + "\n---" + nodes[-1].content
 
 
-@handle_errors
+@toolify()
 def initialize_file_bot(file_name: str, system_message: str) -> str:
     """
     Creates and initializes a new file-editing bot, saving it to disk.
@@ -83,7 +83,7 @@ def initialize_file_bot(file_name: str, system_message: str) -> str:
     return f"Success: file bot created at {path}"
 
 
-@handle_errors
+@toolify()
 def generate_project(spec: str) -> str:
     """
     Executes the standard process for project generation using a hierarchical

@@ -5,7 +5,7 @@ import tempfile
 import textwrap
 import time
 
-from bots.dev.decorators import handle_errors
+from bots.dev.decorators import toolify
 from bots.utils.helpers import _clean, _py_ast_to_source
 
 
@@ -18,8 +18,8 @@ def _get_unique_filename(base_name, extension=""):
     return f"{base_name}_{pid}_{timestamp}{extension}"
 
 
-@handle_errors
-def _execute_python_code(code: str, timeout: int = 300) -> str:
+@toolify()
+def execute_python(code: str, timeout: int = 300) -> str:
     """
     Executes python code in a stateless environment with cross-platform
     timeout handling.
@@ -71,7 +71,8 @@ def _execute_python_code(code: str, timeout: int = 300) -> str:
 
     if not isinstance(timeout, int) or timeout <= 0:
         raise ValueError("Timeout must be a positive integer")
-    code_ast = ast.parse(_clean(code))
+    clean_code = textwrap.dedent(code).strip()
+    code_ast = ast.parse(clean_code)
     wrapper_ast = create_wrapper_ast()
     combined_ast = insert_code_into_wrapper(wrapper_ast, code_ast, timeout)
     final_code = _py_ast_to_source(combined_ast)

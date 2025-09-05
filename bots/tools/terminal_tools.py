@@ -10,7 +10,7 @@ from queue import Empty, Queue
 from threading import Lock, Thread, local
 from typing import Dict, Generator, List
 
-from bots.dev.decorators import handle_errors, log_errors
+from bots.dev.decorators import toolify, log_errors
 
 
 class BOMRemover:
@@ -167,7 +167,7 @@ class BOMRemover:
 
 
 @log_errors
-@handle_errors
+@toolify()
 def execute_powershell(command: str, output_length_limit: str = "1000", timeout: str = "60") -> str:
     """
     Executes PowerShell commands in a stateful environment with automatic BOM removal
@@ -733,7 +733,7 @@ def _remove_bom_from_current_directory(recursive: bool = True) -> str:
         return f"No BOMs found in {current_dir}"
 
 
-@handle_errors
+@toolify()
 def remove_bom_from_files(file_pattern: str) -> str:
     """
     Manually remove BOMs from files matching a specific pattern.
@@ -751,7 +751,7 @@ def remove_bom_from_files(file_pattern: str) -> str:
         return f"No BOMs found in files matching pattern: {file_pattern}"
 
 
-@handle_errors
+@toolify()
 def check_files_for_bom(directory: str = None) -> str:
     """
     Check files for BOMs without removing them.

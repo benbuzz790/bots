@@ -4,7 +4,7 @@ import json
 import uuid
 from typing import List, Optional
 
-from bots.dev.decorators import handle_errors
+from bots.dev.decorators import toolify
 from bots.foundation.base import Bot
 
 
@@ -23,6 +23,7 @@ def _get_calling_bot() -> Optional[Bot]:
     return None
 
 
+@toolify()
 def get_own_info() -> str:
     """Get information about yourself.
     Use when you need to inspect your current configuration (not tools).
@@ -51,7 +52,7 @@ def get_own_info() -> str:
     return json.dumps(info)
 
 
-@handle_errors
+@toolify()
 def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str:
     """Modify your settings.
     Use when you need to adjust your configuration parameters.
@@ -93,7 +94,7 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
     return f"Settings updated successfully. Current settings: temperature={bot.temperature}, max_tokens={bot.max_tokens}"
 
 
-@handle_errors
+@toolify()
 def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "False", recombine: str = "concatenate") -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
 
@@ -268,7 +269,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         return f"Error in branch_self: {str(e)}"
 
 
-@handle_errors
+@toolify()
 def add_tools(filepath: str) -> str:
     """Adds a new set of tools (python functions) to your toolkit
     All top-level, non-private functions in filepath will be uploaded

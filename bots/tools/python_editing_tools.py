@@ -1,7 +1,7 @@
 import ast
 import os
 
-from bots.dev.decorators import handle_errors
+from bots.dev.decorators import toolify
 from bots.utils.helpers import _clean, _py_ast_to_source
 from bots.utils.unicode_utils import clean_unicode_string
 
@@ -67,7 +67,7 @@ class MethodAdder(NodeTransformerWithAsyncSupport):
         return node
 
 
-@handle_errors
+@toolify()
 def add_imports(file_path: str, code: str) -> str:
     """
     Adds multiple import statements to a Python file.
@@ -153,7 +153,7 @@ def add_imports(file_path: str, code: str) -> str:
     return ". ".join(result_parts) + "."
 
 
-@handle_errors
+@toolify()
 def remove_import(file_path: str, import_to_remove: str) -> str:
     """
     Removes an import statement from a Python file.
@@ -189,7 +189,7 @@ def remove_import(file_path: str, import_to_remove: str) -> str:
     return f"Import '{import_to_remove}' has been removed from '{file_path}'."
 
 
-@handle_errors
+@toolify()
 def replace_import(file_path: str, old_import: str, new_import: str) -> str:
     """
     Replaces an existing import statement in a Python file.
@@ -224,7 +224,7 @@ def replace_import(file_path: str, old_import: str, new_import: str) -> str:
     return f"Import '{old_import}' has been updated to '{new_import}' " f"in '{file_path}'."
 
 
-@handle_errors
+@toolify()
 def add_class(file_path: str, class_def: str) -> str:
     """
     Adds a new class definition to an existing Python file.
@@ -252,7 +252,7 @@ def add_class(file_path: str, class_def: str) -> str:
     return f"Class '{new_class_node.name}' has been added to '{abs_path}'."
 
 
-@handle_errors
+@toolify()
 def replace_class(file_path: str, new_class_def: str, old_class_name: str = None) -> str:
     """
     Replaces a class definition in a file with a new class definition.
@@ -298,7 +298,7 @@ def replace_class(file_path: str, new_class_def: str, old_class_name: str = None
     return f"Class '{new_class_node.name}' has been {action} '{abs_path}'."
 
 
-@handle_errors
+@toolify()
 def add_function_to_class(file_path: str, class_name: str, new_method_def: str) -> str:
     """
     Adds one or more methods to an existing class in a Python file.
@@ -326,7 +326,7 @@ def add_function_to_class(file_path: str, class_name: str, new_method_def: str) 
     return "\n".join(messages)
 
 
-@handle_errors
+@toolify()
 def add_function_to_file(file_path: str, new_function_def: str, class_name: str = None) -> str:
     """
     Adds one or more function definitions to an existing Python file.
@@ -373,7 +373,7 @@ def add_function_to_file(file_path: str, new_function_def: str, class_name: str 
     return "\n".join(messages)
 
 
-@handle_errors
+@toolify()
 def replace_function(file_path: str, new_function_def: str, class_name: str = None) -> str:
     """
     Replaces one or more function definitions in a file with new function definitions.
@@ -424,7 +424,7 @@ def _make_file(file_path: str) -> str:
     return abs_path
 
 
-@handle_errors
+@toolify()
 def _add_single_function_to_class(file_path: str, class_name: str, new_method_def: str) -> str:
     """Adds a single method to a class."""
     abs_path = _make_file(file_path)
@@ -450,7 +450,7 @@ def _add_single_function_to_class(file_path: str, class_name: str, new_method_de
     return f"Method '{new_method_node.name}' has been added to class " f"'{class_name}' in '{abs_path}'."
 
 
-@handle_errors
+@toolify()
 def _add_single_function_to_file(file_path: str, new_function_def: str) -> str:
     """Adds a single function and preserves all code blocks, including any code following the function."""
     abs_path = _make_file(file_path)
@@ -488,7 +488,7 @@ def _add_single_function_to_file(file_path: str, new_function_def: str) -> str:
     return f"Code with function '{new_func_node.name}' has been added " f"to '{abs_path}'."
 
 
-@handle_errors
+@toolify()
 def _replace_single_function(file_path: str, new_function_def: str, class_name: str = None) -> str:
     """Replaces a single function in a file, optionally within a specific class.
     Args:
