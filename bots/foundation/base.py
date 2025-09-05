@@ -163,6 +163,7 @@ class Engines(str, Enum):
     CLAUDE35_SONNET_20241022 = "claude-3-5-sonnet-20241022"
     CLAUDE37_SONNET_20250219 = "claude-3-7-sonnet-20250219"
     CLAUDE4_OPUS = "claude-opus-4-20250514"
+    CLAUDE41_OPUS = "claude-opus-4-1"
     CLAUDE4_SONNET = "claude-sonnet-4-20250514"
     GEMINI25_FLASH = "gemini-2.5-flash"
 

@@ -907,7 +907,7 @@ class TestClass:
             print(f"Result: {x}")
         """
         )
-        result = python_execution_tool._execute_python_code(code)
+        result = python_execution_tool.execute_python(code)
         self.assertIn("Hello, World!", result)
         self.assertIn("Result: 8", result)
 
@@ -919,7 +919,7 @@ class TestClass:
                 pass
         """
         )
-        result = python_execution_tool._execute_python_code(code, timeout=1)
+        result = python_execution_tool.execute_python(code, timeout=1)
         self.assertIn("timed out", result.lower())
         code = textwrap.dedent(
             """
@@ -928,7 +928,7 @@ class TestClass:
             print("Completed")
         """
         )
-        result = python_execution_tool._execute_python_code(code, timeout=2)
+        result = python_execution_tool.execute_python(code, timeout=2)
         self.assertIn("Completed", result)
 
     def test_execute_python_code_syntax_error(self):
@@ -940,7 +940,7 @@ class TestClass:
                 print("Invalid syntax")
         """
         )
-        result = python_execution_tool._execute_python_code(code)
+        result = python_execution_tool.execute_python(code)
         self.assertIn("Tool Failed:", result)
 
     def test_execute_python_code_runtime_error(self):
@@ -950,7 +950,7 @@ class TestClass:
             x = 1 / 0  # Division by zero
         """
         )
-        result = python_execution_tool._execute_python_code(code)
+        result = python_execution_tool.execute_python(code)
         self.assertIn("ZeroDivisionError", result)
 
     def test_execute_python_code_with_imports(self):
@@ -966,7 +966,7 @@ class TestClass:
             print(f"Current hour: {datetime.now().hour}")
         """
         )
-        result = python_execution_tool._execute_python_code(code)
+        result = python_execution_tool.execute_python(code)
         self.assertIn("Pi: 3.14", result)
         self.assertIn("Current directory:", result)
         self.assertIn("Current hour:", result)
@@ -982,7 +982,7 @@ class TestClass:
                 print(f"More {j}")
         """
         )
-        result = python_execution_tool._execute_python_code(code)
+        result = python_execution_tool.execute_python(code)
         expected_lines = ["Line 0", "Line 1", "Line 2", "---", "More 0", "More 1"]
         for line in expected_lines:
             self.assertIn(line, result)
@@ -996,7 +996,7 @@ class TestClass:
             print("Error output", file=sys.stderr)
         """
         )
-        result = python_execution_tool._execute_python_code(code)
+        result = python_execution_tool.execute_python(code)
         self.assertIn("Standard output", result)
         self.assertIn("Error output", result)
 
@@ -1009,7 +1009,7 @@ class TestClass:
             print("Café")
         """
         )
-        result = python_execution_tool._execute_python_code(code)
+        result = python_execution_tool.execute_python(code)
         self.assertIn("Hello, 世界!", result)
         self.assertIn("🌍 🌎 🌏", result)
         self.assertIn("Café", result)
@@ -1029,7 +1029,7 @@ class TestClass:
             obj.display()
         """
         )
-        result = python_execution_tool._execute_python_code(code)
+        result = python_execution_tool.execute_python(code)
         self.assertIn("Value is: 42", result)
 
     def test_execute_python_code_long_output(self):
@@ -1040,7 +1040,7 @@ class TestClass:
                 print(f"Line {i}")
         """
         )
-        result = python_execution_tool._execute_python_code(code)
+        result = python_execution_tool.execute_python(code)
         self.assertIn("Line 0", result)
         self.assertIn("Line 999", result)
 
@@ -1051,7 +1051,7 @@ class TestClass:
             print('test')
         """
         )
-        result = python_execution_tool._execute_python_code(code, timeout=0)
+        result = python_execution_tool.execute_python(code, timeout=0)
         self.assertIn("Tool Failed", result)
         self.assertIn("must be a positive integer", result.lower())
 
@@ -1062,7 +1062,7 @@ class TestClass:
             print('test')
         """
         )
-        result = python_execution_tool._execute_python_code(code, timeout=-1)
+        result = python_execution_tool.execute_python(code, timeout=-1)
         self.assertIn("Tool Failed", result)
         self.assertIn("must be a positive integer", result.lower())
 
@@ -1079,7 +1079,7 @@ class TestClass:
             print(f"Fibonacci(10) = {result}")
         """
         )
-        result = python_execution_tool._execute_python_code(code)
+        result = python_execution_tool.execute_python(code)
         self.assertIn("Fibonacci(10) = 55", result)
 
     def test_execute_python_code_process_cleanup(self):
@@ -1092,7 +1092,7 @@ class TestClass:
             time.sleep(0.1)
         """
         )
-        python_execution_tool._execute_python_code(code)
+        python_execution_tool.execute_python(code)
         time.sleep(0.2)
         final_processes = set(psutil.Process().children(recursive=True))
         new_processes = final_processes - initial_processes
