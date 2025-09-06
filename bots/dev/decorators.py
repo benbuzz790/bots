@@ -757,9 +757,13 @@ def toolify(description: str = None):
             except KeyboardInterrupt as e:
                 # Convert KeyboardInterrupt to ToolExecutionError to prevent it from 
                 # bubbling up to CLI and being treated as user Ctrl+C
-                return f"Error: Tool execution interrupted: {str(e)}"
+                from bots.utils.helpers import _process_error
+                # ToolExecutionError is defined in this file
+                tool_error = ToolExecutionError(f"Tool execution interrupted: {str(e)}")
+                return _process_error(tool_error)
             except Exception as e:
-                return f"Error: {str(e)}"
+                from bots.utils.helpers import _process_error
+                return _process_error(e)
 
         # Update docstring if description provided
         if description:
