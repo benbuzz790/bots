@@ -768,8 +768,6 @@ def toolify(description: str = None):
             # Generate minimal docstring from function name
             wrapper.__doc__ = f"Execute {func.__name__.replace('_', ' ')}"
 
-        # Apply handle_errors to ensure consistent error handling
-        wrapper = handle_errors(wrapper)
 
         return wrapper
     return decorator
@@ -960,61 +958,6 @@ def handle_errors(func: Callable) -> Callable:
             return _process_error(e)
 
     return wrapper
-
-def toolify(description: str = None):
-    """
-    Convert any function into a bot tool with string-in, string-out interface.
-
-    - Converts string inputs to proper types using type hints
-    - Ensures string output (JSON for complex types)
-    - Wraps in error handling (returns error strings, never raises)
-    - Enhances docstring if description provided
-
-    Args:
-        description (str, optional): Override the function's docstring
-
-    Example:
-        @toolify()
-        def add_numbers(x: int, y: int = 0) -> int:
-            return x + y
-
-        @toolify("Calculate the area of a circle")
-        def area(radius: float) -> float:
-            return 3.14159 * radius * radius
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            try:
-                # Convert string inputs to proper types using type hints
-                converted_args, converted_kwargs = _convert_tool_inputs(func, args, kwargs)
-
-                # Call original function
-                result = func(*converted_args, **converted_kwargs)
-
-                # Convert result to string
-                return _convert_tool_output(result)
-
-            except KeyboardInterrupt as e:
-                # Convert KeyboardInterrupt to ToolExecutionError to prevent it from 
-                # bubbling up to CLI and being treated as user Ctrl+C
-                return f"Error: Tool execution interrupted: {str(e)}"
-            except Exception as e:
-                return f"Error: {str(e)}"
-
-        # Update docstring if description provided
-        if description:
-            wrapper.__doc__ = description
-        elif not wrapper.__doc__:
-            # Generate minimal docstring from function name
-            wrapper.__doc__ = f"Execute {func.__name__.replace('_', ' ')}"
-
-        # Apply handle_errors to ensure consistent error handling
-        wrapper = handle_errors(wrapper)
-
-        return wrapper
-    return decorator
-
 
 def _convert_tool_inputs(func, args, kwargs):
     """Convert string inputs to proper types using function's type hints."""
