@@ -1,0 +1,62 @@
+C:\Users\benbu\Code\repo_working\bots> python -m pytest tests/test_sa...
+============================= test session starts =============================
+platform win32 -- Python 3.12.9, pytest-7.4.3, pluggy-1.5.0 -- C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\benbu\Code\repo_working\bots
+configfile: pytest.ini
+plugins: anyio-4.9.0, asyncio-0.21.1, cov-4.1.0, forked-1.6.0, timeout-2.4.0, xdist-3.7.0
+asyncio: mode=Mode.STRICT
+created: 12/12 workers
+12 workers [22 items]
+scheduling tests via LoadScheduling
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_basic_save_load 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_custom_attributes 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_file_creation 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_corrupted_save 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_callable_tool_persistence 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_module_tool_persistence 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_mixed_tool_sources 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_with_module_tools 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_empty_bot 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_with_tool_use 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_with_file_tools 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_after_conversation 
+[gw4] [  4%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_file_creation 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_working_directory_independence 
+[gw2] [  9%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_corrupted_save 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_self_tools_get_calling_bot_issue 
+[gw11] [ 13%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_with_module_tools 
+[gw8] [ 18%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_module_tool_persistence 
+tests/test_save_load_anthropic.py::TestDebugImports::test_import_addition_detailed 
+[gw8] [ 22%] PASSED tests/test_save_load_anthropic.py::TestDebugImports::test_import_addition_detailed 
+[gw3] [ 27%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_custom_attributes 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_tool_execution_results 
+[gw0] [ 31%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_basic_save_load 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_self_tools_add_tools_functionality 
+[gw9] [ 36%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_with_file_tools 
+tests/test_save_load_anthropic.py::TestDebugImports::test_simple_json_function 
+[gw1] [ 40%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_callable_tool_persistence 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_self_tools_branch_functionality 
+[gw9] [ 45%] PASSED tests/test_save_load_anthropic.py::TestDebugImports::test_simple_json_function 
+[gw6] [ 50%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_empty_bot 
+tests/test_save_load_anthropic.py::TestDebugImports::test_self_tools_module_investigation 
+[gw6] [ 54%] PASSED tests/test_save_load_anthropic.py::TestDebugImports::test_self_tools_module_investigation 
+[gw3] [ 59%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_tool_execution_results 
+[gw0] [ 63%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_self_tools_add_tools_functionality 
+[gw4] [ 68%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_working_directory_independence 
+[gw2] [ 72%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_self_tools_get_calling_bot_issue 
+[gw1] [ 77%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_self_tools_branch_functionality 
+[gw7] [ 81%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_after_conversation 
+tests/test_save_load_anthropic.py::TestDebugImports::test_namespace_contents 
+[gw7] [ 86%] PASSED tests/test_save_load_anthropic.py::TestDebugImports::test_namespace_contents 
+[gw5] [ 90%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_mixed_tool_sources 
+tests/test_save_load_anthropic.py::TestDebugImports::test_branch_self_globals_investigation 
+[gw5] [ 95%] PASSED tests/test_save_load_anthropic.py::TestDebugImports::test_branch_self_globals_investigation 
+[gw10] [100%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_with_tool_use 
+============================== warnings summary ===============================
+tests/test_save_load_anthropic.py::TestDebugImports::test_branch_self_globals_investigation
+  C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\Lib\unittest\case.py:690: DeprecationWarning: It is deprecated to return a value that is not None from a test case (<bound method TestDebugImports.test_branch_self_globals_investigation of <tests.test_save_load_anthropic.TestDebugImports testMethod=test_branch_self_globals_investigation>>)
+    return self.run(*args, **kwds)
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: C:\Users\benbu\Code\repo_working\bots\test_results.xml --
+======================= 22 passed, 1 warning in 17.55s ========================

@@ -64,3 +64,5 @@ prompts.json
 test_results_*_*.txt
 *archive*/
 *trash*/
+_work_orders/
+*WO0*

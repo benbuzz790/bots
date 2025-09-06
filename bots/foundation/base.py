@@ -305,10 +305,73 @@ class ConversationNode:
         self.parent: ConversationNode = None
         self.replies: list[ConversationNode] = []
         self.tool_calls = tool_calls or []
-        self.tool_results = tool_results or []
+        self._tool_results = tool_results or []
         self.pending_results = pending_results or []
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+
+    @property
+    def tool_results(self):
+        """Get tool results with protection logging."""
+        import traceback
+        stack = traceback.extract_stack()
+        caller_info = f"{stack[-2].filename}:{stack[-2].lineno} in {stack[-2].name}"
+        with open("debug_tool_results.log", "a") as f: f.write(f"DEBUG: tool_results getter called from {caller_info}\n")
+        return self._tool_results
+
+    @tool_results.setter
+    def tool_results(self, value):
+        """Set tool results with validation and protection logging."""
+        import traceback
+        stack = traceback.extract_stack()
+        caller_info = f"{stack[-2].filename}:{stack[-2].lineno} in {stack[-2].name}"
+
+        # Log the attempt
+        with open("debug_tool_results.log", "a") as f: 
+            f.write(f"DEBUG: tool_results setter called from {caller_info}, setting {len(value) if value else 0} results\n")
+
+        # Validation logic
+        validation_errors = []
+
+        # Structure validation
+        if value is not None and not isinstance(value, list):
+            validation_errors.append(f"tool_results must be a list, got {type(value)}")
+
+        if isinstance(value, list):
+            for i, result in enumerate(value):
+                if not isinstance(result, dict):
+                    validation_errors.append(f"tool_results[{i}] must be a dict, got {type(result)}")
+                    continue
+
+                # Required keys validation
+                if "tool_use_id" not in result:
+                    validation_errors.append(f"tool_results[{i}] missing required key 'tool_use_id'")
+                elif not isinstance(result["tool_use_id"], str):
+                    validation_errors.append(f"tool_results[{i}]['tool_use_id'] must be a string, got {type(result['tool_use_id'])}")
+
+                if "content" not in result:
+                    validation_errors.append(f"tool_results[{i}] missing required key 'content'")
+
+            # Check for duplicate tool_use_ids
+            if value:
+                tool_use_ids = [r.get("tool_use_id") for r in value if isinstance(r, dict) and "tool_use_id" in r]
+                if len(tool_use_ids) != len(set(tool_use_ids)):
+                    validation_errors.append("Duplicate tool_use_ids found in tool_results")
+
+        # Role validation
+        if value and self.role != "user":
+            validation_errors.append(f"tool_results should only be set on user role nodes, but this node has role '{self.role}'")
+
+        # Log validation results
+        with open("debug_tool_results.log", "a") as f:
+            if validation_errors:
+                f.write(f"VALIDATION ERRORS: {validation_errors}\n")
+            else:
+                f.write("VALIDATION: All checks passed\n")
+
+        # Set the value regardless (for now, to avoid breaking existing code)
+        self._tool_results = value or []
 
     @staticmethod
     def _create_empty(cls: Optional[Type["ConversationNode"]] = None) -> "ConversationNode":

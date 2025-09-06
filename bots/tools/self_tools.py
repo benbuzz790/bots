@@ -163,8 +163,11 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         dummy_content = "Branching in progress..."
         dummy_result = {"tool_use_id": tool_call_id, "content": dummy_content}
 
-        # Update bot's results to include the dummy result
-        bot.conversation._add_tool_results([dummy_result])
+        # Pre-populate tool handler results for proper conversation flow
+        # This ensures the dummy result gets added in the right place during _cvsn_respond()
+        if not hasattr(bot.tool_handler, 'results'):
+            bot.tool_handler.results = []
+        bot.tool_handler.results.append(dummy_result)
         # Save bot state with dummy result in place
         original_autosave = bot.autosave
         bot.autosave = False
