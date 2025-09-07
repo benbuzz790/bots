@@ -185,7 +185,7 @@ class TestErrorHandling:
 
         # Should return error string, not raise
         result = need_int("not_a_number")
-        assert result.startswith("Error:")
+        assert result.startswith("Tool Failed:")
         assert "invalid literal" in result.lower()
 
     def test_function_error(self):
@@ -199,7 +199,7 @@ class TestErrorHandling:
 
         # Should return error string, not raise
         result = will_fail("0")
-        assert result.startswith("Error:")
+        assert result.startswith("Tool Failed:")
         assert "Cannot be zero" in result
 
     def test_no_errors_raised(self):
@@ -212,7 +212,7 @@ class TestErrorHandling:
         # Should not raise, should return error string
         result = problematic("10", "0")
         assert isinstance(result, str)
-        assert result.startswith("Error:")
+        assert result.startswith("Tool Failed:")
 
 
 class TestDocstringHandling:
