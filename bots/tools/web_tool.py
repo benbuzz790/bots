@@ -51,12 +51,12 @@ def web_search(question: str) -> str:
         # Create the search prompt
         search_prompt = f"""I need you to search the web answers to this question: "{question}"
 
-        Please use the web search tool to find current, relevant information to precisely and accurately answer this question."""
+        Please use the web search tool to find current, relevant information to precisely and accurately \answer this question."""
 
         # Make the API call with web search enabled
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=20000,
+            model="claude-opus-4-1",
+            max_tokens=16384,
             temperature=0.3,
             tools=tools,
             messages=[
@@ -67,14 +67,10 @@ def web_search(question: str) -> str:
             ]
         )
 
-        # Extract the response text
-        response_text = ""
-        if response.content and len(response.content) > 0:
-            response_text = getattr(response.content[0], 'text', str(response.content[0]))
-
-        # Return both raw response and processed text
+        # Return raw response which includes citations and other useful info
+        # TODO process and extract just info and citations.
         raw_response_str = str(response)
-        return f"Raw API Response:\n{raw_response_str}\n\nProcessed Response:\n{response_text}"
+        return f"Raw API Response:\n{raw_response_str}"
 
     except Exception as e:
         return f"Web search failed: {str(e)}"
