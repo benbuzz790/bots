@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 from contextlib import redirect_stdout
 from io import StringIO
 
+import pytest
 import bots.dev.cli as cli_module
 
 """Complete test suite for all /broadcast_fp command wizards."""
@@ -254,8 +255,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
         self.assertIn("Broadcasting par_branch", output)
         self.assertIn("Broadcast completed", output)
 
-    import pytest
-    @pytest.skip("Does not halt")
+    @unittest.skip("Does not halt")
     @patch("builtins.input")
     def test_broadcast_fp_all_functional_prompts_integration(self, mock_input):
         """Integration test showing all 9 FPs are available in broadcast_fp."""
