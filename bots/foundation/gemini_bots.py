@@ -12,7 +12,7 @@ Key Components:
 """
 
 from typing import Any, Callable, Dict, List, Optional, Tuple
-import google.genai as genai
+from google import genai
 from google.genai import types
 import os
 import json

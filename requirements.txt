@@ -8,7 +8,7 @@ pytest-xdist
 psutil
 libcst
 # Google AI SDK for Gemini support (optional)
-google-generativeai
+google-genai
 # Additional test dependencies
 pytest-mock
 pytest-asyncio
