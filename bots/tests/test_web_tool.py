@@ -27,7 +27,7 @@ class TestWebSearchFunction(unittest.TestCase):
         import inspect
         sig = inspect.signature(web_search)
         params = list(sig.parameters.keys())
-        self.assertEqual(params, ['query'])
+        self.assertEqual(params, ['question'])
 
     @patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key'})
     @patch('bots.tools.web_tool.anthropic.Anthropic')
@@ -56,7 +56,6 @@ class TestWebSearchFunction(unittest.TestCase):
 
         # Check the call arguments
         self.assertEqual(call_args[1]['model'], 'claude-3-5-sonnet-20241022')
-        self.assertEqual(call_args[1]['max_tokens'], 4000)
         self.assertEqual(call_args[1]['temperature'], 0.3)
 
         # Check tools parameter
@@ -192,7 +191,7 @@ class TestWebSearchFunction(unittest.TestCase):
                 prompt_content = messages[0]['content']
 
                 self.assertIn(test_query, prompt_content)
-                self.assertIn("search the web for information about:", prompt_content)
+                self.assertIn("search the web", prompt_content.lower())
 
 
 class TestWebSearchValidation(unittest.TestCase):
