@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Improved Docker Test Orchestrator
-Runs pytest in Docker containers with better environment handling.
+Automated Docker Test Orchestrator (Updated)
+Runs pytest in Docker containers automatically without user interaction.
+Now with warning suppression for cleaner output.
 """
 
 import subprocess
@@ -38,20 +39,20 @@ def run_command(cmd, description, timeout_seconds=300):
         return False, "INTERRUPTED"
 
 def build_container():
-    """Build the improved Docker test container."""
+    """Build the Docker test container."""
     success, error = run_command(
-        ["docker", "build", "-t", "pytest-container-improved", "."],
-        "Building improved Docker test container",
+        ["docker", "build", "-t", "pytest-container", "."],
+        "Building Docker test container",
         timeout_seconds=600  # 10 minutes for building
     )
     return success
 
 def run_test_suite(test_args, description, timeout_seconds=300):
-    """Run a test suite in the improved Docker container."""
+    """Run a test suite in Docker."""
     base_cmd = [
         "docker", "run", "--rm",
-        "--memory=4g", "--cpus=4",  # Increased resources
-        "pytest-container-improved",
+        "--memory=2g", "--cpus=2",
+        "pytest-container",
         "python", "-m", "pytest"
     ]
 
@@ -59,10 +60,10 @@ def run_test_suite(test_args, description, timeout_seconds=300):
     return run_command(cmd, description, timeout_seconds)
 
 def main():
-    """Main orchestrator function with improved test configurations."""
-    print("🤖 Improved Docker Test Orchestrator")
+    """Main orchestrator function - fully automated."""
+    print("🤖 Automated Docker Test Orchestrator (v2 - Clean Output)")
     print("=" * 60)
-    print("Running tests with improved Docker environment...")
+    print("Running all tests automatically without user interaction...")
 
     # Check if Docker is available
     try:
@@ -72,42 +73,43 @@ def main():
         print("❌ Docker is not available. Please install Docker Desktop.")
         sys.exit(1)
 
-    # Build improved container first
-    print("\n🔨 Building improved Docker container...")
+    # Build container first
+    print("\n🔨 Building Docker container...")
     if not build_container():
         print("❌ Failed to build container. Exiting.")
         sys.exit(1)
 
-    # Improved test configurations
+    # Test configurations - ordered from safest to most complex
+    # Added warning suppression flags for cleaner output
     test_configs = [
         {
-            "args": ["--timeout=30", "-v", "--tb=short", "test_docker_permissions.py"],
-            "description": "Docker permissions test (baseline)",
+            "args": ["-n", "1", "--timeout=30", "-v", "--disable-warnings", "--tb=short", "test_docker_permissions.py"],
+            "description": "Docker permissions test (safe baseline)",
             "timeout": 60,
-            "critical": True
+            "critical": True  # Must pass for others to be meaningful
         },
         {
-            "args": ["--timeout=30", "-v", "--tb=short", "-k", "test_web_tool and not integration and not cli"],
-            "description": "Web tool tests (non-CLI)",
+            "args": ["-n", "1", "--timeout=30", "-v", "--disable-warnings", "--tb=short", "-k", "test_web_tool and not integration"],
+            "description": "Web tool tests (basic functionality)",
             "timeout": 120,
             "critical": False
         },
         {
-            "args": ["--timeout=30", "-v", "--tb=short", "-k", "test_toolify and not integration and not cli"],
-            "description": "Toolify tests (non-CLI)",
+            "args": ["-n", "1", "--timeout=30", "-v", "--disable-warnings", "--tb=short", "-k", "test_toolify and not integration"],
+            "description": "Toolify tests (core functionality)", 
             "timeout": 120,
             "critical": False
         },
         {
-            "args": ["--timeout=30", "-v", "--tb=short", "-k", "not cli and not integration", "--maxfail=3"],
-            "description": "Core functionality tests (safe subset)",
-            "timeout": 300,
-            "critical": False
-        },
-        {
-            "args": ["--timeout=30", "-v", "--tb=short", "-m", "docker", "--maxfail=5"],
-            "description": "Docker-specific tests",
+            "args": ["-n", "1", "--timeout=30", "-v", "--disable-warnings", "--tb=short", "tests/test_cli/test_broadcast_fp_comprehensive.py", "-x"],
+            "description": "Broadcast FP tests (investigating failures)",
             "timeout": 180,
+            "critical": False
+        },
+        {
+            "args": ["-n", "1", "--timeout=30", "-v", "--disable-warnings", "--tb=short", "-k", "not (test_branch_self_recursive or test_real_ai_stash_message_generation)", "--maxfail=5"],
+            "description": "Safe test subset (avoiding dangerous tests)",
+            "timeout": 600,
             "critical": False
         }
     ]
@@ -115,12 +117,13 @@ def main():
     results = []
     total_start_time = time.time()
 
-    print(f"\n🎯 Running {len(test_configs)} improved test configurations...")
+    print(f"\n🎯 Running {len(test_configs)} test configurations automatically...")
+    print("📝 Note: Warnings are suppressed for cleaner output")
 
     for i, config in enumerate(test_configs, 1):
         print(f"\n📋 Configuration {i}/{len(test_configs)}")
         success, error_type = run_test_suite(
-            config["args"],
+            config["args"], 
             config["description"],
             config.get("timeout", 300)
         )
@@ -146,7 +149,7 @@ def main():
 
     # Detailed Summary
     print(f"\n{'='*60}")
-    print("📊 IMPROVED TEST SUMMARY")
+    print("📊 DETAILED TEST SUMMARY")
     print(f"{'='*60}")
     print(f"Total execution time: {total_duration:.1f}s")
     print()
@@ -182,6 +185,11 @@ def main():
         print("   🚨 Fix critical failures first - these indicate basic setup issues")
     if regular_failures:
         print("   🔧 Regular failures indicate specific feature issues")
+        print("   📋 Common issues found:")
+        print("      - CLI stdin handling in Docker environments")
+        print("      - API interface changes (parameter names, token limits)")
+        print("      - Error message format expectations")
+        print("      - Import statement mismatches")
     if len(successes) == len(results):
         print("   🎉 All tests passed! System appears healthy.")
     elif len(successes) > len(regular_failures):
