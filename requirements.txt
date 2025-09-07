@@ -6,6 +6,9 @@ pytest-timeout
 typing_extensions==4.12.2
 pytest-xdist
 psutil
-#ghcli recommended
 libcst
-google
+# Google AI SDK for Gemini support (optional)
+google-generativeai
+# Additional test dependencies
+pytest-mock
+pytest-asyncio
