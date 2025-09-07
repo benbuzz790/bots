@@ -51,6 +51,9 @@ def run_test_suite(test_args, description, timeout_seconds=300):
     """Run a test suite in Docker."""
     base_cmd = [
         "docker", "run", "--rm",
+        "-e", "ANTHROPIC_API_KEY",
+        "-e", "OPENAI_API_KEY", 
+        "-e", "GEMINI_API_KEY",
         "--memory=2g", "--cpus=2",
         "pytest-container",
         "python", "-m", "pytest"
