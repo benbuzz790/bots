@@ -46,7 +46,7 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
 
         # Should return error string, not raise exception
         self.assertIsInstance(result, str)
-        self.assertIn("Error:", result)
+        self.assertIn("Tool Failed:", result)
         self.assertIn("Port 8000 already in use", result)
 
     @patch('sys.stdin', StringIO('hello\n/exit\n'))
