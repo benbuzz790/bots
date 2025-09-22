@@ -755,12 +755,23 @@ def toolify(description: str = None):
                 return _convert_tool_output(result)
 
             except KeyboardInterrupt as e:
-                # Convert KeyboardInterrupt to ToolExecutionError to prevent it from 
+                # Convert KeyboardInterrupt to ToolExecutionError to prevent it from
                 # bubbling up to CLI and being treated as user Ctrl+C
                 from bots.utils.helpers import _process_error
                 # ToolExecutionError is defined in this file
                 tool_error = ToolExecutionError(f"Tool execution interrupted: {str(e)}")
                 return _process_error(tool_error)
+            except TypeError as e:
+                # Check if this is a missing required argument error
+                error_msg = str(e)
+                if "missing" in error_msg and "required" in error_msg and "argument" in error_msg:
+                    # Add special message for output token limitation
+                    enhanced_error = TypeError(f"{error_msg} - this is usually due to running out of output tokens before finishing the message. Try making the function parameters shorter.")
+                    from bots.utils.helpers import _process_error
+                    return _process_error(enhanced_error)
+                else:
+                    from bots.utils.helpers import _process_error
+                    return _process_error(e)
             except Exception as e:
                 from bots.utils.helpers import _process_error
                 return _process_error(e)
