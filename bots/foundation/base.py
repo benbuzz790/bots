@@ -1,35 +1,3 @@
-"""Core foundation classes for the bots framework.
-
-This module provides the fundamental abstractions and base classes that power the bots framework:
-- Bot: Abstract base class for all LLM implementations
-- ToolHandler: Manages function/module tools with context preservation
-- ConversationNode: Tree-based conversation storage
-- Mailbox: Abstract interface for LLM service communication
-- Engines: Supported LLM model configurations
-
-The classes in this module are designed to:
-- Provide a consistent interface across different LLM implementations
-- Enable sophisticated context and tool management
-- Support complete bot portability and state preservation
-- Handle conversation branching and context management efficiently
-
-Example:
-    ```python
-    from bots import AnthropicBot
-    import my_tools
-
-    # Create a bot with tools
-    bot = AnthropicBot()
-    bot.add_tools(my_tools)
-
-    # Basic interaction
-    response = bot.respond("Hello!")
-
-    # Save bot state
-    bot.save("my_bot.bot")
-    ```
-"""
-
 import ast
 import copy
 import hashlib
@@ -46,84 +14,54 @@ from dataclasses import dataclass
 from enum import Enum
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type
-
 from bots.utils.helpers import _py_ast_to_source, formatted_datetime
-
+'Core foundation classes for the bots framework.\n\nThis module provides the fundamental abstractions and base classes that power the bots framework:\n- Bot: Abstract base class for all LLM implementations\n- ToolHandler: Manages function/module tools with context preservation\n- ConversationNode: Tree-based conversation storage\n- Mailbox: Abstract interface for LLM service communication\n- Engines: Supported LLM model configurations\n\nThe classes in this module are designed to:\n- Provide a consistent interface across different LLM implementations\n- Enable sophisticated context and tool management\n- Support complete bot portability and state preservation\n- Handle conversation branching and context management efficiently\n\nExample:\n    ```python\n    from bots import AnthropicBot\n    import my_tools\n\n    # Create a bot with tools\n    bot = AnthropicBot()\n    bot.add_tools(my_tools)\n\n    # Basic interaction\n    response = bot.respond("Hello!")\n\n    # Save bot state\n    bot.save("my_bot.bot")\n    ```\n'
 
 def _clean_decorator_source(source):
     """Clean decorator source by parsing the source file and extracting the
     decorator function."""
-
-    # Try to find the source file where the decorator was defined
-    # We'll look at the call stack to find the test file
     frame = inspect.currentframe()
     try:
         while frame:
             frame_info = inspect.getframeinfo(frame)
-            if frame_info.filename.endswith(".py") and "test_" in frame_info.filename:
-                # Found a test file - this is likely where our decorator is defined
+            if frame_info.filename.endswith('.py') and 'test_' in frame_info.filename:
                 test_file = frame_info.filename
-
                 try:
-                    # Read and parse the entire test file
-                    with open(test_file, "r", encoding="utf-8") as f:
+                    with open(test_file, 'r', encoding='utf-8') as f:
                         file_content = f.read()
-
                     tree = ast.parse(file_content)
-
-                    # Look for function definitions that match our decorator
-                    # Extract the first line of our source to identify the decorator
-                    source_lines = source.strip().split("\n")
+                    source_lines = source.strip().split('\n')
                     decorator_name = None
-
                     for line in source_lines:
-                        if line.strip().startswith("def ") and "(" in line:
-                            # Extract function name
+                        if line.strip().startswith('def ') and '(' in line:
                             func_line = line.strip()
-                            decorator_name = func_line[4 : func_line.index("(")].strip()
+                            decorator_name = func_line[4:func_line.index('(')].strip()
                             break
-
                     if decorator_name:
-
-                        # Find the decorator function in the AST
                         for node in ast.walk(tree):
                             if isinstance(node, ast.FunctionDef) and node.name == decorator_name:
-                                # Found the decorator function - extract it with proper indentation
                                 cleaned = _py_ast_to_source(node)
-
-                                # The closure variables should already be handled by the closure capture logic
-                                # in the main add_tool method, so just return the clean decorator function
                                 return cleaned
-
                 except Exception:
                     break
-
             frame = frame.f_back
     finally:
         del frame
-
-    # Fallback to original approach if AST extraction fails
     cleaned = textwrap.dedent(source).strip()
     return cleaned
-
 
 def _clean_function_source(source):
     """Clean function source using AST parsing and regeneration."""
     try:
-        # Parse the function source into an AST
         tree = ast.parse(source)
-        # Regenerate clean source code with proper indentation
         cleaned = _py_ast_to_source(tree)
         return cleaned
     except SyntaxError:
-        # Fallback to textwrap.dedent
         import textwrap
-
         cleaned = textwrap.dedent(source).strip()
         return cleaned
 
-
-def load(filepath: str) -> "Bot":
+def load(filepath: str) -> 'Bot':
     """Load a saved bot from a file.
 
     Use when you need to restore a previously saved bot with its complete state,
@@ -143,32 +81,30 @@ def load(filepath: str) -> "Bot":
     """
     return Bot.load(filepath)
 
-
 class Engines(str, Enum):
     """Enum class representing different AI model engines."""
-
-    GPT4 = "gpt-4"
-    GPT41 = "gpt-4.1"
-    GPT4_0613 = "gpt-4-0613"
-    GPT4_32K = "gpt-4-32k"
-    GPT4_32K_0613 = "gpt-4-32k-0613"
-    GPT35TURBO = "gpt-3.5-turbo"
-    GPT35TURBO_16K = "gpt-3.5-turbo-16k"
-    GPT35TURBO_0125 = "gpt-3.5-turbo-0125"
-    GPT35TURBO_INSTRUCT = "gpt-3.5-turbo-instruct"
-    CLAUDE3_HAIKU = "claude-3-haiku-20240307"
-    CLAUDE3_SONNET = "claude-3-sonnet-20240229"
-    CLAUDE3_OPUS = "claude-3-opus-20240229"
-    CLAUDE35_SONNET_20240620 = "claude-3-5-sonnet-20240620"
-    CLAUDE35_SONNET_20241022 = "claude-3-5-sonnet-20241022"
-    CLAUDE37_SONNET_20250219 = "claude-3-7-sonnet-20250219"
-    CLAUDE4_OPUS = "claude-opus-4-20250514"
-    CLAUDE41_OPUS = "claude-opus-4-1"
-    CLAUDE4_SONNET = "claude-sonnet-4-20250514"
-    GEMINI25_FLASH = "gemini-2.5-flash"
+    GPT4 = 'gpt-4'
+    GPT41 = 'gpt-4.1'
+    GPT4_0613 = 'gpt-4-0613'
+    GPT4_32K = 'gpt-4-32k'
+    GPT4_32K_0613 = 'gpt-4-32k-0613'
+    GPT35TURBO = 'gpt-3.5-turbo'
+    GPT35TURBO_16K = 'gpt-3.5-turbo-16k'
+    GPT35TURBO_0125 = 'gpt-3.5-turbo-0125'
+    GPT35TURBO_INSTRUCT = 'gpt-3.5-turbo-instruct'
+    CLAUDE3_HAIKU = 'claude-3-haiku-20240307'
+    CLAUDE3_SONNET = 'claude-3-sonnet-20240229'
+    CLAUDE3_OPUS = 'claude-3-opus-20240229'
+    CLAUDE35_SONNET_20240620 = 'claude-3-5-sonnet-20240620'
+    CLAUDE35_SONNET_20241022 = 'claude-3-5-sonnet-20241022'
+    CLAUDE37_SONNET_20250219 = 'claude-3-7-sonnet-20250219'
+    CLAUDE4_OPUS = 'claude-opus-4-20250514'
+    CLAUDE41_OPUS = 'claude-opus-4-1'
+    CLAUDE4_SONNET = 'claude-sonnet-4-20250514'
+    GEMINI25_FLASH = 'gemini-2.5-flash'
 
     @staticmethod
-    def get(name: str) -> Optional["Engines"]:
+    def get(name: str) -> Optional['Engines']:
         """Retrieve an Engines enum member by its string value.
 
         Use when you need to convert a model name string to an Engines enum member.
@@ -192,7 +128,7 @@ class Engines(str, Enum):
         return None
 
     @staticmethod
-    def get_bot_class(model_engine: "Engines") -> Type["Bot"]:
+    def get_bot_class(model_engine: 'Engines') -> Type['Bot']:
         """Get the appropriate Bot subclass for a given model engine.
 
         Use when you need to programmatically determine which Bot implementation
@@ -216,18 +152,17 @@ class Engines(str, Enum):
         from bots.foundation.anthropic_bots import AnthropicBot
         from bots.foundation.openai_bots import ChatGPT_Bot
         from bots.foundation.gemini_bots import GeminiBot
-
-        if model_engine.value.startswith("gpt"):
+        if model_engine.value.startswith('gpt'):
             return ChatGPT_Bot
-        elif model_engine.value.startswith("claude"):
+        elif model_engine.value.startswith('claude'):
             return AnthropicBot
-        elif model_engine.value.startswith("gemini"):
+        elif model_engine.value.startswith('gemini'):
             return GeminiBot
         else:
-            raise ValueError(f"Unsupported model engine: {model_engine}")
+            raise ValueError(f'Unsupported model engine: {model_engine}')
 
     @staticmethod
-    def get_conversation_node_class(class_name: str) -> Type["ConversationNode"]:
+    def get_conversation_node_class(class_name: str) -> Type['ConversationNode']:
         """Get the appropriate ConversationNode subclass by name.
 
     Use when you need to reconstruct conversation nodes from saved bot state.
@@ -244,17 +179,11 @@ class Engines(str, Enum):
         from bots.foundation.anthropic_bots import AnthropicNode
         from bots.foundation.openai_bots import OpenAINode
         from bots.foundation.gemini_bots import GeminiNode
-
-        NODE_CLASS_MAP = {
-            "OpenAINode": OpenAINode, 
-            "AnthropicNode": AnthropicNode,
-            "GeminiNode": GeminiNode
-        }
+        NODE_CLASS_MAP = {'OpenAINode': OpenAINode, 'AnthropicNode': AnthropicNode, 'GeminiNode': GeminiNode}
         node_class = NODE_CLASS_MAP.get(class_name)
         if node_class is None:
-            raise ValueError(f"Unsupported conversation node type: {class_name}")
+            raise ValueError(f'Unsupported conversation node type: {class_name}')
         return node_class
-
 
 class ConversationNode:
     """Tree-based storage for conversation history and tool interactions.
@@ -281,15 +210,7 @@ class ConversationNode:
         ```
     """
 
-    def __init__(
-        self,
-        content: str,
-        role: str,
-        tool_calls: Optional[List[Dict]] = None,
-        tool_results: Optional[List[Dict]] = None,
-        pending_results: Optional[List[Dict]] = None,
-        **kwargs,
-    ) -> None:
+    def __init__(self, content: str, role: str, tool_calls: Optional[List[Dict]]=None, tool_results: Optional[List[Dict]]=None, pending_results: Optional[List[Dict]]=None, **kwargs) -> None:
         """Initialize a new ConversationNode.
 
         Parameters:
@@ -310,14 +231,14 @@ class ConversationNode:
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-
     @property
     def tool_results(self):
         """Get tool results with protection logging."""
         import traceback
         stack = traceback.extract_stack()
-        caller_info = f"{stack[-2].filename}:{stack[-2].lineno} in {stack[-2].name}"
-        with open("debug_tool_results.log", "a") as f: f.write(f"DEBUG: tool_results getter called from {caller_info}\n")
+        caller_info = f'{stack[-2].filename}:{stack[-2].lineno} in {stack[-2].name}'
+        with open('debug_tool_results.log', 'a') as f:
+            f.write(f'DEBUG: tool_results getter called from {caller_info}\n')
         return self._tool_results
 
     @tool_results.setter
@@ -325,56 +246,38 @@ class ConversationNode:
         """Set tool results with validation and protection logging."""
         import traceback
         stack = traceback.extract_stack()
-        caller_info = f"{stack[-2].filename}:{stack[-2].lineno} in {stack[-2].name}"
-
-        # Log the attempt
-        with open("debug_tool_results.log", "a") as f: 
-            f.write(f"DEBUG: tool_results setter called from {caller_info}, setting {len(value) if value else 0} results\n")
-
-        # Validation logic
+        caller_info = f'{stack[-2].filename}:{stack[-2].lineno} in {stack[-2].name}'
+        with open('debug_tool_results.log', 'a') as f:
+            f.write(f'DEBUG: tool_results setter called from {caller_info}, setting {(len(value) if value else 0)} results\n')
         validation_errors = []
-
-        # Structure validation
-        if value is not None and not isinstance(value, list):
-            validation_errors.append(f"tool_results must be a list, got {type(value)}")
-
+        if value is not None and (not isinstance(value, list)):
+            validation_errors.append(f'tool_results must be a list, got {type(value)}')
         if isinstance(value, list):
             for i, result in enumerate(value):
                 if not isinstance(result, dict):
-                    validation_errors.append(f"tool_results[{i}] must be a dict, got {type(result)}")
+                    validation_errors.append(f'tool_results[{i}] must be a dict, got {type(result)}')
                     continue
-
-                # Required keys validation
-                if "tool_use_id" not in result:
+                if 'tool_use_id' not in result:
                     validation_errors.append(f"tool_results[{i}] missing required key 'tool_use_id'")
-                elif not isinstance(result["tool_use_id"], str):
+                elif not isinstance(result['tool_use_id'], str):
                     validation_errors.append(f"tool_results[{i}]['tool_use_id'] must be a string, got {type(result['tool_use_id'])}")
-
-                if "content" not in result:
+                if 'content' not in result:
                     validation_errors.append(f"tool_results[{i}] missing required key 'content'")
-
-            # Check for duplicate tool_use_ids
             if value:
-                tool_use_ids = [r.get("tool_use_id") for r in value if isinstance(r, dict) and "tool_use_id" in r]
+                tool_use_ids = [r.get('tool_use_id') for r in value if isinstance(r, dict) and 'tool_use_id' in r]
                 if len(tool_use_ids) != len(set(tool_use_ids)):
-                    validation_errors.append("Duplicate tool_use_ids found in tool_results")
-
-        # Role validation
-        if value and self.role != "user":
+                    validation_errors.append('Duplicate tool_use_ids found in tool_results')
+        if value and self.role != 'user':
             validation_errors.append(f"tool_results should only be set on user role nodes, but this node has role '{self.role}'")
-
-        # Log validation results
-        with open("debug_tool_results.log", "a") as f:
+        with open('debug_tool_results.log', 'a') as f:
             if validation_errors:
-                f.write(f"VALIDATION ERRORS: {validation_errors}\n")
+                f.write(f'VALIDATION ERRORS: {validation_errors}\n')
             else:
-                f.write("VALIDATION: All checks passed\n")
-
-        # Set the value regardless (for now, to avoid breaking existing code)
+                f.write('VALIDATION: All checks passed\n')
         self._tool_results = value or []
 
     @staticmethod
-    def _create_empty(cls: Optional[Type["ConversationNode"]] = None) -> "ConversationNode":
+    def _create_empty(cls: Optional[Type['ConversationNode']]=None) -> 'ConversationNode':
         """Create an empty root node.
 
         Use when initializing a new conversation tree that needs an empty root.
@@ -386,8 +289,8 @@ class ConversationNode:
             ConversationNode: An empty node with role='empty' and no content
         """
         if cls:
-            return cls(role="empty", content="")
-        return ConversationNode(role="empty", content="")
+            return cls(role='empty', content='')
+        return ConversationNode(role='empty', content='')
 
     def _is_empty(self) -> bool:
         """Check if this is an empty root node.
@@ -395,9 +298,9 @@ class ConversationNode:
         Returns:
             bool: True if this is an empty root node, False otherwise
         """
-        return self.role == "empty" and self.content == ""
+        return self.role == 'empty' and self.content == ''
 
-    def _add_reply(self, **kwargs) -> "ConversationNode":
+    def _add_reply(self, **kwargs) -> 'ConversationNode':
         """Add a new reply node to this conversation node.
 
         Creates a new node as a child of this one, handling tool context
@@ -430,33 +333,20 @@ class ConversationNode:
         Side Effects:
             Updates tool_results for all sibling nodes to include all unique results.
         """
-        # Only sync tool results if this is appropriate for the conversation structure
-        # Tool results should only appear in user nodes that immediately follow assistant nodes with tool_use
-        if self.role != "user":
-            return  # Only user nodes should have tool results
-
-        if not self.parent or self.parent.role != "assistant":
-            return  # Tool results only make sense after assistant messages
-
+        if self.role != 'user':
+            return
+        if not self.parent or self.parent.role != 'assistant':
+            return
         if not self.parent.tool_calls:
-            return  # No tool calls to respond to
-
+            return
         if self.parent and self.parent.replies:
-            # Use dict to automatically handle overwrites
             tool_results_dict = {}
-
-            # Prioritize this node's results over other nodes by letting it overwrite last
             siblings = [node for node in self.parent.replies if node != self] + [self]
-
             for node in siblings:
                 for result in node.tool_results:
-
-                    # Create hash of the result for provider-agnostic deduplication
                     result_str = str(sorted(result.items()))
                     tool_id = hashlib.md5(result_str.encode()).hexdigest()
                     tool_results_dict[tool_id] = result
-
-            # Convert back to list and apply to all siblings
             all_tool_results = list(tool_results_dict.values())
             for sibling in self.parent.replies:
                 sibling.tool_results = all_tool_results.copy()
@@ -489,18 +379,13 @@ class ConversationNode:
             """Create hash of result for deduplication."""
             result_str = str(sorted(result.items()))
             return hashlib.md5(result_str.encode()).hexdigest()
-
-        # Deduplicate: existing results first, then new results (new ones win)
         existing_dict = {make_hash(r): r for r in self.tool_results}
         new_dict = {make_hash(r): r for r in results}
-
-        # Merge with new results taking priority
         merged_dict = {**existing_dict, **new_dict}
-
         self.tool_results = list(merged_dict.values())
         self._sync_tool_context()
 
-    def _find_root(self) -> "ConversationNode":
+    def _find_root(self) -> 'ConversationNode':
         """Navigate to the root node of the conversation tree.
 
         Use when you need to access the starting point of the conversation.
@@ -535,7 +420,7 @@ class ConversationNode:
         """
         result = self._to_dict_self()
         if self.replies:
-            result["replies"] = [reply._to_dict_recursive() for reply in self.replies]
+            result['replies'] = [reply._to_dict_recursive() for reply in self.replies]
         return result
 
     def _to_dict_self(self) -> Dict[str, Any]:
@@ -553,13 +438,13 @@ class ConversationNode:
         """
         result = {}
         for k in dir(self):
-            if not k.startswith("_") and k not in {"parent", "replies"} and (not callable(getattr(self, k))):
+            if not k.startswith('_') and k not in {'parent', 'replies'} and (not callable(getattr(self, k))):
                 value = getattr(self, k)
                 if isinstance(value, (str, int, float, bool, list, dict, type(None))):
                     result[k] = value
                 else:
                     result[k] = str(value)
-        result["node_class"] = self.__class__.__name__
+        result['node_class'] = self.__class__.__name__
         return result
 
     def _build_messages(self) -> List[Dict[str, Any]]:
@@ -584,19 +469,19 @@ class ConversationNode:
         conversation_list_dict = []
         while node:
             if not node._is_empty():
-                entry = {"role": node.role, "content": node.content}
+                entry = {'role': node.role, 'content': node.content}
                 if node.tool_calls is not None:
-                    entry["tool_calls"] = node.tool_calls
+                    entry['tool_calls'] = node.tool_calls
                 if node.tool_results is not None:
-                    entry["tool_results"] = node.tool_results
+                    entry['tool_results'] = node.tool_results
                 conversation_list_dict = [entry] + conversation_list_dict
             node = node.parent
         return conversation_list_dict
 
     @classmethod
-    def _from_dict(cls, data: Dict[str, Any]) -> "ConversationNode":
-        reply_data = data.pop("replies", [])
-        node_class = Engines.get_conversation_node_class(data.pop("node_class", cls.__name__))
+    def _from_dict(cls, data: Dict[str, Any]) -> 'ConversationNode':
+        reply_data = data.pop('replies', [])
+        node_class = Engines.get_conversation_node_class(data.pop('node_class', cls.__name__))
         node = node_class(**data)
         for reply in reply_data:
             reply_node = cls._from_dict(reply)
@@ -626,9 +511,7 @@ class ConversationNode:
             for reply in current_node.replies:
                 count += count_recursive(reply)
             return count
-
         return count_recursive(root)
-
 
 @dataclass
 class ModuleContext:
@@ -644,13 +527,11 @@ class ModuleContext:
         namespace (ModuleType): The module's execution namespace
         code_hash (str): Hash of the source code for version checking
     """
-
     name: str
     source: str
     file_path: str
     namespace: ModuleType
     code_hash: str
-
 
 class ToolHandlerError(Exception):
     """Base exception class for ToolHandler errors.
@@ -658,9 +539,7 @@ class ToolHandlerError(Exception):
     Use as a base class for all tool-related exceptions to allow
     specific error handling for tool operations.
     """
-
     pass
-
 
 class ToolNotFoundError(ToolHandlerError):
     """Raised when a requested tool is not available.
@@ -668,9 +547,7 @@ class ToolNotFoundError(ToolHandlerError):
     Use when attempting to use a tool that hasn't been registered
     with the ToolHandler.
     """
-
     pass
-
 
 class ModuleLoadError(ToolHandlerError):
     """Raised when a module cannot be loaded for tool extraction.
@@ -678,9 +555,7 @@ class ModuleLoadError(ToolHandlerError):
     Use when there are issues loading a module's source code,
     executing it in a new namespace, or extracting its tools.
     """
-
     pass
-
 
 class ToolHandler(ABC):
     """Abstract base class for managing bot tool operations.
@@ -746,7 +621,7 @@ class ToolHandler(ABC):
                 "returns": "float: The calculated area"
             }
         """
-        raise NotImplementedError("You must implement this method in a subclass")
+        raise NotImplementedError('You must implement this method in a subclass')
 
     @abstractmethod
     def generate_request_schema(self, response: Any) -> List[Dict[str, Any]]:
@@ -769,7 +644,7 @@ class ToolHandler(ABC):
             # [{"name": "view_file", "parameters": {"path": "main.py"}}, ...]
             ```
         """
-        raise NotImplementedError("You must implement this method in a subclass")
+        raise NotImplementedError('You must implement this method in a subclass')
 
     @abstractmethod
     def tool_name_and_input(self, request_schema: Dict[str, Any]) -> Tuple[Optional[str], Dict[str, Any]]:
@@ -796,7 +671,7 @@ class ToolHandler(ABC):
                 result = handler.function_map[name](**params)
             ```
         """
-        raise NotImplementedError("You must implement this method in a subclass")
+        raise NotImplementedError('You must implement this method in a subclass')
 
     @abstractmethod
     def generate_response_schema(self, request: Dict[str, Any], tool_output_kwargs: Dict[str, Any]) -> Dict[str, Any]:
@@ -820,7 +695,7 @@ class ToolHandler(ABC):
             # {"tool_name": "view_file", "status": "success", "content": "file contents..."}
             ```
         """
-        raise NotImplementedError("You must implement this method in a subclass")
+        raise NotImplementedError('You must implement this method in a subclass')
 
     @abstractmethod
     def generate_error_schema(self, request_schema: Dict[str, Any], error_msg: str) -> Dict[str, Any]:
@@ -915,7 +790,7 @@ class ToolHandler(ABC):
                 output_kwargs = func(**input_kwargs)
                 response_schema = self.generate_response_schema(request_schema, output_kwargs)
             except ToolNotFoundError as e:
-                error_msg = "Error: Tool not found.\n\n" + str(e)
+                error_msg = 'Error: Tool not found.\n\n' + str(e)
                 response_schema = self.generate_error_schema(request_schema, error_msg)
             except TypeError as e:
                 error_msg = f"Invalid arguments for tool '{tool_name}': {str(e)}"
@@ -944,12 +819,7 @@ class ToolHandler(ABC):
             - Preserves original module context
             - Maintains function name and basic documentation
         """
-        source = (
-            f"def {func.__name__}(x):\n"
-            f'    """Wrapper for built-in function {func.__name__} from {func.__module__}"""\n'
-            f"    import {func.__module__}\n"
-            f"    return {func.__module__}.{func.__name__}(float(x))\n"
-        )
+        source = f'def {func.__name__}(x):\n    """Wrapper for built-in function {func.__name__} from {func.__module__}"""\n    import {func.__module__}\n    return {func.__module__}.{func.__name__}(float(x))\n'
         return source
 
     def _create_dynamic_wrapper(self, func: Callable) -> str:
@@ -967,308 +837,239 @@ class ToolHandler(ABC):
         Note:
             - Preserves function signature if available
             - Copies docstring if present
-            - Creates fallback implementation if source is not accessible
+            - Creates self-contained implementation
             - Handles both normal and dynamic functions
         """
-        source = f"def {func.__name__}{inspect.signature(func)}:\n"
+        import inspect
+        import dis
+        import types
+
+        # Get function signature
+        sig = inspect.signature(func)
+        
+        # Create function header
+        source = f'def {func.__name__}{sig}:\n'
+        
+        # Add docstring if present
         if func.__doc__:
             source += f'    """{func.__doc__}"""\n'
-        if hasattr(func, "__code__"):
+        
+        # Try to reconstruct the function body
+        if hasattr(func, '__code__'):
             try:
-                body = inspect.getsource(func).split("\n", 1)[1]
+                # Try to get original source first
+                body = inspect.getsource(func).split('\n', 1)[1]
                 source += body
             except Exception:
-                source += "    return func(*args, **kwargs)\n"
+                # If we can't get source, create a simple implementation
+                # that raises an informative error
+                # Create a wrapper that will be restored from serialized data during load
+                # This wrapper will be replaced with the actual function when the bot is loaded
+                source += f'    # Dynamic function {func.__name__} - will be restored from serialized data\n'
+                source += f'    # Original signature: {inspect.signature(func) if hasattr(func, "__code__") else "unknown"}\n'
+                source += f'    raise NotImplementedError("Dynamic function \'{func.__name__}\' not yet restored from save data")\n'
         else:
-            source += "    pass\n"
+            source += '    pass\n'
+        
         return source
 
     def _extract_annotation_names(self, source_code: str) -> set:
         """Extract all names used in type annotations from source code."""
         import ast
         import re
-
         annotation_names = set()
-
         try:
-            # Parse the source code into an AST
             tree = ast.parse(source_code)
-
-            # Walk through all nodes to find annotations
             for node in ast.walk(tree):
-                # Function annotations (parameters and return types)
                 if isinstance(node, ast.FunctionDef):
-                    # Parameter annotations
                     for arg in node.args.args:
                         if arg.annotation:
                             annotation_names.update(self._extract_names_from_ast_node(arg.annotation))
-
-                    # Return type annotation
                     if node.returns:
                         annotation_names.update(self._extract_names_from_ast_node(node.returns))
-
-                # Variable annotations (like: x: int = 5)
                 elif isinstance(node, ast.AnnAssign):
                     if node.annotation:
                         annotation_names.update(self._extract_names_from_ast_node(node.annotation))
-
         except SyntaxError:
-            # Fallback: use regex if AST parsing fails
-            # Match common annotation patterns
-            patterns = [
-                r":\s*([A-Za-z_][A-Za-z0-9_]*)",  # param: Type
-                r"->\s*([A-Za-z_][A-Za-z0-9_]*)",  # -> ReturnType
-                r"\[\s*([A-Za-z_][A-Za-z0-9_]*)",  # List[Type]
-                r",\s*([A-Za-z_][A-Za-z0-9_]*)",  # Dict[str, Type]
-            ]
-
+            patterns = [':\\s*([A-Za-z_][A-Za-z0-9_]*)', '->\\s*([A-Za-z_][A-Za-z0-9_]*)', '\\[\\s*([A-Za-z_][A-Za-z0-9_]*)', ',\\s*([A-Za-z_][A-Za-z0-9_]*)']
             for pattern in patterns:
                 matches = re.findall(pattern, source_code)
                 annotation_names.update(matches)
-
         return annotation_names
 
     def _extract_names_from_ast_node(self, node) -> set:
         """Extract all names from an AST annotation node."""
         names = set()
-
         if isinstance(node, ast.Name):
             names.add(node.id)
         elif isinstance(node, ast.Attribute):
-            # Handle things like typing.Optional
             if isinstance(node.value, ast.Name):
-                names.add(node.value.id)  # Add 'typing'
+                names.add(node.value.id)
         elif isinstance(node, ast.Subscript):
-            # Handle generic types like List[str], Dict[str, int]
             names.update(self._extract_names_from_ast_node(node.value))
             if isinstance(node.slice, ast.Tuple):
                 for elt in node.slice.elts:
                     names.update(self._extract_names_from_ast_node(elt))
             else:
                 names.update(self._extract_names_from_ast_node(node.slice))
-        elif hasattr(node, "elts"):  # Handle tuples/lists in annotations
+        elif hasattr(node, 'elts'):
             for elt in node.elts:
                 names.update(self._extract_names_from_ast_node(elt))
-
         return names
 
     def _capture_annotation_context(self, func: Callable, context: dict) -> None:
         """Capture all objects referenced in function annotations."""
-        if not hasattr(func, "__globals__"):
+        if not hasattr(func, '__globals__'):
             return
-
-        # Get the function's source to analyze annotations
         try:
             source = inspect.getsource(func)
             annotation_names = self._extract_annotation_names(source)
-
-            # For each name found in annotations, try to capture it from globals
             for name in annotation_names:
                 if name in func.__globals__:
                     context[name] = func.__globals__[name]
-
         except (TypeError, OSError):
-            # If we can't get source, fall back to __annotations__
-            if hasattr(func, "__annotations__") and func.__annotations__:
-                # This is a simplified fallback - get basic type names
+            if hasattr(func, '__annotations__') and func.__annotations__:
                 for annotation in func.__annotations__.values():
-                    if hasattr(annotation, "__name__"):
+                    if hasattr(annotation, '__name__'):
                         name = annotation.__name__
                         if name in func.__globals__:
                             context[name] = func.__globals__[name]
+
     def _build_function_context(self, func: Callable) -> dict:
         """Build the execution context for a function by capturing all necessary dependencies."""
         code = func.__code__
         names = code.co_names
         context = {name: func.__globals__[name] for name in names if name in func.__globals__}
-
-        # Capture annotation dependencies
         self._capture_annotation_context(func, context)
-
-        # Add ALL function globals (not just co_names)
         for name, value in func.__globals__.items():
-            if not name.startswith("__"):
+            if not name.startswith('__'):
                 context[name] = value
-
-        # Union with the original module namespace
         context = self._merge_with_original_module(func, context)
-
-        # Add module imports
         for name, value in func.__globals__.items():
             if isinstance(value, types.ModuleType) or callable(value):
                 context[name] = value
-
         return context
-    
+
     def _merge_with_original_module(self, func: Callable, context: dict) -> dict:
         """Merge function context with its original module namespace."""
         import importlib
-
         try:
             original_module = importlib.import_module(func.__module__)
             for name, value in original_module.__dict__.items():
-                if not name.startswith("__"):
-                    # Module namespace takes precedence over function globals for conflicts
+                if not name.startswith('__'):
                     context[name] = value
         except ImportError:
             pass
-
-        # Second pass for callables and types not already in context
         try:
             original_module = importlib.import_module(func.__module__)
             for name, value in original_module.__dict__.items():
-                if not name.startswith("__") and name not in context:
+                if not name.startswith('__') and name not in context:
                     if callable(value) or isinstance(value, type):
                         context[name] = value
         except ImportError:
             pass
-
         return context
-    
+
     def _capture_helper_functions(self, func: Callable, source: str, context: dict) -> str:
         """Capture source code of helper functions that the main function depends on."""
         helper_functions_source = []
-
         try:
             import ast
             tree = ast.parse(source)
-
-            # Find all function calls in the main function
             function_calls = set()
             for node in ast.walk(tree):
                 if isinstance(node, ast.Call):
                     if isinstance(node.func, ast.Name):
                         function_calls.add(node.func.id)
-
-            # For each function call, check if it's a helper function we need to include
             for func_name in function_calls:
                 if func_name in context and callable(context[func_name]):
                     helper_func = context[func_name]
-
-                    # Only include functions from the same module that start with underscore (private helpers)
-                    if (hasattr(helper_func, '__module__') and 
-                        helper_func.__module__ == func.__module__ and 
-                        func_name.startswith('_') and
-                        not inspect.isbuiltin(helper_func)):
-
+                    if hasattr(helper_func, '__module__') and helper_func.__module__ == func.__module__ and func_name.startswith('_') and (not inspect.isbuiltin(helper_func)):
                         try:
                             helper_source = inspect.getsource(helper_func)
                             helper_source = _clean_function_source(helper_source)
                             helper_functions_source.append(helper_source)
                         except (TypeError, OSError):
-                            # Can't get source for this helper function, skip it
                             pass
-
-            # Append helper function sources to the main source (after, not before)
             if helper_functions_source:
                 source = source + '\n\n' + '\n\n'.join(helper_functions_source)
-
         except Exception:
-            # If AST parsing fails, continue without helper function capture
             pass
-
         return source
-    
+
     def _process_decorators(self, func: Callable, source: str, context: dict) -> str:
         """Process and capture decorator source code and dependencies."""
         import re
-
-        decorator_matches = re.findall(r"@(\w+)", source)
+        decorator_matches = re.findall('@(\\w+)', source)
         for decorator_name in decorator_matches:
             if decorator_name in func.__globals__:
                 context[decorator_name] = func.__globals__[decorator_name]
                 source = self._capture_decorator_source(func.__globals__[decorator_name], source, context)
-
-        # Handle locally-defined decorators
         missing_decorators = [name for name in decorator_matches if name not in func.__globals__]
         if missing_decorators:
             source = self._capture_local_decorators(missing_decorators, source, context)
-
         return source
-    
+
     def _capture_decorator_source(self, decorator_func: Callable, source: str, context: dict) -> str:
         """Capture source code and dependencies for a specific decorator."""
         if not callable(decorator_func) or inspect.isbuiltin(decorator_func):
             return source
-
         try:
             decorator_source = inspect.getsource(decorator_func)
-
-            # Capture annotation context from decorator
             self._capture_annotation_context(decorator_func, context)
-
-            # Enhanced decorator dependency capture
-            if hasattr(decorator_func, "__globals__"):
+            if hasattr(decorator_func, '__globals__'):
                 for dec_name, dec_value in decorator_func.__globals__.items():
-                    if not dec_name.startswith("__"):
+                    if not dec_name.startswith('__'):
                         if isinstance(dec_value, (int, float, str, bool, list, dict)):
                             context[dec_name] = dec_value
                         elif isinstance(dec_value, types.ModuleType):
                             context[dec_name] = dec_value
-                        elif hasattr(dec_value, "__module__"):
+                        elif hasattr(dec_value, '__module__'):
                             context[dec_name] = dec_value
-
-            # Handle closure variables
             decorator_source = self._handle_decorator_closures(decorator_func, decorator_source, context)
-            source = _clean_decorator_source(decorator_source) + "\n\n" + source
-
+            source = _clean_decorator_source(decorator_source) + '\n\n' + source
         except (TypeError, OSError):
-            # Can't get decorator source, continue with function object
             pass
-
         return source
-    
+
     def _handle_decorator_closures(self, decorator_func: Callable, decorator_source: str, context: dict) -> str:
         """Handle closure variables for decorator functions."""
-        if not (hasattr(decorator_func, "__closure__") and decorator_func.__closure__):
+        if not (hasattr(decorator_func, '__closure__') and decorator_func.__closure__):
             return decorator_source
-
         freevars = decorator_func.__code__.co_freevars
         closure_defs = []
-
         for k, var_name in enumerate(freevars):
-            if (k < len(decorator_func.__closure__) and 
-                decorator_func.__closure__[k] is not None):
+            if k < len(decorator_func.__closure__) and decorator_func.__closure__[k] is not None:
                 try:
                     closure_value = decorator_func.__closure__[k].cell_contents
-                    closure_defs.append(f"{var_name} = {repr(closure_value)}")
+                    closure_defs.append(f'{var_name} = {repr(closure_value)}')
                     context[var_name] = closure_value
                 except ValueError:
                     pass
-
         if closure_defs:
-            decorator_source = "\n".join(closure_defs) + "\n\n" + decorator_source
-
+            decorator_source = '\n'.join(closure_defs) + '\n\n' + decorator_source
         return decorator_source
-    
+
     def _capture_local_decorators(self, missing_decorators: list, source: str, context: dict) -> str:
         """Capture locally-defined decorators from the call stack."""
         frame = inspect.currentframe()
         try:
             while frame:
                 frame_locals = frame.f_locals
-
                 for decorator_name in missing_decorators:
                     if decorator_name in frame_locals:
                         decorator_func = frame_locals[decorator_name]
                         if callable(decorator_func):
                             try:
                                 decorator_source = inspect.getsource(decorator_func)
-
-                                # Capture annotation context from local decorator
                                 self._capture_annotation_context(decorator_func, context)
-
-                                # Handle closure variables
                                 decorator_source = self._handle_decorator_closures(decorator_func, decorator_source, context)
-                                source = _clean_decorator_source(decorator_source) + "\n\n" + source
-
+                                source = _clean_decorator_source(decorator_source) + '\n\n' + source
                             except (TypeError, OSError) as e:
-                                print(f"DEBUG: Could not capture decorator {decorator_name}: {e}")
-
+                                print(f'DEBUG: Could not capture decorator {decorator_name}: {e}')
                 frame = frame.f_back
         finally:
             del frame
-
         return source
 
     def add_tool(self, func: Callable) -> None:
@@ -1306,57 +1107,51 @@ class ToolHandler(ABC):
     """
         schema = self.generate_tool_schema(func)
         if not schema:
-            raise ValueError("Schema undefined. ToolHandler.generate_tool_schema() may not be implemented.")
-
-        if not hasattr(func, "__module_context__"):
-            source, context = self._prepare_function_source_and_context(func)
-            func = self._create_module_context_and_function(func, source, context)
-
+            raise ValueError('Schema undefined. ToolHandler.generate_tool_schema() may not be implemented.')
+        if not hasattr(func, '__module_context__'):
+            # Check if this is a dynamic function that we can't get source for
+            try:
+                # Try to get source - if this fails, it's a dynamic function
+                inspect.getsource(func)
+                # If we get here, we can get source, so process normally
+                source, context = self._prepare_function_source_and_context(func)
+                func = self._create_module_context_and_function(func, source, context)
+            except (TypeError, OSError):
+                # This is a dynamic function - store it directly without creating a wrapper
+                # The serialization/deserialization will handle it during save/load
+                pass  # Keep the original function as-is
         self.tools.append(schema)
         self.function_map[func.__name__] = func
+
     def _prepare_function_source_and_context(self, func: Callable) -> tuple[str, dict]:
         """Prepare the source code and execution context for a function."""
         if inspect.isbuiltin(func) or inspect.ismethoddescriptor(func):
-            return self._create_builtin_wrapper(func), {}
-
+            return (self._create_builtin_wrapper(func), {})
         try:
             source = inspect.getsource(func)
             source = _clean_function_source(source)
-
-            if hasattr(func, "__globals__"):
+            if hasattr(func, '__globals__'):
                 context = self._build_function_context(func)
                 source = self._process_decorators(func, source, context)
                 source = self._capture_helper_functions(func, source, context)
             else:
                 context = {}
-
-            return source, context
-
+            return (source, context)
         except (TypeError, OSError):
-            return self._create_dynamic_wrapper(func), {}
-    
+            return (self._create_dynamic_wrapper(func), {})
+
     def _create_module_context_and_function(self, func: Callable, source: str, context: dict) -> Callable:
         """Create a module context and return the function with context attached."""
-        module_name = f"dynamic_module_{hash(source)}"
-        file_path = f"dynamic_module_{hash(str(func))}"
-
+        module_name = f'dynamic_module_{hash(source)}'
+        file_path = f'dynamic_module_{hash(str(func))}'
         module = ModuleType(module_name)
         module.__file__ = file_path
         module.__dict__.update(context)
-
-        module_context = ModuleContext(
-            name=module_name, 
-            source=source, 
-            file_path=file_path, 
-            namespace=module, 
-            code_hash=self._get_code_hash(source)
-        )
-
+        module_context = ModuleContext(name=module_name, source=source, file_path=file_path, namespace=module, code_hash=self._get_code_hash(source))
         exec(source, module.__dict__)
         new_func = module.__dict__[func.__name__]
         new_func.__module_context__ = module_context
         self.modules[file_path] = module_context
-
         return new_func
 
     def _add_tools_from_file(self, filepath: str) -> None:
@@ -1393,9 +1188,9 @@ class ToolHandler(ABC):
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"File '{filepath}' not found.")
         abs_file_path = os.path.abspath(filepath)
-        module_name = f"dynamic_module_{hashlib.md5(abs_file_path.encode()).hexdigest()}"
+        module_name = f'dynamic_module_{hashlib.md5(abs_file_path.encode()).hexdigest()}'
         try:
-            with open(abs_file_path, "r") as file:
+            with open(abs_file_path, 'r') as file:
                 source = file.read()
             module = ModuleType(module_name)
             module.__file__ = abs_file_path
@@ -1406,22 +1201,16 @@ class ToolHandler(ABC):
                 exec(source, module.__dict__)
             finally:
                 sys.path.pop(0)
-            module_context = ModuleContext(
-                name=module_name,
-                source=source,
-                file_path=abs_file_path,
-                namespace=module,
-                code_hash=self._get_code_hash(source),
-            )
+            module_context = ModuleContext(name=module_name, source=source, file_path=abs_file_path, namespace=module, code_hash=self._get_code_hash(source))
             self.modules[abs_file_path] = module_context
             for node in function_nodes:
-                if not node.name.startswith("_"):
+                if not node.name.startswith('_'):
                     func = module.__dict__.get(node.name)
                     if func:
                         func.__module_context__ = module_context
                         self.add_tool(func)
         except Exception as e:
-            raise ModuleLoadError(f"Error loading module from {filepath}: {str(e)}") from e
+            raise ModuleLoadError(f'Error loading module from {filepath}: {str(e)}') from e
 
     def _add_tools_from_module(self, module: ModuleType) -> None:
         """Add all non-private functions from a Python module as tools.
@@ -1455,103 +1244,77 @@ class ToolHandler(ABC):
             - Skips functions whose names start with underscore
             - Maintains complete module context
         """
-        if hasattr(module, "__file__"):
+        if hasattr(module, '__file__'):
             self._add_tools_from_file(module.__file__)
-        elif hasattr(module, "__source__"):
+        elif hasattr(module, '__source__'):
             source = module.__source__
-            module_name = f"dynamic_module_{hashlib.md5(module.__name__.encode()).hexdigest()}"
+            module_name = f'dynamic_module_{hashlib.md5(module.__name__.encode()).hexdigest()}'
             try:
                 dynamic_module = ModuleType(module_name)
-                dynamic_module.__file__ = f"dynamic_module_{hash(source)}"
+                dynamic_module.__file__ = f'dynamic_module_{hash(source)}'
                 exec(source, dynamic_module.__dict__)
-                module_context = ModuleContext(
-                    name=module_name,
-                    source=source,
-                    file_path=dynamic_module.__file__,
-                    namespace=dynamic_module,
-                    code_hash=self._get_code_hash(source),
-                )
+                module_context = ModuleContext(name=module_name, source=source, file_path=dynamic_module.__file__, namespace=dynamic_module, code_hash=self._get_code_hash(source))
                 self.modules[dynamic_module.__file__] = module_context
                 for name, func in inspect.getmembers(dynamic_module, inspect.isfunction):
-                    if not name.startswith("_"):
+                    if not name.startswith('_'):
                         func.__module_context__ = module_context
                         self.add_tool(func)
             except Exception as e:
-                raise ModuleLoadError(f"Error loading module {module.__name__}: {str(e)}") from e
+                raise ModuleLoadError(f'Error loading module {module.__name__}: {str(e)}') from e
         else:
-            raise ModuleLoadError(f"Module {module.__name__} has neither file path nor source. Cannot load.")
+            raise ModuleLoadError(f'Module {module.__name__} has neither file path nor source. Cannot load.')
 
     def _add_imports_to_source(self, module_context) -> str:
         """Add necessary imports to module source code by extracting existing imports."""
         source = module_context.source
         imports_needed = []
-
-        # Extract existing import statements from the source using AST
         try:
             tree = ast.parse(source)
-
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
                         if alias.asname:
-                            imports_needed.append(f"import {alias.name} as {alias.asname}")
+                            imports_needed.append(f'import {alias.name} as {alias.asname}')
                         else:
-                            imports_needed.append(f"import {alias.name}")
-
+                            imports_needed.append(f'import {alias.name}')
                 elif isinstance(node, ast.ImportFrom):
-                    module_name = node.module or ""
+                    module_name = node.module or ''
                     names = []
                     for alias in node.names:
                         if alias.asname:
-                            names.append(f"{alias.name} as {alias.asname}")
+                            names.append(f'{alias.name} as {alias.asname}')
                         else:
                             names.append(alias.name)
-
                     if names:
                         imports_needed.append(f"from {module_name} import {', '.join(names)}")
-
         except SyntaxError:
-            # Fallback: use regex to extract import statements
-            import_patterns = [
-                r"^import\s+[\w\.,\s]+",
-                r"^from\s+[\w\.]+\s+import\s+[\w\.,\s\*]+",
-            ]
-
-            for line in source.split("\n"):
+            import_patterns = ['^import\\s+[\\w\\.,\\s]+', '^from\\s+[\\w\\.]+\\s+import\\s+[\\w\\.,\\s\\*]+']
+            for line in source.split('\n'):
                 line = line.strip()
                 for pattern in import_patterns:
                     if re.match(pattern, line):
                         imports_needed.append(line)
                         break
-        # CRITICAL FIX: Add imports for typing objects used in type hints
-        # This fixes the issue where Callable, Any, etc. are used but not imported
         try:
             tree = ast.parse(source)
-
-            # Find all names used in type annotations
             annotation_names = set()
 
             class AnnotationVisitor(ast.NodeVisitor):
+
                 def visit_FunctionDef(self, node):
-                    # Check function annotations
                     if node.returns:
                         self._extract_names_from_annotation(node.returns, annotation_names)
-
                     for arg in node.args.args:
                         if arg.annotation:
                             self._extract_names_from_annotation(arg.annotation, annotation_names)
-
                     self.generic_visit(node)
 
                 def visit_AsyncFunctionDef(self, node):
-                    # Same as FunctionDef but for async functions
                     if node.returns:
                         self._extract_names_from_annotation(node.returns, annotation_names)
-
                     for arg in node.args.args:
                         if arg.annotation:
                             self._extract_names_from_annotation(arg.annotation, annotation_names)
-
                     self.generic_visit(node)
 
                 def _extract_names_from_annotation(self, annotation, names_set):
@@ -1559,99 +1322,66 @@ class ToolHandler(ABC):
                     if isinstance(annotation, ast.Name):
                         names_set.add(annotation.id)
                     elif isinstance(annotation, ast.Attribute):
-                        # For things like typing.Optional
                         if isinstance(annotation.value, ast.Name):
                             names_set.add(annotation.value.id)
                     elif isinstance(annotation, ast.Subscript):
-                        # For things like List[str], Optional[int]
                         self._extract_names_from_annotation(annotation.value, names_set)
-                        if hasattr(annotation, "slice"):
+                        if hasattr(annotation, 'slice'):
                             if isinstance(annotation.slice, ast.Name):
                                 names_set.add(annotation.slice.id)
-                            elif hasattr(annotation.slice, "elts"):  # Tuple of types
+                            elif hasattr(annotation.slice, 'elts'):
                                 for elt in annotation.slice.elts:
                                     self._extract_names_from_annotation(elt, names_set)
                             else:
                                 self._extract_names_from_annotation(annotation.slice, names_set)
-
             visitor = AnnotationVisitor()
             visitor.visit(tree)
-
-            # Now check if any of these annotation names are typing objects in the namespace
-            if hasattr(module_context, "namespace") and hasattr(module_context.namespace, "__dict__"):
+            if hasattr(module_context, 'namespace') and hasattr(module_context.namespace, '__dict__'):
                 namespace_dict = module_context.namespace.__dict__
-
-                # Common typing imports that need to be handled
                 typing_imports = []
-
                 for name in annotation_names:
                     if name in namespace_dict:
                         value = namespace_dict[name]
-
-                        # Check if this is a typing object
-                        if hasattr(value, "__module__") and value.__module__ == "typing":
+                        if hasattr(value, '__module__') and value.__module__ == 'typing':
                             typing_imports.append(name)
-
-                # Add typing imports if we found any
                 if typing_imports:
                     typing_import = f"from typing import {', '.join(sorted(typing_imports))}"
                     imports_needed.append(typing_import)
-
-                # ADDITIONAL FIX: Also check for other common module imports (like functools.wraps)
-                # Look for any names used in the code that exist in the namespace
                 all_names_used = set()
 
-                # Collect all names used in the source (not just annotations)
                 class NameCollector(ast.NodeVisitor):
+
                     def visit_Name(self, node):
                         if isinstance(node.ctx, ast.Load):
                             all_names_used.add(node.id)
                         self.generic_visit(node)
-
                 name_collector = NameCollector()
                 name_collector.visit(tree)
-
-                # Group imports by module
                 module_imports = {}
-
                 for name in all_names_used:
                     if name in namespace_dict:
                         value = namespace_dict[name]
-
-                        # Check if this has a module and it's a standard library or common module
-                        if hasattr(value, "__module__") and value.__module__:
+                        if hasattr(value, '__module__') and value.__module__:
                             module_name = value.__module__
-
-                            # Only handle common modules to avoid importing everything
-                            if module_name in ["functools", "itertools", "collections", "operator", "re", "math", "datetime"]:
+                            if module_name in ['functools', 'itertools', 'collections', 'operator', 're', 'math', 'datetime']:
                                 if module_name not in module_imports:
                                     module_imports[module_name] = []
                                 module_imports[module_name].append(name)
-
-                # Add the module imports
                 for module_name, names in module_imports.items():
                     if names:
                         module_import = f"from {module_name} import {', '.join(sorted(names))}"
                         imports_needed.append(module_import)
-
         except Exception:
-            # If annotation analysis fails, continue without it
-            # This ensures we don't break existing functionality
             pass
-
-        # Remove duplicates while preserving order
         unique_imports = []
         seen = set()
         for imp in imports_needed:
             if imp not in seen:
                 unique_imports.append(imp)
                 seen.add(imp)
-
-        # Add imports to source if any were found
         if unique_imports:
-            import_block = "\n".join(unique_imports) + "\n\n"
+            import_block = '\n'.join(unique_imports) + '\n\n'
             source = import_block + source
-
         return source
 
     def to_dict(self) -> Dict[str, Any]:
@@ -1676,64 +1406,219 @@ class ToolHandler(ABC):
         """
         module_details = {}
         function_paths = {}
-
         for file_path, module_context in self.modules.items():
-            # CRITICAL: Use the enhanced source with imports when saving
             enhanced_source = self._add_imports_to_source(module_context)
-
-            module_details[file_path] = {
-                "name": module_context.name,
-                "source": enhanced_source,  # Save the enhanced source, not the original
-                "file_path": module_context.file_path,
-                "code_hash": self._get_code_hash(enhanced_source),  # Hash the enhanced source
-                "globals": self._serialize_globals(module_context.namespace.__dict__),
-            }
-
+            module_details[file_path] = {'name': module_context.name, 'source': enhanced_source, 'file_path': module_context.file_path, 'code_hash': self._get_code_hash(enhanced_source), 'globals': self._serialize_globals(module_context.namespace.__dict__)}
         for name, func in self.function_map.items():
-            module_context = getattr(func, "__module_context__", None)
+            module_context = getattr(func, '__module_context__', None)
             if module_context:
                 function_paths[name] = module_context.file_path
             else:
-                function_paths[name] = "dynamic"
+                function_paths[name] = 'dynamic'
+        # Serialize dynamic functions
+        # Serialize dynamic functions
+        dynamic_functions = {}
+        for name, func in self.function_map.items():
+            if function_paths.get(name) == 'dynamic':
+                dynamic_functions[name] = self._serialize_dynamic_function(func)
 
-        return {
-            "class": f"{self.__class__.__module__}.{self.__class__.__name__}",
-            "tools": self.tools.copy(),
-            "requests": self.requests.copy(),
-            "results": self.results.copy(),
-            "modules": module_details,
-            "function_paths": function_paths,
+        result = {
+            'class': f'{self.__class__.__module__}.{self.__class__.__name__}',
+            'tools': self.tools.copy(),
+            'requests': self.requests.copy(),
+            'results': self.results.copy(),
+            'modules': module_details,
+            'function_paths': function_paths
         }
 
+        # Add dynamic functions if any exist
+        if dynamic_functions:
+            result['dynamic_functions'] = dynamic_functions
+
+        return result
     def _serialize_globals(self, namespace_dict: dict) -> dict:
         """Serialize globals including modules and other necessary objects."""
-
         serialized = {}
-
         for k, v in namespace_dict.items():
-            if k.startswith("__"):
+            if k.startswith('__'):
                 continue
-
-            # Include basic types
             if isinstance(v, (int, float, str, bool, list, dict)):
                 serialized[k] = v
-            # Include modules - store their import information
             elif isinstance(v, types.ModuleType):
-                # Store module info for reconstruction
-                serialized[k] = {
-                    "__module_type__": True,
-                    "name": v.__name__,
-                    "spec": getattr(v, "__spec__", None) and v.__spec__.name,
-                }
-            # Include other serializable objects that might be needed
-            elif hasattr(v, "__module__") and hasattr(v, "__name__"):
-                # This covers classes and other importable objects
-                pass  # For now, skip these - they're complex to serialize
-
+                serialized[k] = {'__module_type__': True, 'name': v.__name__, 'spec': getattr(v, '__spec__', None) and v.__spec__.name}
+            elif hasattr(v, '__module__') and hasattr(v, '__name__'):
+                if k == '_original_func':
+                    # Special handling for _original_func - use pickle
+                    try:
+                        import pickle
+                        import base64
+                        pickled_func = pickle.dumps(v)
+                        encoded_func = base64.b64encode(pickled_func).decode('ascii')
+                        serialized[k] = {'__original_func__': True, 'pickled': encoded_func, 'name': v.__name__}
+                    except Exception as e:
+                        print(f'Warning: Could not pickle _original_func: {e}')
+                        pass  # Skip if we can't pickle
+                else:
+                    pass  # Skip other functions
         return serialized
 
+    def _serialize_dynamic_function(self, func: Callable) -> Dict[str, Any]:
+        """Serialize dynamic function using dill with metadata fallback"""
+        import hashlib
+        import base64
+        import json
+
+        # Try dill first
+        try:
+            import dill
+
+            # Serialize the function
+            serialized_data = dill.dumps(func)
+            encoded_data = base64.b64encode(serialized_data).decode('ascii')
+
+            # Create hash for verification
+            content_hash = hashlib.sha256(serialized_data).hexdigest()
+
+            return {
+                'type': 'dill',
+                'success': True,
+                'data': encoded_data,
+                'hash': content_hash,
+                'name': getattr(func, '__name__', 'unknown'),
+                'signature': str(inspect.signature(func)) if hasattr(func, '__code__') else 'unknown'
+            }
+        except ImportError:
+            pass  # Fall through to metadata-only
+        except Exception as e:
+            print(f"Warning: Dill serialization failed for {getattr(func, '__name__', 'unknown')}: {e}")
+
+        # Fallback to metadata-only approach
+        return self._serialize_function_metadata(func)
+
+    def _serialize_function_metadata(self, func: Callable) -> Dict[str, Any]:
+        """Serialize function metadata only (safe fallback)"""
+        import hashlib
+        import json
+
+        try:
+            metadata = {
+                'name': getattr(func, '__name__', 'unknown'),
+                'doc': getattr(func, '__doc__', None),
+                'module': getattr(func, '__module__', None),
+                'qualname': getattr(func, '__qualname__', None),
+            }
+
+            # Try to get signature
+            try:
+                metadata['signature'] = str(inspect.signature(func))
+            except (ValueError, TypeError):
+                metadata['signature'] = 'unknown'
+
+            # Try to capture closure variable info (names and types only, not values)
+            if hasattr(func, '__closure__') and func.__closure__:
+                closure_info = []
+                code = func.__code__
+                for i, cell in enumerate(func.__closure__):
+                    var_name = code.co_freevars[i]
+                    try:
+                        value = cell.cell_contents
+                        closure_info.append({
+                            'name': var_name,
+                            'type': type(value).__name__,
+                            'repr': repr(value) if isinstance(value, (int, float, str, bool)) else f'<{type(value).__name__}>'
+                        })
+                    except ValueError:
+                        closure_info.append({'name': var_name, 'type': 'empty_cell'})
+                metadata['closure_info'] = closure_info
+
+            # Create hash of metadata
+            json_str = json.dumps(metadata, sort_keys=True)
+            content_hash = hashlib.sha256(json_str.encode()).hexdigest()
+
+            return {
+                'type': 'metadata',
+                'success': True,
+                'metadata': metadata,
+                'hash': content_hash,
+                'name': metadata['name'],
+                'signature': metadata['signature']
+            }
+
+        except Exception as e:
+            return {
+                'type': 'metadata',
+                'success': False,
+                'error': str(e),
+                'error_type': type(e).__name__
+            }
+
+    
+    def _deserialize_dynamic_function(self, func_data: Dict[str, Any]) -> Tuple[bool, Any]:
+        """Restore function from serialized data"""
+        if func_data.get('type') == 'dill':
+            return self._deserialize_with_dill(func_data)
+        elif func_data.get('type') == 'metadata':
+            return self._deserialize_with_metadata(func_data)
+        else:
+            return False, f"Unknown serialization type: {func_data.get('type', 'unknown')}"
+
+    def _deserialize_with_dill(self, func_data: Dict[str, Any]) -> Tuple[bool, Any]:
+        """Deserialize function using dill"""
+        import base64
+
+        try:
+            import dill
+
+            if not func_data.get('success', False):
+                return False, f"Original serialization failed: {func_data.get('error', 'unknown')}"
+
+            # Decode and verify hash
+            encoded_data = func_data['data']
+            serialized_data = base64.b64decode(encoded_data.encode('ascii'))
+
+            computed_hash = hashlib.sha256(serialized_data).hexdigest()
+            if computed_hash != func_data['hash']:
+                return False, f"Hash mismatch - potential tampering detected"
+
+            # Safe to deserialize after hash verification
+            restored_func = dill.loads(serialized_data)
+            return True, restored_func
+
+        except ImportError:
+            return False, "dill package not available for deserialization"
+        except Exception as e:
+            return False, f"Deserialization error: {type(e).__name__}: {str(e)}"
+
+    def _deserialize_with_metadata(self, func_data: Dict[str, Any]) -> Tuple[bool, Any]:
+        """Create informative placeholder from metadata"""
+        try:
+            if not func_data.get('success', False):
+                return False, f"Original serialization failed: {func_data.get('error', 'unknown')}"
+
+            metadata = func_data['metadata']
+
+            # Create a placeholder function that provides useful information
+            def placeholder_func(*args, **kwargs):
+                info = f"Dynamic function '{metadata['name']}' cannot be restored after save/load\n"
+                info += f"Original signature: {metadata.get('signature', 'unknown')}\n"
+                if metadata.get('doc'):
+                    info += f"Documentation: {metadata['doc']}\n"
+                if metadata.get('closure_info'):
+                    info += f"Had closure variables: {[c['name'] for c in metadata['closure_info']]}\n"
+                info += "Consider using file-based tools instead of dynamic functions for save/load compatibility."
+                raise NotImplementedError(info)
+
+            # Set metadata on placeholder
+            placeholder_func.__name__ = metadata['name']
+            placeholder_func.__doc__ = f"Placeholder for dynamic function. Original doc: {metadata.get('doc', 'None')}"
+
+            return True, placeholder_func
+
+        except Exception as e:
+            return False, f"Placeholder creation error: {type(e).__name__}: {str(e)}"
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ToolHandler":
+    def from_dict(cls, data: Dict[str, Any]) -> 'ToolHandler':
         """Reconstruct a ToolHandler instance from serialized state.
 
         Use when restoring a previously serialized tool handler,
@@ -1765,88 +1650,71 @@ class ToolHandler(ABC):
             ```
         """
         handler = cls()
-        handler.results = data.get("results", [])
-        handler.requests = data.get("requests", [])
-        handler.tools = data.get("tools", []).copy()
-        function_paths = data.get("function_paths", {})
-
-        for file_path, module_data in data.get("modules", {}).items():
-            current_code_hash = cls._get_code_hash(module_data["source"])
-            if current_code_hash != module_data["code_hash"]:
-                print(f"Warning: Code hash mismatch for module {file_path}. Skipping.")
+        handler.results = data.get('results', [])
+        handler.requests = data.get('requests', [])
+        handler.tools = data.get('tools', []).copy()
+        function_paths = data.get('function_paths', {})
+        for file_path, module_data in data.get('modules', {}).items():
+            current_code_hash = cls._get_code_hash(module_data['source'])
+            if current_code_hash != module_data['code_hash']:
+                print(f'Warning: Code hash mismatch for module {file_path}. Skipping.')
                 continue
             try:
-                module = ModuleType(module_data["name"])
+                module = ModuleType(module_data['name'])
                 module.__file__ = file_path
-                source = module_data["source"]
-
-                if "globals" in module_data:
-                    cls._deserialize_globals(module.__dict__, module_data["globals"])
-
+                source = module_data['source']
+                if 'globals' in module_data:
+                    cls._deserialize_globals(module.__dict__, module_data['globals'])
                 exec(source, module.__dict__)
-
-                module_context = ModuleContext(
-                    name=module_data["name"],
-                    source=source,
-                    file_path=module_data["file_path"],
-                    namespace=module,
-                    code_hash=current_code_hash,
-                )
-                handler.modules[module_data["file_path"]] = module_context
-
+                module_context = ModuleContext(name=module_data['name'], source=source, file_path=module_data['file_path'], namespace=module, code_hash=current_code_hash)
+                handler.modules[module_data['file_path']] = module_context
                 for func_name, path in function_paths.items():
-                    if path == module_data["file_path"] and func_name in module.__dict__:
+                    if path == module_data['file_path'] and func_name in module.__dict__:
                         func = module.__dict__[func_name]
                         if callable(func):
                             func.__module_context__ = module_context
                             handler.function_map[func_name] = func
-
             except Exception as e:
                 import sys
                 import traceback
-
-                print(f"Warning: Failed to load module {file_path}")
-                print(f"  Error: {type(e).__name__}: {str(e)}")
-
-                # Get detailed traceback information
+                print(f'Warning: Failed to load module {file_path}')
+                print(f'  Error: {type(e).__name__}: {str(e)}')
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 if exc_traceback:
                     tb_frame = exc_traceback.tb_frame
                     tb_lineno = exc_traceback.tb_lineno
-                    print(f"  Location: {tb_frame.f_code.co_filename}:{tb_lineno}")
-                    print(f"  Function: {tb_frame.f_code.co_name}")
-
-                    # Get local variables at the point of failure
+                    print(f'  Location: {tb_frame.f_code.co_filename}:{tb_lineno}')
+                    print(f'  Function: {tb_frame.f_code.co_name}')
                     if tb_frame.f_locals:
-                        relevant_locals = {
-                            k: v for k, v in tb_frame.f_locals.items() if not k.startswith("__") and not callable(v)
-                        }
+                        relevant_locals = {k: v for k, v in tb_frame.f_locals.items() if not k.startswith('__') and (not callable(v))}
                         if relevant_locals:
-                            print(f"  Local variables: {relevant_locals}")
-
-                # Show the full stack trace for debugging
+                            print(f'  Local variables: {relevant_locals}')
                 tb_lines = traceback.format_tb(exc_traceback)
                 if tb_lines:
-                    print("  Full stack trace:")
+                    print('  Full stack trace:')
                     for i, line in enumerate(tb_lines):
-                        print(f"    Frame {i}: {line.strip()}")
-
-                # Show the source code around the error if possible
-                if exc_traceback and hasattr(exc_traceback, "tb_lineno"):
+                        print(f'    Frame {i}: {line.strip()}')
+                if exc_traceback and hasattr(exc_traceback, 'tb_lineno'):
                     try:
-                        source_lines = source.split("\n")
+                        source_lines = source.split('\n')
                         error_line = exc_traceback.tb_lineno
                         start_line = max(0, error_line - 3)
                         end_line = min(len(source_lines), error_line + 2)
-
-                        print(f"  Source context (lines {start_line + 1}-{end_line}):")
+                        print(f'  Source context (lines {start_line + 1}-{end_line}):')
                         for i in range(start_line, end_line):
-                            prefix = ">>> " if i + 1 == error_line else "    "
-                            print(f"  {prefix}{i + 1:3d}: {source_lines[i]}")
+                            prefix = '>>> ' if i + 1 == error_line else '    '
+                            print(f'  {prefix}{i + 1:3d}: {source_lines[i]}')
                     except Exception:
                         pass
-
                 continue
+        # Restore dynamic functions
+        if 'dynamic_functions' in data:
+            for func_name, func_data in data['dynamic_functions'].items():
+                success, result = handler._deserialize_dynamic_function(func_data)
+                if success:
+                    handler.function_map[func_name] = result
+                else:
+                    print(f'Warning: Failed to restore dynamic function {func_name}: {result}')
 
         return handler
 
@@ -1854,21 +1722,27 @@ class ToolHandler(ABC):
     def _deserialize_globals(module_dict: dict, serialized_globals: dict):
         """Deserialize globals including module reconstruction."""
         import importlib
-
         for k, v in serialized_globals.items():
-            if isinstance(v, dict) and v.get("__module_type__"):
-                # This is a serialized module - reconstruct it
-                module_name = v["name"]
+            if isinstance(v, dict) and v.get('__module_type__'):
+                module_name = v['name']
                 try:
-                    # Import the module
                     imported_module = importlib.import_module(module_name)
                     module_dict[k] = imported_module
                 except ImportError as e:
-                    print(f"Warning: Could not import module {module_name}: {e}")
-                    # Continue without this module - function might still work
+                    print(f'Warning: Could not import module {module_name}: {e}')
+                    pass
+            elif isinstance(v, dict) and v.get('__original_func__'):
+                # Reconstruct _original_func from pickled data
+                try:
+                    import pickle
+                    import base64
+                    encoded_func = v['pickled']
+                    pickled_func = base64.b64decode(encoded_func.encode('ascii'))
+                    module_dict[k] = pickle.loads(pickled_func)
+                except Exception as e:
+                    print(f'Warning: Could not unpickle _original_func: {e}')
                     pass
             else:
-                # Regular value - just assign it
                 module_dict[k] = v
 
     def get_tools_json(self) -> str:
@@ -1981,7 +1855,7 @@ class ToolHandler(ABC):
             print(handler)  # "ToolHandler with 5 tools and 2 modules"
             ```
         """
-        return f"ToolHandler with {len(self.tools)} tools and {len(self.modules)} modules"
+        return f'ToolHandler with {len(self.tools)} tools and {len(self.modules)} modules'
 
     def __repr__(self) -> str:
         """Create a detailed string representation of the ToolHandler.
@@ -2001,8 +1875,7 @@ class ToolHandler(ABC):
             ```
         """
         tool_names = list(self.function_map.keys())
-        return f"ToolHandler(tools={tool_names}, modules={list(self.modules.keys())})"
-
+        return f'ToolHandler(tools={tool_names}, modules={list(self.modules.keys())})'
 
 class Mailbox(ABC):
     """Abstract base class for LLM service communication.
@@ -2031,16 +1904,16 @@ class Mailbox(ABC):
     """
 
     def __init__(self):
-        self.log_file = "data\\mailbox_log.txt"
+        self.log_file = 'data\\mailbox_log.txt'
 
     def log_message(self, message: str, direction: str) -> None:
         timestamp = formatted_datetime()
-        log_entry = f"[{timestamp}] {direction.upper()}:\n{message}\n\n"
-        with open(self.log_file, "a", encoding="utf-8") as file:
+        log_entry = f'[{timestamp}] {direction.upper()}:\n{message}\n\n'
+        with open(self.log_file, 'a', encoding='utf-8') as file:
             file.write(log_entry)
 
     @abstractmethod
-    def send_message(self, bot: "Bot") -> Dict[str, Any]:
+    def send_message(self, bot: 'Bot') -> Dict[str, Any]:
         """Send a message to the LLM service.
 
         Use to handle the specifics of communicating with a particular LLM API.
@@ -2061,10 +1934,10 @@ class Mailbox(ABC):
             - May handle tool results depending on API requirements
             - Should respect bot.model_engine and other configuration
         """
-        raise NotImplementedError("You must implement this method in a subclass")
+        raise NotImplementedError('You must implement this method in a subclass')
 
     @abstractmethod
-    def process_response(self, response: Dict[str, Any], bot: Optional["Bot"] = None) -> Tuple[str, str, Dict[str, Any]]:
+    def process_response(self, response: Dict[str, Any], bot: Optional['Bot']=None) -> Tuple[str, str, Dict[str, Any]]:
         """Process the raw LLM response into a standardized format.
 
         Use to convert service-specific response formats into a consistent structure
@@ -2089,33 +1962,22 @@ class Mailbox(ABC):
             - Metadata dict is passed directly to ConversationNode's kwargs
             - Each metadata item becomes an attribute of the ConversationNode
         """
-        raise NotImplementedError("You must implement this method in a subclass")
+        raise NotImplementedError('You must implement this method in a subclass')
 
     def _log_outgoing(self, conversation: ConversationNode, model: Engines, max_tokens, temperature):
-        log_message = {
-            "date": formatted_datetime(),
-            "messages": conversation._build_messages(),
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "model": model,
-        }
-        self._log_message(json.dumps(log_message, indent=1), "OUTGOING")
+        log_message = {'date': formatted_datetime(), 'messages': conversation._build_messages(), 'max_tokens': max_tokens, 'temperature': temperature, 'model': model}
+        self._log_message(json.dumps(log_message, indent=1), 'OUTGOING')
 
     def _log_incoming(self, processed_response):
-        log_message = {"date": formatted_datetime(), "response": processed_response}
-        self._log_message(json.dumps(log_message, indent=1), "INCOMING")
+        log_message = {'date': formatted_datetime(), 'response': processed_response}
+        self._log_message(json.dumps(log_message, indent=1), 'INCOMING')
 
     def _log_message(self, message: str, direction: str) -> None:
         timestamp = formatted_datetime()
-        log_entry = f"[{timestamp}] {direction.upper()}:\n{message}\n\n"
-        with open(self.log_file, "a", encoding="utf-8") as file:
+        log_entry = f'[{timestamp}] {direction.upper()}:\n{message}\n\n'
+        with open(self.log_file, 'a', encoding='utf-8') as file:
             file.write(log_entry)
 
-
-# max_tokens and temperature because those were the two
-# sliders on the first openai playground and I found them
-# very useful at the time. Eventually this will change to
-# a general config file
 class Bot(ABC):
     """Abstract base class for LLM-powered conversational agents.
 
@@ -2163,20 +2025,7 @@ class Bot(ABC):
         ```
     """
 
-    def __init__(
-        self,
-        api_key: Optional[str],
-        model_engine: Engines,
-        max_tokens: int,
-        temperature: float,
-        name: str,
-        role: str,
-        role_description: str,
-        conversation: Optional[ConversationNode] = (ConversationNode._create_empty()),
-        tool_handler: Optional[ToolHandler] = None,
-        mailbox: Optional[Mailbox] = None,
-        autosave: bool = True,
-    ) -> None:
+    def __init__(self, api_key: Optional[str], model_engine: Engines, max_tokens: int, temperature: float, name: str, role: str, role_description: str, conversation: Optional[ConversationNode]=ConversationNode._create_empty(), tool_handler: Optional[ToolHandler]=None, mailbox: Optional[Mailbox]=None, autosave: bool=True) -> None:
         """Initialize a new Bot instance.
 
         Parameters:
@@ -2200,14 +2049,14 @@ class Bot(ABC):
         self.role = role
         self.role_description = role_description
         self.conversation: ConversationNode = conversation
-        self.system_message = ""
+        self.system_message = ''
         self.tool_handler = tool_handler
         self.mailbox = mailbox
         self.autosave = autosave
         if isinstance(self.model_engine, str):
             self.model_engine = Engines.get(self.model_engine)
 
-    def respond(self, prompt: str, role: str = "user") -> str:
+    def respond(self, prompt: str, role: str='user') -> str:
         """Send a prompt to the bot and get its response.
 
         This is the primary interface for interacting with the bot. The method:
@@ -2236,10 +2085,10 @@ class Bot(ABC):
         """
         self.conversation = self.conversation._add_reply(content=prompt, role=role)
         if self.autosave:
-            self.save(f"{self.name}")
+            self.save(f'{self.name}')
         reply, _ = self._cvsn_respond()
         if self.autosave:
-            self.save(f"{self.name}")
+            self.save(f'{self.name}')
         return reply
 
     def add_tools(self, *args) -> None:
@@ -2298,8 +2147,7 @@ class Bot(ABC):
                 for subitem in item:
                     process_item(subitem)
             else:
-                raise TypeError(f"Unsupported type for tool addition: {type(item)}")
-
+                raise TypeError(f'Unsupported type for tool addition: {type(item)}')
         for arg in args:
             process_item(arg)
 
@@ -2363,7 +2211,7 @@ class Bot(ABC):
         self.system_message = message
 
     @classmethod
-    def load(cls, filepath: str, api_key: Optional[str] = None) -> "Bot":
+    def load(cls, filepath: str, api_key: Optional[str]=None) -> 'Bot':
         """Load a saved bot from a file.
 
         Use to restore a previously saved bot with its complete state,
@@ -2394,30 +2242,30 @@ class Bot(ABC):
             - Tool functions are fully restored with their context
             - Conversation history is preserved exactly
         """
-        with open(filepath, "r") as file:
+        with open(filepath, 'r') as file:
             data = json.load(file)
-        bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
+        bot_class = Engines.get_bot_class(Engines(data['model_engine']))
         init_params = inspect.signature(bot_class.__init__).parameters
         constructor_args = {k: v for k, v in data.items() if k in init_params}
         bot = bot_class(**constructor_args)
         bot.api_key = api_key if api_key is not None else None
-        if "tool_handler" in data:
-            tool_handler_class = data["tool_handler"]["class"]
-            module_name, class_name = tool_handler_class.rsplit(".", 1)
+        if 'tool_handler' in data:
+            tool_handler_class = data['tool_handler']['class']
+            module_name, class_name = tool_handler_class.rsplit('.', 1)
             module = importlib.import_module(module_name)
             actual_class = getattr(module, class_name)
-            bot.tool_handler = actual_class().from_dict(data["tool_handler"])
+            bot.tool_handler = actual_class().from_dict(data['tool_handler'])
         for key, value in data.items():
-            if key not in constructor_args and key not in ("conversation", "tool_handler", "tools"):
+            if key not in constructor_args and key not in ('conversation', 'tool_handler', 'tools'):
                 setattr(bot, key, value)
-        if "conversation" in data and data["conversation"]:
-            node_class = Engines.get_conversation_node_class(data["conversation"]["node_class"])
-            bot.conversation = node_class._from_dict(data["conversation"])
+        if 'conversation' in data and data['conversation']:
+            node_class = Engines.get_conversation_node_class(data['conversation']['node_class'])
+            bot.conversation = node_class._from_dict(data['conversation'])
             while bot.conversation.replies:
                 bot.conversation = bot.conversation.replies[0]
         return bot
 
-    def save(self, filename: Optional[str] = None) -> str:
+    def save(self, filename: Optional[str]=None) -> str:
         """Save the bot's complete state to a file.
 
         Use to preserve the bot's entire state including:
@@ -2450,24 +2298,24 @@ class Bot(ABC):
         """
         if filename is None:
             now = formatted_datetime()
-            filename = f"{self.name}@{now}.bot"
-        elif not filename.endswith(".bot"):
-            filename = filename + ".bot"
+            filename = f'{self.name}@{now}.bot'
+        elif not filename.endswith('.bot'):
+            filename = filename + '.bot'
         directory = os.path.dirname(filename)
         if directory and (not os.path.exists(directory)):
             os.makedirs(directory)
-        data = {key: value for key, value in self.__dict__.items() if not key.startswith("_")}
-        data.pop("api_key", None)
-        data.pop("mailbox", None)
-        data["bot_class"] = self.__class__.__name__
-        data["model_engine"] = self.model_engine.value
-        data["conversation"] = self.conversation._root_dict()
+        data = {key: value for key, value in self.__dict__.items() if not key.startswith('_')}
+        data.pop('api_key', None)
+        data.pop('mailbox', None)
+        data['bot_class'] = self.__class__.__name__
+        data['model_engine'] = self.model_engine.value
+        data['conversation'] = self.conversation._root_dict()
         if self.tool_handler:
-            data["tool_handler"] = self.tool_handler.to_dict()
+            data['tool_handler'] = self.tool_handler.to_dict()
         for key, value in data.items():
             if not isinstance(value, (str, int, float, bool, list, dict, type(None))):
                 data[key] = str(value)
-        with open(filename, "w") as file:
+        with open(filename, 'w') as file:
             json.dump(data, file, indent=1)
         return filename
 
@@ -2498,25 +2346,25 @@ class Bot(ABC):
             - Tool usage is displayed if tools are available
             - State is saved according to autosave setting
         """
-        separator = "\n---\n"
+        separator = '\n---\n'
         print(separator)
         print('System: Chat started. Type "/exit" to exit.')
-        uinput = ""
-        while uinput != "/exit":
+        uinput = ''
+        while uinput != '/exit':
             print(separator)
-            uinput = input("You: ")
-            if uinput is None or uinput == "/exit":
+            uinput = input('You: ')
+            if uinput is None or uinput == '/exit':
                 break
             print(separator)
-            print(f"{self.name}: {self.respond(uinput)}")
+            print(f'{self.name}: {self.respond(uinput)}')
             print(separator)
             if self.tool_handler:
                 for request in self.tool_handler.get_requests():
                     tool_name, _ = self.tool_handler.tool_name_and_input(request)
-                    print(f"Used Tool: {tool_name}")
+                    print(f'Used Tool: {tool_name}')
                     print(separator)
 
-    def __mul__(self, other: int) -> List["Bot"]:
+    def __mul__(self, other: int) -> List['Bot']:
         """Create multiple copies of this bot.
 
         Use when you need multiple instances of the same bot configuration,
@@ -2543,7 +2391,7 @@ class Bot(ABC):
         """
         if isinstance(other, int):
             return [copy.deepcopy(self) for _ in range(other)]
-        raise NotImplementedError("Bot multiplcation not defined for non-integer values")
+        raise NotImplementedError('Bot multiplcation not defined for non-integer values')
 
     def __str__(self) -> str:
         """Create a human-readable string representation of the bot.
@@ -2575,91 +2423,83 @@ class Bot(ABC):
             display_level = min(level, 5)
             indent_size = 1
             marker_size = 4
-            indent = " " * indent_size * display_level
+            indent = ' ' * indent_size * display_level
             available_width = max(40, 80 - display_level * indent_size - marker_size)
             messages = []
-            if hasattr(node, "role"):
-                if node.role == "user":
-                    base_name = "You"
-                elif node.role == "assistant":
+            if hasattr(node, 'role'):
+                if node.role == 'user':
+                    base_name = 'You'
+                elif node.role == 'assistant':
                     base_name = self.name
                 else:
                     base_name = node.role.title()
             else:
-                base_name = "System"
+                base_name = 'System'
             if level > display_level:
                 hidden_levels = level - display_level
                 if hidden_levels <= 3:
-                    depth_indicator = ">" * hidden_levels
+                    depth_indicator = '>' * hidden_levels
                 else:
-                    depth_indicator = f">>>({hidden_levels})"
-                name_display = f"{depth_indicator} {base_name}"
+                    depth_indicator = f'>>>({hidden_levels})'
+                name_display = f'{depth_indicator} {base_name}'
             else:
                 name_display = base_name
-            content = node.content if hasattr(node, "content") else str(node)
-            wrapped_content = "\n".join(
-                textwrap.wrap(
-                    content,
-                    width=available_width,
-                    initial_indent=indent + "│ ",
-                    subsequent_indent=indent + "│ ",
-                )
-            )
+            content = node.content if hasattr(node, 'content') else str(node)
+            wrapped_content = '\n'.join(textwrap.wrap(content, width=available_width, initial_indent=indent + '│ ', subsequent_indent=indent + '│ '))
             tool_info = []
-            if hasattr(node, "tool_calls") and node.tool_calls:
-                tool_info.append(f"{indent}│ Tool Calls:")
+            if hasattr(node, 'tool_calls') and node.tool_calls:
+                tool_info.append(f'{indent}│ Tool Calls:')
                 for call in node.tool_calls:
                     if isinstance(call, dict):
                         tool_info.append(f"{indent}│   - {call.get('name', 'unknown')}")
-            if hasattr(node, "tool_results") and node.tool_results:
-                tool_info.append(f"{indent}│ Tool Results:")
+            if hasattr(node, 'tool_results') and node.tool_results:
+                tool_info.append(f'{indent}│ Tool Results:')
                 for result in node.tool_results:
                     if isinstance(result, dict):
                         tool_info.append(f"{indent}│   - {str(result.get('content', ''))[:available_width]}")
-            if hasattr(node, "pending_results") and node.pending_results:
-                tool_info.append(f"{indent}│ Pending Results:")
+            if hasattr(node, 'pending_results') and node.pending_results:
+                tool_info.append(f'{indent}│ Pending Results:')
                 for result in node.pending_results:
                     if isinstance(result, dict):
                         tool_info.append(f"{indent}│   - {str(result.get('content', ''))[:available_width]}")
                     else:
                         raise ValueError()
-            messages.append(f"{indent}├─ {name_display}")
+            messages.append(f'{indent}├─ {name_display}')
             messages.append(wrapped_content)
-            if hasattr(node, "tool_calls") and node.tool_calls:
-                messages.append(f"{indent}│ Tool Calls:")
+            if hasattr(node, 'tool_calls') and node.tool_calls:
+                messages.append(f'{indent}│ Tool Calls:')
                 for call in node.tool_calls:
                     if isinstance(call, dict):
                         messages.append(f"{indent}│   - {call.get('name', 'unknown')}")
-            if hasattr(node, "tool_results") and node.tool_results:
-                messages.append(f"{indent}│ Tool Results:")
+            if hasattr(node, 'tool_results') and node.tool_results:
+                messages.append(f'{indent}│ Tool Results:')
                 for result in node.tool_results:
                     if isinstance(result, dict):
                         messages.append(f"{indent}│   - {str(result.get('content', ''))[:available_width]}")
-            if hasattr(node, "pending_results") and node.pending_results:
-                messages.append(f"{indent}│ Pending Results:")
+            if hasattr(node, 'pending_results') and node.pending_results:
+                messages.append(f'{indent}│ Pending Results:')
                 for result in node.pending_results:
                     if isinstance(result, dict):
                         messages.append(f"{indent}│   - {str(result.get('content', ''))[:available_width]}")
-            messages.append(f"{indent}└" + "─" * 40)
-            if hasattr(node, "replies") and node.replies:
+            messages.append(f'{indent}└' + '─' * 40)
+            if hasattr(node, 'replies') and node.replies:
                 for reply in node.replies:
                     messages.extend(format_conversation(reply, level + 1))
             return messages
-
         lines = []
-        lines.append("╔" + "═" * 12)
-        lines.append(f"║ {self.name}")
-        lines.append(f"║ Role: {self.role}")
-        lines.append(f"║ Model: {self.model_engine.value}")
+        lines.append('╔' + '═' * 12)
+        lines.append(f'║ {self.name}')
+        lines.append(f'║ Role: {self.role}')
+        lines.append(f'║ Model: {self.model_engine.value}')
         if self.tool_handler:
             tool_count = len(self.tool_handler.tools)
-            lines.append(f"║ Tools Available: {tool_count}")
-        lines.append("╚" + "═" * 78 + "╝\n")
+            lines.append(f'║ Tools Available: {tool_count}')
+        lines.append('╚' + '═' * 78 + '╝\n')
         if self.conversation:
             root = self.conversation
-            while hasattr(root, "parent") and root.parent:
+            while hasattr(root, 'parent') and root.parent:
                 if root.parent._is_empty() and len(root.parent.replies) == 1:
                     break
                 root = root.parent
             lines.extend(format_conversation(root))
-        return "\n".join(lines)
+        return '\n'.join(lines)
