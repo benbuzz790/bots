@@ -6,6 +6,7 @@ import os
 import tempfile
 import unittest
 from typing import Dict, List, Callable, Any
+from types import ModuleType
 sys.path.insert(0, os.path.abspath('.'))
 
 from bots.foundation.anthropic_bots import AnthropicBot
@@ -54,10 +55,41 @@ def dynamic_test_tool(input_text: str) -> str:
         exec(code, namespace)
         return namespace['dynamic_test_tool']
 
+    def create_test_module(self) -> ModuleType:
+        """Create a simple test module with tools."""
+        import types
+
+        # Create module content
+        module_content = '''def module_test_tool(input_text: str) -> str:
+    """Test tool from module"""
+    return f"MODULE_RESULT: {input_text}"
+
+def another_module_tool(data: str) -> str:
+    """Another test tool from module"""
+    return f"ANOTHER_MODULE_RESULT: {data}"
+'''
+
+        # Create the module
+        module = types.ModuleType('test_module')
+        # Don't set __file__ so it falls back to __source__
+        module.__source__ = module_content
+
+        # Execute the module content in the module's namespace
+        exec(module_content, module.__dict__)
+
+        return module
+
+
     def create_bot_with_tool(self, tool_method: str, tool_source: Any) -> AnthropicBot:
         """Create a bot with the specified tool addition method."""
         bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
+        if tool_method == "module":
+            import inspect
+            functions = [name for name, obj in inspect.getmembers(tool_source, inspect.isfunction)]
+            print(f"DEBUG: Module functions: {functions}")
         bot.add_tools(tool_source)
+        if tool_method == "module":
+            print(f"DEBUG: After adding tools, bot has {len(bot.tool_handler.tools)} tools")
         return bot
 
     def check_tool_usage(self, bot: AnthropicBot, expected_result: str, test_prompt: str) -> bool:
@@ -149,9 +181,9 @@ def dynamic_test_tool(input_text: str) -> str:
                 "test_prompt": "Use file_test_tool with input_text 'test'"
             },
             "module": {
-                "source": python_editing_tools,
-                "expected_result": "view",  # Should find 'view' in the response from view_file
-                "test_prompt": "Use view_file with file_path 'README.md' and start_line '1' and end_line '5'"
+                "source": self.create_test_module(),
+                "expected_result": "MODULE_RESULT: test",
+                "test_prompt": "Use module_test_tool with input_text 'test'"
             },
             "callable": {
                 "source": self.create_callable_tool(),
