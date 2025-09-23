@@ -170,6 +170,249 @@ def another_module_tool(data: str) -> str:
 
         return result
 
+    def create_tool_with_helper_functions(self) -> str:
+        """Create a test file with tools that depend on helper functions."""
+        test_file_content = """# Helper function that should be preserved
+def _internal_helper(data: str) -> str:
+    return f"HELPER_PROCESSED: {data.upper()}"
+
+def _another_helper(value: int) -> str:
+    return f"NUMERIC_HELPER: {value * 2}"
+
+# Main tool that uses helper functions
+def tool_with_helpers(input_text: str, multiplier: int = 1) -> str:
+    processed = _internal_helper(input_text)
+    numeric_result = _another_helper(multiplier)
+    return f"COMBINED: {processed} + {numeric_result}"
+"""
+        test_file_path = os.path.join(self.temp_dir, "helper_tools.py")
+        with open(test_file_path, 'w') as f:
+            f.write(test_file_content)
+        return test_file_path
+
+    def create_module_with_complex_dependencies(self) -> ModuleType:
+        """Create a module with complex helper function dependencies."""
+        import types
+
+        module_content = """import os
+import json
+from typing import Dict, Any
+
+# Helper functions
+def _validate_input(data: str) -> bool:
+    return len(data) > 0 and data.strip() != ""
+
+def _format_output(result: Dict[str, Any]) -> str:
+    return json.dumps(result, indent=2)
+
+# Main tools that depend on helpers
+def complex_tool(input_data: str) -> str:
+    if not _validate_input(input_data):
+        return "ERROR: Invalid input"
+
+    result = {
+        "processed_data": input_data.upper(),
+        "status": "success"
+    }
+
+    return _format_output(result)
+"""
+
+        module = types.ModuleType('complex_module')
+        module.__source__ = module_content
+        exec(module_content, module.__dict__)
+        return module
+
+    def check_helper_function_availability(self, bot: AnthropicBot, tool_name: str) -> Dict[str, Any]:
+        """Check if helper functions are available after save/load."""
+        result = {
+            "tool_exists": False,
+            "helper_functions_available": False,
+            "function_map_complete": False,
+            "module_context_preserved": False,
+            "error_details": []
+        }
+
+        try:
+            # Check if tool exists in function map
+            if tool_name in bot.tool_handler.function_map:
+                result["tool_exists"] = True
+                func = bot.tool_handler.function_map[tool_name]
+
+                # Try to inspect the function's module/globals for helper functions
+                if hasattr(func, '__globals__'):
+                    globals_dict = func.__globals__
+                    # Look for helper functions (typically start with _)
+                    helper_funcs = [name for name in globals_dict.keys() if name.startswith('_') and callable(globals_dict.get(name))]
+                    result["helper_functions_available"] = len(helper_funcs) > 0
+                    result["helper_function_names"] = helper_funcs
+
+                # Check if function has module context
+                if hasattr(func, '__module_context__'):
+                    result["module_context_preserved"] = True
+
+                result["function_map_complete"] = True
+
+        except Exception as e:
+            result["error_details"].append(f"Helper check error: {str(e)}")
+
+        return result
+
+    def test_helper_function_preservation(self):
+        """Test that helper functions are preserved across save/load cycles."""
+        print("\n" + "="*60)
+        print("TESTING HELPER FUNCTION PRESERVATION")
+        print("="*60)
+
+        test_cases = [
+            {
+                "name": "file_with_helpers",
+                "source": self.create_tool_with_helper_functions(),
+                "tool_name": "tool_with_helpers",
+                "test_prompt": "Use tool_with_helpers with input_text 'test' and multiplier 2",
+                "expected_result": "COMBINED: HELPER_PROCESSED: TEST + NUMERIC_HELPER: 4"
+            },
+            {
+                "name": "module_with_complex_deps", 
+                "source": self.create_module_with_complex_dependencies(),
+                "tool_name": "complex_tool",
+                "test_prompt": "Use complex_tool with input_data 'test_data'",
+                "expected_result": "processed_data"  # Should contain JSON with this key
+            }
+        ]
+
+        scenarios = ["basic", "save_load", "save_load_twice"]
+        results = []
+
+        for test_case in test_cases:
+            for scenario in scenarios:
+                print(f"\nTesting {test_case['name']} + {scenario}...")
+
+                try:
+                    # Create bot and add tools
+                    bot = AnthropicBot(name="HelperTestBot", model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
+                    bot.add_tools(test_case["source"])
+
+                    # Check helper functions before save/load
+                    before_helpers = self.check_helper_function_availability(bot, test_case["tool_name"])
+
+                    if scenario == "basic":
+                        # Just test basic functionality
+                        success = self.check_tool_usage(bot, test_case["expected_result"], test_case["test_prompt"])
+                        after_helpers = before_helpers
+
+                    elif scenario == "save_load":
+                        # Save and load once
+                        save_path = os.path.join(self.temp_dir, f"{test_case['name']}_save_load")
+                        bot.save(save_path)
+                        loaded_bot = Bot.load(save_path + ".bot")
+
+                        # Check helper functions after save/load
+                        after_helpers = self.check_helper_function_availability(loaded_bot, test_case["tool_name"])
+                        success = self.check_tool_usage(loaded_bot, test_case["expected_result"], test_case["test_prompt"])
+
+                    elif scenario == "save_load_twice":
+                        # Save and load twice
+                        save_path1 = os.path.join(self.temp_dir, f"{test_case['name']}_save_load_1")
+                        bot.save(save_path1)
+                        loaded_bot1 = Bot.load(save_path1 + ".bot")
+
+                        save_path2 = os.path.join(self.temp_dir, f"{test_case['name']}_save_load_2")
+                        loaded_bot1.save(save_path2)
+                        loaded_bot2 = Bot.load(save_path2 + ".bot")
+
+                        # Check helper functions after double save/load
+                        after_helpers = self.check_helper_function_availability(loaded_bot2, test_case["tool_name"])
+                        success = self.check_tool_usage(loaded_bot2, test_case["expected_result"], test_case["test_prompt"])
+
+                    # Record results
+                    result = {
+                        "test_case": test_case["name"],
+                        "scenario": scenario,
+                        "tool_works": success,
+                        "helpers_before": before_helpers,
+                        "helpers_after": after_helpers,
+                        "helper_preservation": (
+                            before_helpers["helper_functions_available"] == after_helpers["helper_functions_available"] and
+                            before_helpers["module_context_preserved"] == after_helpers["module_context_preserved"]
+                        )
+                    }
+                    results.append(result)
+
+                    # Print status
+                    status = "PASS" if success and result["helper_preservation"] else "FAIL"
+                    print(f"  Tool Function: {'WORKS' if success else 'BROKEN'}")
+                    print(f"  Helper Preservation: {'PRESERVED' if result['helper_preservation'] else 'LOST'}")
+                    print(f"  Overall: {status}")
+
+                    if not result["helper_preservation"]:
+                        print(f"    Before helpers: {before_helpers['helper_functions_available']}")
+                        print(f"    After helpers: {after_helpers['helper_functions_available']}")
+                        if after_helpers.get("error_details"):
+                            print(f"    Errors: {after_helpers['error_details']}")
+
+                except Exception as e:
+                    print(f"  ERROR: {str(e)}")
+                    results.append({
+                        "test_case": test_case["name"],
+                        "scenario": scenario,
+                        "tool_works": False,
+                        "helper_preservation": False,
+                        "error": str(e)
+                    })
+
+        # Summary
+        print("\n" + "="*60)
+        print("HELPER FUNCTION PRESERVATION SUMMARY")
+        print("="*60)
+
+        print(f"{'Test Case':<25} {'Basic':<8} {'Save+Load':<12} {'Save+Load2x':<12}")
+        print("-" * 65)
+
+        for test_case in test_cases:
+            row = f"{test_case['name']:<25} "
+            for scenario in scenarios:
+                result = next((r for r in results if r["test_case"] == test_case["name"] and r["scenario"] == scenario), None)
+                if result:
+                    if result.get("tool_works") and result.get("helper_preservation"):
+                        status = "PASS"
+                    elif result.get("tool_works"):
+                        status = "PARTIAL"  # Tool works but helpers lost
+                    else:
+                        status = "FAIL"
+                else:
+                    status = "ERROR"
+
+                if scenario == "basic":
+                    row += f"{status:<8} "
+                else:
+                    row += f"{status:<12} "
+            print(row)
+
+        # Detailed failure analysis
+        failures = [r for r in results if not (r.get("tool_works", False) and r.get("helper_preservation", False))]
+        if failures:
+            print(f"\nFAILURES DETECTED: {len(failures)}")
+            print("\nDETAILED FAILURE ANALYSIS:")
+            for failure in failures:
+                print(f"\n{failure['test_case']} + {failure['scenario']}:")
+                if failure.get("error"):
+                    print(f"  Error: {failure['error']}")
+                else:
+                    print(f"  Tool Works: {failure.get('tool_works', False)}")
+                    print(f"  Helpers Preserved: {failure.get('helper_preservation', False)}")
+                    if failure.get("helpers_before") and failure.get("helpers_after"):
+                        before = failure["helpers_before"]
+                        after = failure["helpers_after"]
+                        print(f"  Helper Functions Before: {before.get('helper_functions_available', False)}")
+                        print(f"  Helper Functions After: {after.get('helper_functions_available', False)}")
+                        if before.get("helper_function_names"):
+                            print(f"  Helper Names Before: {before['helper_function_names']}")
+                        if after.get("helper_function_names"):
+                            print(f"  Helper Names After: {after['helper_function_names']}")
+
+        return results
+
     def test_matrix(self):
         """Run the complete test matrix."""
 

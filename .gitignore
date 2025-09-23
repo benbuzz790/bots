@@ -66,3 +66,4 @@ test_results_*_*.txt
 *trash*/
 _work_orders/
 *WO0*
+test_patch_*/
