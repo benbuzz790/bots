@@ -76,8 +76,8 @@ try:
     if hasattr(func, '__globals__'):
         code = func.__code__
         names = code.co_names
-        context = {name: func.__globals__[name] 
-                  for name in names 
+        context = {name: func.__globals__[name]
+                  for name in names
                   if name in func.__globals__}
 ```
 - Captures source code
@@ -96,7 +96,7 @@ Process:
 #### AST Parsing Purpose
 ```python
 tree = ast.parse(source)
-function_nodes = [node for node in ast.walk(tree) 
+function_nodes = [node for node in ast.walk(tree)
                  if isinstance(node, ast.FunctionDef)]
 ```
 - Identifies top-level functions before execution
@@ -111,6 +111,151 @@ Handles modules that exist only in memory:
 2. Create dynamic module name
 3. Execute source in new namespace
 4. Register functions as tools
+
+## NEW: Function Serialization Strategy
+
+### Overview
+
+We use a **hybrid serialization approach** that handles different function types optimally:
+
+1. **Regular Functions**: Source code + context (portable, secure, readable)
+2. **Helper Functions**: dill serialization (necessary for globals preservation)
+3. **Dynamic Functions**: dill serialization (no source code available)
+4. **Special Functions**: dill serialization (wrapped functions, closures)
+
+### Why This Strategy?
+
+#### Problem Solved
+**Critical Bug**: Helper functions were being lost during save/load cycles because they exist in module globals, not in the reconstructed source code.
+
+**Example**:
+```python
+# Original module contains:
+def _convert_tool_inputs(...): pass  # Helper function
+def view_dir(...): 
+    return _convert_tool_inputs(...)  # Main function uses helper
+
+# After save/load with old strategy:
+# ✅ view_dir() recreated from source
+# ❌ _convert_tool_inputs() LOST - not in source!
+# 💥 Result: "name '_convert_tool_inputs' is not defined"
+```
+
+### Serialization Details
+
+#### 1. Regular Functions (Source Code Strategy)
+```python
+# Serialization
+source = inspect.getsource(func)  # Get source code
+context = self._build_function_context(func)  # Capture dependencies
+
+# Storage
+modules[file_path] = {
+    'source': source,  # Complete source code
+    'globals': serialized_globals,  # Separate helper functions
+    'code_hash': hash(source)  # Integrity check
+}
+
+# Restoration
+exec(source, module.__dict__)  # Recreate main functions
+_deserialize_globals(module.__dict__, globals)  # Restore helpers
+```
+
+**Why Source Code?**
+- ✅ **Portable**: Works across Python versions and environments
+- ✅ **Secure**: Human-readable, can be inspected
+- ✅ **Maintainable**: Easy to debug and modify
+- ✅ **Efficient**: Compact storage for large functions
+
+#### 2. Helper Functions (dill Serialization Strategy)
+```python
+# Serialization (_serialize_globals)
+elif k.startswith('_') and callable(v):
+    try:
+        import dill
+        pickled_func = dill.dumps(v)
+        encoded_func = base64.b64encode(pickled_func).decode('ascii')
+        serialized[k] = {'__helper_func__': True, 'pickled': encoded_func}
+    except Exception as e:
+        print(f'Warning: Could not dill serialize helper function {k}: {e}')
+
+# Deserialization (_deserialize_globals)
+elif isinstance(v, dict) and v.get('__helper_func__'):
+    try:
+        import dill
+        pickled_func = base64.b64decode(v['pickled'].encode('ascii'))
+        module_dict[k] = dill.loads(pickled_func)
+    except Exception as e:
+        print(f'Warning: Could not dill deserialize helper function {k}: {e}')
+```
+
+**Why dill for Helpers?**
+- ✅ **Necessary**: Helper functions aren't in the main source code
+- ✅ **Powerful**: Handles closures, lambdas, complex dependencies
+- ✅ **Consistent**: Same library used for all function serialization
+- ✅ **Reliable**: Better than pickle for complex function objects
+
+#### 3. Dynamic Functions (dill Serialization Strategy)
+```python
+# Serialization (_serialize_dynamic_function)
+def _serialize_dynamic_function(self, func: Callable) -> Dict[str, Any]:
+    try:
+        import dill
+        serialized_data = dill.dumps(func)
+        encoded_data = base64.b64encode(serialized_data).decode('ascii')
+        return {
+            'type': 'dill',
+            'success': True,
+            'data': encoded_data,
+            'hash': hashlib.sha256(serialized_data).hexdigest()
+        }
+    except Exception:
+        return self._serialize_function_metadata(func)  # Fallback
+```
+
+**Why dill for Dynamic Functions?**
+- ✅ **Only Option**: No source code available for runtime-created functions
+- ✅ **Complete**: Preserves closures, captured variables, complex state
+- ✅ **Verified**: Hash checking prevents tampering
+- ✅ **Fallback**: Graceful degradation to metadata-only placeholders
+
+### Serialization Flow
+
+```
+Bot.save()
+├── Regular Functions
+│   ├── Source Code → modules[path]['source']
+│   └── Helper Functions → modules[path]['globals']['__helper_func__']
+├── Dynamic Functions → dynamic_functions[name]
+└── Special Functions → globals['__original_func__']
+
+Bot.load()
+├── exec(source) → Recreate main functions
+├── dill.loads(helpers) → Restore helper functions  
+├── dill.loads(dynamic) → Restore dynamic functions
+└── Verify hashes → Ensure integrity
+```
+
+### Benefits of Hybrid Strategy
+
+1. **Best of Both Worlds**:
+   - Source code where possible (readable, portable)
+   - dill serialization where necessary (complete preservation)
+
+2. **Robust Error Handling**:
+   - Graceful fallbacks for serialization failures
+   - Detailed error messages for debugging
+   - Hash verification for security
+
+3. **Performance Optimized**:
+   - Source code is compact and fast to execute
+   - dill only used when necessary
+   - Lazy loading of complex dependencies
+
+4. **Future-Proof**:
+   - Can handle new function types
+   - Extensible serialization framework
+   - Maintains backward compatibility
 
 ## Error Handling
 
@@ -140,34 +285,6 @@ Benefits:
 - Maintains API consistency
 - Allows error recovery strategies
 
-## Serialization and Loading
-
-### Saving State
-
-The `to_dict` method:
-1. Captures module details
-2. Maps functions to their sources
-3. Preserves tool schemas
-4. Records request/result history
-
-### Loading State
-
-The `from_dict` method:
-1. Recreates module contexts
-2. Verifies code integrity
-3. Rebuilds function environment
-4. Restores tool mappings
-
-#### Code Hash Verification
-```python
-current_code_hash = cls._get_code_hash(module_data['source'])
-if current_code_hash != module_data['code_hash']:
-    print(f'Warning: Code hash mismatch for module {file_path}')
-```
-- Ensures loaded code matches original
-- Prevents execution of modified code
-- Maintains security and reliability
-
 ## Tool Execution Process
 
 1. Request Processing:
@@ -188,15 +305,17 @@ if current_code_hash != module_data['code_hash']:
 ## Best Practices
 
 1. Tool Development:
-   - Use module-level functions
+   - Use module-level functions for best portability
    - Provide clear docstrings
    - Handle errors gracefully
    - Return string responses
+   - Keep helper functions in same module
 
 2. Context Management:
    - Keep dependencies explicit
    - Avoid global state
    - Use pure functions when possible
+   - Test save/load cycles
 
 3. Error Handling:
    - Catch specific exceptions
@@ -205,17 +324,23 @@ if current_code_hash != module_data['code_hash']:
 
 ## Common Issues and Solutions
 
-1. Missing Dependencies:
+1. **Helper Function Loss** (FIXED):
+   - **Problem**: Helper functions missing after save/load
+   - **Cause**: Helper functions not in main source code
+   - **Solution**: dill serialization of globals preserves helpers
+   - **Test**: Use test_specific_helper_bug.py to verify
+
+2. Missing Dependencies:
    - Ensure all imports are in function scope
    - Use try/except for optional imports
    - Document requirements
 
-2. Context Loss:
+3. Context Loss:
    - Check function has proper module context
    - Verify globals are captured
    - Test serialization/deserialization
 
-3. Tool Execution Failures:
+4. Tool Execution Failures:
    - Validate input parameters
    - Handle type conversions
    - Provide clear error messages
@@ -227,15 +352,39 @@ if current_code_hash != module_data['code_hash']:
    - Check code hashes
    - Limit execution context
 
-2. Module Loading:
+2. dill Deserialization:
+   - Hash verification prevents tampering
+   - Only deserialize trusted data
+   - Graceful fallback for failures
+
+3. Module Loading:
    - Verify file paths
    - Check module integrity
    - Control import scope
 
-3. Input Validation:
+4. Input Validation:
    - Sanitize parameters
    - Limit resource usage
    - Handle malicious input
+
+## Testing Strategy
+
+Comprehensive test matrix covers:
+
+1. **Helper Function Preservation**: `test_specific_helper_bug.py`
+   - Tests exact CLI bug reproduction
+   - Verifies _convert_tool_inputs preservation
+   - Checks all helper function types
+
+2. **Save/Load Matrix**: `test_save_load_matrix.py`
+   - Tests all tool addition methods
+   - Covers basic, save_load, save_load_twice scenarios
+   - Comprehensive failure analysis
+
+3. **Debug Tracing**: `test_save_load_debug.py`
+   - Step-by-step serialization tracing
+   - Before/after state comparison
+   - Detailed helper function analysis
 
 ## Future Improvements
 
@@ -244,12 +393,17 @@ if current_code_hash != module_data['code_hash']:
    - Better closure handling
    - Improved type checking
 
-2. Context Management:
-   - More efficient serialization
+2. Serialization:
+   - More efficient dill usage
+   - Compression for large functions
+   - Incremental serialization
+
+3. Context Management:
    - Better dependency tracking
    - Enhanced security measures
+   - Lazy loading optimizations
 
-3. Error Handling:
+4. Error Handling:
    - More specific error types
    - Better recovery mechanisms
    - Enhanced logging

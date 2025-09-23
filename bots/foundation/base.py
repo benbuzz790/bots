@@ -1450,24 +1450,24 @@ class ToolHandler(ABC):
                 if k == '_original_func':
                     # Special handling for _original_func - use pickle
                     try:
-                        import pickle
+                        import dill
                         import base64
-                        pickled_func = pickle.dumps(v)
+                        pickled_func = dill.dumps(v)
                         encoded_func = base64.b64encode(pickled_func).decode('ascii')
                         serialized[k] = {'__original_func__': True, 'pickled': encoded_func, 'name': v.__name__}
                     except Exception as e:
-                        print(f'Warning: Could not pickle _original_func: {e}')
+                        print(f'Warning: Could not dill serialize _original_func: {e}')
                         pass  # Skip if we can't pickle
                 elif k.startswith('_') and callable(v):
                     # Serialize helper functions using pickle
                     try:
-                        import pickle
+                        import dill
                         import base64
-                        pickled_func = pickle.dumps(v)
+                        pickled_func = dill.dumps(v)
                         encoded_func = base64.b64encode(pickled_func).decode('ascii')
                         serialized[k] = {'__helper_func__': True, 'pickled': encoded_func, 'name': v.__name__}
                     except Exception as e:
-                        print(f'Warning: Could not pickle helper function {k}: {e}')
+                        print(f'Warning: Could not dill serialize helper function {k}: {e}')
                         pass  # Skip if we can't pickle
                 else:
                     pass  # Skip other non-helper functions
@@ -1745,24 +1745,24 @@ class ToolHandler(ABC):
             elif isinstance(v, dict) and v.get('__original_func__'):
                 # Reconstruct _original_func from pickled data
                 try:
-                    import pickle
+                    import dill
                     import base64
                     encoded_func = v['pickled']
                     pickled_func = base64.b64decode(encoded_func.encode('ascii'))
-                    module_dict[k] = pickle.loads(pickled_func)
+                    module_dict[k] = dill.loads(pickled_func)
                 except Exception as e:
-                    print(f'Warning: Could not unpickle _original_func: {e}')
+                    print(f'Warning: Could not dill deserialize _original_func: {e}')
                     pass
             elif isinstance(v, dict) and v.get('__helper_func__'):
                 # Reconstruct helper function from pickled data
                 try:
-                    import pickle
+                    import dill
                     import base64
                     encoded_func = v['pickled']
                     pickled_func = base64.b64decode(encoded_func.encode('ascii'))
-                    module_dict[k] = pickle.loads(pickled_func)
+                    module_dict[k] = dill.loads(pickled_func)
                 except Exception as e:
-                    print(f'Warning: Could not unpickle helper function {k}: {e}')
+                    print(f'Warning: Could not dill deserialize helper function {k}: {e}')
                     pass
             else:
                 module_dict[k] = v
