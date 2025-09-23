@@ -1458,8 +1458,19 @@ class ToolHandler(ABC):
                     except Exception as e:
                         print(f'Warning: Could not pickle _original_func: {e}')
                         pass  # Skip if we can't pickle
+                elif k.startswith('_') and callable(v):
+                    # Serialize helper functions using pickle
+                    try:
+                        import pickle
+                        import base64
+                        pickled_func = pickle.dumps(v)
+                        encoded_func = base64.b64encode(pickled_func).decode('ascii')
+                        serialized[k] = {'__helper_func__': True, 'pickled': encoded_func, 'name': v.__name__}
+                    except Exception as e:
+                        print(f'Warning: Could not pickle helper function {k}: {e}')
+                        pass  # Skip if we can't pickle
                 else:
-                    pass  # Skip other functions
+                    pass  # Skip other non-helper functions
         return serialized
 
     def _serialize_dynamic_function(self, func: Callable) -> Dict[str, Any]:
@@ -1741,6 +1752,17 @@ class ToolHandler(ABC):
                     module_dict[k] = pickle.loads(pickled_func)
                 except Exception as e:
                     print(f'Warning: Could not unpickle _original_func: {e}')
+                    pass
+            elif isinstance(v, dict) and v.get('__helper_func__'):
+                # Reconstruct helper function from pickled data
+                try:
+                    import pickle
+                    import base64
+                    encoded_func = v['pickled']
+                    pickled_func = base64.b64decode(encoded_func.encode('ascii'))
+                    module_dict[k] = pickle.loads(pickled_func)
+                except Exception as e:
+                    print(f'Warning: Could not unpickle helper function {k}: {e}')
                     pass
             else:
                 module_dict[k] = v
