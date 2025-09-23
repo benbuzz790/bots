@@ -295,11 +295,12 @@ def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
     )
 
     # Add terminal tools for running commands and editing files
-    import bots.tools.code_tools as ct
-    import bots.tools.python_edit as pe
-    import bots.tools.python_editing_tools as pet
-
-    bot.add_tools(terminal_tools, pe, pet.replace_function, pet.replace_class, ct.view_dir, ct.view, ct.patch_edit)
+    from bots.tools.terminal_tools import execute_powershell
+    from bots.tools.python_execution_tool import execute_python
+    from bots.tools.code_tools import view, view_dir
+    from bots.tools.python_edit import python_view
+    
+    bot.add_tools(execute_powershell, execute_python, view, view_dir, python_view)
 
     # Add file-specific CI/CD checking tool
     bot.add_tools(check_file_cicd)
