@@ -1244,7 +1244,7 @@ class ToolHandler(ABC):
             - Skips functions whose names start with underscore
             - Maintains complete module context
         """
-        if hasattr(module, '__file__'):
+        if hasattr(module, '__file__') and os.path.exists(module.__file__):
             self._add_tools_from_file(module.__file__)
         elif hasattr(module, '__source__'):
             source = module.__source__
@@ -1459,16 +1459,20 @@ class ToolHandler(ABC):
                         print(f'Warning: Could not dill serialize _original_func: {e}')
                         pass  # Skip if we can't pickle
                 elif k.startswith('_') and callable(v):
-                    # Serialize helper functions using pickle
-                    try:
-                        import dill
-                        import base64
-                        pickled_func = dill.dumps(v)
-                        encoded_func = base64.b64encode(pickled_func).decode('ascii')
-                        serialized[k] = {'__helper_func__': True, 'pickled': encoded_func, 'name': v.__name__}
-                    except Exception as e:
-                        print(f'Warning: Could not dill serialize helper function {k}: {e}')
-                        pass  # Skip if we can't pickle
+                    # Skip helper functions from dynamic modules - they'll be recreated from source
+                    if hasattr(v, '__module__') and v.__module__ and ('dynamic_module_' in v.__module__ or '__runtime__' in v.__module__):
+                        pass  # Skip dynamic module helper functions
+                    else:
+                        # Serialize helper functions using dill for non-dynamic modules
+                        try:
+                            import dill
+                            import base64
+                            pickled_func = dill.dumps(v)
+                            encoded_func = base64.b64encode(pickled_func).decode("ascii")
+                            serialized[k] = {"__helper_func__": True, "pickled": encoded_func, "name": v.__name__}
+                        except Exception as e:
+                            print(f"Warning: Could not dill serialize helper function {k}: {e}")
+                            pass  # Skip if we can't pickle
                 else:
                     pass  # Skip other non-helper functions
         return serialized
