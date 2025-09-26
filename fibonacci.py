@@ -2,35 +2,24 @@ def fibonacci_recursive(n):
     """
     Recursive implementation of Fibonacci sequence.
     Returns the nth Fibonacci number.
-
-    Args:
-        n (int): Position in the Fibonacci sequence (0-indexed)
-
-    Returns:
-        int: The nth Fibonacci number
     """
-    if n < 0:
-        raise ValueError("n must be non-negative")
-    if n <= 1:
-        return n
-    return fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)
+    if n <= 0:
+        return 0
+    elif n == 1:
+        return 1
+    else:
+        return fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)
 
 
 def fibonacci_iterative(n):
     """
     Iterative implementation of Fibonacci sequence.
-    More efficient than recursive for large n.
-
-    Args:
-        n (int): Position in the Fibonacci sequence (0-indexed)
-
-    Returns:
-        int: The nth Fibonacci number
+    More efficient than recursive for larger values.
     """
-    if n < 0:
-        raise ValueError("n must be non-negative")
-    if n <= 1:
-        return n
+    if n <= 0:
+        return 0
+    elif n == 1:
+        return 1
 
     a, b = 0, 1
     for _ in range(2, n + 1):
@@ -38,94 +27,66 @@ def fibonacci_iterative(n):
     return b
 
 
-def fibonacci_memoized(n, memo={}):
+def fibonacci_generator(limit):
     """
-    Memoized recursive implementation of Fibonacci sequence.
-    Combines recursion with caching for better performance.
-
-    Args:
-        n (int): Position in the Fibonacci sequence (0-indexed)
-        memo (dict): Cache for previously computed values
-
-    Returns:
-        int: The nth Fibonacci number
-    """
-    if n < 0:
-        raise ValueError("n must be non-negative")
-    if n in memo:
-        return memo[n]
-    if n <= 1:
-        return n
-
-    memo[n] = fibonacci_memoized(n - 1, memo) + fibonacci_memoized(n - 2, memo)
-    return memo[n]
-
-
-def fibonacci_generator(max_n):
-    """
-    Generator that yields Fibonacci numbers up to the max_n-th number.
-
-    Args:
-        max_n (int): Maximum position to generate
-
-    Yields:
-        int: Fibonacci numbers in sequence
+    Generator that yields Fibonacci numbers up to the limit.
     """
     a, b = 0, 1
-    for i in range(max_n + 1):
-        if i == 0:
-            yield a
-        elif i == 1:
-            yield b
-        else:
-            a, b = b, a + b
-            yield b
+    while a <= limit:
+        yield a
+        a, b = b, a + b
 
 
+def fibonacci_sequence(n):
+    """
+    Returns a list of the first n Fibonacci numbers.
+    """
+    if n <= 0:
+        return []
+    elif n == 1:
+        return [0]
+    elif n == 2:
+        return [0, 1]
+
+    sequence = [0, 1]
+    for i in range(2, n):
+        sequence.append(sequence[i-1] + sequence[i-2])
+    return sequence
+
+
+# Example usage and testing
 if __name__ == "__main__":
-    # Test the functions
-    print("Testing Fibonacci implementations:")
-    print()
+    print("Fibonacci Functions Demo")
+    print("=" * 30)
 
-    # Test with small numbers
-    test_values = [0, 1, 2, 3, 4, 5, 10, 15]
+    # Test with n = 10
+    n = 10
+    print(f"\nFibonacci number at position {n}:")
+    print(f"Recursive: {fibonacci_recursive(n)}")
+    print(f"Iterative: {fibonacci_iterative(n)}")
 
-    print("Recursive implementation:")
-    for n in test_values:
-        result = fibonacci_recursive(n)
-        print(f"fibonacci_recursive({n}) = {result}")
+    # Show first 10 Fibonacci numbers
+    print(f"\nFirst {n} Fibonacci numbers:")
+    print(fibonacci_sequence(n))
 
-    print("\nIterative implementation:")
-    for n in test_values:
-        result = fibonacci_iterative(n)
-        print(f"fibonacci_iterative({n}) = {result}")
-
-    print("\nMemoized implementation:")
-    for n in test_values:
-        result = fibonacci_memoized(n)
-        print(f"fibonacci_memoized({n}) = {result}")
-
-    print("\nGenerator implementation (first 10 numbers):")
-    fib_gen = fibonacci_generator(9)
-    for i, fib_num in enumerate(fib_gen):
-        print(f"fibonacci_generator[{i}] = {fib_num}")
+    # Generator example - numbers up to 100
+    print("\nFibonacci numbers up to 100:")
+    fib_gen = list(fibonacci_generator(100))
+    print(fib_gen)
 
     # Performance comparison for larger numbers
     import time
 
-    print("\nPerformance comparison for n=30:")
+    n_large = 30
+    print(f"\nPerformance comparison for n={n_large}:")
 
-    # Iterative
     start = time.time()
-    result_iter = fibonacci_iterative(30)
+    result_iter = fibonacci_iterative(n_large)
     time_iter = time.time() - start
-    print(f"Iterative: {result_iter} (Time: {time_iter:.6f}s)")
 
-    # Memoized
     start = time.time()
-    result_memo = fibonacci_memoized(30, {})  # Fresh memo
-    time_memo = time.time() - start
-    print(f"Memoized: {result_memo} (Time: {time_memo:.6f}s)")
+    result_rec = fibonacci_recursive(n_large)
+    time_rec = time.time() - start
 
-    # Note: Recursive would be too slow for n=30, so we skip it
-    print("Recursive skipped for n=30 (would be too slow)")
+    print(f"Iterative: {result_iter} (Time: {time_iter:.6f}s)")
+    print(f"Recursive: {result_rec} (Time: {time_rec:.6f}s)")
