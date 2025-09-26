@@ -4,7 +4,6 @@ import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
-import pytest
 
 import bots
 import bots.tools.self_tools as self_tools
@@ -42,7 +41,6 @@ class TestSelfTools(unittest.TestCase):
         except Exception as e:
             print(f"Warning: Could not clean up temp directory: {e}")
 
-    @pytest.mark.skip(reason="Integration test requires API access - times out in CI")
     def test_get_own_info(self) -> None:
         """Test that get_own_info returns valid bot information."""
         response = self.bot.respond("Please use get_own_info to tell me about yourself")
@@ -51,7 +49,6 @@ class TestSelfTools(unittest.TestCase):
         self.assertIn("name", follow_up.lower())
         self.assertIn("TestBot", follow_up)
 
-    @pytest.mark.skip(reason="Integration test requires API access - times out in CI")
     def test_branch_self_basic_functionality(self) -> None:
         """Test that branch_self function works correctly when called as a tool."""
         response = self.bot.respond("Please create 2 branches with prompts ['Hello world', 'Goodbye world'] using branch_self")
@@ -61,7 +58,6 @@ class TestSelfTools(unittest.TestCase):
         follow_up = self.bot.respond("What happened with the branching?")
         self.assertIn("branch", follow_up.lower())
 
-    @pytest.mark.skip(reason="Integration test requires API access - times out in CI")
     def test_branch_self_recursive(self) -> None:
         """Test that branch_self works when branches branch"""
         self.bot.add_tools(bots.tools.terminal_tools)
@@ -78,7 +74,6 @@ class TestSelfTools(unittest.TestCase):
         responses, _ = prompt_while(self.bot, prompt2)
         self.assertIn("YES", responses[-1])
 
-    @pytest.mark.skip(reason="Integration test requires API access - times out in CI")
     def test_branch_self_debug_printing(self) -> None:
         """Test that branch_self function works correctly with multiple prompts."""
         response = self.bot.respond(
@@ -86,7 +81,6 @@ class TestSelfTools(unittest.TestCase):
         )
         self.assertIn("branch", response.lower())
 
-    @pytest.mark.skip(reason="Integration test requires API access - times out in CI")
     def test_branch_self_method_restoration(self) -> None:
         """Test that the original respond method is properly restored after branching."""
         # Store the original method's underlying function and instance
@@ -102,7 +96,6 @@ class TestSelfTools(unittest.TestCase):
             self.bot.respond.__self__, original_self, "respond method instance was not properly restored after branch_self"
         )
 
-    @pytest.mark.skip(reason="Integration test requires API access - times out in CI")
     def test_branch_self_with_allow_work_true(self) -> None:
         """Test branch_self with allow_work=True parameter."""
         response = self.bot.respond(
@@ -110,19 +103,16 @@ class TestSelfTools(unittest.TestCase):
         )
         self.assertIn("branch", response.lower())
 
-    @pytest.mark.skip(reason="Integration test requires API access - times out in CI")
     def test_branch_self_error_handling(self) -> None:
         """Test branch_self error handling with invalid input."""
         response = self.bot.respond("Use branch_self with invalid prompts: 'not a list'")
         self.assertIn("invalid", response.lower())
 
-    @pytest.mark.skip(reason="Integration test requires API access - times out in CI")
     def test_branch_self_empty_prompts(self) -> None:
         """Test branch_self with empty prompt list."""
         response = self.bot.respond("Use branch_self with prompts []")
         self.assertIn("empty", response.lower())
 
-    @pytest.mark.skip(reason="Integration test requires API access - times out in CI")
     def test_debug_output_format(self) -> None:
         """Test that debug output follows the expected format."""
         captured_output = io.StringIO()
@@ -144,7 +134,6 @@ class TestSelfTools(unittest.TestCase):
             self.assertIn("RESPONSE:", section_text)
             self.assertIn("=" * 50, section_text)  # Separator line
 
-    @pytest.mark.skip(reason="Integration test requires API access - times out in CI")
     def test_nested_branch_self_tool_result_isolation(self) -> None:
         """Test that tool results from nested branches don't leak to parent nodes.
 
@@ -208,7 +197,6 @@ class TestSelfTools(unittest.TestCase):
             # Always restore original directory
             os.chdir(original_cwd)
 
-    @pytest.mark.skip(reason="Integration test requires API access - times out in CI")
     def test_branch_self_tool_result_contamination_detailed(self) -> None:
         """Detailed test to examine tool result contamination in nested branch_self calls.
 
@@ -287,7 +275,6 @@ class TestSelfTools(unittest.TestCase):
         finally:
             os.chdir(original_cwd)
 
-    @pytest.mark.skip(reason="Integration test requires API access - times out in CI")
     def test_parallel_vs_sequential_branching_comparison(self) -> None:
         """Compare parallel vs sequential branching to identify tool result contamination differences."""
         original_cwd = os.getcwd()
@@ -355,7 +342,6 @@ class TestSelfTools(unittest.TestCase):
         finally:
             os.chdir(original_cwd)
 
-    @pytest.mark.skip(reason="Integration test requires API access - times out in CI")
     def test_deeper_nesting_stress_test(self) -> None:
         """Test deeper nesting to see if we can still trigger the original issue."""
         original_cwd = os.getcwd()
