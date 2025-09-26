@@ -839,6 +839,10 @@ def _convert_tool_inputs(func, args, kwargs):
 def _convert_string_to_type(value, type_hint):
     """Convert a string value to the specified type."""
 
+    # Handle None values - don't convert None to string "None"
+    if value is None:
+        return None
+
     # If no type hint, return as string
     if type_hint == inspect.Parameter.empty:
         return value
