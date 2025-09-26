@@ -41,7 +41,7 @@ def test_basic_file_level_edit(test_file):
 
 def test_file_start_insertion(test_file):
     """Test inserting at file start"""
-    result = python_edit(test_file, "import sys", insert_after="__FILE_START__")
+    result = python_edit(test_file, "import sys", coscope_with="__FILE_START__")
     assert "start" in result
     with open(test_file) as f:
         lines = f.readlines()
@@ -205,7 +205,7 @@ def test_indentation_in_class(tmp_path):
 def test_file_start_insertion_empty():
     """Test inserting at start of empty file"""
     test_file = setup_test_file("tmp", "")
-    _result = python_edit(test_file, "import sys", insert_after="__FILE_START__")
+    _result = python_edit(test_file, "import sys", coscope_with="__FILE_START__")
     with open(test_file) as f:
         content = f.read()
     assert content.strip() == "import sys"
@@ -215,7 +215,7 @@ def test_file_start_insertion_with_imports():
     """Test inserting at start of file that already has imports"""
     content = "\n    import os\n    from typing import List\n\n    x = 1\n    "
     test_file = setup_test_file("tmp", content)
-    _result = python_edit(test_file, "import sys", insert_after="__FILE_START__")
+    _result = python_edit(test_file, "import sys", coscope_with="__FILE_START__")
     with open(test_file) as f:
         lines = f.readlines()
     print(f"DEBUG - File lines: {lines}")
@@ -228,7 +228,7 @@ def test_file_start_insertion_with_code():
     """Test inserting at start of file that has no imports"""
     content = "\n    x = 1\n    y = 2\n    "
     test_file = setup_test_file("tmp", content)
-    _result = python_edit(test_file, "import sys", insert_after="__FILE_START__")
+    _result = python_edit(test_file, "import sys", coscope_with="__FILE_START__")
     with open(test_file) as f:
         lines = f.readlines()
     print(f"DEBUG - File lines: {lines}")
@@ -240,8 +240,8 @@ def test_file_start_insertion_multiple():
     """Test multiple insertions at file start come in correct order"""
     content = "x = 1"
     test_file = setup_test_file("tmp", content)
-    python_edit(test_file, "import sys", insert_after="__FILE_START__")
-    python_edit(test_file, "import os", insert_after="__FILE_START__")
+    python_edit(test_file, "import sys", coscope_with="__FILE_START__")
+    python_edit(test_file, "import os", coscope_with="__FILE_START__")
     with open(test_file) as f:
         lines = f.readlines()
     print(f"DEBUG - File lines: {lines}")
@@ -521,6 +521,7 @@ def test_function_added_by_integration_test():
     """This function was added by the integration test."""
     return "integration_test_marker"
 '''.strip(),
+            coscope_with="__FILE_END__"
         )
         assert not any(err in result1.lower() for err in ["error:", "failed", "exception"]), f"Edit 1 failed: {result1}"
         # Verify the edit worked and file is still valid Python
@@ -530,7 +531,7 @@ def test_function_added_by_integration_test():
         assert "test_function_added_by_integration_test" in content_after_edit1
         assert "integration_test_marker" in content_after_edit1
         # Test 2: Add import at file start
-        result2 = python_edit(test_file, "import uuid  # Added by integration test", insert_after="__FILE_START__")
+        result2 = python_edit(test_file, "import uuid  # Added by integration test", coscope_with="__FILE_START__")
         assert not any(err in result2.lower() for err in ["error:", "failed", "exception"]), f"Edit 2 failed: {result2}"
         # Verify import was added at the start
         with open(test_file, "r") as f:

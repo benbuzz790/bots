@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import os
 import textwrap
 from typing import List, Optional, Union
