@@ -546,24 +546,24 @@ def test_function_added_by_integration_test():
         assert import_line_found, "Import was not added at file start"
 
 
-result3 = python_edit(test_file, "# End marker added by integration test", coscope_with="__FILE_END__")
-assert "error" not in result3.lower(), f"Edit 3 failed: {result3}"
-# Verify code was added at the end
-with open(test_file, "r") as f:
-    final_content_with_end = f.read()
-ast.parse(final_content_with_end)  # Should not raise
-lines = final_content_with_end.splitlines()
-# Find the end marker line
-end_marker_found = False
-for i, line in enumerate(lines[-5:]):  # Check last 5 lines
-    if "End marker added by integration test" in line:
-        end_marker_found = True
-        break
-assert end_marker_found, "End marker was not added at file end"
-# Test 4: Verify tokenization handled the complex real file correctly
-print(f"? Successfully performed {len([result1, result2, result3])} edits on real file")
-print(f"? File remains valid Python with {len(final_content_with_end.splitlines())} lines")
-assert end_marker_found, "End marker was not added at file end"
+        result3 = python_edit(test_file, "# End marker added by integration test", coscope_with="__FILE_END__")
+        assert "error" not in result3.lower(), f"Edit 3 failed: {result3}"
+        # Verify code was added at the end
+        with open(test_file, "r") as f:
+            final_content_with_end = f.read()
+        ast.parse(final_content_with_end)  # Should not raise
+        lines = final_content_with_end.splitlines()
+        # Find the end marker line
+        end_marker_found = False
+        for i, line in enumerate(lines[-5:]):  # Check last 5 lines
+            if "End marker added by integration test" in line:
+                end_marker_found = True
+                break
+        assert end_marker_found, "End marker was not added at file end"
+        # Test 4: Verify tokenization handled the complex real file correctly
+        print(f"? Successfully performed {len([result1, result2, result3])} edits on real file")
+        print(f"? File remains valid Python with {len(final_content_with_end.splitlines())} lines")
+        assert end_marker_found, "End marker was not added at file end"
 
 
 # Tests for AST-based insert_after expression functionality
