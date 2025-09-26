@@ -148,29 +148,32 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         # Store original conversation point
         original_node = bot.conversation
 
-        # Save bot state from parent node (before branch_self call)
+        # Get the tool call ID for proper tool result handling
+        tool_call_id = None
+        if original_node.tool_calls:
+            for tc in original_node.tool_calls:
+                if tc.get("name") == "branch_self":
+                    tool_call_id = tc["id"]
+                    break
+
+        if not tool_call_id:
+            return "Error: Could not find branch_self tool call"
+
+        # STEP 1: Add dummy tool result immediately for API compliance and recursion prevention
+        dummy_content = "Branching in progress..."
+        dummy_result = {"tool_use_id": tool_call_id, "content": dummy_content}
+
+        # Pre-populate tool handler results for proper conversation flow
+        # This ensures the dummy result gets added in the right place during _cvsn_respond()
+        if not hasattr(bot.tool_handler, "results"):
+            bot.tool_handler.results = []
+        bot.tool_handler.results.append(dummy_result)
+        # Save bot state with dummy result in place
         original_autosave = bot.autosave
         bot.autosave = False
         temp_id = str(uuid.uuid4())[:8]
         temp_file = f"branch_self_{temp_id}.bot"
-
-        # Temporarily point to parent node for saving
-        current_node = bot.conversation
-        parent_node = current_node.parent
-        if parent_node:
-            bot.conversation = parent_node
-            bot.save(temp_file)
-            bot.conversation = current_node  # restore
-        else:
-            # Fallback: create clean bot without pending tool calls
-            clean_bot = Bot(bot.name, bot.role, bot.role_description)
-            clean_bot.model_engine = bot.model_engine
-            clean_bot.temperature = bot.temperature
-            clean_bot.max_tokens = bot.max_tokens
-            if bot.tool_handler:
-                clean_bot.tool_handler = bot.tool_handler
-            clean_bot.save(temp_file)
-
+        bot.save(temp_file)
 
         def execute_branch(prompt, parent_bot_node):
             """Execute a single branch with the given prompt."""
@@ -329,3 +332,13 @@ def _verbose_callback(responses, nodes):
         pretty("No pending results")
 
 
+def _remove_dummy_from_tree(node, dummy_content):
+    if hasattr(node, "pending_tool_results"):
+        node.pending_tool_results = [result for result in node.pending_tool_results if result.get("content") != dummy_content]
+
+    if hasattr(node, "tool_results"):
+        node.tool_results = [result for result in node.tool_results if result.get("content") != dummy_content]
+
+    if hasattr(node, "replies"):
+        for child in node.replies:
+            _remove_dummy_from_tree(child, dummy_content)
