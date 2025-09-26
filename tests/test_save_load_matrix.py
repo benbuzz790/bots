@@ -98,6 +98,8 @@ def another_module_tool(data: str) -> str:
     def check_tool_usage(self, bot: AnthropicBot, expected_result: str, test_prompt: str) -> bool:
         """Test that tools work correctly on the bot."""
         try:
+            response = bot.respond(test_prompt)
+
             # Check tool results in conversation
             tool_results = bot.conversation.tool_results[0].values() if bot.conversation.tool_results else []
             pending_results = bot.conversation.pending_results[0].values() if bot.conversation.pending_results else []
@@ -499,8 +501,8 @@ def complex_tool(input_data: str) -> str:
                 print(f"\n{failure['tool_method']} + {failure['scenario']}:")
                 print(f"  Error: {failure['error']}")
 
-        # Don't assert failure for now - just report
-        # self.assertEqual(len(failures), 0, f"Found {len(failures)} failures in test matrix")
+        # Assert that all tests pass
+        self.assertEqual(len(failures), 0, f"Found {len(failures)} failures in test matrix")
 
 
 if __name__ == "__main__":
