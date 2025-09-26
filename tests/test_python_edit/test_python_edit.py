@@ -522,7 +522,7 @@ def test_function_added_by_integration_test():
     return "integration_test_marker"
 '''.strip(),
         )
-        assert "error" not in result1.lower(), f"Edit 1 failed: {result1}"
+        assert not any(err in result1.lower() for err in ["error:", "failed", "exception"]), f"Edit 1 failed: {result1}"
         # Verify the edit worked and file is still valid Python
         with open(test_file, "r") as f:
             content_after_edit1 = f.read()
@@ -531,7 +531,7 @@ def test_function_added_by_integration_test():
         assert "integration_test_marker" in content_after_edit1
         # Test 2: Add import at file start
         result2 = python_edit(test_file, "import uuid  # Added by integration test", insert_after="__FILE_START__")
-        assert "error" not in result2.lower(), f"Edit 2 failed: {result2}"
+        assert not any(err in result2.lower() for err in ["error:", "failed", "exception"]), f"Edit 2 failed: {result2}"
         # Verify import was added at the start
         with open(test_file, "r") as f:
             final_content = f.read()
@@ -547,7 +547,7 @@ def test_function_added_by_integration_test():
 
 
         result3 = python_edit(test_file, "# End marker added by integration test", coscope_with="__FILE_END__")
-        assert "error" not in result3.lower(), f"Edit 3 failed: {result3}"
+        assert not any(err in result3.lower() for err in ["error:", "failed", "exception"]), f"Edit 3 failed: {result3}"
         # Verify code was added at the end
         with open(test_file, "r") as f:
             final_content_with_end = f.read()
