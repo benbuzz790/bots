@@ -1,14 +1,12 @@
 import json
 import os
 import shutil
-import sys
 import tempfile
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 
-import bots.tools.python_editing_tools as python_editing_tools
-from bots.foundation.gemini_bots import GeminiBot
 from bots.foundation.base import Bot, Engines
+from bots.foundation.gemini_bots import GeminiBot
 
 """Test suite for GeminiBot save and load functionality.
 
@@ -41,13 +39,9 @@ class TestSaveLoadGemini(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
 
         # Mock the API key to avoid requiring real credentials
-        with patch.dict(os.environ, {'GOOGLE_API_KEY': 'test_key'}):
-            with patch('google.genai.Client'):
-                self.bot = GeminiBot(
-                    name="TestGemini", 
-                    model_engine=Engines.GEMINI25_FLASH, 
-                    max_tokens=1000
-                )
+        with patch.dict(os.environ, {"GOOGLE_API_KEY": "test_key"}):
+            with patch("google.genai.Client"):
+                self.bot = GeminiBot(name="TestGemini", model_engine=Engines.GEMINI25_FLASH, max_tokens=1000)
         return self
 
     def tearDown(self) -> None:
@@ -136,13 +130,9 @@ class TestGeminiSpecificFeatures(unittest.TestCase):
         """Set up test environment with mocked Gemini API."""
         self.temp_dir = tempfile.mkdtemp()
 
-        with patch.dict(os.environ, {'GOOGLE_API_KEY': 'test_key'}):
-            with patch('google.genai.Client'):
-                self.bot = GeminiBot(
-                    name="TestGemini",
-                    model_engine=Engines.GEMINI25_FLASH,
-                    max_tokens=1000
-                )
+        with patch.dict(os.environ, {"GOOGLE_API_KEY": "test_key"}):
+            with patch("google.genai.Client"):
+                self.bot = GeminiBot(name="TestGemini", model_engine=Engines.GEMINI25_FLASH, max_tokens=1000)
 
     def tearDown(self) -> None:
         """Clean up test environment."""
@@ -172,6 +162,7 @@ class TestGeminiSpecificFeatures(unittest.TestCase):
 
     def test_gemini_tool_handler_schema_generation(self) -> None:
         """Test GeminiToolHandler's schema generation."""
+
         def test_function(param1: str, param2: int = 5) -> str:
             """Test function with parameters"""
             return f"{param1}_{param2}"
@@ -188,23 +179,28 @@ class TestGeminiSpecificFeatures(unittest.TestCase):
     def test_gemini_mailbox_api_key_handling(self) -> None:
         """Test GeminiMailbox API key handling."""
         # Test with environment variable
-        with patch.dict(os.environ, {'GOOGLE_API_KEY': 'env_key'}):
-            with patch('google.genai.Client') as mock_client:
+        with patch.dict(os.environ, {"GOOGLE_API_KEY": "env_key"}):
+            with patch("google.genai.Client") as mock_client:
                 from bots.foundation.gemini_bots import GeminiMailbox
-                mailbox = GeminiMailbox()
-                mock_client.assert_called_with(api_key='env_key')
+
+                GeminiMailbox()
+                mock_client.assert_called_with(api_key="env_key")
 
         # Test with explicit API key
-        with patch('google.genai.Client') as mock_client:
+        with patch("google.genai.Client") as mock_client:
             from bots.foundation.gemini_bots import GeminiMailbox
-            mailbox = GeminiMailbox(api_key='explicit_key')
-            mock_client.assert_called_with(api_key='explicit_key')
+
+            GeminiMailbox(api_key="explicit_key")
+            mock_client.assert_called_with(api_key="explicit_key")
 
         # Test missing API key
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaises(ValueError):
                 from bots.foundation.gemini_bots import GeminiMailbox
+
                 GeminiMailbox()
+
+
 class TestGeminiIntegration(unittest.TestCase):
     """Integration tests for GeminiBot with live API calls.
 
@@ -227,7 +223,7 @@ class TestGeminiIntegration(unittest.TestCase):
                 name="IntegrationTestGemini",
                 model_engine=Engines.GEMINI25_FLASH,
                 max_tokens=100,  # Keep small for testing
-                temperature=0.1
+                temperature=0.1,
             )
         except Exception as e:
             self.skipTest(f"Failed to create GeminiBot: {e}")
@@ -241,6 +237,7 @@ class TestGeminiIntegration(unittest.TestCase):
 
         # Clean up any .bot files
         import glob
+
         for bot_file in glob.glob("*.bot"):
             try:
                 if os.path.exists(bot_file):
@@ -248,8 +245,7 @@ class TestGeminiIntegration(unittest.TestCase):
             except Exception as e:
                 print(f"Warning: Could not clean up {bot_file}: {e}")
 
-    @unittest.skipIf(not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"), 
-                     "No Google API key available")
+    @unittest.skipIf(not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"), "No Google API key available")
     def test_real_conversation_and_save_load(self) -> None:
         """Test real conversation with Gemini API and save/load functionality."""
         # Have a real conversation
@@ -277,8 +273,7 @@ class TestGeminiIntegration(unittest.TestCase):
         self.assertIsInstance(response2, str)
         self.assertTrue(len(response2) > 0)
 
-    @unittest.skipIf(not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"), 
-                     "No Google API key available")
+    @unittest.skipIf(not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"), "No Google API key available")
     def test_real_tool_usage_and_persistence(self) -> None:
         """Test real tool usage with Gemini API and persistence."""
 
@@ -301,15 +296,10 @@ class TestGeminiIntegration(unittest.TestCase):
 
         # Check if tool was actually called by looking for the result
         # Note: This might be in tool_results or the response itself depending on implementation
-        found_result = False
-        if "25" in response:
-            found_result = True
-
         # Check tool results if available
-        if hasattr(self.bot.conversation, 'tool_results') and self.bot.conversation.tool_results:
+        if hasattr(self.bot.conversation, "tool_results") and self.bot.conversation.tool_results:
             for result_dict in self.bot.conversation.tool_results:
                 if any("25" in str(v) for v in result_dict.values()):
-                    found_result = True
                     break
 
         # Save and load bot with tools
@@ -326,8 +316,7 @@ class TestGeminiIntegration(unittest.TestCase):
         self.assertIsNotNone(response2)
         self.assertIsInstance(response2, str)
 
-    @unittest.skipIf(not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"), 
-                     "No Google API key available")
+    @unittest.skipIf(not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"), "No Google API key available")
     def test_real_error_handling(self) -> None:
         """Test error handling with real API calls."""
         # Test with a very long message that might cause issues
@@ -342,18 +331,13 @@ class TestGeminiIntegration(unittest.TestCase):
             self.assertIsInstance(e, Exception)
             print(f"Expected error handled: {e}")
 
-    @unittest.skipIf(not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"), 
-                     "No Google API key available")
+    @unittest.skipIf(not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"), "No Google API key available")
     def test_multiple_conversation_turns(self) -> None:
         """Test multiple conversation turns with real API."""
         responses = []
 
         # Have a multi-turn conversation
-        questions = [
-            "Hello, what's your name?",
-            "What's the capital of France?",
-            "Thank you for the information."
-        ]
+        questions = ["Hello, what's your name?", "What's the capital of France?", "Thank you for the information."]
 
         for question in questions:
             response = self.bot.respond(question)

@@ -7,7 +7,7 @@ Safely runs pytest in Docker containers without timeout plugin dependency.
 import subprocess
 import sys
 import time
-from pathlib import Path
+
 
 def run_command(cmd, description, timeout_seconds=300):
     """Run a command with timeout and return success status."""
@@ -20,7 +20,7 @@ def run_command(cmd, description, timeout_seconds=300):
 
     start_time = time.time()
     try:
-        result = subprocess.run(cmd, check=True, text=True, capture_output=False, timeout=timeout_seconds)
+        subprocess.run(cmd, check=True, text=True, capture_output=False, timeout=timeout_seconds)
         duration = time.time() - start_time
         print(f"\n✅ SUCCESS ({duration:.1f}s): {description}")
         return True
@@ -37,25 +37,23 @@ def run_command(cmd, description, timeout_seconds=300):
         print(f"\n⚠️  INTERRUPTED: {description}")
         return False
 
+
 def build_container():
     """Build the Docker test container."""
     return run_command(
         ["docker", "build", "-t", "pytest-container", "."],
         "Building Docker test container",
-        timeout_seconds=600  # 10 minutes for building
+        timeout_seconds=600,  # 10 minutes for building
     )
+
 
 def run_test_suite(test_args, description, timeout_seconds=300):
     """Run a test suite in Docker."""
-    base_cmd = [
-        "docker", "run", "--rm", "-it",
-        "--memory=2g", "--cpus=2",
-        "pytest-container",
-        "python", "-m", "pytest"
-    ]
+    base_cmd = ["docker", "run", "--rm", "-it", "--memory=2g", "--cpus=2", "pytest-container", "python", "-m", "pytest"]
 
     cmd = base_cmd + test_args
     return run_command(cmd, description, timeout_seconds)
+
 
 def main():
     """Main orchestrator function."""
@@ -79,28 +77,28 @@ def main():
         {
             "args": ["-v", "test_docker_permissions.py"],
             "description": "Docker permissions test (safe baseline)",
-            "timeout": 60
+            "timeout": 60,
         },
         {
             "args": ["-v", "tests/test_cli/test_broadcast_fp_comprehensive.py", "-x"],
             "description": "Broadcast FP tests (stop on first failure)",
-            "timeout": 180
+            "timeout": 180,
         },
         {
             "args": ["-v", "-k", "test_web_tool and not integration", "--tb=short"],
             "description": "Web tool tests (basic functionality)",
-            "timeout": 120
+            "timeout": 120,
         },
         {
             "args": ["-v", "-k", "test_toolify and not integration", "--tb=short"],
-            "description": "Toolify tests (core functionality)", 
-            "timeout": 120
+            "description": "Toolify tests (core functionality)",
+            "timeout": 120,
         },
         {
             "args": ["-v", "-k", "not (test_branch_self_recursive or test_real_ai_stash_message_generation)", "--maxfail=3"],
             "description": "Safe test subset (avoiding dangerous tests)",
-            "timeout": 600
-        }
+            "timeout": 600,
+        },
     ]
 
     results = []
@@ -109,16 +107,12 @@ def main():
 
     for i, config in enumerate(test_configs, 1):
         print(f"\n📋 Configuration {i}/{len(test_configs)}")
-        success = run_test_suite(
-            config["args"], 
-            config["description"],
-            config.get("timeout", 300)
-        )
+        success = run_test_suite(config["args"], config["description"], config.get("timeout", 300))
         results.append((config["description"], success))
 
         if not success:
-            response = input(f"\n⚠️  Test failed. Continue with remaining tests? (y/N): ")
-            if response.lower() != 'y':
+            response = input("\n⚠️  Test failed. Continue with remaining tests? (y/N): ")
+            if response.lower() != "y":
                 break
 
     # Summary
@@ -140,6 +134,7 @@ def main():
     else:
         print("⚠️  Some test suites failed. Check output above for details.")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     try:

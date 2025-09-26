@@ -12,9 +12,7 @@ import json
 import os
 import tempfile
 import unittest
-from typing import Dict, List
 
-import bots
 from bots.dev.decorators import toolify
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
@@ -31,7 +29,7 @@ class TestToolifyIntegration(unittest.TestCase):
             max_tokens=1000,
             temperature=0,
             name="ToolifyTestBot",
-            autosave=False
+            autosave=False,
         )
 
         # Create temp directory for test files
@@ -87,40 +85,37 @@ class TestToolifyIntegration(unittest.TestCase):
 
         # Store tools for use in tests
         self.test_tools = {
-            'add_numbers': add_numbers,
-            'make_uppercase': make_uppercase,
-            'calculate_average': calculate_average,
-            'format_user_data': format_user_data,
-            'divide_numbers': divide_numbers
+            "add_numbers": add_numbers,
+            "make_uppercase": make_uppercase,
+            "calculate_average": calculate_average,
+            "format_user_data": format_user_data,
+            "divide_numbers": divide_numbers,
         }
 
     def test_add_toolified_functions_to_bot(self):
         """Test that toolified functions can be added to bot."""
         # Add tools to bot
-        self.bot.add_tools(
-            self.test_tools['add_numbers'],
-            self.test_tools['make_uppercase']
-        )
+        self.bot.add_tools(self.test_tools["add_numbers"], self.test_tools["make_uppercase"])
 
         # Verify tools are registered
         tool_names = list(self.bot.tool_handler.function_map.keys())
-        self.assertIn('add_numbers', tool_names)
-        self.assertIn('make_uppercase', tool_names)
+        self.assertIn("add_numbers", tool_names)
+        self.assertIn("make_uppercase", tool_names)
 
         # Verify tool schemas are generated
         self.assertEqual(len(self.bot.tool_handler.tools), 2)
 
         # Verify tool schemas have correct structure
         for tool in self.bot.tool_handler.tools:
-            self.assertIn('name', tool)
-            self.assertIn('description', tool)
-            self.assertIn('input_schema', tool)
+            self.assertIn("name", tool)
+            self.assertIn("description", tool)
+            self.assertIn("input_schema", tool)
 
     def test_toolified_function_execution(self):
         """Test that toolified functions execute correctly when called directly."""
-        add_func = self.test_tools['add_numbers']
-        uppercase_func = self.test_tools['make_uppercase']
-        avg_func = self.test_tools['calculate_average']
+        add_func = self.test_tools["add_numbers"]
+        uppercase_func = self.test_tools["make_uppercase"]
+        avg_func = self.test_tools["calculate_average"]
 
         # Test string-in, string-out behavior
         result = add_func("5", "3")
@@ -134,7 +129,7 @@ class TestToolifyIntegration(unittest.TestCase):
 
     def test_toolified_error_handling(self):
         """Test that toolified functions handle errors correctly."""
-        divide_func = self.test_tools['divide_numbers']
+        divide_func = self.test_tools["divide_numbers"]
 
         # Test division by zero returns error string
         result = divide_func("10", "0")
@@ -150,43 +145,38 @@ class TestToolifyIntegration(unittest.TestCase):
 
         # Add multiple tools
         self.bot.add_tools(
-            self.test_tools['add_numbers'],
-            self.test_tools['make_uppercase'],
-            self.test_tools['calculate_average']
+            self.test_tools["add_numbers"], self.test_tools["make_uppercase"], self.test_tools["calculate_average"]
         )
 
         # Verify all tools are registered
         tool_names = list(self.bot.tool_handler.function_map.keys())
-        self.assertIn('add_numbers', tool_names)
-        self.assertIn('make_uppercase', tool_names)
-        self.assertIn('calculate_average', tool_names)
+        self.assertIn("add_numbers", tool_names)
+        self.assertIn("make_uppercase", tool_names)
+        self.assertIn("calculate_average", tool_names)
 
         # Test that each tool works correctly
-        add_result = self.bot.tool_handler.function_map['add_numbers']("10", "5")
+        add_result = self.bot.tool_handler.function_map["add_numbers"]("10", "5")
         self.assertEqual(add_result, "15")
 
-        upper_result = self.bot.tool_handler.function_map['make_uppercase']("test")
+        upper_result = self.bot.tool_handler.function_map["make_uppercase"]("test")
         self.assertEqual(upper_result, "TEST")
 
-        avg_result = self.bot.tool_handler.function_map['calculate_average']("[2, 4, 6]")
+        avg_result = self.bot.tool_handler.function_map["calculate_average"]("[2, 4, 6]")
         self.assertEqual(avg_result, "4.0")
 
     def test_complex_toolified_function_types(self):
         """Test toolified functions with complex parameter types."""
 
         # Add tools that use lists and dicts
-        self.bot.add_tools(
-            self.test_tools['calculate_average'],
-            self.test_tools['format_user_data']
-        )
+        self.bot.add_tools(self.test_tools["calculate_average"], self.test_tools["format_user_data"])
 
         # Test list parameter
-        avg_func = self.bot.tool_handler.function_map['calculate_average']
+        avg_func = self.bot.tool_handler.function_map["calculate_average"]
         result = avg_func("[10, 20, 30, 40, 50]")
         self.assertEqual(result, "30.0")
 
         # Test dict parameter
-        format_func = self.bot.tool_handler.function_map['format_user_data']
+        format_func = self.bot.tool_handler.function_map["format_user_data"]
         result = format_func('{"name": "Alice", "age": 25}', "detailed")
         self.assertEqual(result, "Name: Alice, Age: 25 years old")
 
@@ -194,38 +184,38 @@ class TestToolifyIntegration(unittest.TestCase):
         """Test that toolified functions have proper docstrings for LLM."""
 
         # Add tool with custom description
-        self.bot.add_tools(self.test_tools['make_uppercase'])
+        self.bot.add_tools(self.test_tools["make_uppercase"])
 
         # Check that custom description is used
-        tool_func = self.bot.tool_handler.function_map['make_uppercase']
+        tool_func = self.bot.tool_handler.function_map["make_uppercase"]
         self.assertEqual(tool_func.__doc__, "Convert text to uppercase")
 
         # Add tool without custom description
-        self.bot.add_tools(self.test_tools['add_numbers'])
+        self.bot.add_tools(self.test_tools["add_numbers"])
 
         # Check that original docstring is preserved
-        add_func = self.bot.tool_handler.function_map['add_numbers']
+        add_func = self.bot.tool_handler.function_map["add_numbers"]
         self.assertEqual(add_func.__doc__, "Add two numbers together.")
 
     def test_toolified_function_tool_handler_integration(self):
         """Test that toolified functions work correctly with ToolHandler methods."""
 
         # Add a toolified function
-        self.bot.add_tools(self.test_tools['add_numbers'])
+        self.bot.add_tools(self.test_tools["add_numbers"])
 
         # Test that tool handler can generate schemas
         tools = self.bot.tool_handler.tools
         self.assertEqual(len(tools), 1)
 
         tool_schema = tools[0]
-        self.assertEqual(tool_schema['name'], 'add_numbers')
-        self.assertEqual(tool_schema['description'], 'Add two numbers together.')
+        self.assertEqual(tool_schema["name"], "add_numbers")
+        self.assertEqual(tool_schema["description"], "Add two numbers together.")
 
         # Test that function map contains the tool
-        self.assertIn('add_numbers', self.bot.tool_handler.function_map)
+        self.assertIn("add_numbers", self.bot.tool_handler.function_map)
 
         # Test direct function execution through tool handler
-        func = self.bot.tool_handler.function_map['add_numbers']
+        func = self.bot.tool_handler.function_map["add_numbers"]
         result = func("7", "3")
         self.assertEqual(result, "10")
 
@@ -237,6 +227,7 @@ class TestToolifyIntegration(unittest.TestCase):
         def get_timestamp() -> str:
             """Get current timestamp."""
             import datetime
+
             return datetime.datetime.now().isoformat()
 
         # Function with only optional parameters
@@ -260,25 +251,26 @@ class TestToolifyIntegration(unittest.TestCase):
         self.bot.add_tools(get_timestamp, greet, process_data)
 
         # Test functions
-        timestamp_func = self.bot.tool_handler.function_map['get_timestamp']
+        timestamp_func = self.bot.tool_handler.function_map["get_timestamp"]
         result = timestamp_func()
         self.assertIsInstance(result, str)
-        self.assertIn('T', result)  # ISO format contains 'T'
+        self.assertIn("T", result)  # ISO format contains 'T'
 
-        greet_func = self.bot.tool_handler.function_map['greet']
+        greet_func = self.bot.tool_handler.function_map["greet"]
         result = greet_func()
         self.assertEqual(result, "Hello, World!")
 
         result = greet_func("Alice")
         self.assertEqual(result, "Hello, Alice!")
 
-        process_func = self.bot.tool_handler.function_map['process_data']
+        process_func = self.bot.tool_handler.function_map["process_data"]
         result = process_func("test", "true", ">>> ")
         self.assertEqual(result, ">>> TEST")
 
     def tearDown(self):
         """Clean up test files and directories."""
         import shutil
+
         try:
             shutil.rmtree(self.test_dir, ignore_errors=True)
         except Exception as e:
@@ -296,7 +288,7 @@ class TestToolifyRealWorldScenarios(unittest.TestCase):
             max_tokens=1000,
             temperature=0,
             name="RealWorldTestBot",
-            autosave=False
+            autosave=False,
         )
 
     def test_file_processing_tools(self):
@@ -316,12 +308,12 @@ class TestToolifyRealWorldScenarios(unittest.TestCase):
         self.bot.add_tools(count_words, get_file_extension)
 
         # Test word counting
-        word_count = self.bot.tool_handler.function_map['count_words']
+        word_count = self.bot.tool_handler.function_map["count_words"]
         result = word_count("This is a test sentence with seven words")
         self.assertEqual(result, "8")  # "seven" is actually the 6th word, total is 8
 
         # Test file extension extraction
-        ext_func = self.bot.tool_handler.function_map['get_file_extension']
+        ext_func = self.bot.tool_handler.function_map["get_file_extension"]
         result = ext_func("document.pdf")
         self.assertEqual(result, ".pdf")
 
@@ -339,24 +331,18 @@ class TestToolifyRealWorldScenarios(unittest.TestCase):
             if not data:
                 return {"error": "Empty dataset"}
 
-            return {
-                "count": len(data),
-                "min": min(data),
-                "max": max(data),
-                "mean": sum(data) / len(data),
-                "sum": sum(data)
-            }
+            return {"count": len(data), "min": min(data), "max": max(data), "mean": sum(data) / len(data), "sum": sum(data)}
 
         # Add tools to bot
         self.bot.add_tools(find_max, calculate_stats)
 
         # Test max finding
-        max_func = self.bot.tool_handler.function_map['find_max']
+        max_func = self.bot.tool_handler.function_map["find_max"]
         result = max_func("[1, 5, 3, 9, 2]")
         self.assertEqual(result, "9")
 
         # Test statistics calculation
-        stats_func = self.bot.tool_handler.function_map['calculate_stats']
+        stats_func = self.bot.tool_handler.function_map["calculate_stats"]
         result = stats_func("[10, 20, 30]")
         stats = json.loads(result)
 
@@ -375,10 +361,10 @@ class TestToolifyRealWorldScenarios(unittest.TestCase):
             import re
 
             # Remove extra whitespace
-            cleaned = re.sub(r'\s+', ' ', text.strip())
+            cleaned = re.sub(r"\s+", " ", text.strip())
 
             if remove_punctuation:
-                cleaned = re.sub(r'[^\w\s]', '', cleaned)
+                cleaned = re.sub(r"[^\w\s]", "", cleaned)
 
             return cleaned
 
@@ -386,19 +372,20 @@ class TestToolifyRealWorldScenarios(unittest.TestCase):
         def extract_emails(text: str) -> list:
             """Extract email addresses from text."""
             import re
-            email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+
+            email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
             return re.findall(email_pattern, text)
 
         # Add tools to bot
         self.bot.add_tools(clean_text, extract_emails)
 
         # Test text cleaning
-        clean_func = self.bot.tool_handler.function_map['clean_text']
+        clean_func = self.bot.tool_handler.function_map["clean_text"]
         result = clean_func("  Hello,    world!  ", "true")
         self.assertEqual(result, "Hello world")
 
         # Test email extraction
-        email_func = self.bot.tool_handler.function_map['extract_emails']
+        email_func = self.bot.tool_handler.function_map["extract_emails"]
         text = "Contact us at info@example.com or support@test.org"
         result = email_func(text)
         emails = json.loads(result)

@@ -1,12 +1,11 @@
 import unittest
-from unittest.mock import Mock, patch, MagicMock
 from contextlib import redirect_stdout
 from io import StringIO
+from unittest.mock import patch
 
 import bots.dev.cli as cli_module
-from bots.dev.cli import CLI, DynamicFunctionalPromptHandler, DynamicParameterCollector
+from bots.dev.cli import DynamicFunctionalPromptHandler, DynamicParameterCollector
 from bots.flows import functional_prompts as fp
-from bots.foundation.base import ConversationNode
 
 """Comprehensive tests for broadcast_fp functionality including par_branch support."""
 
@@ -69,7 +68,7 @@ class TestBroadcastFPFunctionalSuccess(unittest.TestCase):
             "all",  # Select all leaves
             "1",  # Select single_prompt
             "Test broadcast message",  # The prompt to broadcast
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -81,20 +80,21 @@ class TestBroadcastFPFunctionalSuccess(unittest.TestCase):
         # Should show broadcast functionality
         self.assertIn("broadcast", output.lower())
 
-    @patch("builtins.input") 
+    @patch("builtins.input")
     def test_broadcast_fp_with_chain_via_cli(self, mock_input):
         """Test /broadcast_fp command with chain through full CLI interface."""
         mock_input.side_effect = [
             "Create some content",  # Initial chat
-            "/label", "start",  # Create a label
+            "/label",
+            "start",  # Create a label
             "Create more content",  # Another response to create branches
             "/broadcast_fp",  # Start broadcast_fp
             "all",  # Select all leaves
             "2",  # Select chain
             "First step in chain",  # First prompt
-            "Second step in chain",  # Second prompt  
+            "Second step in chain",  # Second prompt
             "",  # End prompt collection
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -112,12 +112,12 @@ class TestBroadcastFPFunctionalSuccess(unittest.TestCase):
         mock_input.side_effect = [
             "Initial content",
             "/broadcast_fp",
-            "all", 
+            "all",
             "8",  # This is now par_branch (implemented!)
             "Branch prompt 1",
-            "Branch prompt 2", 
+            "Branch prompt 2",
             "",
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -136,7 +136,7 @@ class TestBroadcastFPFunctionalSuccess(unittest.TestCase):
         """Test /broadcast_fp command with par_branch_while - now implemented!"""
         mock_input.side_effect = [
             "Initial content",
-            "/broadcast_fp", 
+            "/broadcast_fp",
             "all",
             "9",  # This is now par_branch_while (implemented!)
             "While prompt 1",
@@ -144,7 +144,7 @@ class TestBroadcastFPFunctionalSuccess(unittest.TestCase):
             "",  # End prompts
             "2",  # Stop condition (tool_not_used)
             "continue",  # Continue prompt
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -176,7 +176,7 @@ class TestBroadcastFPRecursiveBranching(unittest.TestCase):
         intended_workflow = """
         1. Initial conversation creates multiple leaves (A, B, C)
         2. /broadcast_fp with par_branch sends multiple prompts to each leaf:
-           - Leaf A gets prompts ["Approach 1", "Approach 2", "Approach 3"] 
+           - Leaf A gets prompts ["Approach 1", "Approach 2", "Approach 3"]
            - Leaf B gets prompts ["Approach 1", "Approach 2", "Approach 3"]
            - Leaf C gets prompts ["Approach 1", "Approach 2", "Approach 3"]
         3. Result: Each original leaf now has 3 parallel sub-branches
@@ -191,17 +191,19 @@ class TestBroadcastFPRecursiveBranching(unittest.TestCase):
         """Test leaf selection when there are multiple conversation endpoints."""
         mock_input.side_effect = [
             "Create first branch",
-            "/label", "branch1", 
+            "/label",
+            "branch1",
             "/up",  # Go back
-            "Create second branch", 
-            "/label", "branch2",
+            "Create second branch",
+            "/label",
+            "branch2",
             "/up",  # Go back
             "Create third branch",
             "/broadcast_fp",
             "1,3",  # Select leaves 1 and 3 (not 2)
             "1",  # single_prompt
             "Broadcast to selected leaves only",
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -222,13 +224,16 @@ class TestBroadcastFPParameterCollection(unittest.TestCase):
         collector = DynamicParameterCollector()
 
         # Test tree_of_thought parameter collection
-        with patch("builtins.input", side_effect=[
-            "Analyze technical aspects",
-            "Analyze business aspects", 
-            "Analyze user aspects",
-            "",  # End prompts
-            "1"  # Select concatenate recombinator
-        ]):
+        with patch(
+            "builtins.input",
+            side_effect=[
+                "Analyze technical aspects",
+                "Analyze business aspects",
+                "Analyze user aspects",
+                "",  # End prompts
+                "1",  # Select concatenate recombinator
+            ],
+        ):
             params = collector.collect_parameters(fp.tree_of_thought)
 
         self.assertIsNotNone(params)
@@ -241,11 +246,14 @@ class TestBroadcastFPParameterCollection(unittest.TestCase):
         collector = DynamicParameterCollector()
 
         # Test prompt_while parameter collection
-        with patch("builtins.input", side_effect=[
-            "Debug this code thoroughly",  # first_prompt
-            "Keep debugging",  # continue_prompt  
-            "2"  # stop_condition (tool_not_used)
-        ]):
+        with patch(
+            "builtins.input",
+            side_effect=[
+                "Debug this code thoroughly",  # first_prompt
+                "Keep debugging",  # continue_prompt
+                "2",  # stop_condition (tool_not_used)
+            ],
+        ):
             params = collector.collect_parameters(fp.prompt_while)
 
         self.assertIsNotNone(params)
@@ -254,5 +262,5 @@ class TestBroadcastFPParameterCollection(unittest.TestCase):
         self.assertIn("stop_condition", params)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

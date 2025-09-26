@@ -179,7 +179,7 @@ class TestLabelingSystem(DetailedTestCase):
             "Write a simple function",
             "/label",
             "test_function",  # Create new label
-            "Write another function", 
+            "Write another function",
             "/label",
             "test_function",  # Jump to existing label
             "/exit",
@@ -211,11 +211,7 @@ class TestLabelingSystem(DetailedTestCase):
     @patch("builtins.input")
     def test_label_empty_input(self, mock_input: MagicMock) -> None:
         """Test /label command with empty input."""
-        mock_input.side_effect = [
-            "/label",
-            "",  # Empty label name
-            "/exit"
-        ]
+        mock_input.side_effect = ["/label", "", "/exit"]  # Empty label name
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 cli_module.main("")
@@ -230,7 +226,7 @@ class TestLabelingSystem(DetailedTestCase):
             "Write a fibonacci function",
             "/label",
             "fibonacci_func",  # Create first label
-            "Write a sorting algorithm", 
+            "Write a sorting algorithm",
             "/label",
             "sort_algo",  # Create second label
             "/label",
@@ -253,7 +249,7 @@ class TestLabelingSystem(DetailedTestCase):
         pass  # /goto command removed - functionality merged into /label
 
     def test_showlabels_command_removed(self):
-        """Test that /showlabels command has been removed.""" 
+        """Test that /showlabels command has been removed."""
         # This test documents that /showlabels is no longer available
         pass  # /showlabels command removed - functionality merged into /label
 

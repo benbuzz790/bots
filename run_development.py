@@ -5,23 +5,22 @@ Starts both backend and frontend in development mode with hot
 reloading.
 """
 
+import logging
 import os
-import sys
-import time
 import signal
 import subprocess
+import sys
 import threading
-import logging
+import time
 from pathlib import Path
 from typing import List, Optional
+
 import requests
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 class DevelopmentRunner:
     """Manages development environment with defensive validation."""
@@ -49,35 +48,35 @@ class DevelopmentRunner:
 
         # Check Python
         try:
-            result = subprocess.run([sys.executable, "--version"],
-                                capture_output=True, text=True,
-                                check=True, shell=True) # Added shell=True
+            result = subprocess.run(
+                [sys.executable, "--version"], capture_output=True, text=True, check=True, shell=True
+            )  # Added shell=True
             logger.info(f"Python: {result.stdout.strip()}")
         except subprocess.CalledProcessError as e:
             logger.error(f"Python check failed: {e}")
             return False
-        except FileNotFoundError: # Added this specific exception handling
+        except FileNotFoundError:  # Added this specific exception handling
             logger.error("Python not found or not working")
             return False
 
         # Check Node.js
         try:
-            result = subprocess.run(["node", "--version"],
-                                    capture_output=True, text=True,
-                                    check=True, shell=True) # Added shell=True
+            result = subprocess.run(
+                ["node", "--version"], capture_output=True, text=True, check=True, shell=True
+            )  # Added shell=True
             logger.info(f"Node.js: {result.stdout.strip()}")
-        except (subprocess.CalledProcessError, FileNotFoundError) as e: # Catching both
-            logger.error(f"Node.js not found. Please install Node.js 18+: {e}") # More informative error
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:  # Catching both
+            logger.error(f"Node.js not found. Please install Node.js 18+: {e}")  # More informative error
             return False
 
         # Check npm
         try:
-            result = subprocess.run(["npm", "--version"],
-                                capture_output=True, text=True,
-                                check=True, shell=True) # Added shell=True
+            result = subprocess.run(
+                ["npm", "--version"], capture_output=True, text=True, check=True, shell=True
+            )  # Added shell=True
             logger.info(f"npm: {result.stdout.strip()}")
-        except (subprocess.CalledProcessError, FileNotFoundError) as e: # Catching both
-            logger.error(f"npm not found: {e}") # More informative error
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:  # Catching both
+            logger.error(f"npm not found: {e}")  # More informative error
             return False
 
         return True
@@ -95,10 +94,11 @@ class DevelopmentRunner:
 
             # Install Python dependencies
             logger.info("Installing Python dependencies...")
-            result = subprocess.run(
-                    [sys.executable, "-m", "pip", "install", "-r", str(requirements_file)], 
-                    cwd=self.backend_dir, check=True,
-                )
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-r", str(requirements_file)],
+                cwd=self.backend_dir,
+                check=True,
+            )
 
             logger.info("Backend setup completed")
             return True
@@ -120,11 +120,11 @@ class DevelopmentRunner:
 
             # Install Node.js dependencies
             logger.info("Installing Node.js dependencies...")
-            result = subprocess.run(
-                ["npm", "install"], 
-                cwd=self.frontend_dir, 
+            subprocess.run(
+                ["npm", "install"],
+                cwd=self.frontend_dir,
                 check=True,
-                )
+            )
 
             logger.info("Frontend setup completed")
             return True
@@ -140,26 +140,37 @@ class DevelopmentRunner:
         try:
             # Set environment variables
             env = os.environ.copy()
-            env.update({
-                "PYTHONPATH": str(self.backend_dir),
-                "BOT_STORAGE_DIR": str(self.project_root / "storage"),
-                "LOG_LEVEL": "DEBUG",
-                "RELOAD": "true"
-            })
+            env.update(
+                {
+                    "PYTHONPATH": str(self.backend_dir),
+                    "BOT_STORAGE_DIR": str(self.project_root / "storage"),
+                    "LOG_LEVEL": "DEBUG",
+                    "RELOAD": "true",
+                }
+            )
 
             # Create storage directory
             storage_dir = self.project_root / "storage"
             storage_dir.mkdir(exist_ok=True)
 
             # Start backend process
-            process = subprocess.Popen([
-                sys.executable, "-m", "uvicorn",
-                "main:app",
-                "--host", "127.0.0.1",
-                "--port", "8000",
-                "--reload",
-                "--log-level", "info"
-            ], cwd=self.backend_dir, env=env)
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    "-m",
+                    "uvicorn",
+                    "main:app",
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    "8000",
+                    "--reload",
+                    "--log-level",
+                    "info",
+                ],
+                cwd=self.backend_dir,
+                env=env,
+            )
 
             self.processes.append(process)
             logger.info("Backend server started on http://127.0.0.1:8000")
@@ -175,9 +186,7 @@ class DevelopmentRunner:
 
         try:
             # Start frontend process
-            process = subprocess.Popen([
-                "npm", "run", "dev"
-            ], cwd=self.frontend_dir)
+            process = subprocess.Popen(["npm", "run", "dev"], cwd=self.frontend_dir)
 
             self.processes.append(process)
             logger.info("Frontend server started on http://127.0.0.1:3000")
@@ -213,8 +222,7 @@ class DevelopmentRunner:
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
-                response = requests.get("http://127.0.0.1:3000",
-                                    timeout=5)
+                response = requests.get("http://127.0.0.1:3000", timeout=5)
                 if response.status_code == 200:
                     logger.info("Frontend is ready!")
                     return True
@@ -310,6 +318,7 @@ class DevelopmentRunner:
         finally:
             self.shutdown()
 
+
 def main():
     """Main entry point."""
     import argparse
@@ -323,6 +332,7 @@ def main():
     success = runner.run()
 
     sys.exit(0 if success else 1)
+
 
 if __name__ == "__main__":
     main()

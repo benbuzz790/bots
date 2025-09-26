@@ -1,15 +1,13 @@
 import unittest
-from unittest.mock import patch, MagicMock
 from io import StringIO
-import sys
+from unittest.mock import patch
 
 from bots.dev.decorators import handle_errors, toolify
-from bots.foundation.anthropic_bots import AnthropicBot
-import bots.dev.cli as cli_module
 
 
 class ToolExecutionError(Exception):
     """Custom exception for tool execution failures."""
+
     pass
 
 
@@ -49,8 +47,8 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         self.assertIn("Tool Failed:", result)
         self.assertIn("Port 8000 already in use", result)
 
-    @patch('sys.stdin', StringIO('hello\n/exit\n'))
-    @patch('sys.stdout', new_callable=StringIO)
+    @patch("sys.stdin", StringIO("hello\n/exit\n"))
+    @patch("sys.stdout", new_callable=StringIO)
     def test_cli_handles_tool_keyboard_interrupt_gracefully(self, mock_stdout):
         """Test that CLI doesn't show 'use /exit to quit' for tool KeyboardInterrupt."""
 
@@ -81,7 +79,7 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         @handle_errors
         def problematic_server_tool():
             # This is what might happen inside a server startup tool
-            import socket
+
             # Simulate the kind of error that gets converted to KeyboardInterrupt
             raise KeyboardInterrupt("Address already in use (port 8000)")
 
@@ -101,7 +99,7 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         @toolify("Start a web server on the specified port")
         def start_web_server(port: int = 8000) -> str:
             """Simulate starting a web server that encounters a port conflict."""
-            import socket
+
             # Simulate what many server libraries do when they can't bind to a port
             # Some libraries convert socket errors to KeyboardInterrupt
             raise KeyboardInterrupt(f"[Errno 98] Address already in use: port {port}")
@@ -112,8 +110,7 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         # Verify the tool handles the error gracefully
         self.assertIsInstance(result, str)
         self.assertTrue(
-            result.startswith("Error:") or result.startswith("Tool Failed:"),
-            f"Expected error message, got: {result}"
+            result.startswith("Error:") or result.startswith("Tool Failed:"), f"Expected error message, got: {result}"
         )
         self.assertIn("Address already in use", result)
         self.assertIn("8080", result)
@@ -122,5 +119,5 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         # to the CLI where it would trigger "use /exit to quit"
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

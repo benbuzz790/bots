@@ -1,14 +1,10 @@
-import json
-import os
 import tempfile
 import threading
-import time
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 
-from bots.dev.cli import PromptManager, PromptHandler, CLI
-from bots.foundation.anthropic_bots import AnthropicBot
+from bots.dev.cli import CLI, PromptHandler, PromptManager
 from bots.foundation.base import Engines
 
 
@@ -24,6 +20,7 @@ class TestPromptManager(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_empty_prompts_initialization(self):
@@ -36,10 +33,7 @@ class TestPromptManager(unittest.TestCase):
         # Add some test data
         self.prompt_manager.prompts_data = {
             "recents": ["test1", "test2"],
-            "prompts": {
-                "test1": "This is test prompt 1",
-                "test2": "This is test prompt 2"
-            }
+            "prompts": {"test1": "This is test prompt 1", "test2": "This is test prompt 2"},
         }
         self.prompt_manager._save_prompts()
 
@@ -51,11 +45,7 @@ class TestPromptManager(unittest.TestCase):
     def test_update_recents(self):
         """Test recency list management."""
         # Add prompts
-        self.prompt_manager.prompts_data["prompts"] = {
-            "prompt1": "content1",
-            "prompt2": "content2",
-            "prompt3": "content3"
-        }
+        self.prompt_manager.prompts_data["prompts"] = {"prompt1": "content1", "prompt2": "content2", "prompt3": "content3"}
 
         # Test adding to empty recents
         self.prompt_manager._update_recents("prompt1")
@@ -76,7 +66,7 @@ class TestPromptManager(unittest.TestCase):
         self.assertEqual(len(self.prompt_manager.prompts_data["recents"]), 5)
         self.assertEqual(self.prompt_manager.prompts_data["recents"][0], "prompt7")
 
-    @patch('bots.foundation.anthropic_bots.AnthropicBot')
+    @patch("bots.foundation.anthropic_bots.AnthropicBot")
     def test_generate_prompt_name(self, mock_bot_class):
         """Test prompt name generation using Haiku bot."""
         # Mock the bot response
@@ -90,13 +80,13 @@ class TestPromptManager(unittest.TestCase):
         mock_bot_class.assert_called_once_with(model_engine=Engines.CLAUDE3_HAIKU)
         mock_bot.prompt.assert_called_once()
 
-    @patch('bots.foundation.anthropic_bots.AnthropicBot')
+    @patch("bots.foundation.anthropic_bots.AnthropicBot")
     def test_generate_prompt_name_fallback(self, mock_bot_class):
         """Test prompt name generation fallback when bot fails."""
         # Mock the bot to raise an exception
         mock_bot_class.side_effect = Exception("Bot creation failed")
 
-        with patch('time.time', return_value=1234567890):
+        with patch("time.time", return_value=1234567890):
             name = self.prompt_manager._generate_prompt_name("This is a test prompt")
             self.assertEqual(name, "prompt_1234567890")
 
@@ -104,11 +94,7 @@ class TestPromptManager(unittest.TestCase):
         """Test search with empty query returns recents."""
         self.prompt_manager.prompts_data = {
             "recents": ["recent1", "recent2"],
-            "prompts": {
-                "recent1": "Recent prompt 1",
-                "recent2": "Recent prompt 2",
-                "other": "Other prompt"
-            }
+            "prompts": {"recent1": "Recent prompt 1", "recent2": "Recent prompt 2", "other": "Other prompt"},
         }
 
         results = self.prompt_manager.search_prompts("")
@@ -123,8 +109,8 @@ class TestPromptManager(unittest.TestCase):
             "prompts": {
                 "neural_network": "Design a neural network",
                 "database_query": "Write a SQL query",
-                "neural_optimization": "Optimize neural networks"
-            }
+                "neural_optimization": "Optimize neural networks",
+            },
         }
 
         results = self.prompt_manager.search_prompts("neural")
@@ -140,8 +126,8 @@ class TestPromptManager(unittest.TestCase):
             "prompts": {
                 "prompt1": "Design a neural network architecture",
                 "prompt2": "Write a database schema",
-                "prompt3": "Create a neural network model"
-            }
+                "prompt3": "Create a neural network model",
+            },
         }
 
         results = self.prompt_manager.search_prompts("neural network")
@@ -150,7 +136,7 @@ class TestPromptManager(unittest.TestCase):
         self.assertIn("prompt1", names)
         self.assertIn("prompt3", names)
 
-    @patch('bots.foundation.anthropic_bots.AnthropicBot')
+    @patch("bots.foundation.anthropic_bots.AnthropicBot")
     def test_save_prompt_with_auto_name(self, mock_bot_class):
         """Test saving prompt with auto-generated name."""
         mock_bot = MagicMock()
@@ -166,7 +152,7 @@ class TestPromptManager(unittest.TestCase):
 
     def test_save_prompt_unique_names(self):
         """Test that duplicate names get unique suffixes."""
-        with patch.object(self.prompt_manager, '_generate_prompt_name', return_value="test_name"):
+        with patch.object(self.prompt_manager, "_generate_prompt_name", return_value="test_name"):
             # Save first prompt
             name1 = self.prompt_manager.save_prompt("First prompt")
             self.assertEqual(name1, "test_name")
@@ -183,10 +169,7 @@ class TestPromptManager(unittest.TestCase):
         """Test loading a prompt and updating recency."""
         self.prompt_manager.prompts_data = {
             "recents": ["other"],
-            "prompts": {
-                "test_prompt": "This is a test prompt",
-                "other": "Other prompt"
-            }
+            "prompts": {"test_prompt": "This is a test prompt", "other": "Other prompt"},
         }
 
         content = self.prompt_manager.load_prompt("test_prompt")
@@ -219,9 +202,10 @@ class TestPromptHandler(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @patch('builtins.input')
+    @patch("builtins.input")
     def test_load_prompt_no_matches(self, mock_input):
         """Test loading prompt when no matches found."""
         mock_input.return_value = "nonexistent"
@@ -231,14 +215,11 @@ class TestPromptHandler(unittest.TestCase):
         self.assertEqual(message, "No prompts found matching your search.")
         self.assertIsNone(prefill)
 
-    @patch('builtins.input')
+    @patch("builtins.input")
     def test_load_prompt_single_match(self, mock_input):
         """Test loading prompt with single match."""
         # Setup test data
-        self.handler.prompt_manager.prompts_data = {
-            "recents": [],
-            "prompts": {"test_prompt": "This is a test prompt"}
-        }
+        self.handler.prompt_manager.prompts_data = {"recents": [], "prompts": {"test_prompt": "This is a test prompt"}}
 
         mock_input.return_value = "test"
 
@@ -247,17 +228,14 @@ class TestPromptHandler(unittest.TestCase):
         self.assertEqual(message, "Loaded prompt: test_prompt")
         self.assertEqual(prefill, "This is a test prompt")
 
-    @patch('builtins.input')
-    @patch('builtins.print')
+    @patch("builtins.input")
+    @patch("builtins.print")
     def test_load_prompt_multiple_matches(self, mock_print, mock_input):
         """Test loading prompt with multiple matches."""
         # Setup test data
         self.handler.prompt_manager.prompts_data = {
             "recents": [],
-            "prompts": {
-                "test1": "First test prompt",
-                "test2": "Second test prompt"
-            }
+            "prompts": {"test1": "First test prompt", "test2": "Second test prompt"},
         }
 
         mock_input.side_effect = ["test", "1"]  # Search then select first
@@ -267,17 +245,14 @@ class TestPromptHandler(unittest.TestCase):
         self.assertEqual(message, "Loaded prompt: test1")
         self.assertEqual(prefill, "First test prompt")
 
-    @patch('builtins.input')
-    @patch('builtins.print')
+    @patch("builtins.input")
+    @patch("builtins.print")
     def test_load_prompt_invalid_selection(self, mock_print, mock_input):
         """Test loading prompt with invalid selection."""
         # Setup test data with multiple matches to trigger selection
         self.handler.prompt_manager.prompts_data = {
             "recents": [],
-            "prompts": {
-                "test1": "First test prompt",
-                "test2": "Second test prompt"
-            }
+            "prompts": {"test1": "First test prompt", "test2": "Second test prompt"},
         }
 
         mock_input.side_effect = ["test", "5"]  # Search then invalid selection
@@ -290,17 +265,14 @@ class TestPromptHandler(unittest.TestCase):
     def test_load_prompt_with_args(self):
         """Test loading prompt with search args provided."""
         # Setup test data
-        self.handler.prompt_manager.prompts_data = {
-            "recents": [],
-            "prompts": {"neural_network": "Design a neural network"}
-        }
+        self.handler.prompt_manager.prompts_data = {"recents": [], "prompts": {"neural_network": "Design a neural network"}}
 
         message, prefill = self.handler.load_prompt(self.mock_bot, self.mock_context, ["neural"])
 
         self.assertEqual(message, "Loaded prompt: neural_network")
         self.assertEqual(prefill, "Design a neural network")
 
-    @patch('bots.foundation.anthropic_bots.AnthropicBot')
+    @patch("bots.foundation.anthropic_bots.AnthropicBot")
     def test_save_prompt_with_args(self, mock_bot_class):
         """Test saving prompt with provided text."""
         mock_bot = MagicMock()
@@ -312,7 +284,7 @@ class TestPromptHandler(unittest.TestCase):
         self.assertEqual(result, "Saved prompt as: generated_name")
         self.assertEqual(self.handler.prompt_manager.prompts_data["prompts"]["generated_name"], "test prompt text")
 
-    @patch('bots.foundation.anthropic_bots.AnthropicBot')
+    @patch("bots.foundation.anthropic_bots.AnthropicBot")
     def test_save_prompt_last_message(self, mock_bot_class):
         """Test saving prompt from last user message."""
         mock_bot = MagicMock()
@@ -335,15 +307,14 @@ class TestPromptHandler(unittest.TestCase):
         result = self.handler.save_prompt(self.mock_bot, self.mock_context, ["   "], None)
 
         self.assertEqual(result, "Cannot save empty prompt.")
-@patch('builtins.input')
-@patch('builtins.print')
+
+
+@patch("builtins.input")
+@patch("builtins.print")
 def test_load_prompt_invalid_selection(self, mock_print, mock_input):
     """Test loading prompt with invalid selection."""
     # Setup test data
-    self.handler.prompt_manager.prompts_data = {
-        "recents": [],
-        "prompts": {"test1": "First test prompt"}
-    }
+    self.handler.prompt_manager.prompts_data = {"recents": [], "prompts": {"test1": "First test prompt"}}
 
     mock_input.side_effect = ["test", "5"]  # Search then invalid selection
 
@@ -362,29 +333,27 @@ class TestCLIPromptIntegration(unittest.TestCase):
         self.test_prompts_file = Path(self.temp_dir) / "test_prompts.json"
 
         # Create CLI with mocked components
-        with patch('bots.dev.cli.AnthropicBot'):
+        with patch("bots.dev.cli.AnthropicBot"):
             self.cli = CLI()
             self.cli.prompts.prompt_manager = PromptManager(str(self.test_prompts_file))
 
     def tearDown(self):
         """Clean up test fixtures."""
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_handle_load_prompt(self):
         """Test CLI handling of /p command."""
         # Setup test data
-        self.cli.prompts.prompt_manager.prompts_data = {
-            "recents": [],
-            "prompts": {"test_prompt": "This is a test prompt"}
-        }
+        self.cli.prompts.prompt_manager.prompts_data = {"recents": [], "prompts": {"test_prompt": "This is a test prompt"}}
 
         result = self.cli._handle_load_prompt(None, None, ["test"])
 
         self.assertEqual(result, "Loaded prompt: test_prompt")
         self.assertEqual(self.cli.pending_prefill, "This is a test prompt")
 
-    @patch('bots.foundation.anthropic_bots.AnthropicBot')
+    @patch("bots.foundation.anthropic_bots.AnthropicBot")
     def test_handle_save_prompt(self, mock_bot_class):
         """Test CLI handling of /s command."""
         mock_bot = MagicMock()
@@ -396,11 +365,11 @@ class TestCLIPromptIntegration(unittest.TestCase):
 
         self.assertEqual(result, "Saved prompt as: generated_name")
 
-    @patch('builtins.input')
+    @patch("builtins.input")
     def test_get_user_input_with_prefill(self, mock_input):
         """Test getting user input with prefill fallback when readline not available."""
         # Test the fallback behavior when readline is not available
-        with patch('bots.dev.cli.HAS_READLINE', False):
+        with patch("bots.dev.cli.HAS_READLINE", False):
             mock_input.return_value = "edited prompt text"
             self.cli.pending_prefill = "original prompt text"
 
@@ -409,7 +378,7 @@ class TestCLIPromptIntegration(unittest.TestCase):
             self.assertEqual(result, "edited prompt text")
             self.assertIsNone(self.cli.pending_prefill)  # Should be cleared
 
-    @patch('builtins.input')
+    @patch("builtins.input")
     def test_get_user_input_without_prefill(self, mock_input):
         """Test getting user input without prefill."""
         mock_input.return_value = "normal input"
@@ -417,6 +386,7 @@ class TestCLIPromptIntegration(unittest.TestCase):
         result = self.cli._get_user_input(">>> ")
 
         self.assertEqual(result, "normal input")
+
 
 def run_with_timeout(test_func, timeout_seconds=5):
     """Run a test function with timeout to prevent hanging."""
@@ -443,5 +413,5 @@ def run_with_timeout(test_func, timeout_seconds=5):
     return result[0]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

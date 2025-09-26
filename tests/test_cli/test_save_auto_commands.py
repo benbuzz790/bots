@@ -1,9 +1,9 @@
-import unittest
-from unittest.mock import patch, MagicMock
-from contextlib import redirect_stdout
-from io import StringIO
 import os
 import tempfile
+import unittest
+from contextlib import redirect_stdout
+from io import StringIO
+from unittest.mock import patch
 
 import bots.dev.cli as cli_module
 
@@ -23,6 +23,7 @@ class TestSaveCommand(unittest.TestCase):
         """Clean up test fixtures."""
         os.chdir(self.original_cwd)
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     @patch("builtins.input")
@@ -32,7 +33,7 @@ class TestSaveCommand(unittest.TestCase):
             "Hello bot",  # Initial chat to create some conversation
             "/save",
             "test_bot",  # Filename
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -49,12 +50,7 @@ class TestSaveCommand(unittest.TestCase):
     @patch("builtins.input")
     def test_save_command_cancelled(self, mock_input):
         """Test /save command when user cancels."""
-        mock_input.side_effect = [
-            "Hello bot",
-            "/save",
-            "",  # Empty filename cancels
-            "/exit"
-        ]
+        mock_input.side_effect = ["Hello bot", "/save", "", "/exit"]  # Empty filename cancels
 
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
@@ -68,12 +64,7 @@ class TestSaveCommand(unittest.TestCase):
     @patch("builtins.input")
     def test_save_command_auto_extension(self, mock_input):
         """Test /save command automatically adds .bot extension."""
-        mock_input.side_effect = [
-            "Hello bot",
-            "/save",
-            "my_bot",  # No extension
-            "/exit"
-        ]
+        mock_input.side_effect = ["Hello bot", "/save", "my_bot", "/exit"]  # No extension
 
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
@@ -96,11 +87,7 @@ class TestAutoCommand(unittest.TestCase):
         # Mock that interrupt is never pressed
         mock_check_interrupt.return_value = False
 
-        mock_input.side_effect = [
-            "Hello bot",  # Initial chat
-            "/auto",  # Start autonomous mode
-            "/exit"
-        ]
+        mock_input.side_effect = ["Hello bot", "/auto", "/exit"]  # Initial chat  # Start autonomous mode
 
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
@@ -119,11 +106,7 @@ class TestAutoCommand(unittest.TestCase):
         # Mock that interrupt is pressed immediately
         mock_check_interrupt.return_value = True
 
-        mock_input.side_effect = [
-            "Hello bot",
-            "/auto",
-            "/exit"
-        ]
+        mock_input.side_effect = ["Hello bot", "/auto", "/exit"]
 
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
@@ -138,10 +121,7 @@ class TestAutoCommand(unittest.TestCase):
     @patch("builtins.input")
     def test_auto_command_error_handling(self, mock_input):
         """Test /auto command error handling."""
-        mock_input.side_effect = [
-            "/auto",  # Try auto without any conversation context
-            "/exit"
-        ]
+        mock_input.side_effect = ["/auto", "/exit"]  # Try auto without any conversation context
 
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
@@ -153,5 +133,5 @@ class TestAutoCommand(unittest.TestCase):
         self.assertIn("Bot running autonomously", output)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

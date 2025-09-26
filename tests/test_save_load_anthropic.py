@@ -779,7 +779,6 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         final_count = len(self.bot.tool_handler.tools)
         self.assertGreater(final_count, initial_count)
 
-
     def test_branch_self_frame_inspection_hypothesis(self) -> None:
         """Test hypothesis: branch_self fails due to frame inspection issues in _get_calling_bot().
 
@@ -799,7 +798,11 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         # Now test branch_self with a simple task that uses self_tools
         # This should fail if my hypothesis is correct
         branch_response = self.bot.respond(
-            "Please use branch_self to create branches with prompts ['Get your own info using get_own_info', 'What is your name?'] and use llm_merge recombination"
+            (
+                "Please use branch_self to create branches with prompts "
+                "['Get your own info using get_own_info', 'What is your name?'] "
+                "and use llm_merge recombination"
+            )
         )
 
         # Check if the branch execution failed due to frame inspection
@@ -812,13 +815,18 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         # If it passes, it confirms the frame inspection issue
         if "Error: Could not find calling bot" in branch_response:
             print("HYPOTHESIS CONFIRMED: Branch bots cannot find calling bot via frame inspection")
-            self.assertIn("Error: Could not find calling bot", branch_response, 
-                         "Branch bots should fail to find calling bot due to frame inspection issues")
+            self.assertIn(
+                "Error: Could not find calling bot",
+                branch_response,
+                "Branch bots should fail to find calling bot due to frame inspection issues",
+            )
         else:
             print("HYPOTHESIS REJECTED: Branch bots can successfully find calling bot")
-            self.assertNotIn("Error: Could not find calling bot", branch_response,
-                           "Branch bots should work correctly if frame inspection works")
-
+            self.assertNotIn(
+                "Error: Could not find calling bot",
+                branch_response,
+                "Branch bots should work correctly if frame inspection works",
+            )
 
     def test_branch_tool_result_integration_issue(self) -> None:
         """Test hypothesis: branch bots execute tools but don't integrate results into responses.
@@ -830,6 +838,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
 
         # Create a debug tool that will show execution
         execution_log = []
+
         def debug_tool(test_input: str) -> str:
             """A debug tool that logs execution and returns specific output"""
             execution_log.append(f"EXECUTED: {test_input}")
@@ -841,34 +850,42 @@ class TestSaveLoadAnthropic(unittest.TestCase):
 
         # Test that tools work normally first
         normal_response = self.bot.respond("Use debug_tool with test_input 'normal_test'")
-        self.assertIn("TOOL_RESULT_FOR_NORMAL_TEST", normal_response, 
-                     "Tool results should appear in normal responses")
+        self.assertIn("TOOL_RESULT_FOR_NORMAL_TEST", normal_response, "Tool results should appear in normal responses")
 
         # Clear the execution log
         execution_log.clear()
 
         # Test branch_self with tool usage
         branch_response = self.bot.respond(
-            "Use branch_self with prompts ['Use debug_tool with test_input \"branch_test_1\"', 'Use debug_tool with test_input \"branch_test_2\"'] and concatenate recombination"
+            (
+                "Use branch_self with prompts "
+                "['Use debug_tool with test_input \"branch_test_1\"', "
+                "'Use debug_tool with test_input \"branch_test_2\"'] "
+                "and concatenate recombination"
+            )
         )
 
         # Check that tools were actually executed (should be in execution_log)
-        self.assertEqual(len(execution_log), 2, 
-                       "Both branch tools should have been executed")
+        self.assertEqual(len(execution_log), 2, "Both branch tools should have been executed")
         self.assertIn("EXECUTED: branch_test_1", execution_log)
         self.assertIn("EXECUTED: branch_test_2", execution_log)
 
         # But check that tool results are NOT in the branch response
         # This confirms the bug: tools execute but results don't integrate
-        self.assertNotIn("TOOL_RESULT_FOR_BRANCH_TEST_1", branch_response,
-                       "Tool results should NOT appear in branch responses (this is the bug)")
-        self.assertNotIn("TOOL_RESULT_FOR_BRANCH_TEST_2", branch_response,
-                       "Tool results should NOT appear in branch responses (this is the bug)")
+        self.assertNotIn(
+            "TOOL_RESULT_FOR_BRANCH_TEST_1",
+            branch_response,
+            "Tool results should NOT appear in branch responses (this is the bug)",
+        )
+        self.assertNotIn(
+            "TOOL_RESULT_FOR_BRANCH_TEST_2",
+            branch_response,
+            "Tool results should NOT appear in branch responses (this is the bug)",
+        )
 
         print("CONFIRMED: Tools execute in branches but results don't integrate into responses")
         print(f"Execution log: {execution_log}")
         print(f"Branch response length: {len(branch_response)}")
-
 
     def test_branch_self_tool_result_missing_from_responses(self) -> None:
         """DEFINITIVE TEST: Tools execute in branches but results don't appear in responses.
@@ -882,6 +899,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
 
         # Create a tool that logs execution and returns identifiable results
         execution_log = []
+
         def identifiable_tool(test_id: str) -> str:
             """Tool that logs execution and returns identifiable results"""
             execution_log.append(f"EXECUTED_WITH_ID: {test_id}")
@@ -906,7 +924,12 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         # Test 2: Test branch_self with tool usage
         execution_log.clear()
         branch_response = self.bot.respond(
-            'Use branch_self with prompts ["Use identifiable_tool with test_id \"branch_1\"", "Use identifiable_tool with test_id \"branch_2\""] and concatenate recombination'
+            (
+                "Use branch_self with prompts "
+                '["Use identifiable_tool with test_id "branch_1"", '
+                '"Use identifiable_tool with test_id "branch_2""] '
+                "and concatenate recombination"
+            )
         )
 
         # Tools should have executed in branches
@@ -915,8 +938,10 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         print(f"Branch tools executed: {branch_tools_executed}")
 
         # But tool results should NOT appear in branch response (this is the bug)
-        branch_has_results = ("IDENTIFIABLE_RESULT_FOR_ID_branch_1" in branch_response or 
-                            "IDENTIFIABLE_RESULT_FOR_ID_branch_2" in branch_response)
+        branch_has_results = (
+            "IDENTIFIABLE_RESULT_FOR_ID_branch_1" in branch_response
+            or "IDENTIFIABLE_RESULT_FOR_ID_branch_2" in branch_response
+        )
         print(f"Branch response includes tool results: {branch_has_results}")
 
         # The key assertion: tools execute but results don't appear in responses
@@ -932,7 +957,6 @@ class TestSaveLoadAnthropic(unittest.TestCase):
                 self.fail("Tools should execute in branches")
             if branch_has_results:
                 print("Unexpected: Tool results appeared in branch responses - bug might be fixed!")
-
 
     def test_branch_self_tool_execution_vs_response_integration(self) -> None:
         """Test that demonstrates tools execute in branches but results don't integrate into responses.
@@ -956,28 +980,43 @@ class TestSaveLoadAnthropic(unittest.TestCase):
 
         # Check that tool executed normally (like working tests do)
         normal_tool_results = self.bot.conversation.tool_results[0].values() if self.bot.conversation.tool_results else []
-        normal_pending_results = self.bot.conversation.pending_results[0].values() if self.bot.conversation.pending_results else []
-        normal_has_result = any(("12" in str(v) for v in normal_tool_results)) or any(("12" in str(v) for v in normal_pending_results))
+        normal_pending_results = (
+            self.bot.conversation.pending_results[0].values() if self.bot.conversation.pending_results else []
+        )
+        normal_has_result = any(("12" in str(v) for v in normal_tool_results)) or any(
+            ("12" in str(v) for v in normal_pending_results)
+        )
 
         self.assertTrue(normal_has_result, "Normal tool execution should produce results")
 
         # Test 2: Branch execution with tools
         branch_response = self.bot.respond(
-            'Use branch_self with prompts ["Use test_calculation with x \"3\" and y \"4\"", "Use test_calculation with x \"8\" and y \"2\""] and concatenate recombination'
+            (
+                "Use branch_self with prompts "
+                '["Use test_calculation with x "3" and y "4"", '
+                '"Use test_calculation with x "8" and y "2""] '
+                "and concatenate recombination"
+            )
         )
 
         # Check if branch_self executed successfully
         branch_tool_results = self.bot.conversation.tool_results[0].values() if self.bot.conversation.tool_results else []
-        branch_pending_results = self.bot.conversation.pending_results[0].values() if self.bot.conversation.pending_results else []
+        branch_pending_results = (
+            self.bot.conversation.pending_results[0].values() if self.bot.conversation.pending_results else []
+        )
 
         # Look for branch_self execution
-        branch_self_executed = any(("Successfully completed" in str(v) for v in branch_tool_results)) or any(("Successfully completed" in str(v) for v in branch_pending_results))
+        branch_self_executed = any(("Successfully completed" in str(v) for v in branch_tool_results)) or any(
+            ("Successfully completed" in str(v) for v in branch_pending_results)
+        )
 
         self.assertTrue(branch_self_executed, "branch_self should execute successfully")
 
         # The key test: Check if tool results from branches appear in the recombined output
         # If tools executed properly in branches, we should see "7" and "10" in the results
-        branch_contains_calculation_results = any(("7" in str(v) and "10" in str(v) for v in branch_tool_results)) or any(("7" in str(v) and "10" in str(v) for v in branch_pending_results))
+        branch_contains_calculation_results = any(("7" in str(v) and "10" in str(v) for v in branch_tool_results)) or any(
+            ("7" in str(v) and "10" in str(v) for v in branch_pending_results)
+        )
 
         if not branch_contains_calculation_results:
             print("CONFIRMED BUG: Branch tools execute but results don't appear in recombined output")

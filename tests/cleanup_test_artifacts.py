@@ -72,5 +72,4 @@ def pytest_runtest_teardown(item, nextitem):
 
 
 if __name__ == "__main__":
-
     cleanup_test_artifacts()

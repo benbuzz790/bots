@@ -8,7 +8,7 @@ Now with warning suppression for cleaner output.
 import subprocess
 import sys
 import time
-from pathlib import Path
+
 
 def run_command(cmd, description, timeout_seconds=300):
     """Run a command with timeout and return success status."""
@@ -21,7 +21,7 @@ def run_command(cmd, description, timeout_seconds=300):
 
     start_time = time.time()
     try:
-        result = subprocess.run(cmd, check=True, text=True, timeout=timeout_seconds)
+        subprocess.run(cmd, check=True, text=True, timeout=timeout_seconds)
         duration = time.time() - start_time
         print(f"\n✅ SUCCESS ({duration:.1f}s): {description}")
         return True, None
@@ -38,29 +38,40 @@ def run_command(cmd, description, timeout_seconds=300):
         print(f"\n⚠️  INTERRUPTED: {description}")
         return False, "INTERRUPTED"
 
+
 def build_container():
     """Build the Docker test container."""
     success, error = run_command(
         ["docker", "build", "-t", "pytest-container", "."],
         "Building Docker test container",
-        timeout_seconds=600  # 10 minutes for building
+        timeout_seconds=600,  # 10 minutes for building
     )
     return success
+
 
 def run_test_suite(test_args, description, timeout_seconds=300):
     """Run a test suite in Docker."""
     base_cmd = [
-        "docker", "run", "--rm",
-        "-e", "ANTHROPIC_API_KEY",
-        "-e", "OPENAI_API_KEY", 
-        "-e", "GEMINI_API_KEY",
-        "--memory=2g", "--cpus=2",
+        "docker",
+        "run",
+        "--rm",
+        "-e",
+        "ANTHROPIC_API_KEY",
+        "-e",
+        "OPENAI_API_KEY",
+        "-e",
+        "GEMINI_API_KEY",
+        "--memory=2g",
+        "--cpus=2",
         "pytest-container",
-        "python", "-m", "pytest"
+        "python",
+        "-m",
+        "pytest",
     ]
 
     cmd = base_cmd + test_args
     return run_command(cmd, description, timeout_seconds)
+
 
 def main():
     """Main orchestrator function - fully automated."""
@@ -89,32 +100,69 @@ def main():
             "args": ["-n", "1", "--timeout=30", "-v", "--disable-warnings", "--tb=short", "test_docker_permissions.py"],
             "description": "Docker permissions test (safe baseline)",
             "timeout": 60,
-            "critical": True  # Must pass for others to be meaningful
+            "critical": True,  # Must pass for others to be meaningful
         },
         {
-            "args": ["-n", "1", "--timeout=30", "-v", "--disable-warnings", "--tb=short", "-k", "test_web_tool and not integration"],
+            "args": [
+                "-n",
+                "1",
+                "--timeout=30",
+                "-v",
+                "--disable-warnings",
+                "--tb=short",
+                "-k",
+                "test_web_tool and not integration",
+            ],
             "description": "Web tool tests (basic functionality)",
             "timeout": 120,
-            "critical": False
+            "critical": False,
         },
         {
-            "args": ["-n", "1", "--timeout=30", "-v", "--disable-warnings", "--tb=short", "-k", "test_toolify and not integration"],
-            "description": "Toolify tests (core functionality)", 
+            "args": [
+                "-n",
+                "1",
+                "--timeout=30",
+                "-v",
+                "--disable-warnings",
+                "--tb=short",
+                "-k",
+                "test_toolify and not integration",
+            ],
+            "description": "Toolify tests (core functionality)",
             "timeout": 120,
-            "critical": False
+            "critical": False,
         },
         {
-            "args": ["-n", "1", "--timeout=30", "-v", "--disable-warnings", "--tb=short", "tests/test_cli/test_broadcast_fp_comprehensive.py", "-x"],
+            "args": [
+                "-n",
+                "1",
+                "--timeout=30",
+                "-v",
+                "--disable-warnings",
+                "--tb=short",
+                "tests/test_cli/test_broadcast_fp_comprehensive.py",
+                "-x",
+            ],
             "description": "Broadcast FP tests (investigating failures)",
             "timeout": 180,
-            "critical": False
+            "critical": False,
         },
         {
-            "args": ["-n", "1", "--timeout=30", "-v", "--disable-warnings", "--tb=short", "-k", "not (test_branch_self_recursive or test_real_ai_stash_message_generation)", "--maxfail=5"],
+            "args": [
+                "-n",
+                "1",
+                "--timeout=30",
+                "-v",
+                "--disable-warnings",
+                "--tb=short",
+                "-k",
+                "not (test_branch_self_recursive or test_real_ai_stash_message_generation)",
+                "--maxfail=5",
+            ],
             "description": "Safe test subset (avoiding dangerous tests)",
             "timeout": 600,
-            "critical": False
-        }
+            "critical": False,
+        },
     ]
 
     results = []
@@ -125,18 +173,16 @@ def main():
 
     for i, config in enumerate(test_configs, 1):
         print(f"\n📋 Configuration {i}/{len(test_configs)}")
-        success, error_type = run_test_suite(
-            config["args"], 
-            config["description"],
-            config.get("timeout", 300)
-        )
+        success, error_type = run_test_suite(config["args"], config["description"], config.get("timeout", 300))
 
-        results.append({
-            "description": config["description"],
-            "success": success,
-            "error_type": error_type,
-            "critical": config.get("critical", False)
-        })
+        results.append(
+            {
+                "description": config["description"],
+                "success": success,
+                "error_type": error_type,
+                "critical": config.get("critical", False),
+            }
+        )
 
         # If a critical test fails, note it but continue
         if not success and config.get("critical", False):
@@ -176,14 +222,14 @@ def main():
             regular_failures.append(result)
 
     # Statistics
-    print(f"\n📈 STATISTICS:")
+    print("\n📈 STATISTICS:")
     print(f"   ✅ Passed: {len(successes)}")
     print(f"   ❌ Failed: {len(regular_failures)}")
     print(f"   🚨 Critical Failed: {len(critical_failures)}")
     print(f"   📊 Success Rate: {len(successes)}/{len(results)} ({100*len(successes)/len(results):.1f}%)")
 
     # Recommendations
-    print(f"\n💡 RECOMMENDATIONS:")
+    print("\n💡 RECOMMENDATIONS:")
     if critical_failures:
         print("   🚨 Fix critical failures first - these indicate basic setup issues")
     if regular_failures:
@@ -210,6 +256,7 @@ def main():
     else:
         print("\n🎉 All tests completed successfully!")
         sys.exit(0)  # Success
+
 
 if __name__ == "__main__":
     try:

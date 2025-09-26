@@ -184,7 +184,6 @@ class TestHandleErrorsDecorator:
         """Test that the decorator works with class methods."""
 
         class TestClass:
-
             @handle_errors
             def method_that_fails(self):
                 raise AttributeError("Method error")
@@ -202,6 +201,7 @@ class TestHandleErrorsDecorator:
         assert "Tool Failed:" in error_result
         assert "AttributeError" in error_result
         assert "Method error" in error_result
+
     def test_missing_argument_error_enhancement(self):
         """Test that missing required argument errors get enhanced with context length message."""
 
@@ -223,7 +223,7 @@ class TestHandleErrorsDecorator:
 
         # Verify our special message was added
         assert "this may be due to a context length limitation, try making smaller edits" in result
-    
+
     def test_other_type_errors_not_enhanced(self):
         """Test that TypeError not related to missing arguments doesn't get enhanced."""
 

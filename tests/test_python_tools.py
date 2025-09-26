@@ -26,7 +26,6 @@ def ast_normalize(code):
 
 
 class DetailedTestCase(unittest.TestCase):
-
     def assertEqualDetailed(self, first, second, msg=None):
         normalized_first = ast_normalize(first)
         normalized_second = ast_normalize(second)
@@ -71,7 +70,6 @@ class DetailedTestCase(unittest.TestCase):
 
 
 class TestPythonTools(DetailedTestCase):
-
     def test_class_scoped_functions(self):
         """Test function replacement and addition within specific classes"""
         test_dir = os.path.join(self.temp_dir, "test_class_scoped")

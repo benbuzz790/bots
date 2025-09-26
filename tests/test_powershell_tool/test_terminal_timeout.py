@@ -195,7 +195,6 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             received_items = []
 
             class MonitoringQueue:
-
                 def __init__(self, original):
                     self.original = original
 
@@ -402,7 +401,6 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
         print("\n=== Testing Alternative Wrapping Approach ===")
 
         class TestSession(PowerShellSession):
-
             def _wrap_code_safely(self, code: str, delimiter: str) -> str:
                 """Alternative wrapping without $LASTOUTPUT"""
                 return f"""

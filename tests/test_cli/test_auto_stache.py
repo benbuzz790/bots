@@ -1,14 +1,13 @@
 import os
 import subprocess
 import tempfile
-import pytest
 import time
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
+import pytest
 
 from bots.dev.cli import CLI, CLIConfig, create_auto_stash
-from bots.foundation.anthropic_bots import AnthropicBot
-from bots.foundation.base import Engines
 
 
 def safe_rmtree(path):
@@ -59,7 +58,7 @@ class TestAutoStashConfig:
 
     def test_config_command_show(self):
         """Test /config command shows auto_stash setting."""
-        from bots.dev.cli import SystemHandler, CLIContext
+        from bots.dev.cli import CLIContext, SystemHandler
 
         handler = SystemHandler()
         context = CLIContext()
@@ -70,7 +69,7 @@ class TestAutoStashConfig:
 
     def test_config_command_set(self):
         """Test /config set auto_stash command."""
-        from bots.dev.cli import SystemHandler, CLIContext
+        from bots.dev.cli import CLIContext, SystemHandler
 
         handler = SystemHandler()
         context = CLIContext()
@@ -87,7 +86,7 @@ class TestAutoStashConfig:
 
     def test_auto_stash_toggle_command(self):
         """Test /auto_stash toggle command."""
-        from bots.dev.cli import SystemHandler, CLIContext
+        from bots.dev.cli import CLIContext, SystemHandler
 
         handler = SystemHandler()
         context = CLIContext()
@@ -136,17 +135,19 @@ class TestCreateAutoStash:
     def test_real_ai_stash_message_generation(self):
         """Integration test with real AI API call."""
         # Skip if no API key available
-        if not os.getenv('ANTHROPIC_API_KEY'):
+        if not os.getenv("ANTHROPIC_API_KEY"):
             pytest.skip("ANTHROPIC_API_KEY not available")
 
         # Create meaningful changes and stage them
-        Path("calculator.py").write_text("""
+        Path("calculator.py").write_text(
+            """
 def add(a, b):
     return a + b
 
 def multiply(a, b):
     return a * b
-""")
+"""
+        )
         subprocess.run(["git", "add", "calculator.py"], check=True)
 
         result = create_auto_stash()
@@ -195,7 +196,7 @@ class TestLoadStashCommand:
 
     def test_load_stash_by_index(self):
         """Test loading stash by index."""
-        from bots.dev.cli import SystemHandler, CLIContext
+        from bots.dev.cli import CLIContext, SystemHandler
 
         handler = SystemHandler()
         context = CLIContext()
@@ -209,7 +210,7 @@ class TestLoadStashCommand:
 
     def test_load_stash_by_name(self):
         """Test loading stash by name pattern."""
-        from bots.dev.cli import SystemHandler, CLIContext
+        from bots.dev.cli import CLIContext, SystemHandler
 
         handler = SystemHandler()
         context = CLIContext()
@@ -223,7 +224,7 @@ class TestLoadStashCommand:
 
     def test_load_stash_not_found(self):
         """Test error when stash not found."""
-        from bots.dev.cli import SystemHandler, CLIContext
+        from bots.dev.cli import CLIContext, SystemHandler
 
         handler = SystemHandler()
         context = CLIContext()
@@ -233,7 +234,7 @@ class TestLoadStashCommand:
 
     def test_load_stash_no_args(self):
         """Test error when no arguments provided."""
-        from bots.dev.cli import SystemHandler, CLIContext
+        from bots.dev.cli import CLIContext, SystemHandler
 
         handler = SystemHandler()
         context = CLIContext()
@@ -255,7 +256,7 @@ class TestCLIIntegration:
 
     def test_help_includes_auto_stash(self):
         """Test that help includes auto-stash commands."""
-        from bots.dev.cli import SystemHandler, CLIContext
+        from bots.dev.cli import CLIContext, SystemHandler
 
         handler = SystemHandler()
         context = CLIContext()
@@ -271,7 +272,7 @@ class TestEdgeCases:
 
     def test_create_auto_stash_timeout(self):
         """Test timeout handling in create_auto_stash."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired("git", 10)
 
             result = create_auto_stash()
@@ -279,7 +280,7 @@ class TestEdgeCases:
 
     def test_create_auto_stash_general_exception(self):
         """Test general exception handling in create_auto_stash."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = Exception("Unexpected error")
 
             result = create_auto_stash()

@@ -9,7 +9,6 @@ from bots.foundation.base import ToolHandler
 
 
 class DummyToolHandler(ToolHandler):
-
     def generate_tool_schema(self, func):
         """Simple schema generation for testing"""
         return {
@@ -36,7 +35,6 @@ class DummyToolHandler(ToolHandler):
 
 
 class TestToolHandlerPersistence(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
         self.handler = DummyToolHandler()

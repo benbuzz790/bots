@@ -30,7 +30,6 @@ The tests cover various scenarios including:
 
 
 class TestSaveLoadOpenAI(unittest.TestCase):
-
     def setUp(self) -> "TestSaveLoadOpenAI":
         """Set up test environment before each test.
 

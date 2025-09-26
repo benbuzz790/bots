@@ -248,6 +248,8 @@ def test_file_start_insertion_multiple():
     assert "import os\n" == lines[0]
     assert "import sys\n" == lines[1]
     assert "x = 1" in lines[-1]
+
+
 def test_file_end_insertion(test_file):
     """Test inserting at file end"""
     result = python_edit(test_file, "# End of file comment", coscope_with="__FILE_END__")
@@ -542,6 +544,8 @@ def test_function_added_by_integration_test():
                 import_line_found = True
                 break
         assert import_line_found, "Import was not added at file start"
+
+
 result3 = python_edit(test_file, "# End marker added by integration test", coscope_with="__FILE_END__")
 assert "error" not in result3.lower(), f"Edit 3 failed: {result3}"
 # Verify code was added at the end

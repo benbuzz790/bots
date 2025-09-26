@@ -6,8 +6,7 @@ string-in, string-out bot tools with automatic type conversion.
 """
 
 import json
-import pytest
-from typing import List, Dict
+from typing import Dict, List
 
 from bots.dev.decorators import toolify
 
@@ -64,12 +63,7 @@ class TestTypeConversion:
         """Test conversion of basic types."""
 
         @toolify()
-        def test_types(
-            text: str,
-            number: int, 
-            decimal: float,
-            flag: bool
-        ) -> str:
+        def test_types(text: str, number: int, decimal: float, flag: bool) -> str:
             return f"{text}|{number}|{decimal}|{flag}"
 
         result = test_types("hello", "42", "3.14", "true")
@@ -256,7 +250,7 @@ class TestRealWorldExamples:
 
         @toolify("Count lines in text")
         def count_lines(text: str) -> int:
-            return len(text.split('\n'))
+            return len(text.split("\n"))
 
         result = count_lines("line1\nline2\nline3")
         assert result == "3"
@@ -276,16 +270,8 @@ class TestRealWorldExamples:
         """Test a data processing tool."""
 
         @toolify("Process user data")
-        def process_user_data(
-            name: str, 
-            age: int, 
-            active: bool = True
-        ) -> dict:
-            return {
-                "name": name.upper(),
-                "age": age,
-                "status": "active" if active else "inactive"
-            }
+        def process_user_data(name: str, age: int, active: bool = True) -> dict:
+            return {"name": name.upper(), "age": age, "status": "active" if active else "inactive"}
 
         result = process_user_data("john", "25", "true")
         data = json.loads(result)

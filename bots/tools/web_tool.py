@@ -5,8 +5,9 @@ functionality using the raw Anthropic client directly.
 """
 
 import os
-from typing import Any, Dict
+
 import anthropic
+
 from bots.dev.decorators import toolify
 
 
@@ -19,8 +20,8 @@ def web_search(question: str) -> str:
     metadata, and processing information.
 
     Args:
-        question (str): The search goal framed as a question. 
-        Good examples: 
+        question (str): The search goal framed as a question.
+        Good examples:
             "Who is Ben Rinauto?"
             "What is the connection between Paris, France and Buffalo, NY?"
         Bad examples:
@@ -51,7 +52,8 @@ def web_search(question: str) -> str:
         # Create the search prompt
         search_prompt = f"""I need you to search the web answers to this question: "{question}"
 
-        Please use the web search tool to find current, relevant information to precisely and accurately \answer this question."""
+        Please use the web search tool to find current, relevant information to precisely and
+        accurately answer this question."""
 
         # Make the API call with web search enabled
         response = client.messages.create(
@@ -59,12 +61,7 @@ def web_search(question: str) -> str:
             max_tokens=16384,
             temperature=0.3,
             tools=tools,
-            messages=[
-                {
-                    "role": "user",
-                    "content": search_prompt
-                }
-            ]
+            messages=[{"role": "user", "content": search_prompt}],
         )
 
         # Return raw response which includes citations and other useful info

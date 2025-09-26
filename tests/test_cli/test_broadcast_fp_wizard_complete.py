@@ -1,9 +1,8 @@
 import unittest
-from unittest.mock import patch, MagicMock
 from contextlib import redirect_stdout
 from io import StringIO
+from unittest.mock import patch
 
-import pytest
 import bots.dev.cli as cli_module
 
 """Complete test suite for all /broadcast_fp command wizards."""
@@ -17,7 +16,8 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
         """Test /broadcast_fp command with branch wizard."""
         mock_input.side_effect = [
             "Create initial content",  # Create conversation
-            "/label", "start",  # Create a label for navigation
+            "/label",
+            "start",  # Create a label for navigation
             "Create more content",  # Create branches
             "/broadcast_fp",
             "all",  # Select all leaves
@@ -26,7 +26,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
             "Performance analysis branch",  # Second prompt
             "Usability analysis branch",  # Third prompt
             "",  # End prompts
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -53,7 +53,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
             "User perspective",  # Third prompt
             "",  # End prompts
             "1",  # Select concatenate recombinator
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -78,7 +78,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
             "Continue debugging until all issues are fixed",  # first_prompt
             "Keep going",  # continue_prompt
             "2",  # Stop condition (tool_not_used)
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -106,7 +106,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
             "",  # End prompts
             "3",  # Stop condition (said_DONE)
             "continue with this phase",  # continue_prompt
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -134,7 +134,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
             "",  # End prompts
             "2",  # Stop condition (tool_not_used)
             "continue optimization",  # continue_prompt
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -153,17 +153,19 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
         """Test /broadcast_fp with selective leaf targeting."""
         mock_input.side_effect = [
             "Create branch A",
-            "/label", "branchA",
+            "/label",
+            "branchA",
             "/up",  # Go back
-            "Create branch B", 
-            "/label", "branchB",
+            "Create branch B",
+            "/label",
+            "branchB",
             "/up",  # Go back
             "Create branch C",
             "/broadcast_fp",
             "1,3",  # Select only leaves 1 and 3 (not 2)
             "1",  # Select single_prompt
             "Message for selected leaves only",
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -188,7 +190,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
             "invalid_fp",  # Invalid FP selection
             "1",  # Then valid FP selection
             "Valid prompt after errors",
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -207,10 +209,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
     def test_broadcast_fp_no_leaves_scenario(self, mock_input):
         """Test /broadcast_fp when no leaves are available."""
         # Start with fresh bot that has no conversation branches
-        mock_input.side_effect = [
-            "/broadcast_fp",  # Try broadcast without any conversation
-            "/exit"
-        ]
+        mock_input.side_effect = ["/broadcast_fp", "/exit"]  # Try broadcast without any conversation
 
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
@@ -226,12 +225,17 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
         """Test /broadcast_fp with recursive par_branch for complex tree building."""
         mock_input.side_effect = [
             "Start complex analysis",
-            "/label", "root_analysis",
+            "/label",
+            "root_analysis",
             # First create some branches
             "Technical analysis path",
-            "/up", "/label", "tech_path",
-            "Business analysis path", 
-            "/up", "/label", "biz_path",
+            "/up",
+            "/label",
+            "tech_path",
+            "Business analysis path",
+            "/up",
+            "/label",
+            "biz_path",
             "User analysis path",
             # Now broadcast par_branch to create recursive branches
             "/broadcast_fp",
@@ -241,7 +245,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
             "Deep dive approach B",  # Second recursive prompt
             "Deep dive approach C",  # Third recursive prompt
             "",  # End prompts
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -264,7 +268,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
             "/broadcast_fp",
             "all",
             # This will show the menu with all 9 options, then exit
-            "/exit"  # Exit from the FP selection
+            "/exit",  # Exit from the FP selection
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -276,19 +280,19 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
         # Should show all 9 functional prompt options
         expected_fps = [
             "1. single_prompt",
-            "2. chain", 
+            "2. chain",
             "3. branch",
             "4. tree_of_thought",
             "5. prompt_while",
             "6. chain_while",
             "7. branch_while",
             "8. par_branch",
-            "9. par_branch_while"
+            "9. par_branch_while",
         ]
 
         for fp_option in expected_fps:
             self.assertIn(fp_option, output, f"Should show {fp_option} in broadcast_fp menu")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

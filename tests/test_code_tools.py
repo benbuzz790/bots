@@ -142,7 +142,6 @@ if __name__ == "__main__":
 
 class TestViewDir(unittest.TestCase):
     def setUp(self):
-
         self.temp_dir = os.path.join("benbuzz790", "private_tests", "view_dir_test")
         os.makedirs(self.temp_dir, exist_ok=True)
         self.files = {

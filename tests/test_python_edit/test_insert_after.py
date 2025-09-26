@@ -1,5 +1,4 @@
 class TestClass:
-
     def method1(self):
         return "method1"
 

@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Debug test to trace helper function loss during save/load."""
 
-import sys
+import json
 import os
+import shutil
+import sys
 import tempfile
 import unittest
-import json
-from typing import Dict, Any
-sys.path.insert(0, os.path.abspath('.'))
+
+sys.path.insert(0, os.path.abspath("."))
 
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
@@ -22,7 +23,7 @@ class TestSaveLoadDebug(unittest.TestCase):
 
     def tearDown(self):
         """Clean up test environment."""
-        import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_debug_save_load_process(self):
@@ -33,6 +34,7 @@ class TestSaveLoadDebug(unittest.TestCase):
         bot = AnthropicBot(name="DebugBot", model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
+
         print(f"Original view_dir function: {view_dir}")
         print(f"Original view_dir module: {view_dir.__module__}")
         print(f"Original view_dir globals keys: {list(view_dir.__globals__.keys())[:10]}...")  # First 10 keys
@@ -40,7 +42,7 @@ class TestSaveLoadDebug(unittest.TestCase):
         bot.add_tools(view_dir)
 
         # Check what got stored in the tool handler
-        print(f"\nAfter adding tools:")
+        print("\nAfter adding tools:")
         print(f"Tool handler modules: {list(bot.tool_handler.modules.keys())}")
         print(f"Function map: {list(bot.tool_handler.function_map.keys())}")
 
@@ -50,15 +52,15 @@ class TestSaveLoadDebug(unittest.TestCase):
         print(f"Stored function module: {stored_func.__module__}")
         print(f"Stored function has __module_context__: {hasattr(stored_func, '__module_context__')}")
 
-        if hasattr(stored_func, '__module_context__'):
+        if hasattr(stored_func, "__module_context__"):
             context = stored_func.__module_context__
             print(f"Module context: {context}")
             print(f"Module context namespace keys: {list(context.namespace.__dict__.keys())[:10]}...")
 
         # Check globals
-        if hasattr(stored_func, '__globals__'):
+        if hasattr(stored_func, "__globals__"):
             globals_keys = list(stored_func.__globals__.keys())
-            helper_funcs = [k for k in globals_keys if k.startswith('_') and callable(stored_func.__globals__.get(k))]
+            helper_funcs = [k for k in globals_keys if k.startswith("_") and callable(stored_func.__globals__.get(k))]
             print(f"Stored function globals helper functions: {helper_funcs}")
 
         # Now save the bot
@@ -67,25 +69,25 @@ class TestSaveLoadDebug(unittest.TestCase):
         bot.save(save_path)
 
         # Look at the saved data
-        with open(save_path + ".bot", 'r') as f:
+        with open(save_path + ".bot", "r") as f:
             saved_data = json.load(f)
 
         print(f"Saved data keys: {list(saved_data.keys())}")
-        if 'tool_handler' in saved_data:
-            th_data = saved_data['tool_handler']
+        if "tool_handler" in saved_data:
+            th_data = saved_data["tool_handler"]
             print(f"Tool handler data keys: {list(th_data.keys())}")
-            if 'modules' in th_data:
+            if "modules" in th_data:
                 print(f"Modules in saved data: {list(th_data['modules'].keys())}")
-                for module_path, module_data in th_data['modules'].items():
+                for module_path, module_data in th_data["modules"].items():
                     print(f"  Module {module_path}:")
                     print(f"    Keys: {list(module_data.keys())}")
-                    if 'globals' in module_data:
-                        globals_keys = list(module_data['globals'].keys())
-                        helper_globals = [k for k in globals_keys if k.startswith('_')]
+                    if "globals" in module_data:
+                        globals_keys = list(module_data["globals"].keys())
+                        helper_globals = [k for k in globals_keys if k.startswith("_")]
                         print(f"    Globals helper functions: {helper_globals}")
-                    if 'source' in module_data:
-                        source_lines = module_data['source'].split('\n')
-                        helper_defs = [line for line in source_lines if line.strip().startswith('def _')]
+                    if "source" in module_data:
+                        source_lines = module_data["source"].split("\n")
+                        helper_defs = [line for line in source_lines if line.strip().startswith("def _")]
                         print(f"    Helper function definitions in source: {len(helper_defs)}")
 
         # Now load the bot
@@ -101,15 +103,15 @@ class TestSaveLoadDebug(unittest.TestCase):
         print(f"Loaded function module: {loaded_func.__module__}")
         print(f"Loaded function has __module_context__: {hasattr(loaded_func, '__module_context__')}")
 
-        if hasattr(loaded_func, '__module_context__'):
+        if hasattr(loaded_func, "__module_context__"):
             context = loaded_func.__module_context__
             print(f"Loaded module context: {context}")
             print(f"Loaded module context namespace keys: {list(context.namespace.__dict__.keys())[:10]}...")
 
         # Check globals
-        if hasattr(loaded_func, '__globals__'):
+        if hasattr(loaded_func, "__globals__"):
             globals_keys = list(loaded_func.__globals__.keys())
-            helper_funcs = [k for k in globals_keys if k.startswith('_') and callable(loaded_func.__globals__.get(k))]
+            helper_funcs = [k for k in globals_keys if k.startswith("_") and callable(loaded_func.__globals__.get(k))]
             print(f"Loaded function globals helper functions: {helper_funcs}")
 
         print("\nDEBUG COMPLETE")

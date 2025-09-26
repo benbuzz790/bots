@@ -77,7 +77,6 @@ class TestTerminalTools(unittest.TestCase):
 
 
 class TestTerminalToolsStateful(TestTerminalTools):
-
     def _collect_generator_output(self, generator):
         """Helper method to collect all output from the generator"""
         outputs = list(generator)

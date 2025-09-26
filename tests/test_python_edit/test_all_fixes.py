@@ -1,5 +1,4 @@
 class NewClass:
-
     def new_method(self):
         pass
 

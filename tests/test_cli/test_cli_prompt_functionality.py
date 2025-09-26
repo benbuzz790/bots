@@ -14,16 +14,17 @@ import re
 import tempfile
 import time
 from pathlib import Path
-from typing import List, Tuple
+
 
 def validate_snake_case_name(name: str) -> bool:
     """Validate that a name follows snake_case convention."""
-    return bool(re.match(r'^[a-z0-9_]+$', name))
+    return bool(re.match(r"^[a-z0-9_]+$", name))
+
 
 def validate_haiku_generated_name(name: str) -> bool:
     """Validate that a name appears to be Haiku-generated (not timestamp fallback)."""
     # Should not be timestamp format (prompt_<digits>)
-    if re.match(r'^prompt_\d+$', name):
+    if re.match(r"^prompt_\d+$", name):
         return False
     # Should be snake_case
     if not validate_snake_case_name(name):
@@ -33,41 +34,42 @@ def validate_haiku_generated_name(name: str) -> bool:
         return False
     return True
 
+
 def test_prompt_naming_comprehensive():
     """Comprehensive test of prompt naming with various input types."""
     print("=== Testing Comprehensive Prompt Naming ===")
 
     from bots.dev.cli import PromptManager
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         temp_file = f.name
 
     test_cases = [
         {
             "prompt": "Write a Python function to calculate the factorial of a number using recursion",
             "expected_keywords": ["factorial", "recursive", "python", "function"],
-            "description": "Mathematical function prompt"
+            "description": "Mathematical function prompt",
         },
         {
             "prompt": "Explain quantum computing concepts for beginners",
             "expected_keywords": ["quantum", "computing", "explain", "concepts"],
-            "description": "Educational explanation prompt"
+            "description": "Educational explanation prompt",
         },
         {
             "prompt": "Debug this JavaScript code that's throwing an error",
             "expected_keywords": ["debug", "javascript", "code", "error"],
-            "description": "Debugging prompt"
+            "description": "Debugging prompt",
         },
         {
             "prompt": "Create a REST API endpoint with JWT authentication",
             "expected_keywords": ["rest", "api", "endpoint", "auth", "jwt"],
-            "description": "API development prompt"
+            "description": "API development prompt",
         },
         {
             "prompt": "Help me write unit tests for my React components",
             "expected_keywords": ["unit", "test", "react", "component"],
-            "description": "Testing prompt"
-        }
+            "description": "Testing prompt",
+        },
     ]
 
     try:
@@ -79,7 +81,7 @@ def test_prompt_naming_comprehensive():
             print(f"Prompt: {test_case['prompt']}")
 
             # Save the prompt
-            generated_name = pm.save_prompt(test_case['prompt'])
+            generated_name = pm.save_prompt(test_case["prompt"])
             print(f"Generated name: '{generated_name}'")
 
             # Validate the name
@@ -88,18 +90,17 @@ def test_prompt_naming_comprehensive():
 
             # Check if name contains relevant keywords (loose check)
             name_lower = generated_name.lower()
-            keyword_matches = sum(1 for keyword in test_case['expected_keywords'] 
-                                if keyword in name_lower)
+            keyword_matches = sum(1 for keyword in test_case["expected_keywords"] if keyword in name_lower)
 
             test_result = {
-                'test_case': test_case['description'],
-                'prompt': test_case['prompt'],
-                'generated_name': generated_name,
-                'is_haiku_generated': is_haiku_generated,
-                'is_snake_case': is_snake_case,
-                'keyword_matches': keyword_matches,
-                'total_keywords': len(test_case['expected_keywords']),
-                'success': is_haiku_generated and is_snake_case
+                "test_case": test_case["description"],
+                "prompt": test_case["prompt"],
+                "generated_name": generated_name,
+                "is_haiku_generated": is_haiku_generated,
+                "is_snake_case": is_snake_case,
+                "keyword_matches": keyword_matches,
+                "total_keywords": len(test_case["expected_keywords"]),
+                "success": is_haiku_generated and is_snake_case,
             }
 
             results.append(test_result)
@@ -109,16 +110,16 @@ def test_prompt_naming_comprehensive():
             print(f"  ✅ Snake case: {is_snake_case}")
             print(f"  📊 Keyword relevance: {keyword_matches}/{len(test_case['expected_keywords'])}")
 
-            if not test_result['success']:
+            if not test_result["success"]:
                 print(f"  ❌ Test failed for: {test_case['description']}")
             else:
                 print(f"  ✅ Test passed for: {test_case['description']}")
 
         # Summary
-        passed_tests = sum(1 for r in results if r['success'])
+        passed_tests = sum(1 for r in results if r["success"])
         total_tests = len(results)
 
-        print(f"\n--- Naming Test Summary ---")
+        print("\n--- Naming Test Summary ---")
         print(f"Passed: {passed_tests}/{total_tests}")
         print(f"Success rate: {(passed_tests/total_tests)*100:.1f}%")
 
@@ -131,13 +132,14 @@ def test_prompt_naming_comprehensive():
         if os.path.exists(temp_file):
             os.unlink(temp_file)
 
+
 def test_search_functionality_enhanced():
     """Enhanced search functionality test with edge cases."""
     print("\n=== Testing Enhanced Search Functionality ===")
 
     from bots.dev.cli import PromptManager
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         temp_file = f.name
 
     try:
@@ -162,46 +164,26 @@ def test_search_functionality_enhanced():
 
         # Test cases for search
         search_tests = [
-            {
-                "query": "python",
-                "expected_min_results": 2,
-                "description": "Search for Python-related prompts"
-            },
-            {
-                "query": "function",
-                "expected_min_results": 2,
-                "description": "Search for function-related prompts"
-            },
-            {
-                "query": "javascript",
-                "expected_min_results": 1,
-                "description": "Search for JavaScript prompts"
-            },
-            {
-                "query": "nonexistent_term",
-                "expected_min_results": 0,
-                "description": "Search for non-existent term"
-            },
-            {
-                "query": "",
-                "expected_min_results": 0,
-                "description": "Empty search (should return recents)"
-            }
+            {"query": "python", "expected_min_results": 2, "description": "Search for Python-related prompts"},
+            {"query": "function", "expected_min_results": 2, "description": "Search for function-related prompts"},
+            {"query": "javascript", "expected_min_results": 1, "description": "Search for JavaScript prompts"},
+            {"query": "nonexistent_term", "expected_min_results": 0, "description": "Search for non-existent term"},
+            {"query": "", "expected_min_results": 0, "description": "Empty search (should return recents)"},
         ]
 
         search_results = []
         for test in search_tests:
             print(f"\n{test['description']}: '{test['query']}'")
-            results = pm.search_prompts(test['query'])
+            results = pm.search_prompts(test["query"])
 
-            success = len(results) >= test['expected_min_results']
+            success = len(results) >= test["expected_min_results"]
             search_results.append(success)
 
             print(f"  Found: {len(results)} results (expected >= {test['expected_min_results']})")
             print(f"  Result: {'✅ PASS' if success else '❌ FAIL'}")
 
             # Show results for non-empty searches
-            if results and test['query']:
+            if results and test["query"]:
                 for name, content in results[:3]:  # Show first 3
                     print(f"    - {name}: {content[:50]}...")
 
@@ -217,13 +199,14 @@ def test_search_functionality_enhanced():
         if os.path.exists(temp_file):
             os.unlink(temp_file)
 
+
 def test_recency_tracking():
     """Test that recency tracking works correctly."""
     print("\n=== Testing Recency Tracking ===")
 
     from bots.dev.cli import PromptManager
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         temp_file = f.name
 
     try:
@@ -232,11 +215,11 @@ def test_recency_tracking():
         # Save multiple prompts
         prompts = [
             "First prompt for testing recency",
-            "Second prompt for testing recency", 
+            "Second prompt for testing recency",
             "Third prompt for testing recency",
             "Fourth prompt for testing recency",
             "Fifth prompt for testing recency",
-            "Sixth prompt for testing recency"  # This should push first out of recents
+            "Sixth prompt for testing recency",  # This should push first out of recents
         ]
 
         saved_names = []
@@ -280,13 +263,14 @@ def test_recency_tracking():
         if os.path.exists(temp_file):
             os.unlink(temp_file)
 
+
 def test_name_uniqueness():
     """Test that duplicate names are handled correctly."""
     print("\n=== Testing Name Uniqueness ===")
 
     from bots.dev.cli import PromptManager
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         temp_file = f.name
 
     try:
@@ -296,7 +280,7 @@ def test_name_uniqueness():
         similar_prompts = [
             "Write a Python function to calculate fibonacci",
             "Create a Python function for fibonacci sequence",
-            "Implement fibonacci in Python"
+            "Implement fibonacci in Python",
         ]
 
         saved_names = []
@@ -326,12 +310,13 @@ def test_name_uniqueness():
         if os.path.exists(temp_file):
             os.unlink(temp_file)
 
+
 def test_cli_integration():
     """Test CLI integration aspects."""
     print("\n=== Testing CLI Integration ===")
 
     try:
-        from bots.dev.cli import PromptHandler, CLIContext
+        from bots.dev.cli import CLIContext, PromptHandler
         from bots.foundation.anthropic_bots import AnthropicBot
 
         # Create a mock CLI context
@@ -342,7 +327,6 @@ def test_cli_integration():
         handler = PromptHandler()
 
         # Test save functionality
-        test_prompt = "Test prompt for CLI integration"
         save_result = handler.save_prompt(context.bot_instance, context, ["Test", "prompt", "for", "CLI", "integration"])
 
         print(f"Save result: {save_result}")
@@ -366,6 +350,7 @@ def test_cli_integration():
         print(f"❌ Error during CLI integration test: {e}")
         return False
 
+
 def show_current_prompts():
     """Show what prompts are currently saved."""
     print("=== Current Saved Prompts ===")
@@ -373,7 +358,7 @@ def show_current_prompts():
     prompts_file = Path("bots/prompts.json")
     if prompts_file.exists():
         try:
-            with open(prompts_file, 'r', encoding='utf-8') as f:
+            with open(prompts_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
             prompts = data.get("prompts", {})
@@ -394,6 +379,7 @@ def show_current_prompts():
             print(f"Error reading prompts file: {e}")
     else:
         print("No prompts file found at bots/prompts.json")
+
 
 if __name__ == "__main__":
     print("ENHANCED CLI PROMPT FUNCTIONALITY TEST SUITE")
@@ -428,7 +414,7 @@ if __name__ == "__main__":
     # Final summary
     print(f"\n{'='*60}")
     print("FINAL TEST RESULTS:")
-    print("="*60)
+    print("=" * 60)
 
     passed_count = 0
     for test_name, success in results.items():

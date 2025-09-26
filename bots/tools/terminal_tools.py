@@ -10,7 +10,7 @@ from queue import Empty, Queue
 from threading import Lock, Thread, local
 from typing import Dict, Generator, List
 
-from bots.dev.decorators import toolify, log_errors
+from bots.dev.decorators import log_errors, toolify
 
 
 class BOMRemover:

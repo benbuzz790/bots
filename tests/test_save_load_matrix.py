@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Comprehensive test matrix for save/load tool functionality."""
 
-import sys
 import os
+import sys
 import tempfile
 import unittest
-from typing import Dict, List, Callable, Any
 from types import ModuleType
-sys.path.insert(0, os.path.abspath('.'))
+from typing import Any, Callable, Dict
 
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
-import bots.tools.python_editing_tools as python_editing_tools
+
+sys.path.insert(0, os.path.abspath("."))
 
 
 class TestSaveLoadMatrix(unittest.TestCase):
@@ -24,6 +24,7 @@ class TestSaveLoadMatrix(unittest.TestCase):
     def tearDown(self):
         """Clean up test environment."""
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def create_test_file(self) -> str:
@@ -33,15 +34,17 @@ class TestSaveLoadMatrix(unittest.TestCase):
     return f"FILE_RESULT: {input_text}"
 '''
         test_file_path = os.path.join(self.temp_dir, "test_tools.py")
-        with open(test_file_path, 'w') as f:
+        with open(test_file_path, "w") as f:
             f.write(test_file_content)
         return test_file_path
 
     def create_callable_tool(self) -> Callable:
         """Create a callable test tool."""
+
         def callable_test_tool(input_text: str) -> str:
             """Test tool from callable"""
             return f"CALLABLE_RESULT: {input_text}"
+
         return callable_test_tool
 
     def create_dynamic_tool(self) -> Callable:
@@ -53,7 +56,7 @@ def dynamic_test_tool(input_text: str) -> str:
 '''
         namespace = {}
         exec(code, namespace)
-        return namespace['dynamic_test_tool']
+        return namespace["dynamic_test_tool"]
 
     def create_test_module(self) -> ModuleType:
         """Create a simple test module with tools."""
@@ -70,7 +73,7 @@ def another_module_tool(data: str) -> str:
 '''
 
         # Create the module
-        module = types.ModuleType('test_module')
+        module = types.ModuleType("test_module")
         # Don't set __file__ so it falls back to __source__
         module.__source__ = module_content
 
@@ -79,12 +82,12 @@ def another_module_tool(data: str) -> str:
 
         return module
 
-
     def create_bot_with_tool(self, tool_method: str, tool_source: Any) -> AnthropicBot:
         """Create a bot with the specified tool addition method."""
         bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
         if tool_method == "module":
             import inspect
+
             functions = [name for name, obj in inspect.getmembers(tool_source, inspect.isfunction)]
             print(f"DEBUG: Module functions: {functions}")
         bot.add_tools(tool_source)
@@ -95,30 +98,25 @@ def another_module_tool(data: str) -> str:
     def check_tool_usage(self, bot: AnthropicBot, expected_result: str, test_prompt: str) -> bool:
         """Test that tools work correctly on the bot."""
         try:
-            response = bot.respond(test_prompt)
-
             # Check tool results in conversation
             tool_results = bot.conversation.tool_results[0].values() if bot.conversation.tool_results else []
             pending_results = bot.conversation.pending_results[0].values() if bot.conversation.pending_results else []
 
             # Check if expected result appears in tool results
-            found_result = any((expected_result in str(v) for v in tool_results)) or any((expected_result in str(v) for v in pending_results))
+            found_result = any((expected_result in str(v) for v in tool_results)) or any(
+                (expected_result in str(v) for v in pending_results)
+            )
 
             return found_result
         except Exception as e:
             print(f"Tool usage failed: {e}")
             return False
 
-    def run_scenario(self, tool_method: str, tool_source: Any, scenario: str, 
-                   expected_result: str, test_prompt: str) -> Dict[str, Any]:
+    def run_scenario(
+        self, tool_method: str, tool_source: Any, scenario: str, expected_result: str, test_prompt: str
+    ) -> Dict[str, Any]:
         """Run a specific test scenario."""
-        result = {
-            "tool_method": tool_method,
-            "scenario": scenario,
-            "success": False,
-            "error": None,
-            "details": {}
-        }
+        result = {"tool_method": tool_method, "scenario": scenario, "success": False, "error": None, "details": {}}
 
         try:
             if scenario == "basic":
@@ -166,6 +164,7 @@ def another_module_tool(data: str) -> str:
         except Exception as e:
             result["error"] = str(e)
             import traceback
+
             result["details"]["traceback"] = traceback.format_exc()
 
         return result
@@ -186,7 +185,7 @@ def tool_with_helpers(input_text: str, multiplier: int = 1) -> str:
     return f"COMBINED: {processed} + {numeric_result}"
 """
         test_file_path = os.path.join(self.temp_dir, "helper_tools.py")
-        with open(test_file_path, 'w') as f:
+        with open(test_file_path, "w") as f:
             f.write(test_file_content)
         return test_file_path
 
@@ -218,7 +217,7 @@ def complex_tool(input_data: str) -> str:
     return _format_output(result)
 """
 
-        module = types.ModuleType('complex_module')
+        module = types.ModuleType("complex_module")
         module.__source__ = module_content
         exec(module_content, module.__dict__)
         return module
@@ -230,7 +229,7 @@ def complex_tool(input_data: str) -> str:
             "helper_functions_available": False,
             "function_map_complete": False,
             "module_context_preserved": False,
-            "error_details": []
+            "error_details": [],
         }
 
         try:
@@ -240,15 +239,17 @@ def complex_tool(input_data: str) -> str:
                 func = bot.tool_handler.function_map[tool_name]
 
                 # Try to inspect the function's module/globals for helper functions
-                if hasattr(func, '__globals__'):
+                if hasattr(func, "__globals__"):
                     globals_dict = func.__globals__
                     # Look for helper functions (typically start with _)
-                    helper_funcs = [name for name in globals_dict.keys() if name.startswith('_') and callable(globals_dict.get(name))]
+                    helper_funcs = [
+                        name for name in globals_dict.keys() if name.startswith("_") and callable(globals_dict.get(name))
+                    ]
                     result["helper_functions_available"] = len(helper_funcs) > 0
                     result["helper_function_names"] = helper_funcs
 
                 # Check if function has module context
-                if hasattr(func, '__module_context__'):
+                if hasattr(func, "__module_context__"):
                     result["module_context_preserved"] = True
 
                 result["function_map_complete"] = True
@@ -260,9 +261,9 @@ def complex_tool(input_data: str) -> str:
 
     def test_helper_function_preservation(self):
         """Test that helper functions are preserved across save/load cycles."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("TESTING HELPER FUNCTION PRESERVATION")
-        print("="*60)
+        print("=" * 60)
 
         test_cases = [
             {
@@ -270,15 +271,15 @@ def complex_tool(input_data: str) -> str:
                 "source": self.create_tool_with_helper_functions(),
                 "tool_name": "tool_with_helpers",
                 "test_prompt": "Use tool_with_helpers with input_text 'test' and multiplier 2",
-                "expected_result": "COMBINED: HELPER_PROCESSED: TEST + NUMERIC_HELPER: 4"
+                "expected_result": "COMBINED: HELPER_PROCESSED: TEST + NUMERIC_HELPER: 4",
             },
             {
-                "name": "module_with_complex_deps", 
+                "name": "module_with_complex_deps",
                 "source": self.create_module_with_complex_dependencies(),
                 "tool_name": "complex_tool",
                 "test_prompt": "Use complex_tool with input_data 'test_data'",
-                "expected_result": "processed_data"  # Should contain JSON with this key
-            }
+                "expected_result": "processed_data",  # Should contain JSON with this key
+            },
         ]
 
         scenarios = ["basic", "save_load", "save_load_twice"]
@@ -333,9 +334,9 @@ def complex_tool(input_data: str) -> str:
                         "helpers_before": before_helpers,
                         "helpers_after": after_helpers,
                         "helper_preservation": (
-                            before_helpers["helper_functions_available"] == after_helpers["helper_functions_available"] and
-                            before_helpers["module_context_preserved"] == after_helpers["module_context_preserved"]
-                        )
+                            before_helpers["helper_functions_available"] == after_helpers["helper_functions_available"]
+                            and before_helpers["module_context_preserved"] == after_helpers["module_context_preserved"]
+                        ),
                     }
                     results.append(result)
 
@@ -353,18 +354,20 @@ def complex_tool(input_data: str) -> str:
 
                 except Exception as e:
                     print(f"  ERROR: {str(e)}")
-                    results.append({
-                        "test_case": test_case["name"],
-                        "scenario": scenario,
-                        "tool_works": False,
-                        "helper_preservation": False,
-                        "error": str(e)
-                    })
+                    results.append(
+                        {
+                            "test_case": test_case["name"],
+                            "scenario": scenario,
+                            "tool_works": False,
+                            "helper_preservation": False,
+                            "error": str(e),
+                        }
+                    )
 
         # Summary
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("HELPER FUNCTION PRESERVATION SUMMARY")
-        print("="*60)
+        print("=" * 60)
 
         print(f"{'Test Case':<25} {'Basic':<8} {'Save+Load':<12} {'Save+Load2x':<12}")
         print("-" * 65)
@@ -421,23 +424,23 @@ def complex_tool(input_data: str) -> str:
             "file": {
                 "source": self.create_test_file(),
                 "expected_result": "FILE_RESULT: test",
-                "test_prompt": "Use file_test_tool with input_text 'test'"
+                "test_prompt": "Use file_test_tool with input_text 'test'",
             },
             "module": {
                 "source": self.create_test_module(),
                 "expected_result": "MODULE_RESULT: test",
-                "test_prompt": "Use module_test_tool with input_text 'test'"
+                "test_prompt": "Use module_test_tool with input_text 'test'",
             },
             "callable": {
                 "source": self.create_callable_tool(),
                 "expected_result": "CALLABLE_RESULT: test",
-                "test_prompt": "Use callable_test_tool with input_text 'test'"
+                "test_prompt": "Use callable_test_tool with input_text 'test'",
             },
             "dynamic": {
                 "source": self.create_dynamic_tool(),
                 "expected_result": "DYNAMIC_RESULT: test",
-                "test_prompt": "Use dynamic_test_tool with input_text 'test'"
-            }
+                "test_prompt": "Use dynamic_test_tool with input_text 'test'",
+            },
         }
 
         scenarios = ["basic", "save_load", "save_load_twice"]
@@ -448,11 +451,7 @@ def complex_tool(input_data: str) -> str:
             for scenario in scenarios:
                 print(f"\nTesting {tool_method} + {scenario}...")
                 result = self.run_scenario(
-                    tool_method, 
-                    tool_config["source"],
-                    scenario,
-                    tool_config["expected_result"],
-                    tool_config["test_prompt"]
+                    tool_method, tool_config["source"], scenario, tool_config["expected_result"], tool_config["test_prompt"]
                 )
                 results.append(result)
 
@@ -467,9 +466,9 @@ def complex_tool(input_data: str) -> str:
                             print(f"    {key}: {value}")
 
         # Summary
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("SUMMARY MATRIX")
-        print("="*60)
+        print("=" * 60)
 
         # Create summary table
         print(f"{'Tool Method':<12} {'Basic':<8} {'Save+Load':<12} {'Save+Load2x':<12}")

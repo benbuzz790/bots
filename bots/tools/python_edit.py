@@ -1,4 +1,4 @@
-import ast
+﻿import ast
 import os
 import textwrap
 from typing import List, Optional, Union
@@ -59,6 +59,7 @@ def _write_file_bom_safe(file_path: str, content: str) -> None:
     clean_content = clean_unicode_string(content)
     with open(file_path, "w", encoding="utf-8") as file:
         file.write(clean_content)
+
 
 def _count_lines_to_be_deleted(original_content: str, new_content: str) -> int:
     """
@@ -867,51 +868,51 @@ def python_view(target_scope: str, max_lines: str = "500") -> str:
 @toolify()
 def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delete_a_lot: bool = False) -> str:
     """
-    Edit Python code using pytest-style scope syntax and optional expression matching.
+        Edit Python code using pytest-style scope syntax and optional expression matching.
 
-    Parameters:
-    -----------
-    target_scope : str
-        Location to edit in pytest-style scope syntax:
-        - "file.py" (whole file)
-        - "file.py::MyClass" (class)
-        - "file.py::my_function" (function)
-        - "file.py::MyClass::method" (method)
+        Parameters:
+        -----------
+        target_scope : str
+            Location to edit in pytest-style scope syntax:
+            - "file.py" (whole file)
+            - "file.py::MyClass" (class)
+            - "file.py::my_function" (function)
+            - "file.py::MyClass::method" (method)
 
-    code : str
-        Python code. This code will replace the entire target scope by default, 
-        or insert after (if coscope_with is specified). Code is indented automatically 
-        to match to scope.
+        code : str
+            Python code. This code will replace the entire target scope by default,
+            or insert after (if coscope_with is specified). Code is indented automatically
+            to match to scope.
 
-    coscope_with : str, optional
-        If specified, code is inserted in the same scope as the specified code, 
-        and immediately after it. Uses the same syntax as target_scope with 
-        optional expression at the end in quotes.
+        coscope_with : str, optional
+            If specified, code is inserted in the same scope as the specified code,
+            and immediately after it. Uses the same syntax as target_scope with
+            optional expression at the end in quotes.
 
 
-            Scope:
-                - a
-                - b
+                Scope:
+                    - a
+                    - b
 
-            - python edit called with coscope_with = "a", code = "- c" -
+                - python edit called with coscope_with = "a", code = "- c" -
 
-            Scope:
-                - a
-                - c
-                - b
+                Scope:
+                    - a
+                    - c
+                    - b
 
-        - "__FILE_START__" (special token for file beginning)
-        - "MyClass::method" (insert after this method within the target scope)
-        - '"expression"' (insert after a line matching this expression)
-    delete_a_lot : bool, optional
-- "__FILE_END__" (special token for file end)
-        Safety parameter. Must be True to allow operations that delete more than 100 lines.
-        Helps prevent accidental file overwrites. Default False.
+            - "__FILE_START__" (special token for file beginning)
+            - "MyClass::method" (insert after this method within the target scope)
+            - '"expression"' (insert after a line matching this expression)
+        delete_a_lot : bool, optional
+    - "__FILE_END__" (special token for file end)
+            Safety parameter. Must be True to allow operations that delete more than 100 lines.
+            Helps prevent accidental file overwrites. Default False.
 
-    Returns:
-    --------
-    str
-        Description of what was modified or error message
+        Returns:
+        --------
+        str
+            Description of what was modified or error message
     """
     try:
         file_path, *path_elements = target_scope.split("::")
@@ -947,7 +948,7 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
             elif was_originally_empty and (not path_elements):
                 _write_file_bom_safe(abs_path, cleaned_code)
                 return f"Code added to '{abs_path}'."
-            
+
             # Only parse new_module if we have code to parse
             new_module = None
             if cleaned_code:
@@ -969,7 +970,8 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
         #     lines_to_delete = _count_lines_to_be_deleted(original_content, cleaned_code)
         #     if lines_to_delete > 100 and not delete_a_lot:
         #         return _process_error(ValueError(
-        #             f"Safety check: this operation would delete {lines_to_delete} lines. If intentional, set delete_a_lot=True. "
+        #             f"Safety check: this operation would delete {lines_to_delete} lines. " +
+        #             "If intentional, set delete_a_lot=True. "
         #             "Consider using 'insert_after' parameter to add code without deleting existing content."))
         #     _write_file_bom_safe(abs_path, cleaned_code)
         #     return f"Code replaced at file level in '{abs_path}'."
@@ -988,6 +990,8 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
                 return f"Code replaced at '{target_scope}'."
     except Exception as e:
         return _process_error(e)
+
+
 def _handle_file_end_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module) -> str:
     """Handle insertion at the end of a file."""
     new_body = list(tree.body) + list(new_module.body)
@@ -1101,12 +1105,6 @@ def _handle_file_start_insertion(abs_path: str, tree: cst.Module, new_module: cs
     modified_tree = tree.with_changes(body=new_body)
     _write_file_bom_safe(abs_path, modified_tree.code)
     return f"Code inserted at start of '{abs_path}'."
-def _handle_file_end_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module) -> str:
-    """Handle insertion at the end of a file."""
-    new_body = list(tree.body) + list(new_module.body)
-    modified_tree = tree.with_changes(body=new_body)
-    _write_file_bom_safe(abs_path, modified_tree.code)
-    return f"Code inserted at end of '{abs_path}'."
 
 
 def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module, insert_after: str) -> str:
@@ -1156,15 +1154,23 @@ def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cs
         return _process_error(ValueError(f"Insert point not found at file level: {insert_after}"))
     _write_file_bom_safe(abs_path, modified_tree.code)
     return f"Code inserted after '{insert_after}' in '{abs_path}'."
-def _handle_deletion(abs_path: str, target_scope: str, path_elements: list, original_content: str, tree: cst.Module, delete_a_lot: bool = False) -> str:
+
+
+def _handle_deletion(
+    abs_path: str, target_scope: str, path_elements: list, original_content: str, tree: cst.Module, delete_a_lot: bool = False
+) -> str:
     """Handle deletion of a target section when empty code is provided."""
     try:
         # Safety check for large deletions
         lines_to_delete = _count_lines_to_be_deleted(original_content, "")
         if lines_to_delete > 100 and not delete_a_lot:
-            return _process_error(ValueError(
-                f"Safety check: this operation would delete {lines_to_delete} lines. If intentional, set delete_a_lot=True. "
-                "Consider using 'insert_after' parameter to add code without deleting existing content."))
+            return _process_error(
+                ValueError(
+                    f"Safety check: this operation would delete {lines_to_delete} lines. "
+                    + "If intentional, set delete_a_lot=True. "
+                    "Consider using 'insert_after' parameter to add code without deleting existing content."
+                )
+            )
         if not path_elements:
             # File-level deletion - clear the entire file
             _write_file_bom_safe(abs_path, "")
@@ -1193,7 +1199,9 @@ class ScopeDeleter(cst.CSTTransformer):
         """Track when entering a class."""
         self.current_path.append(node.name.value)
 
-    def leave_ClassDef(self, original_node: cst.ClassDef, updated_node: cst.ClassDef) -> Union[cst.ClassDef, cst.RemovalSentinel]:
+    def leave_ClassDef(
+        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+    ) -> Union[cst.ClassDef, cst.RemovalSentinel]:
         """Handle leaving a class definition."""
         result = self._handle_scope_node(original_node, updated_node)
         if self.current_path and self.current_path[-1] == original_node.name.value:
@@ -1204,14 +1212,18 @@ class ScopeDeleter(cst.CSTTransformer):
         """Track when entering a function."""
         self.current_path.append(node.name.value)
 
-    def leave_FunctionDef(self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef) -> Union[cst.FunctionDef, cst.RemovalSentinel]:
+    def leave_FunctionDef(
+        self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
+    ) -> Union[cst.FunctionDef, cst.RemovalSentinel]:
         """Handle leaving a function definition."""
         result = self._handle_scope_node(original_node, updated_node)
         if self.current_path and self.current_path[-1] == original_node.name.value:
             self.current_path.pop()
         return result
 
-    def _handle_scope_node(self, original_node: Union[cst.ClassDef, cst.FunctionDef], updated_node: Union[cst.ClassDef, cst.FunctionDef]) -> Union[cst.ClassDef, cst.FunctionDef, cst.RemovalSentinel]:
+    def _handle_scope_node(
+        self, original_node: Union[cst.ClassDef, cst.FunctionDef], updated_node: Union[cst.ClassDef, cst.FunctionDef]
+    ) -> Union[cst.ClassDef, cst.FunctionDef, cst.RemovalSentinel]:
         """Common logic for handling scope nodes - delete if it matches the target path."""
         if self.current_path == self.path_elements:
             self.modified = True

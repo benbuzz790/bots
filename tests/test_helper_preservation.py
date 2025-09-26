@@ -1,23 +1,30 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Test helper function preservation in save/load cycles."""
-import sys
 import os
+import sys
 import tempfile
 import unittest
-from typing import Dict, Any
-from types import ModuleType
-sys.path.insert(0, os.path.abspath('.'))
+from typing import Any, Dict
+
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
+
+sys.path.insert(0, os.path.abspath("."))
+
+
 class TestHelperPreservation(unittest.TestCase):
     """Test that helper functions are preserved across save/load cycles."""
+
     def setUp(self):
         """Set up test environment."""
         self.temp_dir = tempfile.mkdtemp()
+
     def tearDown(self):
         """Clean up test environment."""
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
+
     def create_tool_with_helpers(self) -> str:
         """Create a test file with tools that depend on helper functions."""
         content = '''# Helper functions
@@ -35,30 +42,28 @@ def tool_with_helpers(input_text: str, multiplier: int = 1) -> str:
     return f"COMBINED: {processed} + {numeric_result}"
 '''
         test_file_path = os.path.join(self.temp_dir, "helper_tools.py")
-        with open(test_file_path, 'w') as f:
+        with open(test_file_path, "w") as f:
             f.write(content)
         return test_file_path
+
     def check_helper_availability(self, bot: AnthropicBot, tool_name: str) -> Dict[str, Any]:
         """Check if helper functions are available."""
-        result = {
-            "tool_exists": False,
-            "helper_functions_available": False,
-            "helper_function_names": [],
-            "error_details": []
-        }
+        result = {"tool_exists": False, "helper_functions_available": False, "helper_function_names": [], "error_details": []}
         try:
             if tool_name in bot.tool_handler.function_map:
                 result["tool_exists"] = True
                 func = bot.tool_handler.function_map[tool_name]
-                if hasattr(func, '__globals__'):
+                if hasattr(func, "__globals__"):
                     globals_dict = func.__globals__
-                    helper_funcs = [name for name in globals_dict.keys() 
-                                  if name.startswith('_') and callable(globals_dict.get(name))]
+                    helper_funcs = [
+                        name for name in globals_dict.keys() if name.startswith("_") and callable(globals_dict.get(name))
+                    ]
                     result["helper_functions_available"] = len(helper_funcs) > 0
                     result["helper_function_names"] = helper_funcs
         except Exception as e:
             result["error_details"].append(f"Helper check error: {str(e)}")
         return result
+
     def test_helper_preservation_basic(self):
         """Test basic helper function preservation."""
         print("\nTesting helper function preservation...")
@@ -94,7 +99,9 @@ def tool_with_helpers(input_text: str, multiplier: int = 1) -> str:
             "before": before,
             "after": after,
             "tool_works": tool_works,
-            "helper_preservation": before['helper_functions_available'] == after['helper_functions_available']
+            "helper_preservation": before["helper_functions_available"] == after["helper_functions_available"],
         }
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

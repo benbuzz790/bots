@@ -6,7 +6,7 @@ import textwrap
 import time
 
 from bots.dev.decorators import toolify
-from bots.utils.helpers import _clean, _py_ast_to_source
+from bots.utils.helpers import _py_ast_to_source
 
 
 def _get_unique_filename(base_name, extension=""):

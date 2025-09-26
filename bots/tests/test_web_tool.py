@@ -5,10 +5,9 @@ Tests both the web_search function functionality and integration with the bot fr
 Includes unit tests for correct behavior and integration tests for bot usage.
 """
 
-import json
-import unittest
-from unittest.mock import Mock, patch, MagicMock
 import os
+import unittest
+from unittest.mock import Mock, patch
 
 from bots.tools.web_tool import web_search
 
@@ -19,18 +18,19 @@ class TestWebSearchFunction(unittest.TestCase):
     def test_web_search_function_signature(self):
         """Test that web_search function has correct signature and docstring."""
         # Check that the function has the expected toolified behavior
-        self.assertTrue(hasattr(web_search, '__doc__'))
+        self.assertTrue(hasattr(web_search, "__doc__"))
         self.assertIn("agentic web search", web_search.__doc__)
         self.assertIn("Claude's internal web search", web_search.__doc__)
 
         # Check function signature
         import inspect
+
         sig = inspect.signature(web_search)
         params = list(sig.parameters.keys())
-        self.assertEqual(params, ['question'])
+        self.assertEqual(params, ["question"])
 
-    @patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key'})
-    @patch('bots.tools.web_tool.anthropic.Anthropic')
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"})
+    @patch("bots.tools.web_tool.anthropic.Anthropic")
     def test_web_search_basic_behavior(self, mock_anthropic_class):
         """Test basic web_search function behavior with mocked API."""
         # Setup mock client and response
@@ -48,7 +48,7 @@ class TestWebSearchFunction(unittest.TestCase):
         result = web_search("test query")
 
         # Verify client was created
-        mock_anthropic_class.assert_called_once_with(api_key='test-key')
+        mock_anthropic_class.assert_called_once_with(api_key="test-key")
 
         # Verify API call was made with correct parameters
         mock_client.messages.create.assert_called_once()
@@ -56,20 +56,20 @@ class TestWebSearchFunction(unittest.TestCase):
 
         # Check the call arguments
         # Model verification removed - model is a tunable parameter
-        self.assertEqual(call_args[1]['temperature'], 0.3)
+        self.assertEqual(call_args[1]["temperature"], 0.3)
 
         # Check tools parameter
-        tools = call_args[1]['tools']
+        tools = call_args[1]["tools"]
         self.assertEqual(len(tools), 1)
-        self.assertEqual(tools[0]['type'], 'web_search_20250305')
-        self.assertEqual(tools[0]['name'], 'web_search')
-        self.assertEqual(tools[0]['max_uses'], 10)
+        self.assertEqual(tools[0]["type"], "web_search_20250305")
+        self.assertEqual(tools[0]["name"], "web_search")
+        self.assertEqual(tools[0]["max_uses"], 10)
 
         # Check messages parameter
-        messages = call_args[1]['messages']
+        messages = call_args[1]["messages"]
         self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0]['role'], 'user')
-        self.assertIn('test query', messages[0]['content'])
+        self.assertEqual(messages[0]["role"], "user")
+        self.assertIn("test query", messages[0]["content"])
 
         # Verify result contains both raw and processed responses
         self.assertIsInstance(result, str)
@@ -87,8 +87,8 @@ class TestWebSearchFunction(unittest.TestCase):
             self.assertIsInstance(result, str)
             self.assertIn("Error: ANTHROPIC_API_KEY environment variable not set", result)
 
-    @patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key'})
-    @patch('bots.tools.web_tool.anthropic.Anthropic')
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"})
+    @patch("bots.tools.web_tool.anthropic.Anthropic")
     def test_web_search_api_exception(self, mock_anthropic_class):
         """Test web_search handles API exceptions gracefully."""
         # Setup mock client that raises exception
@@ -103,8 +103,8 @@ class TestWebSearchFunction(unittest.TestCase):
         self.assertIn("Web search failed:", result)
         self.assertIn("API Error", result)
 
-    @patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key'})
-    @patch('bots.tools.web_tool.anthropic.Anthropic')
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"})
+    @patch("bots.tools.web_tool.anthropic.Anthropic")
     def test_web_search_empty_response(self, mock_anthropic_class):
         """Test web_search with empty response content."""
         # Setup mock client with empty response
@@ -124,8 +124,8 @@ class TestWebSearchFunction(unittest.TestCase):
         self.assertIn("Empty Response Object", result)
         # Processed Response not implemented yet - only raw response returned
 
-    @patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key'})
-    @patch('bots.tools.web_tool.anthropic.Anthropic')
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"})
+    @patch("bots.tools.web_tool.anthropic.Anthropic")
     def test_web_search_complex_response(self, mock_anthropic_class):
         """Test web_search with complex response structure."""
         # Setup mock client with complex response
@@ -136,9 +136,9 @@ class TestWebSearchFunction(unittest.TestCase):
         mock_response = Mock()
         mock_response.content = [
             Mock(text="I'll search for that information."),
-            Mock(text=None, type='server_tool_use', name='web_search'),
-            Mock(text=None, type='web_search_tool_result'),
-            Mock(text="Based on the search results, here's what I found...")
+            Mock(text=None, type="server_tool_use", name="web_search"),
+            Mock(text=None, type="web_search_tool_result"),
+            Mock(text="Based on the search results, here's what I found..."),
         ]
         mock_response.__str__ = Mock(return_value="Complex Response Object")
         mock_client.messages.create.return_value = mock_response
@@ -155,8 +155,8 @@ class TestWebSearchFunction(unittest.TestCase):
     def test_web_search_is_toolified(self):
         """Test that web_search function is properly toolified."""
         # Test that it accepts string input and returns string output
-        with patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key'}):
-            with patch('bots.tools.web_tool.anthropic.Anthropic') as mock_anthropic_class:
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
+            with patch("bots.tools.web_tool.anthropic.Anthropic") as mock_anthropic_class:
                 mock_client = Mock()
                 mock_anthropic_class.return_value = mock_client
 
@@ -171,8 +171,8 @@ class TestWebSearchFunction(unittest.TestCase):
 
     def test_web_search_prompt_construction(self):
         """Test that the search prompt is constructed correctly."""
-        with patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key'}):
-            with patch('bots.tools.web_tool.anthropic.Anthropic') as mock_anthropic_class:
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
+            with patch("bots.tools.web_tool.anthropic.Anthropic") as mock_anthropic_class:
                 mock_client = Mock()
                 mock_anthropic_class.return_value = mock_client
 
@@ -187,8 +187,8 @@ class TestWebSearchFunction(unittest.TestCase):
 
                 # Check that the prompt includes the query
                 call_args = mock_client.messages.create.call_args
-                messages = call_args[1]['messages']
-                prompt_content = messages[0]['content']
+                messages = call_args[1]["messages"]
+                prompt_content = messages[0]["content"]
 
                 self.assertIn(test_query, prompt_content)
                 self.assertIn("search the web", prompt_content.lower())
@@ -199,8 +199,8 @@ class TestWebSearchValidation(unittest.TestCase):
 
     def test_web_search_with_special_characters(self):
         """Test web_search with special characters in query."""
-        with patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key'}):
-            with patch('bots.tools.web_tool.anthropic.Anthropic') as mock_anthropic_class:
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
+            with patch("bots.tools.web_tool.anthropic.Anthropic") as mock_anthropic_class:
                 mock_client = Mock()
                 mock_anthropic_class.return_value = mock_client
 
@@ -219,8 +219,8 @@ class TestWebSearchValidation(unittest.TestCase):
 
     def test_web_search_with_empty_query(self):
         """Test web_search with empty query."""
-        with patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key'}):
-            with patch('bots.tools.web_tool.anthropic.Anthropic') as mock_anthropic_class:
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
+            with patch("bots.tools.web_tool.anthropic.Anthropic") as mock_anthropic_class:
                 mock_client = Mock()
                 mock_anthropic_class.return_value = mock_client
 

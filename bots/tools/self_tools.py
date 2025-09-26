@@ -165,7 +165,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
 
         # Pre-populate tool handler results for proper conversation flow
         # This ensures the dummy result gets added in the right place during _cvsn_respond()
-        if not hasattr(bot.tool_handler, 'results'):
+        if not hasattr(bot.tool_handler, "results"):
             bot.tool_handler.results = []
         bot.tool_handler.results.append(dummy_result)
         # Save bot state with dummy result in place

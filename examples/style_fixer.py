@@ -19,7 +19,6 @@ from typing import List, Tuple
 from bots.flows import functional_prompts as fp
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, ConversationNode, Engines
-from bots.tools import terminal_tools
 
 
 def is_gitignored(file_path: str, project_root: str) -> bool:
@@ -295,11 +294,11 @@ def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
     )
 
     # Add terminal tools for running commands and editing files
-    from bots.tools.terminal_tools import execute_powershell
-    from bots.tools.python_execution_tool import execute_python
     from bots.tools.code_tools import view, view_dir
     from bots.tools.python_edit import python_view
-    
+    from bots.tools.python_execution_tool import execute_python
+    from bots.tools.terminal_tools import execute_powershell
+
     bot.add_tools(execute_powershell, execute_python, view, view_dir, python_view)
 
     # Add file-specific CI/CD checking tool

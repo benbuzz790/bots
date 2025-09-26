@@ -11,11 +11,12 @@ Key Components:
     - GeminiBot: Main bot implementation for Gemini models
 """
 
+import json
+import os
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
 from google import genai
 from google.genai import types
-import os
-import json
 
 from bots.foundation.base import (
     Bot,
@@ -25,10 +26,12 @@ from bots.foundation.base import (
     ToolHandler,
 )
 
+
 class GeminiNode(ConversationNode):
     """
     Conversation node implementation for Gemini's chat format.
     """
+
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
@@ -52,10 +55,12 @@ class GeminiNode(ConversationNode):
                 messages.append(n.content)
         return messages
 
+
 class GeminiToolHandler(ToolHandler):
     """
     Tool handler for Gemini's function calling format.
     """
+
     def generate_tool_schema(self, func: Callable) -> Dict[str, Any]:
         # Generate a JSON Schema for the function
         schema = {
@@ -68,6 +73,7 @@ class GeminiToolHandler(ToolHandler):
             },
         }
         import inspect
+
         sig = inspect.signature(func)
         for param_name, param in sig.parameters.items():
             schema["parameters"]["properties"][param_name] = {
@@ -82,15 +88,17 @@ class GeminiToolHandler(ToolHandler):
         # Extract function calls from Gemini response
         calls = []
         try:
-            candidates = response.candidates if hasattr(response, 'candidates') else []
+            candidates = response.candidates if hasattr(response, "candidates") else []
             for cand in candidates:
-                parts = cand.content.parts if hasattr(cand.content, 'parts') else []
+                parts = cand.content.parts if hasattr(cand.content, "parts") else []
                 for part in parts:
-                    if hasattr(part, 'function_call') and part.function_call:
-                        calls.append({
-                            "name": part.function_call.name,
-                            "args": part.function_call.args,
-                        })
+                    if hasattr(part, "function_call") and part.function_call:
+                        calls.append(
+                            {
+                                "name": part.function_call.name,
+                                "args": part.function_call.args,
+                            }
+                        )
         except Exception:
             pass
         return calls
@@ -118,10 +126,12 @@ class GeminiToolHandler(ToolHandler):
             "tool_call_id": (request_schema.get("id") if request_schema else "unknown"),
         }
 
+
 class GeminiMailbox(Mailbox):
     """
     Mailbox implementation for Gemini API communication.
     """
+
     def __init__(self, api_key: Optional[str] = None):
         super().__init__()
         self.api_key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
@@ -156,7 +166,7 @@ class GeminiMailbox(Mailbox):
         requests = handler.generate_request_schema(response)
         if not requests:
             # Return the first candidate's text as the response
-            text = getattr(response, 'text', None)
+            text = getattr(response, "text", None)
             if not text:
                 # Try to get from parts
                 try:
@@ -180,10 +190,12 @@ class GeminiMailbox(Mailbox):
         # Recursively send the updated conversation
         return self.process_response(self.send_message(bot), bot)
 
+
 class GeminiBot(Bot):
     """
     Bot implementation using the Gemini API.
     """
+
     def __init__(
         self,
         api_key: Optional[str] = None,

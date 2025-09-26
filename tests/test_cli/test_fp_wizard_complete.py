@@ -1,7 +1,7 @@
 import unittest
-from unittest.mock import patch, MagicMock
 from contextlib import redirect_stdout
 from io import StringIO
+from unittest.mock import patch
 
 import bots.dev.cli as cli_module
 
@@ -19,7 +19,7 @@ class TestFPWizardComplete(unittest.TestCase):
             "/fp",
             "1",  # Select single_prompt
             "Analyze this code structure",  # The prompt
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -44,7 +44,7 @@ class TestFPWizardComplete(unittest.TestCase):
             "Analyze from performance perspective",  # Second prompt
             "Analyze from maintainability perspective",  # Third prompt
             "",  # End prompts
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -70,7 +70,7 @@ class TestFPWizardComplete(unittest.TestCase):
             "Analyze user experience",  # Third prompt
             "",  # End prompts
             "1",  # Select concatenate recombinator
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -94,7 +94,7 @@ class TestFPWizardComplete(unittest.TestCase):
             "Debug this code and fix all issues",  # first_prompt
             "Continue debugging if needed",  # continue_prompt
             "2",  # Stop condition (tool_not_used)
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -121,7 +121,7 @@ class TestFPWizardComplete(unittest.TestCase):
             "",  # End prompts
             "2",  # Stop condition (tool_not_used)
             "continue with this step",  # continue_prompt
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -148,7 +148,7 @@ class TestFPWizardComplete(unittest.TestCase):
             "",  # End prompts
             "3",  # Stop condition (said_DONE)
             "keep optimizing",  # continue_prompt
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -173,7 +173,7 @@ class TestFPWizardComplete(unittest.TestCase):
             "Parallel analysis approach B",  # Second prompt
             "Parallel analysis approach C",  # Third prompt
             "",  # End prompts
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -199,7 +199,7 @@ class TestFPWizardComplete(unittest.TestCase):
             "",  # End prompts
             "2",  # Stop condition (tool_not_used)
             "continue optimization",  # continue_prompt
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -222,7 +222,7 @@ class TestFPWizardComplete(unittest.TestCase):
             "invalid_choice",  # Invalid selection first
             "1",  # Then valid selection
             "Valid prompt after invalid choice",
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -246,7 +246,7 @@ class TestFPWizardComplete(unittest.TestCase):
             "First step",
             "Second step",
             "",  # End prompts
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):
@@ -260,5 +260,5 @@ class TestFPWizardComplete(unittest.TestCase):
         self.assertIn("Collecting parameters for chain", output)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

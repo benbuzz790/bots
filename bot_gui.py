@@ -1,6 +1,7 @@
-import tkinter as tk
-from tkinter import scrolledtext, messagebox, filedialog, ttk
 import threading
+import tkinter as tk
+from tkinter import filedialog, messagebox, scrolledtext
+
 
 class SimpleBotGUI:
     def __init__(self):
@@ -9,10 +10,10 @@ class SimpleBotGUI:
         self.root.geometry("1200x700")
 
         # Initialize bot (your existing code)
-        from bots.foundation.anthropic_bots import AnthropicBot
         import bots.tools.code_tools as code_tools
         import bots.tools.python_edit as python_edit
         import bots.tools.terminal_tools as terminal_tools
+        from bots.foundation.anthropic_bots import AnthropicBot
 
         self.bot = AnthropicBot()
         self.bot.add_tools(code_tools, python_edit, terminal_tools)
@@ -21,19 +22,17 @@ class SimpleBotGUI:
         # Auto mode state
         self.auto_running = False
 
-
     def setup_ui(self):
         # Main container
         main_frame = tk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # Left side: Tree view (visual only) - Make it wider
-        tree_frame = tk.Frame(main_frame, width=400, bg='#f0f0f0')  # Increased from 250 to 400
+        tree_frame = tk.Frame(main_frame, width=400, bg="#f0f0f0")  # Increased from 250 to 400
         tree_frame.pack(side=tk.LEFT, fill=tk.Y)
         tree_frame.pack_propagate(False)
 
-        tk.Label(tree_frame, text="Conversation Tree", 
-                font=('Arial', 10, 'bold'), bg='#f0f0f0').pack(pady=5)
+        tk.Label(tree_frame, text="Conversation Tree", font=("Arial", 10, "bold"), bg="#f0f0f0").pack(pady=5)
 
         # Tree display with horizontal scrolling
         tree_container = tk.Frame(tree_frame)
@@ -48,10 +47,10 @@ class SimpleBotGUI:
             tree_container,
             state=tk.DISABLED,
             wrap=tk.NONE,  # No wrapping so horizontal scroll works
-            font=('Courier', 9),
-            bg='#f8f8f8',
+            font=("Courier", 9),
+            bg="#f8f8f8",
             yscrollcommand=tree_v_scrollbar.set,
-            xscrollcommand=tree_h_scrollbar.set
+            xscrollcommand=tree_h_scrollbar.set,
         )
 
         # Configure scrollbars
@@ -71,14 +70,9 @@ class SimpleBotGUI:
         chat_frame = tk.Frame(chat_container)
         chat_frame.pack(fill=tk.BOTH, expand=True)
 
-        tk.Label(chat_frame, text="Chat", font=('Arial', 10, 'bold')).pack(pady=5)
+        tk.Label(chat_frame, text="Chat", font=("Arial", 10, "bold")).pack(pady=5)
 
-        self.chat_display = scrolledtext.ScrolledText(
-            chat_frame, 
-            state=tk.DISABLED,
-            wrap=tk.WORD,
-            font=('Consolas', 10)
-        )
+        self.chat_display = scrolledtext.ScrolledText(chat_frame, state=tk.DISABLED, wrap=tk.WORD, font=("Consolas", 10))
         self.chat_display.pack(fill=tk.BOTH, expand=True, padx=5)
 
         # Bottom: Input and controls
@@ -88,39 +82,36 @@ class SimpleBotGUI:
         # Message input area
         input_label_frame = tk.Frame(controls_frame)
         input_label_frame.pack(fill=tk.X)
-        tk.Label(input_label_frame, text="Message or Command:", font=('Arial', 9)).pack(side=tk.LEFT)
-        tk.Label(input_label_frame, text="(Enter to send, Shift+Enter for new line)", 
-                font=('Arial', 8), fg='gray').pack(side=tk.RIGHT)
+        tk.Label(input_label_frame, text="Message or Command:", font=("Arial", 9)).pack(side=tk.LEFT)
+        tk.Label(input_label_frame, text="(Enter to send, Shift+Enter for new line)", font=("Arial", 8), fg="gray").pack(
+            side=tk.RIGHT
+        )
 
         self.message_entry = tk.Text(controls_frame, height=3)
-        self.message_entry.pack(fill=tk.X, pady=(2,5))
+        self.message_entry.pack(fill=tk.X, pady=(2, 5))
 
         # Button row: Send and file operations
         button_row = tk.Frame(controls_frame)
         button_row.pack(fill=tk.X, pady=2)
 
-        tk.Button(button_row, text="Send", 
-                 command=self.send_message, bg='lightblue', 
-                 font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=(0,10))
+        tk.Button(button_row, text="Send", command=self.send_message, bg="lightblue", font=("Arial", 10, "bold")).pack(
+            side=tk.LEFT, padx=(0, 10)
+        )
 
-        tk.Button(button_row, text="Save Bot", 
-                 command=self.save_bot).pack(side=tk.LEFT, padx=2)
-        tk.Button(button_row, text="Load Bot", 
-                 command=self.load_bot).pack(side=tk.LEFT, padx=2)
+        tk.Button(button_row, text="Save Bot", command=self.save_bot).pack(side=tk.LEFT, padx=2)
+        tk.Button(button_row, text="Load Bot", command=self.load_bot).pack(side=tk.LEFT, padx=2)
 
         # Status and help on the right
         right_frame = tk.Frame(button_row)
         right_frame.pack(side=tk.RIGHT)
 
-        tk.Button(right_frame, text="Help", 
-                 command=self.show_help, bg='lightyellow').pack(side=tk.RIGHT, padx=5)
+        tk.Button(right_frame, text="Help", command=self.show_help, bg="lightyellow").pack(side=tk.RIGHT, padx=5)
 
         self.status_var = tk.StringVar(value="Ready")
         status_frame = tk.Frame(right_frame)
         status_frame.pack(side=tk.RIGHT, padx=10)
-        tk.Label(status_frame, text="Status:", font=('Arial', 9)).pack(side=tk.LEFT)
-        tk.Label(status_frame, textvariable=self.status_var, 
-                font=('Arial', 9), fg='blue').pack(side=tk.LEFT, padx=5)
+        tk.Label(status_frame, text="Status:", font=("Arial", 9)).pack(side=tk.LEFT)
+        tk.Label(status_frame, textvariable=self.status_var, font=("Arial", 9), fg="blue").pack(side=tk.LEFT, padx=5)
 
         # Initialize displays
         self.refresh_tree_display()
@@ -132,17 +123,18 @@ class SimpleBotGUI:
 
     def setup_key_bindings(self):
         """Set up proper Enter/Shift+Enter behavior"""
+
         def on_key_press(event):
             # Enter without shift = send message
-            if event.keysym == 'Return' and not (event.state & 0x1):  # No shift key
+            if event.keysym == "Return" and not (event.state & 0x1):  # No shift key
                 self.send_message()
-                return 'break'  # Prevent default behavior (adding newline)
+                return "break"  # Prevent default behavior (adding newline)
 
             # Shift+Enter = add newline (default behavior, so we don't need to handle it)
             # Just let it through normally
             return None
 
-        self.message_entry.bind('<KeyPress>', on_key_press)
+        self.message_entry.bind("<KeyPress>", on_key_press)
 
     def refresh_tree_display(self):
         """Update the visual tree display"""
@@ -163,7 +155,7 @@ class SimpleBotGUI:
     def _build_tree_text(self, node, depth=0, is_current=False, is_last=True, is_first_child=False):
         """Recursively build tree text representation with first child unindented for linear conversations"""
         # Create display text
-        content_preview = node.content[:40].replace('\n', ' ') if node.content else "[Empty]"
+        content_preview = node.content[:40].replace("\n", " ") if node.content else "[Empty]"
         if len(node.content) > 40:
             content_preview += "..."
 
@@ -192,31 +184,31 @@ class SimpleBotGUI:
             # First process the main thread (first child - index 0)
             if len(children) > 0:
                 main_child = children[0]
-                is_child_current = (main_child == self.bot.conversation)
-                line += self._build_tree_text(main_child, 
-                                            depth=depth,  # Main thread continues at same level
-                                            is_current=is_child_current, 
-                                            is_last=True,  # Not used for main thread
-                                            is_first_child=True)
-            
+                is_child_current = main_child == self.bot.conversation
+                line += self._build_tree_text(
+                    main_child,
+                    depth=depth,  # Main thread continues at same level
+                    is_current=is_child_current,
+                    is_last=True,  # Not used for main thread
+                    is_first_child=True,
+                )
+
             # Then process branches in reverse order (newest first, for proper connectors)
             if len(children) > 1:
                 branches = children[1:]  # All children except the first
                 for i in range(len(branches) - 1, -1, -1):
                     branch = branches[i]
-                    is_child_current = (branch == self.bot.conversation)
-                    
+                    is_child_current = branch == self.bot.conversation
+
                     # For connector: last branch processed (i=0) gets └─, others get ├─
-                    is_branch_last = (i == 0)
-                    
+                    is_branch_last = i == 0
+
                     # All branches get indented
                     branch_depth = depth + 1
 
-                    line += self._build_tree_text(branch, 
-                                                depth=branch_depth,
-                                                is_current=is_child_current, 
-                                                is_last=is_branch_last,
-                                                is_first_child=False)
+                    line += self._build_tree_text(
+                        branch, depth=branch_depth, is_current=is_child_current, is_last=is_branch_last, is_first_child=False
+                    )
 
         return line
 
@@ -249,16 +241,16 @@ class SimpleBotGUI:
 
             # Add some visual separation
             if i > 0:
-                self.chat_display.insert(tk.END, "\n" + "─"*50 + "\n\n")
+                self.chat_display.insert(tk.END, "\n" + "─" * 50 + "\n\n")
 
             self.chat_display.insert(tk.END, f"{role}: {node.content}\n")
 
             # Show tool usage if available
-            if hasattr(node, 'tool_calls') and node.tool_calls:
+            if hasattr(node, "tool_calls") and node.tool_calls:
                 tools = []
                 for call in node.tool_calls:
                     tool_name, _ = self.bot.tool_handler.tool_name_and_input(call)
-                    tools.append(tool_name if tool_name else 'unknown')
+                    tools.append(tool_name if tool_name else "unknown")
                 self.chat_display.insert(tk.END, f"[Used tools: {', '.join(tools)}]\n")
 
         self.chat_display.see(tk.END)
@@ -270,7 +262,7 @@ class SimpleBotGUI:
             return
 
         # Check if it's a command
-        if message.startswith('/'):
+        if message.startswith("/"):
             self.handle_command(message)
         else:
             # Regular chat message
@@ -290,25 +282,25 @@ class SimpleBotGUI:
         cmd = parts[0]
 
         try:
-            if cmd == '/help':
+            if cmd == "/help":
                 self.show_help()
-            elif cmd == '/up':
+            elif cmd == "/up":
                 self.nav_up()
-            elif cmd == '/down':
+            elif cmd == "/down":
                 self.nav_down()
-            elif cmd == '/left':
+            elif cmd == "/left":
                 self.nav_left()
-            elif cmd == '/right':
+            elif cmd == "/right":
                 self.nav_right()
-            elif cmd == '/root':
+            elif cmd == "/root":
                 self.nav_root()
-            elif cmd == '/save':
+            elif cmd == "/save":
                 self.save_bot()
-            elif cmd == '/load':
+            elif cmd == "/load":
                 self.load_bot()
-            elif cmd == '/fp':
+            elif cmd == "/fp":
                 self.show_fp_help()
-            elif cmd == '/auto':
+            elif cmd == "/auto":
                 self.handle_auto_command()
             else:
                 self.add_system_message(f"Unknown command: {cmd}. Type /help for available commands.")
@@ -375,13 +367,14 @@ class SimpleBotGUI:
         self.refresh_tree_display()
         self.update_chat_display()
         self.add_system_message("Moved to root of conversation tree")
+
     def handle_auto_command(self):
         """Handle the /auto command - let bot work autonomously until it stops using tools."""
         if self.auto_running:
             self.auto_running = False
             self.add_system_message("Auto mode stopped by user")
             return
-            
+
         self.auto_running = True
         self.add_system_message("Bot running autonomously. Type /auto again to stop...")
         threading.Thread(target=self._auto_thread, daemon=True).start()
@@ -390,34 +383,36 @@ class SimpleBotGUI:
         """Run the autonomous bot execution in a separate thread."""
         try:
             import bots.flows.functional_prompts as fp
-            
+
             while self.auto_running:
                 # Let the bot continue with "ok" prompt
                 responses, nodes = fp.chain(self.bot, ["ok"])
-                
+
                 # Update displays on main thread
                 self.root.after(0, self.refresh_tree_display)
                 self.root.after(0, self.update_chat_display)
-                
+
                 # Check if bot used tools - if not, we're done
                 if not self.bot.tool_handler.requests:
                     self.auto_running = False
                     self.root.after(0, lambda: self.add_system_message("Bot finished autonomous execution"))
                     break
-                    
+
                 # Small delay to prevent overwhelming the system
                 import time
+
                 time.sleep(0.1)
-                
+
         except Exception as e:
             self.auto_running = False
-            self.root.after(0, lambda: self.add_system_message(f"Auto mode error: {str(e)}"))
-
+            error_msg = f"Auto mode error: {str(e)}"
+            self.root.after(0, lambda: self.add_system_message(error_msg))
 
     def _send_message_thread(self, message):
         self.status_var.set("Bot thinking...")
         try:
             import bots.flows.functional_prompts as fp
+
             responses, nodes = fp.single_prompt(self.bot, message)
 
             # Refresh displays
@@ -425,26 +420,23 @@ class SimpleBotGUI:
             self.root.after(0, self.update_chat_display)
 
         except Exception as e:
-            self.root.after(0, lambda: messagebox.showerror("Error", f"Error: {str(e)}"))
+            error_msg = f"Error: {str(e)}"
+            self.root.after(0, lambda: messagebox.showerror("Error", error_msg))
         finally:
             self.status_var.set("Ready")
 
     def save_bot(self):
-        filename = filedialog.asksaveasfilename(
-            defaultextension=".bot",
-            filetypes=[("Bot files", "*.bot")]
-        )
+        filename = filedialog.asksaveasfilename(defaultextension=".bot", filetypes=[("Bot files", "*.bot")])
         if filename:
             self.bot.save(filename)
             self.status_var.set(f"Saved to {filename}")
             self.add_system_message(f"Bot saved to {filename}")
 
     def load_bot(self):
-        filename = filedialog.askopenfilename(
-            filetypes=[("Bot files", "*.bot")]
-        )
+        filename = filedialog.askopenfilename(filetypes=[("Bot files", "*.bot")])
         if filename:
             from bots.foundation.base import Bot
+
             self.bot = Bot.load(filename)
             self.status_var.set(f"Loaded {filename}")
             self.refresh_tree_display()
@@ -455,7 +447,7 @@ class SimpleBotGUI:
         help_text = """Available Commands:
 
 /help - Show this help
-/up - Move up in conversation tree  
+/up - Move up in conversation tree
 /down - Move down in conversation tree
 /left - Move to left sibling
 /right - Move to right sibling
@@ -485,7 +477,7 @@ Enter to send, Shift+Enter for new line."""
         fp_text = """Functional Prompts:
 
 Use functional prompts by typing them as regular messages:
-- "chain: prompt1 | prompt2 | prompt3" 
+- "chain: prompt1 | prompt2 | prompt3"
 - "branch: analyze security | analyze performance"
 - "prompt_while: keep working until done"
 
@@ -499,6 +491,7 @@ For advanced functional prompts, use the CLI."""
 
     def run(self):
         self.root.mainloop()
+
 
 if __name__ == "__main__":
     app = SimpleBotGUI()
