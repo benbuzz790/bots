@@ -11,6 +11,61 @@ import anthropic
 from bots.dev.decorators import toolify
 
 
+def _validate_question_format(query: str) -> bool:
+    """Use a simple Haiku bot to validate if input is formatted as a question.
+
+    Args:
+        query (str): The input query to validate
+
+    Returns:
+        bool: True if formatted as a question, False otherwise
+
+    Raises:
+        ValueError: If query is not formatted as a question
+    """
+    try:
+        # Get API key
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            return True  # Skip validation if no API key
+
+        # Initialize Anthropic client
+        client = anthropic.Anthropic(api_key=api_key)
+
+        # Simple validation prompt for Haiku
+        validation_prompt = f'''Is this text formatted as a question? Answer only Y or N.
+
+Text: "{query}"
+
+Answer:'''
+
+        # Make API call with Haiku (fast and cheap)
+        response = client.messages.create(
+            model="claude-3-haiku-20240307",
+            max_tokens=10,
+            temperature=0.0,
+            messages=[{"role": "user", "content": validation_prompt}]
+        )
+
+        # Extract the response
+        answer = response.content[0].text.strip().upper()
+
+        if answer.startswith('N'):
+            raise ValueError(
+                "Input queries must be formatted as questions. "
+                "Good examples: 'Who is...?', 'What is...?', 'How does...?' "
+                "Bad examples: 'Ben R wrestling', 'paris buffalo'"
+            )
+
+        return True
+
+    except ValueError:
+        raise  # Re-raise validation errors
+    except Exception:
+        return True  # Skip validation on other errors
+
+
+
 @toolify("Perform an agentic web search using Claude's internal web search capabilities")
 def web_search(question: str) -> str:
     """Perform an intelligent web search and return organized results.
@@ -31,6 +86,9 @@ def web_search(question: str) -> str:
         str: Organized search results with key information extracted
     """
     try:
+        # Validate that input is formatted as a question
+        _validate_question_format(question)
+
         # Get API key
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
@@ -63,31 +121,70 @@ def web_search(question: str) -> str:
             messages=[{"role": "user", "content": search_prompt}],
         )
 
-        # Extract and organize the pertinent information
-        raw_response_str = str(response)
+        # Write raw API response to file immediately - DO NOT READ THIS FILE IN CONTEXT!
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"web_search_raw_api_response_{timestamp}.txt"
+        
+        # Extract clean, essential content from the web search response
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"web_search_clean_output_{timestamp}.txt"
 
-        # Split into text blocks and extract content
-        text_blocks = raw_response_str.split("TextBlock(")
-        extracted_content = []
+        def extract_clean_content(response):
+            """Extract only the essential content from web search response."""
+            result = []
+            result.append("=== WEB SEARCH RESULTS ===\n")
+            result.append(f"Search: \"{question}\"\n")
 
-        for block in text_blocks:
-            # Look for text content in double quotes
-            if 'text="' in block:
-                start_idx = block.find('text="') + 6
-                end_idx = block.find('", type=')
-                if end_idx > start_idx:
-                    content_text = block[start_idx:end_idx]
-                    if len(content_text.strip()) > 5:
-                        extracted_content.append(content_text.strip())
+            if hasattr(response, "content") and response.content:
+                text_responses = []
+                search_results = []
 
-        # Format the organized response
-        if extracted_content:
-            result_parts = ["=== SEARCH RESULTS ==="]
-            for i, content in enumerate(extracted_content[:10], 1):
-                result_parts.append(f"{i}. {content}")
-            return "\n".join(result_parts)
-        else:
-            return "No structured content found in search results."
+                for block in response.content:
+                    # Extract Claude's text responses
+                    if hasattr(block, 'type') and block.type == 'text' and hasattr(block, 'text') and block.text:
+                        text_responses.append(block.text)
+
+                    # Extract web search results
+                    elif hasattr(block, 'type') and block.type == 'web_search_tool_result':
+                        if hasattr(block, 'content') and block.content:
+                            for item in block.content:
+                                if isinstance(item, dict) and item.get('type') == 'web_search_result':
+                                    search_results.append({
+                                        'title': item.get('title', 'No title'),
+                                        'url': item.get('url', 'No URL'),
+                                        'age': item.get('page_age', 'Unknown age')
+                                    })
+
+                # Add Claude's responses
+                if text_responses:
+                    result.append("=== CLAUDE'S ANALYSIS ===\n")
+                    for i, text in enumerate(text_responses, 1):
+                        result.append(f"{i}. {text}\n")
+                    result.append("")
+
+                # Add search results
+                if search_results:
+                    result.append("=== SOURCES FOUND ===\n")
+                    for i, item in enumerate(search_results, 1):
+                        result.append(f"{i}. {item['title']}")
+                        result.append(f"   {item['url']}")
+                        if item['age'] and item['age'] != 'Unknown age':
+                            result.append(f"   ({item['age']})")
+                        result.append("")
+
+                result.append(f"Search performed: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M UTC')}")
+
+            return "\n".join(result)
+
+        # Write clean output to file
+        clean_content = extract_clean_content(response)
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(clean_content)
+
+        # Return the clean content directly instead of just filename
+        return clean_content
 
     except Exception as e:
         return f"Web search failed: {str(e)}"
