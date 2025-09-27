@@ -1596,6 +1596,8 @@ class CLI:
             except Exception as e:
                 pretty(f"Command error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
                 if self.context.conversation_backup:
+                    # Clear tool handler state to prevent corruption from failed tool executions
+                    bot.tool_handler.clear()
                     bot.conversation = self.context.conversation_backup
                     pretty(
                         "Restored conversation from backup",
@@ -1634,6 +1636,8 @@ class CLI:
         except Exception as e:
             pretty(f"Chat error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
             if self.context.conversation_backup:
+                # Clear tool handler state to prevent corruption from failed tool executions
+                bot.tool_handler.clear()
                 bot.conversation = self.context.conversation_backup
                 pretty(
                     "Restored conversation from backup",
