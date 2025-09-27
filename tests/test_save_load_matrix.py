@@ -7,6 +7,14 @@ import tempfile
 import unittest
 from types import ModuleType
 from typing import Any, Callable, Dict
+from unittest.mock import patch
+
+from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.openai_bots import ChatGPT_Bot
+from bots.foundation.gemini_bots import GeminiBot
+from bots.foundation.base import Bot, Engines
+
+sys.path.insert(0, os.path.abspath("."))
 
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
@@ -82,9 +90,27 @@ def another_module_tool(data: str) -> str:
 
         return module
 
-    def create_bot_with_tool(self, tool_method: str, tool_source: Any) -> AnthropicBot:
-        """Create a bot with the specified tool addition method."""
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
+
+    def create_bot_by_provider(self, provider: str, name: str = "TestBot") -> Bot:
+        """Create a bot with the specified provider."""
+        if provider == "anthropic":
+            with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test_key"}):
+                with patch("anthropic.Anthropic"):
+                    return AnthropicBot(name=name, model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
+        elif provider == "openai":
+            with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}):
+                with patch("openai.OpenAI"):
+                    return ChatGPT_Bot(name=name, model_engine=Engines.GPT4, max_tokens=1000)
+        elif provider == "gemini":
+            with patch.dict(os.environ, {"GOOGLE_API_KEY": "test_key"}):
+                with patch("google.genai.Client"):
+                    return GeminiBot(name=name, model_engine=Engines.GEMINI25_FLASH, max_tokens=1000)
+        else:
+            raise ValueError(f"Unknown provider: {provider}")
+
+    def create_bot_with_tool(self, tool_method: str, tool_source: Any, provider: str = "anthropic") -> Bot:
+        """Create a bot with the specified tool addition method and provider."""
+        bot = self.create_bot_by_provider(provider, "TestBot")
         if tool_method == "module":
             import inspect
 
@@ -95,7 +121,7 @@ def another_module_tool(data: str) -> str:
             print(f"DEBUG: After adding tools, bot has {len(bot.tool_handler.tools)} tools")
         return bot
 
-    def check_tool_usage(self, bot: AnthropicBot, expected_result: str, test_prompt: str) -> bool:
+    def check_tool_usage(self, bot: Bot, expected_result: str, test_prompt: str) -> bool:
         """Test that tools work correctly on the bot."""
         try:
             response = bot.respond(test_prompt)
@@ -115,24 +141,24 @@ def another_module_tool(data: str) -> str:
             return False
 
     def run_scenario(
-        self, tool_method: str, tool_source: Any, scenario: str, expected_result: str, test_prompt: str
+        self, tool_method: str, tool_source: Any, scenario: str, expected_result: str, test_prompt: str, provider: str = "anthropic"
     ) -> Dict[str, Any]:
         """Run a specific test scenario."""
-        result = {"tool_method": tool_method, "scenario": scenario, "success": False, "error": None, "details": {}}
+        result = {"tool_method": tool_method, "scenario": scenario, "provider": provider, "success": False, "error": None, "details": {}}
 
         try:
             if scenario == "basic":
                 # Basic tool use
-                bot = self.create_bot_with_tool(tool_method, tool_source)
+                bot = self.create_bot_with_tool(tool_method, tool_source, provider)
                 result["success"] = self.check_tool_usage(bot, expected_result, test_prompt)
                 result["details"]["tool_count"] = len(bot.tool_handler.tools)
 
             elif scenario == "save_load":
                 # Save and load and tool use
-                bot = self.create_bot_with_tool(tool_method, tool_source)
+                bot = self.create_bot_with_tool(tool_method, tool_source, provider)
 
                 # Save the bot
-                save_path = os.path.join(self.temp_dir, f"{tool_method}_save_load")
+                save_path = os.path.join(self.temp_dir, f"{provider}_{tool_method}_save_load")
                 bot.save(save_path)
 
                 # Load the bot
@@ -143,15 +169,15 @@ def another_module_tool(data: str) -> str:
 
             elif scenario == "save_load_twice":
                 # Save and load twice and tool use
-                bot = self.create_bot_with_tool(tool_method, tool_source)
+                bot = self.create_bot_with_tool(tool_method, tool_source, provider)
 
                 # First save/load
-                save_path1 = os.path.join(self.temp_dir, f"{tool_method}_save_load_1")
+                save_path1 = os.path.join(self.temp_dir, f"{provider}_{tool_method}_save_load_1")
                 bot.save(save_path1)
                 loaded_bot1 = Bot.load(save_path1 + ".bot")
 
                 # Second save/load
-                save_path2 = os.path.join(self.temp_dir, f"{tool_method}_save_load_2")
+                save_path2 = os.path.join(self.temp_dir, f"{provider}_{tool_method}_save_load_2")
                 loaded_bot1.save(save_path2)
                 loaded_bot2 = Bot.load(save_path2 + ".bot")
 
@@ -229,7 +255,7 @@ def complex_tool(input_data: str) -> str:
         exec(module_content, module.__dict__)
         return module
 
-    def check_helper_function_availability(self, bot: AnthropicBot, tool_name: str) -> Dict[str, Any]:
+    def check_helper_function_availability(self, bot: Bot, tool_name: str) -> Dict[str, Any]:
         """Check if helper functions are available after save/load."""
         result = {
             "tool_exists": False,
@@ -298,7 +324,7 @@ def complex_tool(input_data: str) -> str:
 
                 try:
                     # Create bot and add tools
-                    bot = AnthropicBot(name="HelperTestBot", model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
+                    bot = self.create_bot_by_provider("anthropic", "HelperTestBot")
                     bot.add_tools(test_case["source"])
 
                     # Check helper functions before save/load
@@ -427,6 +453,8 @@ def complex_tool(input_data: str) -> str:
         """Run the complete test matrix."""
 
         # Define test matrix dimensions
+        providers = ["anthropic", "openai", "gemini"]
+
         tool_methods = {
             "file": {
                 "source": self.create_test_file(),
@@ -454,57 +482,64 @@ def complex_tool(input_data: str) -> str:
 
         # Run all combinations
         results = []
-        for tool_method, tool_config in tool_methods.items():
-            for scenario in scenarios:
-                print(f"\nTesting {tool_method} + {scenario}...")
-                result = self.run_scenario(
-                    tool_method, tool_config["source"], scenario, tool_config["expected_result"], tool_config["test_prompt"]
-                )
-                results.append(result)
+        for provider in providers:
+            for tool_method, tool_config in tool_methods.items():
+                for scenario in scenarios:
+                    print(f"\nTesting {provider} + {tool_method} + {scenario}...")
+                    result = self.run_scenario(
+                        tool_method, tool_config["source"], scenario, tool_config["expected_result"], tool_config["test_prompt"], provider
+                    )
+                    results.append(result)
 
-                # Print result
-                status = "PASS" if result["success"] else "FAIL"
-                print(f"  {tool_method:10} + {scenario:15} = {status}")
-                if result["error"]:
-                    print(f"    Error: {result['error']}")
-                if result["details"]:
-                    for key, value in result["details"].items():
-                        if key != "traceback":
-                            print(f"    {key}: {value}")
+                    # Print result
+                    status = "PASS" if result["success"] else "FAIL"
+                    print(f"  {provider:10} + {tool_method:10} + {scenario:15} = {status}")
+                    if result["error"]:
+                        print(f"    Error: {result['error']}")
+                    if result["details"]:
+                        for key, value in result["details"].items():
+                            if key != "traceback":
+                                print(f"    {key}: {value}")
 
         # Summary
-        print("\n" + "=" * 60)
+        print("\n" + "=" * 80)
         print("SUMMARY MATRIX")
-        print("=" * 60)
+        print("=" * 80)
 
-        # Create summary table
-        print(f"{'Tool Method':<12} {'Basic':<8} {'Save+Load':<12} {'Save+Load2x':<12}")
-        print("-" * 50)
+        # Create summary table by provider
+        for provider in providers:
+            print(f"\n{provider.upper()} PROVIDER:")
+            print(f"{'Tool Method':<12} {'Basic':<8} {'Save+Load':<12} {'Save+Load2x':<12}")
+            print("-" * 50)
 
-        for tool_method in tool_methods.keys():
-            row = f"{tool_method:<12} "
-            for scenario in scenarios:
-                # Find result for this combination
-                result = next((r for r in results if r["tool_method"] == tool_method and r["scenario"] == scenario), None)
-                status = "PASS" if result and result["success"] else "FAIL"
-                if scenario == "basic":
-                    row += f"{status:<8} "
-                else:
-                    row += f"{status:<12} "
-            print(row)
+            for tool_method in tool_methods.keys():
+                row = f"{tool_method:<12} "
+                for scenario in scenarios:
+                    # Find result for this combination
+                    result = next((r for r in results if r["provider"] == provider and r["tool_method"] == tool_method and r["scenario"] == scenario), None)
+                    status = "PASS" if result and result["success"] else "FAIL"
+                    if scenario == "basic":
+                        row += f"{status:<8} "
+                    else:
+                        row += f"{status:<12} "
+                print(row)
 
-        # Count failures
+        # Overall summary
         failures = [r for r in results if not r["success"]]
-        print(f"\nTotal tests: {len(results)}")
+        print(f"\nOVERALL SUMMARY:")
+        print(f"Total tests: {len(results)}")
         print(f"Failures: {len(failures)}")
         print(f"Success rate: {(len(results) - len(failures)) / len(results) * 100:.1f}%")
 
-        # Show failure details
+        # Show failure details by provider
         if failures:
-            print("\nFAILURE DETAILS:")
-            for failure in failures:
-                print(f"\n{failure['tool_method']} + {failure['scenario']}:")
-                print(f"  Error: {failure['error']}")
+            print("\nFAILURE DETAILS BY PROVIDER:")
+            for provider in providers:
+                provider_failures = [f for f in failures if f["provider"] == provider]
+                if provider_failures:
+                    print(f"\n{provider.upper()} FAILURES ({len(provider_failures)}):")
+                    for failure in provider_failures:
+                        print(f"  {failure['tool_method']} + {failure['scenario']}: {failure['error']}")
 
         # Assert that all tests pass
         self.assertEqual(len(failures), 0, f"Found {len(failures)} failures in test matrix")
