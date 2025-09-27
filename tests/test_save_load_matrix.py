@@ -177,11 +177,16 @@ def another_module_tool(data: str) -> str:
 def _internal_helper(data: str) -> str:
     return f"HELPER_PROCESSED: {data.upper()}"
 
-def _another_helper(value: int) -> str:
-    return f"NUMERIC_HELPER: {value * 2}"
+def _another_helper(value: str) -> str:
+    try:
+        num_value = int(value)
+        result = num_value * 2
+        return f"NUMERIC_HELPER: {result}"
+    except ValueError:
+        return f"NUMERIC_HELPER: INVALID_INPUT"
 
 # Main tool that uses helper functions
-def tool_with_helpers(input_text: str, multiplier: int = 1) -> str:
+def tool_with_helpers(input_text: str, multiplier: str = "1") -> str:
     processed = _internal_helper(input_text)
     numeric_result = _another_helper(multiplier)
     return f"COMBINED: {processed} + {numeric_result}"
