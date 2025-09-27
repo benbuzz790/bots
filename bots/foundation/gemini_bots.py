@@ -36,7 +36,7 @@ class GeminiNode(ConversationNode):
         super().__init__(**kwargs)
 
     def _build_messages(self) -> List[Any]:
-        # Gemini expects a list of content strings or dicts
+        # Gemini expects a list of content strings or structured parts
         # We'll traverse from root to current node, collecting messages
         messages = []
         node = self
@@ -45,14 +45,26 @@ class GeminiNode(ConversationNode):
             if not node._is_empty():
                 stack.append(node)
             node = node.parent
+
         for n in reversed(stack):
             if n.role == "user":
-                messages.append(n.content)
+                if n.content:
+                    messages.append(n.content)
             elif n.role == "assistant":
-                messages.append(n.content)
-            elif n.role == "tool":
-                # Gemini may expect tool results as content or as structured part
-                messages.append(n.content)
+                if n.content:
+                    messages.append(n.content)
+            elif n.role == "function":
+                # Parse the function response and add as structured part
+                try:
+                    func_data = json.loads(n.content)
+                    # Create a proper user message with functionResponse part
+                    messages.append({
+                        "role": "user",
+                        "parts": [func_data]
+                    })
+                except (json.JSONDecodeError, KeyError):
+                    # Fallback to simple content if parsing fails
+                    messages.append(n.content)
         return messages
 
 
@@ -188,8 +200,14 @@ class GeminiMailbox(Mailbox):
                     result = str(e)
             else:
                 result = f"Tool {tool_name} not found."
-            # Add tool result to conversation
-            bot.conversation = bot.conversation._add_reply(role="tool", content=json.dumps(result))
+            # Add tool result to conversation in proper functionResponse format
+            function_response_data = {
+                "functionResponse": {
+                    "name": tool_name,
+                    "response": result if isinstance(result, dict) else {"result": result}
+                }
+            }
+            bot.conversation = bot.conversation._add_reply(role="function", content=json.dumps(function_response_data))
         # Recursively send the updated conversation
         return self.process_response(self.send_message(bot), bot, _recursion_depth + 1)
 
