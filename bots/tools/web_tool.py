@@ -13,11 +13,10 @@ from bots.dev.decorators import toolify
 
 @toolify("Perform an agentic web search using Claude's internal web search capabilities")
 def web_search(question: str) -> str:
-    """Perform an intelligent web search and return raw API results.
+    """Perform an intelligent web search and return organized results.
 
     This tool uses Claude's built-in web search functionality to perform searches
-    and returns the complete raw API response, including all search results,
-    metadata, and processing information.
+    and returns organized, pertinent information extracted from the results.
 
     Args:
         question (str): The search goal framed as a question.
@@ -29,7 +28,7 @@ def web_search(question: str) -> str:
             "paris buffalo"
 
     Returns:
-        str: Raw API response from the web search as a string
+        str: Organized search results with key information extracted
     """
     try:
         # Get API key
@@ -64,10 +63,31 @@ def web_search(question: str) -> str:
             messages=[{"role": "user", "content": search_prompt}],
         )
 
-        # Return raw response which includes citations and other useful info
-        # TODO process and extract just info and citations.
+        # Extract and organize the pertinent information
         raw_response_str = str(response)
-        return f"Raw API Response:\n{raw_response_str}"
+
+        # Split into text blocks and extract content
+        text_blocks = raw_response_str.split("TextBlock(")
+        extracted_content = []
+
+        for block in text_blocks:
+            # Look for text content in double quotes
+            if 'text="' in block:
+                start_idx = block.find('text="') + 6
+                end_idx = block.find('", type=')
+                if end_idx > start_idx:
+                    content_text = block[start_idx:end_idx]
+                    if len(content_text.strip()) > 5:
+                        extracted_content.append(content_text.strip())
+
+        # Format the organized response
+        if extracted_content:
+            result_parts = ["=== SEARCH RESULTS ==="]
+            for i, content in enumerate(extracted_content[:10], 1):
+                result_parts.append(f"{i}. {content}")
+            return "\n".join(result_parts)
+        else:
+            return "No structured content found in search results."
 
     except Exception as e:
         return f"Web search failed: {str(e)}"
