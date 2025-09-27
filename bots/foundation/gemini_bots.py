@@ -160,8 +160,11 @@ class GeminiMailbox(Mailbox):
         )
         return response
 
-    def process_response(self, response: Any, bot: Bot) -> Tuple[str, str, Dict[str, Any]]:
+    def process_response(self, response: Any, bot: Bot, _recursion_depth: int = 0) -> Tuple[str, str, Dict[str, Any]]:
         # If there is a function call, handle it recursively
+        # Recursion protection
+        if _recursion_depth >= 10:
+            return ("Maximum tool call recursion depth reached", "assistant", {})
         handler = bot.tool_handler
         requests = handler.generate_request_schema(response)
         if not requests:
@@ -188,7 +191,7 @@ class GeminiMailbox(Mailbox):
             # Add tool result to conversation
             bot.conversation = bot.conversation._add_reply(role="tool", content=json.dumps(result))
         # Recursively send the updated conversation
-        return self.process_response(self.send_message(bot), bot)
+        return self.process_response(self.send_message(bot), bot, _recursion_depth + 1)
 
 
 class GeminiBot(Bot):
