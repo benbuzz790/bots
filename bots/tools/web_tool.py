@@ -55,6 +55,7 @@ Answer:'''
                 "Input queries must be formatted as questions. "
                 "Good examples: 'Who is...?', 'What is...?', 'How does...?' "
                 "Bad examples: 'Ben R wrestling', 'paris buffalo'"
+                "The more information, and the more specific, the better. You are asking an AI to answer a question, not performing a traditional web keyword search."
             )
 
         return True
