@@ -36,7 +36,7 @@ class GeminiNode(ConversationNode):
         super().__init__(**kwargs)
 
     def _build_messages(self) -> List[Any]:
-        # Gemini expects a list of content strings or structured parts
+        # Gemini expects a consistent structure with role and parts for all messages
         # We'll traverse from root to current node, collecting messages
         messages = []
         node = self
@@ -49,22 +49,31 @@ class GeminiNode(ConversationNode):
         for n in reversed(stack):
             if n.role == "user":
                 if n.content:
-                    messages.append(n.content)
+                    messages.append({
+                        "role": "user",
+                        "parts": [{"text": n.content}]
+                    })
             elif n.role == "assistant":
                 if n.content:
-                    messages.append(n.content)
+                    messages.append({
+                        "role": "model",  # Gemini uses "model" instead of "assistant"
+                        "parts": [{"text": n.content}]
+                    })
             elif n.role == "function":
                 # Parse the function response and add as structured part
                 try:
                     func_data = json.loads(n.content)
-                    # Create a proper user message with functionResponse part
+                    # Function responses are sent as user messages with functionResponse parts
                     messages.append({
                         "role": "user",
                         "parts": [func_data]
                     })
                 except (json.JSONDecodeError, KeyError):
-                    # Fallback to simple content if parsing fails
-                    messages.append(n.content)
+                    # Fallback to simple text content if parsing fails
+                    messages.append({
+                        "role": "user",
+                        "parts": [{"text": n.content}]
+                    })
         return messages
 
 

@@ -151,14 +151,14 @@ class TestGeminiSpecificFeatures(unittest.TestCase):
         self.bot.conversation = self.bot.conversation._add_reply(role="user", content="Hello")
         messages = self.bot.conversation._build_messages()
         self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0], "Hello")
+        self.assertEqual(messages[0], {"role": "user", "parts": [{"text": "Hello"}]})
 
         # Add an assistant response
         self.bot.conversation = self.bot.conversation._add_reply(role="assistant", content="Hi there!")
         messages = self.bot.conversation._build_messages()
         self.assertEqual(len(messages), 2)
-        self.assertEqual(messages[0], "Hello")
-        self.assertEqual(messages[1], "Hi there!")
+        self.assertEqual(messages[0], {"role": "user", "parts": [{"text": "Hello"}]})
+        self.assertEqual(messages[1], {"role": "model", "parts": [{"text": "Hi there!"}]})
 
     def test_gemini_tool_handler_schema_generation(self) -> None:
         """Test GeminiToolHandler's schema generation."""
@@ -222,7 +222,7 @@ class TestGeminiIntegration(unittest.TestCase):
             self.bot = GeminiBot(
                 name="IntegrationTestGemini",
                 model_engine=Engines.GEMINI25_FLASH,
-                max_tokens=100,  # Keep small for testing
+                max_tokens=1000,  # Keep small for testing
                 temperature=0.1,
             )
         except Exception as e:
