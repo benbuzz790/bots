@@ -85,7 +85,7 @@ def test_nested_function(test_file):
 def test_insert_after_scope(test_file):
     """Test inserting after a scope"""
     new_method = "\n    def extra_method(self):\n        pass\n    "
-    result = python_edit(f"{test_file}::OuterClass", new_method, insert_after="OuterClass::another_method")
+    result = python_edit(f"{test_file}::OuterClass", new_method, coscope_with="OuterClass::another_method")
     assert "inserted after" in result
     with open(test_file) as f:
         content = f.read()
@@ -125,7 +125,7 @@ def test_error_ambiguous_insert(test_file):
     """Test error handling for ambiguous insert point"""
     content = "\n    def func():\n        # Insert here\n        x = 1\n        # Insert here\n        y = 2\n    "
     test_file = setup_test_file(os.path.dirname(test_file), content)
-    result = python_edit(test_file, "z = 3", insert_after="# Insert here")
+    result = python_edit(test_file, "z = 3", coscope_with="# Insert here")
     assert "ambiguous" in result.lower() or "multiple matches" in result.lower()
 
 
@@ -148,7 +148,7 @@ def test_async_function(test_file):
 def test_indentation_preservation(test_file):
     """Test proper indentation is maintained"""
     new_method = "\n    def indented_method(self):\n        if True:\n            x = 1\n            if True:\n                y = 2\n    "
-    _result = python_edit(f"{test_file}::OuterClass", new_method, insert_after="OuterClass::method")
+    _result = python_edit(f"{test_file}::OuterClass", new_method, coscope_with="OuterClass::method")
     with open(test_file) as f:
         content = f.read()
     assert "    def indented_method" in content
@@ -190,7 +190,7 @@ def test_indentation_in_class(tmp_path):
     content = "\n    class MyClass:\n        def method_one(self):\n            pass\n    "
     test_file = setup_test_file(tmp_path, content)
     new_method = "\n    def method_two(self):\n        if True:\n            x = 1\n    "
-    _result = python_edit(f"{test_file}::MyClass", new_method, insert_after="MyClass::method_one")
+    _result = python_edit(f"{test_file}::MyClass", new_method, coscope_with="MyClass::method_one")
     with open(test_file) as f:
         content = f.read()
     print(f"DEBUG - Result content:\n{content}")
@@ -331,7 +331,7 @@ def test_line_insert_exact_preservation():
     """Test that lines are preserved exactly as they appear in the source"""
     content = "\n    def func():\n        x = 1  # comment one\n\n        # marker with spaces around\n\n        y = 2  # comment two\n    "
     test_file = setup_test_file("tmp", content)
-    _result = python_edit(f"{test_file}::func", "z = 3", insert_after="# marker with spaces around")
+    _result = python_edit(f"{test_file}::func", "z = 3", coscope_with="# marker with spaces around")
     with open(test_file) as f:
         content = f.read()
     print(f"DEBUG - File content:\n{content}")
@@ -409,7 +409,7 @@ def test_class_with_fstring_methods():
     content = '\n    class User:\n        def __init__(self, name, age):\n            self.name = name\n            self.age = age\n        \n        def greet(self):\n            return f"Hi, I\'m {self.name}"\n    '
     test_file = setup_test_file("tmp", content)
     new_method = '\n    def describe(self):\n        status = "adult" if self.age >= 18 else "minor"\n        return f"User: {self.name} ({self.age} years old, {status})"\n    '
-    result = python_edit(f"{test_file}::User", new_method, insert_after="User::greet")
+    result = python_edit(f"{test_file}::User", new_method, coscope_with="User::greet")
     print(f"DEBUG - Edit result: {result}")
     with open(test_file) as f:
         final_content = f.read()
@@ -440,7 +440,7 @@ def test_various_apostrophe_patterns():
             f.write(test_code)
             test_file = f.name
         try:
-            result = python_edit(f"{test_file}::test_function_{i}", "    pass", insert_after="return True")
+            result = python_edit(f"{test_file}::test_function_{i}", "    pass", coscope_with="return True")
             assert "Error" not in result, f"Failed on test case {i}: {test_case}\\nError: {result}"
             with open(test_file, "r") as f:
                 content = f.read()
@@ -578,7 +578,7 @@ def test_insert_after_quoted_single_line_expression(tmp_path):
     """
     test_file = setup_test_file(tmp_path, content)
     # Insert after the line that starts with "y = "
-    result = python_edit(f"{test_file}::func", "    inserted_line = 'after y'", insert_after='"y = 2"')
+    result = python_edit(f"{test_file}::func", "    inserted_line = 'after y'", coscope_with='"y = 2"')
     assert "inserted after" in result
     with open(test_file) as f:
         final_content = f.read()
@@ -600,7 +600,7 @@ def test_insert_after_quoted_single_line_expression(tmp_path):
 #     '''
 #     test_file = setup_test_file(tmp_path, content)
 #     # Insert after line that starts with "result = calculate_something"
-#     result = python_edit(f"{test_file}::func", "    # Added after calculation", insert_after='"result = calculate_something"')
+#     result = python_edit(f"{test_file}::func", "    # Added after calculation", coscope_with='"result = calculate_something"')
 #     assert "inserted after" in result
 #     print(f"DEBUG - python_edit result: {result}")
 #     with open(test_file) as f:
@@ -626,7 +626,7 @@ def test_insert_after_quoted_multiline_expression(tmp_path):
     multiline_pattern = """if condition:
             x = 1
             y = 2"""
-    result = python_edit(f"{test_file}::func", "    # Added after if block", insert_after=f'"{multiline_pattern}"')
+    result = python_edit(f"{test_file}::func", "    # Added after if block", coscope_with=f'"{multiline_pattern}"')
     assert "inserted after" in result
     with open(test_file) as f:
         final_content = f.read()
@@ -641,7 +641,7 @@ def test_insert_after_quoted_expression_no_match(tmp_path):
         y = 2
     """
     test_file = setup_test_file(tmp_path, content)
-    result = python_edit(f"{test_file}::func", "    inserted = True", insert_after='"nonexistent_pattern"')
+    result = python_edit(f"{test_file}::func", "    inserted = True", coscope_with='"nonexistent_pattern"')
     assert "not found" in result.lower() or "error" in result.lower()
 
 
@@ -659,7 +659,7 @@ def test_insert_after_scope_path_syntax(tmp_path):
     test_file = setup_test_file(tmp_path, content)
     # Insert after method2 within MyClass
     result = python_edit(
-        f"{test_file}::MyClass", "    def inserted_method(self):\n        return 'inserted'", insert_after="MyClass::method2"
+        f"{test_file}::MyClass", "    def inserted_method(self):\n        return 'inserted'", coscope_with="MyClass::method2"
     )
     assert "inserted after" in result
     with open(test_file) as f:
@@ -689,7 +689,7 @@ def test_insert_after_nested_scope_path(tmp_path):
     result = python_edit(
         f"{test_file}::OuterClass::InnerClass",
         "        def inserted_inner_method(self):\n            return 'inserted'",
-        insert_after="OuterClass::InnerClass::inner_method1",
+        coscope_with="OuterClass::InnerClass::inner_method1",
     )
     assert "inserted after" in result
     with open(test_file) as f:
@@ -711,7 +711,7 @@ def test_insert_after_simple_name_in_scope(tmp_path):
     test_file = setup_test_file(tmp_path, content)
     # Insert after 'process' method using simple name
     result = python_edit(
-        f"{test_file}::TestClass", "    def validate(self):\n        return self.data is not None", insert_after="process"
+        f"{test_file}::TestClass", "    def validate(self):\n        return self.data is not None", coscope_with="process"
     )
     assert "inserted after" in result
     with open(test_file) as f:
@@ -736,7 +736,7 @@ def test_insert_after_function_in_function(tmp_path):
     """
     test_file = setup_test_file(tmp_path, content)
     result = python_edit(
-        f"{test_file}::outer_func", "    def helper_inserted():\n        return 'inserted'", insert_after="helper1"
+        f"{test_file}::outer_func", "    def helper_inserted():\n        return 'inserted'", coscope_with="helper1"
     )
     assert "inserted after" in result
     with open(test_file) as f:
@@ -755,7 +755,7 @@ def test_insert_after_with_complex_expressions(tmp_path):
     """
     test_file = setup_test_file(tmp_path, content)
     # Insert after the f-string line
-    result = python_edit(f"{test_file}::func", "    # Added after query", insert_after='"query = f"')
+    result = python_edit(f"{test_file}::func", "    # Added after query", coscope_with='"query = f"')
     assert "inserted after" in result
     with open(test_file) as f:
         final_content = f.read()
@@ -773,7 +773,7 @@ def test_insert_after_preserves_indentation(tmp_path):
             return x + y
     """
     test_file = setup_test_file(tmp_path, content)
-    result = python_edit(f"{test_file}::MyClass::method", "z = 3", insert_after='"y = 2"')
+    result = python_edit(f"{test_file}::MyClass::method", "z = 3", coscope_with='"y = 2"')
     assert "inserted after" in result
     with open(test_file) as f:
         final_content = f.read()
@@ -803,7 +803,7 @@ if __name__ == "__main__":
     main()
     """
     test_file = setup_test_file(tmp_path, content)
-    result = python_edit(test_file, "def helper_function():\n    return 'helper'", insert_after='"def main():"')
+    result = python_edit(test_file, "def helper_function():\n    return 'helper'", coscope_with='"def main():"')
     assert "inserted after" in result
     with open(test_file) as f:
         final_content = f.read()
@@ -825,7 +825,7 @@ def test_insert_after_edge_cases_empty_lines(tmp_path):
     """
     test_file = setup_test_file(tmp_path, content)
     result = python_edit(
-        f"{test_file}::func", "    # Inserted after comment", insert_after='"# Comment with empty line above"'
+        f"{test_file}::func", "    # Inserted after comment", coscope_with='"# Comment with empty line above"'
     )
     assert "inserted after" in result
     with open(test_file) as f:
@@ -843,7 +843,7 @@ def test_insert_after_expression_matching_rules(tmp_path):
     """
     test_file = setup_test_file(tmp_path, content)
     # Single-line pattern should match the first line that STARTS with the pattern
-    result = python_edit(f"{test_file}::func", "    # Added after first calculate", insert_after='"result = calculate"')
+    result = python_edit(f"{test_file}::func", "    # Added after first calculate", coscope_with='"result = calculate"')
     assert "inserted after" in result
     with open(test_file) as f:
         final_content = f.read()
@@ -862,10 +862,10 @@ def test_insert_after_single_quote_vs_double_quote(tmp_path):
     """
     test_file = setup_test_file(tmp_path, content)
     # Test with double quotes
-    result1 = python_edit(f"{test_file}::func", "    # After double quote pattern", insert_after='"x = "')
+    result1 = python_edit(f"{test_file}::func", "    # After double quote pattern", coscope_with='"x = "')
     assert "inserted after" in result1
     # Test with single quotes
-    result2 = python_edit(f"{test_file}::func", "    # After single quote pattern", insert_after="'y = '")
+    result2 = python_edit(f"{test_file}::func", "    # After single quote pattern", coscope_with="'y = '")
     assert "inserted after" in result2
     with open(test_file) as f:
         final_content = f.read()
@@ -889,7 +889,7 @@ def test_insert_after_ambiguous_multiline_expression(tmp_path):
     ambiguous_pattern = """if condition1:
             x = 1
             y = 2"""
-    result = python_edit(f"{test_file}::func", "    # Should fail", insert_after=f'"{ambiguous_pattern}"')
+    result = python_edit(f"{test_file}::func", "    # Should fail", coscope_with=f'"{ambiguous_pattern}"')
     # Should handle ambiguity gracefully
     print(f"DEBUG - Ambiguity result: {result}")
 
