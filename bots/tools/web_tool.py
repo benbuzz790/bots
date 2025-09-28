@@ -122,15 +122,8 @@ def web_search(question: str) -> str:
             messages=[{"role": "user", "content": search_prompt}],
         )
 
-        # Write raw API response to file immediately - DO NOT READ THIS FILE IN CONTEXT!
-        import datetime
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"web_search_raw_api_response_{timestamp}.txt"
         
         # Extract clean, essential content from the web search response
-        import datetime
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"web_search_clean_output_{timestamp}.txt"
 
         def extract_clean_content(response):
             """Extract only the essential content from web search response."""
@@ -179,12 +172,9 @@ def web_search(question: str) -> str:
 
             return "\n".join(result)
 
-        # Write clean output to file
-        clean_content = extract_clean_content(response)
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(clean_content)
 
         # Return the clean content directly instead of just filename
+        clean_content = extract_clean_content(response)
         return clean_content
 
     except Exception as e:
