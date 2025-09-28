@@ -7,7 +7,6 @@ import tempfile
 import unittest
 from types import ModuleType
 from typing import Any, Callable, Dict
-from unittest.mock import patch, Mock, MagicMock
 
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.openai_bots import ChatGPT_Bot
@@ -20,7 +19,6 @@ from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
 
 sys.path.insert(0, os.path.abspath("."))
-
 
 class TestSaveLoadMatrix(unittest.TestCase):
     """Comprehensive test matrix for save/load tool functionality."""
