@@ -765,10 +765,9 @@ def toolify(description: str = None):
                 # Convert KeyboardInterrupt to ToolExecutionError to prevent it from
                 # bubbling up to CLI and being treated as user Ctrl+C
                 from bots.utils.helpers import _process_error
-
-                # ToolExecutionError is defined in this file
                 tool_error = ToolExecutionError(f"Tool execution interrupted: {str(e)}")
                 return _process_error(tool_error)
+            
             except TypeError as e:
                 # Check if this is a missing required argument error
                 error_msg = str(e)
@@ -942,51 +941,3 @@ def _log_error_to_file(function_name: str, error_message: str, args: tuple = Non
         # If we can't write to the log file, at least print to stderr
         print(f"Failed to write to error log: {e}", file=sys.stderr)
         print(f"Original error: {log_entry}", file=sys.stderr)
-
-
-def handle_errors(func: Callable) -> Callable:
-    """Decorator that catches exceptions and returns formatted error strings instead of raising.
-    Use when you want a function to return error messages as strings rather than raising
-    exceptions. This is useful for tools and APIs that need to handle errors gracefully
-    and return error information to callers.
-    The decorator uses the _process_error helper function to format exceptions into
-    detailed error messages including tracebacks.
-    Parameters:
-        func (Callable): The function to wrap with error handling
-    Returns:
-        Callable: A wrapped version of the function that returns error strings instead of raising
-    Example:
-        @handle_errors
-        def risky_operation(data):
-            # If this raises an exception, it will be caught and returned as a string
-            return process_data(data)
-        result = risky_operation(bad_data)
-        if result.startswith("Tool Failed:"):
-            print(f"Operation failed: {result}")
-    """
-    from bots.utils.helpers import _process_error
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        try:
-            return func(*args, **kwargs)
-        except KeyboardInterrupt as e:
-            # Convert KeyboardInterrupt to ToolExecutionError to prevent it from
-            # bubbling up to CLI and being treated as user Ctrl+C
-            tool_error = ToolExecutionError(f"Tool execution interrupted: {str(e)}")
-            return _process_error(tool_error)
-        except TypeError as e:
-            # Check if this is a missing required argument error
-            error_msg = str(e)
-            if "missing" in error_msg and "required" in error_msg and "argument" in error_msg:
-                # Add special message for context length limitation
-                enhanced_error = TypeError(
-                    f"{error_msg} - this may be due to a context length limitation, try making smaller edits"
-                )
-                return _process_error(enhanced_error)
-            else:
-                return _process_error(e)
-        except Exception as e:
-            return _process_error(e)
-
-    return wrapper
