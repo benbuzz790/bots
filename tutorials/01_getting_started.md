@@ -17,34 +17,31 @@ pip install -r requirements.txt
 
 ### Step 2: Create a Simple Bot
 ```python
-from bots import Bot
+from bots import AnthropicBot
 
 # Create a basic bot
-my_bot = Bot(name="HelloBot")
+my_bot = AnthropicBot(name="HelloBot")
 
 # Add a simple greeting function
-@my_bot.tool
+from bots.dev.decorators import toolify
+@toolify
 def greet(name: str) -> str:
-    return f"Hello, {name}! Welcome to the Bots Framework."
+    print( f"Hello, {name}! Welcome to the Bots Framework." )
+    return "greeting sent successfully"
 
 # Run the bot
 if __name__ == "__main__":
-    result = my_bot.run("greet", name="World")
-    print(result)
+    text_response = my_bot.respond("My name is Ben. Greet me.")
+    print(text_response)
 ```
 
 ### Step 3: Test Your Bot
 Save the code above as `hello_bot.py` and run:
 ```bash
 python hello_bot.py
+> Hello, Ben! Welcome to the Bots Framework.
+> Claude: Sure, let me use that tool to greet you.
 ```
 
 ## Next Steps
 - Explore the examples in the `examples/` directory
-- Read the API reference in `API_REFERENCE.md`
-- Check out advanced features in the documentation
-
-## Common Issues
-- Make sure all dependencies are installed
-- Check Python version compatibility
-- Verify configuration files are properly set up
