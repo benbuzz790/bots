@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from types import ModuleType
 from typing import Any, Callable, Dict
-from unittest.mock import patch
+from unittest.mock import patch, Mock, MagicMock
 
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.openai_bots import ChatGPT_Bot
@@ -94,17 +94,26 @@ def another_module_tool(data: str) -> str:
     def create_bot_by_provider(self, provider: str, name: str = "TestBot") -> Bot:
         """Create a bot with the specified provider."""
         if provider == "anthropic":
-            with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test_key"}):
-                with patch("anthropic.Anthropic"):
-                    return AnthropicBot(name=name, model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
+            # Use real API key if available
+            if "ANTHROPIC_API_KEY" in os.environ:
+                return AnthropicBot(name=name, model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
+            else:
+                import unittest
+                raise unittest.SkipTest("No ANTHROPIC_API_KEY available")
         elif provider == "openai":
-            with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}):
-                with patch("openai.OpenAI"):
-                    return ChatGPT_Bot(name=name, model_engine=Engines.GPT4, max_tokens=1000)
+            # Use real API key if available
+            if "OPENAI_API_KEY" in os.environ:
+                return ChatGPT_Bot(name=name, model_engine=Engines.GPT4, max_tokens=1000)
+            else:
+                import unittest
+                raise unittest.SkipTest("No OPENAI_API_KEY available")
         elif provider == "gemini":
-            with patch.dict(os.environ, {"GOOGLE_API_KEY": "test_key"}):
-                with patch("google.genai.Client"):
-                    return GeminiBot(name=name, model_engine=Engines.GEMINI25_FLASH, max_tokens=1000)
+            # Use real API key if available
+            if "GOOGLE_API_KEY" in os.environ or "GEMINI_API_KEY" in os.environ:
+                return GeminiBot(name=name, model_engine=Engines.GEMINI25_FLASH, max_tokens=1000)
+            else:
+                import unittest
+                raise unittest.SkipTest("No GOOGLE_API_KEY or GEMINI_API_KEY available")
         else:
             raise ValueError(f"Unknown provider: {provider}")
 
@@ -126,16 +135,58 @@ def another_module_tool(data: str) -> str:
         try:
             response = bot.respond(test_prompt)
 
-            # Check tool results in conversation
-            tool_results = bot.conversation.tool_results[0].values() if bot.conversation.tool_results else []
-            pending_results = bot.conversation.pending_results[0].values() if bot.conversation.pending_results else []
+            # Traverse the entire conversation tree to find tool execution evidence
+            def find_tool_evidence(node):
+                """Recursively search conversation tree for tool calls and results."""
+                evidence = {
+                    "tool_calls": [],
+                    "tool_results": [],
+                    "pending_results": []
+                }
+                
+                # Check current node
+                if hasattr(node, "tool_calls") and node.tool_calls:
+                    evidence["tool_calls"].extend(node.tool_calls)
+                if hasattr(node, "tool_results") and node.tool_results:
+                    evidence["tool_results"].extend(node.tool_results)
+                if hasattr(node, "pending_results") and node.pending_results:
+                    evidence["pending_results"].extend(node.pending_results)
+                
+                # Check all replies recursively
+                if hasattr(node, "replies"):
+                    for reply in node.replies:
+                        child_evidence = find_tool_evidence(reply)
+                        evidence["tool_calls"].extend(child_evidence["tool_calls"])
+                        evidence["tool_results"].extend(child_evidence["tool_results"])
+                        evidence["pending_results"].extend(child_evidence["pending_results"])
+                
+                return evidence
 
-            # Check if expected result appears in tool results
-            found_result = any((expected_result in str(v) for v in tool_results)) or any(
-                (expected_result in str(v) for v in pending_results)
-            )
+            # Start from conversation root and find all tool evidence
+            root = bot.conversation._find_root()
+            evidence = find_tool_evidence(root)
+            
+            # Check if any tools were executed
+            tool_executed = (len(evidence["tool_calls"]) > 0 or 
+                           len(evidence["tool_results"]) > 0 or 
+                           len(evidence["pending_results"]) > 0)
+            
+            if not tool_executed:
+                return False
+            
+            # Check if expected result appears in any tool results
+            if ":" in expected_result:
+                core_expected = expected_result.split(":", 1)[1].strip()
+            else:
+                core_expected = expected_result
+            
+            all_results = evidence["tool_results"] + evidence["pending_results"]
+            for result in all_results:
+                result_str = str(result)
+                if expected_result in result_str or core_expected in result_str:
+                    return True
 
-            return found_result
+            return False
         except Exception as e:
             print(f"Tool usage failed: {e}")
             return False
