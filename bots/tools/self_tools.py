@@ -98,10 +98,10 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
 def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "False", recombine: str = "concatenate") -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
 
-    Following the idealized design from branch_self.md with minimal complexity:
-    1. Add dummy tool result immediately for API compliance and recursion prevention
-    2. Use existing sync mechanism to update results across branches
-
+    Simplified approach that creates isolated conversation branches:
+    1. Save current bot state to temporary file
+    2. Execute each branch with independent bot instances
+    3. Stitch results back into main conversation tree
     Args:
         self_prompts (str): List of prompts as a string array, like ['task 1', 'task 2', 'task 3']
                            Each prompt becomes a separate conversation branch
@@ -145,43 +145,58 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
     prefixed_prompts = [f"(self-prompt): {prompt}" for prompt in message_list]
 
     try:
-        # Store original conversation point
+        # Store original conversation point and bot settings
         original_node = bot.conversation
-
-        # Get the tool call ID for proper tool result handling
-        tool_call_id = None
-        if original_node.tool_calls:
-            for tc in original_node.tool_calls:
-                if tc.get("name") == "branch_self":
-                    tool_call_id = tc["id"]
-                    break
-
-        if not tool_call_id:
-            return "Error: Could not find branch_self tool call"
-
-        # STEP 1: Add dummy tool result immediately for API compliance and recursion prevention
-        dummy_content = "Branching in progress..."
-        dummy_result = {"tool_use_id": tool_call_id, "content": dummy_content}
-
-        # Pre-populate tool handler results for proper conversation flow
-        # This ensures the dummy result gets added in the right place during _cvsn_respond()
-        if not hasattr(bot.tool_handler, "results"):
-            bot.tool_handler.results = []
-        bot.tool_handler.results.append(dummy_result)
-        # Save bot state with dummy result in place
         original_autosave = bot.autosave
         bot.autosave = False
-        temp_id = str(uuid.uuid4())[:8]
-        temp_file = f"branch_self_{temp_id}.bot"
-        bot.save(temp_file)
+        
+        # Create a modified conversation node with dummy tool results
+        # This prevents 'tool_use without tool_result' errors in branches
+        modified_conversation = original_node
+        if original_node.tool_calls:
+            dummy_results = []
+            for tool_call in original_node.tool_calls:
+                if tool_call.get('name') == 'branch_self':
+                    dummy_result = {
+                        'tool_use_id': tool_call['id'],
+                        'content': 'Branching in progress...'
+                    }
+                    dummy_results.append(dummy_result)
+            
+            if dummy_results:
+                # Temporarily add dummy results for saving
+                original_results = getattr(original_node, 'tool_results', [])
+                original_node._add_tool_results(dummy_results)
+                
+                # Save bot state with dummy results
+                temp_id = str(uuid.uuid4())[:8]
+                temp_file = f"branch_self_{temp_id}.bot"
+                bot.save(temp_file)
+                
+                # Restore original results (remove dummy results from current bot)
+                original_node.tool_results = original_results
+            else:
+                # No dummy results needed, save normally
+                temp_id = str(uuid.uuid4())[:8]
+                temp_file = f"branch_self_{temp_id}.bot"
+                bot.save(temp_file)
+        else:
+            # No tool calls, save normally
+            temp_id = str(uuid.uuid4())[:8]
+            temp_file = f"branch_self_{temp_id}.bot"
+            bot.save(temp_file)
 
         def execute_branch(prompt, parent_bot_node):
             """Execute a single branch with the given prompt."""
             try:
-                # Create a fresh bot copy for this branch (includes dummy result)
+                # Create a fresh bot copy for this branch
                 branch_bot = Bot.load(temp_file)
                 branch_bot.autosave = False
                 branching_node = branch_bot.conversation
+                
+                # Ensure clean tool handler state for branch
+                if hasattr(branch_bot, 'tool_handler') and branch_bot.tool_handler:
+                    branch_bot.tool_handler.clear()
 
                 if allow_work:
                     # Use iterative approach for work
