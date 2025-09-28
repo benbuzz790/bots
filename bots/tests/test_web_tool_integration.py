@@ -76,8 +76,8 @@ class TestWebToolIntegration(unittest.TestCase):
 
         # Verify result is a string (toolified behavior)
         self.assertIsInstance(result, str)
-        self.assertIn("Mocked search results", result)
-        self.assertIn("Mocked raw API response", result)
+        self.assertIn("=== WEB SEARCH RESULTS ===", result)
+        self.assertIn("Python programming tutorials", result)
 
     def test_web_search_tool_with_multiple_tools(self):
         """Test web_search tool alongside other tools."""
@@ -121,7 +121,7 @@ class TestWebToolIntegration(unittest.TestCase):
 
                 web_result = self.bot.tool_handler.function_map["web_search"]("test query")
                 self.assertIsInstance(web_result, str)
-                self.assertIn("Search results", web_result)
+                self.assertIn("=== WEB SEARCH RESULTS ===", web_result)
 
     def test_web_search_tool_error_handling_integration(self):
         """Test web_search tool error handling in bot context."""
@@ -170,9 +170,9 @@ class TestWebToolIntegration(unittest.TestCase):
         # Check input schema
         input_schema = tool_schema["input_schema"]
         self.assertIn("properties", input_schema)
-        self.assertIn("query", input_schema["properties"])
+        self.assertIn("question", input_schema["properties"])
         self.assertIn("required", input_schema)
-        self.assertIn("query", input_schema["required"])
+        self.assertIn("question", input_schema["required"])
 
     def tearDown(self):
         """Clean up test files and directories."""
@@ -217,16 +217,16 @@ class TestWebToolManualInspection(unittest.TestCase):
         self.inspection_results["web_search"] = {
             "query": "latest Python 3.12 features",
             "result_length": len(result),
-            "contains_raw_response": "Raw API Response:" in result,
-            "contains_processed_response": "Processed Response:" in result,
+            "contains_raw_response": "=== WEB SEARCH RESULTS ===" in result,
+            "contains_processed_response": "Search performed:" in result,
             "result_preview": result[:200],
         }
 
         # Basic automated checks based on expected structure
         self.assertIsInstance(result, str)
         self.assertGreater(len(result), 50)  # Should have substantial content
-        self.assertIn("Raw API Response:", result)
-        self.assertIn("Processed Response:", result)
+        self.assertIn("=== WEB SEARCH RESULTS ===", result)
+        self.assertIn("Search performed:", result)
 
     @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"})
     @patch("bots.tools.web_tool.anthropic.Anthropic")
@@ -239,7 +239,7 @@ class TestWebToolManualInspection(unittest.TestCase):
         # Create mock response that mimics real web search structure
         mock_response = Mock()
         mock_response.content = [
-            Mock(text="I'll search for information about Python tutorials."),
+            Mock(text="I'll search for information about Python tutorials.", type="text"),
             Mock(text=None, type="server_tool_use", name="web_search"),
             Mock(
                 text=None,
@@ -249,7 +249,7 @@ class TestWebToolManualInspection(unittest.TestCase):
                     {"type": "web_search_result", "title": "Advanced Python", "url": "https://example2.com"},
                 ],
             ),
-            Mock(text="Based on the search results, I found 2 relevant tutorials..."),
+            Mock(text="Based on the search results, I found 2 relevant tutorials...", type="text"),
         ]
         mock_response.__str__ = Mock(
             return_value=str(
@@ -268,9 +268,9 @@ class TestWebToolManualInspection(unittest.TestCase):
         result = web_search("Python tutorials")
 
         # Test expected structure
-        self.assertIn("Raw API Response:", result)
-        self.assertIn("Processed Response:", result)
-        self.assertIn("I'll search for information", result)
+        self.assertIn("=== WEB SEARCH RESULTS ===", result)
+        self.assertIn("Search performed:", result)
+        self.assertIn("=== CLAUDE'S ANALYSIS ===", result)
 
         # Test that raw response data is preserved
         self.assertIn("Python Tutorial", result)
@@ -286,7 +286,7 @@ class TestWebToolManualInspection(unittest.TestCase):
         # Mock response with citations (like real Claude responses)
         mock_response = Mock()
         mock_response.content = [
-            Mock(text="Based on the search results:"),
+            Mock(text="Based on the search results:", type="text"),
             Mock(
                 text="Python 3.12 includes many new features",
                 citations=[{"url": "https://python.org", "title": "Python 3.12 Release"}],
@@ -299,9 +299,9 @@ class TestWebToolManualInspection(unittest.TestCase):
 
         # Should handle citations gracefully
         self.assertIsInstance(result, str)
-        self.assertIn("Raw API Response:", result)
-        self.assertIn("Response with citations", result)
+        self.assertIn("=== WEB SEARCH RESULTS ===", result)
         self.assertIn("Based on the search results:", result)
+        self.assertIn("=== WEB SEARCH RESULTS ===", result)
 
 
 class TestWebToolRealWorldScenarios(unittest.TestCase):
@@ -333,7 +333,7 @@ class TestWebToolRealWorldScenarios(unittest.TestCase):
         result = web_search("latest AI developments 2024")
 
         self.assertIsInstance(result, str)
-        self.assertIn("latest news about AI developments", result)
+        self.assertIn("=== WEB SEARCH RESULTS ===", result)
 
     @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"})
     @patch("bots.tools.web_tool.anthropic.Anthropic")
