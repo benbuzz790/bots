@@ -298,6 +298,8 @@ class DynamicParameterCollector:
             "5": ("prompt_while", fp.prompt_while),
             "6": ("chain_while", fp.chain_while),
             "7": ("branch_while", fp.branch_while),
+            "8": ("par_branch", fp.par_branch),
+            "9": ("par_branch_while", fp.par_branch_while),
         }
         for key, (name, _) in fp_options.items():
             print(f"  {key}. {name}")
@@ -1230,6 +1232,8 @@ class DynamicFunctionalPromptHandler:
                 "5": ("prompt_while", fp.prompt_while),
                 "6": ("chain_while", fp.chain_while),
                 "7": ("branch_while", fp.branch_while),
+                "8": ("par_branch", fp.par_branch),
+                "9": ("par_branch_while", fp.par_branch_while),
             }
             for key, (name, _) in fp_options.items():
                 print(f"  {key}. {name}")

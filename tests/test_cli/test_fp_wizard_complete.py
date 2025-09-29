@@ -64,7 +64,7 @@ class TestFPWizardComplete(unittest.TestCase):
         mock_input.side_effect = [
             "Hello bot",
             "/fp",
-            "4",  # Select tree_of_thought
+            "12",  # Select tree_of_thought
             "Analyze technical feasibility",  # First prompt
             "Analyze business impact",  # Second prompt
             "Analyze user experience",  # Third prompt
@@ -81,7 +81,7 @@ class TestFPWizardComplete(unittest.TestCase):
 
         # Should show tree_of_thought execution
         self.assertIn("tree_of_thought", output)
-        self.assertIn("Collecting parameters for broadcast_to_leaves", output)
+        self.assertIn("Collecting parameters for tree_of_thought", output)
         self.assertIn("Executing tree_of_thought", output)
 
     @patch("builtins.input")
@@ -105,7 +105,7 @@ class TestFPWizardComplete(unittest.TestCase):
 
         # Should show prompt_while execution
         self.assertIn("prompt_while", output)
-        self.assertIn("Collecting parameters for prompt_while", output)
+        self.assertIn("Collecting parameters for par_branch_while", output)
         self.assertIn("Executing prompt_while", output)
 
     @patch("builtins.input")
@@ -141,7 +141,7 @@ class TestFPWizardComplete(unittest.TestCase):
         mock_input.side_effect = [
             "Hello bot",
             "/fp",
-            "7",  # Select branch_while
+            "2",  # Select branch_while
             "Optimize function A until perfect",  # First prompt
             "Optimize function B until perfect",  # Second prompt
             "Optimize function C until perfect",  # Third prompt
@@ -193,7 +193,7 @@ class TestFPWizardComplete(unittest.TestCase):
         mock_input.side_effect = [
             "Hello bot",
             "/fp",
-            "9",  # Select par_branch_while
+            "8",  # Select par_branch_while
             "Parallel optimization task A",  # First prompt
             "Parallel optimization task B",  # Second prompt
             "",  # End prompts
@@ -210,7 +210,7 @@ class TestFPWizardComplete(unittest.TestCase):
 
         # Should show par_branch_while execution
         self.assertIn("par_branch_while", output)
-        self.assertIn("Collecting parameters for prompt_while", output)
+        self.assertIn("Collecting parameters for par_branch_while", output)
         self.assertIn("Executing par_branch_while", output)
 
     @patch("builtins.input")
