@@ -309,9 +309,9 @@ class TestPromptHandler(unittest.TestCase):
         self.assertEqual(result, "Cannot save empty prompt.")
 
 
-@patch("builtins.input")
-@patch("builtins.print")
-def test_load_prompt_invalid_selection(self, mock_print, mock_input):
+    @patch("builtins.input")
+    @patch("builtins.print")
+    def test_load_prompt_invalid_selection(self, mock_input, mock_print):
     """Test loading prompt with invalid selection."""
     # Setup test data
     self.handler.prompt_manager.prompts_data = {"recents": [], "prompts": {"test1": "First test prompt"}}

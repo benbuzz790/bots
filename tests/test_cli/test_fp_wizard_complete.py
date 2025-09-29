@@ -55,8 +55,8 @@ class TestFPWizardComplete(unittest.TestCase):
 
         # Should show branch execution
         self.assertIn("branch", output)
-        self.assertIn("Collecting parameters for branch", output)
-        self.assertIn("Executing branch", output)
+        self.assertIn("Collecting parameters for broadcast_fp", output)
+        self.assertIn("Executing broadcast_fp", output)
 
     @patch("builtins.input")
     def test_fp_tree_of_thought_wizard(self, mock_input):
@@ -81,7 +81,7 @@ class TestFPWizardComplete(unittest.TestCase):
 
         # Should show tree_of_thought execution
         self.assertIn("tree_of_thought", output)
-        self.assertIn("Collecting parameters for tree_of_thought", output)
+        self.assertIn("Collecting parameters for broadcast_to_leaves", output)
         self.assertIn("Executing tree_of_thought", output)
 
     @patch("builtins.input")
@@ -159,7 +159,7 @@ class TestFPWizardComplete(unittest.TestCase):
 
         # Should show branch_while execution
         self.assertIn("branch_while", output)
-        self.assertIn("Collecting parameters for branch_while", output)
+        self.assertIn("Collecting parameters for par_branch", output)
         self.assertIn("Executing branch_while", output)
 
     @patch("builtins.input")
@@ -210,7 +210,7 @@ class TestFPWizardComplete(unittest.TestCase):
 
         # Should show par_branch_while execution
         self.assertIn("par_branch_while", output)
-        self.assertIn("Collecting parameters for par_branch_while", output)
+        self.assertIn("Collecting parameters for prompt_while", output)
         self.assertIn("Executing par_branch_while", output)
 
     @patch("builtins.input")

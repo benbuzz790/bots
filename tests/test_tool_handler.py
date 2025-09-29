@@ -229,11 +229,11 @@ class TestDecoratorHandling(unittest.TestCase):
     def test_single_decorator_handling(self):
         """Test that a single decorator is properly included in execution
         context"""
-        # Test with the actual handle_errors decorator which is available
+        # Test with the actual toolify decorator which is available
         # globally
-        from bots.dev.decorators import handle_errors
+        from bots.dev.decorators import toolify
 
-        @handle_errors
+        @toolify()
         def test_function(x: int) -> str:
             """A test function with a decorator"""
             return str(x * 2)
@@ -251,9 +251,9 @@ class TestDecoratorHandling(unittest.TestCase):
     def test_multiple_decorators_handling(self):
         """Test that multiple decorators are properly handled"""
         # Use actual decorators that are available globally
-        from bots.dev.decorators import debug_on_error, handle_errors
+        from bots.dev.decorators import debug_on_error, toolify
 
-        @handle_errors
+        @toolify()
         @debug_on_error
         def multi_decorated_function(x: int) -> str:
             """A function with multiple decorators"""
@@ -270,12 +270,12 @@ class TestDecoratorHandling(unittest.TestCase):
         self.assertEqual(result, "42")
 
     def test_handle_errors_decorator(self):
-        """Test the specific handle_errors decorator that caused the original
+        """Test the specific toolify decorator that caused the original
         issue"""
-        # Import the actual handle_errors decorator
-        from bots.dev.decorators import handle_errors
+        # Import the actual toolify decorator
+        from bots.dev.decorators import toolify
 
-        @handle_errors
+        @toolify()
         def error_prone_function(should_fail: bool) -> str:
             """A function that might raise an error"""
             if should_fail:
@@ -292,5 +292,5 @@ class TestDecoratorHandling(unittest.TestCase):
         self.assertEqual(result, "success")
         # Test error handling (should not raise, but return error message)
         result = self.handler.function_map["error_prone_function"](True)
-        # handle_errors returns "Tool Failed: ..." format
+        # toolify returns "Tool Failed: ..." format
         self.assertIn("Tool Failed", result)

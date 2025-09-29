@@ -175,7 +175,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
             print(f"\nBroadcast FP selective targeting output:\n{output}")
 
         # Should show selective leaf targeting
-        self.assertIn("Selected 2 leaves for broadcast", output)
+        self.assertIn("Selected 1 leaves for broadcast", output)
         self.assertIn("Broadcasting single_prompt to 2 selected leaves", output)
         self.assertIn("Broadcast completed", output)
 

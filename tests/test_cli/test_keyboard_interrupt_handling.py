@@ -17,7 +17,7 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
     def test_toolify_converts_keyboard_interrupt(self):
         """Test that @toolify converts KeyboardInterrupt to ToolExecutionError."""
 
-        @toolify
+        @toolify()
         def tool_that_raises_keyboard_interrupt():
             """A tool that raises KeyboardInterrupt (simulating server port conflict)."""
             raise KeyboardInterrupt("Address already in use")
@@ -57,7 +57,7 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         # preventing them from reaching the CLI's KeyboardInterrupt handler
 
         # Create a tool that would normally cause the issue
-        @toolify
+        @toolify()
         def server_startup_tool():
             raise KeyboardInterrupt("Port 8000 already in use")
 
@@ -76,7 +76,7 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         """Test the specific scenario where a tool raises KeyboardInterrupt."""
 
         # Simulate what happens when a tool tries to start a server on a busy port
-        @toolify
+        @toolify()
         def problematic_server_tool():
             # This is what might happen inside a server startup tool
 

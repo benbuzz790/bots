@@ -133,12 +133,12 @@ class TestToolifyIntegration(unittest.TestCase):
 
         # Test division by zero returns error string
         result = divide_func("10", "0")
-        self.assertTrue(result.startswith("Error:"))
+        self.assertTrue(result.startswith("Tool Failed:"))
         self.assertIn("Cannot divide by zero", result)
 
         # Test invalid input conversion
         result = divide_func("not_a_number", "5")
-        self.assertTrue(result.startswith("Error:"))
+        self.assertTrue(result.startswith("Tool Failed:"))
 
     def test_multiple_toolified_functions_integration(self):
         """Test bot with multiple toolified functions."""
