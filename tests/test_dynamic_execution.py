@@ -30,9 +30,9 @@ class TestDynamicFunctionExecution(unittest.TestCase):
         # Verify that required imports are in context
         self.assertIn("os", context, "os module should be in context")
         self.assertIn(
-            "handle_errors",
+            "toolify",
             context,
-            "handle_errors decorator should be in context",
+            "toolify decorator should be in context",
         )
         # Test dynamic execution
         source = inspect.getsource(view_dir)
