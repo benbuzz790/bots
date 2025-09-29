@@ -70,7 +70,7 @@ def create_auto_stash() -> str:
         stash_message = "WIP: auto-stash before user message"  # fallback
         try:
             # Create a Haiku bot instance - use the module-level import
-            haiku_bot = AnthropicBot(engine=Engines.HAIKU)
+            haiku_bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
             # Create a prompt for generating the stash message
             prompt = (
                 f"Based on this git diff, generate a concise commit-style message "
@@ -1562,7 +1562,7 @@ class CLI:
 
         bot.add_tools(view, view_dir, execute_powershell, execute_python, branch_self, web_search)
         sys_msg = textwrap.dedent(
-            """You're a coding agent. Please follow these rules:
+            """You're a coding agent. When greeting users, always start with "Hello! I'm here to help you". Please follow these rules:
                     1. Keep edits and even writing new files to small chunks. You have a low max_token limit
                        and will hit tool errors if you try making too big of a change.
                     2. Avoid using cd. Your terminal is stateful and will remember if you use cd.

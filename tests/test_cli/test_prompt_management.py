@@ -71,14 +71,14 @@ class TestPromptManager(unittest.TestCase):
         """Test prompt name generation using Haiku bot."""
         # Mock the bot response
         mock_bot = MagicMock()
-        mock_bot.prompt.return_value = "test_prompt_name"
+        mock_bot.respond.return_value = "test_prompt_name"
         mock_bot_class.return_value = mock_bot
 
         name = self.prompt_manager._generate_prompt_name("This is a test prompt")
 
         self.assertEqual(name, "test_prompt_name")
-        mock_bot_class.assert_called_once_with(model_engine=Engines.CLAUDE3_HAIKU)
-        mock_bot.prompt.assert_called_once()
+        mock_bot_class.assert_called_once_with(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
+        mock_bot.respond.assert_called_once()
 
     @patch("bots.foundation.anthropic_bots.AnthropicBot")
     def test_generate_prompt_name_fallback(self, mock_bot_class):
@@ -140,7 +140,7 @@ class TestPromptManager(unittest.TestCase):
     def test_save_prompt_with_auto_name(self, mock_bot_class):
         """Test saving prompt with auto-generated name."""
         mock_bot = MagicMock()
-        mock_bot.prompt.return_value = "auto_generated_name"
+        mock_bot.respond.return_value = "auto_generated_name"
         mock_bot_class.return_value = mock_bot
 
         name = self.prompt_manager.save_prompt("This is a test prompt")
@@ -276,7 +276,7 @@ class TestPromptHandler(unittest.TestCase):
     def test_save_prompt_with_args(self, mock_bot_class):
         """Test saving prompt with provided text."""
         mock_bot = MagicMock()
-        mock_bot.prompt.return_value = "generated_name"
+        mock_bot.respond.return_value = "generated_name"
         mock_bot_class.return_value = mock_bot
 
         result = self.handler.save_prompt(self.mock_bot, self.mock_context, ["test", "prompt", "text"], None)
@@ -288,7 +288,7 @@ class TestPromptHandler(unittest.TestCase):
     def test_save_prompt_last_message(self, mock_bot_class):
         """Test saving prompt from last user message."""
         mock_bot = MagicMock()
-        mock_bot.prompt.return_value = "generated_name"
+        mock_bot.respond.return_value = "generated_name"
         mock_bot_class.return_value = mock_bot
 
         result = self.handler.save_prompt(self.mock_bot, self.mock_context, [], "last user message")
@@ -357,7 +357,7 @@ class TestCLIPromptIntegration(unittest.TestCase):
     def test_handle_save_prompt(self, mock_bot_class):
         """Test CLI handling of /s command."""
         mock_bot = MagicMock()
-        mock_bot.prompt.return_value = "generated_name"
+        mock_bot.respond.return_value = "generated_name"
         mock_bot_class.return_value = mock_bot
 
         self.cli.last_user_message = "test message"

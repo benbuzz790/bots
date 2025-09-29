@@ -2,7 +2,7 @@ import unittest
 from io import StringIO
 from unittest.mock import patch
 
-from bots.dev.decorators import handle_errors, toolify
+from bots.dev.decorators import toolify
 
 
 class ToolExecutionError(Exception):
@@ -14,10 +14,10 @@ class ToolExecutionError(Exception):
 class TestKeyboardInterruptHandling(unittest.TestCase):
     """Test that KeyboardInterrupt from tools is handled properly."""
 
-    def test_handle_errors_converts_keyboard_interrupt(self):
-        """Test that @handle_errors converts KeyboardInterrupt to ToolExecutionError."""
+    def test_toolify_converts_keyboard_interrupt(self):
+        """Test that @toolify converts KeyboardInterrupt to ToolExecutionError."""
 
-        @handle_errors
+        @toolify
         def tool_that_raises_keyboard_interrupt():
             """A tool that raises KeyboardInterrupt (simulating server port conflict)."""
             raise KeyboardInterrupt("Address already in use")
@@ -57,7 +57,7 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         # preventing them from reaching the CLI's KeyboardInterrupt handler
 
         # Create a tool that would normally cause the issue
-        @handle_errors
+        @toolify
         def server_startup_tool():
             raise KeyboardInterrupt("Port 8000 already in use")
 
@@ -76,7 +76,7 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         """Test the specific scenario where a tool raises KeyboardInterrupt."""
 
         # Simulate what happens when a tool tries to start a server on a busy port
-        @handle_errors
+        @toolify
         def problematic_server_tool():
             # This is what might happen inside a server startup tool
 
