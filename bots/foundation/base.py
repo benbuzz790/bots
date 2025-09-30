@@ -167,16 +167,16 @@ class ConversationNode:
     def __init__(self, content: str, role: str, tool_calls: Optional[List[Dict]]=None, tool_results: Optional[List[Dict]]=None, pending_results: Optional[List[Dict]]=None, **kwargs) -> None:
         """Initialize a new ConversationNode.
 
-        Parameters:
-            content (str): The message content
-            role (str): The role of the message sender
-            tool_calls (Optional[List[Dict]]): Tool invocations made in this message
-            tool_results (Optional[List[Dict]]): Results from tool executions
-            pending_results (Optional[List[Dict]]): Tool results waiting to be processed
-            **kwargs: Additional attributes to set on the node
-        """
-        self.role = role
+    Args:
+    content (str): The message content
+    role (str): The role of the message sender
+    tool_calls (Optional[List[Dict]]): Tool invocations made in this message
+    tool_results (Optional[List[Dict]]): Results from tool executions
+    pending_results (Optional[List[Dict]]): Tool results waiting to be processed
+    **kwargs: Additional attributes to set on the node
+    """
         self.content = content
+        self.role = role
         self.parent: ConversationNode = None
         self.replies: list[ConversationNode] = []
         self.tool_calls = tool_calls or []
@@ -184,25 +184,14 @@ class ConversationNode:
         self.pending_results = pending_results or []
         for key, value in kwargs.items():
             setattr(self, key, value)
-
     @property
     def tool_results(self):
-        """Get tool results with protection logging."""
-        import traceback
-        stack = traceback.extract_stack()
-        caller_info = f'{stack[-2].filename}:{stack[-2].lineno} in {stack[-2].name}'
-        with open('debug_tool_results.log', 'a') as f:
-            f.write(f'DEBUG: tool_results getter called from {caller_info}\n')
+        """Get tool results."""
         return self._tool_results
-
+    
     @tool_results.setter
     def tool_results(self, value):
-        """Set tool results with validation and protection logging."""
-        import traceback
-        stack = traceback.extract_stack()
-        caller_info = f'{stack[-2].filename}:{stack[-2].lineno} in {stack[-2].name}'
-        with open('debug_tool_results.log', 'a') as f:
-            f.write(f'DEBUG: tool_results setter called from {caller_info}, setting {(len(value) if value else 0)} results\n')
+        """Set tool results with validation."""
         validation_errors = []
         if value is not None and (not isinstance(value, list)):
             validation_errors.append(f'tool_results must be a list, got {type(value)}')
@@ -223,25 +212,24 @@ class ConversationNode:
                     validation_errors.append('Duplicate tool_use_ids found in tool_results')
         if value and self.role != 'user':
             validation_errors.append(f"tool_results should only be set on user role nodes, but this node has role '{self.role}'")
-        with open('debug_tool_results.log', 'a') as f:
-            if validation_errors:
-                f.write(f'VALIDATION ERRORS: {validation_errors}\n')
-            else:
-                f.write('VALIDATION: All checks passed\n')
+
+        if validation_errors:
+            raise ValueError(f"Invalid tool_results: {'; '.join(validation_errors)}")
+
         self._tool_results = value or []
 
     @staticmethod
     def _create_empty(cls: Optional[Type['ConversationNode']]=None) -> 'ConversationNode':
         """Create an empty root node.
 
-        Use when initializing a new conversation tree that needs an empty root.
+    Use when initializing a new conversation tree that needs an empty root.
 
-        Parameters:
-            cls (Optional[Type[ConversationNode]]): Optional specific node class to use
+    Parameters:
+        cls (Optional[Type[ConversationNode]]): Optional specific node class to use
 
-        Returns:
-            ConversationNode: An empty node with role='empty' and no content
-        """
+    Returns:
+        ConversationNode: An empty node with role='empty' and no content
+    """
         if cls:
             return cls(role='empty', content='')
         return ConversationNode(role='empty', content='')
@@ -2528,4 +2516,3 @@ class Bot(ABC):
                 root = root.parent
             lines.extend(format_conversation(root))
         return '\n'.join(lines)
-

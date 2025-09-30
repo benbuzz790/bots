@@ -1359,16 +1359,51 @@ def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: i
     prefix = f"{color}{COLOR_BOLD}{name}: {COLOR_RESET}{color}" if name is not None else color
     if not isinstance(string, str):
         string = str(string)
+
+    # Safeguard: if string is too long, truncate it to prevent processing hangs
+    max_length = 50000  # Reasonable limit for display
+    if len(string) > max_length:
+        string = string[:max_length] + "\n... (output truncated)"
+
+    # Quick path for very simple strings - avoid regex overhead
+    if len(string) < 1000 and '\n' not in string:
+        print(prefix + string + COLOR_RESET)
+        print()
+        return
+
     lines = string.split("\n")
     formatted_lines = []
+
+    # Limit number of lines to prevent excessive processing
+    max_lines = 1000
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        lines.append("... (output truncated)")
+
     for i, line in enumerate(lines):
+        # Additional safeguard: skip wrapping for very long lines
+        if len(line) > 10000:
+            if i == 0:
+                formatted_lines.append(prefix + line[:10000] + "... (line truncated)" + COLOR_RESET)
+            else:
+                formatted_lines.append(" " * indent + color + line[:10000] + "... (line truncated)" + COLOR_RESET)
+            continue
+
         if i == 0:
             initial_line = prefix + line + COLOR_RESET
-            wrapped = textwrap.wrap(initial_line, width=width, subsequent_indent=" " * indent)
+            try:
+                wrapped = textwrap.wrap(initial_line, width=width, subsequent_indent=" " * indent, break_long_words=True, break_on_hyphens=False)
+            except Exception:
+                # Fallback if textwrap fails
+                wrapped = [initial_line]
         else:
-            wrapped = textwrap.wrap(
-                color + line + COLOR_RESET, width=width, initial_indent=" " * indent, subsequent_indent=" " * indent
-            )
+            try:
+                wrapped = textwrap.wrap(
+                    color + line + COLOR_RESET, width=width, initial_indent=" " * indent, subsequent_indent=" " * indent, break_long_words=True, break_on_hyphens=False
+                )
+            except Exception:
+                # Fallback if textwrap fails
+                wrapped = [" " * indent + color + line + COLOR_RESET]
         if wrapped:
             formatted_lines.extend(wrapped)
         else:
