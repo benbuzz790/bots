@@ -1219,7 +1219,9 @@ class DynamicFunctionalPromptHandler:
                         else:
                             return f"Invalid leaf number: {idx + 1}. Must be between 1 and {len(leaves)}"
                 except ValueError:
-                    return "Invalid leaf selection format. Use numbers separated by commas (e.g., '1,3,5') or 'all'"
+                    error_msg = "Invalid leaf selection format. Use numbers separated by commas (e.g., '1,3,5') or 'all'"
+                    print(error_msg)
+                    return error_msg
             if not target_leaves:
                 return "No valid leaves selected"
             print(f"\nSelected {len(target_leaves)} leaves for broadcast")
@@ -1239,7 +1241,9 @@ class DynamicFunctionalPromptHandler:
                 print(f"  {key}. {name}")
             fp_choice = input("Select functional prompt: ").strip()
             if fp_choice not in fp_options:
-                return "Invalid functional prompt selection"
+                error_msg = "Invalid functional prompt selection"
+                print(error_msg)
+                return error_msg
             fp_name, fp_function = fp_options[fp_choice]
             print(f"\nCollecting parameters for {fp_name}:")
             params = self.collector.collect_parameters(fp_function)

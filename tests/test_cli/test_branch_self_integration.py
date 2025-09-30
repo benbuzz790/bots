@@ -71,9 +71,7 @@ class TestBranchSelfIntegration(DetailedTestCase):
 
                 def init_with_branch_self():
                     original_init()
-                    import bots.tools.self_tools
-
-                    cli.context.bot_instance.add_tools(bots.tools.self_tools)
+                    # branch_self is already added in CLI initialization, no need to add again
 
                 cli._initialize_new_bot = init_with_branch_self
                 cli.run()

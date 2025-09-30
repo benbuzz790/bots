@@ -312,16 +312,16 @@ class TestPromptHandler(unittest.TestCase):
     @patch("builtins.input")
     @patch("builtins.print")
     def test_load_prompt_invalid_selection(self, mock_input, mock_print):
-    """Test loading prompt with invalid selection."""
-    # Setup test data
-    self.handler.prompt_manager.prompts_data = {"recents": [], "prompts": {"test1": "First test prompt"}}
+        """Test loading prompt with invalid selection."""
+        # Setup test data
+        self.handler.prompt_manager.prompts_data = {"recents": [], "prompts": {"test1": "First test prompt"}}
 
-    mock_input.side_effect = ["test", "5"]  # Search then invalid selection
+        mock_input.side_effect = ["test", "5"]  # Search then invalid selection
 
-    message, prefill = self.handler.load_prompt(self.mock_bot, self.mock_context, [])
+        message, prefill = self.handler.load_prompt(self.mock_bot, self.mock_context, [])
 
-    self.assertTrue("Invalid selection" in message)
-    self.assertIsNone(prefill)
+        self.assertTrue("Invalid selection" in message)
+        self.assertIsNone(prefill)
 
 
 class TestCLIPromptIntegration(unittest.TestCase):
