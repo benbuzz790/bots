@@ -547,6 +547,51 @@ class ToolHandler(ABC):
         self.requests: List[Dict[str, Any]] = []
         self.results: List[Dict[str, Any]] = []
         self.modules: Dict[str, ModuleContext] = {}
+    @staticmethod
+    def _clean_decorator_source(source):
+        """Clean decorator source by parsing the source file and extracting the
+    decorator function."""
+        frame = inspect.currentframe()
+        try:
+            while frame:
+                frame_info = inspect.getframeinfo(frame)
+                if frame_info.filename.endswith('.py') and 'test_' in frame_info.filename:
+                    test_file = frame_info.filename
+                    try:
+                        with open(test_file, 'r', encoding='utf-8') as f:
+                            file_content = f.read()
+                        tree = ast.parse(file_content)
+                        source_lines = source.strip().split('\n')
+                        decorator_name = None
+                        for line in source_lines:
+                            if line.strip().startswith('def ') and '(' in line:
+                                func_line = line.strip()
+                                decorator_name = func_line[4:func_line.index('(')].strip()
+                                break
+                        if decorator_name:
+                            for node in ast.walk(tree):
+                                if isinstance(node, ast.FunctionDef) and node.name == decorator_name:
+                                    cleaned = _py_ast_to_source(node)
+                                    return cleaned
+                    except Exception:
+                        break
+                frame = frame.f_back
+        finally:
+            del frame
+        cleaned = textwrap.dedent(source).strip()
+        return cleaned
+    
+    @staticmethod
+    def _clean_function_source(source):
+        """Clean function source using AST parsing and regeneration."""
+        try:
+            tree = ast.parse(source)
+            cleaned = _py_ast_to_source(tree)
+            return cleaned
+        except SyntaxError:
+            import textwrap
+            cleaned = textwrap.dedent(source).strip()
+            return cleaned
 
     @abstractmethod
     def generate_tool_schema(self, func: Callable) -> Dict[str, Any]:
@@ -925,7 +970,7 @@ class ToolHandler(ABC):
         return context
 
     def _capture_helper_functions(self, func: Callable, source: str, context: dict) -> str:
-        """Capture source code of helper functions that the main function depends on."""
+        """Capture helper functions that the main function depends on."""
         helper_functions_source = []
         try:
             import ast
@@ -941,7 +986,7 @@ class ToolHandler(ABC):
                     if hasattr(helper_func, '__module__') and helper_func.__module__ == func.__module__ and func_name.startswith('_') and (not inspect.isbuiltin(helper_func)):
                         try:
                             helper_source = inspect.getsource(helper_func)
-                            helper_source = _clean_function_source(helper_source)
+                            helper_source = self._clean_function_source(helper_source)
                             helper_functions_source.append(helper_source)
                         except (TypeError, OSError):
                             pass
@@ -981,7 +1026,7 @@ class ToolHandler(ABC):
                         elif hasattr(dec_value, '__module__'):
                             context[dec_name] = dec_value
             decorator_source = self._handle_decorator_closures(decorator_func, decorator_source, context)
-            source = _clean_decorator_source(decorator_source) + '\n\n' + source
+            source = self._clean_decorator_source(decorator_source) + '\n\n' + source
         except (TypeError, OSError):
             pass
         return source
@@ -1018,7 +1063,7 @@ class ToolHandler(ABC):
                                 decorator_source = inspect.getsource(decorator_func)
                                 self._capture_annotation_context(decorator_func, context)
                                 decorator_source = self._handle_decorator_closures(decorator_func, decorator_source, context)
-                                source = _clean_decorator_source(decorator_source) + '\n\n' + source
+                                source = self._clean_decorator_source(decorator_source) + '\n\n' + source
                             except (TypeError, OSError) as e:
                                 print(f'DEBUG: Could not capture decorator {decorator_name}: {e}')
                 frame = frame.f_back
@@ -1083,7 +1128,7 @@ class ToolHandler(ABC):
             return (self._create_builtin_wrapper(func), {})
         try:
             source = inspect.getsource(func)
-            source = _clean_function_source(source)
+            source = self._clean_function_source(source)
             if hasattr(func, '__globals__'):
                 context = self._build_function_context(func)
                 source = self._process_decorators(func, source, context)
@@ -2425,56 +2470,56 @@ class Bot(ABC):
             else:
                 name_display = base_name
             content = node.content if hasattr(node, 'content') else str(node)
-            wrapped_content = '\n'.join(textwrap.wrap(content, width=available_width, initial_indent=indent + '│ ', subsequent_indent=indent + '│ '))
+            wrapped_content = '\n'.join(textwrap.wrap(content, width=available_width, initial_indent=indent + 'â”‚ ', subsequent_indent=indent + 'â”‚ '))
             tool_info = []
             if hasattr(node, 'tool_calls') and node.tool_calls:
-                tool_info.append(f'{indent}│ Tool Calls:')
+                tool_info.append(f'{indent}â”‚ Tool Calls:')
                 for call in node.tool_calls:
                     if isinstance(call, dict):
-                        tool_info.append(f"{indent}│   - {call.get('name', 'unknown')}")
+                        tool_info.append(f"{indent}â”‚   - {call.get('name', 'unknown')}")
             if hasattr(node, 'tool_results') and node.tool_results:
-                tool_info.append(f'{indent}│ Tool Results:')
+                tool_info.append(f'{indent}â”‚ Tool Results:')
                 for result in node.tool_results:
                     if isinstance(result, dict):
-                        tool_info.append(f"{indent}│   - {str(result.get('content', ''))[:available_width]}")
+                        tool_info.append(f"{indent}â”‚   - {str(result.get('content', ''))[:available_width]}")
             if hasattr(node, 'pending_results') and node.pending_results:
-                tool_info.append(f'{indent}│ Pending Results:')
+                tool_info.append(f'{indent}â”‚ Pending Results:')
                 for result in node.pending_results:
                     if isinstance(result, dict):
-                        tool_info.append(f"{indent}│   - {str(result.get('content', ''))[:available_width]}")
+                        tool_info.append(f"{indent}â”‚   - {str(result.get('content', ''))[:available_width]}")
                     else:
                         raise ValueError()
-            messages.append(f'{indent}├─ {name_display}')
+            messages.append(f'{indent}â”œâ”€ {name_display}')
             messages.append(wrapped_content)
             if hasattr(node, 'tool_calls') and node.tool_calls:
-                messages.append(f'{indent}│ Tool Calls:')
+                messages.append(f'{indent}â”‚ Tool Calls:')
                 for call in node.tool_calls:
                     if isinstance(call, dict):
-                        messages.append(f"{indent}│   - {call.get('name', 'unknown')}")
+                        messages.append(f"{indent}â”‚   - {call.get('name', 'unknown')}")
             if hasattr(node, 'tool_results') and node.tool_results:
-                messages.append(f'{indent}│ Tool Results:')
+                messages.append(f'{indent}â”‚ Tool Results:')
                 for result in node.tool_results:
                     if isinstance(result, dict):
-                        messages.append(f"{indent}│   - {str(result.get('content', ''))[:available_width]}")
+                        messages.append(f"{indent}â”‚   - {str(result.get('content', ''))[:available_width]}")
             if hasattr(node, 'pending_results') and node.pending_results:
-                messages.append(f'{indent}│ Pending Results:')
+                messages.append(f'{indent}â”‚ Pending Results:')
                 for result in node.pending_results:
                     if isinstance(result, dict):
-                        messages.append(f"{indent}│   - {str(result.get('content', ''))[:available_width]}")
-            messages.append(f'{indent}└' + '─' * 40)
+                        messages.append(f"{indent}â”‚   - {str(result.get('content', ''))[:available_width]}")
+            messages.append(f'{indent}â””' + 'â”€' * 40)
             if hasattr(node, 'replies') and node.replies:
                 for reply in node.replies:
                     messages.extend(format_conversation(reply, level + 1))
             return messages
         lines = []
-        lines.append('╔' + '═' * 12)
-        lines.append(f'║ {self.name}')
-        lines.append(f'║ Role: {self.role}')
-        lines.append(f'║ Model: {self.model_engine.value}')
+        lines.append('â•”' + 'â•' * 12)
+        lines.append(f'â•‘ {self.name}')
+        lines.append(f'â•‘ Role: {self.role}')
+        lines.append(f'â•‘ Model: {self.model_engine.value}')
         if self.tool_handler:
             tool_count = len(self.tool_handler.tools)
-            lines.append(f'║ Tools Available: {tool_count}')
-        lines.append('╚' + '═' * 78 + '╝\n')
+            lines.append(f'â•‘ Tools Available: {tool_count}')
+        lines.append('â•š' + 'â•' * 78 + 'â•\n')
         if self.conversation:
             root = self.conversation
             while hasattr(root, 'parent') and root.parent:
@@ -2483,49 +2528,4 @@ class Bot(ABC):
                 root = root.parent
             lines.extend(format_conversation(root))
         return '\n'.join(lines)
-
-
-def _clean_decorator_source(source):
-    """Clean decorator source by parsing the source file and extracting the
-    decorator function."""
-    frame = inspect.currentframe()
-    try:
-        while frame:
-            frame_info = inspect.getframeinfo(frame)
-            if frame_info.filename.endswith('.py') and 'test_' in frame_info.filename:
-                test_file = frame_info.filename
-                try:
-                    with open(test_file, 'r', encoding='utf-8') as f:
-                        file_content = f.read()
-                    tree = ast.parse(file_content)
-                    source_lines = source.strip().split('\n')
-                    decorator_name = None
-                    for line in source_lines:
-                        if line.strip().startswith('def ') and '(' in line:
-                            func_line = line.strip()
-                            decorator_name = func_line[4:func_line.index('(')].strip()
-                            break
-                    if decorator_name:
-                        for node in ast.walk(tree):
-                            if isinstance(node, ast.FunctionDef) and node.name == decorator_name:
-                                cleaned = _py_ast_to_source(node)
-                                return cleaned
-                except Exception:
-                    break
-            frame = frame.f_back
-    finally:
-        del frame
-    cleaned = textwrap.dedent(source).strip()
-    return cleaned
-
-def _clean_function_source(source):
-    """Clean function source using AST parsing and regeneration."""
-    try:
-        tree = ast.parse(source)
-        cleaned = _py_ast_to_source(tree)
-        return cleaned
-    except SyntaxError:
-        import textwrap
-        cleaned = textwrap.dedent(source).strip()
-        return cleaned
 
