@@ -4,46 +4,16 @@ from io import StringIO
 from unittest.mock import patch
 
 import bots.dev.cli as cli_module
+from bots.testing.mock_bot import MockBot
 
 """Complete test suite for all /broadcast_fp command wizards."""
 
 
 def create_mock_bot(mock_bot_class, response_text="Analysis complete"):
-    """Helper function to create a properly mocked bot."""
-    mock_bot = mock_bot_class.return_value
-    mock_bot.name = "TestBot"
-
-    # Create a more complete mock conversation node
-    class MockNode:
-        def __init__(self):
-            self.content = response_text
-            self.replies = []
-            self.parent = None
-            self.role = 'assistant'
-
-        def _add_reply(self, **kwargs):
-            new_node = MockNode()
-            new_node.content = kwargs.get('content', '')
-            new_node.role = kwargs.get('role', 'user')
-            new_node.parent = self
-            self.replies.append(new_node)
-            return new_node
-
-    mock_conversation = MockNode()
-    mock_bot.conversation = mock_conversation
-
-    # Mock tool handler
-    mock_bot.tool_handler = type('MockHandler', (), {
-        'requests': [],
-        'results': [],
-        'clear': lambda: None
-    })()
-
-    # Mock other required methods
-    mock_bot.add_tools = lambda *args: None
-    mock_bot.set_system_message = lambda msg: None
-    mock_bot.respond.return_value = response_text
-
+    """Helper function to create a properly mocked bot using MockBot."""
+    mock_bot = MockBot(name="TestBot")
+    mock_bot.set_response_pattern(response_text)
+    mock_bot_class.return_value = mock_bot
     return mock_bot
 
 

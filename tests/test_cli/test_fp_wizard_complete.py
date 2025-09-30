@@ -4,6 +4,7 @@ from io import StringIO
 from unittest.mock import patch
 
 import bots.dev.cli as cli_module
+from bots.testing.mock_bot import MockBot
 
 """Complete test suite for all /fp command wizards."""
 
@@ -11,12 +12,13 @@ import bots.dev.cli as cli_module
 class TestFPWizardComplete(unittest.TestCase):
     """Test suite for all functional prompt wizards via /fp command."""
 
-    @patch("bots.foundation.anthropic_bots.AnthropicBot.respond")
+    @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
-    def test_fp_single_prompt_wizard(self, mock_input, mock_respond):
+    def test_fp_single_prompt_wizard(self, mock_input, mock_bot_class):
         """Test /fp command with single_prompt wizard."""
-        # Mock bot responses to avoid real API calls
-        mock_respond.return_value = "Analysis complete"
+        mock_bot = MockBot(name="TestBot")
+        mock_bot.set_response_pattern("Analysis complete")
+        mock_bot_class.return_value = mock_bot
 
         mock_input.side_effect = [
             "Hello bot",  # Initial chat
@@ -37,12 +39,13 @@ class TestFPWizardComplete(unittest.TestCase):
         self.assertIn("Collecting parameters for single_prompt", output)
         self.assertIn("Executing single_prompt", output)
 
-    @patch("bots.foundation.anthropic_bots.AnthropicBot.respond")
+    @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
-    def test_fp_branch_wizard(self, mock_input, mock_respond):
+    def test_fp_branch_wizard(self, mock_input, mock_bot_class):
         """Test /fp command with branch wizard."""
-        # Mock bot responses to avoid real API calls
-        mock_respond.return_value = "Analysis complete"
+        mock_bot = MockBot(name="TestBot")
+        mock_bot.set_response_pattern("Analysis complete")
+        mock_bot_class.return_value = mock_bot
 
         mock_input.side_effect = [
             "Hello bot",
@@ -66,12 +69,13 @@ class TestFPWizardComplete(unittest.TestCase):
         self.assertIn("Collecting parameters for broadcast_fp", output)
         self.assertIn("Executing broadcast_fp", output)
 
-    @patch("bots.foundation.anthropic_bots.AnthropicBot.respond")
+    @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
-    def test_fp_tree_of_thought_wizard(self, mock_input, mock_respond):
+    def test_fp_tree_of_thought_wizard(self, mock_input, mock_bot_class):
         """Test /fp command with tree_of_thought wizard."""
-        # Mock bot responses to avoid real API calls
-        mock_respond.return_value = "Analysis complete"
+        mock_bot = MockBot(name="TestBot")
+        mock_bot.set_response_pattern("Analysis complete")
+        mock_bot_class.return_value = mock_bot
 
         mock_input.side_effect = [
             "Hello bot",
@@ -96,12 +100,13 @@ class TestFPWizardComplete(unittest.TestCase):
         self.assertIn("Collecting parameters for tree_of_thought", output)
         self.assertIn("Executing tree_of_thought", output)
 
-    @patch("bots.foundation.anthropic_bots.AnthropicBot.respond")
+    @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
-    def test_fp_prompt_while_wizard(self, mock_input, mock_respond):
+    def test_fp_prompt_while_wizard(self, mock_input, mock_bot_class):
         """Test /fp command with prompt_while wizard."""
-        # Mock bot responses - first call uses tools, second doesn't (stops the while loop)
-        mock_respond.side_effect = ["Response without tools", "Response without tools"]
+        mock_bot = MockBot(name="TestBot")
+        mock_bot.set_response_pattern("Response without tools")
+        mock_bot_class.return_value = mock_bot
 
         mock_input.side_effect = [
             "Hello bot",
@@ -124,12 +129,13 @@ class TestFPWizardComplete(unittest.TestCase):
         self.assertIn("Collecting parameters for par_branch_while", output)
         self.assertIn("Executing prompt_while", output)
 
-    @patch("bots.foundation.anthropic_bots.AnthropicBot.respond")
+    @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
-    def test_fp_chain_while_wizard(self, mock_input, mock_respond):
+    def test_fp_chain_while_wizard(self, mock_input, mock_bot_class):
         """Test /fp command with chain_while wizard."""
-        # Mock bot responses - first call uses tools, second doesn't (stops the while loop)
-        mock_respond.side_effect = ["Response without tools", "Response without tools"]
+        mock_bot = MockBot(name="TestBot")
+        mock_bot.set_response_pattern("Response without tools")
+        mock_bot_class.return_value = mock_bot
 
         mock_input.side_effect = [
             "Hello bot",
@@ -159,28 +165,9 @@ class TestFPWizardComplete(unittest.TestCase):
     @patch("builtins.input")
     def test_fp_branch_while_wizard(self, mock_input, mock_bot_class):
         """Test /fp command with branch_while wizard."""
-        # Create a mock bot instance
-        mock_bot = mock_bot_class.return_value
-        mock_bot.name = "TestBot"
-
-        # Create a mock conversation node that returns DONE
-        mock_conversation = type('MockNode', (), {
-            'content': 'DONE',
-            '_add_reply': lambda self, **kwargs: mock_conversation
-        })()
-        mock_bot.conversation = mock_conversation
-
-        # Mock tool handler
-        mock_bot.tool_handler = type('MockHandler', (), {
-            'requests': [],
-            'results': [],
-            'clear': lambda: None
-        })()
-
-        # Mock other required methods
-        mock_bot.add_tools = lambda *args: None
-        mock_bot.set_system_message = lambda msg: None
-        mock_bot.respond.return_value = "DONE"
+        mock_bot = MockBot(name="TestBot")
+        mock_bot.set_response_pattern("DONE")
+        mock_bot_class.return_value = mock_bot
 
         mock_input.side_effect = [
             "Hello bot",
@@ -206,12 +193,13 @@ class TestFPWizardComplete(unittest.TestCase):
         self.assertIn("Collecting parameters for branch_while", output)
         self.assertIn("Executing branch_while", output)
 
-    @patch("bots.foundation.anthropic_bots.AnthropicBot.respond")
+    @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
-    def test_fp_par_branch_wizard(self, mock_input, mock_respond):
+    def test_fp_par_branch_wizard(self, mock_input, mock_bot_class):
         """Test /fp command with par_branch wizard."""
-        # Mock bot responses to avoid real API calls
-        mock_respond.return_value = "Analysis complete"
+        mock_bot = MockBot(name="TestBot")
+        mock_bot.set_response_pattern("Analysis complete")
+        mock_bot_class.return_value = mock_bot
 
         mock_input.side_effect = [
             "Hello bot",
@@ -235,12 +223,13 @@ class TestFPWizardComplete(unittest.TestCase):
         self.assertIn("Collecting parameters for par_branch", output)
         self.assertIn("Executing par_branch", output)
 
-    @patch("bots.foundation.anthropic_bots.AnthropicBot.respond")
+    @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
-    def test_fp_par_branch_while_wizard(self, mock_input, mock_respond):
+    def test_fp_par_branch_while_wizard(self, mock_input, mock_bot_class):
         """Test /fp command with par_branch_while wizard."""
-        # Mock bot responses - first call uses tools, second doesn't (stops the while loop)
-        mock_respond.side_effect = ["Response without tools", "Response without tools"]
+        mock_bot = MockBot(name="TestBot")
+        mock_bot.set_response_pattern("Response without tools")
+        mock_bot_class.return_value = mock_bot
 
         mock_input.side_effect = [
             "Hello bot",
@@ -265,12 +254,13 @@ class TestFPWizardComplete(unittest.TestCase):
         self.assertIn("Collecting parameters for par_branch_while", output)
         self.assertIn("Executing par_branch_while", output)
 
-    @patch("bots.foundation.anthropic_bots.AnthropicBot.respond")
+    @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
-    def test_fp_wizard_parameter_validation(self, mock_input, mock_respond):
+    def test_fp_wizard_parameter_validation(self, mock_input, mock_bot_class):
         """Test /fp wizard parameter validation and error handling."""
-        # Mock bot responses to avoid real API calls
-        mock_respond.return_value = "Valid response"
+        mock_bot = MockBot(name="TestBot")
+        mock_bot.set_response_pattern("Valid response")
+        mock_bot_class.return_value = mock_bot
 
         mock_input.side_effect = [
             "Hello bot",
@@ -292,12 +282,13 @@ class TestFPWizardComplete(unittest.TestCase):
         # But then proceed with valid selection
         self.assertIn("single_prompt", output)
 
-    @patch("bots.foundation.anthropic_bots.AnthropicBot.respond")
+    @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
-    def test_fp_wizard_by_name_selection(self, mock_input, mock_respond):
+    def test_fp_wizard_by_name_selection(self, mock_input, mock_bot_class):
         """Test /fp wizard selection by name instead of number."""
-        # Mock bot responses to avoid real API calls
-        mock_respond.return_value = "Step complete"
+        mock_bot = MockBot(name="TestBot")
+        mock_bot.set_response_pattern("Step complete")
+        mock_bot_class.return_value = mock_bot
 
         mock_input.side_effect = [
             "Hello bot",
