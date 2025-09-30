@@ -196,4 +196,4 @@ def test_broadcast_fp_invalid_leaf_selection(mock_print, mock_input):
     handler = DynamicFunctionalPromptHandler()
     result = handler.broadcast_fp(mock_bot, mock_context, [])
     # Should return error message
-    assert "Invalid leaf number" in result
+    assert "Invalid leaf selection" in result

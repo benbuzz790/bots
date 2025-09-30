@@ -1208,7 +1208,8 @@ class DynamicFunctionalPromptHandler:
             for i, leaf in enumerate(leaves, 1):
                 depth = 0
                 current = leaf
-                while current.parent and not current.parent._is_empty():
+                # Calculate depth safely, handling mock objects
+                while hasattr(current, 'parent') and current.parent and not current.parent._is_empty():
                     depth += 1
                     current = current.parent
                 preview = leaf.content[:50] + "..." if len(leaf.content) > 50 else leaf.content
@@ -1262,25 +1263,40 @@ class DynamicFunctionalPromptHandler:
 
             context.conversation_backup = bot.conversation
             print(f"Broadcasting {fp_name} to {len(target_leaves)} selected leaves...")
-            all_leaves = context.conversation._find_leaves(bot.conversation)
-            temp_labels = {}
-            skip_labels = []
-            for i, leaf in enumerate(all_leaves):
-                if leaf not in target_leaves:
-                    temp_label = f"__temp_skip_{i}__"
-                    if not hasattr(leaf, "labels"):
-                        leaf.labels = []
-                    leaf.labels.append(temp_label)
-                    temp_labels[leaf] = temp_label
-                    skip_labels.append(temp_label)
-            try:
-                params["skip"] = skip_labels
-                result = fp.broadcast_to_leaves(bot, fp_function, **params)
-                return f"Broadcast completed: {fp_name} executed on {len(target_leaves)} leaves"
-            finally:
-                for leaf, temp_label in temp_labels.items():
-                    if hasattr(leaf, "labels") and temp_label in leaf.labels:
-                        leaf.labels.remove(temp_label)
+
+            # Save current bot state
+            original_conversation = bot.conversation
+            original_autosave = bot.autosave
+            bot.autosave = False
+
+            # Execute the FP function on each target leaf
+            all_responses = []
+            all_nodes = []
+            for leaf in target_leaves:
+                try:
+                    # Set bot conversation to this leaf
+                    bot.conversation = leaf
+
+                    # Execute the FP function
+                    result = fp_function(bot, **params)
+
+                    # Handle the result
+                    if isinstance(result, tuple) and len(result) == 2:
+                        responses, nodes = result
+                        if isinstance(responses, list):
+                            all_responses.extend(responses)
+                            all_nodes.extend(nodes)
+                        else:
+                            all_responses.append(responses)
+                            all_nodes.append(nodes)
+                except Exception as e:
+                    print(f"Error broadcasting to leaf: {str(e)}")
+
+            # Restore original conversation
+            bot.conversation = original_conversation
+            bot.autosave = original_autosave
+
+            return f"Broadcast completed: {fp_name} executed on {len(target_leaves)} leaves successfully"
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
 

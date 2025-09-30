@@ -1,21 +1,1507 @@
-C:\Users\benbu\Code\repo_working\bots> for ($i=1; $i -le 20; $i++) { ...
-Line 1
-Line 2
-Line 3
-Line 4
-Line 5
-Line 6
-Line 7
-Line 8
-Line 9
-Line 10
-Line 11
-Line 12
-Line 13
-Line 14
-Line 15
-Line 16
-Line 17
-Line 18
-Line 19
-Line 20
+C:\Users\benbu\Code\repo_working\bots> python -m pytest -n 1 -W ignor...
+============================= test session starts =============================
+platform win32 -- Python 3.12.9, pytest-7.4.3, pluggy-1.5.0 -- C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\benbu\Code\repo_working\bots
+configfile: pytest.ini
+testpaths: tests, bots/tests
+plugins: anyio-4.9.0, asyncio-0.21.1, cov-4.1.0, forked-1.6.0, timeout-2.4.0, xdist-3.7.0
+asyncio: mode=Mode.STRICT
+timeout: 3600.0s
+timeout method: thread
+timeout func_only: True
+created: 1/1 worker
+1 worker [700 items]
+scheduling tests via LoadScheduling
+tests/test_add_tools.py::TestAddTools2::test_invalid_input 
+[gw0] [  0%] PASSED tests/test_add_tools.py::TestAddTools2::test_invalid_input 
+tests/test_add_tools.py::TestAddTools2::test_list_input 
+[gw0] [  0%] PASSED tests/test_add_tools.py::TestAddTools2::test_list_input 
+tests/test_add_tools.py::TestAddTools2::test_mixed_files_and_modules 
+[gw0] [  0%] PASSED tests/test_add_tools.py::TestAddTools2::test_mixed_files_and_modules 
+tests/test_add_tools.py::TestAddTools2::test_multiple_files 
+[gw0] [  0%] PASSED tests/test_add_tools.py::TestAddTools2::test_multiple_files 
+tests/test_add_tools.py::TestAddTools2::test_multiple_modules 
+[gw0] [  0%] PASSED tests/test_add_tools.py::TestAddTools2::test_multiple_modules 
+tests/test_add_tools.py::TestAddTools2::test_multiple_save_load_cycles 
+[gw0] [  0%] PASSED tests/test_add_tools.py::TestAddTools2::test_multiple_save_load_cycles 
+tests/test_add_tools.py::TestAddTools2::test_save_load_dynamic_function 
+[gw0] [  1%] PASSED tests/test_add_tools.py::TestAddTools2::test_save_load_dynamic_function 
+tests/test_add_tools.py::TestAddTools2::test_save_load_mixed_sources 
+[gw0] [  1%] PASSED tests/test_add_tools.py::TestAddTools2::test_save_load_mixed_sources 
+tests/test_add_tools.py::TestAddTools2::test_single_file 
+[gw0] [  1%] PASSED tests/test_add_tools.py::TestAddTools2::test_single_file 
+tests/test_add_tools.py::TestAddTools2::test_single_function 
+[gw0] [  1%] PASSED tests/test_add_tools.py::TestAddTools2::test_single_function 
+tests/test_add_tools.py::TestAddTools2::test_single_module 
+[gw0] [  1%] PASSED tests/test_add_tools.py::TestAddTools2::test_single_module 
+tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_invalid_input 
+[gw0] [  1%] PASSED tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_invalid_input 
+tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_list_input 
+[gw0] [  1%] PASSED tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_list_input 
+tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_mixed_files_and_modules 
+[gw0] [  2%] PASSED tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_mixed_files_and_modules 
+tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_multiple_files 
+[gw0] [  2%] PASSED tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_multiple_files 
+tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_multiple_modules 
+[gw0] [  2%] PASSED tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_multiple_modules 
+tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_multiple_save_load_cycles 
+[gw0] [  2%] PASSED tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_multiple_save_load_cycles 
+tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_save_load_dynamic_function 
+[gw0] [  2%] PASSED tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_save_load_dynamic_function 
+tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_save_load_mixed_sources 
+[gw0] [  2%] PASSED tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_save_load_mixed_sources 
+tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_single_file 
+[gw0] [  2%] PASSED tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_single_file 
+tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_single_function 
+[gw0] [  3%] PASSED tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_single_function 
+tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_single_module 
+[gw0] [  3%] PASSED tests/test_add_tools_openai.py::TestAddToolsOpenAI::test_single_module 
+tests/test_basic.py::TestAnthropicBot::test_basic_conversation 
+[gw0] [  3%] PASSED tests/test_basic.py::TestAnthropicBot::test_basic_conversation 
+tests/test_basic.py::TestAnthropicBot::test_custom_initialization 
+[gw0] [  3%] PASSED tests/test_basic.py::TestAnthropicBot::test_custom_initialization 
+tests/test_basic.py::TestAnthropicBot::test_initialization 
+[gw0] [  3%] PASSED tests/test_basic.py::TestAnthropicBot::test_initialization 
+tests/test_basic.py::TestAnthropicBot::test_multiple_turns 
+[gw0] [  3%] PASSED tests/test_basic.py::TestAnthropicBot::test_multiple_turns 
+tests/test_basic.py::TestGPTBot::test_basic_conversation 
+[gw0] [  3%] PASSED tests/test_basic.py::TestGPTBot::test_basic_conversation 
+tests/test_basic.py::TestGPTBot::test_custom_initialization 
+[gw0] [  4%] PASSED tests/test_basic.py::TestGPTBot::test_custom_initialization 
+tests/test_basic.py::TestGPTBot::test_initialization 
+[gw0] [  4%] PASSED tests/test_basic.py::TestGPTBot::test_initialization 
+tests/test_basic.py::TestGPTBot::test_multiple_turns 
+[gw0] [  4%] PASSED tests/test_basic.py::TestGPTBot::test_multiple_turns 
+tests/test_basic.py::test_bot_multiplication 
+[gw0] [  4%] PASSED tests/test_basic.py::test_bot_multiplication 
+tests/test_bots.py::TestBaseBot::test_batch_respond 
+[gw0] [  4%] SKIPPED tests/test_bots.py::TestBaseBot::test_batch_respond 
+tests/test_bots.py::TestBaseBot::test_respond 
+[gw0] [  4%] PASSED tests/test_bots.py::TestBaseBot::test_respond 
+tests/test_bots.py::TestBaseBot::test_save_and_load 
+[gw0] [  4%] PASSED tests/test_bots.py::TestBaseBot::test_save_and_load 
+tests/test_bots.py::TestGPTBot::test_batch_respond 
+[gw0] [  5%] SKIPPED tests/test_bots.py::TestGPTBot::test_batch_respond 
+tests/test_bots.py::TestAnthropicBot::test_parallel_respond 
+[gw0] [  5%] SKIPPED tests/test_bots.py::TestAnthropicBot::test_parallel_respond 
+tests/test_cli_tool_crash_bug.py::TestCLIToolCrashBug::test_tool_crash_corruption_scenario 
+[gw0] [  5%] PASSED tests/test_cli_tool_crash_bug.py::TestCLIToolCrashBug::test_tool_crash_corruption_scenario 
+tests/test_cli_tool_crash_bug.py::TestCLIToolCrashBug::test_conversation_node_tool_state_after_crash 
+[gw0] [  5%] PASSED tests/test_cli_tool_crash_bug.py::TestCLIToolCrashBug::test_conversation_node_tool_state_after_crash 
+tests/test_cli_tool_crash_bug.py::TestCLIToolCrashBug::test_tool_handler_state_persistence 
+[gw0] [  5%] PASSED tests/test_cli_tool_crash_bug.py::TestCLIToolCrashBug::test_tool_handler_state_persistence 
+tests/test_cli_tool_crash_bug_fix.py::TestCLIToolCrashBugFix::test_tool_handler_clear_prevents_corruption 
+[gw0] [  5%] PASSED tests/test_cli_tool_crash_bug_fix.py::TestCLIToolCrashBugFix::test_tool_handler_clear_prevents_corruption 
+tests/test_cli_tool_crash_bug_fix.py::TestCLIToolCrashBugFix::test_without_clear_shows_corruption 
+[gw0] [  5%] PASSED tests/test_cli_tool_crash_bug_fix.py::TestCLIToolCrashBugFix::test_without_clear_shows_corruption 
+tests/test_code_tools.py::TestCodeTools::test_view_boundary_conditions 
+[gw0] [  6%] PASSED tests/test_code_tools.py::TestCodeTools::test_view_boundary_conditions 
+tests/test_code_tools.py::TestCodeTools::test_view_full_file 
+[gw0] [  6%] PASSED tests/test_code_tools.py::TestCodeTools::test_view_full_file 
+tests/test_code_tools.py::TestCodeTools::test_view_invalid_start_line 
+[gw0] [  6%] PASSED tests/test_code_tools.py::TestCodeTools::test_view_invalid_start_line 
+tests/test_code_tools.py::TestCodeTools::test_view_string_match_at_file_boundaries 
+[gw0] [  6%] PASSED tests/test_code_tools.py::TestCodeTools::test_view_string_match_at_file_boundaries 
+tests/test_code_tools.py::TestCodeTools::test_view_string_match_no_results 
+[gw0] [  6%] PASSED tests/test_code_tools.py::TestCodeTools::test_view_string_match_no_results 
+tests/test_code_tools.py::TestCodeTools::test_view_with_end_line 
+[gw0] [  6%] PASSED tests/test_code_tools.py::TestCodeTools::test_view_with_end_line 
+tests/test_code_tools.py::TestCodeTools::test_view_with_multiple_string_matches 
+[gw0] [  6%] PASSED tests/test_code_tools.py::TestCodeTools::test_view_with_multiple_string_matches 
+tests/test_code_tools.py::TestCodeTools::test_view_with_start_and_end_line 
+[gw0] [  7%] PASSED tests/test_code_tools.py::TestCodeTools::test_view_with_start_and_end_line 
+tests/test_code_tools.py::TestCodeTools::test_view_with_start_line 
+[gw0] [  7%] PASSED tests/test_code_tools.py::TestCodeTools::test_view_with_start_line 
+tests/test_code_tools.py::TestCodeTools::test_view_with_string_match 
+[gw0] [  7%] PASSED tests/test_code_tools.py::TestCodeTools::test_view_with_string_match 
+tests/test_code_tools.py::TestCodeTools::test_view_with_string_match_custom_distance 
+[gw0] [  7%] PASSED tests/test_code_tools.py::TestCodeTools::test_view_with_string_match_custom_distance 
+tests/test_code_tools.py::TestViewDir::test_specific_extensions 
+[gw0] [  7%] PASSED tests/test_code_tools.py::TestViewDir::test_specific_extensions 
+tests/test_comprehensive_helpers.py::TestHelperPreservationComprehensive::test_all_scenarios 
+[gw0] [  7%] PASSED tests/test_comprehensive_helpers.py::TestHelperPreservationComprehensive::test_all_scenarios 
+tests/test_dynamic_execution.py::TestDynamicFunctionExecution::test_old_context_method_fails 
+[gw0] [  7%] PASSED tests/test_dynamic_execution.py::TestDynamicFunctionExecution::test_old_context_method_fails 
+tests/test_dynamic_execution.py::TestDynamicFunctionExecution::test_view_dir_dynamic_execution_with_imports 
+[gw0] [  8%] PASSED tests/test_dynamic_execution.py::TestDynamicFunctionExecution::test_view_dir_dynamic_execution_with_imports 
+tests/test_helper_preservation.py::TestHelperPreservation::test_helper_preservation_basic 
+[gw0] [  8%] PASSED tests/test_helper_preservation.py::TestHelperPreservation::test_helper_preservation_basic 
+tests/test_helpers.py::test_get_new_files_basic 
+[gw0] [  8%] PASSED tests/test_helpers.py::test_get_new_files_basic 
+tests/test_helpers.py::test_get_new_files_multiple_times 
+[gw0] [  8%] PASSED tests/test_helpers.py::test_get_new_files_multiple_times 
+tests/test_helpers.py::test_get_new_files_extension_filter 
+[gw0] [  8%] PASSED tests/test_helpers.py::test_get_new_files_extension_filter 
+tests/test_helpers.py::test_get_new_files_subdirectories 
+[gw0] [  8%] PASSED tests/test_helpers.py::test_get_new_files_subdirectories 
+tests/test_helpers.py::test_get_new_files_empty_directory 
+[gw0] [  8%] PASSED tests/test_helpers.py::test_get_new_files_empty_directory 
+tests/test_helpers.py::test_get_new_files_no_extension_filter 
+[gw0] [  9%] PASSED tests/test_helpers.py::test_get_new_files_no_extension_filter 
+tests/test_mock_bot.py::test_mock_bot_basic 
+[gw0] [  9%] PASSED tests/test_mock_bot.py::test_mock_bot_basic 
+tests/test_mock_bot.py::test_mock_tool_handler 
+[gw0] [  9%] PASSED tests/test_mock_bot.py::test_mock_tool_handler 
+tests/test_mock_bot.py::test_mock_mailbox 
+[gw0] [  9%] PASSED tests/test_mock_bot.py::test_mock_mailbox 
+tests/test_mock_bot.py::test_conversation_node 
+[gw0] [  9%] PASSED tests/test_mock_bot.py::test_conversation_node 
+tests/test_mock_bot.py::test_utility_functions 
+[gw0] [  9%] PASSED tests/test_mock_bot.py::test_utility_functions 
+tests/test_mock_bot.py::test_failure_modes 
+[gw0] [  9%] PASSED tests/test_mock_bot.py::test_failure_modes 
+tests/test_oaibot.py::TestGPTBot::test_gptbot_read_file 
+[gw0] [ 10%] PASSED tests/test_oaibot.py::TestGPTBot::test_gptbot_read_file 
+tests/test_oaibot.py::TestGPTBot::test_tool_call_sequence_basic 
+[gw0] [ 10%] PASSED tests/test_oaibot.py::TestGPTBot::test_tool_call_sequence_basic 
+tests/test_oaibot.py::TestGPTBot::test_tool_call_sequence_save_load 
+[gw0] [ 10%] PASSED tests/test_oaibot.py::TestGPTBot::test_tool_call_sequence_save_load 
+tests/test_patch_edit.py::TestGitPatch::test_class_indentation_preservation 
+[gw0] [ 10%] PASSED tests/test_patch_edit.py::TestGitPatch::test_class_indentation_preservation 
+tests/test_patch_edit.py::TestGitPatch::test_context_mismatch 
+[gw0] [ 10%] PASSED tests/test_patch_edit.py::TestGitPatch::test_context_mismatch 
+tests/test_patch_edit.py::TestGitPatch::test_create_in_new_directory 
+[gw0] [ 10%] PASSED tests/test_patch_edit.py::TestGitPatch::test_create_in_new_directory 
+tests/test_patch_edit.py::TestGitPatch::test_double_slash_handling 
+[gw0] [ 10%] PASSED tests/test_patch_edit.py::TestGitPatch::test_double_slash_handling 
+tests/test_patch_edit.py::TestGitPatch::test_empty_patch 
+[gw0] [ 11%] PASSED tests/test_patch_edit.py::TestGitPatch::test_empty_patch 
+tests/test_patch_edit.py::TestGitPatch::test_find_block_with_context 
+[gw0] [ 11%] PASSED tests/test_patch_edit.py::TestGitPatch::test_find_block_with_context 
+tests/test_patch_edit.py::TestGitPatch::test_insert_function_after_class 
+[gw0] [ 11%] PASSED tests/test_patch_edit.py::TestGitPatch::test_insert_function_after_class 
+tests/test_patch_edit.py::TestGitPatch::test_insert_method_after_method_in_class 
+[gw0] [ 11%] PASSED tests/test_patch_edit.py::TestGitPatch::test_insert_method_after_method_in_class 
+tests/test_patch_edit.py::TestGitPatch::test_insert_method_in_class_with_inexact_whitespace 
+[gw0] [ 11%] PASSED tests/test_patch_edit.py::TestGitPatch::test_insert_method_in_class_with_inexact_whitespace 
+tests/test_patch_edit.py::TestGitPatch::test_invalid_patch_format 
+[gw0] [ 11%] PASSED tests/test_patch_edit.py::TestGitPatch::test_invalid_patch_format 
+tests/test_patch_edit.py::TestGitPatch::test_line_number_accuracy 
+[gw0] [ 11%] PASSED tests/test_patch_edit.py::TestGitPatch::test_line_number_accuracy 
+tests/test_patch_edit.py::TestGitPatch::test_match_at_different_line 
+[gw0] [ 12%] PASSED tests/test_patch_edit.py::TestGitPatch::test_match_at_different_line 
+tests/test_patch_edit.py::TestGitPatch::test_match_with_different_whitespace 
+[gw0] [ 12%] PASSED tests/test_patch_edit.py::TestGitPatch::test_match_with_different_whitespace 
+tests/test_patch_edit.py::TestGitPatch::test_match_with_different_whitespace_debug 
+[gw0] [ 12%] PASSED tests/test_patch_edit.py::TestGitPatch::test_match_with_different_whitespace_debug 
+tests/test_patch_edit.py::TestGitPatch::test_multiple_hunks 
+[gw0] [ 12%] PASSED tests/test_patch_edit.py::TestGitPatch::test_multiple_hunks 
+tests/test_patch_edit.py::TestGitPatch::test_multiple_possible_matches 
+[gw0] [ 12%] PASSED tests/test_patch_edit.py::TestGitPatch::test_multiple_possible_matches 
+tests/test_patch_edit.py::TestGitPatch::test_new_file 
+[gw0] [ 12%] PASSED tests/test_patch_edit.py::TestGitPatch::test_new_file 
+tests/test_patch_edit.py::TestGitPatch::test_no_match_found 
+[gw0] [ 12%] PASSED tests/test_patch_edit.py::TestGitPatch::test_no_match_found 
+tests/test_patch_edit.py::TestGitPatch::test_path_normalization 
+[gw0] [ 13%] PASSED tests/test_patch_edit.py::TestGitPatch::test_path_normalization 
+tests/test_patch_edit.py::TestGitPatch::test_relative_indentation_preservation 
+[gw0] [ 13%] PASSED tests/test_patch_edit.py::TestGitPatch::test_relative_indentation_preservation 
+tests/test_patch_edit.py::TestGitPatch::test_replacement 
+[gw0] [ 13%] PASSED tests/test_patch_edit.py::TestGitPatch::test_replacement 
+tests/test_patch_edit.py::TestGitPatch::test_replacement_context_matching 
+[gw0] [ 13%] PASSED tests/test_patch_edit.py::TestGitPatch::test_replacement_context_matching 
+tests/test_patch_edit.py::TestGitPatch::test_similar_but_not_exact_match 
+[gw0] [ 13%] PASSED tests/test_patch_edit.py::TestGitPatch::test_similar_but_not_exact_match 
+tests/test_patch_edit.py::TestGitPatch::test_simple_addition 
+[gw0] [ 13%] PASSED tests/test_patch_edit.py::TestGitPatch::test_simple_addition 
+tests/test_patch_edit.py::TestGitPatch::test_simple_deletion 
+[gw0] [ 13%] PASSED tests/test_patch_edit.py::TestGitPatch::test_simple_deletion 
+tests/test_patch_edit.py::TestGitPatch::test_single_line_no_context 
+[gw0] [ 14%] PASSED tests/test_patch_edit.py::TestGitPatch::test_single_line_no_context 
+tests/test_patch_edit.py::TestGitPatch::test_whitespace_only_difference 
+[gw0] [ 14%] PASSED tests/test_patch_edit.py::TestGitPatch::test_whitespace_only_difference 
+tests/test_patch_edit.py::TestGitPatchHunkParsing::test_empty_lines_in_hunk 
+[gw0] [ 14%] PASSED tests/test_patch_edit.py::TestGitPatchHunkParsing::test_empty_lines_in_hunk 
+tests/test_patch_edit.py::TestGitPatchHunkParsing::test_hunk_with_no_changes 
+[gw0] [ 14%] PASSED tests/test_patch_edit.py::TestGitPatchHunkParsing::test_hunk_with_no_changes 
+tests/test_patch_edit.py::TestGitPatchHunkParsing::test_hunk_with_no_newline_markers 
+[gw0] [ 14%] PASSED tests/test_patch_edit.py::TestGitPatchHunkParsing::test_hunk_with_no_newline_markers 
+tests/test_patch_edit.py::TestGitPatchHunkParsing::test_missing_context_lines 
+[gw0] [ 14%] PASSED tests/test_patch_edit.py::TestGitPatchHunkParsing::test_missing_context_lines 
+tests/test_patch_edit.py::TestGitPatchHunkParsing::test_multiple_hunks_with_empty_lines_between 
+[gw0] [ 14%] PASSED tests/test_patch_edit.py::TestGitPatchHunkParsing::test_multiple_hunks_with_empty_lines_between 
+tests/test_patch_edit.py::TestGitPatchHunkParsing::test_patch_context_line_recognition 
+[gw0] [ 15%] PASSED tests/test_patch_edit.py::TestGitPatchHunkParsing::test_patch_context_line_recognition 
+tests/test_patch_edit.py::TestIndentationDebug::test_context_line_mapping 
+[gw0] [ 15%] PASSED tests/test_patch_edit.py::TestIndentationDebug::test_context_line_mapping 
+tests/test_patch_edit.py::TestIndentationDebug::test_full_patch_with_debug 
+[gw0] [ 15%] PASSED tests/test_patch_edit.py::TestIndentationDebug::test_full_patch_with_debug 
+tests/test_patch_edit.py::TestIndentationDebug::test_hierarchy_match_position 
+[gw0] [ 15%] PASSED tests/test_patch_edit.py::TestIndentationDebug::test_hierarchy_match_position 
+tests/test_patch_edit.py::TestIndentationDebug::test_indentation_adjustment_direct 
+[gw0] [ 15%] PASSED tests/test_patch_edit.py::TestIndentationDebug::test_indentation_adjustment_direct 
+tests/test_patch_edit.py::TestIndentationDebug::test_indentation_fix 
+[gw0] [ 15%] PASSED tests/test_patch_edit.py::TestIndentationDebug::test_indentation_fix 
+tests/test_patch_edit.py::TestIndentationBugFix::test_context_line_space_removal 
+[gw0] [ 15%] PASSED tests/test_patch_edit.py::TestIndentationBugFix::test_context_line_space_removal 
+tests/test_patch_edit.py::TestIndentationBugFix::test_deeply_nested_indentation_bug 
+[gw0] [ 16%] PASSED tests/test_patch_edit.py::TestIndentationBugFix::test_deeply_nested_indentation_bug 
+tests/test_patch_edit.py::TestIndentationBugFix::test_function_level_indentation_bug 
+[gw0] [ 16%] PASSED tests/test_patch_edit.py::TestIndentationBugFix::test_function_level_indentation_bug 
+tests/test_patch_edit.py::TestIndentationBugFix::test_method_level_indentation_bug 
+[gw0] [ 16%] PASSED tests/test_patch_edit.py::TestIndentationBugFix::test_method_level_indentation_bug 
+tests/test_python_tools.py::TestPythonTools::test_add_async_method_to_class 
+[gw0] [ 16%] PASSED tests/test_python_tools.py::TestPythonTools::test_add_async_method_to_class 
+tests/test_python_tools.py::TestPythonTools::test_add_class 
+[gw0] [ 16%] PASSED tests/test_python_tools.py::TestPythonTools::test_add_class 
+tests/test_python_tools.py::TestPythonTools::test_add_function_to_class 
+[gw0] [ 16%] PASSED tests/test_python_tools.py::TestPythonTools::test_add_function_to_class 
+tests/test_python_tools.py::TestPythonTools::test_add_imports 
+[gw0] [ 16%] PASSED tests/test_python_tools.py::TestPythonTools::test_add_imports 
+tests/test_python_tools.py::TestPythonTools::test_add_multiple_functions_to_file 
+[gw0] [ 17%] PASSED tests/test_python_tools.py::TestPythonTools::test_add_multiple_functions_to_file 
+tests/test_python_tools.py::TestPythonTools::test_add_multiple_methods_to_class 
+[gw0] [ 17%] PASSED tests/test_python_tools.py::TestPythonTools::test_add_multiple_methods_to_class 
+tests/test_python_tools.py::TestPythonTools::test_class_scoped_functions 
+[gw0] [ 17%] PASSED tests/test_python_tools.py::TestPythonTools::test_class_scoped_functions 
+tests/test_python_tools.py::TestPythonTools::test_class_with_mixed_methods 
+[gw0] [ 17%] PASSED tests/test_python_tools.py::TestPythonTools::test_class_with_mixed_methods 
+tests/test_python_tools.py::TestPythonTools::test_definitions_with_imports 
+[gw0] [ 17%] PASSED tests/test_python_tools.py::TestPythonTools::test_definitions_with_imports 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_basic 
+[gw0] [ 17%] SKIPPED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_basic 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_complex_computation 
+[gw0] [ 17%] PASSED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_complex_computation 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_long_output 
+[gw0] [ 18%] PASSED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_long_output 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_negative_timeout 
+[gw0] [ 18%] PASSED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_negative_timeout 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_process_cleanup 
+[gw0] [ 18%] PASSED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_process_cleanup 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_runtime_error 
+[gw0] [ 18%] PASSED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_runtime_error 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_syntax_error 
+[gw0] [ 18%] PASSED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_syntax_error 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_timeout 
+[gw0] [ 18%] PASSED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_timeout 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_unicode 
+[gw0] [ 18%] PASSED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_unicode 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_with_classes 
+[gw0] [ 19%] PASSED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_with_classes 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_with_imports 
+[gw0] [ 19%] PASSED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_with_imports 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_with_multiline_output 
+[gw0] [ 19%] PASSED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_with_multiline_output 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_with_stderr 
+[gw0] [ 19%] PASSED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_with_stderr 
+tests/test_python_tools.py::TestPythonTools::test_execute_python_code_zero_timeout 
+[gw0] [ 19%] PASSED tests/test_python_tools.py::TestPythonTools::test_execute_python_code_zero_timeout 
+tests/test_python_tools.py::TestPythonTools::test_file_creation_scenarios 
+[gw0] [ 19%] PASSED tests/test_python_tools.py::TestPythonTools::test_file_creation_scenarios 
+tests/test_python_tools.py::TestPythonTools::test_indentation_handling 
+[gw0] [ 19%] PASSED tests/test_python_tools.py::TestPythonTools::test_indentation_handling 
+tests/test_python_tools.py::TestPythonTools::test_make_file 
+[gw0] [ 20%] PASSED tests/test_python_tools.py::TestPythonTools::test_make_file 
+tests/test_python_tools.py::TestPythonTools::test_mixed_sync_async_functions 
+[gw0] [ 20%] PASSED tests/test_python_tools.py::TestPythonTools::test_mixed_sync_async_functions 
+tests/test_python_tools.py::TestPythonTools::test_multiple_imports_basic 
+[gw0] [ 20%] PASSED tests/test_python_tools.py::TestPythonTools::test_multiple_imports_basic 
+tests/test_python_tools.py::TestPythonTools::test_multiple_imports_complex_statements 
+[gw0] [ 20%] PASSED tests/test_python_tools.py::TestPythonTools::test_multiple_imports_complex_statements 
+tests/test_python_tools.py::TestPythonTools::test_multiple_imports_duplicates 
+[gw0] [ 20%] PASSED tests/test_python_tools.py::TestPythonTools::test_multiple_imports_duplicates 
+tests/test_python_tools.py::TestPythonTools::test_multiple_imports_empty_input 
+[gw0] [ 20%] PASSED tests/test_python_tools.py::TestPythonTools::test_multiple_imports_empty_input 
+tests/test_python_tools.py::TestPythonTools::test_multiple_imports_file_creation 
+[gw0] [ 20%] PASSED tests/test_python_tools.py::TestPythonTools::test_multiple_imports_file_creation 
+tests/test_python_tools.py::TestPythonTools::test_multiple_imports_invalid_statement 
+[gw0] [ 21%] PASSED tests/test_python_tools.py::TestPythonTools::test_multiple_imports_invalid_statement 
+tests/test_python_tools.py::TestPythonTools::test_multiple_imports_whitespace_handling 
+[gw0] [ 21%] PASSED tests/test_python_tools.py::TestPythonTools::test_multiple_imports_whitespace_handling 
+tests/test_python_tools.py::TestPythonTools::test_multiple_imports_with_existing 
+[gw0] [ 21%] PASSED tests/test_python_tools.py::TestPythonTools::test_multiple_imports_with_existing 
+tests/test_python_tools.py::TestPythonTools::test_parenthesized_imports 
+[gw0] [ 21%] PASSED tests/test_python_tools.py::TestPythonTools::test_parenthesized_imports 
+tests/test_python_tools.py::TestPythonTools::test_preserve_async_decorators 
+[gw0] [ 21%] PASSED tests/test_python_tools.py::TestPythonTools::test_preserve_async_decorators 
+tests/test_python_tools.py::TestPythonTools::test_remove_import 
+[gw0] [ 21%] PASSED tests/test_python_tools.py::TestPythonTools::test_remove_import 
+tests/test_python_tools.py::TestPythonTools::test_replace_async_function 
+[gw0] [ 21%] PASSED tests/test_python_tools.py::TestPythonTools::test_replace_async_function 
+tests/test_python_tools.py::TestPythonTools::test_replace_class 
+[gw0] [ 22%] PASSED tests/test_python_tools.py::TestPythonTools::test_replace_class 
+tests/test_python_tools.py::TestPythonTools::test_replace_class_complex 
+[gw0] [ 22%] PASSED tests/test_python_tools.py::TestPythonTools::test_replace_class_complex 
+tests/test_python_tools.py::TestPythonTools::test_replace_class_preserve_whitespace 
+[gw0] [ 22%] PASSED tests/test_python_tools.py::TestPythonTools::test_replace_class_preserve_whitespace 
+tests/test_python_tools.py::TestPythonTools::test_replace_class_with_comments 
+[gw0] [ 22%] PASSED tests/test_python_tools.py::TestPythonTools::test_replace_class_with_comments 
+tests/test_python_tools.py::TestPythonTools::test_replace_function 
+[gw0] [ 22%] PASSED tests/test_python_tools.py::TestPythonTools::test_replace_function 
+tests/test_python_tools.py::TestPythonTools::test_replace_import 
+[gw0] [ 22%] PASSED tests/test_python_tools.py::TestPythonTools::test_replace_import 
+tests/test_python_tools.py::TestPythonTools::test_replace_multiple_functions 
+[gw0] [ 22%] PASSED tests/test_python_tools.py::TestPythonTools::test_replace_multiple_functions 
+tests/test_python_tools.py::TestPythonTools::test_replace_sync_with_async 
+[gw0] [ 23%] PASSED tests/test_python_tools.py::TestPythonTools::test_replace_sync_with_async 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_basic_save_load 
+[gw0] [ 23%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_basic_save_load 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_branch_self_frame_inspection_hypothesis 
+[gw0] [ 23%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_branch_self_frame_inspection_hypothesis 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_branch_self_tool_execution_vs_response_integration 
+[gw0] [ 23%] FAILED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_branch_self_tool_execution_vs_response_integration 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_branch_self_tool_result_missing_from_responses 
+[gw0] [ 23%] SKIPPED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_branch_self_tool_result_missing_from_responses 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_branch_tool_result_integration_issue 
+[gw0] [ 23%] SKIPPED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_branch_tool_result_integration_issue 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_callable_tool_persistence 
+[gw0] [ 23%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_callable_tool_persistence 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_corrupted_save 
+[gw0] [ 24%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_corrupted_save 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_custom_attributes 
+[gw0] [ 24%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_custom_attributes 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_file_creation 
+[gw0] [ 24%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_file_creation 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_mixed_tool_sources 
+[gw0] [ 24%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_mixed_tool_sources 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_module_tool_persistence 
+[gw0] [ 24%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_module_tool_persistence 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_after_conversation 
+[gw0] [ 24%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_after_conversation 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_empty_bot 
+[gw0] [ 24%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_empty_bot 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_with_file_tools 
+[gw0] [ 25%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_with_file_tools 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_with_module_tools 
+[gw0] [ 25%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_with_module_tools 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_with_tool_use 
+[gw0] [ 25%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_save_load_with_tool_use 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_self_tools_add_tools_functionality 
+[gw0] [ 25%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_self_tools_add_tools_functionality 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_self_tools_branch_functionality 
+[gw0] [ 25%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_self_tools_branch_functionality 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_self_tools_get_calling_bot_issue 
+[gw0] [ 25%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_self_tools_get_calling_bot_issue 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_tool_execution_results 
+[gw0] [ 25%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_tool_execution_results 
+tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_working_directory_independence 
+[gw0] [ 26%] PASSED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_working_directory_independence 
+tests/test_save_load_anthropic.py::TestDebugImports::test_branch_self_globals_investigation 
+[gw0] [ 26%] PASSED tests/test_save_load_anthropic.py::TestDebugImports::test_branch_self_globals_investigation 
+tests/test_save_load_anthropic.py::TestDebugImports::test_import_addition_detailed 
+[gw0] [ 26%] PASSED tests/test_save_load_anthropic.py::TestDebugImports::test_import_addition_detailed 
+tests/test_save_load_anthropic.py::TestDebugImports::test_mockbot_multiple_tool_simulation 
+[gw0] [ 26%] PASSED tests/test_save_load_anthropic.py::TestDebugImports::test_mockbot_multiple_tool_simulation 
+tests/test_save_load_anthropic.py::TestDebugImports::test_mockbot_tool_registration_and_basic_functionality 
+[gw0] [ 26%] PASSED tests/test_save_load_anthropic.py::TestDebugImports::test_mockbot_tool_registration_and_basic_functionality 
+tests/test_save_load_anthropic.py::TestDebugImports::test_namespace_contents 
+[gw0] [ 26%] PASSED tests/test_save_load_anthropic.py::TestDebugImports::test_namespace_contents 
+tests/test_save_load_anthropic.py::TestDebugImports::test_self_tools_module_investigation 
+[gw0] [ 26%] PASSED tests/test_save_load_anthropic.py::TestDebugImports::test_self_tools_module_investigation 
+tests/test_save_load_anthropic.py::TestDebugImports::test_simple_json_function 
+[gw0] [ 27%] PASSED tests/test_save_load_anthropic.py::TestDebugImports::test_simple_json_function 
+tests/test_save_load_debug.py::TestSaveLoadDebug::test_debug_save_load_process 
+[gw0] [ 27%] PASSED tests/test_save_load_debug.py::TestSaveLoadDebug::test_debug_save_load_process 
+tests/test_save_load_gemini.py::TestSaveLoadGemini::test_basic_save_load 
+[gw0] [ 27%] PASSED tests/test_save_load_gemini.py::TestSaveLoadGemini::test_basic_save_load 
+tests/test_save_load_gemini.py::TestSaveLoadGemini::test_corrupted_save 
+[gw0] [ 27%] PASSED tests/test_save_load_gemini.py::TestSaveLoadGemini::test_corrupted_save 
+tests/test_save_load_gemini.py::TestSaveLoadGemini::test_custom_attributes 
+[gw0] [ 27%] PASSED tests/test_save_load_gemini.py::TestSaveLoadGemini::test_custom_attributes 
+tests/test_save_load_gemini.py::TestSaveLoadGemini::test_file_creation 
+[gw0] [ 27%] PASSED tests/test_save_load_gemini.py::TestSaveLoadGemini::test_file_creation 
+tests/test_save_load_gemini.py::TestGeminiSpecificFeatures::test_gemini_mailbox_api_key_handling 
+[gw0] [ 27%] PASSED tests/test_save_load_gemini.py::TestGeminiSpecificFeatures::test_gemini_mailbox_api_key_handling 
+tests/test_save_load_gemini.py::TestGeminiSpecificFeatures::test_gemini_node_message_building 
+[gw0] [ 28%] PASSED tests/test_save_load_gemini.py::TestGeminiSpecificFeatures::test_gemini_node_message_building 
+tests/test_save_load_gemini.py::TestGeminiSpecificFeatures::test_gemini_tool_handler_schema_generation 
+[gw0] [ 28%] PASSED tests/test_save_load_gemini.py::TestGeminiSpecificFeatures::test_gemini_tool_handler_schema_generation 
+tests/test_save_load_gemini.py::TestGeminiIntegration::test_multiple_conversation_turns 
+[gw0] [ 28%] PASSED tests/test_save_load_gemini.py::TestGeminiIntegration::test_multiple_conversation_turns 
+tests/test_save_load_gemini.py::TestGeminiIntegration::test_real_conversation_and_save_load 
+[gw0] [ 28%] PASSED tests/test_save_load_gemini.py::TestGeminiIntegration::test_real_conversation_and_save_load 
+tests/test_save_load_gemini.py::TestGeminiIntegration::test_real_error_handling 
+[gw0] [ 28%] PASSED tests/test_save_load_gemini.py::TestGeminiIntegration::test_real_error_handling 
+tests/test_save_load_gemini.py::TestGeminiIntegration::test_real_tool_usage_and_persistence 
+[gw0] [ 28%] PASSED tests/test_save_load_gemini.py::TestGeminiIntegration::test_real_tool_usage_and_persistence 
+tests/test_save_load_matrix.py::TestSaveLoadMatrix::test_helper_function_preservation 
+[gw0] [ 28%] PASSED tests/test_save_load_matrix.py::TestSaveLoadMatrix::test_helper_function_preservation 
+tests/test_save_load_matrix.py::TestSaveLoadMatrix::test_matrix 
+[gw0] [ 29%] PASSED tests/test_save_load_matrix.py::TestSaveLoadMatrix::test_matrix 
+tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_basic_save_load 
+[gw0] [ 29%] PASSED tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_basic_save_load 
+tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_corrupted_save 
+[gw0] [ 29%] PASSED tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_corrupted_save 
+tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_custom_attributes 
+[gw0] [ 29%] PASSED tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_custom_attributes 
+tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_file_creation 
+[gw0] [ 29%] PASSED tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_file_creation 
+tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_mixed_tool_sources 
+[gw0] [ 29%] PASSED tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_mixed_tool_sources 
+tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_module_tool_persistence 
+[gw0] [ 29%] PASSED tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_module_tool_persistence 
+tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_save_load_after_conversation 
+[gw0] [ 30%] PASSED tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_save_load_after_conversation 
+tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_save_load_empty_bot 
+[gw0] [ 30%] PASSED tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_save_load_empty_bot 
+tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_save_load_with_file_tools 
+[gw0] [ 30%] PASSED tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_save_load_with_file_tools 
+tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_save_load_with_module_tools 
+[gw0] [ 30%] PASSED tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_save_load_with_module_tools 
+tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_save_load_with_tool_use 
+[gw0] [ 30%] PASSED tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_save_load_with_tool_use 
+tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_tool_execution_results 
+[gw0] [ 30%] PASSED tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_tool_execution_results 
+tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_working_directory_independence 
+[gw0] [ 30%] PASSED tests/test_save_load_openai.py::TestSaveLoadOpenAI::test_working_directory_independence 
+tests/test_self_tools.py::TestSelfTools::test_branch_self_basic_functionality 
+[gw0] [ 31%] PASSED tests/test_self_tools.py::TestSelfTools::test_branch_self_basic_functionality 
+tests/test_self_tools.py::TestSelfTools::test_branch_self_debug_printing 
+[gw0] [ 31%] PASSED tests/test_self_tools.py::TestSelfTools::test_branch_self_debug_printing 
+tests/test_self_tools.py::TestSelfTools::test_branch_self_empty_prompts 
+[gw0] [ 31%] PASSED tests/test_self_tools.py::TestSelfTools::test_branch_self_empty_prompts 
+tests/test_self_tools.py::TestSelfTools::test_branch_self_error_handling 
+[gw0] [ 31%] PASSED tests/test_self_tools.py::TestSelfTools::test_branch_self_error_handling 
+tests/test_self_tools.py::TestSelfTools::test_branch_self_method_restoration 
+[gw0] [ 31%] PASSED tests/test_self_tools.py::TestSelfTools::test_branch_self_method_restoration 
+tests/test_self_tools.py::TestSelfTools::test_branch_self_recursive 
+[gw0] [ 31%] PASSED tests/test_self_tools.py::TestSelfTools::test_branch_self_recursive 
+tests/test_self_tools.py::TestSelfTools::test_branch_self_tool_result_contamination_detailed 
+[gw0] [ 31%] PASSED tests/test_self_tools.py::TestSelfTools::test_branch_self_tool_result_contamination_detailed 
+tests/test_self_tools.py::TestSelfTools::test_branch_self_with_allow_work_true 
+[gw0] [ 32%] PASSED tests/test_self_tools.py::TestSelfTools::test_branch_self_with_allow_work_true 
+tests/test_self_tools.py::TestSelfTools::test_debug_output_format 
+[gw0] [ 32%] PASSED tests/test_self_tools.py::TestSelfTools::test_debug_output_format 
+tests/test_self_tools.py::TestSelfTools::test_deeper_nesting_stress_test 
+[gw0] [ 32%] PASSED tests/test_self_tools.py::TestSelfTools::test_deeper_nesting_stress_test 
+tests/test_self_tools.py::TestSelfTools::test_get_own_info 
+[gw0] [ 32%] PASSED tests/test_self_tools.py::TestSelfTools::test_get_own_info 
+tests/test_self_tools.py::TestSelfTools::test_nested_branch_self_tool_result_isolation 
+[gw0] [ 32%] PASSED tests/test_self_tools.py::TestSelfTools::test_nested_branch_self_tool_result_isolation 
+tests/test_self_tools.py::TestSelfTools::test_parallel_vs_sequential_branching_comparison 
+[gw0] [ 32%] PASSED tests/test_self_tools.py::TestSelfTools::test_parallel_vs_sequential_branching_comparison 
+tests/test_specific_helper_bug.py::TestSpecificHelperBug::test_view_dir_tool_after_save_load 
+[gw0] [ 32%] PASSED tests/test_specific_helper_bug.py::TestSpecificHelperBug::test_view_dir_tool_after_save_load 
+tests/test_tool_handler.py::TestToolHandlerPersistence::test_file_persistence 
+[gw0] [ 33%] PASSED tests/test_tool_handler.py::TestToolHandlerPersistence::test_file_persistence 
+tests/test_tool_handler.py::TestToolHandlerPersistence::test_module_persistence 
+[gw0] [ 33%] PASSED tests/test_tool_handler.py::TestToolHandlerPersistence::test_module_persistence 
+tests/test_tool_handler.py::TestToolHandlerPersistence::test_single_function_persistence 
+[gw0] [ 33%] PASSED tests/test_tool_handler.py::TestToolHandlerPersistence::test_single_function_persistence 
+tests/test_tool_handler.py::TestToolHandlerPersistence::test_tool_preservation 
+[gw0] [ 33%] PASSED tests/test_tool_handler.py::TestToolHandlerPersistence::test_tool_preservation 
+tests/test_tool_handler.py::TestDecoratorHandling::test_handle_errors_decorator 
+[gw0] [ 33%] PASSED tests/test_tool_handler.py::TestDecoratorHandling::test_handle_errors_decorator 
+tests/test_tool_handler.py::TestDecoratorHandling::test_multiple_decorators_handling 
+[gw0] [ 33%] PASSED tests/test_tool_handler.py::TestDecoratorHandling::test_multiple_decorators_handling 
+tests/test_tool_handler.py::TestDecoratorHandling::test_single_decorator_handling 
+[gw0] [ 33%] PASSED tests/test_tool_handler.py::TestDecoratorHandling::test_single_decorator_handling 
+tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_decorated_function_preserves_original_globals 
+[gw0] [ 34%] PASSED tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_decorated_function_preserves_original_globals 
+tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_decorated_function_with_datetime_globals 
+[gw0] [ 34%] PASSED tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_decorated_function_with_datetime_globals 
+tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_decorated_function_with_collections_globals 
+[gw0] [ 34%] PASSED tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_decorated_function_with_collections_globals 
+tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_complex_decorator_with_state_preserves_globals 
+[gw0] [ 34%] PASSED tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_complex_decorator_with_state_preserves_globals 
+tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_decorator_validation_works_after_serialization 
+[gw0] [ 34%] PASSED tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_decorator_validation_works_after_serialization 
+tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_multiple_decorated_functions_preserve_distinct_globals 
+[gw0] [ 34%] PASSED tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_multiple_decorated_functions_preserve_distinct_globals 
+tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_nested_decorator_globals_preservation 
+[gw0] [ 34%] PASSED tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_nested_decorator_globals_preservation 
+tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_decorator_with_closure_variables 
+[gw0] [ 35%] PASSED tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_decorator_with_closure_variables 
+tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_deeply_nested_closure_decorator 
+[gw0] [ 35%] PASSED tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_deeply_nested_closure_decorator 
+tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_decorator_with_imported_modules_in_closure 
+[gw0] [ 35%] PASSED tests/test_tool_handler_comprehensive.py::TestDecoratedFunctionGlobals::test_decorator_with_imported_modules_in_closure 
+tests/test_toolify.py::TestToolifyBasics::test_simple_function 
+[gw0] [ 35%] PASSED tests/test_toolify.py::TestToolifyBasics::test_simple_function 
+tests/test_toolify.py::TestToolifyBasics::test_custom_description 
+[gw0] [ 35%] PASSED tests/test_toolify.py::TestToolifyBasics::test_custom_description 
+tests/test_toolify.py::TestToolifyBasics::test_no_type_hints 
+[gw0] [ 35%] PASSED tests/test_toolify.py::TestToolifyBasics::test_no_type_hints 
+tests/test_toolify.py::TestTypeConversion::test_basic_types 
+[gw0] [ 35%] PASSED tests/test_toolify.py::TestTypeConversion::test_basic_types 
+tests/test_toolify.py::TestTypeConversion::test_boolean_conversion 
+[gw0] [ 36%] PASSED tests/test_toolify.py::TestTypeConversion::test_boolean_conversion 
+tests/test_toolify.py::TestTypeConversion::test_list_conversion 
+[gw0] [ 36%] PASSED tests/test_toolify.py::TestTypeConversion::test_list_conversion 
+tests/test_toolify.py::TestTypeConversion::test_dict_conversion 
+[gw0] [ 36%] PASSED tests/test_toolify.py::TestTypeConversion::test_dict_conversion 
+tests/test_toolify.py::TestOutputConversion::test_none_return 
+[gw0] [ 36%] PASSED tests/test_toolify.py::TestOutputConversion::test_none_return 
+tests/test_toolify.py::TestOutputConversion::test_basic_return_types 
+[gw0] [ 36%] PASSED tests/test_toolify.py::TestOutputConversion::test_basic_return_types 
+tests/test_toolify.py::TestOutputConversion::test_complex_return_types 
+[gw0] [ 36%] PASSED tests/test_toolify.py::TestOutputConversion::test_complex_return_types 
+tests/test_toolify.py::TestErrorHandling::test_conversion_error 
+[gw0] [ 36%] PASSED tests/test_toolify.py::TestErrorHandling::test_conversion_error 
+tests/test_toolify.py::TestErrorHandling::test_function_error 
+[gw0] [ 37%] PASSED tests/test_toolify.py::TestErrorHandling::test_function_error 
+tests/test_toolify.py::TestErrorHandling::test_no_errors_raised 
+[gw0] [ 37%] PASSED tests/test_toolify.py::TestErrorHandling::test_no_errors_raised 
+tests/test_toolify.py::TestDocstringHandling::test_preserve_existing_docstring 
+[gw0] [ 37%] PASSED tests/test_toolify.py::TestDocstringHandling::test_preserve_existing_docstring 
+tests/test_toolify.py::TestDocstringHandling::test_generate_docstring_for_undocumented 
+[gw0] [ 37%] PASSED tests/test_toolify.py::TestDocstringHandling::test_generate_docstring_for_undocumented 
+tests/test_toolify.py::TestDocstringHandling::test_override_with_description 
+[gw0] [ 37%] PASSED tests/test_toolify.py::TestDocstringHandling::test_override_with_description 
+tests/test_toolify.py::TestRealWorldExamples::test_file_operation_tool 
+[gw0] [ 37%] PASSED tests/test_toolify.py::TestRealWorldExamples::test_file_operation_tool 
+tests/test_toolify.py::TestRealWorldExamples::test_calculation_tool 
+[gw0] [ 37%] PASSED tests/test_toolify.py::TestRealWorldExamples::test_calculation_tool 
+tests/test_toolify.py::TestRealWorldExamples::test_data_processing_tool 
+[gw0] [ 38%] PASSED tests/test_toolify.py::TestRealWorldExamples::test_data_processing_tool 
+tests/test_toolify_integration.py::TestToolifyIntegration::test_add_toolified_functions_to_bot 
+[gw0] [ 38%] PASSED tests/test_toolify_integration.py::TestToolifyIntegration::test_add_toolified_functions_to_bot 
+tests/test_toolify_integration.py::TestToolifyIntegration::test_complex_toolified_function_types 
+[gw0] [ 38%] PASSED tests/test_toolify_integration.py::TestToolifyIntegration::test_complex_toolified_function_types 
+tests/test_toolify_integration.py::TestToolifyIntegration::test_multiple_toolified_functions_integration 
+[gw0] [ 38%] PASSED tests/test_toolify_integration.py::TestToolifyIntegration::test_multiple_toolified_functions_integration 
+tests/test_toolify_integration.py::TestToolifyIntegration::test_toolified_error_handling 
+[gw0] [ 38%] PASSED tests/test_toolify_integration.py::TestToolifyIntegration::test_toolified_error_handling 
+tests/test_toolify_integration.py::TestToolifyIntegration::test_toolified_function_docstring_enhancement 
+[gw0] [ 38%] PASSED tests/test_toolify_integration.py::TestToolifyIntegration::test_toolified_function_docstring_enhancement 
+tests/test_toolify_integration.py::TestToolifyIntegration::test_toolified_function_execution 
+[gw0] [ 38%] PASSED tests/test_toolify_integration.py::TestToolifyIntegration::test_toolified_function_execution 
+tests/test_toolify_integration.py::TestToolifyIntegration::test_toolified_function_tool_handler_integration 
+[gw0] [ 39%] PASSED tests/test_toolify_integration.py::TestToolifyIntegration::test_toolified_function_tool_handler_integration 
+tests/test_toolify_integration.py::TestToolifyIntegration::test_toolified_functions_with_different_signatures 
+[gw0] [ 39%] PASSED tests/test_toolify_integration.py::TestToolifyIntegration::test_toolified_functions_with_different_signatures 
+tests/test_toolify_integration.py::TestToolifyRealWorldScenarios::test_data_analysis_tools 
+[gw0] [ 39%] PASSED tests/test_toolify_integration.py::TestToolifyRealWorldScenarios::test_data_analysis_tools 
+tests/test_toolify_integration.py::TestToolifyRealWorldScenarios::test_file_processing_tools 
+[gw0] [ 39%] PASSED tests/test_toolify_integration.py::TestToolifyRealWorldScenarios::test_file_processing_tools 
+tests/test_toolify_integration.py::TestToolifyRealWorldScenarios::test_text_processing_tools 
+[gw0] [ 39%] PASSED tests/test_toolify_integration.py::TestToolifyRealWorldScenarios::test_text_processing_tools 
+tests/test_web_tool.py::TestWebSearchFunction::test_web_search_api_exception 
+[gw0] [ 39%] PASSED tests/test_web_tool.py::TestWebSearchFunction::test_web_search_api_exception 
+tests/test_web_tool.py::TestWebSearchFunction::test_web_search_basic_behavior 
+[gw0] [ 39%] PASSED tests/test_web_tool.py::TestWebSearchFunction::test_web_search_basic_behavior 
+tests/test_web_tool.py::TestWebSearchFunction::test_web_search_complex_response 
+[gw0] [ 40%] PASSED tests/test_web_tool.py::TestWebSearchFunction::test_web_search_complex_response 
+tests/test_web_tool.py::TestWebSearchFunction::test_web_search_empty_response 
+[gw0] [ 40%] PASSED tests/test_web_tool.py::TestWebSearchFunction::test_web_search_empty_response 
+tests/test_web_tool.py::TestWebSearchFunction::test_web_search_function_signature 
+[gw0] [ 40%] PASSED tests/test_web_tool.py::TestWebSearchFunction::test_web_search_function_signature 
+tests/test_web_tool.py::TestWebSearchFunction::test_web_search_is_toolified 
+[gw0] [ 40%] PASSED tests/test_web_tool.py::TestWebSearchFunction::test_web_search_is_toolified 
+tests/test_web_tool.py::TestWebSearchFunction::test_web_search_missing_api_key 
+[gw0] [ 40%] PASSED tests/test_web_tool.py::TestWebSearchFunction::test_web_search_missing_api_key 
+tests/test_web_tool.py::TestWebSearchFunction::test_web_search_prompt_construction 
+[gw0] [ 40%] PASSED tests/test_web_tool.py::TestWebSearchFunction::test_web_search_prompt_construction 
+tests/test_web_tool.py::TestWebSearchValidation::test_web_search_with_empty_query 
+[gw0] [ 40%] PASSED tests/test_web_tool.py::TestWebSearchValidation::test_web_search_with_empty_query 
+tests/test_web_tool.py::TestWebSearchValidation::test_web_search_with_special_characters 
+[gw0] [ 41%] PASSED tests/test_web_tool.py::TestWebSearchValidation::test_web_search_with_special_characters 
+tests/test_web_tool_integration.py::TestWebToolIntegration::test_add_web_search_tool_to_bot 
+[gw0] [ 41%] PASSED tests/test_web_tool_integration.py::TestWebToolIntegration::test_add_web_search_tool_to_bot 
+tests/test_web_tool_integration.py::TestWebToolIntegration::test_web_search_tool_docstring_and_schema 
+[gw0] [ 41%] PASSED tests/test_web_tool_integration.py::TestWebToolIntegration::test_web_search_tool_docstring_and_schema 
+tests/test_web_tool_integration.py::TestWebToolIntegration::test_web_search_tool_error_handling_integration 
+[gw0] [ 41%] PASSED tests/test_web_tool_integration.py::TestWebToolIntegration::test_web_search_tool_error_handling_integration 
+tests/test_web_tool_integration.py::TestWebToolIntegration::test_web_search_tool_execution_through_bot 
+[gw0] [ 41%] PASSED tests/test_web_tool_integration.py::TestWebToolIntegration::test_web_search_tool_execution_through_bot 
+tests/test_web_tool_integration.py::TestWebToolIntegration::test_web_search_tool_with_multiple_tools 
+[gw0] [ 41%] PASSED tests/test_web_tool_integration.py::TestWebToolIntegration::test_web_search_tool_with_multiple_tools 
+tests/test_web_tool_integration.py::TestWebToolManualInspection::test_manual_web_search_inspection 
+[gw0] [ 41%] SKIPPED tests/test_web_tool_integration.py::TestWebToolManualInspection::test_manual_web_search_inspection 
+tests/test_web_tool_integration.py::TestWebToolManualInspection::test_web_search_result_structure_expectations 
+[gw0] [ 42%] PASSED tests/test_web_tool_integration.py::TestWebToolManualInspection::test_web_search_result_structure_expectations 
+tests/test_web_tool_integration.py::TestWebToolManualInspection::test_web_search_with_citations 
+[gw0] [ 42%] PASSED tests/test_web_tool_integration.py::TestWebToolManualInspection::test_web_search_with_citations 
+tests/test_web_tool_integration.py::TestWebToolRealWorldScenarios::test_web_search_for_current_events 
+[gw0] [ 42%] PASSED tests/test_web_tool_integration.py::TestWebToolRealWorldScenarios::test_web_search_for_current_events 
+tests/test_web_tool_integration.py::TestWebToolRealWorldScenarios::test_web_search_for_technical_documentation 
+[gw0] [ 42%] PASSED tests/test_web_tool_integration.py::TestWebToolRealWorldScenarios::test_web_search_for_technical_documentation 
+tests/test_web_tool_integration.py::TestWebToolRealWorldScenarios::test_web_search_integration_with_bot_workflow 
+[gw0] [ 42%] PASSED tests/test_web_tool_integration.py::TestWebToolRealWorldScenarios::test_web_search_integration_with_bot_workflow 
+tests/test_cli/test_auto_stache.py::TestAutoStashConfig::test_config_default_false 
+[gw0] [ 42%] PASSED tests/test_cli/test_auto_stache.py::TestAutoStashConfig::test_config_default_false 
+tests/test_cli/test_auto_stache.py::TestAutoStashConfig::test_config_save_load 
+[gw0] [ 42%] PASSED tests/test_cli/test_auto_stache.py::TestAutoStashConfig::test_config_save_load 
+tests/test_cli/test_auto_stache.py::TestAutoStashConfig::test_config_command_show 
+[gw0] [ 43%] PASSED tests/test_cli/test_auto_stache.py::TestAutoStashConfig::test_config_command_show 
+tests/test_cli/test_auto_stache.py::TestAutoStashConfig::test_config_command_set 
+[gw0] [ 43%] PASSED tests/test_cli/test_auto_stache.py::TestAutoStashConfig::test_config_command_set 
+tests/test_cli/test_auto_stache.py::TestAutoStashConfig::test_auto_stash_toggle_command 
+[gw0] [ 43%] PASSED tests/test_cli/test_auto_stache.py::TestAutoStashConfig::test_auto_stash_toggle_command 
+tests/test_cli/test_auto_stache.py::TestCreateAutoStash::test_no_changes_to_stash 
+[gw0] [ 43%] PASSED tests/test_cli/test_auto_stache.py::TestCreateAutoStash::test_no_changes_to_stash 
+tests/test_cli/test_auto_stache.py::TestCreateAutoStash::test_real_ai_stash_message_generation 
+[gw0] [ 43%] PASSED tests/test_cli/test_auto_stache.py::TestCreateAutoStash::test_real_ai_stash_message_generation 
+tests/test_cli/test_auto_stache.py::TestLoadStashCommand::test_load_stash_by_index 
+[gw0] [ 43%] PASSED tests/test_cli/test_auto_stache.py::TestLoadStashCommand::test_load_stash_by_index 
+tests/test_cli/test_auto_stache.py::TestLoadStashCommand::test_load_stash_by_name 
+[gw0] [ 43%] PASSED tests/test_cli/test_auto_stache.py::TestLoadStashCommand::test_load_stash_by_name 
+tests/test_cli/test_auto_stache.py::TestLoadStashCommand::test_load_stash_not_found 
+[gw0] [ 44%] PASSED tests/test_cli/test_auto_stache.py::TestLoadStashCommand::test_load_stash_not_found 
+tests/test_cli/test_auto_stache.py::TestLoadStashCommand::test_load_stash_no_args 
+[gw0] [ 44%] PASSED tests/test_cli/test_auto_stache.py::TestLoadStashCommand::test_load_stash_no_args 
+tests/test_cli/test_auto_stache.py::TestCLIIntegration::test_commands_registered 
+[gw0] [ 44%] PASSED tests/test_cli/test_auto_stache.py::TestCLIIntegration::test_commands_registered 
+tests/test_cli/test_auto_stache.py::TestCLIIntegration::test_help_includes_auto_stash 
+[gw0] [ 44%] PASSED tests/test_cli/test_auto_stache.py::TestCLIIntegration::test_help_includes_auto_stash 
+tests/test_cli/test_auto_stache.py::TestEdgeCases::test_create_auto_stash_timeout 
+[gw0] [ 44%] PASSED tests/test_cli/test_auto_stache.py::TestEdgeCases::test_create_auto_stash_timeout 
+tests/test_cli/test_auto_stache.py::TestEdgeCases::test_create_auto_stash_general_exception 
+[gw0] [ 44%] PASSED tests/test_cli/test_auto_stache.py::TestEdgeCases::test_create_auto_stash_general_exception 
+tests/test_cli/test_branch_self_integration.py::TestBranchSelfIntegration::test_branch_self_basic_functionality 
+[gw0] [ 44%] PASSED tests/test_cli/test_branch_self_integration.py::TestBranchSelfIntegration::test_branch_self_basic_functionality 
+tests/test_cli/test_branch_self_integration.py::TestBranchSelfIntegration::test_branch_self_error_handling 
+[gw0] [ 45%] PASSED tests/test_cli/test_branch_self_integration.py::TestBranchSelfIntegration::test_branch_self_error_handling 
+tests/test_cli/test_branch_self_integration.py::TestBranchSelfIntegration::test_branch_self_nested_directory_and_file_creation 
+[gw0] [ 45%] PASSED tests/test_cli/test_branch_self_integration.py::TestBranchSelfIntegration::test_branch_self_nested_directory_and_file_creation 
+tests/test_cli/test_branch_self_integration.py::TestBranchSelfIntegration::test_branch_self_tool_availability 
+[gw0] [ 45%] PASSED tests/test_cli/test_branch_self_integration.py::TestBranchSelfIntegration::test_branch_self_tool_availability 
+tests/test_cli/test_broadcast_fp_cli.py::test_collect_functional_prompt 
+[gw0] [ 45%] PASSED tests/test_cli/test_broadcast_fp_cli.py::test_collect_functional_prompt 
+tests/test_cli/test_broadcast_fp_cli.py::test_collect_functional_prompt_invalid_choice 
+[gw0] [ 45%] PASSED tests/test_cli/test_broadcast_fp_cli.py::test_collect_functional_prompt_invalid_choice 
+tests/test_cli/test_broadcast_fp_cli.py::test_collect_skip_labels 
+[gw0] [ 45%] PASSED tests/test_cli/test_broadcast_fp_cli.py::test_collect_skip_labels 
+tests/test_cli/test_broadcast_fp_cli.py::test_collect_skip_labels_empty 
+[gw0] [ 45%] PASSED tests/test_cli/test_broadcast_fp_cli.py::test_collect_skip_labels_empty 
+tests/test_cli/test_broadcast_fp_cli.py::test_discover_fp_functions_includes_broadcast_fp 
+[gw0] [ 46%] PASSED tests/test_cli/test_broadcast_fp_cli.py::test_discover_fp_functions_includes_broadcast_fp 
+tests/test_cli/test_broadcast_fp_cli.py::test_discover_fp_functions_excludes_descoped 
+[gw0] [ 46%] PASSED tests/test_cli/test_broadcast_fp_cli.py::test_discover_fp_functions_excludes_descoped 
+tests/test_cli/test_broadcast_fp_cli.py::test_fp_command_includes_broadcast_fp 
+[gw0] [ 46%] PASSED tests/test_cli/test_broadcast_fp_cli.py::test_fp_command_includes_broadcast_fp 
+tests/test_cli/test_broadcast_fp_cli.py::test_parameter_handlers_include_functional_prompt 
+[gw0] [ 46%] PASSED tests/test_cli/test_broadcast_fp_cli.py::test_parameter_handlers_include_functional_prompt 
+tests/test_cli/test_broadcast_fp_cli.py::test_broadcast_fp_new_system_all_leaves 
+[gw0] [ 46%] FAILED tests/test_cli/test_broadcast_fp_cli.py::test_broadcast_fp_new_system_all_leaves 
+tests/test_cli/test_broadcast_fp_cli.py::test_broadcast_fp_new_system_specific_leaves 
+[gw0] [ 46%] FAILED tests/test_cli/test_broadcast_fp_cli.py::test_broadcast_fp_new_system_specific_leaves 
+tests/test_cli/test_broadcast_fp_cli.py::test_broadcast_fp_no_leaves 
+[gw0] [ 46%] PASSED tests/test_cli/test_broadcast_fp_cli.py::test_broadcast_fp_no_leaves 
+tests/test_cli/test_broadcast_fp_cli.py::test_broadcast_fp_invalid_leaf_selection 
+[gw0] [ 47%] FAILED tests/test_cli/test_broadcast_fp_cli.py::test_broadcast_fp_invalid_leaf_selection 
+tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPAvailability::test_broadcast_fp_includes_par_branch_functions 
+[gw0] [ 47%] PASSED tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPAvailability::test_broadcast_fp_includes_par_branch_functions 
+tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPAvailability::test_par_branch_functions_are_discoverable 
+[gw0] [ 47%] PASSED tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPAvailability::test_par_branch_functions_are_discoverable 
+tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPFunctionalSuccess::test_broadcast_fp_with_chain_via_cli 
+[gw0] [ 47%] PASSED tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPFunctionalSuccess::test_broadcast_fp_with_chain_via_cli 
+tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPFunctionalSuccess::test_broadcast_fp_with_par_branch_via_cli 
+[gw0] [ 47%] FAILED tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPFunctionalSuccess::test_broadcast_fp_with_par_branch_via_cli 
+tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPFunctionalSuccess::test_broadcast_fp_with_par_branch_while_via_cli 
+[gw0] [ 47%] FAILED tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPFunctionalSuccess::test_broadcast_fp_with_par_branch_while_via_cli 
+tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPFunctionalSuccess::test_broadcast_fp_with_single_prompt_via_cli 
+[gw0] [ 47%] PASSED tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPFunctionalSuccess::test_broadcast_fp_with_single_prompt_via_cli 
+tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPRecursiveBranching::test_broadcast_fp_leaf_selection_with_multiple_leaves 
+[gw0] [ 48%] PASSED tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPRecursiveBranching::test_broadcast_fp_leaf_selection_with_multiple_leaves 
+tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPRecursiveBranching::test_recursive_branching_use_case 
+[gw0] [ 48%] PASSED tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPRecursiveBranching::test_recursive_branching_use_case 
+tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPParameterCollection::test_parameter_collection_for_complex_fps 
+[gw0] [ 48%] PASSED tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPParameterCollection::test_parameter_collection_for_complex_fps 
+tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPParameterCollection::test_parameter_collection_for_while_functions 
+[gw0] [ 48%] PASSED tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPParameterCollection::test_parameter_collection_for_while_functions 
+tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_all_functional_prompts_integration 
+[gw0] [ 48%] SKIPPED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_all_functional_prompts_integration 
+tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_branch_while_wizard 
+[gw0] [ 48%] FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_branch_while_wizard 
+tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_branch_wizard 
+[gw0] [ 48%] FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_branch_wizard 
+tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_chain_while_wizard 
+[gw0] [ 49%] FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_chain_while_wizard 
+tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_complex_recursive_scenario 
+[gw0] [ 49%] FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_complex_recursive_scenario 
+tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_error_handling 
+[gw0] [ 49%] PASSED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_error_handling 
+tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_no_leaves_scenario 
+[gw0] [ 49%] PASSED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_no_leaves_scenario 
+tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_prompt_while_wizard 
+[gw0] [ 49%] FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_prompt_while_wizard 
+tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_selective_leaf_targeting 
+[gw0] [ 49%] FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_selective_leaf_targeting 
+tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_tree_of_thought_wizard 
+[gw0] [ 49%] FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_tree_of_thought_wizard 
+tests/test_cli/test_broadcast_to_leaves.py::TestBroadcastToLeaves::test_broadcast_to_leaves_function_exists 
+[gw0] [ 50%] PASSED tests/test_cli/test_broadcast_to_leaves.py::TestBroadcastToLeaves::test_broadcast_to_leaves_function_exists 
+tests/test_cli/test_broadcast_to_leaves.py::TestBroadcastToLeaves::test_broadcast_to_leaves_in_fp_functions 
+[gw0] [ 50%] PASSED tests/test_cli/test_broadcast_to_leaves.py::TestBroadcastToLeaves::test_broadcast_to_leaves_in_fp_functions 
+tests/test_cli/test_cli.py::TestCLIBasics::test_config_command 
+[gw0] [ 50%] PASSED tests/test_cli/test_cli.py::TestCLIBasics::test_config_command 
+tests/test_cli/test_cli.py::TestCLIBasics::test_help_command 
+[gw0] [ 50%] PASSED tests/test_cli/test_cli.py::TestCLIBasics::test_help_command 
+tests/test_cli/test_cli.py::TestCLIBasics::test_verbose_quiet_commands 
+[gw0] [ 50%] PASSED tests/test_cli/test_cli.py::TestCLIBasics::test_verbose_quiet_commands 
+tests/test_cli/test_cli.py::TestConversationNavigation::test_down_command_at_leaf 
+[gw0] [ 50%] PASSED tests/test_cli/test_cli.py::TestConversationNavigation::test_down_command_at_leaf 
+tests/test_cli/test_cli.py::TestConversationNavigation::test_root_command 
+[gw0] [ 50%] PASSED tests/test_cli/test_cli.py::TestConversationNavigation::test_root_command 
+tests/test_cli/test_cli.py::TestConversationNavigation::test_up_command_at_root 
+[gw0] [ 51%] PASSED tests/test_cli/test_cli.py::TestConversationNavigation::test_up_command_at_root 
+tests/test_cli/test_cli.py::TestLabelingSystem::test_goto_command_removed 
+[gw0] [ 51%] PASSED tests/test_cli/test_cli.py::TestLabelingSystem::test_goto_command_removed 
+tests/test_cli/test_cli.py::TestLabelingSystem::test_label_create_and_jump 
+[gw0] [ 51%] PASSED tests/test_cli/test_cli.py::TestLabelingSystem::test_label_create_and_jump 
+tests/test_cli/test_cli.py::TestLabelingSystem::test_label_empty_input 
+[gw0] [ 51%] PASSED tests/test_cli/test_cli.py::TestLabelingSystem::test_label_empty_input 
+tests/test_cli/test_cli.py::TestLabelingSystem::test_label_nonexistent_jump 
+[gw0] [ 51%] PASSED tests/test_cli/test_cli.py::TestLabelingSystem::test_label_nonexistent_jump 
+tests/test_cli/test_cli.py::TestLabelingSystem::test_label_shows_existing_labels 
+[gw0] [ 51%] PASSED tests/test_cli/test_cli.py::TestLabelingSystem::test_label_shows_existing_labels 
+tests/test_cli/test_cli.py::TestLabelingSystem::test_showlabels_command_removed 
+[gw0] [ 51%] PASSED tests/test_cli/test_cli.py::TestLabelingSystem::test_showlabels_command_removed 
+tests/test_cli/test_cli.py::TestFunctionalPrompts::test_fp_command_basic 
+[gw0] [ 52%] PASSED tests/test_cli/test_cli.py::TestFunctionalPrompts::test_fp_command_basic 
+tests/test_cli/test_cli.py::TestFunctionalPrompts::test_fp_command_invalid_selection 
+[gw0] [ 52%] PASSED tests/test_cli/test_cli.py::TestFunctionalPrompts::test_fp_command_invalid_selection 
+tests/test_cli/test_cli.py::TestErrorHandling::test_invalid_command 
+[gw0] [ 52%] PASSED tests/test_cli/test_cli.py::TestErrorHandling::test_invalid_command 
+tests/test_cli/test_cli.py::TestErrorHandling::test_keyboard_interrupt_handling 
+[gw0] [ 52%] PASSED tests/test_cli/test_cli.py::TestErrorHandling::test_keyboard_interrupt_handling 
+tests/test_cli/test_cli.py::TestConfigManagement::test_config_invalid_setting 
+[gw0] [ 52%] PASSED tests/test_cli/test_cli.py::TestConfigManagement::test_config_invalid_setting 
+tests/test_cli/test_cli.py::TestConfigManagement::test_config_set_verbose 
+[gw0] [ 52%] PASSED tests/test_cli/test_cli.py::TestConfigManagement::test_config_set_verbose 
+tests/test_cli/test_cli.py::TestConfigManagement::test_config_set_width 
+[gw0] [ 52%] PASSED tests/test_cli/test_cli.py::TestConfigManagement::test_config_set_width 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_chain_while_with_multiple_prompts 
+[gw0] [ 53%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_chain_while_with_multiple_prompts 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_cli_callback_function_creation 
+[gw0] [ 53%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_cli_callback_function_creation 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_condition_options_available 
+[gw0] [ 53%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_condition_options_available 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_end_to_end_fp_command_with_chain 
+[gw0] [ 53%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_end_to_end_fp_command_with_chain 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_fully_usable_branch_function 
+[gw0] [ 53%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_fully_usable_branch_function 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_fully_usable_chain_function 
+[gw0] [ 53%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_fully_usable_chain_function 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_fully_usable_prompt_while_function 
+[gw0] [ 53%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_fully_usable_prompt_while_function 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_function_discovery_completeness 
+[gw0] [ 54%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_function_discovery_completeness 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_non_usable_par_dispatch_function_signature 
+[gw0] [ 54%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_non_usable_par_dispatch_function_signature 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_non_usable_prompt_for_function 
+[gw0] [ 54%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_non_usable_prompt_for_function 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_parameter_handler_coverage 
+[gw0] [ 54%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_parameter_handler_coverage 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_partially_usable_tree_of_thought_function 
+[gw0] [ 54%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_partially_usable_tree_of_thought_function 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_recombinator_options_available 
+[gw0] [ 54%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_recombinator_options_available 
+tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_while_functions_empty_prompt_list 
+[gw0] [ 54%] PASSED tests/test_cli/test_cli.py::TestFunctionalPromptUsability::test_while_functions_empty_prompt_list 
+tests/test_cli/test_cli_and_while_functions.py::test_chain_while_with_prompt_array 
+[gw0] [ 55%] PASSED tests/test_cli/test_cli_and_while_functions.py::test_chain_while_with_prompt_array 
+tests/test_cli/test_cli_and_while_functions.py::test_branch_while_with_prompt_array 
+[gw0] [ 55%] PASSED tests/test_cli/test_cli_and_while_functions.py::test_branch_while_with_prompt_array 
+tests/test_cli/test_cli_and_while_functions.py::test_par_branch_while_with_prompt_array 
+[gw0] [ 55%] PASSED tests/test_cli/test_cli_and_while_functions.py::test_par_branch_while_with_prompt_array 
+tests/test_cli/test_cli_and_while_functions.py::test_chain_while_with_callback 
+[gw0] [ 55%] PASSED tests/test_cli/test_cli_and_while_functions.py::test_chain_while_with_callback 
+tests/test_cli/test_cli_and_while_functions.py::test_while_functions_with_empty_prompt_array 
+[gw0] [ 55%] PASSED tests/test_cli/test_cli_and_while_functions.py::test_while_functions_with_empty_prompt_array 
+tests/test_cli/test_cli_and_while_functions.py::test_while_functions_with_single_prompt 
+[gw0] [ 55%] PASSED tests/test_cli/test_cli_and_while_functions.py::test_while_functions_with_single_prompt 
+tests/test_cli/test_cli_load.py::TestCLILoad::test_load_calls_rebuild_labels 
+[gw0] [ 55%] PASSED tests/test_cli/test_cli_load.py::TestCLILoad::test_load_calls_rebuild_labels 
+tests/test_cli/test_cli_load.py::TestCLILoad::test_load_cancelled_by_user 
+[gw0] [ 56%] PASSED tests/test_cli/test_cli_load.py::TestCLILoad::test_load_cancelled_by_user 
+tests/test_cli/test_cli_load.py::TestCLILoad::test_load_clears_labeled_nodes 
+[gw0] [ 56%] PASSED tests/test_cli/test_cli_load.py::TestCLILoad::test_load_clears_labeled_nodes 
+tests/test_cli/test_cli_load.py::TestCLILoad::test_load_file_error 
+[gw0] [ 56%] PASSED tests/test_cli/test_cli_load.py::TestCLILoad::test_load_file_error 
+tests/test_cli/test_cli_load.py::TestCLILoad::test_load_file_not_found 
+[gw0] [ 56%] PASSED tests/test_cli/test_cli_load.py::TestCLILoad::test_load_file_not_found 
+tests/test_cli/test_cli_load.py::TestCLILoad::test_load_function_is_fixed 
+[gw0] [ 56%] PASSED tests/test_cli/test_cli_load.py::TestCLILoad::test_load_function_is_fixed 
+tests/test_cli/test_cli_load.py::TestCLILoad::test_load_handles_extension_automatically 
+[gw0] [ 56%] PASSED tests/test_cli/test_cli_load.py::TestCLILoad::test_load_handles_extension_automatically 
+tests/test_cli/test_cli_load.py::TestCLILoad::test_load_navigates_to_conversation_end 
+[gw0] [ 56%] PASSED tests/test_cli/test_cli_load.py::TestCLILoad::test_load_navigates_to_conversation_end 
+tests/test_cli/test_cli_load.py::TestCLILoad::test_load_success_updates_context 
+[gw0] [ 57%] PASSED tests/test_cli/test_cli_load.py::TestCLILoad::test_load_success_updates_context 
+tests/test_cli/test_cli_prompt_functionality.py::test_prompt_naming_comprehensive 
+[gw0] [ 57%] PASSED tests/test_cli/test_cli_prompt_functionality.py::test_prompt_naming_comprehensive 
+tests/test_cli/test_cli_prompt_functionality.py::test_search_functionality_enhanced 
+[gw0] [ 57%] PASSED tests/test_cli/test_cli_prompt_functionality.py::test_search_functionality_enhanced 
+tests/test_cli/test_cli_prompt_functionality.py::test_recency_tracking 
+[gw0] [ 57%] PASSED tests/test_cli/test_cli_prompt_functionality.py::test_recency_tracking 
+tests/test_cli/test_cli_prompt_functionality.py::test_name_uniqueness 
+[gw0] [ 57%] PASSED tests/test_cli/test_cli_prompt_functionality.py::test_name_uniqueness 
+tests/test_cli/test_cli_prompt_functionality.py::test_cli_integration 
+[gw0] [ 57%] PASSED tests/test_cli/test_cli_prompt_functionality.py::test_cli_integration 
+tests/test_cli/test_cli_terminal_tool_integration.py::TestCLIRealTerminalTimeouts::test_bot_tool_usage_analysis 
+[gw0] [ 57%] PASSED tests/test_cli/test_cli_terminal_tool_integration.py::TestCLIRealTerminalTimeouts::test_bot_tool_usage_analysis 
+tests/test_cli/test_cli_terminal_tool_integration.py::TestCLIRealTerminalTimeouts::test_complex_python_file_real_bot 
+[gw0] [ 58%] PASSED tests/test_cli/test_cli_terminal_tool_integration.py::TestCLIRealTerminalTimeouts::test_complex_python_file_real_bot 
+tests/test_cli/test_cli_terminal_tool_integration.py::TestCLIRealTerminalTimeouts::test_powershell_here_string_real_bot 
+[gw0] [ 58%] PASSED tests/test_cli/test_cli_terminal_tool_integration.py::TestCLIRealTerminalTimeouts::test_powershell_here_string_real_bot 
+tests/test_cli/test_cli_terminal_tool_integration.py::TestCLIRealTerminalTimeouts::test_simple_file_creation_real_bot 
+[gw0] [ 58%] PASSED tests/test_cli/test_cli_terminal_tool_integration.py::TestCLIRealTerminalTimeouts::test_simple_file_creation_real_bot 
+tests/test_cli/test_combine_leaves.py::TestCombineLeavesCommand::test_combine_leaves_error_handling 
+[gw0] [ 58%] PASSED tests/test_cli/test_combine_leaves.py::TestCombineLeavesCommand::test_combine_leaves_error_handling 
+tests/test_cli/test_combine_leaves.py::TestCombineLeavesCommand::test_combine_leaves_insufficient_leaves 
+[gw0] [ 58%] PASSED tests/test_cli/test_combine_leaves.py::TestCombineLeavesCommand::test_combine_leaves_insufficient_leaves 
+tests/test_cli/test_combine_leaves.py::TestCombineLeavesCommand::test_combine_leaves_invalid_recombinator 
+[gw0] [ 58%] PASSED tests/test_cli/test_combine_leaves.py::TestCombineLeavesCommand::test_combine_leaves_invalid_recombinator 
+tests/test_cli/test_combine_leaves.py::TestCombineLeavesCommand::test_combine_leaves_no_leaves 
+[gw0] [ 58%] PASSED tests/test_cli/test_combine_leaves.py::TestCombineLeavesCommand::test_combine_leaves_no_leaves 
+tests/test_cli/test_combine_leaves.py::TestCombineLeavesCommand::test_combine_leaves_success 
+[gw0] [ 59%] PASSED tests/test_cli/test_combine_leaves.py::TestCombineLeavesCommand::test_combine_leaves_success 
+tests/test_cli/test_fp_callbacks.py::test_chain_with_callback 
+[gw0] [ 59%] PASSED tests/test_cli/test_fp_callbacks.py::test_chain_with_callback 
+tests/test_cli/test_fp_callbacks.py::test_callback_none_does_not_error 
+[gw0] [ 59%] PASSED tests/test_cli/test_fp_callbacks.py::test_callback_none_does_not_error 
+tests/test_cli/test_fp_callbacks.py::test_callback_not_provided_does_not_error 
+[gw0] [ 59%] PASSED tests/test_cli/test_fp_callbacks.py::test_callback_not_provided_does_not_error 
+tests/test_cli/test_fp_callbacks.py::test_callback_with_exception_handling 
+[gw0] [ 59%] PASSED tests/test_cli/test_fp_callbacks.py::test_callback_with_exception_handling 
+tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_branch_while_wizard 
+[gw0] [ 59%] PASSED tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_branch_while_wizard 
+tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_branch_wizard 
+[gw0] [ 59%] PASSED tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_branch_wizard 
+tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_chain_while_wizard 
+[gw0] [ 60%] PASSED tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_chain_while_wizard 
+tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_par_branch_while_wizard 
+[gw0] [ 60%] PASSED tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_par_branch_while_wizard 
+tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_par_branch_wizard 
+[gw0] [ 60%] PASSED tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_par_branch_wizard 
+tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_prompt_while_wizard 
+[gw0] [ 60%] PASSED tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_prompt_while_wizard 
+tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_single_prompt_wizard 
+[gw0] [ 60%] PASSED tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_single_prompt_wizard 
+tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_tree_of_thought_wizard 
+[gw0] [ 60%] PASSED tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_tree_of_thought_wizard 
+tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_wizard_by_name_selection 
+[gw0] [ 60%] PASSED tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_wizard_by_name_selection 
+tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_wizard_parameter_validation 
+[gw0] [ 61%] PASSED tests/test_cli/test_fp_wizard_complete.py::TestFPWizardComplete::test_fp_wizard_parameter_validation 
+tests/test_cli/test_keyboard_interrupt_handling.py::TestKeyboardInterruptHandling::test_cli_handles_tool_keyboard_interrupt_gracefully 
+[gw0] [ 61%] PASSED tests/test_cli/test_keyboard_interrupt_handling.py::TestKeyboardInterruptHandling::test_cli_handles_tool_keyboard_interrupt_gracefully 
+tests/test_cli/test_keyboard_interrupt_handling.py::TestKeyboardInterruptHandling::test_keyboard_interrupt_from_tool_becomes_tool_execution_error 
+[gw0] [ 61%] PASSED tests/test_cli/test_keyboard_interrupt_handling.py::TestKeyboardInterruptHandling::test_keyboard_interrupt_from_tool_becomes_tool_execution_error 
+tests/test_cli/test_keyboard_interrupt_handling.py::TestKeyboardInterruptHandling::test_realistic_server_port_conflict_scenario 
+[gw0] [ 61%] PASSED tests/test_cli/test_keyboard_interrupt_handling.py::TestKeyboardInterruptHandling::test_realistic_server_port_conflict_scenario 
+tests/test_cli/test_keyboard_interrupt_handling.py::TestKeyboardInterruptHandling::test_toolify_converts_keyboard_interrupt 
+[gw0] [ 61%] PASSED tests/test_cli/test_keyboard_interrupt_handling.py::TestKeyboardInterruptHandling::test_toolify_converts_keyboard_interrupt 
+tests/test_cli/test_leaf_command.py::TestLeafCommand::test_get_leaf_preview_long_content 
+[gw0] [ 61%] PASSED tests/test_cli/test_leaf_command.py::TestLeafCommand::test_get_leaf_preview_long_content 
+tests/test_cli/test_leaf_command.py::TestLeafCommand::test_get_leaf_preview_short_content 
+[gw0] [ 61%] PASSED tests/test_cli/test_leaf_command.py::TestLeafCommand::test_get_leaf_preview_short_content 
+tests/test_cli/test_leaf_command.py::TestLeafCommand::test_leaf_command_interactive_cancel 
+[gw0] [ 62%] PASSED tests/test_cli/test_leaf_command.py::TestLeafCommand::test_leaf_command_interactive_cancel 
+tests/test_cli/test_leaf_command.py::TestLeafCommand::test_leaf_command_interactive_selection 
+[gw0] [ 62%] PASSED tests/test_cli/test_leaf_command.py::TestLeafCommand::test_leaf_command_interactive_selection 
+tests/test_cli/test_leaf_command.py::TestLeafCommand::test_leaf_command_invalid_number 
+[gw0] [ 62%] PASSED tests/test_cli/test_leaf_command.py::TestLeafCommand::test_leaf_command_invalid_number 
+tests/test_cli/test_leaf_command.py::TestLeafCommand::test_leaf_command_no_leaves 
+[gw0] [ 62%] PASSED tests/test_cli/test_leaf_command.py::TestLeafCommand::test_leaf_command_no_leaves 
+tests/test_cli/test_leaf_command.py::TestLeafCommand::test_leaf_command_shows_leaves 
+[gw0] [ 62%] PASSED tests/test_cli/test_leaf_command.py::TestLeafCommand::test_leaf_command_shows_leaves 
+tests/test_cli/test_leaf_command.py::TestLeafCommand::test_leaf_command_with_direct_jump 
+[gw0] [ 62%] PASSED tests/test_cli/test_leaf_command.py::TestLeafCommand::test_leaf_command_with_direct_jump 
+tests/test_cli/test_new_functionality.py::TestDescopedFunctions::test_broadcast_to_leaves_still_included 
+[gw0] [ 62%] PASSED tests/test_cli/test_new_functionality.py::TestDescopedFunctions::test_broadcast_to_leaves_still_included 
+tests/test_cli/test_new_functionality.py::TestDescopedFunctions::test_dynamic_prompt_parameter_handler_shows_not_supported 
+[gw0] [ 63%] PASSED tests/test_cli/test_new_functionality.py::TestDescopedFunctions::test_dynamic_prompt_parameter_handler_shows_not_supported 
+tests/test_cli/test_new_functionality.py::TestDescopedFunctions::test_items_parameter_handler_shows_not_supported 
+[gw0] [ 63%] PASSED tests/test_cli/test_new_functionality.py::TestDescopedFunctions::test_items_parameter_handler_shows_not_supported 
+tests/test_cli/test_new_functionality.py::TestDescopedFunctions::test_par_dispatch_excluded_from_discovery 
+[gw0] [ 63%] PASSED tests/test_cli/test_new_functionality.py::TestDescopedFunctions::test_par_dispatch_excluded_from_discovery 
+tests/test_cli/test_new_functionality.py::TestDescopedFunctions::test_prompt_for_excluded_from_discovery 
+[gw0] [ 63%] PASSED tests/test_cli/test_new_functionality.py::TestDescopedFunctions::test_prompt_for_excluded_from_discovery 
+tests/test_cli/test_prompt_management.py::TestPromptManager::test_empty_prompts_initialization 
+[gw0] [ 63%] PASSED tests/test_cli/test_prompt_management.py::TestPromptManager::test_empty_prompts_initialization 
+tests/test_cli/test_prompt_management.py::TestPromptManager::test_generate_prompt_name 
+[gw0] [ 63%] PASSED tests/test_cli/test_prompt_management.py::TestPromptManager::test_generate_prompt_name 
+tests/test_cli/test_prompt_management.py::TestPromptManager::test_generate_prompt_name_fallback 
+[gw0] [ 63%] PASSED tests/test_cli/test_prompt_management.py::TestPromptManager::test_generate_prompt_name_fallback 
+tests/test_cli/test_prompt_management.py::TestPromptManager::test_load_nonexistent_prompt 
+[gw0] [ 64%] PASSED tests/test_cli/test_prompt_management.py::TestPromptManager::test_load_nonexistent_prompt 
+tests/test_cli/test_prompt_management.py::TestPromptManager::test_load_prompt 
+[gw0] [ 64%] PASSED tests/test_cli/test_prompt_management.py::TestPromptManager::test_load_prompt 
+tests/test_cli/test_prompt_management.py::TestPromptManager::test_save_and_load_prompts_file 
+[gw0] [ 64%] PASSED tests/test_cli/test_prompt_management.py::TestPromptManager::test_save_and_load_prompts_file 
+tests/test_cli/test_prompt_management.py::TestPromptManager::test_save_prompt_unique_names 
+[gw0] [ 64%] PASSED tests/test_cli/test_prompt_management.py::TestPromptManager::test_save_prompt_unique_names 
+tests/test_cli/test_prompt_management.py::TestPromptManager::test_save_prompt_with_auto_name 
+[gw0] [ 64%] PASSED tests/test_cli/test_prompt_management.py::TestPromptManager::test_save_prompt_with_auto_name 
+tests/test_cli/test_prompt_management.py::TestPromptManager::test_search_prompts_by_content 
+[gw0] [ 64%] PASSED tests/test_cli/test_prompt_management.py::TestPromptManager::test_search_prompts_by_content 
+tests/test_cli/test_prompt_management.py::TestPromptManager::test_search_prompts_by_name 
+[gw0] [ 64%] PASSED tests/test_cli/test_prompt_management.py::TestPromptManager::test_search_prompts_by_name 
+tests/test_cli/test_prompt_management.py::TestPromptManager::test_search_prompts_empty_query 
+[gw0] [ 65%] PASSED tests/test_cli/test_prompt_management.py::TestPromptManager::test_search_prompts_empty_query 
+tests/test_cli/test_prompt_management.py::TestPromptManager::test_update_recents 
+[gw0] [ 65%] PASSED tests/test_cli/test_prompt_management.py::TestPromptManager::test_update_recents 
+tests/test_cli/test_prompt_management.py::TestPromptHandler::test_load_prompt_invalid_selection 
+[gw0] [ 65%] PASSED tests/test_cli/test_prompt_management.py::TestPromptHandler::test_load_prompt_invalid_selection 
+tests/test_cli/test_prompt_management.py::TestPromptHandler::test_load_prompt_multiple_matches 
+[gw0] [ 65%] PASSED tests/test_cli/test_prompt_management.py::TestPromptHandler::test_load_prompt_multiple_matches 
+tests/test_cli/test_prompt_management.py::TestPromptHandler::test_load_prompt_no_matches 
+[gw0] [ 65%] PASSED tests/test_cli/test_prompt_management.py::TestPromptHandler::test_load_prompt_no_matches 
+tests/test_cli/test_prompt_management.py::TestPromptHandler::test_load_prompt_single_match 
+[gw0] [ 65%] PASSED tests/test_cli/test_prompt_management.py::TestPromptHandler::test_load_prompt_single_match 
+tests/test_cli/test_prompt_management.py::TestPromptHandler::test_load_prompt_with_args 
+[gw0] [ 65%] PASSED tests/test_cli/test_prompt_management.py::TestPromptHandler::test_load_prompt_with_args 
+tests/test_cli/test_prompt_management.py::TestPromptHandler::test_save_prompt_empty_content 
+[gw0] [ 66%] PASSED tests/test_cli/test_prompt_management.py::TestPromptHandler::test_save_prompt_empty_content 
+tests/test_cli/test_prompt_management.py::TestPromptHandler::test_save_prompt_last_message 
+[gw0] [ 66%] PASSED tests/test_cli/test_prompt_management.py::TestPromptHandler::test_save_prompt_last_message 
+tests/test_cli/test_prompt_management.py::TestPromptHandler::test_save_prompt_no_content 
+[gw0] [ 66%] PASSED tests/test_cli/test_prompt_management.py::TestPromptHandler::test_save_prompt_no_content 
+tests/test_cli/test_prompt_management.py::TestPromptHandler::test_save_prompt_with_args 
+[gw0] [ 66%] PASSED tests/test_cli/test_prompt_management.py::TestPromptHandler::test_save_prompt_with_args 
+tests/test_cli/test_prompt_management.py::TestCLIPromptIntegration::test_get_user_input_with_prefill 
+[gw0] [ 66%] PASSED tests/test_cli/test_prompt_management.py::TestCLIPromptIntegration::test_get_user_input_with_prefill 
+tests/test_cli/test_prompt_management.py::TestCLIPromptIntegration::test_get_user_input_without_prefill 
+[gw0] [ 66%] PASSED tests/test_cli/test_prompt_management.py::TestCLIPromptIntegration::test_get_user_input_without_prefill 
+tests/test_cli/test_prompt_management.py::TestCLIPromptIntegration::test_handle_load_prompt 
+[gw0] [ 66%] PASSED tests/test_cli/test_prompt_management.py::TestCLIPromptIntegration::test_handle_load_prompt 
+tests/test_cli/test_prompt_management.py::TestCLIPromptIntegration::test_handle_save_prompt 
+[gw0] [ 67%] PASSED tests/test_cli/test_prompt_management.py::TestCLIPromptIntegration::test_handle_save_prompt 
+tests/test_cli/test_prompt_naming.py::test_prompt_naming 
+[gw0] [ 67%] PASSED tests/test_cli/test_prompt_naming.py::test_prompt_naming 
+tests/test_cli/test_prompt_naming.py::test_fallback_only 
+[gw0] [ 67%] PASSED tests/test_cli/test_prompt_naming.py::test_fallback_only 
+tests/test_cli/test_prompt_naming_fixed.py::test_fixed_naming 
+[gw0] [ 67%] PASSED tests/test_cli/test_prompt_naming_fixed.py::test_fixed_naming 
+tests/test_cli/test_quiet_duplicate.py::TestQuietModeDuplicate::test_quiet_mode_shows_message_once_after_fix 
+[gw0] [ 67%] PASSED tests/test_cli/test_quiet_duplicate.py::TestQuietModeDuplicate::test_quiet_mode_shows_message_once_after_fix 
+tests/test_cli/test_quiet_duplicate.py::TestQuietModeDuplicate::test_quiet_mode_with_tools_shows_tool_summary 
+[gw0] [ 67%] PASSED tests/test_cli/test_quiet_duplicate.py::TestQuietModeDuplicate::test_quiet_mode_with_tools_shows_tool_summary 
+tests/test_cli/test_quiet_duplicate.py::TestQuietModeDuplicate::test_verbose_mode_shows_message_once_after_fix 
+[gw0] [ 67%] PASSED tests/test_cli/test_quiet_duplicate.py::TestQuietModeDuplicate::test_verbose_mode_shows_message_once_after_fix 
+tests/test_cli/test_quiet_duplicate.py::TestQuietModeDuplicate::test_verbose_mode_with_tools_shows_full_details 
+[gw0] [ 68%] PASSED tests/test_cli/test_quiet_duplicate.py::TestQuietModeDuplicate::test_verbose_mode_with_tools_shows_full_details 
+tests/test_cli/test_quiet_fix_verification.py::TestQuietModeFix::test_quiet_mode_fix_verified 
+[gw0] [ 68%] PASSED tests/test_cli/test_quiet_fix_verification.py::TestQuietModeFix::test_quiet_mode_fix_verified 
+tests/test_cli/test_recombine_removal.py::TestRecombineCommandRemoval::test_combine_leaves_command_exists 
+[gw0] [ 68%] PASSED tests/test_cli/test_recombine_removal.py::TestRecombineCommandRemoval::test_combine_leaves_command_exists 
+tests/test_cli/test_recombine_removal.py::TestRecombineCommandRemoval::test_recombine_command_fails 
+[gw0] [ 68%] PASSED tests/test_cli/test_recombine_removal.py::TestRecombineCommandRemoval::test_recombine_command_fails 
+tests/test_cli/test_save_auto_commands.py::TestSaveCommand::test_save_command_auto_extension 
+[gw0] [ 68%] PASSED tests/test_cli/test_save_auto_commands.py::TestSaveCommand::test_save_command_auto_extension 
+tests/test_cli/test_save_auto_commands.py::TestSaveCommand::test_save_command_cancelled 
+[gw0] [ 68%] PASSED tests/test_cli/test_save_auto_commands.py::TestSaveCommand::test_save_command_cancelled 
+tests/test_cli/test_save_auto_commands.py::TestSaveCommand::test_save_command_success 
+[gw0] [ 68%] PASSED tests/test_cli/test_save_auto_commands.py::TestSaveCommand::test_save_command_success 
+tests/test_cli/test_save_auto_commands.py::TestAutoCommand::test_auto_command_error_handling 
+[gw0] [ 69%] PASSED tests/test_cli/test_save_auto_commands.py::TestAutoCommand::test_auto_command_error_handling 
+tests/test_cli/test_save_auto_commands.py::TestAutoCommand::test_auto_command_interrupted_by_user 
+[gw0] [ 69%] PASSED tests/test_cli/test_save_auto_commands.py::TestAutoCommand::test_auto_command_interrupted_by_user 
+tests/test_cli/test_save_auto_commands.py::TestAutoCommand::test_auto_command_stops_when_no_tools_used 
+[gw0] [ 69%] PASSED tests/test_cli/test_save_auto_commands.py::TestAutoCommand::test_auto_command_stops_when_no_tools_used 
+tests/test_cli/test_wizard_debug.py::TestWizardDebug::test_01_simple_chat_and_exit 
+[gw0] [ 69%] PASSED tests/test_cli/test_wizard_debug.py::TestWizardDebug::test_01_simple_chat_and_exit 
+tests/test_cli/test_wizard_debug.py::TestWizardDebug::test_02_fp_command_then_exit 
+[gw0] [ 69%] PASSED tests/test_cli/test_wizard_debug.py::TestWizardDebug::test_02_fp_command_then_exit 
+tests/test_cli/test_wizard_debug.py::TestWizardDebug::test_03_fp_single_prompt 
+[gw0] [ 69%] PASSED tests/test_cli/test_wizard_debug.py::TestWizardDebug::test_03_fp_single_prompt 
+tests/test_cli/test_wizard_debug.py::TestWizardDebug::test_04_fp_single_prompt_no_initial_chat 
+[gw0] [ 69%] PASSED tests/test_cli/test_wizard_debug.py::TestWizardDebug::test_04_fp_single_prompt_no_initial_chat 
+tests/test_cli/test_wizard_debug.py::TestWizardDebug::test_05_fp_single_prompt_no_redirect 
+[gw0] [ 70%] PASSED tests/test_cli/test_wizard_debug.py::TestWizardDebug::test_05_fp_single_prompt_no_redirect 
+tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_single_prompt 
+[gw0] [ 70%] PASSED tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_single_prompt 
+tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_chain 
+[gw0] [ 70%] PASSED tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_chain 
+tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_with_skip_labels 
+[gw0] [ 70%] PASSED tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_with_skip_labels 
+tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_empty_skip_list 
+[gw0] [ 70%] PASSED tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_empty_skip_list 
+tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_no_skip_parameter 
+[gw0] [ 70%] PASSED tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_no_skip_parameter 
+tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_single_leaf 
+[gw0] [ 70%] PASSED tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_single_leaf 
+tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_tree_of_thought 
+[gw0] [ 71%] PASSED tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_tree_of_thought 
+tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_handles_exceptions 
+[gw0] [ 71%] PASSED tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_handles_exceptions 
+tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_preserves_original_conversation 
+[gw0] [ 71%] PASSED tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_preserves_original_conversation 
+tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_with_kwargs 
+[gw0] [ 71%] PASSED tests/test_fp/test_broadcast_fp.py::test_broadcast_fp_with_kwargs 
+tests/test_fp/test_fp_conditions.py::TestBasicConditions::test_tool_used_with_tools 
+[gw0] [ 71%] PASSED tests/test_fp/test_fp_conditions.py::TestBasicConditions::test_tool_used_with_tools 
+tests/test_fp/test_fp_conditions.py::TestBasicConditions::test_tool_used_without_tools 
+[gw0] [ 71%] PASSED tests/test_fp/test_fp_conditions.py::TestBasicConditions::test_tool_used_without_tools 
+tests/test_fp/test_fp_conditions.py::TestBasicConditions::test_tool_not_used_with_tools 
+[gw0] [ 71%] PASSED tests/test_fp/test_fp_conditions.py::TestBasicConditions::test_tool_not_used_with_tools 
+tests/test_fp/test_fp_conditions.py::TestBasicConditions::test_tool_not_used_without_tools 
+[gw0] [ 72%] PASSED tests/test_fp/test_fp_conditions.py::TestBasicConditions::test_tool_not_used_without_tools 
+tests/test_fp/test_fp_conditions.py::TestCompletionConditions::test_said_DONE_positive 
+[gw0] [ 72%] PASSED tests/test_fp/test_fp_conditions.py::TestCompletionConditions::test_said_DONE_positive 
+tests/test_fp/test_fp_conditions.py::TestCompletionConditions::test_said_DONE_negative 
+[gw0] [ 72%] PASSED tests/test_fp/test_fp_conditions.py::TestCompletionConditions::test_said_DONE_negative 
+tests/test_fp/test_fp_conditions.py::TestCompletionConditions::test_said_READY_positive 
+[gw0] [ 72%] PASSED tests/test_fp/test_fp_conditions.py::TestCompletionConditions::test_said_READY_positive 
+tests/test_fp/test_fp_conditions.py::TestCompletionConditions::test_said_READY_negative 
+[gw0] [ 72%] PASSED tests/test_fp/test_fp_conditions.py::TestCompletionConditions::test_said_READY_negative 
+tests/test_fp/test_fp_conditions.py::TestAdvancedConditions::test_no_new_tools_used_first_iteration 
+[gw0] [ 72%] PASSED tests/test_fp/test_fp_conditions.py::TestAdvancedConditions::test_no_new_tools_used_first_iteration 
+tests/test_fp/test_fp_conditions.py::TestAdvancedConditions::test_no_new_tools_used_with_new_tools 
+[gw0] [ 72%] PASSED tests/test_fp/test_fp_conditions.py::TestAdvancedConditions::test_no_new_tools_used_with_new_tools 
+tests/test_fp/test_fp_conditions.py::TestAdvancedConditions::test_no_new_tools_used_with_same_tools 
+[gw0] [ 73%] PASSED tests/test_fp/test_fp_conditions.py::TestAdvancedConditions::test_no_new_tools_used_with_same_tools 
+tests/test_fp/test_fp_conditions.py::TestAdvancedConditions::test_error_in_response_positive 
+[gw0] [ 73%] PASSED tests/test_fp/test_fp_conditions.py::TestAdvancedConditions::test_error_in_response_positive 
+tests/test_fp/test_fp_conditions.py::TestAdvancedConditions::test_error_in_response_negative 
+[gw0] [ 73%] PASSED tests/test_fp/test_fp_conditions.py::TestAdvancedConditions::test_error_in_response_negative 
+tests/test_fp/test_fp_conditions.py::TestAdvancedConditions::test_error_in_response_case_insensitive 
+[gw0] [ 73%] PASSED tests/test_fp/test_fp_conditions.py::TestAdvancedConditions::test_error_in_response_case_insensitive 
+tests/test_fp/test_fp_conditions.py::TestConditionIntegration::test_multiple_conditions_workflow 
+[gw0] [ 73%] PASSED tests/test_fp/test_fp_conditions.py::TestConditionIntegration::test_multiple_conditions_workflow 
+tests/test_fp/test_par_branch.py::test_par_branch_structure 
+[gw0] [ 73%] PASSED tests/test_fp/test_par_branch.py::test_par_branch_structure 
+tests/test_fp/test_par_branch.py::test_par_branch_while_structure 
+[gw0] [ 73%] PASSED tests/test_fp/test_par_branch.py::test_par_branch_while_structure 
+tests/test_fp/test_par_branch.py::test_empty_prompt_list 
+[gw0] [ 74%] PASSED tests/test_fp/test_par_branch.py::test_empty_prompt_list 
+tests/test_fp/test_par_branch.py::test_error_handling 
+[gw0] [ 74%] PASSED tests/test_fp/test_par_branch.py::test_error_handling 
+tests/test_fp/test_par_dispatch.py::TestParDispatch::test_basic_dispatch 
+[gw0] [ 74%] PASSED tests/test_fp/test_par_dispatch.py::TestParDispatch::test_basic_dispatch 
+tests/test_fp/test_par_dispatch.py::TestParDispatch::test_error_handling 
+[gw0] [ 74%] PASSED tests/test_fp/test_par_dispatch.py::TestParDispatch::test_error_handling 
+tests/test_fp/test_par_dispatch.py::TestParDispatch::test_parallel_execution 
+[gw0] [ 74%] PASSED tests/test_fp/test_par_dispatch.py::TestParDispatch::test_parallel_execution 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_alternative_wrapping_approach 
+[gw0] [ 74%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_alternative_wrapping_approach 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_delimiter_detection 
+[gw0] [ 74%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_delimiter_detection 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_error_in_wrapped_code 
+[gw0] [ 75%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_error_in_wrapped_code 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_here_string_basic 
+[gw0] [ 75%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_here_string_basic 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_here_string_multiline 
+[gw0] [ 75%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_here_string_multiline 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_here_string_terminal_behavior 
+[gw0] [ 75%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_here_string_terminal_behavior 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_here_string_with_empty_lines 
+[gw0] [ 75%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_here_string_with_empty_lines 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_here_string_with_pipe 
+[gw0] [ 75%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_here_string_with_pipe 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_here_string_with_special_chars 
+[gw0] [ 75%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_here_string_with_special_chars 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_problematic_python_code_here_string 
+[gw0] [ 76%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_problematic_python_code_here_string 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_process_communication_health 
+[gw0] [ 76%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_process_communication_health 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_simple_vs_complex_wrapping 
+[gw0] [ 76%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_simple_vs_complex_wrapping 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_stdin_write_behavior 
+[gw0] [ 76%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_stdin_write_behavior 
+tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_wrap_code_safely_output 
+[gw0] [ 76%] PASSED tests/test_powershell_tool/test_terminal_timeout.py::TestPowerShellTimeoutDebug::test_wrap_code_safely_output 
+tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_buffer_size_impact 
+[gw0] [ 76%] PASSED tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_buffer_size_impact 
+tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_command_preprocessing 
+[gw0] [ 76%] PASSED tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_command_preprocessing 
+tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_concurrent_io_patterns 
+[gw0] [ 77%] PASSED tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_concurrent_io_patterns 
+tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_delimiter_in_different_contexts 
+[gw0] [ 77%] PASSED tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_delimiter_in_different_contexts 
+tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_encoding_edge_cases 
+[gw0] [ 77%] PASSED tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_encoding_edge_cases 
+tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_exact_problematic_command 
+[gw0] [ 77%] PASSED tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_exact_problematic_command 
+tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_manual_here_string_execution 
+[gw0] [ 77%] PASSED tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_manual_here_string_execution 
+tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_process_state_during_timeout 
+[gw0] [ 77%] PASSED tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_process_state_during_timeout 
+tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_queue_blocking_scenarios 
+[gw0] [ 77%] PASSED tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_queue_blocking_scenarios 
+tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_reader_thread_health 
+[gw0] [ 78%] PASSED tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_reader_thread_health 
+tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_whitespace_impact 
+[gw0] [ 78%] PASSED tests/test_powershell_tool/test_terminal_timeout_advanced.py::TestPowerShellAdvancedDiagnostics::test_whitespace_impact 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_basic_input_handling 
+[gw0] [ 78%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_basic_input_handling 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_current_directory_display 
+[gw0] [ 78%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_current_directory_display 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_directory_change_persistence 
+[gw0] [ 78%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_directory_change_persistence 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_input_error_handling 
+[gw0] [ 78%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_input_error_handling 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_multiple_input_requests 
+[gw0] [ 78%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_multiple_input_requests 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_state_preservation_through_input 
+[gw0] [ 79%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_state_preservation_through_input 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_basic_use 
+[gw0] [ 79%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_basic_use 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_command_chain_failure 
+[gw0] [ 79%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_command_chain_failure 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_command_chain_success 
+[gw0] [ 79%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_command_chain_success 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_complex_command_chain 
+[gw0] [ 79%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_complex_command_chain 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_encoding_environment 
+[gw0] [ 79%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_encoding_environment 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_exact_limit_output 
+[gw0] [ 79%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_exact_limit_output 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_invalid_encoding_handling 
+[gw0] [ 80%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_invalid_encoding_handling 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_line_by_line_output 
+[gw0] [ 80%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_line_by_line_output 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_no_output 
+[gw0] [ 80%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_no_output 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_special_characters 
+[gw0] [ 80%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_special_characters 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_truncated_output 
+[gw0] [ 80%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_truncated_output 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_utf8_output 
+[gw0] [ 80%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_stateful_utf8_output 
+tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_true_statefulness_between_calls 
+[gw0] [ 80%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestTerminalToolsStateful::test_true_statefulness_between_calls 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_bom_handling 
+[gw0] [ 81%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_bom_handling 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_command_chaining_with_quotes 
+[gw0] [ 81%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_command_chaining_with_quotes 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_command_not_found_handling 
+[gw0] [ 81%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_command_not_found_handling 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_complex_python_string_scenario_1 
+[gw0] [ 81%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_complex_python_string_scenario_1 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_file_not_found_scenario 
+[gw0] [ 81%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_file_not_found_scenario 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_mixed_stdout_stderr_output 
+[gw0] [ 81%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_mixed_stdout_stderr_output 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_python_command_with_file_operations 
+[gw0] [ 81%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_python_command_with_file_operations 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_quote_heavy_python_code 
+[gw0] [ 82%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_quote_heavy_python_code 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_unicode_error_handling 
+[gw0] [ 82%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellErrorLogScenarios::test_unicode_error_handling 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellUnicodeIssues::test_basic_utf8_file_creation 
+[gw0] [ 82%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellUnicodeIssues::test_basic_utf8_file_creation 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellUnicodeIssues::test_bom_detection_and_handling 
+[gw0] [ 82%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellUnicodeIssues::test_bom_detection_and_handling 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellUnicodeIssues::test_encoding_parameter_variations 
+[gw0] [ 82%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellUnicodeIssues::test_encoding_parameter_variations 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellUnicodeIssues::test_powershell_internal_encoding_setup 
+[gw0] [ 82%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellUnicodeIssues::test_powershell_internal_encoding_setup 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellUnicodeIssues::test_problematic_python_code_patterns 
+[gw0] [ 82%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellUnicodeIssues::test_problematic_python_code_patterns 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellUnicodeIssues::test_special_characters_in_here_strings 
+[gw0] [ 83%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellUnicodeIssues::test_special_characters_in_here_strings 
+tests/test_powershell_tool/test_terminal_tools.py::TestPythonCommandBOMFix::test_complex_python_command_with_quotes 
+[gw0] [ 83%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPythonCommandBOMFix::test_complex_python_command_with_quotes 
+tests/test_powershell_tool/test_terminal_tools.py::TestPythonCommandBOMFix::test_python_command_no_bom 
+[gw0] [ 83%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPythonCommandBOMFix::test_python_command_no_bom 
+tests/test_powershell_tool/test_terminal_tools.py::TestPythonCommandBOMFix::test_python_command_with_file_operations 
+[gw0] [ 83%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPythonCommandBOMFix::test_python_command_with_file_operations 
+tests/test_powershell_tool/test_terminal_tools.py::TestPythonCommandBOMFix::test_verify_no_temp_files_with_bom 
+[gw0] [ 83%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPythonCommandBOMFix::test_verify_no_temp_files_with_bom 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellFileCreationDebug::test_bom_handling_investigation 
+[gw0] [ 83%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellFileCreationDebug::test_bom_handling_investigation 
+tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellFileCreationDebug::test_debug_file_creation_failure 
+[gw0] [ 83%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestPowerShellFileCreationDebug::test_debug_file_creation_failure 
+tests/test_powershell_tool/test_terminal_tools.py::TestRegressionScenarios::test_basic_python_commands_still_work 
+[gw0] [ 84%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestRegressionScenarios::test_basic_python_commands_still_work 
+tests/test_powershell_tool/test_terminal_tools.py::TestRegressionScenarios::test_output_limiting_still_works 
+[gw0] [ 84%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestRegressionScenarios::test_output_limiting_still_works 
+tests/test_powershell_tool/test_terminal_tools.py::TestRegressionScenarios::test_simple_commands_still_work 
+[gw0] [ 84%] PASSED tests/test_powershell_tool/test_terminal_tools.py::TestRegressionScenarios::test_simple_commands_still_work 
+tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_after_error 
+[gw0] [ 84%] PASSED tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_after_error 
+tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_line_endings 
+[gw0] [ 84%] PASSED tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_line_endings 
+tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_stress_test 
+[gw0] [ 84%] PASSED tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_stress_test 
+tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_with_bom_removal_interaction 
+[gw0] [ 84%] PASSED tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_with_bom_removal_interaction 
+tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_with_powershell_special_vars 
+[gw0] [ 85%] PASSED tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_with_powershell_special_vars 
+tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_with_thread_contention 
+[gw0] [ 85%] PASSED tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_with_thread_contention 
+tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_with_very_long_lines 
+[gw0] [ 85%] PASSED tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_here_string_with_very_long_lines 
+tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_modified_wrap_code_safely 
+[gw0] [ 85%] PASSED tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_modified_wrap_code_safely 
+tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_powershell_version_and_environment 
+[gw0] [ 85%] PASSED tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_powershell_version_and_environment 
+tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_rapid_succession_commands 
+[gw0] [ 85%] PASSED tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_rapid_succession_commands 
+tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_stateful_session_reuse_with_here_strings 
+[gw0] [ 85%] PASSED tests/test_powershell_tool/test_terminal_tools_production_cases.py::TestPowerShellProductionEdgeCases::test_stateful_session_reuse_with_here_strings 
+tests/test_python_edit/test_comprehensive_failure_cases.py::test_comprehensive_failure_cases 
+[gw0] [ 86%] PASSED tests/test_python_edit/test_comprehensive_failure_cases.py::test_comprehensive_failure_cases 
+tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_deletes_entire_file 
+[gw0] [ 86%] PASSED tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_deletes_entire_file 
+tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_deletes_function 
+[gw0] [ 86%] PASSED tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_deletes_function 
+tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_deletes_class 
+[gw0] [ 86%] PASSED tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_deletes_class 
+tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_deletes_method 
+[gw0] [ 86%] PASSED tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_deletes_method 
+tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_deletes_nested_class 
+[gw0] [ 86%] PASSED tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_deletes_nested_class 
+tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_deletes_nested_function 
+[gw0] [ 86%] PASSED tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_deletes_nested_function 
+tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_with_insert_after_fails 
+[gw0] [ 87%] PASSED tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_with_insert_after_fails 
+tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_nonexistent_scope_fails 
+[gw0] [ 87%] PASSED tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_nonexistent_scope_fails 
+tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_preserves_file_structure 
+[gw0] [ 87%] PASSED tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_preserves_file_structure 
+tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_with_complex_class 
+[gw0] [ 87%] PASSED tests/test_python_edit/test_empty_string_deletion.py::test_empty_string_with_complex_class 
+tests/test_python_edit/test_method_replacement_bugs.py::test_method_replacement_with_imports_bug 
+[gw0] [ 87%] PASSED tests/test_python_edit/test_method_replacement_bugs.py::test_method_replacement_with_imports_bug 
+tests/test_python_edit/test_python_edit.py::test_basic_file_level_edit 
+[gw0] [ 87%] PASSED tests/test_python_edit/test_python_edit.py::test_basic_file_level_edit 
+tests/test_python_edit/test_python_edit.py::test_file_start_insertion 
+[gw0] [ 87%] PASSED tests/test_python_edit/test_python_edit.py::test_file_start_insertion 
+tests/test_python_edit/test_python_edit.py::test_class_replacement 
+[gw0] [ 88%] PASSED tests/test_python_edit/test_python_edit.py::test_class_replacement 
+tests/test_python_edit/test_python_edit.py::test_nested_class_method 
+[gw0] [ 88%] PASSED tests/test_python_edit/test_python_edit.py::test_nested_class_method 
+tests/test_python_edit/test_python_edit.py::test_nested_function 
+[gw0] [ 88%] PASSED tests/test_python_edit/test_python_edit.py::test_nested_function 
+tests/test_python_edit/test_python_edit.py::test_insert_after_scope 
+[gw0] [ 88%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_scope 
+tests/test_python_edit/test_python_edit.py::test_import_handling 
+[gw0] [ 88%] PASSED tests/test_python_edit/test_python_edit.py::test_import_handling 
+tests/test_python_edit/test_python_edit.py::test_decorated_method 
+[gw0] [ 88%] PASSED tests/test_python_edit/test_python_edit.py::test_decorated_method 
+tests/test_python_edit/test_python_edit.py::test_error_invalid_scope 
+[gw0] [ 88%] PASSED tests/test_python_edit/test_python_edit.py::test_error_invalid_scope 
+tests/test_python_edit/test_python_edit.py::test_error_ambiguous_insert 
+[gw0] [ 89%] PASSED tests/test_python_edit/test_python_edit.py::test_error_ambiguous_insert 
+tests/test_python_edit/test_python_edit.py::test_error_invalid_code 
+[gw0] [ 89%] PASSED tests/test_python_edit/test_python_edit.py::test_error_invalid_code 
+tests/test_python_edit/test_python_edit.py::test_async_function 
+[gw0] [ 89%] PASSED tests/test_python_edit/test_python_edit.py::test_async_function 
+tests/test_python_edit/test_python_edit.py::test_indentation_preservation 
+[gw0] [ 89%] PASSED tests/test_python_edit/test_python_edit.py::test_indentation_preservation 
+tests/test_python_edit/test_python_edit.py::test_empty_file 
+[gw0] [ 89%] PASSED tests/test_python_edit/test_python_edit.py::test_empty_file 
+tests/test_python_edit/test_python_edit.py::test_multiline_imports 
+[gw0] [ 89%] PASSED tests/test_python_edit/test_python_edit.py::test_multiline_imports 
+tests/test_python_edit/test_python_edit.py::test_indentation_in_class 
+[gw0] [ 89%] PASSED tests/test_python_edit/test_python_edit.py::test_indentation_in_class 
+tests/test_python_edit/test_python_edit.py::test_file_start_insertion_empty 
+[gw0] [ 90%] PASSED tests/test_python_edit/test_python_edit.py::test_file_start_insertion_empty 
+tests/test_python_edit/test_python_edit.py::test_file_start_insertion_with_imports 
+[gw0] [ 90%] PASSED tests/test_python_edit/test_python_edit.py::test_file_start_insertion_with_imports 
+tests/test_python_edit/test_python_edit.py::test_file_start_insertion_with_code 
+[gw0] [ 90%] PASSED tests/test_python_edit/test_python_edit.py::test_file_start_insertion_with_code 
+tests/test_python_edit/test_python_edit.py::test_file_start_insertion_multiple 
+[gw0] [ 90%] PASSED tests/test_python_edit/test_python_edit.py::test_file_start_insertion_multiple 
+tests/test_python_edit/test_python_edit.py::test_file_end_insertion 
+[gw0] [ 90%] PASSED tests/test_python_edit/test_python_edit.py::test_file_end_insertion 
+tests/test_python_edit/test_python_edit.py::test_file_end_insertion_empty 
+[gw0] [ 90%] PASSED tests/test_python_edit/test_python_edit.py::test_file_end_insertion_empty 
+tests/test_python_edit/test_python_edit.py::test_file_end_insertion_with_existing_code 
+[gw0] [ 90%] PASSED tests/test_python_edit/test_python_edit.py::test_file_end_insertion_with_existing_code 
+tests/test_python_edit/test_python_edit.py::test_file_end_insertion_multiple 
+[gw0] [ 91%] PASSED tests/test_python_edit/test_python_edit.py::test_file_end_insertion_multiple 
+tests/test_python_edit/test_python_edit.py::test_file_end_insertion_with_functions 
+[gw0] [ 91%] PASSED tests/test_python_edit/test_python_edit.py::test_file_end_insertion_with_functions 
+tests/test_python_edit/test_python_edit.py::test_line_insert_exact_preservation 
+[gw0] [ 91%] PASSED tests/test_python_edit/test_python_edit.py::test_line_insert_exact_preservation 
+tests/test_python_edit/test_python_edit.py::test_minimal_edit 
+[gw0] [ 91%] PASSED tests/test_python_edit/test_python_edit.py::test_minimal_edit 
+tests/test_python_edit/test_python_edit.py::test_ast_unparse_behavior 
+[gw0] [ 91%] PASSED tests/test_python_edit/test_python_edit.py::test_ast_unparse_behavior 
+tests/test_python_edit/test_python_edit.py::test_fstring_edit_integration 
+[gw0] [ 91%] PASSED tests/test_python_edit/test_python_edit.py::test_fstring_edit_integration 
+tests/test_python_edit/test_python_edit.py::test_edit_fstring_function 
+[gw0] [ 91%] PASSED tests/test_python_edit/test_python_edit.py::test_edit_fstring_function 
+tests/test_python_edit/test_python_edit.py::test_class_with_fstring_methods 
+[gw0] [ 92%] PASSED tests/test_python_edit/test_python_edit.py::test_class_with_fstring_methods 
+tests/test_python_edit/test_python_edit.py::test_various_apostrophe_patterns 
+[gw0] [ 92%] PASSED tests/test_python_edit/test_python_edit.py::test_various_apostrophe_patterns 
+tests/test_python_edit/test_python_edit.py::test_decorated_function_import_capture 
+[gw0] [ 92%] PASSED tests/test_python_edit/test_python_edit.py::test_decorated_function_import_capture 
+tests/test_python_edit/test_python_edit.py::test_decorated_function_with_tool_handler 
+[gw0] [ 92%] PASSED tests/test_python_edit/test_python_edit.py::test_decorated_function_with_tool_handler 
+tests/test_python_edit/test_python_edit.py::test_import_capture_regression 
+[gw0] [ 92%] PASSED tests/test_python_edit/test_python_edit.py::test_import_capture_regression 
+tests/test_python_edit/test_python_edit.py::test_empty_file_message_format 
+[gw0] [ 92%] PASSED tests/test_python_edit/test_python_edit.py::test_empty_file_message_format 
+tests/test_python_edit/test_python_edit.py::test_real_scenario_edit_integration 
+[gw0] [ 92%] PASSED tests/test_python_edit/test_python_edit.py::test_real_scenario_edit_integration 
+tests/test_python_edit/test_python_edit.py::test_insert_after_quoted_single_line_expression 
+[gw0] [ 93%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_quoted_single_line_expression 
+tests/test_python_edit/test_python_edit.py::test_insert_after_quoted_multiline_expression 
+[gw0] [ 93%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_quoted_multiline_expression 
+tests/test_python_edit/test_python_edit.py::test_insert_after_quoted_expression_no_match 
+[gw0] [ 93%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_quoted_expression_no_match 
+tests/test_python_edit/test_python_edit.py::test_insert_after_scope_path_syntax 
+[gw0] [ 93%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_scope_path_syntax 
+tests/test_python_edit/test_python_edit.py::test_insert_after_nested_scope_path 
+[gw0] [ 93%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_nested_scope_path 
+tests/test_python_edit/test_python_edit.py::test_insert_after_simple_name_in_scope 
+[gw0] [ 93%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_simple_name_in_scope 
+tests/test_python_edit/test_python_edit.py::test_insert_after_function_in_function 
+[gw0] [ 93%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_function_in_function 
+tests/test_python_edit/test_python_edit.py::test_insert_after_with_complex_expressions 
+[gw0] [ 94%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_with_complex_expressions 
+tests/test_python_edit/test_python_edit.py::test_insert_after_preserves_indentation 
+[gw0] [ 94%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_preserves_indentation 
+tests/test_python_edit/test_python_edit.py::test_insert_after_file_level_with_quoted_expression 
+[gw0] [ 94%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_file_level_with_quoted_expression 
+tests/test_python_edit/test_python_edit.py::test_insert_after_edge_cases_empty_lines 
+[gw0] [ 94%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_edge_cases_empty_lines 
+tests/test_python_edit/test_python_edit.py::test_insert_after_expression_matching_rules 
+[gw0] [ 94%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_expression_matching_rules 
+tests/test_python_edit/test_python_edit.py::test_insert_after_single_quote_vs_double_quote 
+[gw0] [ 94%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_single_quote_vs_double_quote 
+tests/test_python_edit/test_python_edit.py::test_insert_after_ambiguous_multiline_expression 
+[gw0] [ 94%] PASSED tests/test_python_edit/test_python_edit.py::test_insert_after_ambiguous_multiline_expression 
+tests/test_python_edit/test_python_edit.py::test_newline_preservation_after_scope_replacement 
+[gw0] [ 95%] PASSED tests/test_python_edit/test_python_edit.py::test_newline_preservation_after_scope_replacement 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_file_with_comments_and_decorators 
+[gw0] [ 95%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_file_with_comments_and_decorators 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_file_with_complex_strings 
+[gw0] [ 95%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_file_with_complex_strings 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_invalid_file_extension 
+[gw0] [ 95%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_invalid_file_extension 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_invalid_identifier 
+[gw0] [ 95%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_invalid_identifier 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_malformed_python_file 
+[gw0] [ 95%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_malformed_python_file 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_default_value 
+[gw0] [ 95%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_default_value 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_negative_disables_truncation 
+[gw0] [ 96%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_negative_disables_truncation 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_scoped_view_no_truncation 
+[gw0] [ 96%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_scoped_view_no_truncation 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_scoped_view_with_truncation 
+[gw0] [ 96%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_scoped_view_with_truncation 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_truncation_message_format 
+[gw0] [ 96%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_truncation_message_format 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_whole_file_no_truncation 
+[gw0] [ 96%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_whole_file_no_truncation 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_whole_file_with_truncation 
+[gw0] [ 96%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_whole_file_with_truncation 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_with_empty_lines 
+[gw0] [ 96%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_with_empty_lines 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_zero_disables_truncation 
+[gw0] [ 97%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_max_lines_zero_disables_truncation 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_nonexistent_method 
+[gw0] [ 97%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_nonexistent_method 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_nonexistent_scope 
+[gw0] [ 97%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_nonexistent_scope 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_view_async_function 
+[gw0] [ 97%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_view_async_function 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_view_async_nested_method 
+[gw0] [ 97%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_view_async_nested_method 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_view_class 
+[gw0] [ 97%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_view_class 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_view_class_method 
+[gw0] [ 97%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_view_class_method 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_view_empty_file 
+[gw0] [ 98%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_view_empty_file 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_view_entire_file 
+[gw0] [ 98%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_view_entire_file 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_view_nested_class 
+[gw0] [ 98%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_view_nested_class 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_view_nested_class_method 
+[gw0] [ 98%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_view_nested_class_method 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_view_nonexistent_file 
+[gw0] [ 98%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_view_nonexistent_file 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_view_standalone_function 
+[gw0] [ 98%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_view_standalone_function 
+tests/test_python_edit/test_python_view.py::TestPythonView::test_view_whitespace_only_file 
+[gw0] [ 98%] PASSED tests/test_python_edit/test_python_view.py::TestPythonView::test_view_whitespace_only_file 
+tests/test_python_edit/test_python_view.py::TestScopeViewer::test_empty_path 
+[gw0] [ 99%] PASSED tests/test_python_edit/test_python_view.py::TestScopeViewer::test_empty_path 
+tests/test_python_edit/test_python_view.py::TestScopeViewer::test_find_class 
+[gw0] [ 99%] PASSED tests/test_python_edit/test_python_view.py::TestScopeViewer::test_find_class 
+tests/test_python_edit/test_python_view.py::TestScopeViewer::test_find_function 
+[gw0] [ 99%] PASSED tests/test_python_edit/test_python_view.py::TestScopeViewer::test_find_function 
+tests/test_python_edit/test_python_view.py::TestScopeViewer::test_find_method 
+[gw0] [ 99%] PASSED tests/test_python_edit/test_python_view.py::TestScopeViewer::test_find_method 
+tests/test_python_edit/test_python_view.py::TestScopeViewer::test_find_nested_class 
+[gw0] [ 99%] PASSED tests/test_python_edit/test_python_view.py::TestScopeViewer::test_find_nested_class 
+tests/test_python_edit/test_python_view.py::TestScopeViewer::test_find_nested_method 
+[gw0] [ 99%] PASSED tests/test_python_edit/test_python_view.py::TestScopeViewer::test_find_nested_method 
+tests/test_python_edit/test_python_view.py::TestScopeViewer::test_nonexistent_target 
+[gw0] [ 99%] PASSED tests/test_python_edit/test_python_view.py::TestScopeViewer::test_nonexistent_target 
+tests/test_python_edit/test_python_view.py::TestScopeViewer::test_partial_path_match 
+[gw0] [100%] PASSED tests/test_python_edit/test_python_view.py::TestScopeViewer::test_partial_path_match 
+================================== FAILURES ===================================
+_ TestSaveLoadAnthropic.test_branch_self_tool_execution_vs_response_integration _
+[gw0] win32 -- Python 3.12.9 C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+tests\test_save_load_anthropic.py:1023: in test_branch_self_tool_execution_vs_response_integration
+    self.assertTrue(branch_self_executed, "branch_self should execute successfully")
+E   AssertionError: False is not true : branch_self should execute successfully
+---------------------------- Captured stdout call -----------------------------
+mailbox send called
+mailbox send return
+process response called
+process response returned
+mailbox send called
+mailbox send return
+process response called
+process response returned
+Cleaned up bot file: TestClaude.bot
+___________________ test_broadcast_fp_new_system_all_leaves ___________________
+[gw0] win32 -- Python 3.12.9 C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+tests\test_cli\test_broadcast_fp_cli.py:110: in test_broadcast_fp_new_system_all_leaves
+    assert "Broadcast completed" in result
+E   assert 'Broadcast completed' in "Error in broadcast_fp: Mock object has no attribute 'parent'"
+________________ test_broadcast_fp_new_system_specific_leaves _________________
+[gw0] win32 -- Python 3.12.9 C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+tests\test_cli\test_broadcast_fp_cli.py:153: in test_broadcast_fp_new_system_specific_leaves
+    assert "Broadcast completed" in result
+E   assert 'Broadcast completed' in "Error in broadcast_fp: Mock object has no attribute 'parent'"
+__________________ test_broadcast_fp_invalid_leaf_selection ___________________
+[gw0] win32 -- Python 3.12.9 C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+tests\test_cli\test_broadcast_fp_cli.py:199: in test_broadcast_fp_invalid_leaf_selection
+    assert "Invalid leaf number" in result
+E   assert 'Invalid leaf number' in "Error in broadcast_fp: Mock object has no attribute 'parent'"
+_ TestBroadcastFPFunctionalSuccess.test_broadcast_fp_with_par_branch_via_cli __
+[gw0] win32 -- Python 3.12.9 C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+tests\test_cli\test_broadcast_fp_comprehensive.py:132: in test_broadcast_fp_with_par_branch_via_cli
+    self.assertIn("Broadcast completed", output)
+E   AssertionError: 'Broadcast completed' not found in "Hello, world! Combined CLI with Dynamic Parameter Collection\nCLI started. Type /help for commands or chat normally.\nmailbox send called\nmailbox send return\nprocess response called\nprocess response returned\n\n\x1b[36m\x1b[1mClaude: \x1b[0m\x1b[36mHello! I'm here to help you with your coding needs.\n    I'm ready to assist you with viewing, editing, or creating code files,\n    executing commands, and more.\x1b[0m\n    \x1b[36m\x1b[0m\n    \x1b[36mWhat would you like to work on today?\x1b[0m\n\n\nFound 1 leaf nodes:\n  1. [depth 1]: Hello! I'm here to help you with your coding needs...\n\nSelected 1 leaves for broadcast\n\nSelect functional prompt to broadcast:\n  1. single_prompt\n  2. chain\n  3. branch\n  4. tree_of_thought\n  5. prompt_while\n  6. chain_while\n  7. branch_while\n  8. par_branch\n  9. par_branch_while\n\nCollecting parameters for par_branch:\n\nCollecting parameters for par_branch:\n  Parameter: prompts (default: required)\n\nEnter prompts (empty line to finish):\nBroadcasting par_branch to 1 selected leaves...\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mError in broadcast_fp: broadcast_to_leaves() got an unexpected keyword argument 'prompts'\x1b[0m\n\nGoodbye!\n"
+_ TestBroadcastFPFunctionalSuccess.test_broadcast_fp_with_par_branch_while_via_cli _
+[gw0] win32 -- Python 3.12.9 C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+tests\test_cli\test_broadcast_fp_comprehensive.py:158: in test_broadcast_fp_with_par_branch_while_via_cli
+    self.assertIn("Broadcast completed", output)
+E   AssertionError: 'Broadcast completed' not found in "Hello, world! Combined CLI with Dynamic Parameter Collection\nCLI started. Type /help for commands or chat normally.\nmailbox send called\nmailbox send return\nprocess response called\nprocess response returned\n\n\x1b[36m\x1b[1mClaude: \x1b[0m\x1b[36mHello! I'm here to help you with your coding needs.\n    I'm ready to assist you with viewing, editing, or creating code files,\n    executing commands, and more.\x1b[0m\n    \x1b[36m\x1b[0m\n    \x1b[36mWhat would you like to work on today?\x1b[0m\n\n\nFound 1 leaf nodes:\n  1. [depth 1]: Hello! I'm here to help you with your coding needs...\n\nSelected 1 leaves for broadcast\n\nSelect functional prompt to broadcast:\n  1. single_prompt\n  2. chain\n  3. branch\n  4. tree_of_thought\n  5. prompt_while\n  6. chain_while\n  7. branch_while\n  8. par_branch\n  9. par_branch_while\n\nCollecting parameters for par_branch_while:\n\nCollecting parameters for par_branch_while:\n  Parameter: prompt_list (default: required)\n\nEnter prompt_list (empty line to finish):\n  Parameter: stop_condition (default: function: tool_not_used)\n\nAvailable stop conditions for stop_condition:\n  1. tool_used\n  2. tool_not_used\n  3. said_DONE\n  4. said_READY\n  5. error_in_response\n  Parameter: continue_prompt (default: 'ok')\nBroadcasting par_branch_while to 1 selected leaves...\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mError in broadcast_fp: broadcast_to_leaves() got an unexpected keyword argument 'prompt_list'\x1b[0m\n\nGoodbye!\n"
+_____ TestBroadcastFPWizardComplete.test_broadcast_fp_branch_while_wizard _____
+[gw0] win32 -- Python 3.12.9 C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+tests\test_cli\test_broadcast_fp_wizard_complete.py:173: in test_broadcast_fp_branch_while_wizard
+    self.assertIn("Broadcast completed", output)
+E   AssertionError: 'Broadcast completed' not found in "Hello, world! Combined CLI with Dynamic Parameter Collection\nCLI started. Type /help for commands or chat normally.\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mResponse without tools\x1b[0m\n\n\nFound 1 leaf nodes:\n  1. [depth 1]: Response without tools\n\nSelected 1 leaves for broadcast\n\nSelect functional prompt to broadcast:\n  1. single_prompt\n  2. chain\n  3. branch\n  4. tree_of_thought\n  5. prompt_while\n  6. chain_while\n  7. branch_while\n  8. par_branch\n  9. par_branch_while\n\nCollecting parameters for branch_while:\n\nCollecting parameters for branch_while:\n  Parameter: prompt_list (default: required)\n\nEnter prompt_list (empty line to finish):\n  Parameter: stop_condition (default: function: tool_not_used)\n\nAvailable stop conditions for stop_condition:\n  1. tool_used\n  2. tool_not_used\n  3. said_DONE\n  4. said_READY\n  5. error_in_response\n  Parameter: continue_prompt (default: 'ok')\nBroadcasting branch_while to 1 selected leaves...\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mError in broadcast_fp: broadcast_to_leaves() got an unexpected keyword argument 'prompt_list'\x1b[0m\n\nGoodbye!\n"
+________ TestBroadcastFPWizardComplete.test_broadcast_fp_branch_wizard ________
+[gw0] win32 -- Python 3.12.9 C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+tests\test_cli\test_broadcast_fp_wizard_complete.py:53: in test_broadcast_fp_branch_wizard
+    self.assertIn("Broadcast completed", output)
+E   AssertionError: 'Broadcast completed' not found in "Hello, world! Combined CLI with Dynamic Parameter Collection\nCLI started. Type /help for commands or chat normally.\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mAnalysis complete\x1b[0m\n\nNo labels saved yet.\n\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mCreated new label: start\x1b[0m\n\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mAnalysis complete\x1b[0m\n\n\nFound 1 leaf nodes:\n  1. [depth 3]: Analysis complete\n\nSelected 1 leaves for broadcast\n\nSelect functional prompt to broadcast:\n  1. single_prompt\n  2. chain\n  3. branch\n  4. tree_of_thought\n  5. prompt_while\n  6. chain_while\n  7. branch_while\n  8. par_branch\n  9. par_branch_while\n\nCollecting parameters for branch:\n\nCollecting parameters for branch:\n  Parameter: prompt_list (default: required)\n\nEnter prompt_list (empty line to finish):\nBroadcasting branch to 1 selected leaves...\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mError in broadcast_fp: broadcast_to_leaves() got an unexpected keyword argument 'prompt_list'\x1b[0m\n\nGoodbye!\n"
+_____ TestBroadcastFPWizardComplete.test_broadcast_fp_chain_while_wizard ______
+[gw0] win32 -- Python 3.12.9 C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+tests\test_cli\test_broadcast_fp_wizard_complete.py:142: in test_broadcast_fp_chain_while_wizard
+    self.assertIn("Broadcast completed", output)
+E   AssertionError: 'Broadcast completed' not found in "Hello, world! Combined CLI with Dynamic Parameter Collection\nCLI started. Type /help for commands or chat normally.\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mDONE\x1b[0m\n\n\nFound 1 leaf nodes:\n  1. [depth 1]: DONE\n\nSelected 1 leaves for broadcast\n\nSelect functional prompt to broadcast:\n  1. single_prompt\n  2. chain\n  3. branch\n  4. tree_of_thought\n  5. prompt_while\n  6. chain_while\n  7. branch_while\n  8. par_branch\n  9. par_branch_while\n\nCollecting parameters for chain_while:\n\nCollecting parameters for chain_while:\n  Parameter: prompt_list (default: required)\n\nEnter prompt_list (empty line to finish):\n  Parameter: stop_condition (default: function: tool_not_used)\n\nAvailable stop conditions for stop_condition:\n  1. tool_used\n  2. tool_not_used\n  3. said_DONE\n  4. said_READY\n  5. error_in_response\n  Parameter: continue_prompt (default: 'ok')\nBroadcasting chain_while to 1 selected leaves...\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mError in broadcast_fp: broadcast_to_leaves() got an unexpected keyword argument 'prompt_list'\x1b[0m\n\nGoodbye!\n"
+_ TestBroadcastFPWizardComplete.test_broadcast_fp_complex_recursive_scenario __
+[gw0] win32 -- Python 3.12.9 C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+tests\test_cli\test_broadcast_fp_wizard_complete.py:306: in test_broadcast_fp_complex_recursive_scenario
+    self.assertIn("Broadcast completed", output)
+E   AssertionError: 'Broadcast completed' not found in "Hello, world! Combined CLI with Dynamic Parameter Collection\nCLI started. Type /help for commands or chat normally.\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mAnalysis complete\x1b[0m\n\nNo labels saved yet.\n\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mCreated new label: root_analysis\x1b[0m\n\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mAnalysis complete\x1b[0m\n\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mAnalysis complete\x1b[0m\n\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mMoved up conversation tree\x1b[0m\n\nExisting labels:\n  'root_analysis': Analysis complete\n\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mCreated new label: tech_path\x1b[0m\n\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mAnalysis complete\x1b[0m\n\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mAnalysis complete\x1b[0m\n\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mMoved up conversation tree\x1b[0m\n\nExisting labels:\n  'root_analysis': Analysis complete\n  'tech_path': Analysis complete\n\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mCreated new label: biz_path\x1b[0m\n\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mAnalysis complete\x1b[0m\n\n\nFound 1 leaf nodes:\n  1. [depth 3]: Analysis complete\n\nSelected 1 leaves for broadcast\n\nSelect functional prompt to broadcast:\n  1. single_prompt\n  2. chain\n  3. branch\n  4. tree_of_thought\n  5. prompt_while\n  6. chain_while\n  7. branch_while\n  8. par_branch\n  9. par_branch_while\n\nCollecting parameters for par_branch:\n\nCollecting parameters for par_branch:\n  Parameter: prompts (default: required)\n\nEnter prompts (empty line to finish):\nBroadcasting par_branch to 1 selected leaves...\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mError in broadcast_fp: broadcast_to_leaves() got an unexpected keyword argument 'prompts'\x1b[0m\n\nGoodbye!\n"
+_____ TestBroadcastFPWizardComplete.test_broadcast_fp_prompt_while_wizard _____
+[gw0] win32 -- Python 3.12.9 C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+tests\test_cli\test_broadcast_fp_wizard_complete.py:111: in test_broadcast_fp_prompt_while_wizard
+    self.assertIn("Broadcast completed", output)
+E   AssertionError: 'Broadcast completed' not found in "Hello, world! Combined CLI with Dynamic Parameter Collection\nCLI started. Type /help for commands or chat normally.\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mResponse without tools\x1b[0m\n\n\nFound 1 leaf nodes:\n  1. [depth 1]: Response without tools\n\nSelected 1 leaves for broadcast\n\nSelect functional prompt to broadcast:\n  1. single_prompt\n  2. chain\n  3. branch\n  4. tree_of_thought\n  5. prompt_while\n  6. chain_while\n  7. branch_while\n  8. par_branch\n  9. par_branch_while\n\nCollecting parameters for prompt_while:\n\nCollecting parameters for prompt_while:\n  Parameter: first_prompt (default: required)\n  Parameter: continue_prompt (default: 'ok')\n  Parameter: stop_condition (default: function: tool_not_used)\n\nAvailable stop conditions for stop_condition:\n  1. tool_used\n  2. tool_not_used\n  3. said_DONE\n  4. said_READY\n  5. error_in_response\nBroadcasting prompt_while to 1 selected leaves...\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mError in broadcast_fp: broadcast_to_leaves() got an unexpected keyword argument 'first_prompt'\x1b[0m\n\nGoodbye!\n"
+__ TestBroadcastFPWizardComplete.test_broadcast_fp_selective_leaf_targeting ___
+[gw0] win32 -- Python 3.12.9 C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+tests\test_cli\test_broadcast_fp_wizard_complete.py:200: in test_broadcast_fp_selective_leaf_targeting
+    self.assertIn("Broadcast completed", output)
+E   AssertionError: 'Broadcast completed' not found in "Hello, world! Combined CLI with Dynamic Parameter Collection\nCLI started. Type /help for commands or chat normally.\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mResponse complete\x1b[0m\n\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mResponse complete\x1b[0m\n\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mResponse complete\x1b[0m\n\n\nFound 1 leaf nodes:\n  1. [depth 5]: Response complete\n\nSelected 1 leaves for broadcast\n\nSelect functional prompt to broadcast:\n  1. single_prompt\n  2. chain\n  3. branch\n  4. tree_of_thought\n  5. prompt_while\n  6. chain_while\n  7. branch_while\n  8. par_branch\n  9. par_branch_while\n\nCollecting parameters for single_prompt:\n\nCollecting parameters for single_prompt:\n  Parameter: prompt (default: required)\nBroadcasting single_prompt to 1 selected leaves...\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mError in broadcast_fp: broadcast_to_leaves() got multiple values for argument 'prompt'\x1b[0m\n\nGoodbye!\n"
+___ TestBroadcastFPWizardComplete.test_broadcast_fp_tree_of_thought_wizard ____
+[gw0] win32 -- Python 3.12.9 C:\Users\benbu\AppData\Local\Programs\Python\Python312-arm64\python.exe
+tests\test_cli\test_broadcast_fp_wizard_complete.py:83: in test_broadcast_fp_tree_of_thought_wizard
+    self.assertIn("Broadcast completed", output)
+E   AssertionError: 'Broadcast completed' not found in "Hello, world! Combined CLI with Dynamic Parameter Collection\nCLI started. Type /help for commands or chat normally.\n\n\x1b[36m\x1b[1mTestBot: \x1b[0m\x1b[36mAnalysis complete\x1b[0m\n\n\nFound 1 leaf nodes:\n  1. [depth 1]: Analysis complete\n\nSelected 1 leaves for broadcast\n\nSelect functional prompt to broadcast:\n  1. single_prompt\n  2. chain\n  3. branch\n  4. tree_of_thought\n  5. prompt_while\n  6. chain_while\n  7. branch_while\n  8. par_branch\n  9. par_branch_while\n\nCollecting parameters for tree_of_thought:\n\nCollecting parameters for tree_of_thought:\n  Parameter: prompts (default: required)\n\nEnter prompts (empty line to finish):\n  Parameter: recombinator_function (default: required)\n\nAvailable recombinators for recombinator_function:\n  1. concatenate\n  2. llm_judge\n  3. llm_vote\n  4. llm_merge\nBroadcasting tree_of_thought to 1 selected leaves...\n\n\x1b[33m\x1b[1mSystem: \x1b[0m\x1b[33mError in broadcast_fp: broadcast_to_leaves() got an unexpected keyword argument 'prompts'\x1b[0m\n\nGoodbye!\n"
+- generated xml file: C:\Users\benbu\Code\repo_working\bots\test_results.xml --
+=========================== short test summary info ===========================
+FAILED tests/test_save_load_anthropic.py::TestSaveLoadAnthropic::test_branch_self_tool_execution_vs_response_integration
+FAILED tests/test_cli/test_broadcast_fp_cli.py::test_broadcast_fp_new_system_all_leaves
+FAILED tests/test_cli/test_broadcast_fp_cli.py::test_broadcast_fp_new_system_specific_leaves
+FAILED tests/test_cli/test_broadcast_fp_cli.py::test_broadcast_fp_invalid_leaf_selection
+FAILED tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPFunctionalSuccess::test_broadcast_fp_with_par_branch_via_cli
+FAILED tests/test_cli/test_broadcast_fp_comprehensive.py::TestBroadcastFPFunctionalSuccess::test_broadcast_fp_with_par_branch_while_via_cli
+FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_branch_while_wizard
+FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_branch_wizard
+FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_chain_while_wizard
+FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_complex_recursive_scenario
+FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_prompt_while_wizard
+FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_selective_leaf_targeting
+FAILED tests/test_cli/test_broadcast_fp_wizard_complete.py::TestBroadcastFPWizardComplete::test_broadcast_fp_tree_of_thought_wizard
+=========== 13 failed, 679 passed, 8 skipped in 2802.59s (0:46:42) ============
