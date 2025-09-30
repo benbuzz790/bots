@@ -17,50 +17,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 from bots.utils.helpers import _py_ast_to_source, formatted_datetime
 'Core foundation classes for the bots framework.\n\nThis module provides the fundamental abstractions and base classes that power the bots framework:\n- Bot: Abstract base class for all LLM implementations\n- ToolHandler: Manages function/module tools with context preservation\n- ConversationNode: Tree-based conversation storage\n- Mailbox: Abstract interface for LLM service communication\n- Engines: Supported LLM model configurations\n\nThe classes in this module are designed to:\n- Provide a consistent interface across different LLM implementations\n- Enable sophisticated context and tool management\n- Support complete bot portability and state preservation\n- Handle conversation branching and context management efficiently\n\nExample:\n    ```python\n    from bots import AnthropicBot\n    import my_tools\n\n    # Create a bot with tools\n    bot = AnthropicBot()\n    bot.add_tools(my_tools)\n\n    # Basic interaction\n    response = bot.respond("Hello!")\n\n    # Save bot state\n    bot.save("my_bot.bot")\n    ```\n'
 
-def _clean_decorator_source(source):
-    """Clean decorator source by parsing the source file and extracting the
-    decorator function."""
-    frame = inspect.currentframe()
-    try:
-        while frame:
-            frame_info = inspect.getframeinfo(frame)
-            if frame_info.filename.endswith('.py') and 'test_' in frame_info.filename:
-                test_file = frame_info.filename
-                try:
-                    with open(test_file, 'r', encoding='utf-8') as f:
-                        file_content = f.read()
-                    tree = ast.parse(file_content)
-                    source_lines = source.strip().split('\n')
-                    decorator_name = None
-                    for line in source_lines:
-                        if line.strip().startswith('def ') and '(' in line:
-                            func_line = line.strip()
-                            decorator_name = func_line[4:func_line.index('(')].strip()
-                            break
-                    if decorator_name:
-                        for node in ast.walk(tree):
-                            if isinstance(node, ast.FunctionDef) and node.name == decorator_name:
-                                cleaned = _py_ast_to_source(node)
-                                return cleaned
-                except Exception:
-                    break
-            frame = frame.f_back
-    finally:
-        del frame
-    cleaned = textwrap.dedent(source).strip()
-    return cleaned
-
-def _clean_function_source(source):
-    """Clean function source using AST parsing and regeneration."""
-    try:
-        tree = ast.parse(source)
-        cleaned = _py_ast_to_source(tree)
-        return cleaned
-    except SyntaxError:
-        import textwrap
-        cleaned = textwrap.dedent(source).strip()
-        return cleaned
-
 def load(filepath: str) -> 'Bot':
     """Load a saved bot from a file.
 
@@ -93,14 +49,12 @@ class Engines(str, Enum):
     GPT35TURBO_0125 = 'gpt-3.5-turbo-0125'
     GPT35TURBO_INSTRUCT = 'gpt-3.5-turbo-instruct'
     CLAUDE3_HAIKU = 'claude-3-haiku-20240307'
-    CLAUDE3_SONNET = 'claude-3-sonnet-20240229'
-    CLAUDE3_OPUS = 'claude-3-opus-20240229'
-    CLAUDE35_SONNET_20240620 = 'claude-3-5-sonnet-20240620'
-    CLAUDE35_SONNET_20241022 = 'claude-3-5-sonnet-20241022'
-    CLAUDE37_SONNET_20250219 = 'claude-3-7-sonnet-20250219'
+    CLAUDE35_HAIKU = 'claude-3-5-haiku-latest'
+    CLAUDE37_SONNET_20250219 = 'claude-3-7-sonnet-latest'
     CLAUDE4_OPUS = 'claude-opus-4-20250514'
     CLAUDE41_OPUS = 'claude-opus-4-1'
     CLAUDE4_SONNET = 'claude-sonnet-4-20250514'
+    CLAUDE45_SONNET = 'claude-sonnet-4-5-20250929'
     GEMINI25_FLASH = 'gemini-2.5-flash'
 
     @staticmethod
@@ -2529,3 +2483,49 @@ class Bot(ABC):
                 root = root.parent
             lines.extend(format_conversation(root))
         return '\n'.join(lines)
+
+
+def _clean_decorator_source(source):
+    """Clean decorator source by parsing the source file and extracting the
+    decorator function."""
+    frame = inspect.currentframe()
+    try:
+        while frame:
+            frame_info = inspect.getframeinfo(frame)
+            if frame_info.filename.endswith('.py') and 'test_' in frame_info.filename:
+                test_file = frame_info.filename
+                try:
+                    with open(test_file, 'r', encoding='utf-8') as f:
+                        file_content = f.read()
+                    tree = ast.parse(file_content)
+                    source_lines = source.strip().split('\n')
+                    decorator_name = None
+                    for line in source_lines:
+                        if line.strip().startswith('def ') and '(' in line:
+                            func_line = line.strip()
+                            decorator_name = func_line[4:func_line.index('(')].strip()
+                            break
+                    if decorator_name:
+                        for node in ast.walk(tree):
+                            if isinstance(node, ast.FunctionDef) and node.name == decorator_name:
+                                cleaned = _py_ast_to_source(node)
+                                return cleaned
+                except Exception:
+                    break
+            frame = frame.f_back
+    finally:
+        del frame
+    cleaned = textwrap.dedent(source).strip()
+    return cleaned
+
+def _clean_function_source(source):
+    """Clean function source using AST parsing and regeneration."""
+    try:
+        tree = ast.parse(source)
+        cleaned = _py_ast_to_source(tree)
+        return cleaned
+    except SyntaxError:
+        import textwrap
+        cleaned = textwrap.dedent(source).strip()
+        return cleaned
+
