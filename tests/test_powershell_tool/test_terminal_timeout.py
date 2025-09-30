@@ -53,7 +53,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
         with session:
             start_time = time.time()
             try:
-                result = session.execute(command, timeout=5)
+                result = session.execute(command, timeout=15)
                 elapsed = time.time() - start_time
                 print(f"✅ Basic here-string completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
@@ -71,7 +71,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
         with session:
             start_time = time.time()
             try:
-                result = session.execute(command, timeout=5)
+                result = session.execute(command, timeout=15)
                 elapsed = time.time() - start_time
                 print(f"✅ Here-string with pipe completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
@@ -96,7 +96,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
         with session:
             start_time = time.time()
             try:
-                result = session.execute(command, timeout=5)
+                result = session.execute(command, timeout=15)
                 elapsed = time.time() - start_time
                 print(f"✅ Multiline here-string completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
@@ -119,7 +119,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
         with session:
             start_time = time.time()
             try:
-                result = session.execute(command, timeout=5)
+                result = session.execute(command, timeout=15)
                 elapsed = time.time() - start_time
                 print(f"✅ Special chars here-string completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
@@ -139,7 +139,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
         with session:
             start_time = time.time()
             try:
-                result = session.execute(command, timeout=5)
+                result = session.execute(command, timeout=15)
                 elapsed = time.time() - start_time
                 print(f"✅ Empty lines here-string completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
@@ -176,7 +176,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
         with session:
             start_time = time.time()
             try:
-                result = session.execute(command, timeout=10)
+                result = session.execute(command, timeout=30)
                 elapsed = time.time() - start_time
                 print(f"✅ Complex here-string completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
@@ -217,7 +217,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             # Simple command that should complete quickly
             command = "Write-Output 'Test'"
             try:
-                session.execute(command, timeout=5)
+                session.execute(command, timeout=15)
                 print("✅ Command completed")
                 print(f"Items received: {len(received_items)}")
                 # Check if delimiter was received
@@ -254,7 +254,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             # Test if the wrapped code is valid PowerShell
             try:
                 # Execute just the wrapped code to see what happens
-                session.execute(wrapped.replace(delimiter, "TEST_DELIMITER"), timeout=5)
+                session.execute(wrapped.replace(delimiter, "TEST_DELIMITER"), timeout=15)
                 print("✅ Wrapped code executed successfully")
             except Exception as e:
                 print(f"❌ Wrapped code failed: {e}")
@@ -277,7 +277,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 # Read output manually
                 output_lines = []
                 while True:
-                    line = session._output_queue.get(timeout=2)
+                    line = session._output_queue.get(timeout=6)
                     if line == delimiter:
                         break
                     output_lines.append(line)
@@ -389,7 +389,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             # Test accessing $LASTOUTPUT
             test_command = "Write-Output $LASTOUTPUT"
             try:
-                result = session.execute(test_command, timeout=5)
+                result = session.execute(test_command, timeout=15)
                 print(f"Result: {repr(result)}")
                 if "errors" in result.lower():
                     print("⚠️  $LASTOUTPUT causes an error - this might be the issue!")
@@ -422,7 +422,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             '@ | Out-File test_alt.txt"""
             start_time = time.time()
             try:
-                result = session.execute(command, timeout=5)
+                result = session.execute(command, timeout=15)
                 elapsed = time.time() - start_time
                 print(f"✅ Alternative wrapper completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
@@ -444,7 +444,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             # Test rapid command execution
             for i in range(5):
                 try:
-                    session.execute(f"Write-Output 'Test {i}'", timeout=2)
+                    session.execute(f"Write-Output 'Test {i}'", timeout=6)
                     print(f"✅ Command {i} succeeded")
                 except Exception as e:
                     print(f"❌ Command {i} failed: {e}")

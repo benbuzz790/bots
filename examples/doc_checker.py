@@ -67,7 +67,7 @@ def create_doc_review_bot(num: int) -> Bot:
             - Appropriate system message
     """
     bot = AnthropicBot(
-        model_engine=Engines.CLAUDE35_SONNET_20241022,
+        model_engine=Engines.CLAUDE37_SONNET_20250219,
         temperature=0.2,
         name=f"DocReviewer{num}",
         role="Documentation Specialist",

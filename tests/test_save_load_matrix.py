@@ -94,7 +94,7 @@ def another_module_tool(data: str) -> str:
         if provider == "anthropic":
             # Use real API key if available
             if "ANTHROPIC_API_KEY" in os.environ:
-                return AnthropicBot(name=name, model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
+                return AnthropicBot(name=name, model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
             else:
                 import unittest
                 raise unittest.SkipTest("No ANTHROPIC_API_KEY available")

@@ -16,6 +16,7 @@ class TestFPWizardComplete(unittest.TestCase):
     @patch("builtins.input")
     def test_fp_single_prompt_wizard(self, mock_input, mock_bot_class):
         """Test /fp command with single_prompt wizard."""
+        # Use MockBot instead of patching
         mock_bot = MockBot(name="TestBot")
         mock_bot.set_response_pattern("Analysis complete")
         mock_bot_class.return_value = mock_bot
@@ -23,7 +24,7 @@ class TestFPWizardComplete(unittest.TestCase):
         mock_input.side_effect = [
             "Hello bot",  # Initial chat
             "/fp",
-            "1",  # Select single_prompt
+            "11",  # Select single_prompt (it's #11 in alphabetical list)
             "Analyze this code structure",  # The prompt
             "/exit",
         ]
@@ -104,6 +105,7 @@ class TestFPWizardComplete(unittest.TestCase):
     @patch("builtins.input")
     def test_fp_prompt_while_wizard(self, mock_input, mock_bot_class):
         """Test /fp command with prompt_while wizard."""
+        # Use MockBot instead of patching
         mock_bot = MockBot(name="TestBot")
         mock_bot.set_response_pattern("Response without tools")
         mock_bot_class.return_value = mock_bot
@@ -111,7 +113,7 @@ class TestFPWizardComplete(unittest.TestCase):
         mock_input.side_effect = [
             "Hello bot",
             "/fp",
-            "5",  # Select prompt_while
+            "9",  # Select prompt_while (it's #9 in alphabetical list)
             "Debug this code and fix all issues",  # first_prompt
             "Continue debugging if needed",  # continue_prompt
             "2",  # Stop condition (tool_not_used)
@@ -126,7 +128,7 @@ class TestFPWizardComplete(unittest.TestCase):
 
         # Should show prompt_while execution
         self.assertIn("prompt_while", output)
-        self.assertIn("Collecting parameters for par_branch_while", output)
+        self.assertIn("Collecting parameters for", output)
         self.assertIn("Executing prompt_while", output)
 
     @patch("bots.dev.cli.AnthropicBot")
@@ -197,6 +199,7 @@ class TestFPWizardComplete(unittest.TestCase):
     @patch("builtins.input")
     def test_fp_par_branch_wizard(self, mock_input, mock_bot_class):
         """Test /fp command with par_branch wizard."""
+        # Use MockBot instead of patching
         mock_bot = MockBot(name="TestBot")
         mock_bot.set_response_pattern("Analysis complete")
         mock_bot_class.return_value = mock_bot
@@ -204,7 +207,7 @@ class TestFPWizardComplete(unittest.TestCase):
         mock_input.side_effect = [
             "Hello bot",
             "/fp",
-            "8",  # Select par_branch
+            "7",  # Select par_branch (it's #7 in alphabetical list)
             "Parallel analysis approach A",  # First prompt
             "Parallel analysis approach B",  # Second prompt
             "Parallel analysis approach C",  # Third prompt

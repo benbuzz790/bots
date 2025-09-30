@@ -1133,41 +1133,48 @@ class DynamicFunctionalPromptHandler:
             context.conversation_backup = bot.conversation
             print(f"\nExecuting {fp_name}...")
             _callback_type = params.pop("_callback_type", "list")
-            if _callback_type == "single":
 
-                def single_callback(response: str, node):
-                    pretty(
-                        response,
-                        context.bot_instance.name if context.bot_instance else "Bot",
-                        context.config.width,
-                        context.config.indent,
-                        COLOR_ASSISTANT,
-                    )
-                    if hasattr(context, "bot_instance") and context.bot_instance and context.config.verbose:
-                        if hasattr(node, "tool_calls") and node.tool_calls:
-                            tool_calls_str = "".join((clean_dict(call) for call in node.tool_calls))
-                            pretty(
-                                f"Tool Requests\n\n{tool_calls_str}",
-                                "System",
-                                context.config.width,
-                                context.config.indent,
-                                COLOR_TOOL_REQUEST,
-                            )
-                        if hasattr(node, "tool_results") and node.tool_results:
-                            tool_results_str = "".join((clean_dict(result) for result in node.tool_results))
-                            if tool_results_str.strip():
+            # Check if the function accepts a callback parameter
+            sig = inspect.signature(fp_function)
+            accepts_callback = "callback" in sig.parameters
+
+            if accepts_callback:
+                if _callback_type == "single":
+
+                    def single_callback(response: str, node):
+                        pretty(
+                            response,
+                            context.bot_instance.name if context.bot_instance else "Bot",
+                            context.config.width,
+                            context.config.indent,
+                            COLOR_ASSISTANT,
+                        )
+                        if hasattr(context, "bot_instance") and context.bot_instance and context.config.verbose:
+                            if hasattr(node, "tool_calls") and node.tool_calls:
+                                tool_calls_str = "".join((clean_dict(call) for call in node.tool_calls))
                                 pretty(
-                                    f"Tool Results\n\n{tool_results_str}",
+                                    f"Tool Requests\n\n{tool_calls_str}",
                                     "System",
                                     context.config.width,
                                     context.config.indent,
-                                    COLOR_TOOL_RESULT,
+                                    COLOR_TOOL_REQUEST,
                                 )
+                            if hasattr(node, "tool_results") and node.tool_results:
+                                tool_results_str = "".join((clean_dict(result) for result in node.tool_results))
+                                if tool_results_str.strip():
+                                    pretty(
+                                        f"Tool Results\n\n{tool_results_str}",
+                                        "System",
+                                        context.config.width,
+                                        context.config.indent,
+                                        COLOR_TOOL_RESULT,
+                                    )
 
-                params["callback"] = single_callback
-            else:
-                callback = context.callbacks.get_standard_callback()
-                params["callback"] = callback
+                    params["callback"] = single_callback
+                else:
+                    callback = context.callbacks.get_standard_callback()
+                    params["callback"] = callback
+
             result = fp_function(bot, **params)
             if isinstance(result, tuple) and len(result) == 2:
                 responses, nodes = result
@@ -1198,59 +1205,61 @@ class DynamicFunctionalPromptHandler:
             if not leaves:
                 return "No leaves found from current node"
             print(f"\nFound {len(leaves)} leaf nodes:")
-            for i, leaf in enumerate(leaves):
-                content_preview = context.conversation._get_leaf_preview(leaf)
-                depth = context.conversation._calculate_depth(bot.conversation, leaf)
-                labels = getattr(leaf, "labels", [])
-                label_str = f" (labels: {', '.join(labels)})" if labels else ""
-                print(f"  {i+1}. [depth {depth}]{label_str}: {content_preview}")
-            leaf_selection = input("\nSelect leaves to broadcast to (e.g., '1,3,5' or 'all' for all leaves): ").strip()
-            if not leaf_selection:
-                return "No leaves selected"
-            target_leaves = []
-            if leaf_selection.lower() == "all":
+            for i, leaf in enumerate(leaves, 1):
+                depth = 0
+                current = leaf
+                while current.parent and not current.parent._is_empty():
+                    depth += 1
+                    current = current.parent
+                preview = leaf.content[:50] + "..." if len(leaf.content) > 50 else leaf.content
+                print(f"  {i}. [depth {depth}]: {preview}")
+            leaf_input = input("\nSelect leaves (comma-separated numbers or 'all'): ").strip()
+            if leaf_input.lower() == "all":
                 target_leaves = leaves
             else:
                 try:
-                    indices = [int(x.strip()) - 1 for x in leaf_selection.split(",")]
-                    for idx in indices:
-                        if 0 <= idx < len(leaves):
-                            target_leaves.append(leaves[idx])
-                        else:
-                            return f"Invalid leaf number: {idx + 1}. Must be between 1 and {len(leaves)}"
-                except ValueError:
-                    error_msg = "Invalid leaf selection format. Use numbers separated by commas (e.g., '1,3,5') or 'all'"
-                    print(error_msg)
-                    return error_msg
-            if not target_leaves:
-                return "No valid leaves selected"
+                    indices = [int(x.strip()) - 1 for x in leaf_input.split(",")]
+                    if not all(0 <= i < len(leaves) for i in indices):
+                        return "Invalid leaf selection format. Use numbers separated by commas (e.g., '1,3,5') or 'all'"
+                    target_leaves = [leaves[i] for i in indices]
+                except (ValueError, IndexError):
+                    return "Invalid leaf selection format. Use numbers separated by commas (e.g., '1,3,5') or 'all'"
             print(f"\nSelected {len(target_leaves)} leaves for broadcast")
+            fp_options = [
+                ("single_prompt", fp.single_prompt),
+                ("chain", fp.chain),
+                ("branch", fp.branch),
+                ("tree_of_thought", fp.tree_of_thought),
+                ("prompt_while", fp.prompt_while),
+                ("chain_while", fp.chain_while),
+                ("branch_while", fp.branch_while),
+                ("par_branch", fp.par_branch),
+                ("par_branch_while", fp.par_branch_while),
+            ]
             print("\nSelect functional prompt to broadcast:")
-            fp_options = {
-                "1": ("single_prompt", fp.single_prompt),
-                "2": ("chain", fp.chain),
-                "3": ("branch", fp.branch),
-                "4": ("tree_of_thought", fp.tree_of_thought),
-                "5": ("prompt_while", fp.prompt_while),
-                "6": ("chain_while", fp.chain_while),
-                "7": ("branch_while", fp.branch_while),
-                "8": ("par_branch", fp.par_branch),
-                "9": ("par_branch_while", fp.par_branch_while),
-            }
-            for key, (name, _) in fp_options.items():
-                print(f"  {key}. {name}")
-            fp_choice = input("Select functional prompt: ").strip()
-            if fp_choice not in fp_options:
-                error_msg = "Invalid functional prompt selection"
-                print(error_msg)
-                return error_msg
+            for i, (name, _) in enumerate(fp_options, 1):
+                print(f"  {i}. {name}")
+            fp_choice_input = input("Enter number: ").strip()
+            try:
+                fp_choice = int(fp_choice_input) - 1
+                if not 0 <= fp_choice < len(fp_options):
+                    return "Invalid functional prompt selection"
+            except ValueError:
+                return "Invalid functional prompt selection"
             fp_name, fp_function = fp_options[fp_choice]
             print(f"\nCollecting parameters for {fp_name}:")
             params = self.collector.collect_parameters(fp_function)
             if params is None:
                 return "Parameter collection cancelled"
-            callback = context.callbacks.get_standard_callback()
-            params["callback"] = callback
+
+            # Check if the function accepts a callback parameter
+            sig = inspect.signature(fp_function)
+            accepts_callback = "callback" in sig.parameters
+
+            if accepts_callback:
+                callback = context.callbacks.get_standard_callback()
+                params["callback"] = callback
+
             context.conversation_backup = bot.conversation
             print(f"Broadcasting {fp_name} to {len(target_leaves)} selected leaves...")
             all_leaves = context.conversation._find_leaves(bot.conversation)
@@ -1262,16 +1271,12 @@ class DynamicFunctionalPromptHandler:
                     if not hasattr(leaf, "labels"):
                         leaf.labels = []
                     leaf.labels.append(temp_label)
-                    skip_labels.append(temp_label)
                     temp_labels[leaf] = temp_label
+                    skip_labels.append(temp_label)
             try:
-                responses, nodes = fp.broadcast_fp(bot, fp_function, skip=skip_labels, **params)
-                successful_responses = [r for r in responses if r is not None]
-                failed_count = len(responses) - len(successful_responses)
-                result_msg = f"Broadcast completed: {len(successful_responses)} successful"
-                if failed_count > 0:
-                    result_msg += f", {failed_count} failed"
-                return result_msg
+                params["skip"] = skip_labels
+                result = fp.broadcast_to_leaves(bot, fp_function, **params)
+                return f"Broadcast completed: {fp_name} executed on {len(target_leaves)} leaves"
             finally:
                 for leaf, temp_label in temp_labels.items():
                     if hasattr(leaf, "labels") and temp_label in leaf.labels:

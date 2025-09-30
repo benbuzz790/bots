@@ -28,7 +28,7 @@ def create_test_module(name: str, content: str) -> ModuleType:
 class TestAddTools2(unittest.TestCase):
     def setUp(self):
         self.bot = AnthropicBot(
-            model_engine=Engines.CLAUDE35_SONNET_20241022, max_tokens=1000, temperature=0, name="TestBot", autosave=False
+            model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000, temperature=0, name="TestBot", autosave=False
         )
         # Create temp directory for all test files
         self.test_dir = tempfile.mkdtemp()

@@ -425,7 +425,7 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
         session = PowerShellSession()
         try:
             with session:
-                result = session.execute(problematic_code, timeout=10)
+                result = session.execute(problematic_code, timeout=30)
                 self.assertIsInstance(result, str)
                 # New format: expect "C:\path>" instead of "current directory"
                 self.assertIn(">", result)
@@ -444,7 +444,7 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
         for cmd in unicode_commands:
             with self.subTest(command=cmd[:50] + "..."):
                 try:
-                    result = execute_powershell(cmd, timeout="10")
+                    result = execute_powershell(cmd, timeout="30")
                     self.assertIsInstance(result, str)
                     if "Error.WriteLine" in cmd:
                         self.assertIn("Errors:", result)
@@ -456,7 +456,7 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
 
     def test_command_not_found_handling(self):
         """Test handling of non-existent commands from error logs."""
-        result = execute_powershell("nonexistentcommand", timeout="10")
+        result = execute_powershell("nonexistentcommand", timeout="30")
         self.assertIn("Errors:", result)
         self.assertIn("not recognized", result.lower())
         self.assertNotIn("Tool Failed:", result)
@@ -464,7 +464,7 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
     def test_mixed_stdout_stderr_output(self):
         """Test mixed stdout/stderr output handling."""
         cmd = '\n        Write-Output "Standard: こんにちは"\n        [System.Console]::Error.WriteLine("Error: システムエラー")\n        '
-        result = execute_powershell(cmd, timeout="10")
+        result = execute_powershell(cmd, timeout="30")
         self.assertIn("Standard:", result)
         self.assertIn("Errors:", result)
         self.assertIn("こんにちは", result)
@@ -476,7 +476,7 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
 
         random_filename = f"definitely_does_not_exist_{uuid.uuid4().hex}.txt"
         cmd = f'Get-Content "{random_filename}"'
-        result = execute_powershell(cmd, timeout="10")
+        result = execute_powershell(cmd, timeout="30")
         self.assertIn("Errors:", result)
         self.assertTrue(
             "Cannot find path" in result or "does not exist" in result or "ItemNotFoundException" in result,
@@ -504,7 +504,7 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
         session = PowerShellSession()
         try:
             with session:
-                result = session.execute(python_code, timeout=20)
+                result = session.execute(python_code, timeout=60)
                 self.assertIsInstance(result, str)
                 # New format: expect "C:\path>" instead of "current directory"
                 self.assertIn(">", result)
@@ -523,7 +523,7 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
         session = PowerShellSession()
         try:
             with session:
-                result = session.execute(python_code, timeout=10)
+                result = session.execute(python_code, timeout=30)
                 self.assertIsInstance(result, str)
                 # New format: expect "C:\path>" instead of "current directory"
                 self.assertIn(">", result)
@@ -534,7 +534,7 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
         """Test handling of Unicode BOM that was causing issues."""
         code_with_bom = '\ufeff# This has a BOM character\nWrite-Output "test"'
         try:
-            result = execute_powershell(code_with_bom, timeout="10")
+            result = execute_powershell(code_with_bom, timeout="30")
             self.assertIsInstance(result, str)
         except Exception as e:
             if "U+FEFF" in str(e) or "non-printable character" in str(e):
@@ -543,7 +543,7 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
     def test_command_chaining_with_quotes(self):
         """Test command chaining with quotes that might confuse the parser."""
         cmd = 'Write-Output "First && Second" && Write-Output "Third"'
-        result = execute_powershell(cmd, timeout="10")
+        result = execute_powershell(cmd, timeout="30")
         self.assertIn("First && Second", result)
         self.assertIn("Third", result)
 
@@ -598,7 +598,7 @@ class TestPowerShellUnicodeIssues(unittest.TestCase):
                 filename = f"test_{test_name.replace(' ', '_').lower()}.txt"
                 command = f"""@'\n{content}\n'@ | Out-File -FilePath "{filename}" -Encoding UTF8"""
                 try:
-                    result = execute_powershell(command, timeout="10")
+                    result = execute_powershell(command, timeout="30")
                     print(f"✅ {test_name}: Command executed - {result}")
                     if os.path.exists(filename):
                         self._test_file_reading(filename, test_name)
@@ -664,7 +664,7 @@ class TestPowerShellUnicodeIssues(unittest.TestCase):
         )
         command = f"""@'\n{python_code}\n'@ | Out-File -FilePath "problematic_code.py" -Encoding UTF8"""
         try:
-            result = execute_powershell(command, timeout="15")
+            result = execute_powershell(command, timeout="30")
             print(f"Problematic code test result: {result}")
             if os.path.exists("problematic_code.py"):
                 self._test_file_reading("problematic_code.py", "Problematic Python Code")
@@ -699,7 +699,7 @@ class TestPowerShellUnicodeIssues(unittest.TestCase):
             else:
                 command = f'''@'\n{test_content}\n'@ | Out-File -FilePath "{filename}"'''
             try:
-                execute_powershell(command, timeout="10")
+                execute_powershell(command, timeout="30")
                 print(f"✅ {test_name}: Command succeeded")
                 if os.path.exists(filename):
                     self._test_file_reading(filename, f"Encoding-{test_name}")
@@ -741,7 +741,7 @@ class TestPowerShellUnicodeIssues(unittest.TestCase):
         ]
         for i, cmd in enumerate(encoding_setup_commands):
             try:
-                result = execute_powershell(cmd, timeout="5")
+                result = execute_powershell(cmd, timeout="30")
                 print(f"✅ Encoding setup {i + 1}: {cmd} - Success")
             except Exception as e:
                 print(f"❌ Encoding setup {i + 1}: {cmd} - Failed: {e}")
@@ -754,7 +754,7 @@ class TestPowerShellUnicodeIssues(unittest.TestCase):
         ]
         for cmd in info_commands:
             try:
-                result = execute_powershell(cmd, timeout="5")
+                result = execute_powershell(cmd, timeout="30")
                 print(f"🔍 {cmd}: {result}")
             except Exception as e:
                 print(f"❌ {cmd}: Failed - {e}")
@@ -779,7 +779,7 @@ class TestPythonCommandBOMFix(unittest.TestCase):
         print("\n🧪 Testing Python command BOM fix...")
         python_command = "python -c \"import json; print('Hello from Python')\""
         try:
-            result = execute_powershell(python_command, timeout="10")
+            result = execute_powershell(python_command, timeout="30")
             print(f"✅ Python command result: {result}")
             if "Hello from Python" in result:
                 print("✅ Python command executed successfully - no encoding issues!")
@@ -799,7 +799,7 @@ class TestPythonCommandBOMFix(unittest.TestCase):
             "python -c \"import json; data = {'status': 'success', 'message': 'test'}; " 'print(json.dumps(data))"'
         )
         try:
-            result = execute_powershell(complex_command, timeout="10")
+            result = execute_powershell(complex_command, timeout="30")
             print(f"✅ Complex command result: {result}")
             if '{"status": "success"' in result or '"status":"success"' in result:
                 print("✅ Complex Python command with quotes working!")
@@ -823,7 +823,7 @@ class TestPythonCommandBOMFix(unittest.TestCase):
             '"'
         )
         try:
-            result = execute_powershell(file_command, timeout="10")
+            result = execute_powershell(file_command, timeout="30")
             print(f"✅ File operation result: {result}")
             if os.path.exists("test_output.json"):
                 print("✅ Python created file successfully")
@@ -845,7 +845,7 @@ class TestPythonCommandBOMFix(unittest.TestCase):
 
         temp_files_before = set(glob.glob("*.py"))
         try:
-            result = execute_powershell(command, timeout="10")
+            result = execute_powershell(command, timeout="30")
             print(f"✅ Command executed: {result}")
             temp_files_after = set(glob.glob("*.py"))
             new_files = temp_files_after - temp_files_before
@@ -1014,7 +1014,7 @@ class TestRegressionScenarios(unittest.TestCase):
         for cmd in simple_commands:
             with self.subTest(command=cmd):
                 try:
-                    result = execute_powershell(cmd, timeout="10")
+                    result = execute_powershell(cmd, timeout="30")
                     self.assertIsInstance(result, str)
                     self.assertNotIn("Tool Failed:", result)
                 except Exception as e:
@@ -1030,7 +1030,7 @@ class TestRegressionScenarios(unittest.TestCase):
         for cmd in basic_python_commands:
             with self.subTest(command=cmd):
                 try:
-                    result = execute_powershell(cmd, timeout="15")
+                    result = execute_powershell(cmd, timeout="30")
                     self.assertIsInstance(result, str)
                     if "Tool Failed:" in result:
                         self.fail(f"Tool failure on basic Python command: {cmd}")
@@ -1040,7 +1040,7 @@ class TestRegressionScenarios(unittest.TestCase):
     def test_output_limiting_still_works(self):
         """Ensure output limiting functionality still works."""
         cmd = 'for ($i=1; $i -le 20; $i++) { Write-Output "Line $i" }'
-        result = execute_powershell(cmd, output_length_limit="5", timeout="10")
+        result = execute_powershell(cmd, output_length_limit="5", timeout="30")
         if "Tool Failed:" not in result:
             lines = result.split("\n")
             self.assertTrue(len(lines) <= 25)

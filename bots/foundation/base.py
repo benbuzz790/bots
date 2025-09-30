@@ -200,9 +200,12 @@ class ConversationNode:
                 if not isinstance(result, dict):
                     validation_errors.append(f'tool_results[{i}] must be a dict, got {type(result)}')
                     continue
-                if 'tool_use_id' not in result:
-                    validation_errors.append(f"tool_results[{i}] missing required key 'tool_use_id'")
-                elif not isinstance(result['tool_use_id'], str):
+                # Check for either tool_use_id (Anthropic) or tool_call_id (OpenAI) or role (OpenAI tool messages)
+                has_id = 'tool_use_id' in result or 'tool_call_id' in result or result.get('role') == 'tool'
+                if not has_id:
+                    validation_errors.append(f"tool_results[{i}] missing required key 'tool_use_id' or 'tool_call_id'")
+                # Only validate tool_use_id format if it exists (Anthropic-specific)
+                if 'tool_use_id' in result and not isinstance(result['tool_use_id'], str):
                     validation_errors.append(f"tool_results[{i}]['tool_use_id'] must be a string, got {type(result['tool_use_id'])}")
                 if 'content' not in result:
                     validation_errors.append(f"tool_results[{i}] missing required key 'content'")
@@ -210,8 +213,12 @@ class ConversationNode:
                 tool_use_ids = [r.get('tool_use_id') for r in value if isinstance(r, dict) and 'tool_use_id' in r]
                 if len(tool_use_ids) != len(set(tool_use_ids)):
                     validation_errors.append('Duplicate tool_use_ids found in tool_results')
+        # Relax the role validation - only enforce for Anthropic (which uses tool_use_id)
         if value and self.role != 'user':
-            validation_errors.append(f"tool_results should only be set on user role nodes, but this node has role '{self.role}'")
+            # Check if these are Anthropic-style results (have tool_use_id)
+            has_anthropic_style = any(isinstance(r, dict) and 'tool_use_id' in r for r in value)
+            if has_anthropic_style:
+                validation_errors.append(f"tool_results should only be set on user role nodes, but this node has role '{self.role}'")
 
         if validation_errors:
             raise ValueError(f"Invalid tool_results: {'; '.join(validation_errors)}")

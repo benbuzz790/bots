@@ -28,7 +28,7 @@ class TestSpecificHelperBug(unittest.TestCase):
         """Test view_dir tool specifically after save/load to reproduce the bug."""
         print("\nTesting view_dir tool after save/load (reproducing CLI bug)...")
         # Create bot and add view_dir tool (this should include _convert_tool_inputs helper)
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
         # Import and add the view_dir tool
         from bots.tools.code_tools import view_dir
 

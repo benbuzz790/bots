@@ -31,7 +31,7 @@ class TestSaveLoadDebug(unittest.TestCase):
         print("\nDEBUGGING SAVE/LOAD PROCESS...")
 
         # Create bot and add view_dir tool
-        bot = AnthropicBot(name="DebugBot", model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
+        bot = AnthropicBot(name="DebugBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
 

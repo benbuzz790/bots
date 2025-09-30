@@ -25,7 +25,7 @@ class TestToolifyIntegration(unittest.TestCase):
         """Set up test environment with bot and toolified functions."""
         self.bot = AnthropicBot(
             api_key=None,  # No actual API calls needed
-            model_engine=Engines.CLAUDE35_SONNET_20241022,
+            model_engine=Engines.CLAUDE37_SONNET_20250219,
             max_tokens=1000,
             temperature=0,
             name="ToolifyTestBot",
@@ -284,7 +284,7 @@ class TestToolifyRealWorldScenarios(unittest.TestCase):
         """Set up realistic toolified functions."""
         self.bot = AnthropicBot(
             api_key=None,
-            model_engine=Engines.CLAUDE35_SONNET_20241022,
+            model_engine=Engines.CLAUDE37_SONNET_20250219,
             max_tokens=1000,
             temperature=0,
             name="RealWorldTestBot",

@@ -19,6 +19,7 @@ import pytest
 
 from bots.flows.functional_prompts import par_branch, par_branch_while
 from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.base import Engines
 
 
 @pytest.fixture
@@ -34,7 +35,7 @@ def test_bot():
     """
     bot = AnthropicBot(
         api_key="dummy_key",
-        model_engine="claude-3-opus-20240229",
+        model_engine=Engines.CLAUDE37_SONNET_20250219,
         max_tokens=1000,
         temperature=0.7,
         name="TestBot",
@@ -59,7 +60,7 @@ def test_par_branch_structure() -> None:
     """
     bot = AnthropicBot(
         api_key=None,
-        model_engine="claude-3-opus-20240229",
+        model_engine=Engines.CLAUDE37_SONNET_20250219,
         max_tokens=1000,
         temperature=0.7,
         name="TestBot",
@@ -101,7 +102,7 @@ def test_par_branch_while_structure() -> None:
     """
     bot = AnthropicBot(
         api_key=None,
-        model_engine="claude-3-opus-20240229",
+        model_engine=Engines.CLAUDE37_SONNET_20250219,
         max_tokens=1000,
         temperature=0.7,
         name="TestBot",
@@ -172,7 +173,7 @@ def test_empty_prompt_list() -> None:
     """
     bot = AnthropicBot(
         api_key=None,
-        model_engine="claude-3-opus-20240229",
+        model_engine=Engines.CLAUDE37_SONNET_20250219,
         max_tokens=1000,
         temperature=0.7,
         name="TestBot",
@@ -210,7 +211,7 @@ def test_error_handling() -> None:
     """
     bot = AnthropicBot(
         api_key=None,
-        model_engine="claude-3-opus-20240229",
+        model_engine=Engines.CLAUDE37_SONNET_20250219,
         max_tokens=1000,
         temperature=0.7,
         name="TestBot",

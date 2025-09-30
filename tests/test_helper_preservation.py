@@ -68,7 +68,7 @@ def tool_with_helpers(input_text: str, multiplier: int = 1) -> str:
         """Test basic helper function preservation."""
         print("\nTesting helper function preservation...")
         # Create bot with helper-dependent tools
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE35_SONNET_20240620, max_tokens=1000)
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
         tool_file = self.create_tool_with_helpers()
         bot.add_tools(tool_file)
         # Check helpers before save/load
