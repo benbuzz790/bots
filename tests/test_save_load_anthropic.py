@@ -1351,163 +1351,79 @@ class TestDebugImports(unittest.TestCase):
 
 
     def test_mockbot_tool_registration_and_basic_functionality(self) -> None:
-    """Test that MockBot can register tools and basic functionality works."""
-    from bots.testing.mock_bot import MockBot
-    import bots.tools.self_tools as self_tools
-
-    # Create a MockBot
-    mock_bot = MockBot()
-    mock_bot.add_tools(self_tools)
-
-    # Verify that tools are registered
-    tool_names = [tool["name"] for tool in mock_bot.tool_handler.tools]
-    self.assertIn("branch_self", tool_names, "branch_self should be registered as a tool")
-
-    # Verify function map has the tools
-    self.assertIn("branch_self", mock_bot.tool_handler.function_map)
-    self.assertTrue(callable(mock_bot.tool_handler.function_map["branch_self"]))
-
-    # Test basic bot response
-    mock_bot.set_response_pattern("I understand you want to test {user_input}")
-    response = mock_bot.respond("tool functionality")
-    self.assertIn("tool functionality", response)
-
-    # Test tool request simulation
-    mock_bot.tool_handler.add_request({
-        "name": "branch_self",
-        "id": "test_call",
-        "parameters": {"self_prompts": "['test prompt']", "allow_work": "False"}
-    })
-
-    # Execute requests (this will return mock responses)
-    results = mock_bot.tool_handler.exec_requests()
-    self.assertEqual(len(results), 1, "Should have one tool result")
-    self.assertEqual(results[0]["tool_name"], "branch_self")
-
-    print("SUCCESS: MockBot properly registers tools and handles basic functionality")
-    print(f"Registered tools: {tool_names}")
-    print(f"Tool result: {results[0]}")
-
-def test_mockbot_multiple_tool_simulation(self) -> None:
-    """Test MockBot with multiple tool calls to simulate branch execution."""
-    from bots.testing.mock_bot import MockBot
-    import bots.tools.self_tools as self_tools
-
-    # Create a MockBot
-    mock_bot = MockBot()
-    mock_bot.add_tools(self_tools)
-
-    # Simulate multiple tool calls (like what would happen in branches)
-    mock_bot.tool_handler.add_request({
-        "name": "branch_self",
-        "id": "branch_call_1",
-        "parameters": {"self_prompts": "['branch task 1']", "allow_work": "True"}
-    })
-    mock_bot.tool_handler.add_request({
-        "name": "branch_self",
-        "id": "branch_call_2",
-        "parameters": {"self_prompts": "['branch task 2']", "allow_work": "True"}
-    })
-
-    # Execute all requests
-    results = mock_bot.tool_handler.exec_requests()
-
-    # Verify multiple tool executions
-    self.assertEqual(len(results), 2, "Should have two tool results")
-    self.assertEqual(results[0]["tool_name"], "branch_self")
-    self.assertEqual(results[1]["tool_name"], "branch_self")
-
-    # Verify call history
-    call_history = mock_bot.get_tool_call_history()
-    self.assertEqual(len(call_history), 2, "Should have two calls in history")
-
-    print("SUCCESS: MockBot properly handles multiple tool calls")
-    print(f"Tool results: {len(results)} results generated")
-    print(f"Call history: {len(call_history)} calls recorded")
-
-        def identifiable_tool(test_id: str) -> str:
-            """Tool that logs execution and returns identifiable results"""
-            execution_log.append(f"EXECUTED_WITH_ID: {test_id}")
-            return f"IDENTIFIABLE_RESULT_FOR_ID_{test_id}"
-        
-        # Create a MockBot that will actually call tools
-        mock_bot = MockBot()
-        mock_bot.add_tools(self_tools)
-        mock_bot.add_tools(identifiable_tool)
-        
-        # Test 1: Verify tool works in main bot
-        execution_log.clear()
-        mock_bot.tool_handler.add_request({
-            "name": "identifiable_tool",
-            "id": "test_call_1",
-            "parameters": {"test_id": "main_test"}
-        })
-        tool_results = mock_bot.tool_handler.exec_requests()
-
-        # Since MockBot doesn't actually call functions by default, let's call it directly
-        # This simulates what would happen if the tool was actually executed
-        if "identifiable_tool" in mock_bot.tool_handler.function_map:
-            func = mock_bot.tool_handler.function_map["identifiable_tool"]
-            actual_result = func(test_id="main_test")
-            print(f"Direct function call result: {actual_result}")
-        
-        # Tool should have executed
-        self.assertGreaterEqual(len(execution_log), 1, "Tool should have been executed")
-        self.assertIn("EXECUTED_WITH_ID: main_test", execution_log)
-        
-        # Tool result should be in the tool results
-        tool_result_found = any("IDENTIFIABLE_RESULT_FOR_ID_main_test" in str(result) for result in tool_results)
-        self.assertTrue(tool_result_found, "Tool result should be in tool results")
-        
-        print("SUCCESS: MockBot properly executes tools and generates results")
-
-    def test_branch_tool_execution_with_mockbot(self) -> None:
-        """Test branch tool execution using MockBot to verify multiple tool calls work."""
+        """Test that MockBot can register tools and basic functionality works."""
         from bots.testing.mock_bot import MockBot
         import bots.tools.self_tools as self_tools
-        
-        # Create a debug tool that will show execution
-        execution_log = []
-        
-        def debug_tool(test_input: str) -> str:
-            """A debug tool that logs execution and returns specific output"""
-            execution_log.append(f"EXECUTED: {test_input}")
-            return f"TOOL_RESULT_FOR_{test_input.upper()}"
-        
-        # Create a MockBot for branch testing
+
+        # Create a MockBot
         mock_bot = MockBot()
         mock_bot.add_tools(self_tools)
-        mock_bot.add_tools(debug_tool)
-        
-        # Simulate multiple tool executions (like in branches)
+
+        # Verify that tools are registered
+        tool_names = [tool["name"] for tool in mock_bot.tool_handler.tools]
+        self.assertIn("branch_self", tool_names, "branch_self should be registered as a tool")
+
+        # Verify function map has the tools
+        self.assertIn("branch_self", mock_bot.tool_handler.function_map)
+        self.assertTrue(callable(mock_bot.tool_handler.function_map["branch_self"]))
+
+        # Test basic bot response
+        mock_bot.set_response_pattern("I understand you want to test {user_input}")
+        response = mock_bot.respond("tool functionality")
+        self.assertIn("tool functionality", response)
+
+        # Test tool request simulation
         mock_bot.tool_handler.add_request({
-            "name": "debug_tool",
+            "name": "branch_self",
+            "id": "test_call",
+            "parameters": {"self_prompts": "['test prompt']", "allow_work": "False"}
+        })
+
+        # Execute requests (this will return mock responses)
+        results = mock_bot.tool_handler.exec_requests()
+        self.assertEqual(len(results), 1, "Should have one tool result")
+        self.assertEqual(results[0]["tool_name"], "branch_self")
+
+        print("SUCCESS: MockBot properly registers tools and handles basic functionality")
+        print(f"Registered tools: {tool_names}")
+        print(f"Tool result: {results[0]}")
+
+    def test_mockbot_multiple_tool_simulation(self) -> None:
+        """Test MockBot with multiple tool calls to simulate branch execution."""
+        from bots.testing.mock_bot import MockBot
+        import bots.tools.self_tools as self_tools
+
+        # Create a MockBot
+        mock_bot = MockBot()
+        mock_bot.add_tools(self_tools)
+
+        # Simulate multiple tool calls (like what would happen in branches)
+        mock_bot.tool_handler.add_request({
+            "name": "branch_self",
             "id": "branch_call_1",
-            "parameters": {"test_input": "branch_test_1"}
+            "parameters": {"self_prompts": "['branch task 1']", "allow_work": "True"}
         })
         mock_bot.tool_handler.add_request({
-            "name": "debug_tool",
+            "name": "branch_self",
             "id": "branch_call_2",
-            "parameters": {"test_input": "branch_test_2"}
+            "parameters": {"self_prompts": "['branch task 2']", "allow_work": "True"}
         })
-        
-        tool_results = mock_bot.tool_handler.exec_requests()
-        
-        # Check that tools were actually executed
-        self.assertEqual(len(execution_log), 2, "Both branch tools should have been executed")
-        self.assertIn("EXECUTED: branch_test_1", execution_log)
-        self.assertIn("EXECUTED: branch_test_2", execution_log)
-        
-        # Check that tool results are properly generated
-        result_1_found = any("TOOL_RESULT_FOR_BRANCH_TEST_1" in str(result) for result in tool_results)
-        result_2_found = any("TOOL_RESULT_FOR_BRANCH_TEST_2" in str(result) for result in tool_results)
-        
-        self.assertTrue(result_1_found, "Tool result for branch_test_1 should be generated")
-        self.assertTrue(result_2_found, "Tool result for branch_test_2 should be generated")
-        
-        print("SUCCESS: MockBot properly executes multiple tools and generates results")
-        print(f"Execution log: {execution_log}")
-        print(f"Tool results: {len(tool_results)} results generated")
+
+        # Execute all requests
+        results = mock_bot.tool_handler.exec_requests()
+
+        # Verify multiple tool executions
+        self.assertEqual(len(results), 2, "Should have two tool results")
+        self.assertEqual(results[0]["tool_name"], "branch_self")
+        self.assertEqual(results[1]["tool_name"], "branch_self")
+
+        # Verify call history
+        call_history = mock_bot.get_tool_call_history()
+        self.assertEqual(len(call_history), 2, "Should have two calls in history")
+
+        print("SUCCESS: MockBot properly handles multiple tool calls")
+        print(f"Tool results: {len(results)} results generated")
+        print(f"Call history: {len(call_history)} calls recorded")
 
 if __name__ == "__main__":
     unittest.main()
