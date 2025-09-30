@@ -1558,7 +1558,8 @@ class CLI:
 
     def _initialize_new_bot(self):
         """Initialize a new bot with default tools."""
-        bot = AnthropicBot(max_tokens=4096)
+        from bots import Engines
+        bot = AnthropicBot(model_engine=Engines.CLAUDE45_SONNET, max_tokens=16000)
         self.context.bot_instance = bot
 
         # bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools, bots.tools.self_tools)
@@ -1567,8 +1568,9 @@ class CLI:
         from bots.tools.self_tools import branch_self
         from bots.tools.terminal_tools import execute_powershell
         from bots.tools.web_tool import web_search
+        from bots.tools.python_edit import python_edit, python_view
 
-        bot.add_tools(view, view_dir, execute_powershell, execute_python, branch_self, web_search)
+        bot.add_tools(view, view_dir, execute_powershell, execute_python, branch_self, web_search, python_edit, python_view)
         sys_msg = textwrap.dedent(
             """You're a coding agent. When greeting users, always start with "Hello! I'm here to help you". Please follow these rules:
                     1. Keep edits and even writing new files to small chunks. You have a low max_token limit
