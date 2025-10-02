@@ -94,21 +94,24 @@ def another_module_tool(data: str) -> str:
         if provider == "anthropic":
             # Use real API key if available
             if "ANTHROPIC_API_KEY" in os.environ:
-                return AnthropicBot(name=name, model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+                return AnthropicBot(name=name, model_engine=Engines.CLAUDE35_HAIKU, max_tokens=1000, temperature=1)
             else:
                 import unittest
                 raise unittest.SkipTest("No ANTHROPIC_API_KEY available")
         elif provider == "openai":
             # Use real API key if available
             if "OPENAI_API_KEY" in os.environ:
-                return ChatGPT_Bot(name=name, model_engine=Engines.GPT4, max_tokens=1000)
+                bot = ChatGPT_Bot(name=name, model_engine=Engines.GPT4, max_tokens=1000, temperature=1)
+                # OpenAI requires a system message to reliably use tools
+                bot.set_system_message("You are a helpful assistant. When asked to use a tool, call it directly without asking for clarification.")
+                return bot
             else:
                 import unittest
                 raise unittest.SkipTest("No OPENAI_API_KEY available")
         elif provider == "gemini":
             # Use real API key if available
             if "GOOGLE_API_KEY" in os.environ or "GEMINI_API_KEY" in os.environ:
-                return GeminiBot(name=name, model_engine=Engines.GEMINI25_FLASH, max_tokens=1000)
+                return GeminiBot(name=name, model_engine=Engines.GEMINI25_FLASH, max_tokens=1000, temperature=1)
             else:
                 import unittest
                 raise unittest.SkipTest("No GOOGLE_API_KEY or GEMINI_API_KEY available")
