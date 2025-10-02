@@ -8,10 +8,9 @@ without making actual API calls to LLM services.
 import json
 import re
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Type
-from unittest.mock import Mock
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
-from bots.foundation.base import Bot, ToolHandler, Mailbox, ConversationNode, Engines
+from bots.foundation.base import Bot, ConversationNode, Engines, Mailbox, ToolHandler
 
 
 class MockConversationNode(ConversationNode):
@@ -40,27 +39,26 @@ class MockConversationNode(ConversationNode):
         if self.role == role:
             count += 1
         for reply in self.replies:
-            if hasattr(reply, 'count_nodes_with_role'):
+            if hasattr(reply, "count_nodes_with_role"):
                 count += reply.count_nodes_with_role(role)
-            elif hasattr(reply, 'role') and reply.role == role:
+            elif hasattr(reply, "role") and reply.role == role:
                 count += 1
         return count
 
-    def find_nodes_with_content(self, content_pattern: str) -> List['MockConversationNode']:
+    def find_nodes_with_content(self, content_pattern: str) -> List["MockConversationNode"]:
         """Find all nodes whose content matches the given pattern."""
         matches = []
         if re.search(content_pattern, self.content):
             matches.append(self)
         for reply in self.replies:
-            if hasattr(reply, 'find_nodes_with_content'):
+            if hasattr(reply, "find_nodes_with_content"):
                 matches.extend(reply.find_nodes_with_content(content_pattern))
-            elif hasattr(reply, 'content') and re.search(content_pattern, reply.content):
+            elif hasattr(reply, "content") and re.search(content_pattern, reply.content):
                 matches.append(reply)
         return matches
 
-
     @staticmethod
-    def _create_empty(cls: Optional[Type['ConversationNode']]=None) -> 'MockConversationNode':
+    def _create_empty(cls: Optional[Type["ConversationNode"]] = None) -> "MockConversationNode":
         """Create an empty root node.
 
         Use when initializing a new conversation tree that needs an empty root.
@@ -71,7 +69,8 @@ class MockConversationNode(ConversationNode):
         Returns:
             MockConversationNode: An empty node with role='empty' and no content
         """
-        return MockConversationNode(role='empty', content='')
+        return MockConversationNode(role="empty", content="")
+
 
 class MockToolHandler(ToolHandler):
     """Mock tool handler for testing purposes.
@@ -147,26 +146,27 @@ class MockToolHandler(ToolHandler):
             "parameters": {
                 "type": "object",
                 "properties": params,
-                "required": [name for name, param in sig.parameters.items() 
-                           if param.default == inspect.Parameter.empty] if 'sig' in locals() else []
-            }
+                "required": [name for name, param in sig.parameters.items() if param.default == inspect.Parameter.empty]
+                if "sig" in locals()
+                else [],
+            },
         }
 
     def generate_request_schema(self, response: Any) -> List[Dict[str, Any]]:
         """Extract mock tool requests from a response."""
         # For testing, we'll look for a specific format in the response
-        if hasattr(response, 'tool_calls') and response.tool_calls:
+        if hasattr(response, "tool_calls") and response.tool_calls:
             return response.tool_calls
-        elif isinstance(response, dict) and 'tool_calls' in response:
-            return response['tool_calls']
+        elif isinstance(response, dict) and "tool_calls" in response:
+            return response["tool_calls"]
         else:
             return []
 
     def tool_name_and_input(self, request_schema: Dict[str, Any]) -> Tuple[Optional[str], Dict[str, Any]]:
         """Extract tool name and parameters from request schema."""
         if isinstance(request_schema, dict):
-            tool_name = request_schema.get('name') or request_schema.get('function', {}).get('name')
-            parameters = request_schema.get('parameters', {}) or request_schema.get('function', {}).get('arguments', {})
+            tool_name = request_schema.get("name") or request_schema.get("function", {}).get("name")
+            parameters = request_schema.get("parameters", {}) or request_schema.get("function", {}).get("arguments", {})
 
             # Handle string parameters (JSON)
             if isinstance(parameters, str):
@@ -183,10 +183,10 @@ class MockToolHandler(ToolHandler):
         tool_name, _ = self.tool_name_and_input(request)
 
         return {
-            "tool_use_id": request.get('id', f"mock_call_{len(self._call_history)}"),
+            "tool_use_id": request.get("id", f"mock_call_{len(self._call_history)}"),
             "content": str(tool_output_kwargs),
             "tool_name": tool_name,
-            "status": "success"
+            "status": "success",
         }
 
     def generate_error_schema(self, request_schema: Dict[str, Any], error_msg: str) -> Dict[str, Any]:
@@ -194,10 +194,10 @@ class MockToolHandler(ToolHandler):
         tool_name, _ = self.tool_name_and_input(request_schema)
 
         return {
-            "tool_use_id": request_schema.get('id', f"mock_error_{len(self._call_history)}"),
+            "tool_use_id": request_schema.get("id", f"mock_error_{len(self._call_history)}"),
             "content": f"Error: {error_msg}",
             "tool_name": tool_name,
-            "status": "error"
+            "status": "error",
         }
 
     def exec_requests(self) -> List[Dict[str, Any]]:
@@ -211,11 +211,7 @@ class MockToolHandler(ToolHandler):
                 continue
 
             # Record the call
-            call_record = {
-                "tool_name": tool_name,
-                "parameters": input_kwargs,
-                "timestamp": time.time()
-            }
+            call_record = {"tool_name": tool_name, "parameters": input_kwargs, "timestamp": time.time()}
             self._call_history.append(call_record)
 
             # Add execution delay if configured
@@ -310,7 +306,7 @@ class MockMailbox(Mailbox):
         """Clear the conversation history."""
         self._conversation_history.clear()
 
-    def send_message(self, bot: 'Bot') -> Dict[str, Any]:
+    def send_message(self, bot: "Bot") -> Dict[str, Any]:
         """Send a mock message and return a mock response.
 
         Args:
@@ -332,17 +328,19 @@ class MockMailbox(Mailbox):
 
         # Build conversation context
         messages = bot.conversation._build_messages()
-        self._conversation_history.append({
-            "timestamp": time.time(),
-            "messages": messages,
-            "model": bot.model_engine.value if hasattr(bot.model_engine, 'value') else str(bot.model_engine)
-        })
+        self._conversation_history.append(
+            {
+                "timestamp": time.time(),
+                "messages": messages,
+                "model": bot.model_engine.value if hasattr(bot.model_engine, "value") else str(bot.model_engine),
+            }
+        )
 
         # Get the last user message for context
         user_input = ""
         for msg in reversed(messages):
-            if msg.get('role') == 'user':
-                user_input = msg.get('content', '')
+            if msg.get("role") == "user":
+                user_input = msg.get("content", "")
                 break
 
         # Select response pattern
@@ -355,9 +353,9 @@ class MockMailbox(Mailbox):
         # Format the response
         response_text = response_pattern.format(
             user_input=user_input,
-            model=bot.model_engine.value if hasattr(bot.model_engine, 'value') else str(bot.model_engine),
+            model=bot.model_engine.value if hasattr(bot.model_engine, "value") else str(bot.model_engine),
             call_count=self._call_count,
-            conversation_length=len(messages)
+            conversation_length=len(messages),
         )
 
         self._call_count += 1
@@ -366,17 +364,17 @@ class MockMailbox(Mailbox):
         mock_response = {
             "content": response_text,
             "role": "assistant",
-            "model": bot.model_engine.value if hasattr(bot.model_engine, 'value') else str(bot.model_engine),
+            "model": bot.model_engine.value if hasattr(bot.model_engine, "value") else str(bot.model_engine),
             "usage": {
-                "prompt_tokens": sum(len(msg.get('content', '').split()) for msg in messages),
+                "prompt_tokens": sum(len(msg.get("content", "").split()) for msg in messages),
                 "completion_tokens": len(response_text.split()),
-                "total_tokens": sum(len(msg.get('content', '').split()) for msg in messages) + len(response_text.split())
-            }
+                "total_tokens": sum(len(msg.get("content", "").split()) for msg in messages) + len(response_text.split()),
+            },
         }
 
         return mock_response
 
-    def process_response(self, response: Dict[str, Any], bot: Optional['Bot'] = None) -> Tuple[str, str, Dict[str, Any]]:
+    def process_response(self, response: Dict[str, Any], bot: Optional["Bot"] = None) -> Tuple[str, str, Dict[str, Any]]:
         """Process the mock response into standardized format.
 
         Args:
@@ -393,7 +391,7 @@ class MockMailbox(Mailbox):
         metadata = {
             "model": response.get("model", "mock-model"),
             "usage": response.get("usage", {}),
-            "mock_call_count": self._call_count - 1
+            "mock_call_count": self._call_count - 1,
         }
 
         return response_text, role, metadata
@@ -441,7 +439,7 @@ class MockBot(Bot):
         role: str = "assistant",
         role_description: str = "A helpful mock assistant for testing",
         conversation: Optional[ConversationNode] = None,
-        autosave: bool = False  # Default to False for testing
+        autosave: bool = False,  # Default to False for testing
     ):
         """Initialize a mock bot.
 
@@ -468,7 +466,7 @@ class MockBot(Bot):
             conversation = MockConversationNode._create_empty()
         elif not isinstance(conversation, MockConversationNode):
             # Convert regular ConversationNode to MockConversationNode if needed
-            if hasattr(conversation, '_is_empty') and conversation._is_empty():
+            if hasattr(conversation, "_is_empty") and conversation._is_empty():
                 conversation = MockConversationNode._create_empty()
 
         # Initialize the parent Bot class
@@ -483,7 +481,7 @@ class MockBot(Bot):
             conversation=conversation,
             tool_handler=mock_tool_handler,
             mailbox=mock_mailbox,
-            autosave=autosave
+            autosave=autosave,
         )
 
         # Additional mock-specific attributes
@@ -534,12 +532,13 @@ class MockBot(Bot):
             # Create a simple mock function
             def mock_func(*args, **kwargs):
                 return f"Mock result from {name}"
+
             mock_func.__name__ = name
             mock_func.__doc__ = f"Mock tool: {name}"
             func = mock_func
         else:
             # Ensure the function has the correct name
-            if not hasattr(func, '__name__') or func.__name__ != name:
+            if not hasattr(func, "__name__") or func.__name__ != name:
                 func.__name__ = name
 
         # Add the tool directly to avoid the module context creation issues
@@ -591,7 +590,7 @@ class MockBot(Bot):
         """Get test-specific metadata from the bot."""
         return self._test_metadata.get(key, default)
 
-    def respond(self, prompt: str, role: str = 'user') -> str:
+    def respond(self, prompt: str, role: str = "user") -> str:
         """Override respond to track response count."""
         response = super().respond(prompt, role)
         self._response_count += 1
@@ -608,7 +607,7 @@ class MockBot(Bot):
         """
         responses = []
         for role, content in messages:
-            if role == 'user':
+            if role == "user":
                 response = self.respond(content, role)
                 responses.append(response)
             else:
@@ -627,6 +626,7 @@ class MockBot(Bot):
 
 
 # Utility functions for testing
+
 
 def create_test_conversation(exchanges: List[Tuple[str, str]]) -> MockConversationNode:
     """Create a test conversation from a list of exchanges.
@@ -649,6 +649,7 @@ def create_test_conversation(exchanges: List[Tuple[str, str]]) -> MockConversati
     # Return the leaf node so _build_messages() works correctly
     return current
 
+
 def create_mock_bot_with_tools(tool_configs: List[Dict[str, Any]]) -> MockBot:
     """Create a mock bot with predefined tools.
 
@@ -662,10 +663,10 @@ def create_mock_bot_with_tools(tool_configs: List[Dict[str, Any]]) -> MockBot:
     bot = MockBot()
 
     for config in tool_configs:
-        name = config['name']
-        response = config.get('response', f"Mock response from {name}")
-        should_fail = config.get('should_fail', False)
-        error_message = config.get('error_message', f"Mock error from {name}")
+        name = config["name"]
+        response = config.get("response", f"Mock response from {name}")
+        should_fail = config.get("should_fail", False)
+        error_message = config.get("error_message", f"Mock error from {name}")
 
         # Add the mock tool
         bot.add_mock_tool(name)
@@ -676,6 +677,7 @@ def create_mock_bot_with_tools(tool_configs: List[Dict[str, Any]]) -> MockBot:
             bot.set_tool_response(name, response)
 
     return bot
+
 
 def assert_conversation_flow(bot: MockBot, expected_flow: List[Dict[str, str]]) -> bool:
     """Assert that a conversation follows the expected flow.
@@ -693,13 +695,14 @@ def assert_conversation_flow(bot: MockBot, expected_flow: List[Dict[str, str]]) 
         raise AssertionError(f"Expected {len(expected_flow)} messages, got {len(messages)}")
 
     for i, (actual, expected) in enumerate(zip(messages, expected_flow)):
-        if actual['role'] != expected['role']:
+        if actual["role"] != expected["role"]:
             raise AssertionError(f"Message {i}: expected role '{expected['role']}', got '{actual['role']}'")
 
-        if expected.get('content') and actual['content'] != expected['content']:
+        if expected.get("content") and actual["content"] != expected["content"]:
             raise AssertionError(f"Message {i}: expected content '{expected['content']}', got '{actual['content']}'")
 
     return True
+
 
 def assert_tool_called(bot: MockBot, tool_name: str, times: int = 1) -> bool:
     """Assert that a tool was called a specific number of times.
@@ -713,12 +716,13 @@ def assert_tool_called(bot: MockBot, tool_name: str, times: int = 1) -> bool:
         True if assertion passes, raises AssertionError otherwise
     """
     history = bot.get_tool_call_history()
-    actual_calls = sum(1 for call in history if call['tool_name'] == tool_name)
+    actual_calls = sum(1 for call in history if call["tool_name"] == tool_name)
 
     if actual_calls != times:
         raise AssertionError(f"Expected {tool_name} to be called {times} times, was called {actual_calls} times")
 
     return True
+
 
 def assert_tool_called_with(bot: MockBot, tool_name: str, expected_params: Dict[str, Any]) -> bool:
     """Assert that a tool was called with specific parameters.
@@ -732,10 +736,7 @@ def assert_tool_called_with(bot: MockBot, tool_name: str, expected_params: Dict[
         True if assertion passes, raises AssertionError otherwise
     """
     history = bot.get_tool_call_history()
-    matching_calls = [
-        call for call in history 
-        if call['tool_name'] == tool_name and call['parameters'] == expected_params
-    ]
+    matching_calls = [call for call in history if call["tool_name"] == tool_name and call["parameters"] == expected_params]
 
     if not matching_calls:
         raise AssertionError(f"Tool {tool_name} was not called with parameters {expected_params}")
@@ -760,11 +761,13 @@ if __name__ == "__main__":
 
     # Example 2: Mock bot with tools
     print("\n=== Example 2: Mock Bot with Tools ===")
-    tool_bot = create_mock_bot_with_tools([
-        {"name": "calculate", "response": 42},
-        {"name": "search", "response": "Found 3 results"},
-        {"name": "broken_tool", "should_fail": True, "error_message": "Tool is broken"}
-    ])
+    tool_bot = create_mock_bot_with_tools(
+        [
+            {"name": "calculate", "response": 42},
+            {"name": "search", "response": "Found 3 results"},
+            {"name": "broken_tool", "should_fail": True, "error_message": "Tool is broken"},
+        ]
+    )
 
     tool_bot.set_response_pattern("I'll use the {user_input} tool for you.")
 
@@ -782,11 +785,7 @@ if __name__ == "__main__":
     conv_bot.add_response_pattern("I'm doing well, thanks!")
     conv_bot.add_response_pattern("That's interesting!")
 
-    conversation = [
-        ("user", "Hi"),
-        ("user", "How are you?"),
-        ("user", "I like programming")
-    ]
+    conversation = [("user", "Hi"), ("user", "How are you?"), ("user", "I like programming")]
 
     responses = conv_bot.simulate_conversation(conversation)
     print(f"Conversation responses: {responses}")
@@ -798,12 +797,15 @@ if __name__ == "__main__":
     test_bot.respond("Goodbye")
 
     try:
-        assert_conversation_flow(test_bot, [
-            {"role": "user", "content": "Hello"},
-            {"role": "assistant"},  # Don't check content
-            {"role": "user", "content": "Goodbye"},
-            {"role": "assistant"}
-        ])
+        assert_conversation_flow(
+            test_bot,
+            [
+                {"role": "user", "content": "Hello"},
+                {"role": "assistant"},  # Don't check content
+                {"role": "user", "content": "Goodbye"},
+                {"role": "assistant"},
+            ],
+        )
         print("Conversation flow assertion passed!")
     except AssertionError as e:
         print(f"Assertion failed: {e}")

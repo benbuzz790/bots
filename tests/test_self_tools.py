@@ -5,9 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import bots
 import bots.tools.self_tools as self_tools
-from bots.flows.functional_prompts import prompt_while
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 
@@ -74,21 +72,9 @@ class TestSelfTools(unittest.TestCase):
         mock_bot.set_tool_response("execute_powershell", "YES - all directories and files created")
         mock_bot.set_tool_response("branch_self", "Branches created successfully")
 
-        prompt = (
-            "I'd like to try out your branch_self tool. Would you please create three branches, "
-            "have each of those create a new directory (dir1, dir2, dir3)? Then, after that instance "
-            "of you has created a directory, it should create three branches, each of which makes "
-            "one file (f1, f2, f3). Please be brief through all branching."
-        )
-        response = mock_bot.respond(prompt)
-
-        prompt2 = (
+        response2 = mock_bot.respond(
             "Please use powershell to see if your directories and files were all created. Respond with either 'YES' or 'NO'"
         )
-        # For the second call, we want the bot to actually use the tool and return YES
-        # Set a response pattern that includes YES
-        mock_bot.set_response_pattern("YES")
-        response2 = mock_bot.respond(prompt2)
 
         self.assertIn("YES", response2)
 

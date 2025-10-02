@@ -31,8 +31,8 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         self.assertIn("Tool execution interrupted", result)
         self.assertIn("Address already in use", result)
 
-    def test_toolify_converts_keyboard_interrupt(self):
-        """Test that @toolify converts KeyboardInterrupt to ToolExecutionError."""
+    def test_toolify_converts_keyboard_interrupt_with_description(self):
+        """Test that @toolify converts KeyboardInterrupt to ToolExecutionError with tool description."""
 
         @toolify("A tool that simulates server startup failure")
         def start_server_tool(port: int = 8000) -> str:

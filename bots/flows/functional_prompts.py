@@ -1146,12 +1146,7 @@ def par_branch_while(
     nodes = [None] * len(prompt_list)
 
     def process_branch(
-        index: int, 
-        initial_prompt: str, 
-        temp_file: str,
-        stop_condition: Condition,
-        continue_prompt: str,
-        use_callback: bool
+        index: int, initial_prompt: str, temp_file: str, stop_condition: Condition, continue_prompt: str, use_callback: bool
     ) -> Tuple[int, Response, ResponseNode]:
         try:
             branch_bot = Bot.load(temp_file)
@@ -1171,21 +1166,13 @@ def par_branch_while(
 
             # Return the first response node so we can link it properly later
             return index, response, first_response_node, final_node
-        except Exception as e:
+        except Exception:
             return index, None, None, None
 
     with ThreadPoolExecutor() as executor:
         # Submit all tasks with explicit parameters instead of closure
         futures = [
-            executor.submit(
-                process_branch, 
-                i, 
-                prompt, 
-                temp_file,
-                stop_condition,
-                continue_prompt,
-                callback is not None
-            ) 
+            executor.submit(process_branch, i, prompt, temp_file, stop_condition, continue_prompt, callback is not None)
             for i, prompt in enumerate(prompt_list)
         ]
 

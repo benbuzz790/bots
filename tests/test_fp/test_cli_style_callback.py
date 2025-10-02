@@ -1,8 +1,8 @@
 """End-to-end test simulating CLI usage of par_branch_while."""
 
+from bots.flows.functional_prompts import conditions, par_branch_while
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
-from bots.flows.functional_prompts import par_branch_while, conditions
 
 
 def test_cli_like_callback_usage():
@@ -21,6 +21,7 @@ def test_cli_like_callback_usage():
                 if self.verbose:
                     for i, response in enumerate(responses):
                         print(f"  Branch {i+1}: {response[:60]}...")
+
             return callback
 
     # Create CLI context and callback
@@ -29,6 +30,7 @@ def test_cli_like_callback_usage():
 
     # Verify callback is unpicklable
     import pickle
+
     try:
         pickle.dumps(cli_callback)
         print("ERROR: Callback should not be picklable!")
@@ -37,28 +39,15 @@ def test_cli_like_callback_usage():
         print("✓ Confirmed: CLI-style callback is not picklable")
 
     # Create bot
-    bot = AnthropicBot(
-        api_key=None,
-        model_engine=Engines.CLAUDE37_SONNET_20250219,
-        name="CLIBot",
-        autosave=False
-    )
+    bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE37_SONNET_20250219, name="CLIBot", autosave=False)
 
     # Use par_branch_while with CLI-style callback
     print("\nExecuting par_branch_while with CLI-style callback...")
-    prompts = [
-        "Analyze approach A",
-        "Analyze approach B", 
-        "Analyze approach C"
-    ]
+    prompts = ["Analyze approach A", "Analyze approach B", "Analyze approach C"]
 
     try:
         responses, nodes = par_branch_while(
-            bot,
-            prompts,
-            stop_condition=conditions.tool_not_used,
-            continue_prompt="ok",
-            callback=cli_callback
+            bot, prompts, stop_condition=conditions.tool_not_used, continue_prompt="ok", callback=cli_callback
         )
 
         print(f"\n✓ SUCCESS: Completed with {len(responses)} responses")
@@ -77,13 +66,14 @@ def test_cli_like_callback_usage():
     except Exception as e:
         print(f"\n✗ FAILED: {type(e).__name__}: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
 if __name__ == "__main__":
-    print("="*70)
+    print("=" * 70)
     print("CLI-STYLE CALLBACK TEST")
-    print("="*70)
+    print("=" * 70)
     success = test_cli_like_callback_usage()
     exit(0 if success else 1)

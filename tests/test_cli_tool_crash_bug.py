@@ -1,14 +1,11 @@
-
 """
 Test to reproduce the CLI tool crash bug where tool request/result structure
 becomes corrupt when a tool crashes and the CLI backs up.
 """
 
-import pytest
-import tempfile
-import os
-from unittest.mock import Mock, patch
-from bots.foundation.anthropic_bots import AnthropicBot, AnthropicNode, AnthropicToolHandler
+from unittest.mock import Mock
+
+from bots.foundation.anthropic_bots import AnthropicBot, AnthropicNode
 from bots.foundation.base import Engines
 
 
@@ -48,7 +45,7 @@ class TestCLIToolCrashBug:
             temperature=0.0,
             name="TestBot",
             role="assistant",
-            role_description="Test bot"
+            role_description="Test bot",
         )
 
         # Add both working and crashing tools
@@ -64,7 +61,7 @@ class TestCLIToolCrashBug:
         mock_response = Mock()
         mock_response.content = [
             Mock(type="text", text="I'll use the crashing tool"),
-            Mock(type="tool_use", id="tool_123", name="crashing_tool", input={"message": "test"})
+            Mock(type="tool_use", id="tool_123", name="crashing_tool", input={"message": "test"}),
         ]
         mock_response.role = "assistant"
 
@@ -90,7 +87,7 @@ class TestCLIToolCrashBug:
             mock_response2 = Mock()
             mock_response2.content = [
                 Mock(type="text", text="I'll use the working tool"),
-                Mock(type="tool_use", id="tool_456", name="working_tool", input={"message": "hello"})
+                Mock(type="tool_use", id="tool_456", name="working_tool", input={"message": "hello"}),
             ]
             mock_response2.role = "assistant"
 
@@ -124,16 +121,12 @@ class TestCLIToolCrashBug:
         node = AnthropicNode(
             content="Test message",
             role="assistant",
-            tool_calls=[{"id": "tool_123", "name": "crashing_tool", "input": {"message": "test"}}]
+            tool_calls=[{"id": "tool_123", "name": "crashing_tool", "input": {"message": "test"}}],
         )
 
         # Add tool results (this might be where corruption occurs)
         try:
-            node._add_tool_results([{
-                "tool_use_id": "tool_123",
-                "content": "This should fail",
-                "type": "tool_result"
-            }])
+            node._add_tool_results([{"tool_use_id": "tool_123", "content": "This should fail", "type": "tool_result"}])
         except Exception as e:
             print(f"Error adding tool results: {e}")
 
@@ -150,16 +143,14 @@ class TestCLIToolCrashBug:
 
         # Simulate a tool request that will crash
         mock_response = Mock()
-        mock_response.content = [
-            Mock(type="tool_use", id="tool_123", name="crashing_tool", input={"message": "test"})
-        ]
+        mock_response.content = [Mock(type="tool_use", id="tool_123", name="crashing_tool", input={"message": "test"})]
 
         # Extract requests
-        requests = self.bot.tool_handler.extract_requests(mock_response)
+        self.bot.tool_handler.extract_requests(mock_response)
         assert len(self.bot.tool_handler.requests) == 1
 
         # Execute requests (will create error results)
-        results = self.bot.tool_handler.exec_requests()
+        self.bot.tool_handler.exec_requests()
         assert len(self.bot.tool_handler.results) == 1
 
         # The bug might be that these don't get cleared properly
@@ -172,12 +163,10 @@ class TestCLIToolCrashBug:
 
         # Try another tool request
         mock_response2 = Mock()
-        mock_response2.content = [
-            Mock(type="tool_use", id="tool_456", name="working_tool", input={"message": "hello"})
-        ]
+        mock_response2.content = [Mock(type="tool_use", id="tool_456", name="working_tool", input={"message": "hello"})]
 
-        requests2 = self.bot.tool_handler.extract_requests(mock_response2)
-        results2 = self.bot.tool_handler.exec_requests()
+        self.bot.tool_handler.extract_requests(mock_response2)
+        self.bot.tool_handler.exec_requests()
 
         # Check if we have accumulated state (the bug)
         print(f"Total requests after second call: {len(self.bot.tool_handler.requests)}")

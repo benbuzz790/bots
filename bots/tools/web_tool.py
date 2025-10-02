@@ -4,10 +4,11 @@ This module provides an agentic search tool that leverages Claude's built-in web
 functionality using the raw Anthropic client directly.
 """
 
+import datetime
 import os
 
 import anthropic
-import datetime
+
 from bots.dev.decorators import toolify
 
 
@@ -33,29 +34,30 @@ def _validate_question_format(query: str) -> bool:
         client = anthropic.Anthropic(api_key=api_key)
 
         # Simple validation prompt for Haiku
-        validation_prompt = f'''Is this text formatted as a question? Answer only Y or N.
+        validation_prompt = f"""Is this text formatted as a question? Answer only Y or N.
 
 Text: "{query}"
 
-Answer:'''
+Answer:"""
 
         # Make API call with Haiku (fast and cheap)
         response = client.messages.create(
             model="claude-3-haiku-20240307",
             max_tokens=10,
             temperature=0.0,
-            messages=[{"role": "user", "content": validation_prompt}]
+            messages=[{"role": "user", "content": validation_prompt}],
         )
 
         # Extract the response
         answer = response.content[0].text.strip().upper()
 
-        if answer.startswith('N'):
+        if answer.startswith("N"):
             raise ValueError(
                 "Input queries must be formatted as questions. "
                 "Good examples: 'Who is...?', 'What is...?', 'How does...?' "
                 "Bad examples: 'Ben R wrestling', 'paris buffalo'"
-                "The more information, and the more specific, the better. You are asking an AI to answer a question, not performing a traditional web keyword search."
+                "The more information, and the more specific, the better. "
+                "You are asking an AI to answer a question, not performing a traditional web keyword search."
             )
 
         return True
@@ -64,7 +66,6 @@ Answer:'''
         raise  # Re-raise validation errors
     except Exception:
         return True  # Skip validation on other errors
-
 
 
 @toolify("Perform an agentic web search using Claude's internal web search capabilities")
@@ -122,14 +123,13 @@ def web_search(question: str) -> str:
             messages=[{"role": "user", "content": search_prompt}],
         )
 
-        
         # Extract clean, essential content from the web search response
 
         def extract_clean_content(response):
             """Extract only the essential content from web search response."""
             result = []
             result.append("=== WEB SEARCH RESULTS ===\n")
-            result.append(f"Search: \"{question}\"\n")
+            result.append(f'Search: "{question}"\n')
 
             if hasattr(response, "content") and response.content:
                 text_responses = []
@@ -137,19 +137,21 @@ def web_search(question: str) -> str:
 
                 for block in response.content:
                     # Extract Claude's text responses
-                    if hasattr(block, 'type') and block.type == 'text' and hasattr(block, 'text') and block.text:
+                    if hasattr(block, "type") and block.type == "text" and hasattr(block, "text") and block.text:
                         text_responses.append(block.text)
 
                     # Extract web search results
-                    elif hasattr(block, 'type') and block.type == 'web_search_tool_result':
-                        if hasattr(block, 'content') and block.content:
+                    elif hasattr(block, "type") and block.type == "web_search_tool_result":
+                        if hasattr(block, "content") and block.content:
                             for item in block.content:
-                                if isinstance(item, dict) and item.get('type') == 'web_search_result':
-                                    search_results.append({
-                                        'title': item.get('title', 'No title'),
-                                        'url': item.get('url', 'No URL'),
-                                        'age': item.get('page_age', 'Unknown age')
-                                    })
+                                if isinstance(item, dict) and item.get("type") == "web_search_result":
+                                    search_results.append(
+                                        {
+                                            "title": item.get("title", "No title"),
+                                            "url": item.get("url", "No URL"),
+                                            "age": item.get("page_age", "Unknown age"),
+                                        }
+                                    )
 
                 # Add Claude's responses
                 if text_responses:
@@ -164,14 +166,13 @@ def web_search(question: str) -> str:
                     for i, item in enumerate(search_results, 1):
                         result.append(f"{i}. {item['title']}")
                         result.append(f"   {item['url']}")
-                        if item['age'] and item['age'] != 'Unknown age':
+                        if item["age"] and item["age"] != "Unknown age":
                             result.append(f"   ({item['age']})")
                         result.append("")
 
                 result.append(f"Search performed: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M UTC')}")
 
             return "\n".join(result)
-
 
         # Return the clean content directly instead of just filename
         clean_content = extract_clean_content(response)

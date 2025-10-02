@@ -1209,7 +1209,7 @@ class DynamicFunctionalPromptHandler:
                 depth = 0
                 current = leaf
                 # Calculate depth safely, handling mock objects
-                while hasattr(current, 'parent') and current.parent and not current.parent._is_empty():
+                while hasattr(current, "parent") and current.parent and not current.parent._is_empty():
                     depth += 1
                     current = current.parent
                 preview = leaf.content[:50] + "..." if len(leaf.content) > 50 else leaf.content
@@ -1387,7 +1387,7 @@ def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: i
         string = string[:max_length] + "\n... (output truncated)"
 
     # Quick path for very simple strings - avoid regex overhead
-    if len(string) < 1000 and '\n' not in string:
+    if len(string) < 1000 and "\n" not in string:
         print(prefix + string + COLOR_RESET)
         print()
         return
@@ -1413,14 +1413,21 @@ def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: i
         if i == 0:
             initial_line = prefix + line + COLOR_RESET
             try:
-                wrapped = textwrap.wrap(initial_line, width=width, subsequent_indent=" " * indent, break_long_words=True, break_on_hyphens=False)
+                wrapped = textwrap.wrap(
+                    initial_line, width=width, subsequent_indent=" " * indent, break_long_words=True, break_on_hyphens=False
+                )
             except Exception:
                 # Fallback if textwrap fails
                 wrapped = [initial_line]
         else:
             try:
                 wrapped = textwrap.wrap(
-                    color + line + COLOR_RESET, width=width, initial_indent=" " * indent, subsequent_indent=" " * indent, break_long_words=True, break_on_hyphens=False
+                    color + line + COLOR_RESET,
+                    width=width,
+                    initial_indent=" " * indent,
+                    subsequent_indent=" " * indent,
+                    break_long_words=True,
+                    break_on_hyphens=False,
                 )
             except Exception:
                 # Fallback if textwrap fails
@@ -1615,20 +1622,22 @@ class CLI:
     def _initialize_new_bot(self):
         """Initialize a new bot with default tools."""
         from bots import Engines
+
         bot = AnthropicBot(model_engine=Engines.CLAUDE45_SONNET, max_tokens=16000)
         self.context.bot_instance = bot
 
         # bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools, bots.tools.self_tools)
         from bots.tools.code_tools import view, view_dir
+        from bots.tools.python_edit import python_edit, python_view
         from bots.tools.python_execution_tool import execute_python
         from bots.tools.self_tools import branch_self
         from bots.tools.terminal_tools import execute_powershell
         from bots.tools.web_tool import web_search
-        from bots.tools.python_edit import python_edit, python_view
 
         bot.add_tools(view, view_dir, execute_powershell, execute_python, branch_self, web_search, python_edit, python_view)
         sys_msg = textwrap.dedent(
-            """You're a coding agent. When greeting users, always start with "Hello! I'm here to help you". Please follow these rules:
+            """You're a coding agent. When greeting users, always start with "Hello! I'm here to help you".
+            Please follow these rules:
                     1. Keep edits and even writing new files to small chunks. You have a low max_token limit
                        and will hit tool errors if you try making too big of a change.
                     2. Avoid using cd. Your terminal is stateful and will remember if you use cd.

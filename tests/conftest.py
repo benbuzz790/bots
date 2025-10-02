@@ -1,3 +1,5 @@
+import os
+import tempfile
 import uuid
 
 
@@ -7,14 +9,13 @@ def get_unique_filename(prefix="test", extension="py"):
     return f"{prefix}_{unique_id}.{extension}"
 
 
-import os
-import tempfile
-
 def create_safe_test_file(content, prefix="test", extension="py", directory=None):
     """Create a safe test file with given content in specified or temp directory."""
     if directory is None:
         # Create in temp directory
-        with tempfile.NamedTemporaryFile(mode="w", suffix=f".{extension}", prefix=f"{prefix}_", delete=False, encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=f".{extension}", prefix=f"{prefix}_", delete=False, encoding="utf-8"
+        ) as f:
             f.write(content)
             return f.name
     else:

@@ -251,7 +251,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
             "all",  # Select the one leaf (empty root)
             "1",  # Select single_prompt
             "Test prompt",  # The prompt
-            "/exit"
+            "/exit",
         ]
 
         with StringIO() as buf, redirect_stdout(buf):

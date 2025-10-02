@@ -9,16 +9,12 @@ from types import ModuleType
 from typing import Any, Callable, Dict
 
 from bots.foundation.anthropic_bots import AnthropicBot
-from bots.foundation.openai_bots import ChatGPT_Bot
+from bots.foundation.base import Bot, Engines
 from bots.foundation.gemini_bots import GeminiBot
-from bots.foundation.base import Bot, Engines
+from bots.foundation.openai_bots import ChatGPT_Bot
 
 sys.path.insert(0, os.path.abspath("."))
 
-from bots.foundation.anthropic_bots import AnthropicBot
-from bots.foundation.base import Bot, Engines
-
-sys.path.insert(0, os.path.abspath("."))
 
 class TestSaveLoadMatrix(unittest.TestCase):
     """Comprehensive test matrix for save/load tool functionality."""
@@ -88,7 +84,6 @@ def another_module_tool(data: str) -> str:
 
         return module
 
-
     def create_bot_by_provider(self, provider: str, name: str = "TestBot") -> Bot:
         """Create a bot with the specified provider."""
         if provider == "anthropic":
@@ -97,16 +92,20 @@ def another_module_tool(data: str) -> str:
                 return AnthropicBot(name=name, model_engine=Engines.CLAUDE35_HAIKU, max_tokens=1000, temperature=1)
             else:
                 import unittest
+
                 raise unittest.SkipTest("No ANTHROPIC_API_KEY available")
         elif provider == "openai":
             # Use real API key if available
             if "OPENAI_API_KEY" in os.environ:
                 bot = ChatGPT_Bot(name=name, model_engine=Engines.GPT4, max_tokens=1000, temperature=1)
                 # OpenAI requires a system message to reliably use tools
-                bot.set_system_message("You are a helpful assistant. When asked to use a tool, call it directly without asking for clarification.")
+                bot.set_system_message(
+                    "You are a helpful assistant. When asked to use a tool, call it directly without asking for clarification."
+                )
                 return bot
             else:
                 import unittest
+
                 raise unittest.SkipTest("No OPENAI_API_KEY available")
         elif provider == "gemini":
             # Use real API key if available
@@ -114,6 +113,7 @@ def another_module_tool(data: str) -> str:
                 return GeminiBot(name=name, model_engine=Engines.GEMINI25_FLASH, max_tokens=1000, temperature=1)
             else:
                 import unittest
+
                 raise unittest.SkipTest("No GOOGLE_API_KEY or GEMINI_API_KEY available")
         else:
             raise ValueError(f"Unknown provider: {provider}")
@@ -134,17 +134,13 @@ def another_module_tool(data: str) -> str:
     def check_tool_usage(self, bot: Bot, expected_result: str, test_prompt: str) -> bool:
         """Test that tools work correctly on the bot."""
         try:
-            response = bot.respond(test_prompt)
+            bot.respond(test_prompt)
 
             # Traverse the entire conversation tree to find tool execution evidence
             def find_tool_evidence(node):
                 """Recursively search conversation tree for tool calls and results."""
-                evidence = {
-                    "tool_calls": [],
-                    "tool_results": [],
-                    "pending_results": []
-                }
-                
+                evidence = {"tool_calls": [], "tool_results": [], "pending_results": []}
+
                 # Check current node
                 if hasattr(node, "tool_calls") and node.tool_calls:
                     evidence["tool_calls"].extend(node.tool_calls)
@@ -152,7 +148,7 @@ def another_module_tool(data: str) -> str:
                     evidence["tool_results"].extend(node.tool_results)
                 if hasattr(node, "pending_results") and node.pending_results:
                     evidence["pending_results"].extend(node.pending_results)
-                
+
                 # Check all replies recursively
                 if hasattr(node, "replies"):
                     for reply in node.replies:
@@ -160,27 +156,27 @@ def another_module_tool(data: str) -> str:
                         evidence["tool_calls"].extend(child_evidence["tool_calls"])
                         evidence["tool_results"].extend(child_evidence["tool_results"])
                         evidence["pending_results"].extend(child_evidence["pending_results"])
-                
+
                 return evidence
 
             # Start from conversation root and find all tool evidence
             root = bot.conversation._find_root()
             evidence = find_tool_evidence(root)
-            
+
             # Check if any tools were executed
-            tool_executed = (len(evidence["tool_calls"]) > 0 or 
-                           len(evidence["tool_results"]) > 0 or 
-                           len(evidence["pending_results"]) > 0)
-            
+            tool_executed = (
+                len(evidence["tool_calls"]) > 0 or len(evidence["tool_results"]) > 0 or len(evidence["pending_results"]) > 0
+            )
+
             if not tool_executed:
                 return False
-            
+
             # Check if expected result appears in any tool results
             if ":" in expected_result:
                 core_expected = expected_result.split(":", 1)[1].strip()
             else:
                 core_expected = expected_result
-            
+
             all_results = evidence["tool_results"] + evidence["pending_results"]
             for result in all_results:
                 result_str = str(result)
@@ -193,10 +189,23 @@ def another_module_tool(data: str) -> str:
             return False
 
     def run_scenario(
-        self, tool_method: str, tool_source: Any, scenario: str, expected_result: str, test_prompt: str, provider: str = "anthropic"
+        self,
+        tool_method: str,
+        tool_source: Any,
+        scenario: str,
+        expected_result: str,
+        test_prompt: str,
+        provider: str = "anthropic",
     ) -> Dict[str, Any]:
         """Run a specific test scenario."""
-        result = {"tool_method": tool_method, "scenario": scenario, "provider": provider, "success": False, "error": None, "details": {}}
+        result = {
+            "tool_method": tool_method,
+            "scenario": scenario,
+            "provider": provider,
+            "success": False,
+            "error": None,
+            "details": {},
+        }
 
         try:
             if scenario == "basic":
@@ -539,7 +548,12 @@ def complex_tool(input_data: str) -> str:
                 for scenario in scenarios:
                     print(f"\nTesting {provider} + {tool_method} + {scenario}...")
                     result = self.run_scenario(
-                        tool_method, tool_config["source"], scenario, tool_config["expected_result"], tool_config["test_prompt"], provider
+                        tool_method,
+                        tool_config["source"],
+                        scenario,
+                        tool_config["expected_result"],
+                        tool_config["test_prompt"],
+                        provider,
                     )
                     results.append(result)
 
@@ -568,7 +582,14 @@ def complex_tool(input_data: str) -> str:
                 row = f"{tool_method:<12} "
                 for scenario in scenarios:
                     # Find result for this combination
-                    result = next((r for r in results if r["provider"] == provider and r["tool_method"] == tool_method and r["scenario"] == scenario), None)
+                    result = next(
+                        (
+                            r
+                            for r in results
+                            if r["provider"] == provider and r["tool_method"] == tool_method and r["scenario"] == scenario
+                        ),
+                        None,
+                    )
                     status = "PASS" if result and result["success"] else "FAIL"
                     if scenario == "basic":
                         row += f"{status:<8} "
@@ -578,7 +599,7 @@ def complex_tool(input_data: str) -> str:
 
         # Overall summary
         failures = [r for r in results if not r["success"]]
-        print(f"\nOVERALL SUMMARY:")
+        print("\nOVERALL SUMMARY:")
         print(f"Total tests: {len(results)}")
         print(f"Failures: {len(failures)}")
         print(f"Success rate: {(len(results) - len(failures)) / len(results) * 100:.1f}%")

@@ -126,46 +126,42 @@ class TestSaveLoadOpenAI(unittest.TestCase):
     def test_tool_execution_results(self) -> None:
         """Test preservation of tool execution results in conversation nodes.
 
-    Verifies that:
-    - Tool execution results are properly stored in conversation nodes
-    - Results persist through save/load operations
-    - Result values remain accessible and accurate
-    """
+        Verifies that:
+        - Tool execution results are properly stored in conversation nodes
+        - Results persist through save/load operations
+        - Result values remain accessible and accurate
+        """
         self.bot.add_tools(_simple_addition)
         self.bot.respond("What is 2 + 3?")
         self.assertTrue(
             self.bot.conversation.parent.tool_results,
-            "Expected tool_results after asking '2 + 3' but got empty list. "
-            "The API may not have called the tool."
+            "Expected tool_results after asking '2 + 3' but got empty list. " "The API may not have called the tool.",
         )
         self.assertTrue(
             any(("5" in str(v) for v in self.bot.conversation.parent.tool_results[0].values())),
-            f"Expected '5' in tool results but got: {self.bot.conversation.parent.tool_results}"
+            f"Expected '5' in tool results but got: {self.bot.conversation.parent.tool_results}",
         )
 
         save_path = os.path.join(self.temp_dir, f"tool_exec_{self.bot.name}")
         save_path = self.bot.save(save_path)
         loaded_bot = Bot.load(save_path)
 
-        self.assertTrue(
-            loaded_bot.conversation.parent.tool_results,
-            "Expected tool_results after loading but got empty list."
-        )
+        self.assertTrue(loaded_bot.conversation.parent.tool_results, "Expected tool_results after loading but got empty list.")
         self.assertTrue(
             any(("5" in str(v) for v in loaded_bot.conversation.parent.tool_results[0].values())),
-            f"Expected '5' in loaded bot tool results but got: {loaded_bot.conversation.parent.tool_results}"
+            f"Expected '5' in loaded bot tool results but got: {loaded_bot.conversation.parent.tool_results}",
         )
 
     def test_save_load_with_tool_use(self) -> None:
         """Test comprehensive tool functionality preservation across save/load
-    cycles.
+        cycles.
 
-    Verifies that:
-    - Tools remain functional after save/load operations
-    - Multiple tool executions are preserved correctly
-    - Tool results are maintained in conversation nodes
-    - New tool executions work correctly after loading
-    """
+        Verifies that:
+        - Tools remain functional after save/load operations
+        - Multiple tool executions are preserved correctly
+        - Tool results are maintained in conversation nodes
+        - New tool executions work correctly after loading
+        """
         self.bot.add_tools(_simple_addition)
         interactions = ["What is 5 + 3?", "Can you add 10 and 20?", "Please add 7 and 15"]
         for query in interactions:
@@ -173,12 +169,11 @@ class TestSaveLoadOpenAI(unittest.TestCase):
 
         self.assertTrue(
             self.bot.conversation.parent.tool_results,
-            "Expected tool_results after asking '7 + 15' but got empty list. "
-            "The API may not have called the tool."
+            "Expected tool_results after asking '7 + 15' but got empty list. " "The API may not have called the tool.",
         )
         self.assertTrue(
             any(("22" in str(v) for v in self.bot.conversation.parent.tool_results[0].values())),
-            f"Expected '22' in tool results but got: {self.bot.conversation.parent.tool_results}"
+            f"Expected '22' in tool results but got: {self.bot.conversation.parent.tool_results}",
         )
 
         save_path = os.path.join(self.temp_dir, f"tool_use_{self.bot.name}")
@@ -187,13 +182,10 @@ class TestSaveLoadOpenAI(unittest.TestCase):
         loaded_bot.save(save_path + "2")
 
         self.assertEqual(len(self.bot.tool_handler.tools), len(loaded_bot.tool_handler.tools))
-        self.assertTrue(
-            loaded_bot.conversation.parent.tool_results,
-            "Expected tool_results after loading but got empty list."
-        )
+        self.assertTrue(loaded_bot.conversation.parent.tool_results, "Expected tool_results after loading but got empty list.")
         self.assertTrue(
             any(("22" in str(v) for v in loaded_bot.conversation.parent.tool_results[0].values())),
-            f"Expected '22' in loaded bot tool results but got: {loaded_bot.conversation.parent.tool_results}"
+            f"Expected '22' in loaded bot tool results but got: {loaded_bot.conversation.parent.tool_results}",
         )
 
         new_response = loaded_bot.respond("What is 25 + 17?")
@@ -201,11 +193,11 @@ class TestSaveLoadOpenAI(unittest.TestCase):
         self.assertTrue(
             loaded_bot.conversation.parent.tool_results,
             "Expected tool_results after asking '25 + 17' (after load) but got empty list. "
-            "The API may not have called the tool."
+            "The API may not have called the tool.",
         )
         self.assertTrue(
             any(("42" in str(v) for v in loaded_bot.conversation.parent.tool_results[0].values())),
-            f"Expected '42' in tool results but got: {loaded_bot.conversation.parent.tool_results}"
+            f"Expected '42' in tool results but got: {loaded_bot.conversation.parent.tool_results}",
         )
 
     def test_module_tool_persistence(self) -> None:
@@ -383,12 +375,12 @@ class TestSaveLoadOpenAI(unittest.TestCase):
     def test_working_directory_independence(self) -> None:
         """Test bot save/load operations from different working directories.
 
-    Verifies that:
-    - Bots can be saved and loaded from different working directories
-    - Tool results state is maintained correctly
-    - Relative paths work properly
-    - File operations are path-independent
-    """
+        Verifies that:
+        - Bots can be saved and loaded from different working directories
+        - Tool results state is maintained correctly
+        - Relative paths work properly
+        - File operations are path-independent
+        """
         subdir = os.path.join(self.temp_dir, "subdir")
         os.makedirs(subdir, exist_ok=True)
         self.bot.add_tools(_simple_addition)
@@ -401,12 +393,11 @@ class TestSaveLoadOpenAI(unittest.TestCase):
             loaded_bot.respond("What is 7 + 8?")
             self.assertTrue(
                 loaded_bot.conversation.parent.tool_results,
-                "Expected tool_results after asking '7 + 8' but got empty list. "
-                "The API may not have called the tool."
+                "Expected tool_results after asking '7 + 8' but got empty list. " "The API may not have called the tool.",
             )
             self.assertTrue(
                 any(("15" in str(v) for v in loaded_bot.conversation.parent.tool_results[0].values())),
-                f"Expected '15' in tool results but got: {loaded_bot.conversation.parent.tool_results}"
+                f"Expected '15' in tool results but got: {loaded_bot.conversation.parent.tool_results}",
             )
             new_path = os.path.join("..", f"from_subdir_{self.bot.name}")
             loaded_bot.save(new_path)
@@ -416,30 +407,30 @@ class TestSaveLoadOpenAI(unittest.TestCase):
     def test_mixed_tool_sources(self) -> None:
         """Test bot functionality with tools from multiple sources.
 
-    Verifies that:
-    - Bots can handle tools from different sources simultaneously
-    - Individual function tools work correctly
-    - Module-based tools work correctly
-    - Tool results are preserved across save/load operations
-    - Multiple tool types remain functional after loading
-    """
+        Verifies that:
+        - Bots can handle tools from different sources simultaneously
+        - Individual function tools work correctly
+        - Module-based tools work correctly
+        - Tool results are preserved across save/load operations
+        - Multiple tool types remain functional after loading
+        """
 
         def floor_str(x) -> str:
             """Calculate the floor of a number and return it as a string.
 
-        Use when you need to get the floor value of a decimal number as a
-        string.
+            Use when you need to get the floor value of a decimal number as a
+            string.
 
-        Parameters:
-            x (str): A string representation of a number (integer or float)
+            Parameters:
+                x (str): A string representation of a number (integer or float)
 
-        Returns:
-            str: The floor value of the input number as a string
+            Returns:
+                str: The floor value of the input number as a string
 
-        Example:
-            >>> floor_str("5.7")
-            "5"
-        """
+            Example:
+                >>> floor_str("5.7")
+                "5"
+            """
             import math
 
             return str(math.floor(float(x)))
@@ -452,24 +443,22 @@ class TestSaveLoadOpenAI(unittest.TestCase):
         self.bot.respond("What is 3 + 4?")
         self.assertTrue(
             self.bot.conversation.parent.tool_results,
-            "Expected tool_results after asking '3 + 4' but got empty list. "
-            "The API may not have called the tool."
+            "Expected tool_results after asking '3 + 4' but got empty list. " "The API may not have called the tool.",
         )
         self.assertTrue(
             any(("7" in str(v) for v in self.bot.conversation.parent.tool_results[0].values())),
-            f"Expected '7' in tool results but got: {self.bot.conversation.parent.tool_results}"
+            f"Expected '7' in tool results but got: {self.bot.conversation.parent.tool_results}",
         )
 
         # Second tool call: floor
         self.bot.respond("What is the floor of 7.8?")
         self.assertTrue(
             self.bot.conversation.parent.tool_results,
-            "Expected tool_results after asking 'floor of 7.8' but got empty list. "
-            "The API may not have called the tool."
+            "Expected tool_results after asking 'floor of 7.8' but got empty list. " "The API may not have called the tool.",
         )
         self.assertTrue(
             any(("7" in str(v) for v in self.bot.conversation.parent.tool_results[0].values())),
-            f"Expected '7' in tool results but got: {self.bot.conversation.parent.tool_results}"
+            f"Expected '7' in tool results but got: {self.bot.conversation.parent.tool_results}",
         )
 
         # Save and load
@@ -482,11 +471,11 @@ class TestSaveLoadOpenAI(unittest.TestCase):
         self.assertTrue(
             loaded_bot.conversation.parent.tool_results,
             "Expected tool_results after asking '8 + 9' (after load) but got empty list. "
-            "The API may not have called the tool."
+            "The API may not have called the tool.",
         )
         self.assertTrue(
             any(("17" in str(v) for v in loaded_bot.conversation.parent.tool_results[0].values())),
-            f"Expected '17' in tool results but got: {loaded_bot.conversation.parent.tool_results}"
+            f"Expected '17' in tool results but got: {loaded_bot.conversation.parent.tool_results}",
         )
 
         # Fourth tool call: floor after load
@@ -494,11 +483,11 @@ class TestSaveLoadOpenAI(unittest.TestCase):
         self.assertTrue(
             loaded_bot.conversation.parent.tool_results,
             "Expected tool_results after asking 'floor of 5.6' (after load) but got empty list. "
-            "The API may not have called the tool."
+            "The API may not have called the tool.",
         )
         self.assertTrue(
             any(("5" in str(v) for v in loaded_bot.conversation.parent.tool_results[0].values())),
-            f"Expected '5' in tool results but got: {loaded_bot.conversation.parent.tool_results}"
+            f"Expected '5' in tool results but got: {loaded_bot.conversation.parent.tool_results}",
         )
 
 

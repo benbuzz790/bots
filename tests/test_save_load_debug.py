@@ -8,10 +8,10 @@ import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, os.path.abspath("."))
-
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
+
+sys.path.insert(0, os.path.abspath("."))
 
 
 class TestSaveLoadDebug(unittest.TestCase):

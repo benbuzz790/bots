@@ -31,7 +31,7 @@ Example Usage:
 """
 
 # Development and project management tools
-from .dev.decorators import toolify, lazy
+from .dev.decorators import lazy, toolify
 from .flows.project_tree import project_tree
 
 # Core bot implementations and base classes

@@ -57,11 +57,11 @@ def _read_file_bom_safe(file_path: str) -> str:
 def _write_file_bom_safe(file_path: str, content: str) -> None:
     """Write a file with BOM protection."""
     # Check if original content ended with newline before cleaning
-    ends_with_newline = content.endswith('\n')
+    ends_with_newline = content.endswith("\n")
     clean_content = clean_unicode_string(content)
     # Restore newline if it was there originally
-    if ends_with_newline and not clean_content.endswith('\n'):
-        clean_content += '\n'
+    if ends_with_newline and not clean_content.endswith("\n"):
+        clean_content += "\n"
     with open(file_path, "w", encoding="utf-8") as file:
         file.write(clean_content)
 
@@ -961,7 +961,7 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
                     new_module = cst.parse_module(cleaned_code)
                 except Exception as e:
                     # If parsing fails, check if it's a comment-only code
-                    if cleaned_code.strip().startswith('#'):
+                    if cleaned_code.strip().startswith("#"):
                         # Create a pass statement with the comment
                         comment_stmt = _create_statement_with_comment(cleaned_code.strip())
                         new_module = cst.Module(body=[comment_stmt])
@@ -980,10 +980,13 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
                 # Safety check for file-level replacements
                 lines_to_delete = _count_lines_to_be_deleted(original_content, cleaned_code)
                 if lines_to_delete > 100 and not delete_a_lot:
-                    return _process_error(ValueError(
-                        f"Safety check: this operation would delete {lines_to_delete} lines. " +
-                        "If intentional, set delete_a_lot=True. "
-                        "Consider using 'insert_after' parameter to add code without deleting existing content."))
+                    return _process_error(
+                        ValueError(
+                            f"Safety check: this operation would delete {lines_to_delete} lines. "
+                            + "If intentional, set delete_a_lot=True. "
+                            "Consider using 'insert_after' parameter to add code without deleting existing content."
+                        )
+                    )
                 _write_file_bom_safe(abs_path, cleaned_code)
                 return f"Code replaced at file level in '{abs_path}'."
         else:
@@ -1017,8 +1020,8 @@ def _handle_file_end_insertion(abs_path: str, tree: cst.Module, new_module: cst.
     final_code = modified_tree.code
 
     # Ensure the final code ends with a newline
-    if final_code and not final_code.endswith('\n'):
-        final_code += '\n'
+    if final_code and not final_code.endswith("\n"):
+        final_code += "\n"
 
     _write_file_bom_safe(abs_path, final_code)
     return f"Code inserted at end of '{abs_path}'."

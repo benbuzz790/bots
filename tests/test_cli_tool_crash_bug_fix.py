@@ -1,13 +1,10 @@
-
 """
 Test to verify the CLI tool crash bug fix works correctly.
 """
 
-import pytest
-import tempfile
-import os
-from unittest.mock import Mock, patch
-from bots.foundation.anthropic_bots import AnthropicBot, AnthropicNode, AnthropicToolHandler
+from unittest.mock import Mock
+
+from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 
 
@@ -33,7 +30,7 @@ class TestCLIToolCrashBugFix:
             temperature=0.0,
             name="TestBot",
             role="assistant",
-            role_description="Test bot"
+            role_description="Test bot",
         )
 
         # Add both working and crashing tools
@@ -48,22 +45,20 @@ class TestCLIToolCrashBugFix:
 
         # Simulate a tool request that will crash
         mock_response = Mock()
-        mock_response.content = [
-            Mock(type="tool_use", id="tool_123", name="crashing_tool", input={"message": "test"})
-        ]
+        mock_response.content = [Mock(type="tool_use", id="tool_123", name="crashing_tool", input={"message": "test"})]
 
         # Extract requests and execute (will create error results)
-        requests = self.bot.tool_handler.extract_requests(mock_response)
-        results = self.bot.tool_handler.exec_requests()
+        _ = self.bot.tool_handler.extract_requests(mock_response)
+        _ = self.bot.tool_handler.exec_requests()
 
-        print(f"After first tool execution:")
+        print("After first tool execution:")
         print(f"  Requests: {len(self.bot.tool_handler.requests)}")
         print(f"  Results: {len(self.bot.tool_handler.results)}")
 
         # Simulate what the fixed CLI does - clear the tool handler
         self.bot.tool_handler.clear()
 
-        print(f"After tool handler clear:")
+        print("After tool handler clear:")
         print(f"  Requests: {len(self.bot.tool_handler.requests)}")
         print(f"  Results: {len(self.bot.tool_handler.results)}")
 
@@ -73,14 +68,12 @@ class TestCLIToolCrashBugFix:
 
         # Try another tool request - should work cleanly
         mock_response2 = Mock()
-        mock_response2.content = [
-            Mock(type="tool_use", id="tool_456", name="working_tool", input={"message": "hello"})
-        ]
+        mock_response2.content = [Mock(type="tool_use", id="tool_456", name="working_tool", input={"message": "hello"})]
 
-        requests2 = self.bot.tool_handler.extract_requests(mock_response2)
-        results2 = self.bot.tool_handler.exec_requests()
+        _ = self.bot.tool_handler.extract_requests(mock_response2)
+        _ = self.bot.tool_handler.exec_requests()
 
-        print(f"After second tool execution:")
+        print("After second tool execution:")
         print(f"  Requests: {len(self.bot.tool_handler.requests)}")
         print(f"  Results: {len(self.bot.tool_handler.results)}")
 
@@ -99,33 +92,29 @@ class TestCLIToolCrashBugFix:
 
         # Simulate the original buggy behavior (no clear)
         mock_response = Mock()
-        mock_response.content = [
-            Mock(type="tool_use", id="tool_123", name="crashing_tool", input={"message": "test"})
-        ]
+        mock_response.content = [Mock(type="tool_use", id="tool_123", name="crashing_tool", input={"message": "test"})]
 
         # First tool execution
-        requests = self.bot.tool_handler.extract_requests(mock_response)
-        results = self.bot.tool_handler.exec_requests()
+        _ = self.bot.tool_handler.extract_requests(mock_response)
+        _ = self.bot.tool_handler.exec_requests()
 
         # DON'T clear (simulating the bug)
         # self.bot.tool_handler.clear()  # This line is commented out to show the bug
 
         # Second tool request
         mock_response2 = Mock()
-        mock_response2.content = [
-            Mock(type="tool_use", id="tool_456", name="working_tool", input={"message": "hello"})
-        ]
+        mock_response2.content = [Mock(type="tool_use", id="tool_456", name="working_tool", input={"message": "hello"})]
 
-        requests2 = self.bot.tool_handler.extract_requests(mock_response2)
-        results2 = self.bot.tool_handler.exec_requests()
+        _ = self.bot.tool_handler.extract_requests(mock_response2)
+        _ = self.bot.tool_handler.exec_requests()
 
-        print(f"Without clear - final state:")
+        print("Without clear - final state:")
         print(f"  Requests: {len(self.bot.tool_handler.requests)}")
         print(f"  Results: {len(self.bot.tool_handler.results)}")
 
         # This demonstrates the bug: results accumulate but requests don't
         assert len(self.bot.tool_handler.requests) == 1  # extract_requests clears old requests
-        assert len(self.bot.tool_handler.results) == 2   # results accumulate (THE BUG!)
+        assert len(self.bot.tool_handler.results) == 2  # results accumulate (THE BUG!)
 
         # Show the tool_use_id mismatch
         print(f"  Request tool_use_id: {self.bot.tool_handler.requests[0]['id']}")

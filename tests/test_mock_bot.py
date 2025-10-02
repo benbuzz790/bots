@@ -4,8 +4,7 @@ Run this to ensure all components are functioning as expected.
 """
 
 import sys
-import os
-import bots
+
 
 def test_mock_bot_basic():
     """Test basic MockBot functionality."""
@@ -31,6 +30,7 @@ def test_mock_bot_basic():
     except Exception as e:
         print(f"✗ Basic MockBot test failed: {e}")
         return False
+
 
 def test_mock_tool_handler():
     """Test MockToolHandler functionality."""
@@ -63,6 +63,7 @@ def test_mock_tool_handler():
         print(f"✗ MockToolHandler test failed: {e}")
         return False
 
+
 def test_mock_mailbox():
     """Test MockMailbox functionality."""
     print("Testing MockMailbox functionality...")
@@ -89,6 +90,7 @@ def test_mock_mailbox():
         print(f"✗ MockMailbox test failed: {e}")
         return False
 
+
 def test_conversation_node():
     """Test MockConversationNode functionality."""
     print("Testing MockConversationNode functionality...")
@@ -99,7 +101,7 @@ def test_conversation_node():
         # Create conversation
         root = MockConversationNode._create_empty()
         user_msg = root._add_reply(content="Hello", role="user")
-        bot_msg = user_msg._add_reply(content="Hi there!", role="assistant")
+        user_msg._add_reply(content="Hi there!", role="assistant")
 
         # Test counting
         user_count = root.count_nodes_with_role("user")
@@ -123,6 +125,7 @@ def test_conversation_node():
         print(f"✗ MockConversationNode test failed: {e}")
         return False
 
+
 def test_utility_functions():
     """Test utility functions."""
     print("Testing utility functions...")
@@ -130,26 +133,21 @@ def test_utility_functions():
     try:
         from bots.testing import (
             MockBot,
-            create_test_conversation, 
-            create_mock_bot_with_tools,
             assert_conversation_flow,
-            assert_tool_called
+            create_mock_bot_with_tools,
+            create_test_conversation,
         )
 
         # Test conversation creation
-        conversation = create_test_conversation([
-            ("user", "Hello"),
-            ("assistant", "Hi there!")
-        ])
+        conversation = create_test_conversation([("user", "Hello"), ("assistant", "Hi there!")])
 
         messages = conversation._build_messages()
         assert len(messages) == 2, f"Expected 2 messages, got {len(messages)}"
 
         # Test bot with tools creation
-        bot = create_mock_bot_with_tools([
-            {"name": "tool1", "response": "result1"},
-            {"name": "tool2", "should_fail": True, "error_message": "Tool failed"}
-        ])
+        bot = create_mock_bot_with_tools(
+            [{"name": "tool1", "response": "result1"}, {"name": "tool2", "should_fail": True, "error_message": "Tool failed"}]
+        )
 
         assert len(bot.tool_handler.tools) == 2, f"Expected 2 tools, got {len(bot.tool_handler.tools)}"
 
@@ -158,10 +156,7 @@ def test_utility_functions():
         test_bot.respond("Hello")
 
         try:
-            assert_conversation_flow(test_bot, [
-                {"role": "user", "content": "Hello"},
-                {"role": "assistant"}
-            ])
+            assert_conversation_flow(test_bot, [{"role": "user", "content": "Hello"}, {"role": "assistant"}])
             print("✓ Conversation flow assertion works!")
         except AssertionError:
             print("✗ Conversation flow assertion failed")
@@ -173,6 +168,7 @@ def test_utility_functions():
     except Exception as e:
         print(f"✗ Utility functions test failed: {e}")
         return False
+
 
 def test_failure_modes():
     """Test failure simulation."""
@@ -200,6 +196,7 @@ def test_failure_modes():
         print(f"✗ Failure mode test failed: {e}")
         return False
 
+
 def run_all_tests():
     """Run all tests and report results."""
     print("=" * 50)
@@ -212,7 +209,7 @@ def run_all_tests():
         test_mock_mailbox,
         test_conversation_node,
         test_utility_functions,
-        test_failure_modes
+        test_failure_modes,
     ]
 
     passed = 0
@@ -239,6 +236,7 @@ def run_all_tests():
     else:
         print("❌ Some tests failed. Check the implementation.")
         return False
+
 
 if __name__ == "__main__":
     success = run_all_tests()

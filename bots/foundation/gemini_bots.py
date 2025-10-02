@@ -49,31 +49,21 @@ class GeminiNode(ConversationNode):
         for n in reversed(stack):
             if n.role == "user":
                 if n.content:
-                    messages.append({
-                        "role": "user",
-                        "parts": [{"text": n.content}]
-                    })
+                    messages.append({"role": "user", "parts": [{"text": n.content}]})
             elif n.role == "assistant":
                 if n.content:
-                    messages.append({
-                        "role": "model",  # Gemini uses "model" instead of "assistant"
-                        "parts": [{"text": n.content}]
-                    })
+                    messages.append(
+                        {"role": "model", "parts": [{"text": n.content}]}  # Gemini uses "model" instead of "assistant"
+                    )
             elif n.role == "function":
                 # Parse the function response and add as structured part
                 try:
                     func_data = json.loads(n.content)
                     # Function responses are sent as user messages with functionResponse parts
-                    messages.append({
-                        "role": "user",
-                        "parts": [func_data]
-                    })
+                    messages.append({"role": "user", "parts": [func_data]})
                 except (json.JSONDecodeError, KeyError):
                     # Fallback to simple text content if parsing fails
-                    messages.append({
-                        "role": "user",
-                        "parts": [{"text": n.content}]
-                    })
+                    messages.append({"role": "user", "parts": [{"text": n.content}]})
         return messages
 
 
@@ -211,10 +201,7 @@ class GeminiMailbox(Mailbox):
                 result = f"Tool {tool_name} not found."
             # Add tool result to conversation in proper functionResponse format
             function_response_data = {
-                "functionResponse": {
-                    "name": tool_name,
-                    "response": result if isinstance(result, dict) else {"result": result}
-                }
+                "functionResponse": {"name": tool_name, "response": result if isinstance(result, dict) else {"result": result}}
             }
             bot.conversation = bot.conversation._add_reply(role="function", content=json.dumps(function_response_data))
         # Recursively send the updated conversation

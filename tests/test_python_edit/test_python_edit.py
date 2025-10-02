@@ -521,7 +521,7 @@ def test_function_added_by_integration_test():
     """This function was added by the integration test."""
     return "integration_test_marker"
 '''.strip(),
-            coscope_with="__FILE_END__"
+            coscope_with="__FILE_END__",
         )
         assert not any(err in result1.lower() for err in ["error:", "failed", "exception"]), f"Edit 1 failed: {result1}"
         # Verify the edit worked and file is still valid Python
@@ -545,7 +545,6 @@ def test_function_added_by_integration_test():
                 import_line_found = True
                 break
         assert import_line_found, "Import was not added at file start"
-
 
         result3 = python_edit(test_file, "# End marker added by integration test", coscope_with="__FILE_END__")
         assert not any(err in result3.lower() for err in ["error:", "failed", "exception"]), f"Edit 3 failed: {result3}"

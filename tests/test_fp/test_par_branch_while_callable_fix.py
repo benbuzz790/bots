@@ -1,11 +1,10 @@
 """Test to replicate and verify the par_branch_while callable pickling issue."""
 
 import pickle
-import os
-from unittest.mock import Mock, patch
+
+from bots.flows.functional_prompts import conditions, par_branch_while
 from bots.foundation.anthropic_bots import AnthropicBot
-from bots.foundation.base import Bot, ConversationNode, Engines
-from bots.flows.functional_prompts import par_branch_while, conditions
+from bots.foundation.base import Engines
 
 
 def test_par_branch_while_with_unpicklable_callback():
@@ -16,15 +15,11 @@ def test_par_branch_while_with_unpicklable_callback():
     """
 
     # Create a real bot (with no API key for testing)
-    bot = AnthropicBot(
-        api_key=None,
-        model_engine=Engines.CLAUDE37_SONNET_20250219,
-        name="TestBot",
-        autosave=False
-    )
+    bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE37_SONNET_20250219, name="TestBot", autosave=False)
 
     # Create an unpicklable callback (like CLI creates)
     callback_calls = []
+
     def unpicklable_callback(responses, nodes):
         # This closure captures local state, making it unpicklable
         callback_calls.append(len(responses))
@@ -46,11 +41,7 @@ def test_par_branch_while_with_unpicklable_callback():
 
     try:
         responses, nodes = par_branch_while(
-            bot,
-            prompts,
-            stop_condition=stop_after_one,
-            continue_prompt="ok",
-            callback=unpicklable_callback
+            bot, prompts, stop_condition=stop_after_one, continue_prompt="ok", callback=unpicklable_callback
         )
 
         print(f"✓ SUCCESS: par_branch_while completed with {len(responses)} responses")
@@ -62,7 +53,7 @@ def test_par_branch_while_with_unpicklable_callback():
         assert len(responses) == 3, f"Expected 3 responses, got {len(responses)}"
         assert all(r is not None for r in responses), f"Some responses are None: {responses}"
         assert len(nodes) == 3, f"Expected 3 nodes, got {len(nodes)}"
-        assert all(n is not None for n in nodes), f"Some nodes are None"
+        assert all(n is not None for n in nodes), "Some nodes are None"
         assert len(callback_calls) > 0, "Callback was never called"
 
         print("✓ All assertions passed")
@@ -71,6 +62,7 @@ def test_par_branch_while_with_unpicklable_callback():
     except Exception as e:
         print(f"✗ FAILED: {type(e).__name__}: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -78,26 +70,17 @@ def test_par_branch_while_with_unpicklable_callback():
 def test_par_branch_while_with_picklable_condition():
     """Test that par_branch_while works with standard picklable conditions."""
 
-    bot = AnthropicBot(
-        api_key=None,
-        model_engine=Engines.CLAUDE37_SONNET_20250219,
-        name="TestBot",
-        autosave=False
-    )
+    bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE37_SONNET_20250219, name="TestBot", autosave=False)
 
     # Use a standard condition from fp.conditions (these are picklable)
     prompts = ["Task 1", "Task 2"]
 
     try:
         responses, nodes = par_branch_while(
-            bot,
-            prompts,
-            stop_condition=conditions.tool_not_used,
-            continue_prompt="ok",
-            callback=None  # No callback
+            bot, prompts, stop_condition=conditions.tool_not_used, continue_prompt="ok", callback=None  # No callback
         )
 
-        print(f"✓ SUCCESS: Standard condition test completed")
+        print("✓ SUCCESS: Standard condition test completed")
         print(f"  Responses: {[r[:50] if r else None for r in responses]}")
         assert len(responses) == 2
         assert all(r is not None for r in responses), f"Some responses are None: {responses}"
@@ -107,6 +90,7 @@ def test_par_branch_while_with_picklable_condition():
     except Exception as e:
         print(f"✗ FAILED: {type(e).__name__}: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -114,12 +98,7 @@ def test_par_branch_while_with_picklable_condition():
 def test_callback_is_called_after_threads():
     """Test that callbacks are called after thread execution, not during."""
 
-    bot = AnthropicBot(
-        api_key=None,
-        model_engine=Engines.CLAUDE37_SONNET_20250219,
-        name="TestBot",
-        autosave=False
-    )
+    bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE37_SONNET_20250219, name="TestBot", autosave=False)
 
     callback_calls = []
     callback_responses = []
@@ -136,11 +115,7 @@ def test_callback_is_called_after_threads():
 
     try:
         responses, nodes = par_branch_while(
-            bot,
-            prompts,
-            stop_condition=stop_immediately,
-            continue_prompt="ok",
-            callback=tracking_callback
+            bot, prompts, stop_condition=stop_immediately, continue_prompt="ok", callback=tracking_callback
         )
 
         print(f"✓ Callback was called {len(callback_calls)} times")
@@ -155,6 +130,7 @@ def test_callback_is_called_after_threads():
     except Exception as e:
         print(f"✗ FAILED: {type(e).__name__}: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 

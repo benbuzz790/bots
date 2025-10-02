@@ -149,30 +149,26 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         original_node = bot.conversation
         original_autosave = bot.autosave
         bot.autosave = False
-        
+
         # Create a modified conversation node with dummy tool results
         # This prevents 'tool_use without tool_result' errors in branches
-        modified_conversation = original_node
         if original_node.tool_calls:
             dummy_results = []
             for tool_call in original_node.tool_calls:
-                if tool_call.get('name') == 'branch_self':
-                    dummy_result = {
-                        'tool_use_id': tool_call['id'],
-                        'content': 'Branching in progress...'
-                    }
+                if tool_call.get("name") == "branch_self":
+                    dummy_result = {"tool_use_id": tool_call["id"], "content": "Branching in progress..."}
                     dummy_results.append(dummy_result)
-            
+
             if dummy_results:
                 # Temporarily add dummy results for saving
-                original_results = getattr(original_node, 'tool_results', [])
+                original_results = getattr(original_node, "tool_results", [])
                 original_node._add_tool_results(dummy_results)
-                
+
                 # Save bot state with dummy results
                 temp_id = str(uuid.uuid4())[:8]
                 temp_file = f"branch_self_{temp_id}.bot"
                 bot.save(temp_file)
-                
+
                 # Restore original results (remove dummy results from current bot)
                 original_node.tool_results = original_results
             else:
@@ -193,9 +189,9 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                 branch_bot = Bot.load(temp_file)
                 branch_bot.autosave = False
                 branching_node = branch_bot.conversation
-                
+
                 # Ensure clean tool handler state for branch
-                if hasattr(branch_bot, 'tool_handler') and branch_bot.tool_handler:
+                if hasattr(branch_bot, "tool_handler") and branch_bot.tool_handler:
                     branch_bot.tool_handler.clear()
 
                 if allow_work:

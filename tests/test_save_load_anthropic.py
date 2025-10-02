@@ -849,8 +849,10 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.bot.add_tools(debug_tool)
 
         # Test that tools work normally first
-        normal_response = self.bot.respond("Use debug_tool with test_input 'normal_test'")
-        # self.assertIn("TOOL_RESULT_FOR_NORMAL_TEST", normal_response, "Tool results should appear in normal responses")  # Tool result integration may vary
+        # normal_response = self.bot.respond("Use debug_tool with test_input 'normal_test'")
+        # self.assertIn("TOOL_RESULT_FOR_NORMAL_TEST", normal_response,
+        #                "Tool results should appear in normal responses")
+        # Tool result integration may vary
 
         # Clear the execution log
         execution_log.clear()
@@ -1348,12 +1350,10 @@ class TestDebugImports(unittest.TestCase):
                 value = module_context.namespace.__dict__[key]
                 print(f"  {key}: {type(value)}")
 
-
-
     def test_mockbot_tool_registration_and_basic_functionality(self) -> None:
         """Test that MockBot can register tools and basic functionality works."""
-        from bots.testing.mock_bot import MockBot
         import bots.tools.self_tools as self_tools
+        from bots.testing.mock_bot import MockBot
 
         # Create a MockBot
         mock_bot = MockBot()
@@ -1373,11 +1373,13 @@ class TestDebugImports(unittest.TestCase):
         self.assertIn("tool functionality", response)
 
         # Test tool request simulation
-        mock_bot.tool_handler.add_request({
-            "name": "branch_self",
-            "id": "test_call",
-            "parameters": {"self_prompts": "['test prompt']", "allow_work": "False"}
-        })
+        mock_bot.tool_handler.add_request(
+            {
+                "name": "branch_self",
+                "id": "test_call",
+                "parameters": {"self_prompts": "['test prompt']", "allow_work": "False"},
+            }
+        )
 
         # Execute requests (this will return mock responses)
         results = mock_bot.tool_handler.exec_requests()
@@ -1390,24 +1392,28 @@ class TestDebugImports(unittest.TestCase):
 
     def test_mockbot_multiple_tool_simulation(self) -> None:
         """Test MockBot with multiple tool calls to simulate branch execution."""
-        from bots.testing.mock_bot import MockBot
         import bots.tools.self_tools as self_tools
+        from bots.testing.mock_bot import MockBot
 
         # Create a MockBot
         mock_bot = MockBot()
         mock_bot.add_tools(self_tools)
 
         # Simulate multiple tool calls (like what would happen in branches)
-        mock_bot.tool_handler.add_request({
-            "name": "branch_self",
-            "id": "branch_call_1",
-            "parameters": {"self_prompts": "['branch task 1']", "allow_work": "True"}
-        })
-        mock_bot.tool_handler.add_request({
-            "name": "branch_self",
-            "id": "branch_call_2",
-            "parameters": {"self_prompts": "['branch task 2']", "allow_work": "True"}
-        })
+        mock_bot.tool_handler.add_request(
+            {
+                "name": "branch_self",
+                "id": "branch_call_1",
+                "parameters": {"self_prompts": "['branch task 1']", "allow_work": "True"},
+            }
+        )
+        mock_bot.tool_handler.add_request(
+            {
+                "name": "branch_self",
+                "id": "branch_call_2",
+                "parameters": {"self_prompts": "['branch task 2']", "allow_work": "True"},
+            }
+        )
 
         # Execute all requests
         results = mock_bot.tool_handler.exec_requests()
@@ -1424,6 +1430,7 @@ class TestDebugImports(unittest.TestCase):
         print("SUCCESS: MockBot properly handles multiple tool calls")
         print(f"Tool results: {len(results)} results generated")
         print(f"Call history: {len(call_history)} calls recorded")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -765,9 +765,10 @@ def toolify(description: str = None):
                 # Convert KeyboardInterrupt to ToolExecutionError to prevent it from
                 # bubbling up to CLI and being treated as user Ctrl+C
                 from bots.utils.helpers import _process_error
+
                 tool_error = ToolExecutionError(f"Tool execution interrupted: {str(e)}")
                 return _process_error(tool_error)
-            
+
             except TypeError as e:
                 # Check if this is a missing required argument error
                 error_msg = str(e)
