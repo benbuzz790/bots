@@ -1024,23 +1024,34 @@ def par_branch(
             branch_bot.autosave = False
             response = branch_bot.respond(prompt)
             new_node = branch_bot.conversation
-            new_node.parent.parent = original_conversation
-            original_conversation.replies.append(new_node.parent)
-            if callback:
-                try:
-                    callback([response], [new_node])
-                except Exception:
-                    pass  # Don't let callback errors break the main function
-            return index, response, new_node.parent
+            # Don't modify original_conversation here - do it after threads complete
+            # Just return the node so we can link it properly later
+            return index, response, new_node
         except Exception:
             return index, None, None
 
     with ThreadPoolExecutor() as executor:
         futures = [executor.submit(process_prompt, i, prompt) for i, prompt in enumerate(prompts)]
         for future in as_completed(futures):
-            idx, response, node = future.result()
-            responses[idx] = response
-            nodes[idx] = node
+            idx, response, new_node = future.result()
+
+            if new_node is not None:
+                # Link the node to the original conversation after thread completes
+                new_node.parent.parent = original_conversation
+                original_conversation.replies.append(new_node.parent)
+
+                responses[idx] = response
+                nodes[idx] = new_node.parent
+
+                # Call callback after thread completes if provided
+                if callback:
+                    try:
+                        callback([response], [new_node])
+                    except Exception:
+                        pass  # Don't let callback errors break the main function
+            else:
+                responses[idx] = None
+                nodes[idx] = None
 
     bot.autosave = original_autosave
     try:
@@ -1134,42 +1145,74 @@ def par_branch_while(
     responses = [None] * len(prompt_list)
     nodes = [None] * len(prompt_list)
 
-    def process_branch(index: int, initial_prompt: str) -> Tuple[int, Response, ResponseNode]:
+    def process_branch(
+        index: int, 
+        initial_prompt: str, 
+        temp_file: str,
+        stop_condition: Condition,
+        continue_prompt: str,
+        use_callback: bool
+    ) -> Tuple[int, Response, ResponseNode]:
         try:
             branch_bot = Bot.load(temp_file)
             branch_bot.autosave = False
             first_response = branch_bot.respond(initial_prompt)
             first_response_node = branch_bot.conversation
             response = first_response
-            if callback:
-                try:
-                    callback([response], [branch_bot.conversation])
-                except Exception:
-                    pass  # Don't let callback errors break the main function
+
+            # Note: callback is not used in parallel execution to avoid pickling issues
+            # Callbacks should be handled after parallel execution completes
 
             while not stop_condition(branch_bot):
                 response = branch_bot.respond(continue_prompt)
-                if callback:
-                    try:
-                        callback([response], [branch_bot.conversation])
-                    except Exception:
-                        pass  # Don't let callback errors break the main function
+
             # Return the final node after all iterations, not the first node
             final_node = branch_bot.conversation
-            # Link the *first* node back to the original conversation
-            first_response_node.parent.parent = original_conversation
-            # And link the original conversation to the initial prompt node
-            original_conversation.replies.append(first_response_node.parent)
-            return index, response, final_node.parent
-        except Exception:
-            return index, None, None
+
+            # Return the first response node so we can link it properly later
+            return index, response, first_response_node, final_node
+        except Exception as e:
+            return index, None, None, None
 
     with ThreadPoolExecutor() as executor:
-        futures = [executor.submit(process_branch, i, prompt) for i, prompt in enumerate(prompt_list)]
+        # Submit all tasks with explicit parameters instead of closure
+        futures = [
+            executor.submit(
+                process_branch, 
+                i, 
+                prompt, 
+                temp_file,
+                stop_condition,
+                continue_prompt,
+                callback is not None
+            ) 
+            for i, prompt in enumerate(prompt_list)
+        ]
+
         for future in as_completed(futures):
-            idx, response, node = future.result()
-            responses[idx] = response
-            nodes[idx] = node
+            result = future.result()
+            if len(result) == 4:
+                idx, response, first_response_node, final_node = result
+
+                if first_response_node is not None and final_node is not None:
+                    # Link the first node back to the original conversation
+                    first_response_node.parent.parent = original_conversation
+                    # And link the original conversation to the initial prompt node
+                    original_conversation.replies.append(first_response_node.parent)
+
+                    # Store the final response and the parent of the final node
+                    responses[idx] = response
+                    nodes[idx] = final_node.parent
+
+                    # Call callback after thread completes if provided
+                    if callback:
+                        try:
+                            callback([response], [final_node.parent])
+                        except Exception:
+                            pass  # Don't let callback errors break the main function
+                else:
+                    responses[idx] = None
+                    nodes[idx] = None
 
     bot.autosave = original_autosave
     try:
