@@ -14,22 +14,7 @@ chat:
   auto_reply: true  # Automatically respond to questions
 
 # Customize review focus based on project principles
-tone_instructions: |
-  Focus on:
-  - Code quality and maintainability
-  - Potential bugs and edge cases
-  - Security vulnerabilities
-  - Performance issues
-  - Test coverage and test quality
-  - Documentation completeness and clarity
-
-  Follow project principles:
-  - YAGNI (You Aren't Gonna Need It) - avoid over-engineering
-  - KISS (Keep It Simple, Stupid) - prefer simple solutions
-  - Defensive programming (NASA methodology) - handle errors gracefully
-  - Small, incremental changes - prefer focused PRs over large refactors
-
-  Be constructive and helpful. Suggest improvements rather than just pointing out problems.
+tone_instructions: "Focus on code quality, bugs, security, performance, tests, and docs. Follow YAGNI, KISS, and defensive programming principles. Prefer small, incremental changes. Be constructive and helpful."
 
 # File patterns to review
 path_filters:

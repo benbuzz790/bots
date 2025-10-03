@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -73,7 +76,7 @@ jobs:
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
-        if: always()
+        if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
         with:
           name: coverage-report
           path: coverage.xml
