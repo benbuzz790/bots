@@ -189,7 +189,7 @@ jobs:
       - name: Download actionlint
         run: |
           Invoke-WebRequest -Uri "https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_windows_amd64.zip" -OutFile "actionlint.zip"
-          Expand-Archive -Path "actionlint.zip" -DestinationPath "."
+          Expand-Archive -Path "actionlint.zip" -DestinationPath "./actionlint"
       - name: Run actionlint
         run: |
-          .\actionlint.exe .github/workflows/*.yml
+          .\\actionlint\\actionlint.exe .github/workflows/*.yml
