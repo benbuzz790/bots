@@ -981,28 +981,29 @@ class TestSaveLoadAnthropic(unittest.TestCase):
 
     def test_branch_self_tool_execution_vs_response_integration(self) -> None:
         """
-    Test that branch_self tool execution properly integrates with bot responses.
-    This test verifies that when branch_self is called as a tool, the results
-    are properly captured and returned in the bot's response.
-    """
+        Test that branch_self tool execution properly integrates with bot responses.
+        This test verifies that when branch_self is called as a tool, the results
+        are properly captured and returned in the bot's response.
+        """
+
         # Add test_calculation tool
         def test_calculation(x: str, y: str) -> str:
             """Simple calculation tool for testing.
 
-        Parameters:
-        - x (str): First number
-        - y (str): Second number
+            Parameters:
+            - x (str): First number
+            - y (str): Second number
 
-        Returns:
-        str: Sum of x and y
-        """
+            Returns:
+            str: Sum of x and y
+            """
             return f"Result: {int(x) + int(y)}"
 
         self.bot.add_tools(test_calculation)
 
         # Test 2: Branch execution with tools - simplified prompt
         branch_response = self.bot.respond(
-            'Call the branch_self tool with '
+            "Call the branch_self tool with "
             'self_prompts=["Use test_calculation with x=3 and y=4", '
             '"Use test_calculation with x=8 and y=2"] '
             'and recombine="concatenate"'
