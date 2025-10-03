@@ -69,7 +69,16 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             and will be cleaned up in tearDown().
         """
         self.temp_dir = tempfile.mkdtemp()
-        self.bot = AnthropicBot(name="TestClaude", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        self.bot = AnthropicBot(
+            name="TestClaude",
+            model_engine=Engines.CLAUDE37_SONNET_20250219,
+            max_tokens=1000,
+            temperature=0,
+        )
+        self.bot.system_message = (
+            "You are in a test environment. When asked to use tools, use them immediately "
+            "without asking for clarification or reflecting on the request. Execute tool calls directly."
+        )
         return self
 
     def tearDown(self) -> None:

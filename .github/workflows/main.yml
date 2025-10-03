@@ -29,6 +29,7 @@ jobs:
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GH_TOKEN: ${{ github.token }}
       # Additional UTF-8 encoding for job-level
       PYTHONIOENCODING: utf-8
@@ -78,6 +79,7 @@ jobs:
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GH_TOKEN: ${{ github.token }}
       # UTF-8 encoding for integration tests
       PYTHONIOENCODING: utf-8
