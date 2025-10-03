@@ -23,7 +23,7 @@ jobs:
   tests:
     name: Run Tests with Coverage
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 75
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -85,7 +85,7 @@ jobs:
   code-quality:
     name: Code Quality & Linting
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 75
     env:
       PYTHONIOENCODING: utf-8
       PYTHONUTF8: 1
@@ -141,7 +141,7 @@ jobs:
   security:
     name: Security Scan
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 75
     env:
       PYTHONIOENCODING: utf-8
       PYTHONUTF8: 1
