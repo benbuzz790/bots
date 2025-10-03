@@ -1644,9 +1644,9 @@ class ToolHandler(ABC):
                             {
                                 "name": var_name,
                                 "type": type(value).__name__,
-                                "repr": repr(value)
-                                if isinstance(value, (int, float, str, bool))
-                                else f"<{type(value).__name__}>",
+                                "repr": (
+                                    repr(value) if isinstance(value, (int, float, str, bool)) else f"<{type(value).__name__}>"
+                                ),
                             }
                         )
                     except ValueError:

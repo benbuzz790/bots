@@ -146,9 +146,11 @@ class MockToolHandler(ToolHandler):
             "parameters": {
                 "type": "object",
                 "properties": params,
-                "required": [name for name, param in sig.parameters.items() if param.default == inspect.Parameter.empty]
-                if "sig" in locals()
-                else [],
+                "required": (
+                    [name for name, param in sig.parameters.items() if param.default == inspect.Parameter.empty]
+                    if "sig" in locals()
+                    else []
+                ),
             },
         }
 

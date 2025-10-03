@@ -2,6 +2,7 @@
 Debug test file to isolate CLI wizard test issues.
 Building up complexity step by step.
 """
+
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
