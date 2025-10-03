@@ -979,7 +979,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             if branch_has_results:
                 print("Unexpected: Tool results appeared in branch responses - bug might be fixed!")
 
-    def test_branch_self_tool_execution_vs_response_integration(self):
+    def test_branch_self_tool_execution_vs_response_integration(self) -> None:
         """
     Test that branch_self tool execution properly integrates with bot responses.
     This test verifies that when branch_self is called as a tool, the results
@@ -1025,7 +1025,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         )
 
         print("SUCCESS: branch_self tool properly integrates with bot responses")
-        print(f"Response includes both calculation results")
+        print("Response includes both calculation results")
 
 
 class TestDebugImports(unittest.TestCase):
