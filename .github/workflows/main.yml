@@ -188,7 +188,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Download actionlint
         run: |
-          Invoke-WebRequest -Uri "https://github.com/rhymond/actionlint/releases/latest/download/actionlint_windows_amd64.zip" -OutFile "actionlint.zip"
+          Invoke-WebRequest -Uri "https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_windows_amd64.zip" -OutFile "actionlint.zip"
           Expand-Archive -Path "actionlint.zip" -DestinationPath "."
       - name: Run actionlint
         run: |
