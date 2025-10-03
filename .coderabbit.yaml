@@ -1,0 +1,45 @@
+# CodeRabbit Configuration
+# AI-powered code review for pull requests
+
+language: "en-US"
+
+reviews:
+  profile: "chill"  # Balanced review style - not too strict
+  request_changes_workflow: false  # Suggest improvements, don't block PRs
+  high_level_summary: true  # Provide summary of changes
+  poem: false  # Skip the fun poems
+  review_status: true  # Post review status
+
+chat:
+  auto_reply: true  # Automatically respond to questions
+
+# Customize review focus based on project principles
+tone_instructions: |
+  Focus on:
+  - Code quality and maintainability
+  - Potential bugs and edge cases
+  - Security vulnerabilities
+  - Performance issues
+  - Test coverage and test quality
+  - Documentation completeness and clarity
+
+  Follow project principles:
+  - YAGNI (You Aren't Gonna Need It) - avoid over-engineering
+  - KISS (Keep It Simple, Stupid) - prefer simple solutions
+  - Defensive programming (NASA methodology) - handle errors gracefully
+  - Small, incremental changes - prefer focused PRs over large refactors
+
+  Be constructive and helpful. Suggest improvements rather than just pointing out problems.
+
+# File patterns to review
+path_filters:
+  - "!**/*.md"  # Skip markdown files (documentation)
+  - "!**/CHANGELOG.md"
+  - "!**/README.md"
+
+# Auto-review settings
+auto_review:
+  enabled: true  # Automatically review PRs
+  drafts: false  # Don't review draft PRs
+  base_branches:
+    - main  # Only review PRs targeting main branch
