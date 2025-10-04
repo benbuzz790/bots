@@ -798,9 +798,10 @@ Instead of manually implementing each provider, use LiteLLM to get instant suppo
 **Priority**: Medium
 
 ### 24. Test Parallelism
-**Goal**: Fix test parallelism issues (mainly in terminal_tools)
-**Priority**: High
-**Current State**: Some tests are marked to be run serially which works for now but makes test time very long.
+            **Goal**: Fix test parallelism issues (mainly in terminal_tools)
+            **Priority**: High
+            **Status**: ? COMPLETED (test-efficiency branch)
+            **Completed**: Fixed PowerShell test files to use unique temp directories per test. Removed serial execution marker. Updated pr-checks.yml to use -n 12 for parallel execution. Tests now run in parallel without file conflicts.
 
 ### 25. Uniform Tempfile Handling
 **Goal**: Consistent tempfile handling in tests
