@@ -1,11 +1,4 @@
-=== CodeRabbit Prompt #1 ===
-.coderabbit.yaml lines 17-33: the tone_instructions block exceeds the
-250-character limit and will cause parsing to fail; shorten and condense the
-guidance to under 250 characters by keeping only the most essential directives
-(e.g., "Focus on code quality, security, performance, tests, docs; prefer KISS
-and YAGNI; use defensive programming; suggest incremental PRs"), replace the
-long list with that single concise sentence, and ensure the resulting string
-length is <=250 characters so the config parses.
+
 
 === CodeRabbit Prompt #2 ===
 In .github/workflows/pr-checks.yml around lines 64 to 80, the job gates tests

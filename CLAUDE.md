@@ -28,12 +28,14 @@ Get the full logs from a specific workflow run:
 gh run view <RUN_ID> --log
 ```
 **Tip:** Get the RUN_ID from the URL in gh pr checks output.
+
 ---
 ### 3. View Only Failed Logs
 Get just the failed job logs:
 ```powershell
 gh run view <RUN_ID> --log-failed
 ```
+
 ---
 ### 4. Search Logs for Specific Patterns
 Filter logs to find specific errors or patterns:
@@ -48,12 +50,14 @@ gh run view 18234577748 --log | Select-String -Pattern "would reformat" -Context
 ```powershell
 gh run view 18234577748 --log-failed | Select-String -Pattern "FAILED|AssertionError" -Context 0,2
 ```
+
 ---
 ### 5. View PR Comments (including CodeRabbit)
 View all comments on a PR:
 ```powershell
 gh pr view <PR_NUMBER> --comments
 ```
+
 ---
 ## Common Patterns
 ### Check if PR is ready to merge
@@ -72,6 +76,7 @@ gh run view <RUN_ID> --log | Select-String -Pattern "would reformat" -Context 2,
 ```powershell
 gh run view <RUN_ID> --log | Select-String -Pattern "E[0-9]{3}|F[0-9]{3}" -Context 0,1
 ```
+
 ---
 
 ### 6. Extract CodeRabbit AI Prompts
