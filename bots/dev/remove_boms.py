@@ -4,6 +4,7 @@ import os
 
 def remove_bom_from_files():
     nboms = 0
+    files_processed = 0
 
     def remove_bom(file_path):
         nonlocal nboms  # Modify the outer variable
@@ -12,10 +13,7 @@ def remove_bom_from_files():
         if content.startswith(codecs.BOM_UTF8):
             with open(file_path, "wb") as file:
                 file.write(content[len(codecs.BOM_UTF8) :])
-            print(f"Removed BOM from: {file_path}")
             nboms += 1
-        else:
-            print(f"No BOM found in: {file_path}")
 
     def is_hidden(path):
         # Check if directory or file is hidden
@@ -31,9 +29,13 @@ def remove_bom_from_files():
             file_path = os.path.join(root, file)
             try:
                 remove_bom(file_path)
+                files_processed += 1
             except Exception as e:
-                print(f"Error processing {file_path}: {str(e)}")
-    print(f"BOM removal process completed. {nboms} BOMs removed")
+                pass  # Silently skip files that can't be processed
+
+    print(f"\nBOM Removal Summary:")
+    print(f"  Files processed: {files_processed}")
+    print(f"  BOMs removed: {nboms}")
 
 
 if __name__ == "__main__":
