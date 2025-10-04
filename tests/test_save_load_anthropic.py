@@ -1040,7 +1040,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             f"Expected to find at least one calculation result in response: {final_response}",
         )
 
-        print(f"SUCCESS: Tool execution integrated with bot responses")
+        print("SUCCESS: Tool execution integrated with bot responses")
         print(f"First result (7) found: {has_first_result}, Second result (10) found: {has_second_result}")
 
 
