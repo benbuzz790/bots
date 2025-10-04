@@ -14,7 +14,6 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up test environment"""
-        cls.temp_dir = tempfile.mkdtemp()
         cls.original_cwd = os.getcwd()
 
     @classmethod
@@ -22,26 +21,23 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
         """Clean up test environment"""
         try:
             os.chdir(cls.original_cwd)
-            if os.path.exists(cls.temp_dir):
-                shutil.rmtree(cls.temp_dir)
         except Exception as e:
-            print(f"Warning: Could not clean up temp directory: {e}")
+            print(f"Warning: Could not restore working directory: {e}")
 
     def setUp(self):
-        """Set up each test"""
+        """Set up each test with unique temp directory"""
+        self.temp_dir = tempfile.mkdtemp()
+        self.test_original_cwd = os.getcwd()
         os.chdir(self.temp_dir)
 
     def tearDown(self):
         """Clean up after each test"""
-        # Clean up any test files
-        for pattern in ["*.txt", "*.py", "*.log"]:
-            import glob
-
-            for file in glob.glob(pattern):
-                try:
-                    os.unlink(file)
-                except Exception:
-                    pass
+        try:
+            os.chdir(self.test_original_cwd)
+            if os.path.exists(self.temp_dir):
+                shutil.rmtree(self.temp_dir)
+        except Exception as e:
+            print(f"Warning: Could not clean up temp directory: {e}")
 
     def test_exact_problematic_command(self):
         """Test the EXACT command that's failing in production"""

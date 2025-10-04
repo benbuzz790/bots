@@ -14,7 +14,6 @@ class TestPowerShellProductionEdgeCases(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up test environment"""
-        cls.temp_dir = tempfile.mkdtemp()
         cls.original_cwd = os.getcwd()
 
     @classmethod
@@ -22,21 +21,31 @@ class TestPowerShellProductionEdgeCases(unittest.TestCase):
         """Clean up test environment"""
         try:
             os.chdir(cls.original_cwd)
-            if os.path.exists(cls.temp_dir):
-                shutil.rmtree(cls.temp_dir)
         except Exception as e:
-            print(f"Warning: Could not clean up temp directory: {e}")
+            print(f"Warning: Could not restore directory: {e}")
 
     def setUp(self):
-        """Set up each test"""
+        """Set up each test with unique temp directory"""
+        # Create unique temp directory per test for parallel execution safety
+        self.temp_dir = tempfile.mkdtemp(prefix=f"test_{self._testMethodName}_")
+        self.original_test_cwd = os.getcwd()
         os.chdir(self.temp_dir)
+
+    def tearDown(self):
+        """Clean up after each test"""
+        try:
+            os.chdir(self.original_test_cwd)
+            if os.path.exists(self.temp_dir):
+                shutil.rmtree(self.temp_dir)
+        except Exception as e:
+            print(f"Warning: Could not clean up temp directory: {e}")
 
     def test_stateful_session_reuse_with_here_strings(self):
         """Test here-strings in a reused stateful session (production pattern)"""
         print("\n=== Testing Stateful Session Reuse ===")
 
         # This mimics how the bot might reuse sessions
-        manager = PowerShellManager.get_instance("test_bot")
+        manager = PowerShellManager.get_instance(f"test_bot_{self._testMethodName}")
 
         try:
             # First command - simple
