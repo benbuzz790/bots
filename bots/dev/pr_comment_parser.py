@@ -21,7 +21,7 @@ def get_pr_comments(pr_number: int, repo: str) -> List[Dict]:
         List[Dict]: List of comment dictionaries
     """
     cmd = ["gh", "pr", "view", str(pr_number), "--repo", repo, "--json", "comments"]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=True)
     data = json.loads(result.stdout)
     return data.get("comments", [])
 
@@ -38,7 +38,7 @@ def get_pr_review_comments(pr_number: int, repo: str) -> List[Dict]:
     """
     # Get review comments (inline comments on code)
     cmd = ["gh", "api", f"/repos/{repo}/pulls/{pr_number}/comments"]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=True)
     return json.loads(result.stdout)
 
 
