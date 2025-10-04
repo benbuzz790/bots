@@ -6,8 +6,8 @@ with special handling for CodeRabbit AI review comments.
 
 import json
 import re
+from typing import List, Dict, Optional
 import subprocess
-from typing import Dict, List, Optional
 
 
 def get_pr_comments(pr_number: int, repo: str = "benbuzz790/bots") -> List[Dict]:
@@ -24,6 +24,22 @@ def get_pr_comments(pr_number: int, repo: str = "benbuzz790/bots") -> List[Dict]
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
     data = json.loads(result.stdout)
     return data.get("comments", [])
+
+
+def get_pr_review_comments(pr_number: int, repo: str = "benbuzz790/bots") -> List[Dict]:
+    """Fetch all review comments (inline comments) from a GitHub PR using gh CLI.
+
+    Parameters:
+        pr_number (int): The PR number
+        repo (str): Repository in format "owner/repo"
+
+    Returns:
+        List[Dict]: List of review comment dictionaries
+    """
+    # Get review comments (inline comments on code)
+    cmd = ["gh", "api", f"/repos/{repo}/pulls/{pr_number}/comments"]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    return json.loads(result.stdout)
 
 
 def extract_coderabbit_prompts(comment_body: str) -> Optional[str]:
@@ -75,6 +91,7 @@ def parse_pr_comments(
     output_file: Optional[str] = None,
     filter_coderabbit: bool = True,
     exclude_outdated: bool = True,
+    include_review_comments: bool = True,
 ) -> List[Dict]:
     """Parse PR comments and optionally save to file.
 
@@ -84,11 +101,22 @@ def parse_pr_comments(
         output_file (Optional[str]): Path to save all comments (JSON format)
         filter_coderabbit (bool): If True, only return CodeRabbit prompts
         exclude_outdated (bool): If True, exclude outdated comments
+        include_review_comments (bool): If True, also fetch inline review comments
 
     Returns:
         List[Dict]: Parsed comments with extracted information
     """
+    # Get regular comments
     comments = get_pr_comments(pr_number, repo)
+
+    # Also get review comments (inline comments)
+    if include_review_comments:
+        review_comments = get_pr_review_comments(pr_number, repo)
+        # Normalize review comment format to match regular comments
+        for rc in review_comments:
+            rc["author"] = {"login": rc.get("user", {}).get("login", "unknown")}
+            rc["createdAt"] = rc.get("created_at")
+        comments.extend(review_comments)
 
     # Save all comments if requested
     if output_file:
@@ -120,8 +148,8 @@ def parse_pr_comments(
                     "author": author,
                     "body": body,
                     "ai_prompt": ai_prompt,
-                    "created_at": comment.get("createdAt"),
-                    "url": comment.get("url"),
+                    "created_at": comment.get("createdAt") or comment.get("created_at"),
+                    "url": comment.get("url") or comment.get("html_url"),
                     "is_coderabbit": is_coderabbit,
                 }
             )
@@ -129,26 +157,35 @@ def parse_pr_comments(
     return parsed_comments
 
 
-def save_coderabbit_prompts(pr_number: int, output_file: str, repo: str = "benbuzz790/bots") -> int:
+def save_coderabbit_prompts(pr_number: int, output_file: Optional[str] = None, repo: str = "benbuzz790/bots") -> int:
     """Extract and save all CodeRabbit AI prompts from a PR.
 
     Parameters:
         pr_number (int): The PR number
-        output_file (str): Path to save prompts (text format)
+        output_file (Optional[str]): Path to save prompts (text format). If None, prints to stdout.
         repo (str): Repository in format "owner/repo"
 
     Returns:
         int: Number of prompts saved
     """
-    parsed = parse_pr_comments(pr_number, repo=repo, filter_coderabbit=True, exclude_outdated=True)
+    parsed = parse_pr_comments(
+        pr_number, repo=repo, filter_coderabbit=True, exclude_outdated=True, include_review_comments=True
+    )
 
     prompts = [c["ai_prompt"] for c in parsed if c["ai_prompt"]]
 
-    with open(output_file, "w", encoding="utf-8") as f:
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            for i, prompt in enumerate(prompts, 1):
+                f.write(f"=== CodeRabbit Prompt #{i} ===\n")
+                f.write(prompt)
+                f.write("\n\n")
+    else:
+        # Print to stdout
         for i, prompt in enumerate(prompts, 1):
-            f.write(f"=== CodeRabbit Prompt #{i} ===\n")
-            f.write(prompt)
-            f.write("\n\n")
+            print(f"=== CodeRabbit Prompt #{i} ===")
+            print(prompt)
+            print()
 
     return len(prompts)
 
@@ -158,10 +195,12 @@ if __name__ == "__main__":
 
     if len(sys.argv) < 2:
         print("Usage: python pr_comment_parser.py <pr_number> [output_file]")
+        print("  If output_file is omitted, prompts are printed to stdout")
         sys.exit(1)
-
     pr_num = int(sys.argv[1])
-    output = sys.argv[2] if len(sys.argv) > 2 else f"pr_{pr_num}_coderabbit_prompts.txt"
-
+    output = sys.argv[2] if len(sys.argv) > 2 else None
     count = save_coderabbit_prompts(pr_num, output)
-    print(f"Extracted {count} CodeRabbit prompts to {output}")
+    if output:
+        print(f"Extracted {count} CodeRabbit prompts to {output}")
+    else:
+        print(f"\n--- Extracted {count} CodeRabbit prompts ---", file=sys.stderr)
