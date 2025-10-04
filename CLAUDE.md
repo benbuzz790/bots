@@ -57,3 +57,16 @@ gh run view <RUN_ID> --log | Select-String -Pattern "would reformat" -Context 2,
 gh run view <RUN_ID> --log | Select-String -Pattern "E[0-9]{3}|F[0-9]{3}" -Context 0,1
 ```
 ---
+
+### 6. Extract CodeRabbit AI Prompts
+Extract actionable AI prompts from CodeRabbit review comments:
+```powershell
+python -m bots.dev.pr_comment_parser <PR_NUMBER>
+```
+**Save to file:**
+```powershell
+python -m bots.dev.pr_comment_parser <PR_NUMBER> output.txt
+```
+This tool extracts the "🤖 Prompt for AI Agents" sections from CodeRabbit comments, filtering out outdated comments and including both regular and inline review comments.
+
+---
