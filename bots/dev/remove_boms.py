@@ -30,10 +30,10 @@ def remove_bom_from_files():
             try:
                 remove_bom(file_path)
                 files_processed += 1
-            except Exception as e:
+            except Exception:
                 pass  # Silently skip files that can't be processed
 
-    print(f"\nBOM Removal Summary:")
+    print("\nBOM Removal Summary:")
     print(f"  Files processed: {files_processed}")
     print(f"  BOMs removed: {nboms}")
 
