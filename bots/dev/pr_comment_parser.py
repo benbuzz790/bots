@@ -10,6 +10,31 @@ import subprocess
 from typing import Dict, List, Optional
 
 
+def validate_repo(repo: str) -> str:
+    """Validate and sanitize repository string.
+
+    Parameters:
+        repo (str): Repository in format "owner/repo"
+
+    Returns:
+        str: Validated and sanitized repo string
+
+    Raises:
+        ValueError: If repo format is invalid
+    """
+    repo = repo.strip()
+
+    # Validate format: owner/repo with allowed characters
+    pattern = r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    if not re.match(pattern, repo):
+        raise ValueError(
+            f"Invalid repository format: '{repo}'. "
+            "Expected format: 'owner/repo' with alphanumeric characters, underscores, dots, and hyphens only."
+        )
+
+    return repo
+
+
 def get_pr_comments(pr_number: int, repo: str) -> List[Dict]:
     """Fetch all comments from a GitHub PR using gh CLI.
 
@@ -20,6 +45,7 @@ def get_pr_comments(pr_number: int, repo: str) -> List[Dict]:
     Returns:
         List[Dict]: List of comment dictionaries
     """
+    repo = validate_repo(repo)
     cmd = ["gh", "pr", "view", str(pr_number), "--repo", repo, "--json", "comments"]
     result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=True)
     data = json.loads(result.stdout)
@@ -37,6 +63,7 @@ def get_pr_review_comments(pr_number: int, repo: str) -> List[Dict]:
         List[Dict]: List of review comment dictionaries
     """
     # Get review comments (inline comments on code)
+    repo = validate_repo(repo)
     cmd = ["gh", "api", f"/repos/{repo}/pulls/{pr_number}/comments"]
     result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=True)
     return json.loads(result.stdout)
