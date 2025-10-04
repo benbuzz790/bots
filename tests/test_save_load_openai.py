@@ -7,6 +7,7 @@ import unittest
 import bots.tools.python_editing_tools as python_editing_tools
 from bots.foundation.base import Bot, Engines
 from bots.foundation.openai_bots import ChatGPT_Bot
+import pytest
 
 """Test module for OpenAI bot persistence functionality.
 
@@ -404,33 +405,37 @@ class TestSaveLoadOpenAI(unittest.TestCase):
         finally:
             os.chdir(original_cwd)
 
+    @pytest.mark.flaky
     def test_mixed_tool_sources(self) -> None:
         """Test bot functionality with tools from multiple sources.
 
-        Verifies that:
-        - Bots can handle tools from different sources simultaneously
-        - Individual function tools work correctly
-        - Module-based tools work correctly
-        - Tool results are preserved across save/load operations
-        - Multiple tool types remain functional after loading
-        """
+    Verifies that:
+    - Bots can handle tools from different sources simultaneously
+    - Individual function tools work correctly
+    - Module-based tools work correctly
+    - Tool results are preserved across save/load operations
+    - Multiple tool types remain functional after loading
+
+    Note: This test is marked as flaky because it depends on the LLM actually
+    deciding to call the tools, which is non-deterministic.
+    """
 
         def floor_str(x) -> str:
             """Calculate the floor of a number and return it as a string.
 
-            Use when you need to get the floor value of a decimal number as a
-            string.
+        Use when you need to get the floor value of a decimal number as a
+        string.
 
-            Parameters:
-                x (str): A string representation of a number (integer or float)
+        Parameters:
+            x (str): A string representation of a number (integer or float)
 
-            Returns:
-                str: The floor value of the input number as a string
+        Returns:
+            str: The floor value of the input number as a string
 
-            Example:
-                >>> floor_str("5.7")
-                "5"
-            """
+        Example:
+            >>> floor_str("5.7")
+            "5"
+        """
             import math
 
             return str(math.floor(float(x)))

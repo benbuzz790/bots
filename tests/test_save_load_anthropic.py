@@ -8,6 +8,7 @@ import unittest
 import bots.tools.python_editing_tools as python_editing_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
+import pytest
 
 """Test suite for AnthropicBot save and load functionality.
 
@@ -979,24 +980,28 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             if branch_has_results:
                 print("Unexpected: Tool results appeared in branch responses - bug might be fixed!")
 
+    @pytest.mark.flaky
     def test_branch_self_tool_execution_vs_response_integration(self) -> None:
         """
-        Test that branch_self tool execution properly integrates with bot responses.
-        This test verifies that when branch_self is called as a tool, the results
-        are properly captured and returned in the bot's response.
-        """
+    Test that branch_self tool execution properly integrates with bot responses.
+    This test verifies that when branch_self is called as a tool, the results
+    are properly captured and returned in the bot's response.
+
+    Note: This test is marked as flaky because it depends on the LLM actually
+    deciding to call the branch_self tool, which is non-deterministic.
+    """
 
         # Add test_calculation tool
         def test_calculation(x: str, y: str) -> str:
             """Simple calculation tool for testing.
 
-            Parameters:
-            - x (str): First number
-            - y (str): Second number
+        Parameters:
+        - x (str): First number
+        - y (str): Second number
 
-            Returns:
-            str: Sum of x and y
-            """
+        Returns:
+        str: Sum of x and y
+        """
             return f"Result: {int(x) + int(y)}"
 
         self.bot.add_tools(test_calculation)
