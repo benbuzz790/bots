@@ -992,6 +992,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         deciding to call the branch_self tool, which is non-deterministic and
         currently fails consistently.
         """
+        import bots.tools.self_tools as self_tools
 
         # Add test_calculation tool
         def test_calculation(x: str, y: str) -> str:
@@ -1006,6 +1007,8 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             """
             return f"Result: {int(x) + int(y)}"
 
+        # Register both self_tools (for branch_self) and test_calculation
+        self.bot.add_tools(self_tools)
         self.bot.add_tools(test_calculation)
 
         # Test 2: Branch execution with tools - more direct prompt
