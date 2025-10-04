@@ -1,9 +1,8 @@
 """Tests for PR comment parser utility."""
 
-import json
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from bots.dev.pr_comment_parser import (
     extract_coderabbit_prompts,
