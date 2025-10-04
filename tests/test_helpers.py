@@ -5,15 +5,79 @@ modification times. Tests cover basic functionality, file filtering,
 directory traversal, and edge cases.
 """
 
+import glob
+import logging
 import os
 import shutil
 import tempfile
 import time
-from typing import Generator
+from typing import Generator, List, Optional
 
 import pytest
 
 from bots.utils.helpers import _get_new_files
+
+
+def cleanup_leaked_files(base_dir: str, file_patterns: List[str], logger: Optional[logging.Logger] = None) -> None:
+    """Clean up leaked test files from a directory.
+
+    Use when you need to remove test artifacts that may have leaked into
+    a directory during test execution. Handles both glob patterns and
+    specific filenames.
+
+    Args:
+        base_dir: Base directory to clean up
+        file_patterns: List of file patterns (can include glob patterns like '*.txt')
+        logger: Optional logger for recording cleanup failures
+    """
+    for pattern in file_patterns:
+        if "*" in pattern:
+            # Handle glob patterns
+            for file_path in glob.glob(os.path.join(base_dir, pattern)):
+                try:
+                    os.remove(file_path)
+                except (OSError, PermissionError) as e:
+                    msg = f"Could not remove {file_path}: {e}"
+                    if logger:
+                        logger.warning(msg)
+                    else:
+                        print(f"Warning: {msg}")
+        else:
+            # Handle specific filenames
+            file_path = os.path.join(base_dir, pattern)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except (OSError, PermissionError) as e:
+                    msg = f"Could not remove {file_path}: {e}"
+                    if logger:
+                        logger.warning(msg)
+                    else:
+                        print(f"Warning: {msg}")
+
+
+def cleanup_test_dirs(base_dir: str, dirnames: List[str], logger: Optional[logging.Logger] = None) -> None:
+    """Clean up leaked test directories from a directory.
+
+    Use when you need to remove test directories that may have leaked into
+    a directory during test execution.
+
+    Args:
+        base_dir: Base directory to clean up
+        dirnames: List of directory names to remove
+        logger: Optional logger for recording cleanup failures
+    """
+    for dirname in dirnames:
+        dir_path = os.path.join(base_dir, dirname)
+        if os.path.exists(dir_path) and os.path.isdir(dir_path):
+            try:
+                shutil.rmtree(dir_path, ignore_errors=True)
+            except (OSError, PermissionError) as e:
+                msg = f"Could not clean up {dir_path}: {e}"
+                if logger:
+                    logger.warning(msg)
+                else:
+                    print(f"Warning: {msg}")
 
 
 @pytest.fixture
@@ -43,6 +107,33 @@ def create_file(path: str, content: str = "", sleep_time: float = 0.1) -> None:
     with open(path, "w") as f:
         f.write(content)
     time.sleep(sleep_time)
+
+
+def cleanup_test_dirs(base_dir: str, dirnames: list, logger=None) -> None:
+    """Clean up test directories with proper error handling.
+
+    Use when you need to clean up multiple test directories that may have
+    leaked into the working directory during test execution.
+
+    Args:
+        base_dir: Base directory containing the directories to clean up
+        dirnames: List of directory names to remove
+        logger: Optional logger for recording cleanup failures. If None, prints to stdout.
+    """
+    import os
+    import shutil
+
+    for dirname in dirnames:
+        dir_path = os.path.join(base_dir, dirname)
+        if os.path.exists(dir_path) and os.path.isdir(dir_path):
+            try:
+                shutil.rmtree(dir_path, ignore_errors=True)
+            except (OSError, PermissionError) as e:
+                msg = f"Warning: Could not clean up directory {dir_path}: {e}"
+                if logger:
+                    logger.warning(msg)
+                else:
+                    print(msg)
 
 
 def test_get_new_files_basic(temp_dir: str) -> None:

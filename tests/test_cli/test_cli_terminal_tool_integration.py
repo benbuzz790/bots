@@ -40,6 +40,8 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
 
     def tearDown(self):
         """Clean up test environment."""
+        from tests.test_helpers import cleanup_leaked_files
+
         # Restore original directory
         os.chdir(self.original_cwd)
 
@@ -68,23 +70,7 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
             "test_python_code_chars.txt",
         ]
 
-        for pattern in leaked_files:
-            if "*" in pattern:
-                # Handle glob patterns
-                import glob
-
-                for file in glob.glob(os.path.join(self.original_cwd, pattern)):
-                    try:
-                        os.remove(file)
-                    except Exception:
-                        pass
-            else:
-                file_path = os.path.join(self.original_cwd, pattern)
-                if os.path.exists(file_path):
-                    try:
-                        os.remove(file_path)
-                    except Exception:
-                        pass
+        cleanup_leaked_files(self.original_cwd, leaked_files)
 
     def _create_cli_with_timeout_monitoring(self):
         """Create CLI instance with terminal tools and timeout monitoring."""

@@ -800,15 +800,21 @@ Instead of manually implementing each provider, use LiteLLM to get instant suppo
 ### 24. Test Parallelism
 **Goal**: Fix test parallelism issues (mainly in terminal_tools)
 **Priority**: High
-**Status**: ? COMPLETED (test-efficiency branch)
-**Completed**: Fixed PowerShell test files to use unique temp directories per test. Removed serial execution marker. Updated pr-checks.yml to use -n 12 for parallel execution. Tests now run in parallel without file conflicts.
+**Status**: ✓ COMPLETED (test-efficiency branch)
+
+```
+Fixed PowerShell test files to use unique temp directories per test. Removed serial execution marker. Updated pr-checks.yml to use -n 12 for parallel execution. Tests now run in parallel without file conflicts.
+```
 
 ### 25. Uniform Tempfile Handling
 **Goal**: Consistent tempfile handling in tests
 **Priority**: High
 **Reason**: Tests pollute repository with extraneous files
-**Status**: ? COMPLETED (test-efficiency branch)
-**Completed**: Fixed test_patch_edit.py, test_class_replace.py, and test_python_edit_edge_cases.py to use temp directories. All test artifacts now properly isolated and cleaned up.
+**Status**: ✓ COMPLETED (test-efficiency branch)
+
+```
+Fixed test_patch_edit.py, test_class_replace.py, and test_python_edit_edge_cases.py to use temp directories. All test artifacts now properly isolated and cleaned up.
+```
 
 ---
 
