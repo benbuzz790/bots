@@ -32,21 +32,26 @@ class TestSelfTools(unittest.TestCase):
         self.bot = AnthropicBot(name="TestBot", max_tokens=1000, model_engine=Engines.CLAUDE37_SONNET_20250219)
         self.bot.add_tools(self_tools)
 
-    def tearDown(self):
-        """Clean up test environment."""
-        # Ensure we're back in original directory
-        if hasattr(self, 'original_cwd'):
-            os.chdir(self.original_cwd)
+    def tearDown(self) -> None:
+        """Clean up test environment after each test."""
+        # Get current directory for cleanup
+        current_cwd = os.getcwd()
 
         # Clean up temp directory
         if hasattr(self, 'temp_dir'):
-            shutil.rmtree(self.temp_dir, ignore_errors=True)
+            try:
+                shutil.rmtree(self.temp_dir)
+            except Exception as e:
+                print(f"Warning: Could not clean up temp directory: {e}")
 
         # Safety cleanup: remove any test directories that leaked into CWD
         for dirname in ['dir1', 'dir2', 'dir3', 'sub1_1', 'sub1_2', 'sub2_1', 'sub2_2']:
-            dir_path = os.path.join(self.original_cwd, dirname)
+            dir_path = os.path.join(current_cwd, dirname)
             if os.path.exists(dir_path) and os.path.isdir(dir_path):
-                shutil.rmtree(dir_path, ignore_errors=True)
+                try:
+                    shutil.rmtree(dir_path, ignore_errors=True)
+                except Exception:
+                    pass
 
     def test_get_own_info(self) -> None:
         """Test that get_own_info returns valid bot information."""
