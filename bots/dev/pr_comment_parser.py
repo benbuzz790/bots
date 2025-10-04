@@ -6,8 +6,8 @@ with special handling for CodeRabbit AI review comments.
 
 import json
 import re
-from typing import List, Dict, Optional
 import subprocess
+from typing import Dict, List, Optional
 
 
 def get_pr_comments(pr_number: int, repo: str) -> List[Dict]:

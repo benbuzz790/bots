@@ -76,9 +76,11 @@ Line 3 of prompt
         comment = {"body": "This is a current comment"}
         self.assertFalse(is_outdated(comment))
 
+    @patch("bots.dev.pr_comment_parser.get_pr_review_comments")
     @patch("bots.dev.pr_comment_parser.get_pr_comments")
-    def test_parse_pr_comments_filter_coderabbit(self, mock_get_comments):
+    def test_parse_pr_comments_filter_coderabbit(self, mock_get_comments, mock_get_review_comments):
         """Test parsing with CodeRabbit filter."""
+        mock_get_review_comments.return_value = []
         mock_get_comments.return_value = [
             {
                 "author": {"login": "coderabbitai"},
@@ -99,14 +101,16 @@ Test prompt
             },
         ]
 
-        result = parse_pr_comments(123, filter_coderabbit=True)
+        result = parse_pr_comments(123, "owner/repo", filter_coderabbit=True, include_review_comments=False)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["author"], "coderabbitai")
         self.assertIsNotNone(result[0]["ai_prompt"])
 
+    @patch("bots.dev.pr_comment_parser.get_pr_review_comments")
     @patch("bots.dev.pr_comment_parser.get_pr_comments")
-    def test_parse_pr_comments_exclude_outdated(self, mock_get_comments):
+    def test_parse_pr_comments_exclude_outdated(self, mock_get_comments, mock_get_review_comments):
         """Test parsing with outdated exclusion."""
+        mock_get_review_comments.return_value = []
         mock_get_comments.return_value = [
             {
                 "author": {"login": "coderabbitai"},
@@ -134,12 +138,15 @@ Outdated prompt
             },
         ]
 
-        result = parse_pr_comments(123, filter_coderabbit=True, exclude_outdated=True)
+        result = parse_pr_comments(
+            123, "owner/repo", filter_coderabbit=True, exclude_outdated=True, include_review_comments=False
+        )
         self.assertEqual(len(result), 1)
         self.assertIn("Current prompt", result[0]["ai_prompt"])
 
+    @patch("bots.dev.pr_comment_parser.get_pr_review_comments")
     @patch("bots.dev.pr_comment_parser.get_pr_comments")
-    def test_save_coderabbit_prompts(self, mock_get_comments):
+    def test_save_coderabbit_prompts(self, mock_get_comments, mock_get_review_comments):
         """Test saving CodeRabbit prompts to file."""
         mock_get_comments.return_value = [
             {
@@ -170,7 +177,7 @@ Second prompt
             temp_file = f.name
 
         try:
-            count = save_coderabbit_prompts(123, temp_file)
+            count = save_coderabbit_prompts(123, "owner/repo", temp_file)
             self.assertEqual(count, 2)
 
             with open(temp_file, "r", encoding="utf-8") as f:
