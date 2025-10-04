@@ -38,14 +38,14 @@ class TestSelfTools(unittest.TestCase):
         current_cwd = os.getcwd()
 
         # Clean up temp directory
-        if hasattr(self, 'temp_dir'):
+        if hasattr(self, "temp_dir"):
             try:
                 shutil.rmtree(self.temp_dir)
             except Exception as e:
                 print(f"Warning: Could not clean up temp directory: {e}")
 
         # Safety cleanup: remove any test directories that leaked into CWD
-        for dirname in ['dir1', 'dir2', 'dir3', 'sub1_1', 'sub1_2', 'sub2_1', 'sub2_2']:
+        for dirname in ["dir1", "dir2", "dir3", "sub1_1", "sub1_2", "sub2_1", "sub2_2"]:
             dir_path = os.path.join(current_cwd, dirname)
             if os.path.exists(dir_path) and os.path.isdir(dir_path):
                 try:

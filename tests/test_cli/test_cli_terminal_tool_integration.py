@@ -45,22 +45,34 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
 
         # Clean up temp files
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
         # Safety cleanup: remove any files that leaked into original CWD
         leaked_files = [
-            'hello.txt', 'test_script.py', 'complex_script.py',
-            'minimal.py', 'task_manager.py', 'subprocess_example.py',
-            'problematic_code.py', 'encoding_test_*.py', 'bom_test_*.txt',
-            'test_utf8.txt', 'test_accented_chars.txt', 'test_arrows_and_boxes.txt',
-            'test_ascii_quotes.txt', 'test_smart_quotes.txt', 'test_symbols.txt',
-            'test_python_code_chars.txt'
+            "hello.txt",
+            "test_script.py",
+            "complex_script.py",
+            "minimal.py",
+            "task_manager.py",
+            "subprocess_example.py",
+            "problematic_code.py",
+            "encoding_test_*.py",
+            "bom_test_*.txt",
+            "test_utf8.txt",
+            "test_accented_chars.txt",
+            "test_arrows_and_boxes.txt",
+            "test_ascii_quotes.txt",
+            "test_smart_quotes.txt",
+            "test_symbols.txt",
+            "test_python_code_chars.txt",
         ]
 
         for pattern in leaked_files:
-            if '*' in pattern:
+            if "*" in pattern:
                 # Handle glob patterns
                 import glob
+
                 for file in glob.glob(os.path.join(self.original_cwd, pattern)):
                     try:
                         os.remove(file)
