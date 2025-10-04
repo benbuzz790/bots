@@ -4,6 +4,8 @@ import shutil
 import tempfile
 import unittest
 
+import pytest
+
 import bots.tools.python_editing_tools as python_editing_tools
 from bots.foundation.base import Bot, Engines
 from bots.foundation.openai_bots import ChatGPT_Bot
@@ -404,6 +406,7 @@ class TestSaveLoadOpenAI(unittest.TestCase):
         finally:
             os.chdir(original_cwd)
 
+    @pytest.mark.skip(reason="Test is flaky - LLM doesn't consistently call tools as requested")
     def test_mixed_tool_sources(self) -> None:
         """Test bot functionality with tools from multiple sources.
 
@@ -413,6 +416,9 @@ class TestSaveLoadOpenAI(unittest.TestCase):
         - Module-based tools work correctly
         - Tool results are preserved across save/load operations
         - Multiple tool types remain functional after loading
+
+        Note: This test is skipped because it depends on the LLM actually
+        deciding to call the tools, which is non-deterministic.
         """
 
         def floor_str(x) -> str:

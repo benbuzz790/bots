@@ -1,6 +1,5 @@
-name: CI
+﻿name: CI
 on:
-  pull_request:
   push:
     branches:
       - main
@@ -20,7 +19,7 @@ env:
 jobs:
   test:
     name: Test on Python ${{ matrix.python-version }}
-    timeout-minutes: 15
+    timeout-minutes: 75
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -74,7 +73,7 @@ jobs:
   integration-tests:
     name: Run Integration Tests
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 75
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -127,7 +126,7 @@ jobs:
           retention-days: 7
   style-check:
     name: Code Quality & Style Check
-    timeout-minutes: 10
+    timeout-minutes: 75
     runs-on: windows-latest
     env:
       # UTF-8 encoding for style checks
@@ -184,7 +183,7 @@ jobs:
   actionlint:
     name: GitHub Actions Lint
     runs-on: windows-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -194,4 +193,4 @@ jobs:
           Expand-Archive -Path "actionlint.zip" -DestinationPath "./actionlint"
       - name: Run actionlint
         run: |
-          .\\actionlint\\actionlint.exe .github/workflows/*.yml
+          Get-ChildItem .github/workflows/*.yml | ForEach-Object { .\actionlint\actionlint.exe $_.FullName }

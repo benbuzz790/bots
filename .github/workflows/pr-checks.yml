@@ -1,0 +1,186 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: 1
+  PYTHONDONTWRITEBYTECODE: 1
+  PYTHONIOENCODING: utf-8
+  PYTHONUTF8: 1
+  LC_ALL: en_US.UTF-8
+  LANG: en_US.UTF-8
+
+jobs:
+  tests:
+    name: Run Tests with Coverage
+    runs-on: windows-latest
+    timeout-minutes: 75
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GH_TOKEN: ${{ github.token }}
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: 1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Configure UTF-8 encoding
+        shell: pwsh
+        run: |
+          $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+          $env:PYTHONIOENCODING = "utf-8"
+          $env:PYTHONUTF8 = "1"
+          echo "PYTHONIOENCODING=utf-8" >> $env:GITHUB_ENV
+          echo "PYTHONUTF8=1" >> $env:GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-timeout
+          pip install -e .[dev]
+
+      - name: Remove BOMs from all files
+        run: |
+          python -m bots.dev.remove_boms
+
+      - name: Run tests with coverage
+        if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
+        run: |
+          pytest tests/ --tb=short -v --maxfail=10 -n 0 --cov=bots --cov-report=term-missing --cov-report=xml
+
+      - name: Check coverage threshold
+        if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
+        run: |
+          pip install coverage
+          coverage report --fail-under=50
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 7
+
+  code-quality:
+    name: Code Quality & Linting
+    runs-on: windows-latest
+    timeout-minutes: 75
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: 1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Configure UTF-8 encoding
+        shell: pwsh
+        run: |
+          $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+          $env:PYTHONIOENCODING = "utf-8"
+          $env:PYTHONUTF8 = "1"
+          echo "PYTHONIOENCODING=utf-8" >> $env:GITHUB_ENV
+          echo "PYTHONUTF8=1" >> $env:GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install black isort flake8 mypy
+          pip install -e .
+
+      - name: Remove BOMs from all files
+        run: |
+          python -m bots.dev.remove_boms
+
+      - name: Check Black formatting
+        run: |
+          black --check --diff .
+
+      - name: Check isort import sorting
+        run: |
+          isort --check-only --diff .
+
+      - name: Run flake8 linting
+        run: |
+          flake8 . --count --statistics --show-source
+
+      - name: Run mypy type checking
+        run: |
+          mypy bots/ --ignore-missing-imports
+        continue-on-error: true
+
+  security:
+    name: Security Scan
+    runs-on: windows-latest
+    timeout-minutes: 75
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: 1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Configure UTF-8 encoding
+        shell: pwsh
+        run: |
+          $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+          $env:PYTHONIOENCODING = "utf-8"
+          $env:PYTHONUTF8 = "1"
+          echo "PYTHONIOENCODING=utf-8" >> $env:GITHUB_ENV
+          echo "PYTHONUTF8=1" >> $env:GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit
+          pip install -r requirements.txt
+
+      - name: Run Bandit security scan
+        run: |
+          bandit -r bots/ -f json -o bandit-report.json
+        continue-on-error: true
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-report
+          path: bandit-report.json
+          retention-days: 7
