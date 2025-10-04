@@ -1,0 +1,90 @@
+=== CodeRabbit Prompt #1 ===
+.coderabbit.yaml lines 17-33: the tone_instructions block exceeds the
+250-character limit and will cause parsing to fail; shorten and condense the
+guidance to under 250 characters by keeping only the most essential directives
+(e.g., "Focus on code quality, security, performance, tests, docs; prefer KISS
+and YAGNI; use defensive programming; suggest incremental PRs"), replace the
+long list with that single concise sentence, and ensure the resulting string
+length is <=250 characters so the config parses.
+
+=== CodeRabbit Prompt #2 ===
+In .github/workflows/pr-checks.yml around lines 64 to 80, the job gates tests
+and coverage on the presence of OPENAI_API_KEY/ANTHROPIC_API_KEY which are
+stripped for forked PRs, causing coverage.xml to be missing and the Upload
+coverage report step to fail; fix by restructuring the job so it does not
+attempt to upload when secrets are absent: either (a) run tests with mocked LLMs
+when secrets are missing (short-circuiting secret-dependent behavior) and still
+produce coverage.xml, or (b) add an explicit conditional before the upload step
+so it only runs if the secrets are present or if the coverage file exists (e.g.,
+set a step output or env flag when coverage.xml is generated and use that in the
+upload step), and ensure the coverage-check step is similarly gated so the
+pipeline doesn’t fail for forked PRs.
+
+=== CodeRabbit Prompt #3 ===
+.github/workflows/pr-checks.yml lines 19-182: The workflow is missing an
+explicit permissions block so runs inherit overly broad write access; add a
+minimal permissions entry (either at the workflow root or per-job) such as
+contents: read and any other least-privileged scopes required (e.g., actions:
+read, id-token: write if needed) to restrict token privileges, placing the
+permissions mapping under the top-level of the workflow or inside each job as
+appropriate for scope.
+
+=== CodeRabbit Prompt #4 ===
+.github/workflows/pr-checks.yml around line 69: the pytest command uses the
+invalid `-n 0` xdist option (pytest-xdist is not installed and `-n 0` is not a
+valid value), which causes the test run to abort; fix by either removing the `-n
+0` flag entirely or installing pytest-xdist and changing the flag to a valid
+value such as `-n auto`, and update the workflow steps accordingly to add
+pytest-xdist to the test dependencies if you choose the xdist approach.
+
+=== CodeRabbit Prompt #5 ===
+In CLAUDE.md around lines 112 to 115 the scope list items are corrupted (leading
+letters missing: "epo" should be "repo", "ead:org" should be "read:org"), so
+update those bullet entries to their correct scope strings exactly as "repo -
+Full repository access", "workflow - Workflow access", and "read:org - Read
+organization data (for PR comments)" to restore clarity for contributors
+configuring tokens.
+
+=== CodeRabbit Prompt #6 ===
+.github/workflows/main.yml around lines 1 to 1: the file begins with a UTF-8
+byte-order mark (BOM, \ufeff) which makes the first key read as “\ufeffname” and
+causes actionlint/lint failures; remove the BOM so the first character is the
+ASCII 'n' and the header reads exactly "name: CI" (save the file without BOM
+using your editor or run a tool like dos2unix/iconv to strip the BOM).
+
+=== CodeRabbit Prompt #7 ===
+In CLAUDE.md around line 15 (and also at lines 21, 35, 41, 59), the horizontal
+rule markers (`---`) are immediately preceded by content so markdownlint MD003
+treats them as setext headings; insert a single blank line directly above each
+`---` occurrence (lines 15, 21, 35, 41, 59) so they become proper horizontal
+rules, preserving existing surrounding content and not adding or removing other
+lines.
+
+=== CodeRabbit Prompt #8 ===
+In tests/test_save_load_anthropic.py around lines 1008 to 1016, the test calls
+the branch_self tool but never imports or registers self_tools, so branch_self
+isn't available and the test will fail; fix this by importing self_tools at the
+top of the file (or the appropriate test scope) and registering it with the bot
+before calling branch_self (following the same pattern used at lines ~753, 766,
+800), e.g., add the import and then call self.bot.add_tools(self_tools) or
+equivalent registration immediately before the branch_self usage.
+
+=== CodeRabbit Prompt #9 ===
+In tests/test_save_load_anthropic.py around lines 1043-1044, the two print
+statements use redundant f-strings with no interpolations which triggers Ruff
+F541; remove the leading f prefix from both print calls so they become plain
+string literals (e.g., print("SUCCESS: Tool execution integrated with bot
+responses") and print("First result (7) found: True, Second result (10) found:
+True") or keep original variables interpolated properly if intended), then run
+the linter to confirm F541 is resolved.
+
+=== CodeRabbit Prompt #10 ===
+In pytest.ini around line 30, the global per-test timeout was increased to 1200s
+which risks long CI stalls; revert this value back to the previous lower ceiling
+(e.g., 240s) in pytest.ini and remove the 1200s global override, and instead add
+targeted longer timeouts for legitimately slow tests using
+@pytest.mark.timeout(1200) on those tests or guard long-running tests behind an
+environment-specific flag so a single hung test cannot block the entire
+pipeline. ::Note from benbuzz790:: try 300s and if that doesn't work, we need to 
+find all tests that take more than 5 minutes and break them up somehow.
+

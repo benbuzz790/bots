@@ -5,23 +5,16 @@ This document provides essential commands for accessing information from GitHub 
 ### 0. Running linters
 Run all linters to match CI checks:
 ```powershell
-# Black - code formatting
 black --check --diff .
-
-# isort - import sorting
 isort --check-only --diff .
-
-# flake8 - linting (uses .flake8 config)
 flake8 . --count --statistics --show-source
 ```
 
 To auto-fix formatting issues:
 ```powershell
-# Fix Black formatting
 black .
-
-# Fix isort
 isort .
+python -m bots.dev.remove_boms
 ```
 
 ### 1. View PR Check Status
