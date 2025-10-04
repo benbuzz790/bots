@@ -10,7 +10,7 @@ from typing import List, Dict, Optional
 import subprocess
 
 
-def get_pr_comments(pr_number: int, repo: str = "benbuzz790/bots") -> List[Dict]:
+def get_pr_comments(pr_number: int, repo: str) -> List[Dict]:
     """Fetch all comments from a GitHub PR using gh CLI.
 
     Parameters:
@@ -26,7 +26,7 @@ def get_pr_comments(pr_number: int, repo: str = "benbuzz790/bots") -> List[Dict]
     return data.get("comments", [])
 
 
-def get_pr_review_comments(pr_number: int, repo: str = "benbuzz790/bots") -> List[Dict]:
+def get_pr_review_comments(pr_number: int, repo: str) -> List[Dict]:
     """Fetch all review comments (inline comments) from a GitHub PR using gh CLI.
 
     Parameters:
@@ -87,7 +87,7 @@ def is_outdated(comment: Dict) -> bool:
 
 def parse_pr_comments(
     pr_number: int,
-    repo: str = "benbuzz790/bots",
+    repo: str,
     output_file: Optional[str] = None,
     filter_coderabbit: bool = True,
     exclude_outdated: bool = True,
@@ -157,7 +157,7 @@ def parse_pr_comments(
     return parsed_comments
 
 
-def save_coderabbit_prompts(pr_number: int, output_file: Optional[str] = None, repo: str = "benbuzz790/bots") -> int:
+def save_coderabbit_prompts(pr_number: int, repo: str, output_file: Optional[str] = None) -> int:
     """Extract and save all CodeRabbit AI prompts from a PR.
 
     Parameters:
@@ -193,13 +193,20 @@ def save_coderabbit_prompts(pr_number: int, output_file: Optional[str] = None, r
 if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) < 2:
-        print("Usage: python pr_comment_parser.py <pr_number> [output_file]")
-        print("  If output_file is omitted, prompts are printed to stdout")
+    if len(sys.argv) < 3:
+        print("Usage: python pr_comment_parser.py <repo> <pr_number> [output_file]")
+        print("  repo: Repository in format 'owner/repo'")
+        print("  pr_number: The PR number")
+        print("  output_file: Optional file to save prompts (prints to stdout if omitted)")
+        print("\nExample: python pr_comment_parser.py owner/repo 123")
         sys.exit(1)
-    pr_num = int(sys.argv[1])
-    output = sys.argv[2] if len(sys.argv) > 2 else None
-    count = save_coderabbit_prompts(pr_num, output)
+
+    repo = sys.argv[1]
+    pr_num = int(sys.argv[2])
+    output = sys.argv[3] if len(sys.argv) > 3 else None
+
+    count = save_coderabbit_prompts(pr_num, repo, output)
+
     if output:
         print(f"Extracted {count} CodeRabbit prompts to {output}")
     else:

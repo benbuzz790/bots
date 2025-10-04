@@ -61,11 +61,15 @@ gh run view <RUN_ID> --log | Select-String -Pattern "E[0-9]{3}|F[0-9]{3}" -Conte
 ### 6. Extract CodeRabbit AI Prompts
 Extract actionable AI prompts from CodeRabbit review comments:
 ```powershell
-python -m bots.dev.pr_comment_parser <PR_NUMBER>
+python -m bots.dev.pr_comment_parser <REPO> <PR_NUMBER>
+```
+**Example:**
+```powershell
+python -m bots.dev.pr_comment_parser owner/repo 123
 ```
 **Save to file:**
 ```powershell
-python -m bots.dev.pr_comment_parser <PR_NUMBER> output.txt
+python -m bots.dev.pr_comment_parser owner/repo 123 output.txt
 ```
 This tool extracts the "🤖 Prompt for AI Agents" sections from CodeRabbit comments, filtering out outdated comments and including both regular and inline review comments.
 
