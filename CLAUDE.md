@@ -1,6 +1,29 @@
 # CI/CD Pipeline Commands Reference for Claude
 This document provides essential commands for accessing information from GitHub Actions CI/CD pipeline runs.
 ## Essential Commands
+
+### 0. Running linters
+Run all linters to match CI checks:
+```powershell
+# Black - code formatting
+black --check --diff .
+
+# isort - import sorting
+isort --check-only --diff .
+
+# flake8 - linting (uses .flake8 config)
+flake8 . --count --statistics --show-source
+```
+
+To auto-fix formatting issues:
+```powershell
+# Fix Black formatting
+black .
+
+# Fix isort
+isort .
+```
+
 ### 1. View PR Check Status
 Get a quick overview of all checks for a PR:
 ```powershell
@@ -56,4 +79,21 @@ gh run view <RUN_ID> --log | Select-String -Pattern "would reformat" -Context 2,
 ```powershell
 gh run view <RUN_ID> --log | Select-String -Pattern "E[0-9]{3}|F[0-9]{3}" -Context 0,1
 ```
+---
+
+### 6. Extract CodeRabbit AI Prompts
+Extract actionable AI prompts from CodeRabbit review comments:
+```powershell
+python -m bots.dev.pr_comment_parser <REPO> <PR_NUMBER>
+```
+**Example:**
+```powershell
+python -m bots.dev.pr_comment_parser owner/repo 123
+```
+**Save to file:**
+```powershell
+python -m bots.dev.pr_comment_parser owner/repo 123 output.txt
+```
+This tool extracts the "🤖 Prompt for AI Agents" sections from CodeRabbit comments, filtering out outdated comments and including both regular and inline review comments.
+
 ---
