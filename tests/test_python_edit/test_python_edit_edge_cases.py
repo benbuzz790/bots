@@ -1,6 +1,7 @@
 import os
-import tempfile
 import shutil
+import tempfile
+
 from bots.tools.python_edit import python_edit  # noqa: E402
 
 # Create a temporary directory for test files

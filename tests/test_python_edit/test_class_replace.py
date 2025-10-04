@@ -1,39 +1,39 @@
-import sys
 import tempfile
-import os
 from pathlib import Path
 
 from bots.tools.python_edit import python_edit
 
-# Create a temporary directory for this test
-with tempfile.TemporaryDirectory() as temp_dir:
-    # Create the test file in the temp directory
-    test_file_path = Path(temp_dir) / "test_replace_behavior.py"
 
-    # Write initial content to the test file
-    initial_content = '''class TestClass:
-    def old_method(self):
-        return "old class"
+def test_class_method_replacement():
+    """Test replacing a method in a class using python_edit."""
+    # Use a temporary directory for the test file
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create the test file in the temp directory
+        test_file = Path(temp_dir) / "test_replace_behavior.py"
 
-    def another_method(self):
-        return "another"
-'''
-    test_file_path.write_text(initial_content)
+        # Initial content with a sample class
+        initial_content = """class TestClass:
+    def existing_method(self):
+        return "original"
+"""
+        test_file.write_text(initial_content)
 
-    print("=== Test 2: Replace entire class ===")
-    print(f"Test file created at: {test_file_path}")
+        # Test: Replace the existing_method
+        result = python_edit(
+            target_scope=f"{test_file}::TestClass::existing_method",
+            code='''def existing_method(self):
+        return "replaced"''',
+        )
 
-    # Perform the replacement
-    result = python_edit(
-        target_scope=f"{test_file_path}::TestClass",
-        code='class TestClass:\n    def new_method(self):\n        return "completely new class"',
-    )
-    print("Result:", result)
+        print("Result:", result)
 
-    # Read and display the result
-    with open(test_file_path, "r") as f:
-        content = f.read()
-    print("File content after class replacement:")
-    print(content)
+        # Verify the replacement
+        content = test_file.read_text()
+        print("File content after replacement:")
+        print(content)
 
-    print(f"\nTest completed. Temp directory will be cleaned up automatically.")
+        # Basic assertion
+        assert "replaced" in content
+        assert "original" not in content
+
+        print("\nTest completed. Temp directory will be cleaned up automatically.")
