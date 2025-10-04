@@ -984,34 +984,33 @@ class TestSaveLoadAnthropic(unittest.TestCase):
     @pytest.mark.skip(reason="Test is flaky - LLM doesn't consistently call tools as requested")
     def test_branch_self_tool_execution_vs_response_integration(self) -> None:
         """
-    Test that branch_self tool execution properly integrates with bot responses.
-    This test verifies that when branch_self is called as a tool, the results
-    are properly captured and returned in the bot's response.
+        Test that branch_self tool execution properly integrates with bot responses.
+        This test verifies that when branch_self is called as a tool, the results
+        are properly captured and returned in the bot's response.
 
-    Note: This test is skipped because it depends on the LLM actually
-    deciding to call the branch_self tool, which is non-deterministic and
-    currently fails consistently.
-    """
+        Note: This test is skipped because it depends on the LLM actually
+        deciding to call the branch_self tool, which is non-deterministic and
+        currently fails consistently.
+        """
 
         # Add test_calculation tool
         def test_calculation(x: str, y: str) -> str:
             """Simple calculation tool for testing.
 
-        Parameters:
-        - x (str): First number
-        - y (str): Second number
+            Parameters:
+            - x (str): First number
+            - y (str): Second number
 
-        Returns:
-        str: Sum of x and y
-        """
+            Returns:
+            str: Sum of x and y
+            """
             return f"Result: {int(x) + int(y)}"
 
         self.bot.add_tools(test_calculation)
 
         # Test 2: Branch execution with tools - more direct prompt
         branch_response = self.bot.respond(
-            "Use the test_calculation tool twice: once with x=3 and y=4, "
-            "and once with x=8 and y=2. Tell me both results."
+            "Use the test_calculation tool twice: once with x=3 and y=4, " "and once with x=8 and y=2. Tell me both results."
         )
 
         # Check if branch_self executed successfully
