@@ -14,11 +14,11 @@ This document tracks development ideas, feature requests, and architectural impr
 
 The bots project has reached a critical inflection point. After successfully implementing multi-provider support and achieving a robust 97%+ test pass rate, we're now positioned to make a fundamental choice about our future direction. The landscape of AI development tools has matured significantly, and a clear pattern has emerged: **universal standards are winning over proprietary frameworks**.
 
-This isn't about chasing trends—it's about recognizing that the industry has spoken. Model Context Protocol (MCP) is projected to reach 90% organizational adoption by the end of 2025. Microsoft, OpenAI, and Google have all committed to it. OpenTelemetry has become the de facto standard for observability. These aren't just popular tools; they're becoming the *lingua franca* of AI development.
+This isn't about chasing trendsÃ¢â‚¬â€it's about recognizing that the industry has spoken. Model Context Protocol (MCP) is projected to reach 90% organizational adoption by the end of 2025. Microsoft, OpenAI, and Google have all committed to it. OpenTelemetry has become the de facto standard for observability. These aren't just popular tools; they're becoming the *lingua franca* of AI development.
 
 ### Why Standards Matter
 
-When we initially considered integrating with LangChain, the complexity was overwhelming. Layers of abstraction, steep learning curves, and constant API changes made it feel like we were building on shifting sand. But MCP? It's a protocol—simple, clear, and purpose-built for one thing: connecting AI models to tools and data. It's the USB-C of AI, and just like USB-C, its value comes from universal adoption, not feature richness.
+When we initially considered integrating with LangChain, the complexity was overwhelming. Layers of abstraction, steep learning curves, and constant API changes made it feel like we were building on shifting sand. But MCP? It's a protocolÃ¢â‚¬â€simple, clear, and purpose-built for one thing: connecting AI models to tools and data. It's the USB-C of AI, and just like USB-C, its value comes from universal adoption, not feature richness.
 
 This realization shapes our entire strategy: **prioritize interoperability over features, standards over frameworks, simplicity over sophistication**.
 
@@ -28,11 +28,11 @@ This realization shapes our entire strategy: **prioritize interoperability over 
 
 We're not building in isolation. The bots project should be a *citizen* of the broader AI ecosystem, not an island. This means:
 
-- **MCP Integration**: Our tools should be accessible to anyone using Claude Desktop, Cursor, or any MCP-compatible client. Conversely, our bots should be able to use the hundreds of MCP servers already published. This isn't just about compatibility—it's about network effects. Every MCP server we can connect to multiplies our capabilities without writing a single line of integration code.
+- **MCP Integration**: Our tools should be accessible to anyone using Claude Desktop, Cursor, or any MCP-compatible client. Conversely, our bots should be able to use the hundreds of MCP servers already published. This isn't just about compatibilityÃ¢â‚¬â€it's about network effects. Every MCP server we can connect to multiplies our capabilities without writing a single line of integration code.
 
-- **OpenTelemetry for Observability**: Print statements scattered through code are a symptom of development without proper instrumentation. OpenTelemetry isn't just about removing print statements—it's about building production-ready software that can be monitored, debugged, and optimized in real-world deployments. When something goes wrong at 3 AM, structured traces and metrics are the difference between hours of debugging and minutes.
+- **OpenTelemetry for Observability**: Print statements scattered through code are a symptom of development without proper instrumentation. OpenTelemetry isn't just about removing print statementsÃ¢â‚¬â€it's about building production-ready software that can be monitored, debugged, and optimized in real-world deployments. When something goes wrong at 3 AM, structured traces and metrics are the difference between hours of debugging and minutes.
 
-- **LiteLLM for Provider Expansion**: Rather than manually implementing each new LLM provider, we leverage LiteLLM's unified interface to support 100+ providers instantly. This isn't laziness—it's recognizing that provider APIs are commoditizing, and our value lies elsewhere.
+- **LiteLLM for Provider Expansion**: Rather than manually implementing each new LLM provider, we leverage LiteLLM's unified interface to support 100+ providers instantly. This isn't lazinessÃ¢â‚¬â€it's recognizing that provider APIs are commoditizing, and our value lies elsewhere.
 
 #### 2. **Maintain Our Core Differentiators**
 
@@ -40,19 +40,19 @@ Standards handle connectivity and interoperability, but they don't replace our u
 
 - **Conversation Trees**: The ability to branch, explore multiple paths, and navigate conversation history as a tree structure remains unique. Most frameworks treat conversations as linear chains. We treat them as explorable spaces.
 
-- **Functional Prompts**: Composable patterns like `chain`, `branch`, `prompt_while`, and `par_branch_while` provide structured reasoning that goes beyond simple prompt-response cycles. These aren't just convenience functions—they're a programming model for AI interactions.
+- **Functional Prompts**: Composable patterns like `chain`, `branch`, `prompt_while`, and `par_branch_while` provide structured reasoning that goes beyond simple prompt-response cycles. These aren't just convenience functionsÃ¢â‚¬â€they're a programming model for AI interactions.
 
 - **Tool Excellence**: Our tools like `python_edit` (scope-aware code editing) and `branch_self` (recursive self-branching) represent genuine innovation. By exposing them via MCP, we share this innovation with the broader community while maintaining our implementation advantages.
 
-- **Self-Context Management**: The upcoming expansion of self-tools (delete_stale_context, fork_from_node, etc.) gives bots unprecedented control over their own conversation history. This is agentic AI in the truest sense—agents that can manage their own context.
+- **Self-Context Management**: The upcoming expansion of self-tools (delete_stale_context, fork_from_node, etc.) gives bots unprecedented control over their own conversation history. This is agentic AI in the truest senseÃ¢â‚¬â€agents that can manage their own context.
 
 #### 3. **Build for Production, Not Just Prototypes**
 
 The shift from "works on my machine" to "works in production" requires fundamental changes:
 
-- **Observability First**: OpenTelemetry integration isn't optional—it's foundational. Every API call, every tool execution, every decision point should be traceable. This enables debugging, optimization, cost tracking, and compliance.
+- **Observability First**: OpenTelemetry integration isn't optionalÃ¢â‚¬â€it's foundational. Every API call, every tool execution, every decision point should be traceable. This enables debugging, optimization, cost tracking, and compliance.
 
-- **Quality Guardrails**: Branch protection, required CI/CD checks, and automated code review (CodeRabbit) aren't bureaucracy—they're insurance against regressions. The coveted green checkmark isn't a badge of honor; it's a minimum bar for production readiness.
+- **Quality Guardrails**: Branch protection, required CI/CD checks, and automated code review (CodeRabbit) aren't bureaucracyÃ¢â‚¬â€they're insurance against regressions. The coveted green checkmark isn't a badge of honor; it's a minimum bar for production readiness.
 
 - **Test Organization**: Moving from "we have tests" to "we have a test strategy" means organizing tests by speed (unit/integration/e2e), using proper fixtures, and fixing parallelism issues. Fast feedback loops enable rapid iteration without sacrificing quality.
 
@@ -62,7 +62,7 @@ The shift from "works on my machine" to "works in production" requires fundament
 
 This philosophy translates into concrete priorities:
 
-**Phase 1 focuses on standards and foundations** because these are force multipliers. MCP integration doesn't just add features—it adds an entire ecosystem. OpenTelemetry doesn't just remove print statements—it makes the system observable and debuggable. Branch protection doesn't just prevent bad commits—it ensures every change meets quality standards.
+**Phase 1 focuses on standards and foundations** because these are force multipliers. MCP integration doesn't just add featuresÃ¢â‚¬â€it adds an entire ecosystem. OpenTelemetry doesn't just remove print statementsÃ¢â‚¬â€it makes the system observable and debuggable. Branch protection doesn't just prevent bad commitsÃ¢â‚¬â€it ensures every change meets quality standards.
 
 **Phase 2 builds on these foundations** with features that leverage the standards. Once we have MCP, expanding providers via LiteLLM becomes trivial. Once we have OpenTelemetry, making the CLI prettier with real-time progress indicators becomes straightforward. Once we have proper configuration, adding plugin support becomes natural.
 
@@ -72,15 +72,15 @@ This philosophy translates into concrete priorities:
 
 The AI development landscape is consolidating around standards faster than anyone expected. MCP was introduced in November 2024 and is already approaching universal adoption. OpenTelemetry's GenAI semantic conventions were formalized in early 2025. The window for "build everything ourselves" has closed. The window for "integrate with standards and differentiate on capabilities" is wide open.
 
-We're not abandoning our vision—we're recognizing that our vision is best served by standing on the shoulders of standards rather than building everything from scratch. The bots project's value isn't in reimplementing tool connectivity or observability. It's in conversation trees, functional prompts, and agentic capabilities that no standard can provide.
+We're not abandoning our visionÃ¢â‚¬â€we're recognizing that our vision is best served by standing on the shoulders of standards rather than building everything from scratch. The bots project's value isn't in reimplementing tool connectivity or observability. It's in conversation trees, functional prompts, and agentic capabilities that no standard can provide.
 
 ### The Path Forward
 
-This isn't a pivot—it's a maturation. We're moving from "build an AI framework" to "build the best agentic AI system on top of industry standards." The difference is critical. One path leads to constant maintenance of infrastructure. The other leads to innovation on capabilities.
+This isn't a pivotÃ¢â‚¬â€it's a maturation. We're moving from "build an AI framework" to "build the best agentic AI system on top of industry standards." The difference is critical. One path leads to constant maintenance of infrastructure. The other leads to innovation on capabilities.
 
 Every item in this document, from MCP integration to GUI development, flows from this philosophy: **embrace standards for infrastructure, innovate on capabilities, and build for production**. This is how we ensure the bots project remains relevant, maintainable, and valuable as the AI landscape continues its rapid evolution.
 
-The future of AI development isn't about building walled gardens—it's about building excellent tools that work seamlessly in a standardized ecosystem. That's the future we're building toward.
+The future of AI development isn't about building walled gardensÃ¢â‚¬â€it's about building excellent tools that work seamlessly in a standardized ecosystem. That's the future we're building toward.
 
 ---
 
@@ -175,7 +175,7 @@ The future of AI development isn't about building walled gardens—it's about bu
 
 ## 7. Review large_refactor_tasks.md
 
-**Status**: ✓ COMPLETED
+**Status**: Ã¢Å“â€œ COMPLETED
 
 **Key Items Found**:
 1. Conversation Tree Visualization Tools
@@ -457,21 +457,21 @@ class AnthropicBot:
 #### What You Get
 ```
 Trace: bot.respond (4.2s)
-  ├─ build_messages (0.1s)
-  │   • message_count: 5
-  ├─ api_call (2.8s)
-  │   • input_tokens: 1234
-  │   • output_tokens: 567
-  │   • cost_usd: 0.015
-  ├─ process_response (0.05s)
-  └─ execute_tools (1.25s)
-      • tool_count: 2
-      ├─ tool.python_view (0.8s)
-      │   • tool_name: python_view
-      │   • tool_result_length: 2456
-      └─ tool.python_edit (0.45s)
-          • tool_name: python_edit
-          • tool_result_length: 89
+  Ã¢â€Å“Ã¢â€â‚¬ build_messages (0.1s)
+  Ã¢â€â€š   Ã¢â‚¬Â¢ message_count: 5
+  Ã¢â€Å“Ã¢â€â‚¬ api_call (2.8s)
+  Ã¢â€â€š   Ã¢â‚¬Â¢ input_tokens: 1234
+  Ã¢â€â€š   Ã¢â‚¬Â¢ output_tokens: 567
+  Ã¢â€â€š   Ã¢â‚¬Â¢ cost_usd: 0.015
+  Ã¢â€Å“Ã¢â€â‚¬ process_response (0.05s)
+  Ã¢â€â€Ã¢â€â‚¬ execute_tools (1.25s)
+      Ã¢â‚¬Â¢ tool_count: 2
+      Ã¢â€Å“Ã¢â€â‚¬ tool.python_view (0.8s)
+      Ã¢â€â€š   Ã¢â‚¬Â¢ tool_name: python_view
+      Ã¢â€â€š   Ã¢â‚¬Â¢ tool_result_length: 2456
+      Ã¢â€â€Ã¢â€â‚¬ tool.python_edit (0.45s)
+          Ã¢â‚¬Â¢ tool_name: python_edit
+          Ã¢â‚¬Â¢ tool_result_length: 89
 ```
 
 ### Integration with Existing Items
@@ -729,16 +729,16 @@ Instead of manually implementing each provider, use LiteLLM to get instant suppo
 ### Considerations
 
 **Pros**:
-- ✅ Instant 100+ provider support
-- ✅ Unified interface
-- ✅ Active maintenance
-- ✅ Cost tracking built-in
-- ✅ Easy to test different providers
+- Ã¢Å“â€¦ Instant 100+ provider support
+- Ã¢Å“â€¦ Unified interface
+- Ã¢Å“â€¦ Active maintenance
+- Ã¢Å“â€¦ Cost tracking built-in
+- Ã¢Å“â€¦ Easy to test different providers
 
 **Cons**:
-- ⚠️ Abstraction layer (slight overhead)
-- ⚠️ Less control over provider-specific features
-- ⚠️ Dependency on external library
+- Ã¢Å¡Â Ã¯Â¸Â Abstraction layer (slight overhead)
+- Ã¢Å¡Â Ã¯Â¸Â Less control over provider-specific features
+- Ã¢Å¡Â Ã¯Â¸Â Dependency on external library
 
 **Recommendation**: 
 - Use LiteLLM for quick provider expansion
@@ -800,7 +800,7 @@ Instead of manually implementing each provider, use LiteLLM to get instant suppo
 ### 24. Test Parallelism
 **Goal**: Fix test parallelism issues (mainly in terminal_tools)
 **Priority**: High
-**Status**: ✓ COMPLETED (test-efficiency branch)
+**Status**: Ã¢Å“â€œ COMPLETED (test-efficiency branch)
 
 ```
 Fixed PowerShell test files to use unique temp directories per test. Removed serial execution marker. Updated pr-checks.yml to use -n 12 for parallel execution. Tests now run in parallel without file conflicts.
@@ -810,11 +810,16 @@ Fixed PowerShell test files to use unique temp directories per test. Removed ser
 **Goal**: Consistent tempfile handling in tests
 **Priority**: High
 **Reason**: Tests pollute repository with extraneous files
-**Status**: ✓ COMPLETED (test-efficiency branch)
+**Status**: Ã¢Å“â€œ COMPLETED (test-efficiency branch)
 
 ```
 Fixed test_patch_edit.py, test_class_replace.py, and test_python_edit_edge_cases.py to use temp directories. All test artifacts now properly isolated and cleaned up.
 ```
+
+### Docker Testing Infrastructure (Archived)
+**Status**: ✗ ARCHIVED (cleanup-docker branch)
+
+Docker-based test infrastructure was developed but abandoned due to Docker Desktop issues. All Docker testing files have been moved to `archived_docker_testing/` directory and preserved on the `docker-testing` branch for potential future use. The infrastructure included Dockerfile, test orchestration scripts, comprehensive documentation, and pytest integration with --use-docker flags. See `archived_docker_testing/README.md` for details.
 
 ---
 
@@ -837,7 +842,7 @@ Fixed test_patch_edit.py, test_class_replace.py, and test_python_edit_edge_cases
    - All changes must go through PR workflow
 
 2. **Require status checks to pass**
-   - All CI/CD tests must pass (green checkmark ✓)
+   - All CI/CD tests must pass (green checkmark Ã¢Å“â€œ)
    - Cannot merge until all checks are green
 
 3. **Require code review**
@@ -854,16 +859,16 @@ Fixed test_patch_edit.py, test_class_replace.py, and test_python_edit_edge_cases
 #### Step 1: Configure Branch Protection
 ```
 GitHub Repository Settings:
-1. Go to Settings → Branches
+1. Go to Settings Ã¢â€ â€™ Branches
 2. Add branch protection rule for "main"
 3. Enable:
-   ☑ Require a pull request before merging
-   ☑ Require approvals (1 minimum)
-   ☑ Dismiss stale pull request approvals when new commits are pushed
-   ☑ Require status checks to pass before merging
-   ☑ Require branches to be up to date before merging
-   ☑ Require conversation resolution before merging
-   ☑ Do not allow bypassing the above settings (include administrators)
+   Ã¢Ëœâ€˜ Require a pull request before merging
+   Ã¢Ëœâ€˜ Require approvals (1 minimum)
+   Ã¢Ëœâ€˜ Dismiss stale pull request approvals when new commits are pushed
+   Ã¢Ëœâ€˜ Require status checks to pass before merging
+   Ã¢Ëœâ€˜ Require branches to be up to date before merging
+   Ã¢Ëœâ€˜ Require conversation resolution before merging
+   Ã¢Ëœâ€˜ Do not allow bypassing the above settings (include administrators)
 ```
 
 #### Step 2: Required Status Checks
@@ -1076,23 +1081,23 @@ Create `.github/pull_request_template.md`:
 6. CodeRabbit reviews automatically
 7. Address CodeRabbit feedback
 8. Request human review
-9. Once approved + all checks green → Merge
+9. Once approved + all checks green Ã¢â€ â€™ Merge
 
 **What Blocks a Merge**:
-- ❌ Any CI/CD test failures
-- ❌ Code coverage below threshold
-- ❌ Linting errors
-- ❌ No approval from reviewer
-- ❌ Unresolved conversations
-- ❌ Branch not up to date with main
+- Ã¢ÂÅ’ Any CI/CD test failures
+- Ã¢ÂÅ’ Code coverage below threshold
+- Ã¢ÂÅ’ Linting errors
+- Ã¢ÂÅ’ No approval from reviewer
+- Ã¢ÂÅ’ Unresolved conversations
+- Ã¢ÂÅ’ Branch not up to date with main
 
 **What Allows a Merge**:
-- ✅ All tests passing (green checkmark)
-- ✅ Code coverage meets threshold
-- ✅ Linting passes
-- ✅ At least one approval
-- ✅ All conversations resolved
-- ✅ Branch up to date
+- Ã¢Å“â€¦ All tests passing (green checkmark)
+- Ã¢Å“â€¦ Code coverage meets threshold
+- Ã¢Å“â€¦ Linting passes
+- Ã¢Å“â€¦ At least one approval
+- Ã¢Å“â€¦ All conversations resolved
+- Ã¢Å“â€¦ Branch up to date
 
 ### Benefits
 
