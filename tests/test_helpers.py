@@ -18,6 +18,23 @@ import pytest
 from bots.utils.helpers import _get_new_files
 
 
+def _remove_file_with_error_handling(file_path: str, logger: Optional[logging.Logger] = None) -> None:
+    """Remove a single file with proper error handling and logging.
+
+    Args:
+        file_path: Path to the file to remove
+        logger: Optional logger for recording cleanup failures
+    """
+    try:
+        os.remove(file_path)
+    except (OSError, PermissionError) as e:
+        msg = f"Could not remove {file_path}: {e}"
+        if logger:
+            logger.warning(msg)
+        else:
+            print(f"Warning: {msg}")
+
+
 def cleanup_leaked_files(base_dir: str, file_patterns: List[str], logger: Optional[logging.Logger] = None) -> None:
     """Clean up leaked test files from a directory.
 
@@ -31,29 +48,18 @@ def cleanup_leaked_files(base_dir: str, file_patterns: List[str], logger: Option
         logger: Optional logger for recording cleanup failures
     """
     for pattern in file_patterns:
-        if "*" in pattern:
-            # Handle glob patterns
-            for file_path in glob.glob(os.path.join(base_dir, pattern)):
-                try:
-                    os.remove(file_path)
-                except (OSError, PermissionError) as e:
-                    msg = f"Could not remove {file_path}: {e}"
-                    if logger:
-                        logger.warning(msg)
-                    else:
-                        print(f"Warning: {msg}")
+        # Use glob.has_magic to detect glob patterns robustly
+        if glob.has_magic(pattern):
+            # Expand glob pattern to list of file paths
+            file_paths = glob.glob(os.path.join(base_dir, pattern))
         else:
-            # Handle specific filenames
+            # Single specific filename
             file_path = os.path.join(base_dir, pattern)
-            if os.path.exists(file_path):
-                try:
-                    os.remove(file_path)
-                except (OSError, PermissionError) as e:
-                    msg = f"Could not remove {file_path}: {e}"
-                    if logger:
-                        logger.warning(msg)
-                    else:
-                        print(f"Warning: {msg}")
+            file_paths = [file_path] if os.path.exists(file_path) else []
+
+        # Remove each file using the helper
+        for file_path in file_paths:
+            _remove_file_with_error_handling(file_path, logger)
 
 
 def cleanup_test_dirs(base_dir: str, dirnames: List[str], logger: Optional[logging.Logger] = None) -> None:
