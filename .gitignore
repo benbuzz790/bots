@@ -58,7 +58,7 @@ complex_test.txt
 dir1/
 dir2/
 dir3/
-
+*ps_output*
 *node_modules*
 prompts.json
 test_results_*_*.txt
