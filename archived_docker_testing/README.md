@@ -1,4 +1,4 @@
-﻿# Archived Docker Testing Infrastructure
+# Archived Docker Testing Infrastructure
 This directory contains the Docker-based test infrastructure that was developed but ultimately abandoned due to Docker Desktop issues on the development machine.
 ## What Was This?
 An ambitious attempt to create a safe, isolated test environment using Docker containers to prevent system crashes during pytest execution. The system included:
