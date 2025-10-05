@@ -109,33 +109,6 @@ def create_file(path: str, content: str = "", sleep_time: float = 0.1) -> None:
     time.sleep(sleep_time)
 
 
-def cleanup_test_dirs(base_dir: str, dirnames: list, logger=None) -> None:
-    """Clean up test directories with proper error handling.
-
-    Use when you need to clean up multiple test directories that may have
-    leaked into the working directory during test execution.
-
-    Args:
-        base_dir: Base directory containing the directories to clean up
-        dirnames: List of directory names to remove
-        logger: Optional logger for recording cleanup failures. If None, prints to stdout.
-    """
-    import os
-    import shutil
-
-    for dirname in dirnames:
-        dir_path = os.path.join(base_dir, dirname)
-        if os.path.exists(dir_path) and os.path.isdir(dir_path):
-            try:
-                shutil.rmtree(dir_path, ignore_errors=True)
-            except (OSError, PermissionError) as e:
-                msg = f"Warning: Could not clean up directory {dir_path}: {e}"
-                if logger:
-                    logger.warning(msg)
-                else:
-                    print(msg)
-
-
 def test_get_new_files_basic(temp_dir: str) -> None:
     """Test basic functionality of _get_new_files with a single file.
     Verifies that _get_new_files correctly identifies a single file created
