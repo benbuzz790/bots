@@ -8,6 +8,7 @@ from unittest.mock import patch
 import bots.tools.self_tools as self_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
+from tests.test_helpers import cleanup_test_dirs
 
 
 class TestSelfTools(unittest.TestCase):
@@ -34,10 +35,18 @@ class TestSelfTools(unittest.TestCase):
 
     def tearDown(self) -> None:
         """Clean up test environment after each test."""
-        try:
-            shutil.rmtree(self.temp_dir)
-        except Exception as e:
-            print(f"Warning: Could not clean up temp directory: {e}")
+        # Get current directory for cleanup
+        current_cwd = os.getcwd()
+
+        # Clean up temp directory
+        if hasattr(self, "temp_dir"):
+            try:
+                shutil.rmtree(self.temp_dir)
+            except (OSError, PermissionError) as e:
+                print(f"Warning: Could not clean up temp directory: {e}")
+
+        # Safety cleanup: remove any test directories that leaked into CWD
+        cleanup_test_dirs(current_cwd, ["dir1", "dir2", "dir3", "sub1_1", "sub1_2", "sub2_1", "sub2_2"])
 
     def test_get_own_info(self) -> None:
         """Test that get_own_info returns valid bot information."""

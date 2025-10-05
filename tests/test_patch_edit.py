@@ -73,7 +73,7 @@ class TestGitPatch(unittest.TestCase):
         self.assertIn("patch_content is empty", result)
 
     def test_new_file(self):
-        new_file = "new_test_file.txt"
+        new_file = get_unique_filename("new_test_file", "txt")
         if os.path.exists(new_file):
             os.remove(new_file)
         patch = textwrap.dedent("\n@@ -0,0 +1,3 @@\n+first line\n+second line\n+third line")
@@ -456,7 +456,7 @@ class TestGitPatch(unittest.TestCase):
 
 class TestGitPatchHunkParsing(unittest.TestCase):
     def setUp(self):
-        self.test_file = "test_hunk_parse.txt"
+        self.test_file = get_unique_filename("test_hunk_parse", "txt")
         with open(self.test_file, "w") as f:
             f.write("line 1\nline 2\nline 3\nline 4\nline 5\n")
 

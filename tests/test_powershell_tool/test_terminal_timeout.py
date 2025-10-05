@@ -13,7 +13,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up test environment"""
-        cls.temp_dir = tempfile.mkdtemp()
+        cls.temp_dir = tempfile.mkdtemp(prefix=f"test_timeout_{id(cls)}_")
         cls.original_cwd = os.getcwd()
         os.chdir(cls.temp_dir)
         print(f"Test directory: {cls.temp_dir}")
