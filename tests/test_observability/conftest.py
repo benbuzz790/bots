@@ -16,21 +16,6 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 
 
 @pytest.fixture
-def clean_otel_env(monkeypatch):
-    """Clean OpenTelemetry environment variables before test.
-
-    Use when you need a clean slate for environment variable testing.
-    Removes all OpenTelemetry-related environment variables.
-    """
-    monkeypatch.delenv("OTEL_SDK_DISABLED", raising=False)
-    monkeypatch.delenv("BOTS_OTEL_EXPORTER", raising=False)
-    monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
-    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
-    monkeypatch.delenv("BOTS_ENABLE_TRACING", raising=False)
-    yield
-
-
-@pytest.fixture
 def mock_tracer_provider():
     """Create a mock tracer provider with in-memory span exporter.
 
@@ -44,16 +29,29 @@ def mock_tracer_provider():
 
 
 @pytest.fixture
-def captured_spans(mock_tracer_provider):
+def captured_spans(mock_tracer_provider, reset_tracing):
     """Fixture that provides access to captured spans.
 
     Use when you need to verify span creation and attributes in tests.
-    Automatically clears spans after each test.
+    Automatically clears spans and resets tracing state after each test.
     """
     provider, exporter = mock_tracer_provider
+
+    # Store original state
+    original_provider = trace._TRACER_PROVIDER
+
     trace.set_tracer_provider(provider)
     yield exporter
+
+    # Clean up
     exporter.clear()
+
+    # Restore original provider
+    trace._TRACER_PROVIDER = original_provider
+    try:
+        trace._TRACER_PROVIDER_SET_ONCE._done = False
+    except AttributeError:
+        trace._TRACER_PROVIDER_SET_ONCE = trace.Once()
 
 
 @pytest.fixture

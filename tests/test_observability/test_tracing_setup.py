@@ -124,6 +124,10 @@ class TestTracingSetup:
         # Check for TracerProvider-specific attributes (works with ProxyTracerProvider too)
         assert hasattr(provider, "_active_span_processor") or hasattr(provider, "add_span_processor")
 
+        # Verify no span processors were added
+        if hasattr(provider, "_active_span_processor"):
+            assert len(provider._active_span_processor._span_processors) == 0
+
     def test_setup_tracing_respects_disabled_flag(self, clean_otel_env, reset_tracing, monkeypatch):
         """Test that setup_tracing() respects OTEL_SDK_DISABLED.
 

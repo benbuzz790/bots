@@ -38,7 +38,7 @@ def span_exporter():
 class TestBotTracingConfiguration:
     """Test bot tracing configuration options."""
 
-    def test_bot_tracing_enabled_by_default(self):
+    def test_bot_tracing_enabled_by_default(self, clean_otel_env):
         """Verify that tracing is enabled by default when TRACING_AVAILABLE is True.
 
         When a bot is created without specifying enable_tracing parameter,

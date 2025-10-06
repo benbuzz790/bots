@@ -419,12 +419,6 @@ class AnthropicMailbox(Mailbox):
                         )
                     time.sleep(delay)
 
-            # If we get here, max retries reached
-            logger.error("Max retries reached, unable to send message", extra={"provider": "anthropic"})
-            if span:
-                span.add_event("max_retries_reached")
-            raise Exception("Max retries reached. Unable to send message.")
-
         finally:
             if span:
                 span.end()
