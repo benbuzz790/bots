@@ -10,5 +10,5 @@ def pytest_collection_modifyitems(items):
     for item in items:
         # Only mark CLI tests for serial execution
         test_path = str(item.fspath)
-        if 'test_cli' in test_path:
+        if "test_cli" in test_path:
             item.add_marker(pytest.mark.xdist_group("cli_serial"))

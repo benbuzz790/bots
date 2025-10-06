@@ -3,8 +3,9 @@ Test file to verify MockBot implementation works correctly.
 Run this to ensure all components are functioning as expected.
 """
 
-import pytest
 import sys
+
+import pytest
 
 pytestmark = pytest.mark.unit
 
