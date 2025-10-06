@@ -17,6 +17,21 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 from bots.utils.helpers import _py_ast_to_source, formatted_datetime
 
+
+# OpenTelemetry imports with graceful degradation
+try:
+    from bots.observability.tracing import get_tracer, is_tracing_enabled, get_default_tracing_preference
+    tracer = get_tracer(__name__)
+    TRACING_AVAILABLE = True
+except ImportError:
+    TRACING_AVAILABLE = False
+    tracer = None
+    # Provide dummy functions if import fails
+    def is_tracing_enabled():
+        return False
+    def get_default_tracing_preference():
+        return False
+
 """Core foundation classes for the bots framework.
 This module provides the fundamental abstractions and base classes that power the bots framework:
 - Bot: Abstract base class for all LLM implementations
@@ -161,15 +176,24 @@ class Engines(str, Enum):
             ValueError: If the class name is not a supported node type
         """
         from bots.foundation.anthropic_bots import AnthropicNode
+        from bots.foundation.anthropic_bots import AnthropicNode
         from bots.foundation.gemini_bots import GeminiNode
         from bots.foundation.openai_bots import OpenAINode
 
         NODE_CLASS_MAP = {"OpenAINode": OpenAINode, "AnthropicNode": AnthropicNode, "GeminiNode": GeminiNode}
+        
+        # Support MockConversationNode for testing
+        if class_name == "MockConversationNode":
+            try:
+                from bots.testing.mock_bot import MockConversationNode
+                return MockConversationNode
+            except ImportError:
+                pass  # Fall through to error
+        
         node_class = NODE_CLASS_MAP.get(class_name)
         if node_class is None:
             raise ValueError(f"Unsupported conversation node type: {class_name}")
         return node_class
-
 
 class ConversationNode:
     """Tree-based storage for conversation history and tool interactions.
@@ -831,27 +855,70 @@ class ToolHandler(ABC):
         """
         results = []
         requests = self.requests
-        for request_schema in requests:
-            tool_name, input_kwargs = self.tool_name_and_input(request_schema)
-            if tool_name is None:
-                continue
-            try:
-                if tool_name not in self.function_map:
-                    raise ToolNotFoundError(f"Tool '{tool_name}' not found in function map")
-                func = self.function_map[tool_name]
-                output_kwargs = func(**input_kwargs)
-                response_schema = self.generate_response_schema(request_schema, output_kwargs)
-            except ToolNotFoundError as e:
-                error_msg = "Error: Tool not found.\n\n" + str(e)
-                response_schema = self.generate_error_schema(request_schema, error_msg)
-            except TypeError as e:
-                error_msg = f"Invalid arguments for tool '{tool_name}': {str(e)}"
-                response_schema = self.generate_error_schema(request_schema, error_msg)
-            except Exception as e:
-                error_msg = f"Unexpected error while executing tool '{tool_name}': {str(e)}"
-                response_schema = self.generate_error_schema(request_schema, error_msg)
-            self.results.append(response_schema)
-            results.append(response_schema)
+
+        # Check if tracing is available and enabled
+        if TRACING_AVAILABLE and tracer:
+            with tracer.start_as_current_span("tools.execute_all") as span:
+                span.set_attribute("tool.count", len(requests))
+                for request_schema in requests:
+                    tool_name, input_kwargs = self.tool_name_and_input(request_schema)
+                    if tool_name is None:
+                        continue
+
+                    with tracer.start_as_current_span(f"tool.{tool_name}") as tool_span:
+                        tool_span.set_attribute("tool.name", tool_name)
+                        try:
+                            if tool_name not in self.function_map:
+                                raise ToolNotFoundError(f"Tool '{tool_name}' not found in function map")
+                            func = self.function_map[tool_name]
+                            output_kwargs = func(**input_kwargs)
+                            response_schema = self.generate_response_schema(request_schema, output_kwargs)
+                            tool_span.set_attribute("tool.status", "success")
+                            if isinstance(output_kwargs, str):
+                                tool_span.set_attribute("tool.result_length", len(output_kwargs))
+                        except ToolNotFoundError as e:
+                            error_msg = "Error: Tool not found.\n\n" + str(e)
+                            response_schema = self.generate_error_schema(request_schema, error_msg)
+                            tool_span.set_attribute("tool.status", "error")
+                            tool_span.set_attribute("tool.error_type", "ToolNotFoundError")
+                            tool_span.record_exception(e)
+                        except TypeError as e:
+                            error_msg = f"Invalid arguments for tool '{tool_name}': {str(e)}"
+                            response_schema = self.generate_error_schema(request_schema, error_msg)
+                            tool_span.set_attribute("tool.status", "error")
+                            tool_span.set_attribute("tool.error_type", "TypeError")
+                            tool_span.record_exception(e)
+                        except Exception as e:
+                            error_msg = f"Unexpected error while executing tool '{tool_name}': {str(e)}"
+                            response_schema = self.generate_error_schema(request_schema, error_msg)
+                            tool_span.set_attribute("tool.status", "error")
+                            tool_span.set_attribute("tool.error_type", type(e).__name__)
+                            tool_span.record_exception(e)
+                        self.results.append(response_schema)
+                        results.append(response_schema)
+        else:
+            # Non-traced execution path
+            for request_schema in requests:
+                tool_name, input_kwargs = self.tool_name_and_input(request_schema)
+                if tool_name is None:
+                    continue
+                try:
+                    if tool_name not in self.function_map:
+                        raise ToolNotFoundError(f"Tool '{tool_name}' not found in function map")
+                    func = self.function_map[tool_name]
+                    output_kwargs = func(**input_kwargs)
+                    response_schema = self.generate_response_schema(request_schema, output_kwargs)
+                except ToolNotFoundError as e:
+                    error_msg = "Error: Tool not found.\n\n" + str(e)
+                    response_schema = self.generate_error_schema(request_schema, error_msg)
+                except TypeError as e:
+                    error_msg = f"Invalid arguments for tool '{tool_name}': {str(e)}"
+                    response_schema = self.generate_error_schema(request_schema, error_msg)
+                except Exception as e:
+                    error_msg = f"Unexpected error while executing tool '{tool_name}': {str(e)}"
+                    response_schema = self.generate_error_schema(request_schema, error_msg)
+                self.results.append(response_schema)
+                results.append(response_schema)
         return results
 
     def _create_builtin_wrapper(self, func: Callable) -> str:
@@ -2187,6 +2254,7 @@ class Bot(ABC):
         tool_handler: Optional[ToolHandler] = None,
         mailbox: Optional[Mailbox] = None,
         autosave: bool = True,
+        enable_tracing: Optional[bool] = None,
     ) -> None:
         """Initialize a new Bot instance.
 
@@ -2202,6 +2270,7 @@ class Bot(ABC):
             tool_handler (Optional[ToolHandler]): Manager for bot's tools
             mailbox (Optional[Mailbox]): Handler for LLM communication
             autosave (bool): Whether to automatically save state after responses. Saves to cwd.
+            enable_tracing (Optional[bool]): Enable OpenTelemetry tracing. None uses default (True).
         """
         self.api_key = api_key
         self.name = name
@@ -2215,6 +2284,16 @@ class Bot(ABC):
         self.tool_handler = tool_handler
         self.mailbox = mailbox
         self.autosave = autosave
+
+        # Determine if tracing should be enabled
+        # Determine if tracing should be enabled
+        if enable_tracing is None:
+            # Default to True if tracing is available and not globally disabled
+            self._tracing_enabled = TRACING_AVAILABLE and is_tracing_enabled()
+        else:
+            # User explicitly specified, respect their choice (but still check if SDK is disabled)
+            self._tracing_enabled = TRACING_AVAILABLE and enable_tracing and is_tracing_enabled()
+
         if isinstance(self.model_engine, str):
             self.model_engine = Engines.get(self.model_engine)
 
@@ -2245,6 +2324,18 @@ class Bot(ABC):
             response = bot.respond("Please read config.json")
             ```
         """
+        if self._tracing_enabled and tracer:
+            with tracer.start_as_current_span("bot.respond") as span:
+                span.set_attribute("bot.name", self.name)
+                span.set_attribute("bot.model", self.model_engine.value)
+                span.set_attribute("prompt.length", len(prompt))
+                span.set_attribute("prompt.role", role)
+                return self._respond_impl(prompt, role)
+        else:
+            return self._respond_impl(prompt, role)
+
+    def _respond_impl(self, prompt: str, role: str = "user") -> str:
+        """Internal implementation of respond without tracing."""
         self.conversation = self.conversation._add_reply(content=prompt, role=role)
         if self.autosave:
             self.save(f"{self.name}")
@@ -2342,18 +2433,36 @@ class Bot(ABC):
             - Maintains conversation tree structure
             - Preserves tool execution results
         """
-        try:
-            self.tool_handler.clear()
-            response = self.mailbox.send_message(self)
-            _ = self.tool_handler.extract_requests(response)
-            text, role, data = self.mailbox.process_response(response, self)
-            self.conversation = self.conversation._add_reply(content=text, role=role, **data)
-            self.conversation._add_tool_calls(self.tool_handler.requests)
-            _ = self.tool_handler.exec_requests()
-            self.conversation._add_tool_results(self.tool_handler.results)
-            return (text, self.conversation)
-        except Exception as e:
-            raise e
+        if self._tracing_enabled and tracer:
+            with tracer.start_as_current_span("bot._cvsn_respond") as span:
+                try:
+                    self.tool_handler.clear()
+                    response = self.mailbox.send_message(self)
+                    _ = self.tool_handler.extract_requests(response)
+                    span.set_attribute("tool.request_count", len(self.tool_handler.requests))
+                    text, role, data = self.mailbox.process_response(response, self)
+                    self.conversation = self.conversation._add_reply(content=text, role=role, **data)
+                    self.conversation._add_tool_calls(self.tool_handler.requests)
+                    _ = self.tool_handler.exec_requests()
+                    span.set_attribute("tool.result_count", len(self.tool_handler.results))
+                    self.conversation._add_tool_results(self.tool_handler.results)
+                    return (text, self.conversation)
+                except Exception as e:
+                    span.record_exception(e)
+                    raise e
+        else:
+            try:
+                self.tool_handler.clear()
+                response = self.mailbox.send_message(self)
+                _ = self.tool_handler.extract_requests(response)
+                text, role, data = self.mailbox.process_response(response, self)
+                self.conversation = self.conversation._add_reply(content=text, role=role, **data)
+                self.conversation._add_tool_calls(self.tool_handler.requests)
+                _ = self.tool_handler.exec_requests()
+                self.conversation._add_tool_results(self.tool_handler.results)
+                return (text, self.conversation)
+            except Exception as e:
+                raise e
 
     def set_system_message(self, message: str) -> None:
         """Set the system-level instructions for the bot.
@@ -2473,7 +2582,10 @@ class Bot(ABC):
         data["bot_class"] = self.__class__.__name__
         data["model_engine"] = self.model_engine.value
         data["conversation"] = self.conversation._root_dict()
-        if self.tool_handler:
+        data["conversation"] = self.conversation._root_dict()
+        # Preserve tracing state
+        if hasattr(self, "_tracing_enabled"):
+            data["enable_tracing"] = self._tracing_enabled
             data["tool_handler"] = self.tool_handler.to_dict()
         for key, value in data.items():
             if not isinstance(value, (str, int, float, bool, list, dict, type(None))):

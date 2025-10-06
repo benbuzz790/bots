@@ -442,6 +442,7 @@ class MockBot(Bot):
         role_description: str = "A helpful mock assistant for testing",
         conversation: Optional[ConversationNode] = None,
         autosave: bool = False,  # Default to False for testing
+        enable_tracing: Optional[bool] = None,  # Support tracing parameter
     ):
         """Initialize a mock bot.
 
@@ -454,6 +455,7 @@ class MockBot(Bot):
             role_description: Description of the bot's role
             conversation: Initial conversation state
             autosave: Whether to autosave (disabled by default for testing)
+            enable_tracing: Whether to enable OpenTelemetry tracing (None = use default)
         """
         # Convert string to Engines enum if needed
         if isinstance(model_engine, str):
@@ -484,6 +486,7 @@ class MockBot(Bot):
             tool_handler=mock_tool_handler,
             mailbox=mock_mailbox,
             autosave=autosave,
+            enable_tracing=enable_tracing,  # Pass through tracing parameter
         )
 
         # Additional mock-specific attributes

@@ -134,3 +134,42 @@ def pytest_runtest_teardown(item, nextitem):
 def pytest_sessionfinish(session, exitstatus):
     """Clean up at the end of the test session."""
     cleanup_test_artifacts()
+
+
+@pytest.fixture
+def clean_otel_env(monkeypatch):
+    """Clean OpenTelemetry-related environment variables for testing.
+
+    This fixture removes all OpenTelemetry and bots-specific environment
+    variables to ensure tests start with a clean slate. This prevents
+    environment variables from the host system from affecting test results.
+
+    Use this fixture in tests that need to verify default configuration
+    or test specific environment variable combinations.
+
+    Example:
+        def test_my_config(clean_otel_env, monkeypatch):
+            monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
+            # Test with clean environment
+    """
+    # List of all OpenTelemetry and bots-related env vars to clean
+    otel_env_vars = [
+        "OTEL_SDK_DISABLED",
+        "OTEL_SERVICE_NAME",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_HEADERS",
+        "OTEL_TRACES_EXPORTER",
+        "OTEL_METRICS_EXPORTER",
+        "OTEL_LOGS_EXPORTER",
+        "BOTS_OTEL_EXPORTER",
+        "BOTS_ENABLE_TRACING",
+    ]
+
+    # Remove each env var if it exists
+    for var in otel_env_vars:
+        monkeypatch.delenv(var, raising=False)
+
+    yield
+
+    # Cleanup happens automatically via monkeypatch
