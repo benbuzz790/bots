@@ -42,6 +42,21 @@ from bots.foundation.base import (
     ToolHandler,
 )
 
+# Import OpenTelemetry tracing
+try:
+    from bots.observability.tracing import get_tracer
+
+    tracer = get_tracer(__name__)
+    TRACING_AVAILABLE = True
+except ImportError:
+    TRACING_AVAILABLE = False
+    tracer = None
+
+# Set up logging
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class AnthropicNode(ConversationNode):
     """A conversation node implementation specific to Anthropic's API
@@ -251,92 +266,162 @@ class AnthropicMailbox(Mailbox):
         self.last_message: Optional[Dict[str, Any]] = None
         self.client: Optional[anthropic.Anthropic] = None
 
-    def send_message(self, bot: "AnthropicBot", timeout: int = 120) -> Dict[str, Any]:
-        """Sends a message using the Anthropic API.
-        Handles API key setup, message formatting, and implements
-        exponential backoff
-        retry logic for API errors with configurable timeout.
+    def send_message(
+        self,
+        bot: "AnthropicBot",
+        timeout: float = 600.0,
+        max_retries: int = 3,
+        base_delay: float = 1.0,
+        timeout_retries: int = 2,
+        timeout_base_delay: float = 5.0,
+    ) -> Any:
+        """Send a message to the Anthropic API with retry logic.
+
+        Handles API communication with exponential backoff for transient errors
+        and special handling for timeout errors. Includes OpenTelemetry tracing
+        when enabled.
+
         Args:
             bot: The AnthropicBot instance making the request
-            timeout: Request timeout in seconds (default: 120)
+            timeout: Maximum time to wait for API response (default: 600s)
+            max_retries: Maximum number of retry attempts for API errors
+            base_delay: Base delay in seconds for exponential backoff
+            timeout_retries: Number of retries specifically for timeout errors
+            timeout_base_delay: Base delay for timeout retry attempts
+
         Returns:
-            The API response dictionary
+            The API response object from Anthropic
+
         Raises:
             ValueError: If no API key is found
             anthropic.APITimeoutError: If request times out after retries
             Exception: If max retries are reached
         """
-        print("mailbox send called")
-        api_key: Optional[str] = bot.api_key
-        if not api_key:
-            try:
+        # Check if tracing is enabled for this bot
+        should_trace = TRACING_AVAILABLE and hasattr(bot, "_tracing_enabled") and bot._tracing_enabled
+
+        if should_trace:
+            span = tracer.start_span("mailbox.send_message")
+            span.set_attribute("provider", "anthropic")
+            span.set_attribute("model", bot.model_engine.value)
+            span.set_attribute("timeout", timeout)
+            span.set_attribute("max_retries", max_retries)
+        else:
+            span = None
+
+        try:
+            if span:
+                span.add_event("mailbox.send.start")
+
+            api_key: Optional[str] = bot.api_key
+            if not api_key:
                 api_key = os.getenv("ANTHROPIC_API_KEY")
-            except Exception:
-                print("mailbox send error")
-                raise ValueError("Anthropic API key not found. Set up 'ANTHROPIC_API_KEY' " "environment variable.")
-        # Initialize client with timeout
-        self.client = anthropic.Anthropic(api_key=api_key, timeout=timeout)
-        conversation: AnthropicNode = bot.conversation
-        tools: Optional[List[Dict[str, Any]]] = None
-        if bot.tool_handler and bot.tool_handler.tools:
-            # if bot.allow_web_search and not any(tool.get("name") == "web_search" for tool in bot.tool_handler.tools):
-            #     bot.tool_handler.tools.append(AnthropicTools.web_search())
-            tools = bot.tool_handler.tools
-            tools[-1]["cache_control"] = {"type": "ephemeral"}
-        messages: List[Dict[str, Any]] = conversation._build_messages()
-        cc = CacheController()
-        messages = cc.manage_cache_controls(messages)
-        create_dict: Dict[str, Any] = {}
-        system_message: Optional[str] = bot.system_message
-        if tools:
-            create_dict["tools"] = tools
-        if system_message:
-            create_dict["system"] = system_message
-        model: Engines = bot.model_engine.value
-        max_tokens: int = bot.max_tokens
-        temperature: float = bot.temperature
-        non_optional = {
-            "model": model,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "messages": messages,
-        }
-        create_dict.update(**non_optional)
-        # Timeout-specific retry logic
-        timeout_retries: int = 3
-        timeout_base_delay: float = 2.0
-        max_retries: int = 25
-        base_delay: float = 1
-        for attempt in range(max_retries):
-            try:
-                response = self.client.messages.create(**create_dict)
-                print("mailbox send return")
-                return response
-            except anthropic.APITimeoutError as e:
-                # Special handling for timeout errors
-                if attempt < timeout_retries:
-                    timeout_delay = timeout_base_delay * (attempt + 1)
-                    print(f"Timeout on attempt {attempt + 1}. Retrying in {timeout_delay:.1f} seconds...")
-                    time.sleep(timeout_delay)
-                    continue
-                else:
-                    print(f"Max timeout retries ({timeout_retries}) reached.")
-                    raise e
-            except (
-                anthropic.InternalServerError,
-                anthropic.RateLimitError,
-                anthropic.APIConnectionError,
-            ) as e:
-                if attempt == max_retries - 1:
-                    print("\n\n\n ---debug---\n")
-                    print(create_dict)
-                    print("\n---debug---\n\n\n")
-                    raise e
-                delay: float = base_delay * 2**attempt + random.uniform(0.71 * 2**attempt, 1.41 * 2**attempt)
-                print(f"Attempt {attempt + 1} failed with {e.__class__.__name__}. " f"Retrying in {delay:.2f} seconds...")
-                time.sleep(delay)
-        print("mailbox send error")
-        raise Exception("Max retries reached. Unable to send message.")
+                if not api_key:
+                    logger.error("API key not found", extra={"provider": "anthropic"})
+                    raise ValueError("Anthropic API key not found. Set up 'ANTHROPIC_API_KEY' environment variable.")
+
+            # Initialize client with timeout
+            self.client = anthropic.Anthropic(api_key=api_key, timeout=timeout)
+            conversation: AnthropicNode = bot.conversation
+            tools: Optional[List[Dict[str, Any]]] = None
+            if bot.tool_handler and bot.tool_handler.tools:
+                tools = bot.tool_handler.tools
+                tools[-1]["cache_control"] = {"type": "ephemeral"}
+
+            # Build the create dictionary
+            create_dict: Dict[str, Any] = {
+                "model": bot.model_engine.value,
+                "max_tokens": bot.max_tokens,
+                "temperature": bot.temperature,
+                "messages": conversation._build_messages(),
+            }
+
+            if bot.system_message:
+                create_dict["system"] = bot.system_message
+
+            if tools:
+                create_dict["tools"] = tools
+
+            if span:
+                span.set_attribute("message_count", len(create_dict["messages"]))
+                if tools:
+                    span.set_attribute("tool_count", len(tools))
+
+            # Retry loop with exponential backoff
+            for attempt in range(max_retries):
+                try:
+                    if span:
+                        span.add_event("api.call.attempt", {"attempt": attempt + 1})
+
+                    response = self.client.messages.create(**create_dict)
+
+                    # Capture token usage and cost
+                    if span and hasattr(response, "usage"):
+                        span.set_attribute("input_tokens", response.usage.input_tokens)
+                        span.set_attribute("output_tokens", response.usage.output_tokens)
+                        # Note: Cost calculation would go here if available
+
+                    if span:
+                        span.add_event("api.call.success")
+
+                    return response
+
+                except anthropic.APITimeoutError as e:
+                    # Special handling for timeout errors
+                    if attempt < timeout_retries:
+                        timeout_delay = timeout_base_delay * (attempt + 1)
+                        logger.warning(
+                            "API timeout, retrying",
+                            extra={"attempt": attempt + 1, "delay": timeout_delay, "provider": "anthropic"},
+                        )
+                        if span:
+                            span.add_event("api.timeout", {"attempt": attempt + 1, "delay": timeout_delay})
+                        time.sleep(timeout_delay)
+                        continue
+                    else:
+                        logger.exception(
+                            "Max timeout retries reached", extra={"timeout_retries": timeout_retries, "provider": "anthropic"}
+                        )
+                        if span:
+                            span.record_exception(e)
+                        raise
+
+                except Exception as e:
+                    # Handle other API errors with exponential backoff
+                    if attempt >= max_retries - 1:
+                        # Last attempt - log and raise
+                        logger.exception(
+                            "Max retries reached",
+                            extra={
+                                "error_type": e.__class__.__name__,
+                                "provider": "anthropic",
+                                "create_dict": str(create_dict),
+                            },
+                        )
+                        if span:
+                            span.record_exception(e)
+                        raise
+
+                    # Calculate exponential backoff delay
+                    delay = base_delay * (2**attempt) + random.uniform(0, 1)
+                    logger.warning(
+                        "API error, retrying with exponential backoff",
+                        extra={
+                            "attempt": attempt + 1,
+                            "error_type": e.__class__.__name__,
+                            "delay": delay,
+                            "provider": "anthropic",
+                        },
+                    )
+                    if span:
+                        span.add_event(
+                            "api.error.retry", {"attempt": attempt + 1, "error_type": e.__class__.__name__, "delay": delay}
+                        )
+                    time.sleep(delay)
+
+        finally:
+            if span:
+                span.end()
 
     def process_response(self, response: Dict[str, Any], bot: "AnthropicBot") -> Tuple[str, str, Dict[str, Any]]:
         """Process the API response and handle incomplete responses.
@@ -357,7 +442,6 @@ class AnthropicMailbox(Mailbox):
         Raises:
             anthropic.BadRequestError: If the API returns a 400 error
         """
-        print("process response called")
         try:
 
             def should_continue(response) -> bool:
@@ -395,11 +479,8 @@ class AnthropicMailbox(Mailbox):
             response_text: str = getattr(response.content[0], "text", "~")
         except anthropic.BadRequestError as e:
             if e.status_code == 400:
-                print("process response 400 error")
                 pass
-            print("process response error")
             raise e
-        print("process response returned")
         return (response_text, response_role, {})
 
 
@@ -462,8 +543,9 @@ class AnthropicBot(Bot):
         role: str = "assistant",
         role_description: str = "a friendly AI assistant",
         autosave: bool = True,
+        enable_tracing: Optional[bool] = None,
         # allow_web_search: bool = False,
-    ) -> None:
+    ):
         """Initialize an AnthropicBot.
 
         Args:
@@ -492,8 +574,8 @@ class AnthropicBot(Bot):
             tool_handler=AnthropicToolHandler(),
             mailbox=AnthropicMailbox(),
             autosave=autosave,
+            enable_tracing=enable_tracing,
         )
-        # self.allow_web_search = allow_web_search
 
 
 # class AnthropicTools:

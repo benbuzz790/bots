@@ -223,6 +223,7 @@ class GeminiBot(Bot):
         role: str = "assistant",
         role_description: str = "a friendly AI assistant",
         autosave: bool = True,
+        enable_tracing: Optional[bool] = None,
     ):
         super().__init__(
             api_key=api_key,
@@ -236,4 +237,5 @@ class GeminiBot(Bot):
             conversation=GeminiNode._create_empty(GeminiNode),
             mailbox=GeminiMailbox(api_key=api_key),
             autosave=autosave,
+            enable_tracing=enable_tracing,
         )

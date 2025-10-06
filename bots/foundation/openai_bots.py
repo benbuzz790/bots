@@ -26,6 +26,19 @@ from bots.foundation.base import (
     ToolHandler,
 )
 
+# Import tracing utilities
+try:
+    from opentelemetry import trace
+
+    from bots.observability.tracing import get_tracer
+
+    tracer = get_tracer(__name__)
+    TRACING_AVAILABLE = True
+except ImportError:
+    TRACING_AVAILABLE = False
+    tracer = None
+    trace = None
+
 
 class OpenAINode(ConversationNode):
     """A conversation node implementation specific to OpenAI's chat format.
@@ -307,8 +320,24 @@ class OpenAIMailbox(Mailbox):
             Exception: Any error from the OpenAI API is re-raised for proper
                 handling
         """
+        # Check if tracing is enabled for this bot
+        should_trace = TRACING_AVAILABLE and hasattr(bot, "_tracing_enabled") and bot._tracing_enabled
+
+        if should_trace:
+            with tracer.start_as_current_span("mailbox.send_message") as span:
+                span.set_attribute("provider", "openai")
+                span.set_attribute("model", str(bot.model_engine.value))
+                return self._send_message_impl(bot, span)
+        else:
+            return self._send_message_impl(bot, None)
+
+    def _send_message_impl(self, bot: Bot, span=None) -> Dict[str, Any]:
+        """Implementation of send_message with optional span."""
         system_message = bot.system_message
         messages = bot.conversation._build_messages()
+
+        if span:
+            span.set_attribute("message_count", len(messages))
         try:
             self._log_message(json.dumps({"messages": messages}, indent=2), "OUTGOING")
         except FileNotFoundError:
@@ -343,8 +372,17 @@ class OpenAIMailbox(Mailbox):
                 )
             except FileNotFoundError:
                 pass
+            # Add token usage to span if available
+            if span and hasattr(response, "usage") and response.usage:
+                span.set_attribute("input_tokens", response.usage.prompt_tokens)
+                span.set_attribute("output_tokens", response.usage.completion_tokens)
+                span.set_attribute("total_tokens", response.usage.total_tokens)
+
             return response
         except Exception as e:
+            if span:
+                span.record_exception(e)
+                span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             raise e
 
     def process_response(self, response: Dict[str, Any], bot: Bot) -> Tuple[str, str, Dict[str, Any]]:
@@ -425,9 +463,9 @@ class ChatGPT_Bot(Bot):
         role: str = "assistant",
         role_description: str = "a friendly AI assistant",
         autosave: bool = True,
+        enable_tracing: Optional[bool] = None,
     ):
         """Initialize a ChatGPT bot with OpenAI-specific components.
-        Use when you need to create a new OpenAI-based bot instance with
         specific configuration.
         Sets up all necessary components for OpenAI interaction including
         conversation management, tool handling, and API communication.
@@ -466,4 +504,5 @@ class ChatGPT_Bot(Bot):
             conversation=OpenAINode._create_empty(OpenAINode),
             mailbox=OpenAIMailbox(),
             autosave=autosave,
+            enable_tracing=enable_tracing,
         )
