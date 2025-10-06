@@ -1,13 +1,12 @@
-import pytest
 import unittest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import bots.dev.cli as cli_module
 
-
-
-
 pytestmark = pytest.mark.e2e
+
 
 class TestCLILoad(unittest.TestCase):
     """Test suite for CLI load functionality."""

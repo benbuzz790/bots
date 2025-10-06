@@ -1,13 +1,12 @@
-import pytest
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
 from unittest.mock import patch
 
+import pytest
+
 import bots.dev.cli as cli_module
 from bots.testing.mock_bot import MockBot
-
-
 
 pytestmark = pytest.mark.e2e
 

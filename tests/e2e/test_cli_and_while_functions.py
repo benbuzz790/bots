@@ -1,7 +1,8 @@
 """Tests for CLI callback functionality and *_while functions."""
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 from bots.flows.functional_prompts import (
     branch_while,
@@ -10,10 +11,8 @@ from bots.flows.functional_prompts import (
 )
 from bots.foundation.base import ConversationNode
 
-
-
-
 pytestmark = pytest.mark.e2e
+
 
 class MockBot:
     """Mock bot for testing purposes."""

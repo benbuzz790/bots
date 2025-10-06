@@ -1,15 +1,14 @@
-import pytest
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import bots.dev.cli as cli_module
 
-
-
-
 pytestmark = pytest.mark.e2e
+
 
 class TestQuietModeDuplicate(unittest.TestCase):
     def setUp(self):

@@ -1,12 +1,11 @@
-import pytest
 import os
 import sys
 import unittest
 from unittest.mock import patch
 
+import pytest
+
 import bots.dev.cli as cli_module
-
-
 
 pytestmark = pytest.mark.e2e
 

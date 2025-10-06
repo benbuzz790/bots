@@ -2,8 +2,10 @@
 
 Provides fixtures for managing test environment variables and configuration.
 """
-import pytest
+
 import os
+
+import pytest
 
 
 @pytest.fixture
@@ -20,12 +22,12 @@ def clean_otel_env():
     """
     # Save original values
     otel_vars = [
-        'OTEL_EXPORTER_OTLP_ENDPOINT',
-        'OTEL_EXPORTER_OTLP_HEADERS',
-        'OTEL_SERVICE_NAME',
-        'OTEL_TRACES_EXPORTER',
-        'OTEL_METRICS_EXPORTER',
-        'OTEL_LOGS_EXPORTER',
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_HEADERS",
+        "OTEL_SERVICE_NAME",
+        "OTEL_TRACES_EXPORTER",
+        "OTEL_METRICS_EXPORTER",
+        "OTEL_LOGS_EXPORTER",
     ]
 
     original_values = {}
@@ -56,15 +58,15 @@ def mock_api_keys():
             # Original keys restored after test
     """
     api_key_vars = [
-        'ANTHROPIC_API_KEY',
-        'OPENAI_API_KEY',
-        'GOOGLE_API_KEY',
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "GOOGLE_API_KEY",
     ]
 
     original_values = {}
     for var in api_key_vars:
         original_values[var] = os.environ.get(var)
-        os.environ[var] = f'mock_{var.lower()}_12345'
+        os.environ[var] = f"mock_{var.lower()}_12345"
 
     yield
 
@@ -87,9 +89,9 @@ def clean_test_env():
             # Test runs with clean environment
     """
     test_vars = [
-        'TEST_MODE',
-        'DEBUG',
-        'VERBOSE',
+        "TEST_MODE",
+        "DEBUG",
+        "VERBOSE",
     ]
 
     original_values = {}

@@ -100,7 +100,7 @@ def test_insert_after_scope(test_file):
 def test_import_handling(test_file):
     """Test automatic import handling"""
     new_code = "\n    import sys\n    from typing import Dict\n\n    def new_func():\n        pass\n    "
-    _result = python_edit(test_file, new_code)
+    _ = python_edit(test_file, new_code)
     with open(test_file) as f:
         content = f.read()
     assert "import sys" in content
@@ -152,7 +152,7 @@ def test_async_function(test_file):
 def test_indentation_preservation(test_file):
     """Test proper indentation is maintained"""
     new_method = "\n    def indented_method(self):\n        if True:\n            x = 1\n            if True:\n                y = 2\n    "
-    _result = python_edit(f"{test_file}::OuterClass", new_method, coscope_with="OuterClass::method")
+    _ = python_edit(f"{test_file}::OuterClass", new_method, coscope_with="OuterClass::method")
     with open(test_file) as f:
         content = f.read()
     assert "    def indented_method" in content
@@ -175,7 +175,7 @@ def test_multiline_imports(test_file):
     new_code = (
         "\n    from typing import (\n        List,\n        Dict,\n        Optional,\n        Union\n    )\n\n    x = 42\n    "
     )
-    _result = python_edit(test_file, new_code)
+    _ = python_edit(test_file, new_code)
     with open(test_file) as f:
         content = f.read()
     assert "Union" in content
@@ -194,7 +194,7 @@ def test_indentation_in_class(tmp_path):
     content = "\n    class MyClass:\n        def method_one(self):\n            pass\n    "
     test_file = setup_test_file(tmp_path, content)
     new_method = "\n    def method_two(self):\n        if True:\n            x = 1\n    "
-    _result = python_edit(f"{test_file}::MyClass", new_method, coscope_with="MyClass::method_one")
+    _ = python_edit(f"{test_file}::MyClass", new_method, coscope_with="MyClass::method_one")
     with open(test_file) as f:
         content = f.read()
     print(f"DEBUG - Result content:\n{content}")
@@ -209,7 +209,7 @@ def test_indentation_in_class(tmp_path):
 def test_file_start_insertion_empty():
     """Test inserting at start of empty file"""
     test_file = setup_test_file("tmp", "")
-    _result = python_edit(test_file, "import sys", coscope_with="__FILE_START__")
+    _ = python_edit(test_file, "import sys", coscope_with="__FILE_START__")
     with open(test_file) as f:
         content = f.read()
     assert content.strip() == "import sys"
@@ -219,7 +219,7 @@ def test_file_start_insertion_with_imports():
     """Test inserting at start of file that already has imports"""
     content = "\n    import os\n    from typing import List\n\n    x = 1\n    "
     test_file = setup_test_file("tmp", content)
-    _result = python_edit(test_file, "import sys", coscope_with="__FILE_START__")
+    _ = python_edit(test_file, "import sys", coscope_with="__FILE_START__")
     with open(test_file) as f:
         lines = f.readlines()
     print(f"DEBUG - File lines: {lines}")
@@ -232,7 +232,7 @@ def test_file_start_insertion_with_code():
     """Test inserting at start of file that has no imports"""
     content = "\n    x = 1\n    y = 2\n    "
     test_file = setup_test_file("tmp", content)
-    _result = python_edit(test_file, "import sys", coscope_with="__FILE_START__")
+    _ = python_edit(test_file, "import sys", coscope_with="__FILE_START__")
     with open(test_file) as f:
         lines = f.readlines()
     print(f"DEBUG - File lines: {lines}")
@@ -266,7 +266,7 @@ def test_file_end_insertion(test_file):
 def test_file_end_insertion_empty():
     """Test inserting at end of empty file"""
     test_file = setup_test_file("tmp", "")
-    _result = python_edit(test_file, "print('hello world')", coscope_with="__FILE_END__")
+    _ = python_edit(test_file, "print('hello world')", coscope_with="__FILE_END__")
     with open(test_file) as f:
         content = f.read()
     assert content.strip() == "print('hello world')"
@@ -276,7 +276,7 @@ def test_file_end_insertion_with_existing_code():
     """Test inserting at end of file that already has code"""
     content = "\nimport os\nfrom typing import List\n\nx = 1\n"
     test_file = setup_test_file("tmp", content)
-    _result = python_edit(test_file, "y = 2", coscope_with="__FILE_END__")
+    _ = python_edit(test_file, "y = 2", coscope_with="__FILE_END__")
     with open(test_file) as f:
         lines = f.readlines()
     print(f"DEBUG - File lines: {lines}")
@@ -314,7 +314,7 @@ class ExistingClass:
 def new_function():
     return "new"
 """
-    _result = python_edit(test_file, new_function.strip(), coscope_with="__FILE_END__")
+    _ = python_edit(test_file, new_function.strip(), coscope_with="__FILE_END__")
     with open(test_file) as f:
         content_after = f.read()
     print(f"DEBUG - Content after: {content_after}")
@@ -335,7 +335,7 @@ def test_line_insert_exact_preservation():
     """Test that lines are preserved exactly as they appear in the source"""
     content = "\n    def func():\n        x = 1  # comment one\n\n        # marker with spaces around\n\n        y = 2  # comment two\n    "
     test_file = setup_test_file("tmp", content)
-    _result = python_edit(f"{test_file}::func", "z = 3", coscope_with="# marker with spaces around")
+    _ = python_edit(f"{test_file}::func", "z = 3", coscope_with="# marker with spaces around")
     with open(test_file) as f:
         content = f.read()
     print(f"DEBUG - File content:\n{content}")

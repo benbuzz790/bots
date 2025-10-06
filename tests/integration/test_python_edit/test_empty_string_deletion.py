@@ -2,8 +2,9 @@ import os
 import tempfile
 from textwrap import dedent
 
-from bots.tools.python_edit import python_edit
 import pytest
+
+from bots.tools.python_edit import python_edit
 
 
 def setup_test_file(tmp_path, content):
@@ -19,6 +20,7 @@ def setup_test_file(tmp_path, content):
 
 
 pytestmark = pytest.mark.integration
+
 
 def test_empty_string_deletes_entire_file(tmp_path):
     """Test that empty string at file level clears the entire file"""

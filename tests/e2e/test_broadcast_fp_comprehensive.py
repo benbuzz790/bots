@@ -1,14 +1,13 @@
-import pytest
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
 from unittest.mock import patch
 
+import pytest
+
 import bots.dev.cli as cli_module
 from bots.dev.cli import DynamicFunctionalPromptHandler, DynamicParameterCollector
 from bots.flows import functional_prompts as fp
-
-
 
 pytestmark = pytest.mark.e2e
 

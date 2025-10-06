@@ -8,7 +8,6 @@ Enhanced test suite for CLI prompt functionality:
 5. Name uniqueness and collision handling
 """
 
-import pytest
 import json
 import os
 import re
@@ -16,9 +15,10 @@ import tempfile
 import time
 from pathlib import Path
 
-
+import pytest
 
 pytestmark = pytest.mark.e2e
+
 
 def validate_snake_case_name(name: str) -> bool:
     """Validate that a name follows snake_case convention."""
@@ -322,7 +322,6 @@ def test_cli_integration():
     try:
         from bots.dev.cli import CLIContext, PromptHandler
         from bots.foundation.anthropic_bots import AnthropicBot
-
 
         # Create a mock CLI context
         context = CLIContext()

@@ -1,11 +1,10 @@
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 from bots.dev.cli import CLI, DynamicFunctionalPromptHandler, DynamicParameterCollector
 from bots.flows import functional_prompts as fp
 from bots.foundation.base import ConversationNode
-
-
 
 pytestmark = pytest.mark.e2e
 

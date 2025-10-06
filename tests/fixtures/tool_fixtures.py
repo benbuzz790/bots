@@ -2,8 +2,10 @@
 
 Provides fixtures for testing tool functionality and schemas.
 """
-import pytest
+
 from unittest.mock import Mock
+
+import pytest
 
 
 @pytest.fixture
@@ -31,6 +33,7 @@ def test_tool_function():
             result = test_tool_function("input")
             assert result == "Processed: input"
     """
+
     def sample_tool(input_str: str) -> str:
         """Sample tool for testing.
 
@@ -57,9 +60,10 @@ def tool_schema_validator():
             is_valid = tool_schema_validator(schema)
             assert is_valid
     """
+
     def validate_schema(schema):
         """Validate that a schema has required fields."""
-        required_fields = ['name', 'description']
+        required_fields = ["name", "description"]
         return all(field in schema for field in required_fields)
 
     return validate_schema

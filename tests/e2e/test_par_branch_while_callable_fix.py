@@ -1,15 +1,15 @@
 """Test to replicate and verify the par_branch_while callable pickling issue."""
 
-import pytest
 import pickle
+
+import pytest
 
 from bots.flows.functional_prompts import conditions, par_branch_while
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 
-
-
 pytestmark = pytest.mark.e2e
+
 
 def test_par_branch_while_with_unpicklable_callback():
     """Test that par_branch_while handles unpicklable callbacks gracefully.
@@ -134,7 +134,6 @@ def test_callback_is_called_after_threads():
     except Exception as e:
         print(f"✗ FAILED: {type(e).__name__}: {e}")
         import traceback
-
 
         traceback.print_exc()
         return False

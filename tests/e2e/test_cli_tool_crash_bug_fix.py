@@ -2,16 +2,15 @@
 Test to verify the CLI tool crash bug fix works correctly.
 """
 
-import pytest
 from unittest.mock import Mock
+
+import pytest
 
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 
-
-
-
 pytestmark = pytest.mark.e2e
+
 
 def crashing_tool(message: str) -> str:
     """A tool that always crashes to simulate the bug scenario."""

@@ -1,4 +1,3 @@
-import pytest
 import os
 import sys
 import tempfile
@@ -8,10 +7,11 @@ from contextlib import redirect_stdout
 from io import StringIO
 from unittest.mock import patch
 
+import pytest
+
 import bots.dev.cli as cli_module
 import bots.tools.terminal_tools
 from bots import AnthropicBot
-
 
 pytestmark = pytest.mark.e2e
 
@@ -51,7 +51,6 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
 
         # Clean up temp files
         import shutil
-
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 

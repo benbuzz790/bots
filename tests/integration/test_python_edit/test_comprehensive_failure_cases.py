@@ -2,8 +2,9 @@ import os
 import tempfile
 from textwrap import dedent
 
-from bots.tools.python_edit import python_edit
 import pytest
+
+from bots.tools.python_edit import python_edit
 
 
 def setup_test_file(content):
@@ -13,6 +14,7 @@ def setup_test_file(content):
 
 
 pytestmark = pytest.mark.integration
+
 
 def test_comprehensive_failure_cases():
     """Test all the major failure cases discovered during testing"""

@@ -1,13 +1,12 @@
-import pytest
 import os
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import bots.dev.cli as cli_module
 from bots.foundation.base import ConversationNode
-
-
 
 pytestmark = pytest.mark.e2e
 

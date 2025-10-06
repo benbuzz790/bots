@@ -9,9 +9,8 @@ import pytest
 
 from bots.dev.cli import CLI, CLIConfig, create_auto_stash
 
-
-
 pytestmark = pytest.mark.e2e
+
 
 def safe_rmtree(path):
     """Safely remove directory tree on Windows."""
@@ -260,7 +259,6 @@ class TestCLIIntegration:
     def test_help_includes_auto_stash(self):
         """Test that help includes auto-stash commands."""
         from bots.dev.cli import CLIContext, SystemHandler
-
 
         handler = SystemHandler()
         context = CLIContext()

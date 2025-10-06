@@ -2,19 +2,17 @@ import os
 import tempfile
 import uuid
 
-
 # Import shared fixtures from fixtures directory
 # These will be automatically discovered by pytest
 try:
     from tests.fixtures.bot_fixtures import *  # noqa: F401, F403
+    from tests.fixtures.env_fixtures import *  # noqa: F401, F403
     from tests.fixtures.file_fixtures import *  # noqa: F401, F403
     from tests.fixtures.mock_fixtures import *  # noqa: F401, F403
     from tests.fixtures.tool_fixtures import *  # noqa: F401, F403
-    from tests.fixtures.env_fixtures import *  # noqa: F401, F403
 except ImportError:
     # Fixtures not yet created, will be added in Phase 2
     pass
-
 
 
 def get_unique_filename(prefix="test", extension="py"):

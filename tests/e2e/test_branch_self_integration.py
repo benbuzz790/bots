@@ -1,4 +1,3 @@
-import pytest
 import os
 import sys
 import tempfile
@@ -8,9 +7,10 @@ from contextlib import redirect_stdout
 from io import StringIO
 from unittest.mock import patch
 
+import pytest
+
 import bots.dev.cli as cli_module
 from bots import AnthropicBot
-
 
 pytestmark = pytest.mark.e2e
 
@@ -53,7 +53,6 @@ class TestBranchSelfIntegration(DetailedTestCase):
         import bots.tools.code_tools
         import bots.tools.python_edit
         import bots.tools.self_tools
-
 
         cli.context.bot_instance.add_tools(
             bots.tools.terminal_tools, bots.tools.self_tools, bots.tools.python_edit, bots.tools.code_tools

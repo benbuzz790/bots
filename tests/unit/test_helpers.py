@@ -17,6 +17,9 @@ import pytest
 
 from bots.utils.helpers import _get_new_files
 
+pytestmark = pytest.mark.unit
+
+
 
 def _remove_file_with_error_handling(file_path: str, logger: Optional[logging.Logger] = None) -> None:
     """Remove a single file with proper error handling and logging.
@@ -115,8 +118,6 @@ def create_file(path: str, content: str = "", sleep_time: float = 0.1) -> None:
     time.sleep(sleep_time)
 
 
-@pytest.mark.unit
-@pytest.mark.unit
 def test_get_new_files_basic(temp_dir: str) -> None:
     """Test basic functionality of _get_new_files with a single file.
     Verifies that _get_new_files correctly identifies a single file created
@@ -133,8 +134,6 @@ def test_get_new_files_basic(temp_dir: str) -> None:
     assert os.path.basename(new_files[0]) == "test.txt"
 
 
-@pytest.mark.unit
-@pytest.mark.unit
 def test_get_new_files_multiple_times(temp_dir: str) -> None:
     """Test _get_new_files with files created before and after start time.
     Verifies that the function correctly:
@@ -160,8 +159,6 @@ def test_get_new_files_multiple_times(temp_dir: str) -> None:
     assert "old.txt" not in filenames
 
 
-@pytest.mark.unit
-@pytest.mark.unit
 def test_get_new_files_extension_filter(temp_dir: str) -> None:
     """Test _get_new_files extension filtering functionality.
     Verifies that the function correctly filters files by extension:
@@ -185,8 +182,6 @@ def test_get_new_files_extension_filter(temp_dir: str) -> None:
     assert os.path.basename(py_files[0]) == "test.py"
 
 
-@pytest.mark.unit
-@pytest.mark.unit
 def test_get_new_files_subdirectories(temp_dir: str) -> None:
     """Test _get_new_files handling of nested directory structures.
     Verifies that the function correctly:
@@ -209,8 +204,6 @@ def test_get_new_files_subdirectories(temp_dir: str) -> None:
     assert "sub.txt" in filenames
 
 
-@pytest.mark.unit
-@pytest.mark.unit
 def test_get_new_files_empty_directory(temp_dir: str) -> None:
     """Test _get_new_files behavior with an empty directory.
     Verifies that the function correctly:
@@ -224,8 +217,6 @@ def test_get_new_files_empty_directory(temp_dir: str) -> None:
     assert len(new_files) == 0
 
 
-@pytest.mark.unit
-@pytest.mark.unit
 def test_get_new_files_no_extension_filter(temp_dir: str) -> None:
     """Test _get_new_files behavior when no extension filter is applied.
     Verifies that the function correctly:

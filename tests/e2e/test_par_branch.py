@@ -21,10 +21,8 @@ from bots.flows.functional_prompts import par_branch, par_branch_while
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 
-
-
-
 pytestmark = pytest.mark.e2e
+
 
 @pytest.fixture
 def test_bot():

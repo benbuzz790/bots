@@ -2,9 +2,11 @@
 
 Provides mocks for user input, print output, and bot loading.
 """
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+
 from io import StringIO
+from unittest.mock import Mock
+
+import pytest
 
 
 @pytest.fixture

@@ -1,16 +1,16 @@
-import pytest
 import tempfile
 import threading
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from bots.dev.cli import CLI, PromptHandler, PromptManager
 from bots.foundation.base import Engines
 
-
-
 pytestmark = pytest.mark.e2e
+
 
 class TestPromptManager(unittest.TestCase):
     """Test the PromptManager class functionality."""
@@ -329,7 +329,6 @@ class TestCLIPromptIntegration(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         import shutil
-
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 

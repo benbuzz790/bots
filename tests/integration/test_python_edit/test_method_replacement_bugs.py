@@ -2,8 +2,9 @@ import os
 import tempfile
 from textwrap import dedent
 
-from bots.tools.python_edit import python_edit
 import pytest
+
+from bots.tools.python_edit import python_edit
 
 
 def setup_test_file(content):
@@ -13,6 +14,7 @@ def setup_test_file(content):
 
 
 pytestmark = pytest.mark.integration
+
 
 def test_method_replacement_with_imports_bug():
     """BUG: Method replacement with imports can replace entire file"""

@@ -1,4 +1,5 @@
 import pytest
+
 """Tests for functional prompt callback functionality."""
 
 from unittest.mock import Mock

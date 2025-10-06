@@ -1,4 +1,8 @@
 import pytest
+
+pytestmark = pytest.mark.unit
+
+
 """
 Test file to verify MockBot implementation works correctly.
 Run this to ensure all components are functioning as expected.
@@ -7,8 +11,6 @@ Run this to ensure all components are functioning as expected.
 import sys
 
 
-@pytest.mark.unit
-@pytest.mark.unit
 def test_mock_bot_basic():
     """Test basic MockBot functionality."""
     print("Testing basic MockBot functionality...")
@@ -35,8 +37,6 @@ def test_mock_bot_basic():
         return False
 
 
-@pytest.mark.unit
-@pytest.mark.unit
 def test_mock_tool_handler():
     """Test MockToolHandler functionality."""
     print("Testing MockToolHandler functionality...")
@@ -69,8 +69,6 @@ def test_mock_tool_handler():
         return False
 
 
-@pytest.mark.unit
-@pytest.mark.unit
 def test_mock_mailbox():
     """Test MockMailbox functionality."""
     print("Testing MockMailbox functionality...")
@@ -98,8 +96,6 @@ def test_mock_mailbox():
         return False
 
 
-@pytest.mark.unit
-@pytest.mark.unit
 def test_conversation_node():
     """Test MockConversationNode functionality."""
     print("Testing MockConversationNode functionality...")
@@ -135,8 +131,6 @@ def test_conversation_node():
         return False
 
 
-@pytest.mark.unit
-@pytest.mark.unit
 def test_utility_functions():
     """Test utility functions."""
     print("Testing utility functions...")
@@ -181,8 +175,6 @@ def test_utility_functions():
         return False
 
 
-@pytest.mark.unit
-@pytest.mark.unit
 def test_failure_modes():
     """Test failure simulation."""
     print("Testing failure modes...")

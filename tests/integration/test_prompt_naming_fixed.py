@@ -5,6 +5,7 @@ Fixed version of prompt naming test with proper max_tokens for Haiku
 
 import re
 import time
+
 import pytest
 
 
@@ -57,6 +58,7 @@ Respond with just the name, no explanation."""
 
 
 pytestmark = pytest.mark.integration
+
 
 def test_fixed_naming():
     """Test the fixed prompt naming functionality."""

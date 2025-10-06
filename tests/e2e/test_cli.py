@@ -1,4 +1,3 @@
-import pytest
 import inspect
 import os
 import sys
@@ -8,9 +7,10 @@ from contextlib import redirect_stdout
 from io import StringIO
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import bots.dev.cli as cli_module
 import bots.flows.functional_prompts as fp
-
 
 pytestmark = pytest.mark.e2e
 
@@ -673,7 +673,6 @@ class TestAutoCommand(DetailedTestCase):
     def setUp(self):
         """Set up test fixtures for auto command tests."""
         from unittest.mock import MagicMock
-
 
         self.mock_bot = MagicMock()
         self.mock_bot.name = "TestBot"

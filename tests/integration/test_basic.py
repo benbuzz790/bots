@@ -21,9 +21,10 @@ The test suite verifies:
 import unittest
 from typing import List
 
+import pytest
+
 from bots import AnthropicBot, ChatGPT_Bot
 from bots.foundation.base import Engines
-import pytest
 
 
 class TestAnthropicBot(unittest.TestCase):
@@ -243,6 +244,7 @@ class TestGPTBot(unittest.TestCase):
 
 
 pytestmark = pytest.mark.integration
+
 
 def test_bot_multiplication() -> None:
     """Test the bot multiplication operator for parallel processing capability.

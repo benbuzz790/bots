@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Test to reproduce the specific _convert_tool_inputs helper function loss bug."""
-import pytest
 import os
 import sys
 import tempfile
 import unittest
 
+import pytest
+
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
-
 
 pytestmark = pytest.mark.e2e
 
@@ -35,7 +35,6 @@ class TestSpecificHelperBug(unittest.TestCase):
         bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
         # Import and add the view_dir tool
         from bots.tools.code_tools import view_dir
-
 
         bot.add_tools(view_dir)
         print(f"Original bot has {len(bot.tool_handler.tools)} tools")

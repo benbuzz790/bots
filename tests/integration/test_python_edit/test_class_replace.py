@@ -1,11 +1,12 @@
 import tempfile
 from pathlib import Path
 
-from bots.tools.python_edit import python_edit
 import pytest
 
+from bots.tools.python_edit import python_edit
 
 pytestmark = pytest.mark.integration
+
 
 def test_class_method_replacement():
     """Test replacing a method in a class using python_edit."""

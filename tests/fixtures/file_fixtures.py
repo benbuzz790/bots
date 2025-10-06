@@ -2,11 +2,13 @@
 
 Provides temporary file/directory creation with automatic cleanup.
 """
-import pytest
-import tempfile
+
 import os
+import tempfile
 import uuid
 from pathlib import Path
+
+import pytest
 
 
 @pytest.fixture
@@ -27,11 +29,7 @@ def temp_test_file():
     def _create_file(content, prefix="test", extension="py"):
         """Create a temp file with given content."""
         with tempfile.NamedTemporaryFile(
-            mode="w",
-            suffix=f".{extension}",
-            prefix=f"{prefix}_",
-            delete=False,
-            encoding="utf-8"
+            mode="w", suffix=f".{extension}", prefix=f"{prefix}_", delete=False, encoding="utf-8"
         ) as f:
             f.write(content)
             filepath = f.name
@@ -70,6 +68,7 @@ def temp_test_dir():
 
     # Cleanup
     import shutil
+
     try:
         if temp_path.exists():
             shutil.rmtree(temp_path)

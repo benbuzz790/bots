@@ -1,13 +1,13 @@
 """End-to-end test simulating CLI usage of par_branch_while."""
 
 import pytest
+
 from bots.flows.functional_prompts import conditions, par_branch_while
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 
-
-
 pytestmark = pytest.mark.e2e
+
 
 def test_cli_like_callback_usage():
     """Simulate how the CLI creates and uses callbacks with par_branch_while."""
@@ -70,7 +70,6 @@ def test_cli_like_callback_usage():
     except Exception as e:
         print(f"\n✗ FAILED: {type(e).__name__}: {e}")
         import traceback
-
 
         traceback.print_exc()
         return False

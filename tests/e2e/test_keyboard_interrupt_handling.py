@@ -1,14 +1,13 @@
-import pytest
 import unittest
 from io import StringIO
 from unittest.mock import patch
 
+import pytest
+
 from bots.dev.decorators import toolify
 
-
-
-
 pytestmark = pytest.mark.e2e
+
 
 class ToolExecutionError(Exception):
     """Custom exception for tool execution failures."""

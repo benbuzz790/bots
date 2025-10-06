@@ -3,8 +3,6 @@ import pytest
 from bots.flows import functional_prompts as fp
 from bots.foundation.anthropic_bots import AnthropicBot
 
-
-
 pytestmark = pytest.mark.e2e
 
 """Tests for broadcast_fp functional prompt."""

@@ -6,10 +6,11 @@ Tests both the Haiku naming and fallback mechanisms.
 
 import re
 import time
+
 import pytest
 
-
 pytestmark = pytest.mark.integration
+
 
 def test_prompt_naming():
     """Test the prompt naming functionality with various scenarios."""

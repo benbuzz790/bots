@@ -11,10 +11,13 @@ import traceback
 import unittest
 
 import psutil
+import pytest
+
+pytestmark = pytest.mark.unit
+
 
 from bots.tools import python_editing_tools, python_execution_tool
 from tests.conftest import get_unique_filename
-import pytest
 
 
 def ast_normalize(code):
@@ -477,7 +480,6 @@ class TestClass:
 from pathlib import Path
 import json
 
-@pytest.mark.unit
 def test_function():
     data = json.loads('{}')
     path = Path('test')

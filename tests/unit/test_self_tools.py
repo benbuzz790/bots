@@ -34,8 +34,6 @@ class TestSelfTools(unittest.TestCase):
 
     def tearDown(self) -> None:
         """Clean up test environment after each test."""
-        # Get current directory for cleanup
-        current_cwd = os.getcwd()
 
         # Clean up temp directory
         if hasattr(self, "temp_dir"):

@@ -2,8 +2,10 @@
 
 Provides both mock and real bot instances for different test scenarios.
 """
+
+from unittest.mock import MagicMock, Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
 
 
 @pytest.fixture
@@ -46,6 +48,7 @@ def real_anthropic_bot():
     Use sparingly and only in integration tests.
     """
     from bots import AnthropicBot
+
     return AnthropicBot()
 
 
@@ -57,6 +60,7 @@ def real_openai_bot():
     Use sparingly and only in integration tests.
     """
     from bots import OpenAIBot
+
     return OpenAIBot()
 
 
@@ -68,4 +72,5 @@ def real_gemini_bot():
     Use sparingly and only in integration tests.
     """
     from bots import GeminiBot
+
     return GeminiBot()

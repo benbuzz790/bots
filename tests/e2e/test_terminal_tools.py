@@ -1,15 +1,15 @@
-import pytest
 import os
 import shutil
 import tempfile
 import unittest
 
+import pytest
+
 from bots.tools.terminal_tools import PowerShellSession, execute_powershell
 from tests.conftest import get_unique_filename
 
-
-
 pytestmark = pytest.mark.e2e
+
 
 class TestTerminalTools(unittest.TestCase):
     """Test suite for terminal tools functionality"""
@@ -884,7 +884,6 @@ class TestPowerShellFileCreationDebug(unittest.TestCase):
     def tearDown(self):
         os.chdir(self.original_cwd)
         import shutil
-
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
