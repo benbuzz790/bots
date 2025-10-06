@@ -8,8 +8,6 @@ Provides common fixtures for testing tracing functionality including:
 - OpenTelemetry setup/teardown
 """
 
-import os
-
 import pytest
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -28,83 +26,87 @@ def clean_otel_env(monkeypatch):
     monkeypatch.delenv("BOTS_OTEL_EXPORTER", raising=False)
     monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
     monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
+    monkeypatch.delenv("BOTS_ENABLE_TRACING", raising=False)
     yield
 
 
 @pytest.fixture
-def otel_disabled(monkeypatch):
-    """Set OTEL_SDK_DISABLED=true for testing disabled state.
+def mock_tracer_provider():
+    """Create a mock tracer provider with in-memory span exporter.
 
-    Use when you need to test behavior with OpenTelemetry disabled.
+    Use when you need to capture and inspect spans created during tests.
+    Returns a tuple of (provider, exporter) for easy span inspection.
     """
-    monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
-    yield
-
-
-@pytest.fixture
-def capture_spans():
-    """Capture spans for validation in tests.
-
-    Use when you need to inspect spans created during a test.
-
-    Returns:
-        InMemorySpanExporter: Exporter that stores spans in memory
-
-    Example:
-        def test_span_creation(capture_spans):
-            # ... create spans ...
-            spans = capture_spans.get_finished_spans()
-            assert len(spans) == 1
-            assert spans[0].name == "test.span"
-    """
-    # Create a new tracer provider with in-memory exporter
     exporter = InMemorySpanExporter()
-    processor = SimpleSpanProcessor(exporter)
     provider = TracerProvider()
-    provider.add_span_processor(processor)
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    return provider, exporter
 
-    # Set as global provider
+
+@pytest.fixture
+def captured_spans(mock_tracer_provider):
+    """Fixture that provides access to captured spans.
+
+    Use when you need to verify span creation and attributes in tests.
+    Automatically clears spans after each test.
+    """
+    provider, exporter = mock_tracer_provider
     trace.set_tracer_provider(provider)
-
     yield exporter
-
-    # Cleanup
     exporter.clear()
 
 
 @pytest.fixture
 def mock_bot_with_tracing():
-    """Create a MockBot with tracing enabled.
+    """Create a mock bot with tracing enabled.
 
-    Use for unit tests that need to verify tracing behavior without API calls.
-
-    Returns:
-        MockBot: Bot instance with tracing enabled
+    Use when you need a bot instance for testing tracing functionality.
     """
-    from bots.testing import MockBot
+    from bots.testing.mock_bot import MockBot
 
-    bot = MockBot(name="test_bot", enable_tracing=True)
+    bot = MockBot(enable_tracing=True)
+    bot._tracing_enabled = True
     return bot
 
 
 @pytest.fixture
 def mock_bot_without_tracing():
-    """Create a MockBot with tracing disabled.
+    """Create a mock bot with tracing disabled.
 
-    Use for unit tests that need to verify no-op behavior when tracing is disabled.
-
-    Returns:
-        MockBot: Bot instance with tracing disabled
+    Use when you need to verify behavior with tracing turned off.
     """
-    from bots.testing import MockBot
+    from bots.testing.mock_bot import MockBot
 
-    bot = MockBot(name="test_bot", enable_tracing=False)
+    bot = MockBot(enable_tracing=False)
     return bot
 
 
 @pytest.fixture
+def in_memory_span_exporter():
+    """Create an in-memory span exporter for testing.
+
+    Use when you need a simple exporter to capture spans without
+    setting up a full tracer provider.
+    """
+    return InMemorySpanExporter()
+
+
+@pytest.fixture
+def simple_tracer_provider(in_memory_span_exporter):
+    """Create a simple tracer provider with in-memory exporter.
+
+    Use when you need a basic tracer provider for testing without
+    complex configuration.
+    """
+    provider = TracerProvider()
+    processor = SimpleSpanProcessor(in_memory_span_exporter)
+    provider.add_span_processor(processor)
+    return provider
+
+
+@pytest.fixture
 def reset_tracing():
-    """Reset tracing state between tests.
+    """Reset tracing state before and after test.
 
     Use when tests modify global tracing state and need isolation.
     """
@@ -118,12 +120,12 @@ def reset_tracing():
         pass
 
     # Reset OpenTelemetry global state
-    from opentelemetry import trace
-    from opentelemetry.trace import ProxyTracerProvider
-
-    # Create a fresh ProxyTracerProvider
     trace._TRACER_PROVIDER = None
-    trace._TRACER_PROVIDER_SET_ONCE._done = False
+    try:
+        trace._TRACER_PROVIDER_SET_ONCE._done = False
+    except AttributeError:
+        # Handle different OpenTelemetry versions
+        trace._TRACER_PROVIDER_SET_ONCE = trace.Once()
 
     yield
 

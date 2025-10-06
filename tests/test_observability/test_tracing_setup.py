@@ -4,27 +4,11 @@ This module tests the OpenTelemetry tracing setup functionality,
 including initialization, configuration, and environment variable handling.
 """
 
-import os
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter
-
-
-@pytest.fixture
-def clean_otel_env(monkeypatch):
-    """Clean OpenTelemetry environment variables before each test.
-
-    This fixture ensures tests start with a clean slate by removing
-    any OpenTelemetry-related environment variables.
-    """
-    # Remove OTEL environment variables
-    monkeypatch.delenv("OTEL_SDK_DISABLED", raising=False)
-    monkeypatch.delenv("BOTS_ENABLE_TRACING", raising=False)
-    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
-    yield
 
 
 @pytest.fixture

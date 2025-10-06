@@ -4,11 +4,9 @@ Tests bot tracing functionality using MockBot to avoid API calls.
 Verifies span creation, attributes, and configuration options.
 """
 
-import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -237,7 +235,7 @@ class TestToolHandlerTracing:
         MockToolHandler overrides exec_requests and doesn't include tracing,
         which is acceptable for testing purposes.
         """
-        from bots.foundation.anthropic_bots import AnthropicBot, AnthropicToolHandler
+        from bots.foundation.anthropic_bots import AnthropicToolHandler
 
         # Create in-memory exporter to capture spans
         exporter = InMemorySpanExporter()

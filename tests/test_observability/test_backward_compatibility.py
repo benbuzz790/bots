@@ -9,7 +9,7 @@ should continue to work exactly as before, with tracing being purely additive.
 import os
 import tempfile
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -173,7 +173,7 @@ class TestBackwardCompatibility:
             # Verify state was preserved
             assert bot2.name == "save_test"
             assert bot2.conversation is not None
-            assert bot2._tracing_enabled == False  # Tracing state should be preserved
+            assert not bot2._tracing_enabled  # Tracing state should be preserved
 
             # Verify conversation history was preserved
             messages = bot2.conversation._build_messages()
