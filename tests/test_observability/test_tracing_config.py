@@ -5,6 +5,7 @@ including environment variable handling, default values, and precedence rules.
 """
 
 import os
+
 import pytest
 
 from bots.observability.config import ObservabilityConfig, load_config_from_env
@@ -35,10 +36,7 @@ class TestObservabilityConfig:
         Verifies that all fields can be set to custom values.
         """
         config = ObservabilityConfig(
-            tracing_enabled=False,
-            exporter_type="otlp",
-            service_name="my-service",
-            otlp_endpoint="http://localhost:4317"
+            tracing_enabled=False, exporter_type="otlp", service_name="my-service", otlp_endpoint="http://localhost:4317"
         )
 
         assert config.tracing_enabled is False

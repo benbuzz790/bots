@@ -17,20 +17,23 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 from bots.utils.helpers import _py_ast_to_source, formatted_datetime
 
-
 # OpenTelemetry imports with graceful degradation
 try:
-    from bots.observability.tracing import get_tracer, is_tracing_enabled, get_default_tracing_preference
+    from bots.observability.tracing import get_default_tracing_preference, get_tracer, is_tracing_enabled
+
     tracer = get_tracer(__name__)
     TRACING_AVAILABLE = True
 except ImportError:
     TRACING_AVAILABLE = False
     tracer = None
+
     # Provide dummy functions if import fails
     def is_tracing_enabled():
         return False
+
     def get_default_tracing_preference():
         return False
+
 
 """Core foundation classes for the bots framework.
 This module provides the fundamental abstractions and base classes that power the bots framework:
@@ -176,24 +179,25 @@ class Engines(str, Enum):
             ValueError: If the class name is not a supported node type
         """
         from bots.foundation.anthropic_bots import AnthropicNode
-        from bots.foundation.anthropic_bots import AnthropicNode
         from bots.foundation.gemini_bots import GeminiNode
         from bots.foundation.openai_bots import OpenAINode
 
         NODE_CLASS_MAP = {"OpenAINode": OpenAINode, "AnthropicNode": AnthropicNode, "GeminiNode": GeminiNode}
-        
+
         # Support MockConversationNode for testing
         if class_name == "MockConversationNode":
             try:
                 from bots.testing.mock_bot import MockConversationNode
+
                 return MockConversationNode
             except ImportError:
                 pass  # Fall through to error
-        
+
         node_class = NODE_CLASS_MAP.get(class_name)
         if node_class is None:
             raise ValueError(f"Unsupported conversation node type: {class_name}")
         return node_class
+
 
 class ConversationNode:
     """Tree-based storage for conversation history and tool interactions.

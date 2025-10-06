@@ -7,10 +7,11 @@ should continue to work exactly as before, with tracing being purely additive.
 """
 
 import os
-import time
 import tempfile
+import time
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from bots.testing.mock_bot import MockBot
 
@@ -29,8 +30,8 @@ class TestBackwardCompatibility:
         bot = MockBot()
 
         assert bot is not None
-        assert hasattr(bot, 'respond')
-        assert hasattr(bot, 'conversation')
+        assert hasattr(bot, "respond")
+        assert hasattr(bot, "conversation")
 
         # Bot should work normally
         response = bot.respond("Hello")
@@ -45,7 +46,7 @@ class TestBackwardCompatibility:
         should be identical to pre-tracing implementation.
         """
         bot = MockBot(enable_tracing=False)
-        
+
         # Configure different responses for each call
         bot.add_response_pattern("Response 1: {user_input}")
         bot.add_response_pattern("Response 2: {user_input}")
@@ -67,6 +68,7 @@ class TestBackwardCompatibility:
         configuration. This test ensures tools execute correctly and
         return expected results when tracing is disabled.
         """
+
         def sample_tool(x: str) -> str:
             """A simple test tool.
 
@@ -107,11 +109,7 @@ class TestBackwardCompatibility:
         bot3 = MockBot(max_tokens=1000)
         assert bot3.max_tokens == 1000
 
-        bot4 = MockBot(
-            name="complex_bot",
-            temperature=0.7,
-            max_tokens=2000
-        )
+        bot4 = MockBot(name="complex_bot", temperature=0.7, max_tokens=2000)
         assert bot4.name == "complex_bot"
         assert bot4.temperature == 0.7
         assert bot4.max_tokens == 2000
@@ -124,7 +122,7 @@ class TestBackwardCompatibility:
         the library doesn't become dependent on OpenTelemetry.
         """
         # Mock the import to simulate OpenTelemetry not being available
-        with patch.dict('sys.modules', {'opentelemetry': None}):
+        with patch.dict("sys.modules", {"opentelemetry": None}):
             # Bot should still initialize and work
             bot = MockBot(enable_tracing=False)
             response = bot.respond("Hello")
@@ -169,17 +167,17 @@ class TestBackwardCompatibility:
 
             # Load the bot
             from bots.foundation.base import load
+
             bot2 = load(filepath)
 
             # Verify state was preserved
             assert bot2.name == "save_test"
             assert bot2.conversation is not None
             assert bot2._tracing_enabled == False  # Tracing state should be preserved
-            
+
             # Verify conversation history was preserved
             messages = bot2.conversation._build_messages()
             assert len(messages) > 0  # Should have conversation history
-
 
     def test_conversation_tree_unchanged(self):
         """Test that conversation tree structure is unchanged.
@@ -260,7 +258,7 @@ class TestEnvironmentVariableCompatibility:
         When OTEL_SDK_DISABLED=true, tracing should be completely disabled
         even if enable_tracing=True is passed to the bot.
         """
-        with patch.dict(os.environ, {'OTEL_SDK_DISABLED': 'true'}):
+        with patch.dict(os.environ, {"OTEL_SDK_DISABLED": "true"}):
             bot = MockBot(enable_tracing=True)
 
             # Bot should still work normally
@@ -274,8 +272,8 @@ class TestEnvironmentVariableCompatibility:
         default configuration.
         """
         # Clear any OpenTelemetry environment variables
-        env_vars_to_clear = ['OTEL_SDK_DISABLED', 'BOTS_ENABLE_TRACING']
-        with patch.dict(os.environ, {k: '' for k in env_vars_to_clear}, clear=False):
+        env_vars_to_clear = ["OTEL_SDK_DISABLED", "BOTS_ENABLE_TRACING"]
+        with patch.dict(os.environ, {k: "" for k in env_vars_to_clear}, clear=False):
             bot = MockBot()
             response = bot.respond("Test message")
             assert isinstance(response, str)

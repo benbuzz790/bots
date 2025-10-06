@@ -5,16 +5,16 @@ Verifies span creation, attributes, and configuration options.
 """
 
 import os
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
+import pytest
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from bots.testing.mock_bot import MockBot
 from bots.foundation.base import Engines
+from bots.testing.mock_bot import MockBot
 
 
 # Fixture to capture spans for testing using real OpenTelemetry
@@ -30,7 +30,7 @@ def span_exporter():
     provider.add_span_processor(SimpleSpanProcessor(exporter))
 
     # Patch the tracer in base.py to use our test provider
-    with patch('bots.foundation.base.tracer', provider.get_tracer(__name__)):
+    with patch("bots.foundation.base.tracer", provider.get_tracer(__name__)):
         yield exporter
 
     # Clear spans after test
@@ -46,8 +46,8 @@ class TestBotTracingConfiguration:
         When a bot is created without specifying enable_tracing parameter,
         it should default to enabled (assuming OpenTelemetry is available).
         """
-        with patch('bots.foundation.base.TRACING_AVAILABLE', True):
-            with patch('bots.foundation.base.get_default_tracing_preference', return_value=True):
+        with patch("bots.foundation.base.TRACING_AVAILABLE", True):
+            with patch("bots.foundation.base.get_default_tracing_preference", return_value=True):
                 bot = MockBot()
                 assert bot._tracing_enabled is True
 
@@ -57,7 +57,7 @@ class TestBotTracingConfiguration:
         When explicitly disabled via parameter, tracing should be off
         regardless of environment settings.
         """
-        with patch('bots.foundation.base.TRACING_AVAILABLE', True):
+        with patch("bots.foundation.base.TRACING_AVAILABLE", True):
             bot = MockBot(enable_tracing=False)
             assert bot._tracing_enabled is False
 
@@ -67,8 +67,8 @@ class TestBotTracingConfiguration:
         When explicitly enabled via parameter, tracing should be on
         (assuming OpenTelemetry is available).
         """
-        with patch('bots.foundation.base.TRACING_AVAILABLE', True):
-            with patch('bots.foundation.base.is_tracing_enabled', return_value=True):
+        with patch("bots.foundation.base.TRACING_AVAILABLE", True):
+            with patch("bots.foundation.base.is_tracing_enabled", return_value=True):
                 bot = MockBot(enable_tracing=True)
                 assert bot._tracing_enabled is True
 
@@ -78,8 +78,8 @@ class TestBotTracingConfiguration:
         When OpenTelemetry SDK is disabled via environment variable,
         tracing should be off even if explicitly requested.
         """
-        with patch('bots.foundation.base.TRACING_AVAILABLE', True):
-            with patch('bots.foundation.base.is_tracing_enabled', return_value=False):
+        with patch("bots.foundation.base.TRACING_AVAILABLE", True):
+            with patch("bots.foundation.base.is_tracing_enabled", return_value=False):
                 bot = MockBot(enable_tracing=True)
                 assert bot._tracing_enabled is False
 
@@ -89,7 +89,7 @@ class TestBotTracingConfiguration:
         When TRACING_AVAILABLE is False (import failed), tracing should
         be disabled regardless of configuration.
         """
-        with patch('bots.foundation.base.TRACING_AVAILABLE', False):
+        with patch("bots.foundation.base.TRACING_AVAILABLE", False):
             bot = MockBot(enable_tracing=True)
             assert bot._tracing_enabled is False
 
@@ -108,8 +108,8 @@ class TestBotRespondTracing:
         provider = TracerProvider()
         provider.add_span_processor(SimpleSpanProcessor(exporter))
 
-        with patch('bots.foundation.base.TRACING_AVAILABLE', True):
-            with patch('bots.foundation.base.tracer', provider.get_tracer(__name__)):
+        with patch("bots.foundation.base.TRACING_AVAILABLE", True):
+            with patch("bots.foundation.base.tracer", provider.get_tracer(__name__)):
                 bot = MockBot(enable_tracing=True)
                 bot._tracing_enabled = True
 
@@ -134,8 +134,8 @@ class TestBotRespondTracing:
         provider = TracerProvider()
         provider.add_span_processor(SimpleSpanProcessor(exporter))
 
-        with patch('bots.foundation.base.TRACING_AVAILABLE', True):
-            with patch('bots.foundation.base.tracer', provider.get_tracer(__name__)):
+        with patch("bots.foundation.base.TRACING_AVAILABLE", True):
+            with patch("bots.foundation.base.tracer", provider.get_tracer(__name__)):
                 bot = MockBot(enable_tracing=False)
 
                 bot.respond("Test prompt")
@@ -160,8 +160,8 @@ class TestBotRespondTracing:
         provider = TracerProvider()
         provider.add_span_processor(SimpleSpanProcessor(exporter))
 
-        with patch('bots.foundation.base.TRACING_AVAILABLE', True):
-            with patch('bots.foundation.base.tracer', provider.get_tracer(__name__)):
+        with patch("bots.foundation.base.TRACING_AVAILABLE", True):
+            with patch("bots.foundation.base.tracer", provider.get_tracer(__name__)):
                 bot = MockBot(name="test_bot", model_engine=Engines.GPT4, enable_tracing=True)
                 bot._tracing_enabled = True
 
@@ -204,8 +204,8 @@ class TestBotCvsnRespondTracing:
         provider = TracerProvider()
         provider.add_span_processor(SimpleSpanProcessor(exporter))
 
-        with patch('bots.foundation.base.TRACING_AVAILABLE', True):
-            with patch('bots.foundation.base.tracer', provider.get_tracer(__name__)):
+        with patch("bots.foundation.base.TRACING_AVAILABLE", True):
+            with patch("bots.foundation.base.tracer", provider.get_tracer(__name__)):
                 bot = MockBot(enable_tracing=True)
                 bot._tracing_enabled = True
 
@@ -256,8 +256,8 @@ class TestToolHandlerTracing:
         test_tracer.start_as_current_span = tracking_start_as_current_span
 
         # Use real ToolHandler (not Mock) to test tracing
-        with patch('bots.foundation.base.TRACING_AVAILABLE', True):
-            with patch('bots.foundation.base.tracer', test_tracer):
+        with patch("bots.foundation.base.TRACING_AVAILABLE", True):
+            with patch("bots.foundation.base.tracer", test_tracer):
                 tool_handler = AnthropicToolHandler()
 
                 # Add a simple tool
@@ -268,12 +268,9 @@ class TestToolHandlerTracing:
                 tool_handler.add_tool(test_tool)
 
                 # Add a request in Anthropic format
-                tool_handler.add_request({
-                    'type': 'tool_use',
-                    'id': 'test_id',
-                    'name': 'test_tool',
-                    'input': {'arg': 'test_value'}
-                })
+                tool_handler.add_request(
+                    {"type": "tool_use", "id": "test_id", "name": "test_tool", "input": {"arg": "test_value"}}
+                )
 
                 # Execute - this should trigger tracing
                 tool_handler.exec_requests()
@@ -297,8 +294,8 @@ class TestTracingIntegration:
         provider = TracerProvider()
         provider.add_span_processor(SimpleSpanProcessor(exporter))
 
-        with patch('bots.foundation.base.TRACING_AVAILABLE', True):
-            with patch('bots.foundation.base.tracer', provider.get_tracer(__name__)):
+        with patch("bots.foundation.base.TRACING_AVAILABLE", True):
+            with patch("bots.foundation.base.tracer", provider.get_tracer(__name__)):
                 bot = MockBot(enable_tracing=True)
                 bot._tracing_enabled = True
 

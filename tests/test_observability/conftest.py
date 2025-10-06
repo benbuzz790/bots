@@ -111,6 +111,7 @@ def reset_tracing():
     # Reset before test runs
     try:
         import bots.observability.tracing as tracing_module
+
         tracing_module._initialized = False
         tracing_module._tracer_provider = None
     except (ImportError, AttributeError):
@@ -129,6 +130,7 @@ def reset_tracing():
     # Reset after test completes
     try:
         import bots.observability.tracing as tracing_module
+
         tracing_module._initialized = False
         tracing_module._tracer_provider = None
     except (ImportError, AttributeError):

@@ -45,6 +45,7 @@ from bots.foundation.base import (
 # Import OpenTelemetry tracing
 try:
     from bots.observability.tracing import get_tracer
+
     tracer = get_tracer(__name__)
     TRACING_AVAILABLE = True
 except ImportError:
@@ -53,6 +54,7 @@ except ImportError:
 
 # Set up logging
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -280,7 +282,7 @@ class AnthropicMailbox(Mailbox):
             Exception: If max retries are reached
         """
         # Check if tracing is enabled for this bot
-        should_trace = TRACING_AVAILABLE and hasattr(bot, '_tracing_enabled') and bot._tracing_enabled
+        should_trace = TRACING_AVAILABLE and hasattr(bot, "_tracing_enabled") and bot._tracing_enabled
 
         if should_trace:
             span = tracer.start_span("mailbox.send_message")
@@ -349,7 +351,7 @@ class AnthropicMailbox(Mailbox):
                     response = self.client.messages.create(**create_dict)
 
                     # Capture token usage and cost
-                    if span and hasattr(response, 'usage'):
+                    if span and hasattr(response, "usage"):
                         span.set_attribute("input_tokens", response.usage.input_tokens)
                         span.set_attribute("output_tokens", response.usage.output_tokens)
                         # Note: Cost calculation would go here if available
@@ -365,11 +367,7 @@ class AnthropicMailbox(Mailbox):
                         timeout_delay = timeout_base_delay * (attempt + 1)
                         logger.warning(
                             "API timeout, retrying",
-                            extra={
-                                "attempt": attempt + 1,
-                                "delay": timeout_delay,
-                                "provider": "anthropic"
-                            }
+                            extra={"attempt": attempt + 1, "delay": timeout_delay, "provider": "anthropic"},
                         )
                         if span:
                             span.add_event("api.timeout", {"attempt": attempt + 1, "delay": timeout_delay})
@@ -377,8 +375,7 @@ class AnthropicMailbox(Mailbox):
                         continue
                     else:
                         logger.error(
-                            "Max timeout retries reached",
-                            extra={"timeout_retries": timeout_retries, "provider": "anthropic"}
+                            "Max timeout retries reached", extra={"timeout_retries": timeout_retries, "provider": "anthropic"}
                         )
                         if span:
                             span.record_exception(e)
@@ -395,8 +392,8 @@ class AnthropicMailbox(Mailbox):
                             extra={
                                 "error_type": e.__class__.__name__,
                                 "provider": "anthropic",
-                                "create_dict": str(create_dict)
-                            }
+                                "create_dict": str(create_dict),
+                            },
                         )
                         if span:
                             span.record_exception(e)
@@ -409,15 +406,13 @@ class AnthropicMailbox(Mailbox):
                             "attempt": attempt + 1,
                             "error_type": e.__class__.__name__,
                             "delay": delay,
-                            "provider": "anthropic"
-                        }
+                            "provider": "anthropic",
+                        },
                     )
                     if span:
-                        span.add_event("api.error.retry", {
-                            "attempt": attempt + 1,
-                            "error_type": e.__class__.__name__,
-                            "delay": delay
-                        })
+                        span.add_event(
+                            "api.error.retry", {"attempt": attempt + 1, "error_type": e.__class__.__name__, "delay": delay}
+                        )
                     time.sleep(delay)
 
             # If we get here, max retries reached
@@ -429,7 +424,6 @@ class AnthropicMailbox(Mailbox):
         finally:
             if span:
                 span.end()
-
 
     def process_response(self, response: Dict[str, Any], bot: "AnthropicBot") -> Tuple[str, str, Dict[str, Any]]:
         """Process the API response and handle incomplete responses.
@@ -588,6 +582,7 @@ class AnthropicBot(Bot):
             autosave=autosave,
             enable_tracing=enable_tracing,
         )
+
 
 # class AnthropicTools:
 

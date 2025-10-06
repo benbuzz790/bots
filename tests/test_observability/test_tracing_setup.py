@@ -5,9 +5,9 @@ including initialization, configuration, and environment variable handling.
 """
 
 import os
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
+import pytest
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter
@@ -40,6 +40,7 @@ def reset_tracing():
 
     # Reset module-level state in bots.observability.tracing
     import bots.observability.tracing as tracing_module
+
     tracing_module._initialized = False
     tracing_module._tracer_provider = None
 
@@ -119,10 +120,10 @@ class TestTracingSetup:
 
         provider = trace.get_tracer_provider()
         # Check for TracerProvider-specific attributes (works with ProxyTracerProvider too)
-        assert hasattr(provider, '_active_span_processor') or hasattr(provider, 'add_span_processor')
+        assert hasattr(provider, "_active_span_processor") or hasattr(provider, "add_span_processor")
 
         # Verify that span processors were added (if it's a real TracerProvider)
-        if hasattr(provider, '_active_span_processor'):
+        if hasattr(provider, "_active_span_processor"):
             assert len(provider._active_span_processor._span_processors) > 0
 
     def test_setup_tracing_with_none_exporter(self, clean_otel_env, reset_tracing):
@@ -137,7 +138,7 @@ class TestTracingSetup:
 
         provider = trace.get_tracer_provider()
         # Check for TracerProvider-specific attributes (works with ProxyTracerProvider too)
-        assert hasattr(provider, '_active_span_processor') or hasattr(provider, 'add_span_processor')
+        assert hasattr(provider, "_active_span_processor") or hasattr(provider, "add_span_processor")
 
     def test_setup_tracing_respects_disabled_flag(self, clean_otel_env, reset_tracing, monkeypatch):
         """Test that setup_tracing() respects OTEL_SDK_DISABLED.
@@ -154,7 +155,7 @@ class TestTracingSetup:
         # Should get NoOpTracerProvider when disabled
         provider = trace.get_tracer_provider()
         # NoOpTracerProvider doesn't have _active_span_processor
-        assert not hasattr(provider, '_active_span_processor')
+        assert not hasattr(provider, "_active_span_processor")
 
     def test_get_tracer_returns_tracer(self, clean_otel_env, reset_tracing):
         """Test that get_tracer() returns a valid tracer instance.
@@ -245,7 +246,7 @@ class TestTracingSetup:
 
         provider = trace.get_tracer_provider()
         # Check for TracerProvider-specific attributes (works with ProxyTracerProvider too)
-        assert hasattr(provider, '_active_span_processor') or hasattr(provider, 'add_span_processor')
+        assert hasattr(provider, "_active_span_processor") or hasattr(provider, "add_span_processor")
 
     def test_configure_exporter_custom(self, clean_otel_env, reset_tracing):
         """Test runtime configuration with custom exporter.
@@ -263,7 +264,7 @@ class TestTracingSetup:
 
         provider = trace.get_tracer_provider()
         # Check for TracerProvider-specific attributes (works with ProxyTracerProvider too)
-        assert hasattr(provider, '_active_span_processor') or hasattr(provider, 'add_span_processor')
+        assert hasattr(provider, "_active_span_processor") or hasattr(provider, "add_span_processor")
 
 
 class TestTracingIntegration:

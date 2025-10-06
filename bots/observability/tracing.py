@@ -11,6 +11,7 @@ import os
 from typing import Optional
 
 from opentelemetry import trace
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import (
     BatchSpanProcessor,
@@ -18,10 +19,8 @@ from opentelemetry.sdk.trace.export import (
     SimpleSpanProcessor,
     SpanExporter,
 )
-from opentelemetry.sdk.resources import Resource, SERVICE_NAME
 
 from bots.observability.config import ObservabilityConfig, load_config_from_env
-
 
 # Global state
 _tracer_provider: Optional[TracerProvider] = None
@@ -79,9 +78,7 @@ def setup_tracing(config: Optional[ObservabilityConfig] = None, exporter: Option
         return
 
     # Create resource with service name
-    resource = Resource(attributes={
-        SERVICE_NAME: config.service_name
-    })
+    resource = Resource(attributes={SERVICE_NAME: config.service_name})
 
     # Create tracer provider
     _tracer_provider = TracerProvider(resource=resource)
@@ -91,15 +88,16 @@ def setup_tracing(config: Optional[ObservabilityConfig] = None, exporter: Option
         # Custom exporter provided - use it
         processor = SimpleSpanProcessor(exporter)
         _tracer_provider.add_span_processor(processor)
-    elif config.exporter_type == 'console':
+    elif config.exporter_type == "console":
         # Console exporter for development
         exp = ConsoleSpanExporter()
         processor = SimpleSpanProcessor(exp)
         _tracer_provider.add_span_processor(processor)
-    elif config.exporter_type == 'otlp':
+    elif config.exporter_type == "otlp":
         # OTLP exporter for production (requires opentelemetry-exporter-otlp)
         try:
             from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
             exp = OTLPSpanExporter(endpoint=config.otlp_endpoint)
             processor = BatchSpanProcessor(exp)
             _tracer_provider.add_span_processor(processor)
@@ -108,7 +106,7 @@ def setup_tracing(config: Optional[ObservabilityConfig] = None, exporter: Option
             exp = ConsoleSpanExporter()
             processor = SimpleSpanProcessor(exp)
             _tracer_provider.add_span_processor(processor)
-    elif config.exporter_type == 'none':
+    elif config.exporter_type == "none":
         # No exporter - tracing is enabled but not exported
         pass
 
@@ -164,8 +162,8 @@ def configure_exporter(exporter_type: str = None, exporter: SpanExporter = None,
         config = ObservabilityConfig(
             tracing_enabled=current_config.tracing_enabled,
             exporter_type=exporter_type or current_config.exporter_type,
-            otlp_endpoint=kwargs.get('endpoint', current_config.otlp_endpoint),
-            service_name=kwargs.get('service_name', current_config.service_name),
+            otlp_endpoint=kwargs.get("endpoint", current_config.otlp_endpoint),
+            service_name=kwargs.get("service_name", current_config.service_name),
         )
 
         # Re-initialize with new config

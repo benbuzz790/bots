@@ -28,8 +28,10 @@ from bots.foundation.base import (
 
 # Import tracing utilities
 try:
-    from bots.observability.tracing import get_tracer
     from opentelemetry import trace
+
+    from bots.observability.tracing import get_tracer
+
     tracer = get_tracer(__name__)
     TRACING_AVAILABLE = True
 except ImportError:
@@ -319,7 +321,7 @@ class OpenAIMailbox(Mailbox):
                 handling
         """
         # Check if tracing is enabled for this bot
-        should_trace = TRACING_AVAILABLE and hasattr(bot, '_tracing_enabled') and bot._tracing_enabled
+        should_trace = TRACING_AVAILABLE and hasattr(bot, "_tracing_enabled") and bot._tracing_enabled
 
         if should_trace:
             with tracer.start_as_current_span("mailbox.send_message") as span:
@@ -371,7 +373,7 @@ class OpenAIMailbox(Mailbox):
             except FileNotFoundError:
                 pass
             # Add token usage to span if available
-            if span and hasattr(response, 'usage') and response.usage:
+            if span and hasattr(response, "usage") and response.usage:
                 span.set_attribute("input_tokens", response.usage.prompt_tokens)
                 span.set_attribute("output_tokens", response.usage.completion_tokens)
                 span.set_attribute("total_tokens", response.usage.total_tokens)

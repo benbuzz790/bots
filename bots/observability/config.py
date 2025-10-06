@@ -22,10 +22,11 @@ class ObservabilityConfig:
         otlp_endpoint: Endpoint for OTLP exporter (if using OTLP)
         service_name: Service name for traces (default: 'bots')
     """
+
     tracing_enabled: bool = True
-    exporter_type: str = 'console'
+    exporter_type: str = "console"
     otlp_endpoint: Optional[str] = None
-    service_name: str = 'bots'
+    service_name: str = "bots"
 
 
 def load_config_from_env() -> ObservabilityConfig:
