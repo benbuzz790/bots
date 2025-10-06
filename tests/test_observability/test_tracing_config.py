@@ -4,7 +4,6 @@ This module tests the configuration system for OpenTelemetry tracing,
 including environment variable handling, default values, and precedence rules.
 """
 
-
 from bots.observability.config import ObservabilityConfig, load_config_from_env
 
 

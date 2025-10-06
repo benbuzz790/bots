@@ -325,7 +325,8 @@ class AnthropicMailbox(Mailbox):
             conversation: AnthropicNode = bot.conversation
             tools: Optional[List[Dict[str, Any]]] = None
             if bot.tool_handler and bot.tool_handler.tools:
-                tools = bot.tool_handler.generate_tool_schemas()
+                tools = bot.tool_handler.tools
+                tools[-1]["cache_control"] = {"type": "ephemeral"}
 
             # Build the create dictionary
             create_dict: Dict[str, Any] = {
