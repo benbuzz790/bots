@@ -444,7 +444,6 @@ class AnthropicMailbox(Mailbox):
         Raises:
             anthropic.BadRequestError: If the API returns a 400 error
         """
-        print("process response called")
         try:
 
             def should_continue(response) -> bool:
@@ -482,11 +481,8 @@ class AnthropicMailbox(Mailbox):
             response_text: str = getattr(response.content[0], "text", "~")
         except anthropic.BadRequestError as e:
             if e.status_code == 400:
-                print("process response 400 error")
                 pass
-            print("process response error")
             raise e
-        print("process response returned")
         return (response_text, response_role, {})
 
 
