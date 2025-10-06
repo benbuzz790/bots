@@ -68,4 +68,4 @@ _work_orders/
 *WO0*
 test_patch_*/
 # OpenTelemetry implementation development reports
-observability/development/
+bots/observability/development/
