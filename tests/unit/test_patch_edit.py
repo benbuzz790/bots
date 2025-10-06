@@ -265,16 +265,16 @@ class TestGitPatch(unittest.TestCase):
         """Test that class and method indentation is properly preserved when applying patches"""
         with open(self.test_file, "w") as f:
             f.write(
-                'class MyClass:\n    def method1(self):\n        return "original"\n\n    def method2(self):\n        return "test"\n'
+                'class MyClass:\n    def method1(self):\n        return "original"\n\n    def method2(self):\n        return "test"\n'  # noqa: E501
             )
         patch = textwrap.dedent(
-            '\n@@ -1,6 +1,6 @@\nclass MyClass:\n    def method1(self):\n-        return "original"\n+        return "modified"\n\n    def method2(self):\n        return "test"'
+            '\n@@ -1,6 +1,6 @@\nclass MyClass:\n    def method1(self):\n-        return "original"\n+        return "modified"\n\n    def method2(self):\n        return "test"'  # noqa: E501
         )
         result = patch_edit(self.test_file, patch)
         self.assertIn("Successfully", result)
         with open(self.test_file, "r") as f:
             content = f.read()
-        expected = 'class MyClass:\n    def method1(self):\n        return "modified"\n\n    def method2(self):\n        return "test"\n'
+        expected = 'class MyClass:\n    def method1(self):\n        return "modified"\n\n    def method2(self):\n        return "test"\n'  # noqa: E501
         self.assertEqual(
             content, expected, f"Indentation was not preserved.\nExpected:\n{repr(expected)}\nGot:\n{repr(content)}"
         )
@@ -307,7 +307,7 @@ class TestGitPatch(unittest.TestCase):
         self.assertEqual(
             content,
             expected,
-            f"Relative indentation not preserved when adding to indented line.\nExpected:\n{repr(expected)}\nGot:\n{repr(content)}",
+            f"Relative indentation not preserved when adding to indented line.\nExpected:\n{repr(expected)}\nGot:\n{repr(content)}",  # noqa: E501
         )
 
     def test_replacement_context_matching(self):
@@ -405,7 +405,7 @@ class TestGitPatch(unittest.TestCase):
         """Insert a new method after an existing method in a class."""
         orig_code = "class MyClass:\n    def foo(self):\n        pass\n"
         patch = textwrap.dedent(
-            '            @@ -2,6 +2,10 @@\n                 def foo(self):\n                     pass\n            +\n            +    def bar(self):\n            +        print("bar!")\n        '
+            '            @@ -2,6 +2,10 @@\n                 def foo(self):\n                     pass\n            +\n            +    def bar(self):\n            +        print("bar!")\n        '  # noqa: E501
         )
         expected = 'class MyClass:\n    def foo(self):\n        pass\n\n    def bar(self):\n        print("bar!")\n'
         with tempfile.NamedTemporaryFile("w+", delete=False, suffix=".py") as tf:
@@ -439,7 +439,7 @@ class TestGitPatch(unittest.TestCase):
         """Insert a method after another method in a class, but with whitespace difference requiring inexact match."""
         orig_code = "class MyClass:\n    def foo(self):\n        pass\n"
         patch = textwrap.dedent(
-            '            @@ -2,2 +2,6 @@\n            def foo(self):\n                pass\n            +\n            +def bar(self):\n            +    print("bar!")\n        '
+            '            @@ -2,2 +2,6 @@\n            def foo(self):\n                pass\n            +\n            +def bar(self):\n            +    print("bar!")\n        '  # noqa: E501
         )
         expected = 'class MyClass:\n    def foo(self):\n        pass\n\n    def bar(self):\n        print("bar!")\n'
         with tempfile.NamedTemporaryFile("w+", delete=False, suffix=".py") as tf:
@@ -544,10 +544,10 @@ class TestIndentationDebug(unittest.TestCase):
         print(f"Adjusted additions: {result}")
         print(f"Context line 0 in patch: '{context_before[0]}' ({len(_get_line_indentation(context_before[0]))} spaces)")
         print(
-            f"Corresponding file line: '{current_lines[match_line]}' ({len(_get_line_indentation(current_lines[match_line]))} spaces)"
+            f"Corresponding file line: '{current_lines[match_line]}' ({len(_get_line_indentation(current_lines[match_line]))} spaces)"  # noqa: E501
         )
         print(
-            f"Expected indent diff: {len(_get_line_indentation(current_lines[match_line])) - len(_get_line_indentation(context_before[0]))}"
+            f"Expected indent diff: {len(_get_line_indentation(current_lines[match_line])) - len(_get_line_indentation(context_before[0]))}"  # noqa: E501
         )
         expected = ["", "    def bar(self):", "        print('bar!')"]
         self.assertEqual(result, expected)
@@ -569,7 +569,7 @@ class TestIndentationDebug(unittest.TestCase):
         """Test the full patch process with detailed output."""
         orig_code = "class MyClass:\n    def foo(self):\n        pass\n"
         patch = textwrap.dedent(
-            '            @@ -2,2 +2,6 @@\n            def foo(self):\n                pass\n            +\n            +def bar(self):\n            +    print("bar!")\n        '
+            '            @@ -2,2 +2,6 @@\n            def foo(self):\n                pass\n            +\n            +def bar(self):\n            +    print("bar!")\n        '  # noqa: E501
         )
         with tempfile.NamedTemporaryFile("w+", delete=False, suffix=".py") as tf:
             tf.write(orig_code)
@@ -656,10 +656,10 @@ class TestIndentationBugFix(unittest.TestCase):
         """Test the exact scenario that revealed the bug: adding to a function."""
         with open(self.test_file, "w") as f:
             f.write(
-                'def outer_function():\n    print("outer function")\n\n    def inner_function():\n        print("inner function")\n        return 42\n'
+                'def outer_function():\n    print("outer function")\n\n    def inner_function():\n        print("inner function")\n        return 42\n'  # noqa: E501
             )
         patch = textwrap.dedent(
-            '\n            @@ -1,3 +1,4 @@\n            def outer_function():\n                 print("outer function")\n            +    print("added line")\n       '
+            '\n            @@ -1,3 +1,4 @@\n            def outer_function():\n                 print("outer function")\n            +    print("added line")\n       '  # noqa: E501
         ).strip()
         result = patch_edit(self.test_file, patch)
         self.assertIn("Successfully", result)
@@ -680,9 +680,9 @@ class TestIndentationBugFix(unittest.TestCase):
         """Test adding to a method with proper indentation."""
         with open(self.test_file, "w") as f:
             f.write(
-                'class TestClass:\n    def __init__(self):\n        self.value = 0\n    \n    def method1(self):\n        print("method1")\n        return self.value\n'
+                'class TestClass:\n    def __init__(self):\n        self.value = 0\n    \n    def method1(self):\n        print("method1")\n        return self.value\n'  # noqa: E501
             )
-        patch = '@@ -5,6 +5,7 @@\ndef method1(self):\n         print("method1")\n         return self.value\n+        # added comment'
+        patch = '@@ -5,6 +5,7 @@\ndef method1(self):\n         print("method1")\n         return self.value\n+        # added comment'  # noqa: E501
         result = patch_edit(self.test_file, patch)
         self.assertIn("Successfully", result)
         with open(self.test_file, "r") as f:
@@ -702,9 +702,9 @@ class TestIndentationBugFix(unittest.TestCase):
         """Test deeply nested code indentation."""
         with open(self.test_file, "w") as f:
             f.write(
-                'def function_with_deep_nesting():\n    if True:\n        for i in range(2):\n            if i == 0:\n                try:\n                    result = 10 / i\n                except ZeroDivisionError:\n                    print("division by zero")\n                    result = 0\n                finally:\n                    print("cleanup")\n'
+                'def function_with_deep_nesting():\n    if True:\n        for i in range(2):\n            if i == 0:\n                try:\n                    result = 10 / i\n                except ZeroDivisionError:\n                    print("division by zero")\n                    result = 0\n                finally:\n                    print("cleanup")\n'  # noqa: E501
             )
-        patch = '\n@@ -7,6 +7,7 @@\n         except ZeroDivisionError:\n             print("division by zero")\n             result = 0\n+                print("error handled")\n         finally:\n             print("cleanup")\n'
+        patch = '\n@@ -7,6 +7,7 @@\n         except ZeroDivisionError:\n             print("division by zero")\n             result = 0\n+                print("error handled")\n         finally:\n             print("cleanup")\n'  # noqa: E501
         result = patch_edit(self.test_file, patch)
         self.assertIn("Successfully", result)
         with open(self.test_file, "r") as f:
@@ -723,7 +723,7 @@ class TestIndentationBugFix(unittest.TestCase):
     def test_context_line_space_removal(self):
         """Test that context lines have their leading space properly removed during parsing."""
         patch_content = textwrap.dedent(
-            '\n            @@ -1,3 +1,4 @@\n             def test():\n                 print("test")\n            +    print("added")\n       '
+            '\n            @@ -1,3 +1,4 @@\n             def test():\n                 print("test")\n            +    print("added")\n       '  # noqa: E501
         ).strip()
         patch_content = textwrap.dedent(patch_content)
         patch_content = "\n" + patch_content

@@ -1,4 +1,4 @@
-import ast
+﻿import ast
 import difflib
 import inspect
 import os
@@ -13,11 +13,10 @@ import unittest
 import psutil
 import pytest
 
-pytestmark = pytest.mark.unit
-
-
 from bots.tools import python_editing_tools, python_execution_tool
 from tests.conftest import get_unique_filename
+
+pytestmark = pytest.mark.unit
 
 
 def ast_normalize(code):
@@ -1006,15 +1005,15 @@ class TestClass:
         """Test handling of Unicode characters in the code and output"""
         code = textwrap.dedent(
             """
-            print("Hello, 世界!")
-            print("🌍 🌎 🌏")
-            print("Café")
+            print("Hello, ä¸–ç•Œ!")
+            print("ðŸŒ ðŸŒŽ ðŸŒ")
+            print("CafÃ©")
         """
         )
         result = python_execution_tool.execute_python(code)
-        self.assertIn("Hello, 世界!", result)
-        self.assertIn("🌍 🌎 🌏", result)
-        self.assertIn("Café", result)
+        self.assertIn("Hello, ä¸–ç•Œ!", result)
+        self.assertIn("ðŸŒ ðŸŒŽ ðŸŒ", result)
+        self.assertIn("CafÃ©", result)
 
     def test_execute_python_code_with_classes(self):
         """Test execution of code containing class definitions"""

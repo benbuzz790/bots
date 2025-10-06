@@ -1,14 +1,12 @@
-import pytest
-
-pytestmark = pytest.mark.unit
-
-
 """
 Test file to verify MockBot implementation works correctly.
 Run this to ensure all components are functioning as expected.
 """
 
+import pytest
 import sys
+
+pytestmark = pytest.mark.unit
 
 
 def test_mock_bot_basic():

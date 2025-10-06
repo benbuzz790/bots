@@ -20,7 +20,6 @@ from bots.utils.helpers import _get_new_files
 pytestmark = pytest.mark.unit
 
 
-
 def _remove_file_with_error_handling(file_path: str, logger: Optional[logging.Logger] = None) -> None:
     """Remove a single file with proper error handling and logging.
 

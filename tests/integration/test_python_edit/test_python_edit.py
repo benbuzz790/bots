@@ -30,7 +30,7 @@ pytestmark = pytest.mark.integration
 @pytest.fixture
 def test_file(tmp_path):
     """Create a test file with various Python constructs"""
-    content = "\n        import os\n        from typing import List, Optional\n\n        def outer_func():\n            def inner_func():\n                pass\n            return inner_func\n\n        class OuterClass:\n            def method(self):\n                pass\n\n            class InnerClass:\n                @staticmethod\n                def static_method():\n                    pass\n\n                async def async_method(self):\n                    pass\n\n            def another_method(self):\n                # Insert here\n                pass\n    "
+    content = "\n        import os\n        from typing import List, Optional\n\n        def outer_func():\n            def inner_func():\n                pass\n            return inner_func\n\n        class OuterClass:\n            def method(self):\n                pass\n\n            class InnerClass:\n                @staticmethod\n                def static_method():\n                    pass\n\n                async def async_method(self):\n                    pass\n\n            def another_method(self):\n                # Insert here\n                pass\n    "  # noqa: E501
     return setup_test_file(tmp_path, content)
 
 
@@ -151,7 +151,7 @@ def test_async_function(test_file):
 
 def test_indentation_preservation(test_file):
     """Test proper indentation is maintained"""
-    new_method = "\n    def indented_method(self):\n        if True:\n            x = 1\n            if True:\n                y = 2\n    "
+    new_method = "\n    def indented_method(self):\n        if True:\n            x = 1\n            if True:\n                y = 2\n    "  # noqa: E501
     _ = python_edit(f"{test_file}::OuterClass", new_method, coscope_with="OuterClass::method")
     with open(test_file) as f:
         content = f.read()
@@ -333,7 +333,7 @@ def new_function():
 
 def test_line_insert_exact_preservation():
     """Test that lines are preserved exactly as they appear in the source"""
-    content = "\n    def func():\n        x = 1  # comment one\n\n        # marker with spaces around\n\n        y = 2  # comment two\n    "
+    content = "\n    def func():\n        x = 1  # comment one\n\n        # marker with spaces around\n\n        y = 2  # comment two\n    "  # noqa: E501
     test_file = setup_test_file("tmp", content)
     _ = python_edit(f"{test_file}::func", "z = 3", coscope_with="# marker with spaces around")
     with open(test_file) as f:
@@ -383,7 +383,7 @@ def test_fstring_edit_integration():
     """Test editing code that contains f-strings"""
     content = '\n    def greet(name):\n        return f"Hello, {name}!"\n    '
     test_file = setup_test_file("tmp", content)
-    new_func = "\n    def greet(name, title=\"\"):\n        greeting = f\"Hello, {title + ' ' if title else ''}{name}!\"\n        return greeting.upper()\n    "
+    new_func = "\n    def greet(name, title=\"\"):\n        greeting = f\"Hello, {title + ' ' if title else ''}{name}!\"\n        return greeting.upper()\n    "  # noqa: E501
     result = python_edit(f"{test_file}::greet", new_func)
     print(f"DEBUG - Result: {result}")
     with open(test_file) as f:
@@ -397,7 +397,7 @@ def test_edit_fstring_function():
     """Test editing a function that uses f-strings"""
     content = '\n    def format_price(price, currency="USD"):\n        return f"${price:.2f} {currency}"\n    '
     test_file = setup_test_file("tmp", content)
-    new_code = '\n    import logging\n    \n    def format_price(price, currency="USD"):\n        logging.debug(f"Formatting price: {price} {currency}")\n        if price < 0:\n            return f"Invalid price: ${abs(price):.2f} {currency}"\n        return f"${price:.2f} {currency}"\n    '
+    new_code = '\n    import logging\n    \n    def format_price(price, currency="USD"):\n        logging.debug(f"Formatting price: {price} {currency}")\n        if price < 0:\n            return f"Invalid price: ${abs(price):.2f} {currency}"\n        return f"${price:.2f} {currency}"\n    '  # noqa: E501
     result = python_edit(f"{test_file}::format_price", new_code)
     print(f"DEBUG - Edit result: {result}")
     with open(test_file) as f:
@@ -410,9 +410,9 @@ def test_edit_fstring_function():
 
 def test_class_with_fstring_methods():
     """Test editing classes that contain f-string methods"""
-    content = '\n    class User:\n        def __init__(self, name, age):\n            self.name = name\n            self.age = age\n        \n        def greet(self):\n            return f"Hi, I\'m {self.name}"\n    '
+    content = '\n    class User:\n        def __init__(self, name, age):\n            self.name = name\n            self.age = age\n        \n        def greet(self):\n            return f"Hi, I\'m {self.name}"\n    '  # noqa: E501
     test_file = setup_test_file("tmp", content)
-    new_method = '\n    def describe(self):\n        status = "adult" if self.age >= 18 else "minor"\n        return f"User: {self.name} ({self.age} years old, {status})"\n    '
+    new_method = '\n    def describe(self):\n        status = "adult" if self.age >= 18 else "minor"\n        return f"User: {self.name} ({self.age} years old, {status})"\n    '  # noqa: E501
     result = python_edit(f"{test_file}::User", new_method, coscope_with="User::greet")
     print(f"DEBUG - Edit result: {result}")
     with open(test_file) as f:
@@ -603,7 +603,7 @@ def test_insert_after_quoted_single_line_expression(tmp_path):
 #     '''
 #     test_file = setup_test_file(tmp_path, content)
 #     # Insert after line that starts with "result = calculate_something"
-#     result = python_edit(f"{test_file}::func", "    # Added after calculation", coscope_with='"result = calculate_something"')
+#     result = python_edit(f"{test_file}::func", "    # Added after calculation", coscope_with='"result = calculate_something"')  # noqa: E501
 #     assert "inserted after" in result
 #     print(f"DEBUG - python_edit result: {result}")
 #     with open(test_file) as f:
