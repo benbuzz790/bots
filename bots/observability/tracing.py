@@ -53,7 +53,7 @@ def get_default_tracing_preference() -> bool:
     return os.getenv("BOTS_ENABLE_TRACING", "true").lower() == "true"
 
 
-def setup_tracing(config: Optional[ObservabilityConfig] = None, exporter: Optional[SpanExporter] = None) -> None:
+def setup_tracing(config: Optional[ObservabilityConfig] = None, exporter: Optional[SpanExporter] = ...) -> None:
     """Initialize OpenTelemetry tracing.
 
     This function should be called once at application startup.
@@ -63,6 +63,7 @@ def setup_tracing(config: Optional[ObservabilityConfig] = None, exporter: Option
         config: Optional configuration. If None, uses config from environment.
         exporter: Optional custom exporter. If provided, overrides config.exporter_type.
                  Pass None explicitly to enable tracing without exporting.
+                 If not provided (default), uses config.exporter_type.
     """
     global _tracer_provider, _initialized
 
@@ -84,10 +85,14 @@ def setup_tracing(config: Optional[ObservabilityConfig] = None, exporter: Option
     _tracer_provider = TracerProvider(resource=resource)
 
     # Configure exporter based on what was provided
-    if exporter is not None:
-        # Custom exporter provided - use it
-        processor = SimpleSpanProcessor(exporter)
-        _tracer_provider.add_span_processor(processor)
+    # Use ... (Ellipsis) as sentinel to distinguish "not provided" from "explicitly None"
+    if exporter is not ...:
+        # Exporter was explicitly provided (could be None or a SpanExporter)
+        if exporter is not None:
+            # Custom exporter provided - use it
+            processor = SimpleSpanProcessor(exporter)
+            _tracer_provider.add_span_processor(processor)
+        # else: exporter is explicitly None, don't add any processor
     elif config.exporter_type == "console":
         # Console exporter for development
         exp = ConsoleSpanExporter()

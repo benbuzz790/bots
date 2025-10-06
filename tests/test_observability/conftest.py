@@ -138,4 +138,7 @@ def reset_tracing():
 
     # Reset OpenTelemetry global state again
     trace._TRACER_PROVIDER = None
-    trace._TRACER_PROVIDER_SET_ONCE._done = False
+    try:
+        trace._TRACER_PROVIDER_SET_ONCE._done = False
+    except AttributeError:
+        trace._TRACER_PROVIDER_SET_ONCE = trace.Once()
