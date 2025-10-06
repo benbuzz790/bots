@@ -1,10 +1,29 @@
 # Project Ideas and Future Development Notes
-**Date**: 2025-01-XX
+**Date**: 06-Oct-2025
 **Project**: bots - Agentic Programming Framework
 
 ## Overview
 This document tracks development ideas, feature requests, and architectural improvements for the bots project. Each item includes context, rationale, and implementation considerations.
 
+
+---
+
+
+## Recent Development Activity (Since v3.0.0 - Oct 2025)
+
+### PR #111 - PR Comment Parser Utility (04-Oct-2025)
+**Type**: Development Tooling
+
+**Description**: Added utility to extract CodeRabbit AI prompts from GitHub PR comments
+- Tool: `bots/dev/pr_comment_parser.py`
+- Extracts actionable AI prompts from CodeRabbit review comments
+- Supports both regular and inline review comments
+- Filters outdated comments
+- CLI usage: `python -m bots.dev.pr_comment_parser owner/repo PR_NUMBER [output_file]`
+
+**Impact**: Improves developer workflow when addressing CodeRabbit feedback
+
+**Roadmap Status**: Not a planned roadmap item - ancillary development tooling
 
 ---
 
@@ -14,11 +33,11 @@ This document tracks development ideas, feature requests, and architectural impr
 
 The bots project has reached a critical inflection point. After successfully implementing multi-provider support and achieving a robust 97%+ test pass rate, we're now positioned to make a fundamental choice about our future direction. The landscape of AI development tools has matured significantly, and a clear pattern has emerged: **universal standards are winning over proprietary frameworks**.
 
-This isn't about chasing trends—it's about recognizing that the industry has spoken. Model Context Protocol (MCP) is projected to reach 90% organizational adoption by the end of 2025. Microsoft, OpenAI, and Google have all committed to it. OpenTelemetry has become the de facto standard for observability. These aren't just popular tools; they're becoming the *lingua franca* of AI development.
+This isn't about chasing trends--it's about recognizing that the industry has spoken. Model Context Protocol (MCP) is projected to reach 90% organizational adoption by the end of 2025. Microsoft, OpenAI, and Google have all committed to it. OpenTelemetry has become the de facto standard for observability. These aren't just popular tools; they're becoming the *lingua franca* of AI development.
 
 ### Why Standards Matter
 
-When we initially considered integrating with LangChain, the complexity was overwhelming. Layers of abstraction, steep learning curves, and constant API changes made it feel like we were building on shifting sand. But MCP? It's a protocol—simple, clear, and purpose-built for one thing: connecting AI models to tools and data. It's the USB-C of AI, and just like USB-C, its value comes from universal adoption, not feature richness.
+When we initially considered integrating with LangChain, the complexity was overwhelming. Layers of abstraction, steep learning curves, and constant API changes made it feel like we were building on shifting sand. But MCP? It's a protocol--simple, clear, and purpose-built for one thing: connecting AI models to tools and data. It's the USB-C of AI, and just like USB-C, its value comes from universal adoption, not feature richness.
 
 This realization shapes our entire strategy: **prioritize interoperability over features, standards over frameworks, simplicity over sophistication**.
 
@@ -28,11 +47,11 @@ This realization shapes our entire strategy: **prioritize interoperability over 
 
 We're not building in isolation. The bots project should be a *citizen* of the broader AI ecosystem, not an island. This means:
 
-- **MCP Integration**: Our tools should be accessible to anyone using Claude Desktop, Cursor, or any MCP-compatible client. Conversely, our bots should be able to use the hundreds of MCP servers already published. This isn't just about compatibility—it's about network effects. Every MCP server we can connect to multiplies our capabilities without writing a single line of integration code.
+- **MCP Integration**: Our tools should be accessible to anyone using Claude Desktop, Cursor, or any MCP-compatible client. Conversely, our bots should be able to use the hundreds of MCP servers already published. This isn't just about compatibility--it's about network effects. Every MCP server we can connect to multiplies our capabilities without writing a single line of integration code.
 
-- **OpenTelemetry for Observability**: Print statements scattered through code are a symptom of development without proper instrumentation. OpenTelemetry isn't just about removing print statements—it's about building production-ready software that can be monitored, debugged, and optimized in real-world deployments. When something goes wrong at 3 AM, structured traces and metrics are the difference between hours of debugging and minutes.
+- **OpenTelemetry for Observability**: Print statements scattered through code are a symptom of development without proper instrumentation. OpenTelemetry isn't just about removing print statements--it's about building production-ready software that can be monitored, debugged, and optimized in real-world deployments. When something goes wrong at 3 AM, structured traces and metrics are the difference between hours of debugging and minutes.
 
-- **LiteLLM for Provider Expansion**: Rather than manually implementing each new LLM provider, we leverage LiteLLM's unified interface to support 100+ providers instantly. This isn't laziness—it's recognizing that provider APIs are commoditizing, and our value lies elsewhere.
+- **LiteLLM for Provider Expansion**: Rather than manually implementing each new LLM provider, we leverage LiteLLM's unified interface to support 100+ providers instantly. This isn't laziness--it's recognizing that provider APIs are commoditizing, and our value lies elsewhere.
 
 #### 2. **Maintain Our Core Differentiators**
 
@@ -40,19 +59,19 @@ Standards handle connectivity and interoperability, but they don't replace our u
 
 - **Conversation Trees**: The ability to branch, explore multiple paths, and navigate conversation history as a tree structure remains unique. Most frameworks treat conversations as linear chains. We treat them as explorable spaces.
 
-- **Functional Prompts**: Composable patterns like `chain`, `branch`, `prompt_while`, and `par_branch_while` provide structured reasoning that goes beyond simple prompt-response cycles. These aren't just convenience functions—they're a programming model for AI interactions.
+- **Functional Prompts**: Composable patterns like `chain`, `branch`, `prompt_while`, and `par_branch_while` provide structured reasoning that goes beyond simple prompt-response cycles. These aren't just convenience functions--they're a programming model for AI interactions.
 
 - **Tool Excellence**: Our tools like `python_edit` (scope-aware code editing) and `branch_self` (recursive self-branching) represent genuine innovation. By exposing them via MCP, we share this innovation with the broader community while maintaining our implementation advantages.
 
-- **Self-Context Management**: The upcoming expansion of self-tools (delete_stale_context, fork_from_node, etc.) gives bots unprecedented control over their own conversation history. This is agentic AI in the truest sense—agents that can manage their own context.
+- **Self-Context Management**: The upcoming expansion of self-tools (delete_stale_context, fork_from_node, etc.) gives bots unprecedented control over their own conversation history. This is agentic AI in the truest sense--agents that can manage their own context.
 
 #### 3. **Build for Production, Not Just Prototypes**
 
 The shift from "works on my machine" to "works in production" requires fundamental changes:
 
-- **Observability First**: OpenTelemetry integration isn't optional—it's foundational. Every API call, every tool execution, every decision point should be traceable. This enables debugging, optimization, cost tracking, and compliance.
+- **Observability First**: OpenTelemetry integration isn't optional--it's foundational. Every API call, every tool execution, every decision point should be traceable. This enables debugging, optimization, cost tracking, and compliance.
 
-- **Quality Guardrails**: Branch protection, required CI/CD checks, and automated code review (CodeRabbit) aren't bureaucracy—they're insurance against regressions. The coveted green checkmark isn't a badge of honor; it's a minimum bar for production readiness.
+- **Quality Guardrails**: Branch protection, required CI/CD checks, and automated code review (CodeRabbit) aren't bureaucracy--they're insurance against regressions. The coveted green checkmark isn't a badge of honor; it's a minimum bar for production readiness.
 
 - **Test Organization**: Moving from "we have tests" to "we have a test strategy" means organizing tests by speed (unit/integration/e2e), using proper fixtures, and fixing parallelism issues. Fast feedback loops enable rapid iteration without sacrificing quality.
 
@@ -62,7 +81,7 @@ The shift from "works on my machine" to "works in production" requires fundament
 
 This philosophy translates into concrete priorities:
 
-**Phase 1 focuses on standards and foundations** because these are force multipliers. MCP integration doesn't just add features—it adds an entire ecosystem. OpenTelemetry doesn't just remove print statements—it makes the system observable and debuggable. Branch protection doesn't just prevent bad commits—it ensures every change meets quality standards.
+**Phase 1 focuses on standards and foundations** because these are force multipliers. MCP integration doesn't just add features-- it adds an entire ecosystem. OpenTelemetry doesn't just remove print statements-- it makes the system observable and debuggable. Branch protection doesn't just prevent bad commits--it ensures every change meets quality standards.
 
 **Phase 2 builds on these foundations** with features that leverage the standards. Once we have MCP, expanding providers via LiteLLM becomes trivial. Once we have OpenTelemetry, making the CLI prettier with real-time progress indicators becomes straightforward. Once we have proper configuration, adding plugin support becomes natural.
 
@@ -72,15 +91,15 @@ This philosophy translates into concrete priorities:
 
 The AI development landscape is consolidating around standards faster than anyone expected. MCP was introduced in November 2024 and is already approaching universal adoption. OpenTelemetry's GenAI semantic conventions were formalized in early 2025. The window for "build everything ourselves" has closed. The window for "integrate with standards and differentiate on capabilities" is wide open.
 
-We're not abandoning our vision—we're recognizing that our vision is best served by standing on the shoulders of standards rather than building everything from scratch. The bots project's value isn't in reimplementing tool connectivity or observability. It's in conversation trees, functional prompts, and agentic capabilities that no standard can provide.
+We're not abandoning our vision--we're recognizing that our vision is best served by standing on the shoulders of standards rather than building everything from scratch. The bots project's value isn't in reimplementing tool connectivity or observability. It's in conversation trees, functional prompts, and agentic capabilities that no standard can provide.
 
 ### The Path Forward
 
-This isn't a pivot— it's a maturation. We're moving from "build an AI framework" to "build the best agentic AI system on top of industry standards." The difference is critical. One path leads to constant maintenance of infrastructure. The other leads to innovation on capabilities.
+This isn't a pivot-- it's a maturation. We're moving from "build an AI framework" to "build the best agentic AI system on top of industry standards." The difference is critical. One path leads to constant maintenance of infrastructure. The other leads to innovation on capabilities.
 
 Every item in this document, from MCP integration to GUI development, flows from this philosophy: **embrace standards for infrastructure, innovate on capabilities, and build for production**. This is how we ensure the bots project remains relevant, maintainable, and valuable as the AI landscape continues its rapid evolution.
 
-The future of AI development isn't about building walled gardens—it's about building excellent tools that work seamlessly in a standardized ecosystem. That's the future we're building toward.
+The future of AI development isn't about building walled gardens--it's about building excellent tools that work seamlessly in a standardized ecosystem. That's the future we're building toward.
 
 ---
 
@@ -175,7 +194,7 @@ The future of AI development isn't about building walled gardens—it's about 
 
 ## 7. Review large_refactor_tasks.md
 
-**Status**: Ã¢Å“â€œ COMPLETED
+**Status**: [DONE] COMPLETED
 
 **Key Items Found**:
 1. Conversation Tree Visualization Tools
@@ -255,6 +274,8 @@ The future of AI development isn't about building walled gardens—it's about 
 **Related**: Repo-wide logging strategy
 
 **Priority**: Medium
+
+**Status**: [DONE] COMPLETED (PR #114 - 06-Oct-2025)
 
 ---
 
@@ -457,21 +478,21 @@ class AnthropicBot:
 #### What You Get
 ```
 Trace: bot.respond (4.2s)
-  Ã¢â€Å“Ã¢â€â‚¬ build_messages (0.1s)
-  Ã¢â€â€š   —Â¢ message_count: 5
-  Ã¢â€Å“Ã¢â€â‚¬ api_call (2.8s)
-  Ã¢â€â€š   —Â¢ input_tokens: 1234
-  Ã¢â€â€š   —Â¢ output_tokens: 567
-  Ã¢â€â€š   —Â¢ cost_usd: 0.015
-  Ã¢â€Å“Ã¢â€â‚¬ process_response (0.05s)
-  Ã¢â€â€Ã¢â€â‚¬ execute_tools (1.25s)
-      —Â¢ tool_count: 2
-      Ã¢â€Å“Ã¢â€â‚¬ tool.python_view (0.8s)
-      Ã¢â€â€š   —Â¢ tool_name: python_view
-      Ã¢â€â€š   —Â¢ tool_result_length: 2456
-      Ã¢â€â€Ã¢â€â‚¬ tool.python_edit (0.45s)
-          —Â¢ tool_name: python_edit
-          —Â¢ tool_result_length: 89
+  |-- build_messages (0.1s)
+       * message_count: 5
+  |-- api_call (2.8s)
+       * input_tokens: 1234
+       * output_tokens: 567
+       * cost_usd: 0.015
+  |-- process_response (0.05s)
+  +-- execute_tools (1.25s)
+        * tool_count: 2
+      |-- tool.python_view (0.8s)
+           * tool_name: python_view
+           * tool_result_length: 2456
+      +-- tool.python_edit (0.45s)
+            * tool_name: python_edit
+            * tool_result_length: 89
 ```
 
 ### Integration with Existing Items
@@ -597,6 +618,28 @@ class ObservabilityCallbacks(BotCallbacks):
 **Effort**: Medium - Incremental implementation possible
 
 **Impact**: High - Essential for production, debugging, and optimization
+
+**Status**: [!] PARTIAL (PR #114 - 06-Oct-2025)
+- [DONE] Phase 1: Basic Tracing - COMPLETE
+- [DONE] Phase 2: Structured Logging - COMPLETE  
+- [...] Phase 3: Metrics - PENDING
+- [...] Phase 4: Production Observability - PENDING
+
+**Delivered in PR #114**:
+- New /bots/observability module with tracing support
+- Configuration system with environment variables
+- Full instrumentation of all bot providers (Anthropic, OpenAI, Gemini)
+- Structured logging replaces print statements
+- enable_tracing parameter for per-bot control
+- 57 tests added (100% passing)
+- 100% backward compatibility
+
+**Remaining Work**:
+- Metrics collection (performance, usage, cost tracking)
+- Dashboard setup (Grafana, Datadog, etc.)
+- Production exporters configuration (Jaeger, Zipkin, cloud providers)
+- Alerting and runbooks
+- Cost tracking and budgets
 
 ---
 
@@ -729,16 +772,16 @@ Instead of manually implementing each provider, use LiteLLM to get instant suppo
 ### Considerations
 
 **Pros**:
-- Ã¢Å“â€¦ Instant 100+ provider support
-- Ã¢Å“â€¦ Unified interface
-- Ã¢Å“â€¦ Active maintenance
-- Ã¢Å“â€¦ Cost tracking built-in
-- Ã¢Å“â€¦ Easy to test different providers
+- [x] Instant 100+ provider support
+- [x] Unified interface
+- [x] Active maintenance
+- [x] Cost tracking built-in
+- [x] Easy to test different providers
 
 **Cons**:
-- Ã¢Å¡Â Ã¯Â¸Â Abstraction layer (slight overhead)
-- Ã¢Å¡Â Ã¯Â¸Â Less control over provider-specific features
-- Ã¢Å¡Â Ã¯Â¸Â Dependency on external library
+-   Abstraction layer (slight overhead)
+-   Less control over provider-specific features
+-   Dependency on external library
 
 **Recommendation**: 
 - Use LiteLLM for quick provider expansion
@@ -800,7 +843,7 @@ Instead of manually implementing each provider, use LiteLLM to get instant suppo
 ### 24. Test Parallelism
 **Goal**: Fix test parallelism issues (mainly in terminal_tools)
 **Priority**: High
-**Status**: Ã¢Å“â€œ COMPLETED (test-efficiency branch)
+**Status**: [DONE] COMPLETED (PR #112, 05-Oct-2025)
 
 ```
 Fixed PowerShell test files to use unique temp directories per test. Removed serial execution marker. Updated pr-checks.yml to use -n 12 for parallel execution. Tests now run in parallel without file conflicts.
@@ -810,25 +853,35 @@ Fixed PowerShell test files to use unique temp directories per test. Removed ser
 **Goal**: Consistent tempfile handling in tests
 **Priority**: High
 **Reason**: Tests pollute repository with extraneous files
-**Status**: Ã¢Å“â€œ COMPLETED (test-efficiency branch)
+**Status**: [DONE] COMPLETED (PR #112, 05-Oct-2025)
 
 ```
 Fixed test_patch_edit.py, test_class_replace.py, and test_python_edit_edge_cases.py to use temp directories. All test artifacts now properly isolated and cleaned up.
 ```
 
 ### Docker Testing Infrastructure (Archived)
-**Status**: ✗ ARCHIVED (cleanup-docker branch)
+**Status**: [ARCHIVED] ARCHIVED (PR #113, 05-Oct-2025)
 
 Docker-based test infrastructure was developed but abandoned due to Docker Desktop issues. All Docker testing files have been moved to `archived_docker_testing/` directory and preserved on the `docker-testing` branch for potential future use. The infrastructure included Dockerfile, test orchestration scripts, comprehensive documentation, and pytest integration with --use-docker flags. See `archived_docker_testing/README.md` for details.
 
+**PR #113 Actions**:
+- Archived all Docker files to `/archived_docker_testing/` directory
+- Removed Docker-related code from conftest.py
+- Created comprehensive README explaining the history
+- Preserved original setup on docker-testing branch
+
 ---
 
-## 26. GitHub Branch Protection and CI/CD Guardrails
+## 26. GitHub Branch Protection and CI/CD Guardrails - DONE
 
-**Current State**: 
-- Direct pushes to main branch are allowed
-- No enforcement of CI/CD checks before merge
-- Manual code review process
+**Status**: DONE (PR #110, 04-Oct-2025)
+
+**Delivered**:
+- CodeRabbit configuration (.coderabbit.yaml)
+- PR template (.github/pull_request_template.md)
+- PR validation workflow (.github/workflows/pr-checks.yml)
+- Branch protection setup guide (docs/BRANCH_PROTECTION_SETUP.md)
+- Updated CONTRIBUTING.md with PR workflow
 
 **Goal**: Implement branch protection rules and automated code review
 
@@ -842,7 +895,7 @@ Docker-based test infrastructure was developed but abandoned due to Docker Deskt
    - All changes must go through PR workflow
 
 2. **Require status checks to pass**
-   - All CI/CD tests must pass (green checkmark Ã¢Å“â€œ)
+   - All CI/CD tests must pass (green checkmark [DONE])
    - Cannot merge until all checks are green
 
 3. **Require code review**
@@ -859,16 +912,16 @@ Docker-based test infrastructure was developed but abandoned due to Docker Deskt
 #### Step 1: Configure Branch Protection
 ```
 GitHub Repository Settings:
-1. Go to Settings Ã¢â€ â€™ Branches
+1. Go to Settings -> Branches
 2. Add branch protection rule for "main"
 3. Enable:
-   Ã¢Ëœâ€˜ Require a pull request before merging
-   Ã¢Ëœâ€˜ Require approvals (1 minimum)
-   Ã¢Ëœâ€˜ Dismiss stale pull request approvals when new commits are pushed
-   Ã¢Ëœâ€˜ Require status checks to pass before merging
-   Ã¢Ëœâ€˜ Require branches to be up to date before merging
-   Ã¢Ëœâ€˜ Require conversation resolution before merging
-   Ã¢Ëœâ€˜ Do not allow bypassing the above settings (include administrators)
+   [ ] Require a pull request before merging
+   [ ] Require approvals (1 minimum)
+   [ ] Dismiss stale pull request approvals when new commits are pushed
+   [ ] Require status checks to pass before merging
+   [ ] Require branches to be up to date before merging
+   [ ] Require conversation resolution before merging
+   [ ] Do not allow bypassing the above settings (include administrators)
 ```
 
 #### Step 2: Required Status Checks
@@ -1081,23 +1134,23 @@ Create `.github/pull_request_template.md`:
 6. CodeRabbit reviews automatically
 7. Address CodeRabbit feedback
 8. Request human review
-9. Once approved + all checks green Ã¢â€ â€™ Merge
+9. Once approved + all checks green -> Merge
 
 **What Blocks a Merge**:
-- Ã¢ÂÅ’ Any CI/CD test failures
-- Ã¢ÂÅ’ Code coverage below threshold
-- Ã¢ÂÅ’ Linting errors
-- Ã¢ÂÅ’ No approval from reviewer
-- Ã¢ÂÅ’ Unresolved conversations
-- Ã¢ÂÅ’ Branch not up to date with main
+- ' Any CI/CD test failures
+- ' Code coverage below threshold
+- ' Linting errors
+- ' No approval from reviewer
+- ' Unresolved conversations
+- ' Branch not up to date with main
 
 **What Allows a Merge**:
-- Ã¢Å“â€¦ All tests passing (green checkmark)
-- Ã¢Å“â€¦ Code coverage meets threshold
-- Ã¢Å“â€¦ Linting passes
-- Ã¢Å“â€¦ At least one approval
-- Ã¢Å“â€¦ All conversations resolved
-- Ã¢Å“â€¦ Branch up to date
+- [x] All tests passing (green checkmark)
+- [x] Code coverage meets threshold
+- [x] Linting passes
+- [x] At least one approval
+- [x] All conversations resolved
+- [x] Branch up to date
 
 ### Benefits
 
@@ -1174,15 +1227,16 @@ Create `.github/pull_request_template.md`:
 ## Implementation Roadmap
 
 ### Phase 1: Repo Reliability (High Priority)
-1. **GitHub Branch Protection & CodeRabbit** (item 26) - Guardrails for main branch - DONE
-3. **OpenTelemetry Integration** (item 14) - Observability and monitoring
-4. Remove print statements (item 11) - Replaced by OpenTelemetry
-5. Add callback system (item 12) - Integrated with OpenTelemetry
-6. Organize tests better (item 9)
-7. Fix test parallelism (item 24)
-8. Uniform tempfile handling (item 25)
-9. Refactor build_messages pattern (item 8)
-10. Ensure CLI haiku bots match provider (item 5)
+1. [DONE] **GitHub Branch Protection & CodeRabbit** (item 26) - DONE (PR #110)
+2. [!] **OpenTelemetry Integration** (item 14) - PARTIAL (PR #114 - Phases 1&2 done, 3&4 pending)
+3. [DONE] **Remove print statements** (item 11) - DONE (PR #114)
+4. [...] **Add callback system** (item 12) - Foundation laid with OpenTelemetry, needs completion
+5. [DONE] **Fix test parallelism** (item 24) - DONE (PR #112)
+6. [DONE] **Uniform tempfile handling** (item 25) - DONE (PR #112 - monitoring recommended)
+7. [DONE] Organize tests better (item 9) - DONE (WO012)
+8. Refactor build_messages pattern (item 8)
+9. Ensure CLI haiku bots match provider (item 5)
+
 
 ### Phase 2: Core Features & Expansion (Medium Priority)
 1. **MCP Integration - Client** (item 13) - Industry standard for tool connectivity
@@ -1221,6 +1275,74 @@ Create `.github/pull_request_template.md`:
 
 ---
 
-**Last Updated**: 3-Oct-2025
+**Last Updated**: 07-Oct-2025
 **Maintainer**: Ben Rinauto
 **Status**: Active Planning
+---
+
+## Roadmap Maintenance Notes
+
+**Purpose**: Guidelines for maintaining this roadmap document
+
+### Formatting Rules
+
+1. **ASCII Only**: No emojis or unicode characters (use "DONE", "PARTIAL", "IN PROGRESS" instead of checkmarks)
+2. **Date Format**: Use DD-MON-YYYY (e.g., 06-Oct-2025) for unambiguous international dates
+3. **Status Markers**: Use clear text markers at end of item titles:
+   - `DONE` - Fully complete, all scope delivered
+   - `PARTIAL` - Some work complete, significant work remains
+   - `IN PROGRESS` - Currently being worked on
+   - No marker - Not started
+
+### Verification Process
+
+When marking items complete based on PRs:
+
+1. **Read the full roadmap item** - Understand complete scope, not just title
+2. **Review PR deliverables** - What was actually delivered?
+3. **Compare scope vs. delivery** - Does PR cover ALL aspects of roadmap item?
+4. **Check sub-items** - If item has phases/steps, are ALL complete?
+5. **Mark appropriately**:
+   - DONE only if 100% of scope delivered
+   - PARTIAL if significant work remains
+   - Add notes explaining what's done vs. what remains
+
+### Update Procedures
+
+**When to Update**:
+- After PRs are merged that complete roadmap items
+- When new development directions emerge
+- When priorities shift
+- At least monthly review
+
+**What to Update**:
+- Status markers on completed items
+- "Last Updated" date at bottom of file
+- Add new items as needed
+- Update Implementation Roadmap phases
+- Add notes about partial completion
+
+**How to Document Completed Items**:
+```
+## N. Item Title - DONE
+
+**Status**: DONE (PR #XXX, DD-MON-YYYY)
+
+**Delivered**:
+- Specific deliverable 1
+- Specific deliverable 2
+- Specific deliverable 3
+
+**Original Goal**: [keep original goal text]
+```
+
+### Maintenance Workflow
+
+1. Review recent merged PRs
+2. For each PR, identify related roadmap items
+3. Verify completeness against full item scope
+4. Update status markers and add completion notes
+5. Update "Last Updated" date
+6. Commit changes with clear message: "docs: Update ROADMAP.md - mark items X, Y, Z complete"
+
+---

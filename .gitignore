@@ -67,5 +67,8 @@ test_results_*_*.txt
 _work_orders/
 *WO0*
 test_patch_*/
+Roadmapper.bot
+
+
 # OpenTelemetry implementation development reports
 bots/observability/development/

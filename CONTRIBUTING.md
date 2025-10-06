@@ -127,12 +127,25 @@ When contributing, please follow these principles:
 
 ## Running Tests Locally
 
+Our test suite is organized into unit, integration, and e2e tests. See [TESTING.md](TESTING.md) for detailed information about test organization and best practices.
+
+### Quick Test Commands
+
 ```bash
 # Run all tests
 pytest tests/ -v
 
+# Run only fast unit tests (recommended for local development)
+pytest tests/unit/ -v
+
+# Run integration tests
+pytest tests/integration/ -v
+
+# Run e2e tests
+pytest tests/e2e/ -v
+
 # Run with coverage
-pytest tests/ --cov=bots --cov-report=term-missing
+pytest --cov=bots --cov-report=term-missing
 
 # Run specific test file
 pytest tests/test_specific.py -v
@@ -143,6 +156,8 @@ isort --check-only .
 flake8 .
 mypy bots/ --ignore-missing-imports
 ```
+
+For more information on test categories, fixtures, and best practices, see [TESTING.md](TESTING.md).
 
 ## Troubleshooting
 
