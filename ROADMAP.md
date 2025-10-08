@@ -101,6 +101,108 @@ Every item in this document, from MCP integration to GUI development, flows from
 
 The future of AI development isn't about building walled gardens--it's about building excellent tools that work seamlessly in a standardized ecosystem. That's the future we're building toward.
 
+
+
+## Monetization Strategy
+
+**Strategic Direction**: Documentation-First Revenue Path
+
+### Overview
+
+The bots project has unique competitive advantages that position it for commercial success:
+1. **Conversation trees** - Explore multiple documentation angles simultaneously
+2. **branch_self** - Parallel exploration with n*log(n) scaling vs competitors' n^2
+3. **Self-context management** - Handle large codebases efficiently
+4. **Functional prompts** - Composable patterns for complex documentation workflows
+
+### Primary Monetization Target: Automated Technical Documentation Generator
+
+**Why Documentation First:**
+- Real pain point with proven willingness to pay
+- Does NOT require GUI (faster time to revenue)
+- Leverages our core strengths (branching, trees, parallel exploration)
+- Revenue funds future development (GUI, other services)
+- Demonstrates competitive advantage (scaling efficiency)
+
+**Target Market:**
+- B2B SaaS companies with poor documentation
+- Open source projects needing comprehensive docs
+- Enterprise teams with large codebases
+
+**Pricing Model:**
+- $200-500/month per repository (based on size/complexity)
+- Free tier for open source projects (marketing)
+- Usage-based pricing for large enterprises
+
+**Competitive Advantage:**
+- n*log(n) scaling through parallel branching (vs competitors' n^2)
+- Multi-perspective documentation (explore architecture, API, deployment simultaneously)
+- Incremental updates (only regenerate changed sections)
+- Conversation tree audit trail (show reasoning process)
+
+### Secondary Targets (Revenue-Funded)
+
+**AI Code Review Service** (Item 1 synergy):
+- Leverage same GitHub integration infrastructure
+- Use branching to explore multiple review angles
+- Show exploration paths in review comments
+- $50-200/month per repo or $0.10-0.50 per PR
+
+**Conversation as a Service API** (Item 4):
+- Expose conversation trees and branching as API
+- Premium visual GUI as reference implementation
+- Usage-based pricing: $0.01-0.05 per API call + LLM costs + 20% margin
+
+**Bot Marketplace** (Item 2):
+- Sell pre-trained specialized bots
+- Documentation bots, review bots, domain experts
+- $20-100 per bot or $10-30/month subscription
+
+### Revenue Timeline
+
+**Months 1-2**: Complete Phase 1 (foundation)
+- OpenTelemetry cost tracking (essential for pricing)
+- Callback system (progress indicators)
+- Build messages refactor (clean architecture)
+
+**Months 3-4**: Build Documentation Service (Phase 2)
+- GitHub integration
+- Documentation output system
+- Automated workflows
+- Usage tracking and metrics
+
+**Month 5**: Launch MVP (Phase 3)
+- Simple authentication/billing
+- Basic multi-tenancy
+- Early customer acquisition
+- Target: 10-20 paying customers
+
+**Month 6+**: Scale & Expand (Phase 4)
+- Use revenue to fund GUI development
+- Add code review service
+- Build API offering
+- Target: $10k+ MRR
+
+### Success Metrics
+
+**Technical:**
+- Prove n*log(n) scaling advantage with OpenTelemetry metrics
+- Document generation time < 5 minutes for typical repo
+- Cost per documentation run < $2 (maintain 80%+ margin at $10/run)
+
+**Business:**
+- 10 paying customers by Month 5
+- $5k MRR by Month 6
+- $10k MRR by Month 9
+- 90%+ customer retention
+
+**Strategic:**
+- GUI development funded by Month 6
+- Code review service launched by Month 8
+- API service beta by Month 10
+
+---
+
 ---
 
 ---
@@ -1222,60 +1324,1037 @@ Create `.github/pull_request_template.md`:
 
 **Impact**: High - Significantly improves code quality and prevents bugs from reaching main
 
+
+## 27. GitHub Integration & Webhook System
+
+**Goal**: Enable automated repository access and event-driven workflows
+
+**Components**:
+1. **GitHub App**:
+   - OAuth authentication for repo access
+   - Webhook endpoint for commit/PR events
+   - Permission scopes: read repo, write comments, read/write webhooks
+
+2. **Webhook Handler**:
+   - Process commit events (trigger doc regeneration)
+   - Process PR events (trigger code review)
+   - Queue system for async processing
+   - Rate limiting and error handling
+
+3. **Repository Access**:
+   - Clone/pull repositories
+   - Read file contents
+   - Navigate directory structure
+   - Track file changes (incremental updates)
+
+**Implementation**:
+```python
+# GitHub App integration
+from github import Github
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/webhook', methods=['POST'])
+def handle_webhook():
+    event = request.headers.get('X-GitHub-Event')
+    payload = request.json
+
+    if event == 'push':
+        # Trigger documentation regeneration
+        repo_url = payload['repository']['clone_url']
+        changed_files = [commit['modified'] for commit in payload['commits']]
+        queue_doc_generation(repo_url, changed_files)
+
+    return {'status': 'ok'}
+```
+
+**Priority**: High (Phase 2 - Documentation Service Enablement)
+
+**Effort**: Medium - GitHub API is well-documented
+
+**Impact**: High - Essential for automated documentation service
+
+**Related**: Enables items 28, 29 (documentation workflow)
+
+---
+
+## 28. Documentation Output System
+
+**Goal**: Generate high-quality documentation from conversation trees
+
+**Components**:
+1. **Markdown Generator**:
+   - Convert conversation trees to structured markdown
+   - Generate README.md, API docs, architecture docs
+   - Cross-reference linking
+   - Code snippet extraction and formatting
+
+2. **HTML/Static Site Generator**:
+   - Convert markdown to static site (MkDocs, Docusaurus, etc.)
+   - Custom themes and styling
+   - Search functionality
+   - Version control for docs
+
+3. **Multi-Format Support**:
+   - README.md for GitHub
+   - Wiki pages
+   - API documentation (OpenAPI/Swagger)
+   - Architecture diagrams (Mermaid)
+   - Deployment guides
+
+4. **Template System**:
+   - Customizable doc templates
+   - Company branding
+   - Section ordering
+   - Content filtering
+
+**Implementation**:
+```python
+class DocumentationGenerator:
+    def __init__(self, bot, repo_path):
+        self.bot = bot
+        self.repo_path = repo_path
+
+    def generate_docs(self):
+        # Use branch_self to explore multiple doc sections in parallel
+        sections = [
+            "Architecture overview and design decisions",
+            "API documentation with examples",
+            "Deployment and configuration guide",
+            "Testing and development workflow"
+        ]
+
+        # Parallel exploration (n*log(n) scaling advantage!)
+        results = branch_self(self.bot, sections, allow_work=True)
+
+        # Combine into cohesive documentation
+        return self._combine_sections(results)
+
+    def _combine_sections(self, results):
+        # Generate markdown from conversation trees
+        markdown = self._tree_to_markdown(results)
+
+        # Generate static site
+        html = self._markdown_to_html(markdown)
+
+        return {'markdown': markdown, 'html': html}
+```
+
+**Key Features**:
+- **Tree-based structure**: Documentation hierarchy mirrors conversation tree
+- **Multi-perspective**: Explore different angles simultaneously (architecture, API, deployment)
+- **Incremental updates**: Only regenerate changed sections
+- **Audit trail**: Conversation history shows reasoning process
+
+**Priority**: High (Phase 2 - Documentation Service Enablement)
+
+**Effort**: Medium-High - Complex but well-defined
+
+**Impact**: Very High - Core product feature
+
+**Related**: Leverages items 10 (self_tools), 13 (MCP for filesystem access)
+
+---
+
+## 29. Automated Documentation Workflow
+
+**Goal**: End-to-end automated documentation generation and updates
+
+**Components**:
+1. **Scheduled Generation**:
+   - Nightly/weekly full documentation regeneration
+   - Configurable schedules per repository
+   - Priority queue for urgent updates
+
+2. **Commit-Triggered Updates**:
+   - Detect changed files from webhook
+   - Incremental documentation updates
+   - Only regenerate affected sections
+   - Post PR comment with doc preview
+
+3. **Quality Checks**:
+   - Validate generated documentation
+   - Check for broken links
+   - Verify code examples compile
+   - Ensure completeness (all public APIs documented)
+
+4. **Deployment**:
+   - Automatic deployment to GitHub Pages, Netlify, etc.
+   - Version tagging
+   - Rollback capability
+   - Change notifications
+
+**Workflow**:
+```
+1. Webhook receives commit event
+2. Clone/pull repository
+3. Identify changed files
+4. Use branch_self to explore affected doc sections in parallel
+5. Generate updated documentation
+6. Run quality checks
+7. Deploy to hosting platform
+8. Post PR comment with preview link
+9. Track metrics (generation time, cost, quality score)
+```
+
+**Priority**: High (Phase 2 - Documentation Service Enablement)
+
+**Effort**: Medium - Orchestration of existing components
+
+**Impact**: High - Completes documentation service MVP
+
+**Related**: Requires items 27 (GitHub integration), 28 (doc output), 14 (metrics tracking)
+
+---
+
+## 30. Authentication & Billing System
+
+**Goal**: Secure access control and revenue collection
+
+**Components**:
+1. **Authentication**:
+   - GitHub OAuth for user login
+   - API key generation for programmatic access
+   - Role-based access control (admin, user, viewer)
+   - Session management
+
+2. **Billing Integration**:
+   - Stripe integration for payments
+   - Subscription management (monthly/annual)
+   - Usage-based pricing tiers
+   - Invoice generation
+
+3. **Pricing Tiers**:
+   - **Free**: Open source projects, 1 repo, basic features
+   - **Starter**: $200/month, 5 repos, standard features
+   - **Professional**: $500/month, 20 repos, advanced features, priority support
+   - **Enterprise**: Custom pricing, unlimited repos, dedicated support, SLA
+
+4. **Usage Tracking**:
+   - Track documentation generations per repo
+   - Monitor token usage and costs
+   - Set usage limits per tier
+   - Alert on approaching limits
+
+**Implementation**:
+```python
+from stripe import Subscription, Customer
+from flask_login import login_required
+
+@app.route('/subscribe', methods=['POST'])
+@login_required
+def create_subscription():
+    plan = request.json['plan']  # starter, professional, enterprise
+
+    # Create Stripe customer and subscription
+    customer = Customer.create(email=current_user.email)
+    subscription = Subscription.create(
+        customer=customer.id,
+        items=[{'price': PRICING_PLANS[plan]}]
+    )
+
+    # Update user account
+    current_user.subscription_id = subscription.id
+    current_user.plan = plan
+    db.session.commit()
+
+    return {'status': 'subscribed', 'plan': plan}
+```
+
+**Priority**: High (Phase 3 - Documentation Service Launch)
+
+**Effort**: Medium - Stripe API is straightforward
+
+**Impact**: Very High - Required for revenue
+
+**Related**: Requires item 14 (usage metrics for billing)
+
+---
+
+## 31. Multi-Tenancy Support
+
+**Goal**: Isolate customer data and resources securely
+
+**Components**:
+1. **Data Isolation**:
+   - Separate database schemas per customer
+   - Isolated file storage (S3 buckets per customer)
+   - Conversation history isolation
+   - Bot state isolation
+
+2. **Resource Quotas**:
+   - Rate limiting per customer
+   - Token usage limits per tier
+   - Concurrent job limits
+   - Storage quotas
+
+3. **Security**:
+   - API key scoping (customer-specific)
+   - Repository access controls
+   - Audit logging per customer
+   - Data encryption at rest and in transit
+
+4. **Performance**:
+   - Connection pooling per tenant
+   - Resource allocation fairness
+   - Priority queues for premium tiers
+   - Monitoring per tenant
+
+**Implementation**:
+```python
+class TenantContext:
+    def __init__(self, customer_id):
+        self.customer_id = customer_id
+        self.db_schema = f"customer_{customer_id}"
+        self.storage_bucket = f"docs-{customer_id}"
+        self.rate_limit = self._get_rate_limit()
+
+    def _get_rate_limit(self):
+        plan = self._get_customer_plan()
+        return RATE_LIMITS[plan]
+
+    @contextmanager
+    def isolated_execution(self):
+        # Set database schema
+        db.execute(f"SET search_path TO {self.db_schema}")
+
+        # Set storage context
+        storage.set_bucket(self.storage_bucket)
+
+        # Apply rate limiting
+        rate_limiter.check(self.customer_id, self.rate_limit)
+
+        yield
+
+        # Cleanup
+        db.execute("RESET search_path")
+```
+
+**Priority**: High (Phase 3 - Documentation Service Launch)
+
+**Effort**: Medium-High - Security-critical
+
+**Impact**: Very High - Required for B2B service
+
+**Related**: Requires item 30 (authentication)
+
+---
+
+## 32. Documentation Service MVP
+
+**Goal**: Launch minimal viable product for automated documentation
+
+**Components**:
+1. **Landing Page**:
+   - Value proposition and features
+   - Pricing tiers
+   - Demo/screenshots
+   - Sign-up flow
+
+2. **GitHub App Installation**:
+   - One-click installation
+   - Repository selection
+   - Permission grants
+   - Webhook configuration
+
+3. **Dashboard**:
+   - List of connected repositories
+   - Documentation generation status
+   - Usage metrics (generations, tokens, cost)
+   - Settings and configuration
+
+4. **Documentation Generation**:
+   - Manual trigger button
+   - Automatic on commit
+   - Progress indicators
+   - Preview before deployment
+
+5. **Documentation Hosting**:
+   - Generated docs viewable in dashboard
+   - Public URL for sharing
+   - Version history
+   - Download as markdown/HTML
+
+**User Flow**:
+```
+1. User signs up with GitHub OAuth
+2. Selects pricing tier and enters payment
+3. Installs GitHub App on repositories
+4. Configures documentation settings (schedule, sections, style)
+5. Triggers initial documentation generation
+6. Reviews generated docs in dashboard
+7. Approves and deploys to public URL
+8. Receives automatic updates on commits
+```
+
+**MVP Features** (Keep it simple!):
+- ✅ GitHub OAuth login
+- ✅ Stripe subscription (3 tiers)
+- ✅ GitHub App installation
+- ✅ Manual doc generation trigger
+- ✅ Basic markdown output
+- ✅ Simple dashboard
+- ✅ Usage tracking
+
+**Post-MVP Features** (Add later):
+- Custom templates
+- Advanced styling
+- API access
+- Webhooks for notifications
+- Team collaboration
+- Analytics and insights
+
+**Priority**: High (Phase 3 - Documentation Service Launch)
+
+**Effort**: High - Full product integration
+
+**Impact**: Very High - First revenue!
+
+**Related**: Integrates items 27-31
+
+---
+
+---
+
+
+## 27. Tutorial Expansion
+
+**Current State**:
+- Single tutorial: `tutorials/01_getting_started.md` (47 lines, very minimal)
+- Good documentation exists (README, CLI_PRIMER, functional_prompt_primer)
+- No hands-on tutorials for key features
+
+**Goal**: Create comprehensive tutorial series covering all major features
+
+**Missing Tutorial Topics**:
+1. **Tool Development Tutorial** - How to create custom tools (HIGH PRIORITY)
+2. **Conversation Tree Navigation Tutorial** - Branching and navigation
+3. **Functional Prompts Tutorial** - Practical examples with real workflows
+4. **Save/Load and Bot Sharing Tutorial** - Bot persistence and collaboration
+5. **CLI Deep Dive Tutorial** - Step-by-step interactive CLI usage
+6. **Multi-Provider Tutorial** - Using different LLM providers
+7. **Advanced Patterns Tutorial** - Real-world workflows and patterns
+
+**Recommended Structure**:
+- tutorials/01_getting_started.md (EXISTS - needs expansion)
+- tutorials/02_adding_tools.md (NEW - custom tool development)
+- tutorials/03_conversation_trees.md (NEW - branching and navigation)
+- tutorials/04_functional_prompts.md (NEW - practical FP examples)
+- tutorials/05_cli_usage.md (NEW - interactive tutorial for CLI)
+- tutorials/06_save_load_share.md (NEW - bot persistence and sharing)
+- tutorials/07_multi_provider.md (NEW - using different LLMs)
+- tutorials/08_advanced_workflows.md (NEW - real-world patterns)
+
+**Priority**: Medium-High (improves onboarding and adoption)
+
+**Effort**: Medium (each tutorial 1-2 hours to write)
+
+---
+
+## 28. CHATME.bot - Interactive Welcome Bot
+
+**Current State**:
+- 19 .bot files exist in repo (examples, tests, dev bots)
+- No standardized "welcome" or "introduction" bot
+- New users must create bots from scratch
+
+**Goal**: Create welcoming introduction bot demonstrating key features
+
+**Purpose**:
+- Greet new users with pre-loaded conversation
+- Demonstrate basic bot capabilities interactively
+- Provide guided tour of features
+- Show tools, conversation trees, and functional prompts in action
+- Can be loaded with: `python -m bots.dev.cli CHATME.bot`
+
+**Content Should Include**:
+- Pre-loaded conversation showing example interactions
+- Tools already added (code_tools, terminal_tools)
+- System message explaining its purpose
+- Conversation history demonstrating:
+  - Basic Q&A
+  - Tool usage examples
+  - Navigation examples
+  - Functional prompt examples
+
+**Implementation**:
+1. Create bot programmatically with curated conversation history
+2. Add relevant tools
+3. Set helpful system message
+4. Save as `CHATME.bot` in repository root
+5. Reference in README.md and installation docs
+6. Could be auto-generated/updated via script
+
+**Priority**: Medium (nice-to-have for user experience)
+
+**Effort**: Low (2-3 hours to create and test)
+
+
+
+## 29. Unix/Linux/Mac Compatibility
+
+**Current State**:
+- Repository is **Windows-centric**
+- PowerShell-only terminal tools
+- Windows-only CI/CD testing
+- Unix/Mac users cannot use terminal execution features
+
+**Goal**: Full cross-platform compatibility for Windows, Linux, and macOS
+
+**Critical Compatibility Issues**:
+
+1. **PowerShell Dependency (HIGH PRIORITY)**
+   - File: `bots/tools/terminal_tools.py`
+   - Issue: Entire terminal tool system is PowerShell-only
+   - `execute_powershell()` function hardcoded
+   - `PowerShellSession` class spawns `powershell` process
+   - **Impact**: Terminal execution completely broken on Unix/Mac
+   - **Solution**: Create bash/sh alternative or unified shell abstraction
+
+2. **CI/CD Windows-Only (HIGH PRIORITY)**
+   - File: `.github/workflows/pr-checks.yml`
+   - All jobs run on `windows-latest` only
+   - **Impact**: No testing on Linux/Mac, Unix bugs go undetected
+   - **Solution**: Multi-OS matrix testing (see item 30)
+
+3. **Subprocess Flags (Already Handled)**
+   - `subprocess.CREATE_NO_WINDOW` has proper OS detection
+   - `subprocess.STARTUPINFO` has conditional handling
+   - **Status**: Already cross-platform compatible
+
+**Implementation Approach**:
+
+**Phase 1: Shell Abstraction Layer**
+- Detect OS: `sys.platform` or `os.name`
+- Route to `execute_powershell()` on Windows
+- Route to `execute_bash()` on Unix/Mac
+- Unified interface: `execute_shell(command)`
+
+**Phase 2: Unix Shell Support**
+- Create `BashSession` class (mirror of `PowerShellSession`)
+- Handle bash-specific stateful execution
+- Test on Linux/Mac
+
+**Phase 3: CLI Updates**
+- Change help text from "execute powershell" to "execute shell commands"
+- Auto-detect and use appropriate shell
+
+**Related Items**:
+- Item 30 (Multi-OS Testing) - Required to validate Unix compatibility
+- Item 31 (.bot File Association) - Must work cross-platform
+
+**Priority**: High (blocks Unix/Mac users from using terminal features)
+
+**Effort**: Medium (shell abstraction + testing)
+
+---
+
+## 30. Multi-OS Testing Infrastructure
+
+**Current State**:
+- All CI/CD workflows run exclusively on Windows (windows-latest)
+- Python 3.12 only
+- No OS matrix strategy
+- Heavy Windows-specific UTF-8 encoding configuration
+
+**Goal**: Test on Windows, Linux, and macOS with multiple Python versions
+
+**Requirements**:
+
+**1. CI/CD Changes**:
+Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and Python versions 3.10, 3.11, 3.12
+
+**2. Code Challenges to Address**:
+- PowerShell tools need bash/sh equivalents for Unix
+- Path handling (Windows backslash vs Unix forward slash)
+- File encoding (Windows UTF-8 BOM vs Unix clean UTF-8)
+- Terminal/shell differences
+- File permissions (Unix chmod vs Windows ACLs)
+- Line endings (CRLF vs LF)
+
+**3. Test Infrastructure Needs**:
+- OS-specific test fixtures
+- Conditional test skipping for OS-specific features
+- OS detection and conditional tool loading
+- Platform-specific mocking strategies
+
+**Benefits**:
+- Catch OS-specific bugs before users encounter them
+- True cross-platform compatibility validation
+- Broader user base support (Linux/Mac developers)
+- More robust, production-ready codebase
+
+**Relationship to Other Items**:
+- **Directly enables**: Item 29 (Unix compatibility)
+- **Complements**: Test organization efforts (WO012)
+- **Foundation**: Cross-platform support strategy
+
+**Priority**: High (foundational for cross-platform support)
+
+**Effort**: Medium-High (requires tool refactoring + CI/CD updates)
+
+---
+
+## 31. .bot File Association - Open in Terminal
+
+**Current State**:
+- CLI supports loading: `python -m bots.dev.cli [filepath]`
+- No file association - must manually type command
+- Double-clicking .bot files doesn't work
+
+**Goal**: Double-click .bot files to open in terminal with CLI loaded
+
+**Cross-Platform Implementation**:
+
+**Phase 1: Console Entry Point (Essential)**
+- Add `console_scripts` entry point to setup.py
+- Creates `bots-cli` command available system-wide
+- Cross-platform foundation for file associations
+
+**Phase 2: Platform-Specific File Associations**
+
+**Windows**:
+- Registry file (.reg) to associate .bot extension
+- Command: `cmd.exe /k bots-cli "%1"`
+- Keeps terminal open after loading bot
+
+**macOS**:
+- AppleScript wrapper or .app bundle
+- Opens Terminal.app with `bots-cli` command
+- Alternative: Automator workflow
+
+**Linux**:
+- XDG .desktop file for application registration
+- MIME type registration for .bot files
+- Command: `x-terminal-emulator -e bots-cli %f`
+
+**Phase 3: Automated Installer (Optional)**
+- Script to detect OS and install associations
+- May require admin/sudo permissions
+- Provide manual instructions as fallback
+
+**Key Challenges**:
+- Terminal must stay open after loading bot
+- Must work with user's Python environment (entry point solves this)
+- Platform-specific terminal invocation differences
+- May require admin/sudo permissions
+
+**Recommended Minimal Implementation**:
+- Add entry_points to setup.py
+- Provide platform-specific installation scripts/files in `docs/file_associations/`
+- Document manual association steps for each OS
+
+**Priority**: Medium (quality of life improvement)
+
+**Effort**: Low-Medium (mostly documentation and scripts)
+
+---
+
+---
+
+## 32. Repository-Level Tools
+
+**Current State**:
+- File-level tools exist (view, edit individual files)
+- Meta-tools exist (coordinate multiple bots/files)
+- **Gap**: No true repository-wide awareness tools
+
+**Goal**: Tools that operate on entire codebase rather than individual files
+
+**What "Repository-Level Tools" Means**:
+- Understand repository structure (git repos, project layout, dependencies)
+- Provide repository-wide context and awareness
+- Enable cross-file operations (refactoring, analysis, testing)
+
+**Proposed Tool Categories**:
+
+**1. Repository Analysis**:
+- `analyze_repository_structure()` - Map entire repo structure
+- `find_dependencies()` - Analyze import graphs
+- `identify_entry_points()` - Find main files, CLIs, APIs
+- `analyze_test_coverage()` - Repository-wide coverage
+
+**2. Repository Navigation**:
+- `search_codebase(query)` - Search across all files
+- `find_definition(symbol)` - Locate function/class definitions
+- `find_usages(symbol)` - Find all usages
+- `get_call_graph()` - Generate call graph
+
+**3. Repository Operations**:
+- `refactor_across_files(old, new)` - Rename across repo
+- `update_imports()` - Fix imports repository-wide
+- `run_repository_tests()` - Full test suite execution
+- `generate_documentation()` - Create repo-wide docs
+
+**4. Repository Context**:
+- `get_repository_summary()` - High-level overview
+- `get_architecture_diagram()` - Architecture visualization
+- `get_recent_changes()` - Git history
+- `get_project_metadata()` - Package info, dependencies
+
+**5. Repository Management**:
+- `create_module(name, spec)` - Create new module
+- `remove_module(name)` - Remove module + references
+- `merge_modules()` - Combine modules
+- `split_module()` - Break large modules
+
+**Implementation Phases**:
+1. **Phase 1**: Basic repository context (structure, search, summary)
+2. **Phase 2**: Advanced navigation (symbols, call graphs, dependencies)
+3. **Phase 3**: Repository operations (refactoring, testing, docs)
+
+**Use Cases**:
+- Onboarding new bots with full repo context
+- Large cross-file refactorings
+- Architecture analysis and understanding
+- Repository-wide code quality checks
+- Auto-generating comprehensive documentation
+
+**Priority**: Medium (enables sophisticated development workflows)
+
+**Effort**: High (requires integration with AST, git, testing frameworks)
+
+---
+
+## 33. Functional Prompts on Specific Branches
+
+**Current State**:
+- Functional prompts always operate from `bot.conversation` (current node)
+- No built-in way to apply FPs to specific branches in conversation tree
+- Workaround requires manual conversation manipulation
+
+**Goal**: Enable applying any functional prompt to specific nodes in conversation tree
+
+**Feature Description**:
+Apply any functional prompt (chain, branch, prompt_while, etc.) to specific nodes in the conversation tree, not just the current node.
+
+**Use Cases**:
+1. **Continue specific branch**: Apply `prompt_while` to Branch B while leaving A and C untouched
+2. **Parallel branch processing**: Apply same FP to all branches (e.g., "write tests" for each file)
+3. **Nested workflows**: Create complex multi-level branching with different FPs per branch
+4. **Branch recovery**: Resume work on abandoned branches
+5. **Selective processing**: Different FPs for different branches based on content
+
+**Implementation Approach**:
+
+**Phase 1: Helper Function** (Low effort, high value)
+Create `apply_to_node(bot, node, fp_function, *args, **kwargs)` that temporarily sets bot.conversation to target node, executes FP, then restores original conversation.
+
+**Phase 2: Convenience Functions** (If Phase 1 sees adoption)
+- `apply_to_branches(bot, nodes, fp_function, ...)` - Apply FP to multiple nodes
+- `apply_to_leaves(bot, fp_function, ...)` - Apply FP to all leaf nodes
+- `apply_to_matching(bot, condition, fp_function, ...)` - Apply to nodes matching condition
+
+**Phase 3: Context Manager** (Most elegant)
+Create context manager for cleaner syntax when working with specific nodes.
+
+**Benefits**:
+- Natural extension of existing conversation tree patterns
+- Enables sophisticated multi-branch reasoning
+- Low implementation cost, high value
+- No breaking changes (pure addition)
+
+**Priority**: Medium-High (powerful feature, low cost)
+
+**Effort**: Low (Phase 1), Medium (Phases 2-3)
+
+---
+
+## 34. Improve Save/Load Behavior
+
+**Current State**:
+- **Critical inconsistency**: `Bot.load()` uses `replies[0]` (first/oldest), but CLI overrides to `replies[-1]` (last/most recent)
+- Default filename: `{bot.name}@{timestamp}.bot`
+- Autosave filename: `{bot.name}.bot` (overwrites each time)
+- Bot doesn't track source filename
+- Inconsistent behavior between direct load and CLI load
+
+**Goal**: Consistent, intuitive save/load behavior with better defaults
+
+**Proposed Changes**:
+
+**1. Load to Last Messaged Node (replies[-1])**
+- **Issue**: Line 2540-2541 in `base.py` uses `replies[0]`
+- **Fix**: Change to `replies[-1]` to match CLI behavior and user expectations
+- **Rationale**: Users expect to continue from most recent work, not oldest branch
+
+**2. Track Bot Filename**
+- **Issue**: Bot has `self.name` but doesn't track source filename
+- **Fix**: Add `self.filename` attribute to remember source file
+- **Benefit**: Enables intelligent autosave to correct file
+
+**3. Separate Quicksave from Named Save**
+- **Issue**: Autosave uses `{name}.bot`, conflicts with intentional saves
+- **Fix**: 
+  - Autosave to `quicksave.bot` (working file, can be overwritten)
+  - Manual save uses tracked filename or prompts for new name
+- **Benefit**: Stable named bots + safe working quicksave
+
+**4. Intelligent Save Behavior**
+- If bot loaded from file: save back to that file by default
+- If bot created fresh: prompt for filename or use `quicksave.bot`
+- Autosave always uses `quicksave.bot` unless filename is tracked
+
+**Test Coverage Gaps**:
+- No tests verify which reply is selected after load
+- No tests for filename tracking across save/load cycles
+- No tests for autosave behavior with tracked filenames
+
+**Priority**: High (fixes critical inconsistency, improves UX)
+
+**Effort**: Low-Medium (code changes simple, testing important)
+
+---
+
+## 35. Cross-Directory Bot Loading - RESOLVED
+
+**Status**: RESOLVED (07-Oct-2025) - NOT A BUG
+
+**Original Report**:
+Bot loading was reported to fail when bot file is loaded from a different working directory than where it was saved, if the bot contains tools loaded from relative file paths.
+
+**Investigation Results**:
+Upon thorough testing, this bug does NOT exist. The system already implements the recommended solution (Option 3).
+
+**How It Actually Works**:
+1. When tools are added via file path, the system reads and stores the FULL SOURCE CODE
+2. The source code is serialized into the .bot file
+3. On load, the system executes the stored source code (not re-reading from file path)
+4. This makes bots truly portable and shareable across directories
+
+**Verification**:
+- Created test: `test_cross_directory_loading_with_file_tools()` in `tests/integration/test_save_load_anthropic.py`
+- Test verifies: Bot with file-based tools can be saved in one directory, loaded from another, and tools remain functional
+- Test result: PASSES - confirms cross-directory loading works correctly
+
+**Test Coverage Added**:
+- New test fills the gap identified in original report
+- Combines file-based tools + cross-directory loading
+- Provides regression protection for this functionality
+
+**Conclusion**:
+The system already stores full tool source code (not just file paths) and handles cross-directory loading correctly. Bots are truly portable and shareable as designed.
+
+**Priority**: N/A (resolved - not a bug)
+
+**Effort**: N/A (no fix needed, test added for coverage)
+---
+
+
+
+## 36. branch_self Loses Track of Branching Node - CRITICAL BUG
+
+**Status**: OPEN (Issue #118, 07-Oct-2025)
+
+**Issue**: When using branch_self with multiple prompts, branches lose track of which node they branched from during save/load operations. Branches execute incorrect prompts or get confused about their original task.
+
+**Symptoms**:
+- Branches don't remember their starting point after save/load
+- Incorrect prompt execution in branches
+- Confusion about original task assignment
+- Related to conversation tree state persistence
+
+**Impact**: CRITICAL - Breaks core branch_self functionality, affects conversation tree integrity
+
+**Root Cause**: Likely related to how conversation nodes are serialized/deserialized during save/load operations
+
+**Related Items**:
+- Item 34 (Improve Save/Load Behavior) - Both involve save/load issues
+- Item 35 (Cross-Directory Bot Loading) - Save/load investigation
+- Item 10 (Expand self_tools) - branch_self is a self_tool
+
+**Priority**: CRITICAL (blocks reliable use of branch_self, a core differentiator)
+
+**Effort**: Medium (requires debugging conversation tree serialization)
+
+---
+
+## 37. CLI /s Command Bug - Sends Instead of Saves
+
+**Status**: OPEN (Issue #115, 06-Oct-2025)
+
+**Issue**: In CLI, the `/s` command (intended for save) actually sends the prompt and displays LLM output instead of just saving.
+
+**Expected Behavior**: `/s` should save the bot without sending any prompt
+
+**Actual Behavior**: `/s` sends the prompt to the LLM and displays output
+
+**Impact**: LOW-MEDIUM - Confusing UX, wastes API calls, unexpected behavior
+
+**Location**: `bots/dev/cli.py`
+
+**Priority**: MEDIUM (UX bug, quick fix)
+
+**Effort**: LOW (simple command routing fix)
+
+---
+
+## 38. Flaky Test - test_branch_self_error_handling
+
+**Status**: OPEN (Issue #117, 07-Oct-2025)
+
+**Issue**: Test `test_branch_self_error_handling` is flaky/unreliable. Bot needs more context to properly handle the test scenario.
+
+**Impact**: LOW - Test reliability issue, doesn't affect production code
+
+**Root Cause**: Insufficient context provided to bot in test scenario
+
+**Priority**: LOW-MEDIUM (test quality, affects CI/CD reliability)
+
+**Effort**: LOW (improve test setup/context)
+
 ---
 
 ## Implementation Roadmap
 
-### Phase 1: Repo Reliability (High Priority)
-1. [DONE] **GitHub Branch Protection & CodeRabbit** (item 26) - DONE (PR #110)
-2. [!] **OpenTelemetry Integration** (item 14) - PARTIAL (PR #114 - Phases 1&2 done, 3&4 pending)
-3. [DONE] **Remove print statements** (item 11) - DONE (PR #114)
-4. [...] **Add callback system** (item 12) - Foundation laid with OpenTelemetry, needs completion
-5. [DONE] **Fix test parallelism** (item 24) - DONE (PR #112)
-6. [DONE] **Uniform tempfile handling** (item 25) - DONE (PR #112 - monitoring recommended)
-7. [DONE] Organize tests better (item 9) - DONE (WO012)
-8. Refactor build_messages pattern (item 8)
-9. Ensure CLI haiku bots match provider (item 5)
+### Phase 1: Repo Reliability & Critical Fixes (High Priority)
+1. [!] **branch_self Loses Track of Branching Node** (item 36) - CRITICAL
+   - Fix conversation node tracking during save/load
+   - Blocks reliable use of core differentiator feature
+   - Related to save/load serialization
 
+2. [DONE] **Cross-Directory Bot Loading** (item 35) - RESOLVED (07-Oct-2025)
+   - Investigation confirmed: NOT A BUG
+   - System already stores full source code
+   - Test added for regression protection
+
+3. [!] **Improve Save/Load Behavior** (item 34) - HIGH
+   - Fix replies[0] vs replies[-1] inconsistency
+   - Track bot filename for intelligent autosave
+   - Separate quicksave from named saves
+
+4. [!] **OpenTelemetry Phases 3-4** (item 14) - PARTIAL
+   - Metrics collection (performance, usage, cost tracking)
+   - Production observability setup
+
+5. [...] **Add callback system** (item 12) - Foundation laid with OpenTelemetry
+   - Progress indicators for user experience
+   - Integration with OpenTelemetry
+
+6. [...] **Unix/Linux/Mac Compatibility** (item 29) - HIGH
+   - Shell abstraction layer
+   - Bash/sh support for terminal tools
+   - Blocks Unix/Mac users
+
+7. [...] **Multi-OS Testing Infrastructure** (item 30) - HIGH
+   - CI/CD matrix for Windows, Linux, macOS
+   - Enables validation of Unix compatibility
+   - Foundation for cross-platform support
+
+8. [...] **Refactor build_messages pattern** (item 8)
+   - Clean architecture before adding complexity
+
+9. [...] **Ensure CLI haiku bots match provider** (item 5)
+   - Quick win, cost optimization
+
+**Completed Phase 1 Items**:
+- [DONE] GitHub Branch Protection & CodeRabbit (item 26)
+- [DONE] OpenTelemetry Phases 1-2 (item 14)
+- [DONE] Remove print statements (item 11)
+- [DONE] Fix test parallelism (item 24)
+- [DONE] Uniform tempfile handling (item 25)
+- [DONE] Organize tests better (item 9)
 
 ### Phase 2: Core Features & Expansion (Medium Priority)
 1. **MCP Integration - Client** (item 13) - Industry standard for tool connectivity
 2. **MCP Integration - Server** (item 13) - Expose tools to ecosystem
 3. **LiteLLM Integration** (item 15) - 100+ provider support
-4. Configure CLI more thoroughly (item 6)
-5. Update base.py to use config file
-7. Centralized file-writing wrapper (item 16)
-8. Bot requirements system (item 18)
-9. Expand self_tools Phase 1 (item 10)
-10. python_edit feedback improvements (item 20)
+4. **Functional Prompts on Specific Branches** (item 33) - MEDIUM-HIGH
+   - Low effort, high value feature
+   - Enables sophisticated multi-branch workflows
+5. **Repository-Level Tools** (item 32) - MEDIUM
+   - Phase 1: Basic repository context
+   - Enables sophisticated development workflows
+6. Configure CLI more thoroughly (item 6)
+7. Update base.py to use config file
+8. Centralized file-writing wrapper (item 16)
+9. Bot requirements system (item 18)
+10. Expand self_tools Phase 1 (item 10)
+11. python_edit feedback improvements (item 20)
 
-### Phase 3: Enhancement (Medium-Low Priority)
-1. Make CLI prettier (item 2) - Integrate with OpenTelemetry for progress
-2. Expand self_tools Phase 2-3 (item 10)
-3. Rename auto_stash to mustache (item 4)
-4. Tool requirements decorator (item 17)
-5. Autosave behavior improvements (item 21)
-6. Terminal tool output format (item 22)
-7. AST warnings cleanup (item 19)
+### Phase 3: Enhancement & User Experience (Medium-Low Priority)
+1. **Tutorial Expansion** (item 27) - MEDIUM-HIGH
+   - Critical for onboarding and adoption
+   - 7 new tutorials needed
+2. **CHATME.bot** (item 28) - MEDIUM
+   - Welcome bot for new users
+   - Low effort, good UX improvement
+3. **.bot File Association** (item 31) - MEDIUM
+   - Quality of life improvement
+   - Cross-platform file associations
+4. Make CLI prettier (item 2) - Integrate with OpenTelemetry for progress
+5. Expand self_tools Phase 2-3 (item 10)
+6. Rename auto_stash to mustache (item 4)
+7. Tool requirements decorator (item 17)
+8. Autosave behavior improvements (item 21)
+9. Terminal tool output format (item 22)
+10. AST warnings cleanup (item 19)
 
 ### Phase 4: Major Features (Low Priority, High Effort)
 1. JavaScript GUI / Frontend backend (item 3)
 2. Conversation tree visualization tools
-3. Tool configurations in CI/CD (item 23)
-4. Integration with emerging standards (OASF, ACP)
+3. Repository-Level Tools Phases 2-3 (item 32)
+4. Tool configurations in CI/CD (item 23)
+5. Integration with emerging standards (OASF, ACP)
 
 ---
 
 ## Next Actions
 
-1. **Immediate**: Prioritize Phase 1 items, create work orders
-2. **Short-term**: Begin Phase 1 implementation
-3. **Medium-term**: Complete Phase 1, begin Phase 2
-4. **Long-term**: Evaluate GUI feasibility
+**Strategic Priority**: Documentation-First Revenue Path
+
+### Immediate (Weeks 1-2)
+1. **Complete OpenTelemetry Phases 3-4** (item 14)
+   - Implement metrics collection
+   - Set up production observability
+   - Track cost per operation
+   - **Why**: Essential for pricing and proving competitive advantage
+
+2. **Complete Callback System** (item 12)
+   - Implement callback interface
+   - Add progress indicators
+   - Integrate with OpenTelemetry
+   - **Why**: Better user experience, foundation for prettier CLI
+
+### Short-term (Weeks 3-8)
+1. **Build GitHub Integration** (item 27)
+   - Create GitHub App
+   - Implement webhook handling
+   - Repository access and cloning
+
+2. **Build Documentation Output System** (item 28)
+   - Markdown generation from conversation trees
+   - HTML/static site generation
+   - Template system
+
+3. **Build Automated Workflow** (item 29)
+   - Scheduled and commit-triggered generation
+   - Quality checks
+   - Deployment automation
+
+### Medium-term (Weeks 9-20)
+1. **Launch Documentation Service MVP** (items 30-32)
+   - Authentication and billing
+   - Multi-tenancy
+   - Dashboard and hosting
+   - **Target**: First 10 paying customers
+
+2. **Optimize and Scale**
+   - Prove n*log(n) scaling advantage with metrics
+   - Reduce costs and generation time
+   - Improve quality and reliability
+
+### Long-term (Month 6+)
+1. **Fund GUI Development** with documentation service revenue
+2. **Launch Code Review Service** (leverage same infrastructure)
+3. **Build API Service** (expose conversation trees)
+4. **Create Bot Marketplace** (sell specialized bots)
+
 
 ---
 
-**Last Updated**: 07-Oct-2025
+**Last Updated**: 08-Oct-2025
 **Maintainer**: Ben Rinauto
 **Status**: Active Planning
 ---

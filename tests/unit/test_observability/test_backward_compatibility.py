@@ -217,8 +217,8 @@ class TestBackwardCompatibility:
                 bot = MockBot(name="autosave_test", autosave=True, enable_tracing=False)
                 bot.respond("Test message")
 
-                # Autosave file should exist
-                expected_file = "autosave_test.bot"
+                # Autosave file should exist (now uses quicksave.bot)
+                expected_file = "quicksave.bot"
                 assert os.path.exists(expected_file)
 
             finally:

@@ -1,0 +1,24 @@
+test: Add cross-directory bot loading test for file-based tools
+
+Added test_cross_directory_loading_with_file_tools() to verify that bots
+with file-based tools can be saved in one directory and loaded from another.
+
+Investigation findings:
+- Roadmap Item 35 reported this as a CRITICAL bug
+- Testing revealed the bug does NOT exist
+- System already stores full tool source code (not just file paths)
+- Bots load correctly from any directory
+
+Test coverage:
+- Adds file-based tools using file path string
+- Saves bot in one directory
+- Changes working directory to subdirectory
+- Loads bot from new directory
+- Verifies tools are present and callable
+
+Result: Test passes, confirming cross-directory loading works correctly.
+
+This test fills the gap identified in the roadmap and provides regression
+protection for this important portability feature.
+
+Related: Roadmap Item 35 (marked as RESOLVED - NOT A BUG)

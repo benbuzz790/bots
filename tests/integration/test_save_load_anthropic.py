@@ -1043,6 +1043,128 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         print("SUCCESS: Tool execution integrated with bot responses")
         print(f"First result (7) found: {has_first_result}, Second result (10) found: {has_second_result}")
 
+    def test_wo013_load_uses_most_recent_reply(self) -> None:
+        """Test that Bot.load() navigates to most recent conversation node (WO013 Item 34).
+
+        Verifies that when a bot with multiple branches is saved and loaded,
+        it loads to the most recent (replies[-1]) rather than oldest (replies[0]).
+        """
+        # Create a conversation with multiple branches
+        self.bot.respond("First message")
+
+        # Save the conversation point
+        branch_point = self.bot.conversation
+
+        # Create branch 1 (older)
+        self.bot.conversation = branch_point
+        self.bot.respond("Branch 1 message")
+
+        # Create branch 2 (newer - should be loaded)
+        self.bot.conversation = branch_point
+        self.bot.respond("Branch 2 message")
+
+        # Save the bot
+        save_path = os.path.join(self.temp_dir, "multi_branch_bot")
+        self.bot.save(save_path)
+
+        # Load the bot
+        loaded_bot = Bot.load(save_path + ".bot")
+
+        # Verify we're at the most recent branch (branch 2)
+        # Check the parent node (user message) to avoid relying on assistant response content
+        parent_node = loaded_bot.conversation.parent
+        self.assertIsNotNone(parent_node, "Loaded conversation should have a parent node")
+        self.assertIn("Branch 2 message", parent_node.content, "Should be at Branch 2, not Branch 1")
+        self.assertNotIn("Branch 1 message", parent_node.content, "Should not be at Branch 1")
+
+    def test_wo013_filename_tracking(self) -> None:
+        """Test that bot.filename is tracked correctly (WO013 Item 34).
+
+        Verifies that:
+        - bot.filename is None for new bots
+        - bot.filename is set after load
+        - bot.filename is used when save() called without args
+        - bot.filename is updated after save with new name
+        """
+        # New bot should have filename = None
+        self.assertIsNone(self.bot.filename)
+
+        # Save and load
+        save_path = os.path.join(self.temp_dir, "tracked_bot")
+        self.bot.save(save_path)
+
+        loaded_bot = Bot.load(save_path + ".bot")
+
+        # Filename should be set after load
+        self.assertEqual(loaded_bot.filename, save_path + ".bot")
+
+        # Save without args should use tracked filename
+        loaded_bot.respond("Test message")
+        second_save = loaded_bot.save()  # No filename provided
+        self.assertEqual(second_save, save_path + ".bot")
+
+        # Save with new name should update tracked filename
+        new_path = os.path.join(self.temp_dir, "renamed_bot")
+        loaded_bot.save(new_path)
+        self.assertEqual(loaded_bot.filename, new_path + ".bot")
+
+    def test_wo013_quicksave_behavior(self) -> None:
+        """Test that quicksave creates ephemeral quicksave.bot (WO013 Item 34).
+
+        Verifies that:
+        - quicksave=True creates quicksave.bot
+        - quicksave doesn't update bot.filename
+        - named saves don't interfere with quicksave
+        """
+        # Save with quicksave
+        quicksave_path = self.bot.save(quicksave=True)
+        self.assertEqual(quicksave_path, "quicksave.bot")
+        self.assertTrue(os.path.exists("quicksave.bot"))
+
+        # Quicksave shouldn't set filename
+        self.assertIsNone(self.bot.filename)
+
+        # Named save should set filename
+        named_path = os.path.join(self.temp_dir, "named_bot")
+        self.bot.save(named_path)
+        self.assertEqual(self.bot.filename, named_path + ".bot")
+
+        # Another quicksave shouldn't change filename
+        self.bot.save(quicksave=True)
+        self.assertEqual(self.bot.filename, named_path + ".bot")
+
+        # Clean up quicksave.bot
+        if os.path.exists("quicksave.bot"):
+            os.unlink("quicksave.bot")
+
+    def test_wo013_autosave_uses_quicksave(self) -> None:
+        """Test that autosave creates quicksave.bot (WO013 Item 34).
+
+        Verifies that when autosave=True, the bot saves to quicksave.bot
+        instead of creating timestamped files.
+        """
+        # Create bot with autosave enabled
+        bot = AnthropicBot(
+            name="AutosaveBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000, temperature=0, autosave=True
+        )
+
+        # Respond should trigger autosave to quicksave.bot
+        bot.respond("Test message")
+
+        # Check that quicksave.bot was created
+        self.assertTrue(os.path.exists("quicksave.bot"))
+
+        # Verify bot.filename wasn't set by autosave
+        self.assertIsNone(bot.filename)
+
+        # Clean up - use try-except for Windows file locking
+        try:
+            if os.path.exists("quicksave.bot"):
+                os.unlink("quicksave.bot")
+        except PermissionError:
+            # File may be locked on Windows, tearDown will handle it
+            pass
+
 
 class TestDebugImports(unittest.TestCase):
     """Debug test class to identify import capture issues."""

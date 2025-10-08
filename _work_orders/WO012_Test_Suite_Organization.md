@@ -1,4 +1,4 @@
-﻿# Work Order 012: Test Suite Organization and Best Practices
+# Work Order 012: Test Suite Organization and Best Practices
 
 **Status**: Complete  
 **Created**: 06-Oct-2025

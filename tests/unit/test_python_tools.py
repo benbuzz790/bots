@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import difflib
 import inspect
 import os
