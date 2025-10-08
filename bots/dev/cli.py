@@ -1542,6 +1542,10 @@ class CLI:
                                 COLOR_SYSTEM,
                             )
                             continue
+                        # Early exit for /s command - never send prompts
+                        if command == "/s":
+                            self._handle_command(self.context.bot_instance, user_input)
+                            continue
                         if msg:
                             if command in [
                                 "/help",

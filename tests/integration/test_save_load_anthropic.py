@@ -1071,8 +1071,11 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         loaded_bot = Bot.load(save_path + ".bot")
 
         # Verify we're at the most recent branch (branch 2)
-        self.assertIn("Branch 2", loaded_bot.conversation.content)
-        self.assertNotIn("Branch 1", loaded_bot.conversation.content)
+        # Check the parent node (user message) to avoid relying on assistant response content
+        parent_node = loaded_bot.conversation.parent
+        self.assertIsNotNone(parent_node, "Loaded conversation should have a parent node")
+        self.assertIn("Branch 2 message", parent_node.content, "Should be at Branch 2, not Branch 1")
+        self.assertNotIn("Branch 1 message", parent_node.content, "Should not be at Branch 1")
 
     def test_wo013_filename_tracking(self) -> None:
         """Test that bot.filename is tracked correctly (WO013 Item 34).
