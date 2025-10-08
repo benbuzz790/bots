@@ -1525,11 +1525,13 @@ class CLI:
                         msg = user_input
 
                     # Track user messages for /s command
-                    if not command or command not in ["/s"]:
+                    if not command:
                         if msg:
                             self.last_user_message = msg
-                        elif not command:
+                        else:
                             self.last_user_message = user_input
+                    elif msg and command != "/s":
+                        self.last_user_message = msg
                     if command:
                         if command not in self.commands:
                             pretty(
@@ -1560,9 +1562,6 @@ class CLI:
                                 self._handle_command(self.context.bot_instance, user_input)
                             if command in ["/up", "/down", "/left", "/right", "/root", "/label", "/leaf"]:
                                 self._handle_chat(self.context.bot_instance, msg)
-                            elif command == "/s":
-                                # Special handling for /s with text - save the text
-                                self.last_user_message = msg
                                 self._handle_command(self.context.bot_instance, user_input)
                             else:
                                 self._handle_chat(self.context.bot_instance, msg)

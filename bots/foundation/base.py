@@ -2288,6 +2288,7 @@ class Bot(ABC):
         self.tool_handler = tool_handler
         self.mailbox = mailbox
         self.autosave = autosave
+        self.filename = None  # Track source filename for intelligent save behavior
 
         # Determine if tracing should be enabled
         # Determine if tracing should be enabled
@@ -2342,10 +2343,10 @@ class Bot(ABC):
         """Internal implementation of respond without tracing."""
         self.conversation = self.conversation._add_reply(content=prompt, role=role)
         if self.autosave:
-            self.save(f"{self.name}")
+            self.save(f"{self.name}", quicksave=True)
         reply, _ = self._cvsn_respond()
         if self.autosave:
-            self.save(f"{self.name}")
+            self.save(f"{self.name}", quicksave=True)
         return reply
 
     def add_tools(self, *args) -> None:
@@ -2538,10 +2539,11 @@ class Bot(ABC):
             node_class = Engines.get_conversation_node_class(data["conversation"]["node_class"])
             bot.conversation = node_class._from_dict(data["conversation"])
             while bot.conversation.replies:
-                bot.conversation = bot.conversation.replies[0]
+                bot.conversation = bot.conversation.replies[-1]
+        bot.filename = filepath
         return bot
 
-    def save(self, filename: Optional[str] = None) -> str:
+    def save(self, filename: Optional[str] = None, quicksave: bool = False) -> str:
         """Save the bot's complete state to a file.
 
         Use to preserve the bot's entire state including:
@@ -2554,6 +2556,8 @@ class Bot(ABC):
             filename (Optional[str]): Name for the save file
                 If None, generates name using bot name and timestamp
                 Adds .bot extension if not present
+            quicksave (bool): If True, saves to quicksave.bot (ephemeral working file)
+                Quicksave doesn't update the tracked filename
 
         Returns:
             str: Path to the saved file
@@ -2565,6 +2569,9 @@ class Bot(ABC):
 
             # Save with specific name
             path = bot.save("code_review_bot")  # saves as "code_review_bot.bot"
+
+            # Quicksave (autosave)
+            path = bot.save(quicksave=True)  # saves as "quicksave.bot"
             ```
 
         Note:
@@ -2572,10 +2579,12 @@ class Bot(ABC):
             - Creates directories in path if they don't exist
             - Maintains complete tool context for restoration
         """
-        if filename is None:
-            now = formatted_datetime()
-            filename = f"{self.name}@{now}.bot"
-        elif not filename.endswith(".bot"):
+        if quicksave:
+            filename = "quicksave.bot"
+        elif filename is None:
+            filename = getattr(self, "filename", None) or f"{self.name}@{formatted_datetime()}.bot"
+
+        if not filename.endswith(".bot"):
             filename = filename + ".bot"
         directory = os.path.dirname(filename)
         if directory and (not os.path.exists(directory)):
@@ -2596,6 +2605,11 @@ class Bot(ABC):
                 data[key] = str(value)
         with open(filename, "w") as file:
             json.dump(data, file, indent=1)
+
+        # Only update tracked filename for non-quicksave saves
+        if not quicksave:
+            self.filename = filename
+
         return filename
 
     def chat(self) -> None:
