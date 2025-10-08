@@ -1154,9 +1154,13 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         # Verify bot.filename wasn't set by autosave
         self.assertIsNone(bot.filename)
 
-        # Clean up
-        if os.path.exists("quicksave.bot"):
-            os.unlink("quicksave.bot")
+        # Clean up - use try-except for Windows file locking
+        try:
+            if os.path.exists("quicksave.bot"):
+                os.unlink("quicksave.bot")
+        except PermissionError:
+            # File may be locked on Windows, tearDown will handle it
+            pass
 
 
 class TestDebugImports(unittest.TestCase):
