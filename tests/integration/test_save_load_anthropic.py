@@ -1123,31 +1123,50 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         loaded_bot.save(new_path)
         self.assertEqual(loaded_bot.filename, new_path + ".bot")
 
-    def test_wo013_quicksave_behavior(self) -> None:
-        """Test that quicksave creates ephemeral quicksave.bot (WO013 Item 34).
+    def test_wo013_quicksave_behavior(self):
+        """Test WO013 quicksave behavior - filename tracking and quicksave flag.
 
-        Verifies that:
-        - quicksave=True creates quicksave.bot
-        - quicksave doesn't update bot.filename
-        - named saves don't interfere with quicksave
+    This test verifies:
+    1. save() with no args uses bot.filename if set
+    2. save(filename) updates bot.filename
+    3. save(quicksave=True) doesn't update bot.filename
+    """
+        # Test 1: save() with no filename uses bot.filename if set
+        self.bot.filename = "test_bot.bot"
+        path1 = self.bot.save()
+        self.assertEqual(path1, "test_bot.bot")
+        self.assertEqual(self.bot.filename, "test_bot.bot")
 
-        Note: Modified to avoid file locking - tests the concept without actual quicksave=True
-        """
-        # Test 1: Verify initial state - no filename set
-        self.assertIsNone(self.bot.filename)
-
-        # Test 2: Named save should set filename
-        named_path = os.path.join(self.temp_dir, "named_bot")
+        # Test 2: save(filename) updates bot.filename
+        named_path = os.path.join(self.temp_dir, "named_save")
         self.bot.save(named_path)
         self.assertEqual(self.bot.filename, named_path + ".bot")
 
-        # Test 3: Subsequent named save should update filename
-        named_path2 = os.path.join(self.temp_dir, "named_bot2")
+        # Test 3: Multiple saves update filename each time
+        named_path2 = os.path.join(self.temp_dir, "named_save2")
         self.bot.save(named_path2)
         self.assertEqual(self.bot.filename, named_path2 + ".bot")
 
-        # Note: Original test used quicksave=True which creates quicksave.bot
-        # That functionality is tested elsewhere to avoid file locking in parallel tests
+        # Test 4: Test quicksave behavior
+        # quicksave=True always saves to "quicksave.bot" regardless of filename parameter
+        # and doesn't update bot.filename
+
+        # Save current filename to verify it doesn't change
+        filename_before = self.bot.filename
+
+        # Quicksave (ignores any filename parameter, always uses "quicksave.bot")
+        quicksave_path = self.bot.save(quicksave=True)
+
+        # Verify quicksave file was created at "quicksave.bot"
+        self.assertEqual(quicksave_path, "quicksave.bot", "quicksave=True should save to 'quicksave.bot'")
+        self.assertTrue(os.path.exists("quicksave.bot"), "quicksave.bot should be created")
+
+        # Verify quicksave doesn't update bot.filename
+        self.assertEqual(self.bot.filename, filename_before, "quicksave should not update bot.filename")
+
+        # Cleanup quicksave.bot
+        if os.path.exists("quicksave.bot"):
+            os.remove("quicksave.bot")
 
         # Cleanup handled by tearDown
 

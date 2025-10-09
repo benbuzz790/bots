@@ -1718,7 +1718,7 @@ class TenantContext:
 ---
 
 
-## 27. Tutorial Expansion
+## 39. Tutorial Expansion
 
 **Current State**:
 - Single tutorial: `tutorials/01_getting_started.md` (47 lines, very minimal)
@@ -1752,7 +1752,7 @@ class TenantContext:
 
 ---
 
-## 28. CHATME.bot - Interactive Welcome Bot
+## 40. CHATME.bot - Interactive Welcome Bot
 
 **Current State**:
 - 19 .bot files exist in repo (examples, tests, dev bots)
@@ -1792,7 +1792,7 @@ class TenantContext:
 
 
 
-## 29. Unix/Linux/Mac Compatibility
+## 41. Unix/Linux/Mac Compatibility
 
 **Current State**:
 - Repository is **Windows-centric**
@@ -1850,7 +1850,7 @@ class TenantContext:
 
 ---
 
-## 30. Multi-OS Testing Infrastructure
+## 42. Multi-OS Testing Infrastructure
 
 **Current State**:
 - All CI/CD workflows run exclusively on Windows (windows-latest)
@@ -1896,7 +1896,7 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 
 ---
 
-## 31. .bot File Association - Open in Terminal
+## 43. .bot File Association - Open in Terminal
 
 **Current State**:
 - CLI supports loading: `python -m bots.dev.cli [filepath]`
@@ -1953,7 +1953,7 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 
 ---
 
-## 32. Repository-Level Tools
+## 44. Repository-Level Tools
 
 **Current State**:
 - File-level tools exist (view, edit individual files)
@@ -2195,7 +2195,7 @@ Conversation Tree:
 
 ---
 
-## 38. Flaky Test - test_branch_self_error_handling - DONE ?
+## 38. Flaky Test - test_branch_self_error_handling - DONE ✅
 **Status**: RESOLVED (PR #120, 09-Oct-2025) - Closed Issue #117
 **Issue**: Test `test_branch_self_error_handling` was flaky/unreliable due to vague prompts causing non-deterministic LLM behavior.
 **Root Cause**: Test used vague prompt "use invalid parameters" which LLM interpreted differently each time.
