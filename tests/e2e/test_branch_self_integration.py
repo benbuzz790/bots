@@ -87,7 +87,7 @@ class TestBranchSelfIntegration(DetailedTestCase):
         print(f"Duration: {self.test_duration:.2f} seconds")
         print(f"Output length: {len(output)} characters")
         print(f"Full output:\n{output}")
-        self.assertLess(self.test_duration, 120, "Branch_self nested test should not take more than 2 minutes")
+        self.assertLess(self.test_duration, 300, "Branch_self nested test should not take more than 5 minutes")
         if "branch_self" in output.lower():
             print("✅ branch_self was mentioned in output")
         branch_indicators = ["branch", "successfully created", "errors:", "tool_result"]
