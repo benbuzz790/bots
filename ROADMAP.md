@@ -2145,7 +2145,7 @@ The system already stores full tool source code (not just file paths) and handle
 
 ## 36. branch_self Loses Track of Branching Node - DONE ✅
 
-**Status**: RESOLVED (PR #119, 08-Oct-2025) - VERIFIED (09-Jan-2025)
+**Status**: RESOLVED (PR #119, 08-Oct-2025) - VERIFIED (09-Oct-2025)
 
 **Issue**: When using branch_self with multiple prompts, branches lose track of which node they branched from during save/load operations. Branches execute incorrect prompts or get confused about their original task.
 
@@ -2155,7 +2155,7 @@ The system already stores full tool source code (not just file paths) and handle
 - Changed Bot.load() from replies[0] to replies[-1] (line 2542 in base.py)
 - This fix directly addresses the root cause of the branching node tracking issue
 
-**Verification (WO014, 09-Jan-2025)**:
+**Verification (WO014, 09-Oct-2025)**:
 - Created comprehensive test suite: `tests/e2e/test_branch_self_tracking.py`
 - 4 new tests covering save/load scenarios with branch_self
 - All tests passing (8/8 branch_self tests total)
@@ -2196,14 +2196,14 @@ Conversation Tree:
 ---
 
 ## 38. Flaky Test - test_branch_self_error_handling - DONE ?
-**Status**: RESOLVED (PR #120, 09-Jan-2025) - Closed Issue #117
+**Status**: RESOLVED (PR #120, 09-Oct-2025) - Closed Issue #117
 **Issue**: Test `test_branch_self_error_handling` was flaky/unreliable due to vague prompts causing non-deterministic LLM behavior.
 **Root Cause**: Test used vague prompt "use invalid parameters" which LLM interpreted differently each time.
 **Fix Delivered in PR #120**:
 - Rewrote test to use MockBot for deterministic behavior
 - Made prompts more specific and explicit
 - Test now passes consistently
-**Verification (WO014, 09-Jan-2025)**:
+**Verification (WO014, 09-Oct-2025)**:
 - Test verified stable across multiple runs
 - No longer depends on LLM interpretation
 - 100% confidence in fix
@@ -2217,7 +2217,7 @@ Conversation Tree:
 ### Phase 1: Repo Reliability & Critical Fixes (High Priority)
 1. [DONE] **branch_self Loses Track of Branching Node** (item 36) - RESOLVED (PR #119, 08-Oct-2025) ✅
    - Fix delivered: Bot.load() now uses replies[-1] instead of replies[0]
-   - VERIFIED (WO014, 09-Jan-2025): All tests passing
+   - VERIFIED (WO014, 09-Oct-2025): All tests passing
    - Comprehensive test suite created
    - Issues #118 and #117 closed
 
