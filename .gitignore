@@ -58,6 +58,8 @@ complex_test.txt
 dir1/
 dir2/
 dir3/
+content_project/
+example_project/
 *ps_output*
 *node_modules*
 prompts.json
@@ -67,12 +69,11 @@ test_results_*_*.txt
 _work_orders/
 *WO0*
 test_patch_*/
-Roadmapper.bot
 
 
 # OpenTelemetry implementation development reports
 bots/observability/development/
 
 # Strategic planning documents
-ROADMAP.md
-Roadmapper1.bot
+roadmapper.bot
+Roadmapper.bot
