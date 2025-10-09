@@ -2143,50 +2143,55 @@ The system already stores full tool source code (not just file paths) and handle
 
 
 
-## 36. branch_self Loses Track of Branching Node - CRITICAL BUG
+## 36. branch_self Loses Track of Branching Node - DONE ✅
 
-**Status**: OPEN (Issue #118, 07-Oct-2025)
+**Status**: RESOLVED (PR #119, 08-Oct-2025) - VERIFIED (09-Jan-2025)
 
 **Issue**: When using branch_self with multiple prompts, branches lose track of which node they branched from during save/load operations. Branches execute incorrect prompts or get confused about their original task.
 
-**Symptoms**:
-- Branches don't remember their starting point after save/load
-- Incorrect prompt execution in branches
-- Confusion about original task assignment
-- Related to conversation tree state persistence
+**Root Cause Identified**: Bot.load() was using replies[0] (oldest branch) instead of replies[-1] (most recent). When branch_self saved/loaded bot state, it would incorrectly position at an old branch from previous operations.
 
-**Impact**: CRITICAL - Breaks core branch_self functionality, affects conversation tree integrity
+**Fix Delivered in PR #119**:
+- Changed Bot.load() from replies[0] to replies[-1] (line 2542 in base.py)
+- This fix directly addresses the root cause of the branching node tracking issue
 
-**Root Cause**: Likely related to how conversation nodes are serialized/deserialized during save/load operations
+**Verification (WO014, 09-Jan-2025)**:
+- Created comprehensive test suite: `tests/e2e/test_branch_self_tracking.py`
+- 4 new tests covering save/load scenarios with branch_self
+- All tests passing (8/8 branch_self tests total)
+- Verified fix works correctly across multiple save/load cycles
+- See: `_work_orders/WO014_VERIFICATION_COMPLETE.md` for full details
 
-**Related Items**:
-- Item 34 (Improve Save/Load Behavior) - Both involve save/load issues
-- Item 35 (Cross-Directory Bot Loading) - Save/load investigation
-- Item 10 (Expand self_tools) - branch_self is a self_tool
+**Mechanism**:
+```
+Conversation Tree:
+    Root
+    ├─ Old Branch A (replies[0]) ← OLD: Would position here (WRONG!)
+    ├─ Old Branch B
+    └─ Current Position (replies[-1]) ← NEW: Positions here (CORRECT!)
+```
 
-**Priority**: CRITICAL (blocks reliable use of branch_self, a core differentiator)
+**Related Issues**:
+- Issue #118: branch_self tracking bug - CLOSED (verified fixed)
+- Issue #117: flaky test - CLOSED (fixed in WO014)
 
-**Effort**: Medium (requires debugging conversation tree serialization)
+**Priority**: CRITICAL (now resolved)
 
+**Effort**: Verification completed (4-6 hours)
 ---
 
-## 37. CLI /s Command Bug - Sends Instead of Saves
+## 37. CLI /s Command Bug - DONE
 
-**Status**: OPEN (Issue #115, 06-Oct-2025)
+**Status**: DONE (PR #119, 08-Oct-2025) - Closes Issue #115
 
-**Issue**: In CLI, the `/s` command (intended for save) actually sends the prompt and displays LLM output instead of just saving.
+**Delivered**:
+- Added early exit for /s command in CLI (lines 1545-1548 in cli.py)
+- /s command now saves without sending any prompt to LLM
+- Prevents wasted API calls and confusing behavior
 
-**Expected Behavior**: `/s` should save the bot without sending any prompt
+**Original Issue**: `/s` command was sending prompts to LLM instead of just saving
 
-**Actual Behavior**: `/s` sends the prompt to the LLM and displays output
-
-**Impact**: LOW-MEDIUM - Confusing UX, wastes API calls, unexpected behavior
-
-**Location**: `bots/dev/cli.py`
-
-**Priority**: MEDIUM (UX bug, quick fix)
-
-**Effort**: LOW (simple command routing fix)
+**Fix**: Implemented early exit pattern that handles /s immediately and skips message sending logic
 
 ---
 
@@ -2209,20 +2214,22 @@ The system already stores full tool source code (not just file paths) and handle
 ## Implementation Roadmap
 
 ### Phase 1: Repo Reliability & Critical Fixes (High Priority)
-1. [!] **branch_self Loses Track of Branching Node** (item 36) - CRITICAL
-   - Fix conversation node tracking during save/load
-   - Blocks reliable use of core differentiator feature
-   - Related to save/load serialization
+1. [DONE] **branch_self Loses Track of Branching Node** (item 36) - RESOLVED (PR #119, 08-Oct-2025) ✅
+   - Fix delivered: Bot.load() now uses replies[-1] instead of replies[0]
+   - VERIFIED (WO014, 09-Jan-2025): All tests passing
+   - Comprehensive test suite created
+   - Issues #118 and #117 closed
 
 2. [DONE] **Cross-Directory Bot Loading** (item 35) - RESOLVED (07-Oct-2025)
    - Investigation confirmed: NOT A BUG
    - System already stores full source code
    - Test added for regression protection
 
-3. [!] **Improve Save/Load Behavior** (item 34) - HIGH
-   - Fix replies[0] vs replies[-1] inconsistency
-   - Track bot filename for intelligent autosave
-   - Separate quicksave from named saves
+3. [DONE] **Improve Save/Load Behavior** (item 34) - DONE (PR #119, 08-Oct-2025)
+   - Fixed replies[0] vs replies[-1] inconsistency
+   - Added bot filename tracking for intelligent autosave
+   - Separated quicksave from named saves
+   - All 4 proposed changes delivered with full test coverage
 
 4. [!] **OpenTelemetry Phases 3-4** (item 14) - PARTIAL
    - Metrics collection (performance, usage, cost tracking)
@@ -2354,7 +2361,7 @@ The system already stores full tool source code (not just file paths) and handle
 
 ---
 
-**Last Updated**: 08-Oct-2025
+**Last Updated**: 09-Oct-2025
 **Maintainer**: Ben Rinauto
 **Status**: Active Planning
 ---
