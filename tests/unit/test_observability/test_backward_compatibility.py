@@ -218,12 +218,9 @@ class TestBackwardCompatibility:
                 bot.respond("Test message")
 
                 # Autosave file should exist (now uses quicksave.bot)
-                # Note: Check for any .bot file since quicksave.bot may be locked in parallel tests
-                expected_file = "quicksave.bot"
-                # Skip strict check to avoid file locking issues
-                # assert os.path.exists(expected_file)
+                # Note: Skip file check to avoid locking issues in parallel tests
                 # Just verify autosave happened by checking bot state
-                assert bot.autosave == True
+                assert bot.autosave is True
 
             finally:
                 os.chdir(original_dir)

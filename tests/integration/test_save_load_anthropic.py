@@ -1124,7 +1124,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         unique_quicksave = os.path.join(self.temp_dir, f"quicksave_{uuid.uuid4().hex[:8]}.bot")
 
         # Test quicksave behavior with unique filename
-        quicksave_path = self.bot.save(unique_quicksave)
+        self.bot.save(unique_quicksave)
         self.assertTrue(os.path.exists(unique_quicksave))
 
         # Quicksave-style save shouldn't have set filename initially
