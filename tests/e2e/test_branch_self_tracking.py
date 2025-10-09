@@ -5,6 +5,7 @@ This test reproduces the specific scenario where branch_self would lose track
 of the branching node during save/load operations, causing branches to execute
 wrong prompts from previous branch_self calls.
 """
+
 import os
 import tempfile
 import unittest
@@ -29,76 +30,65 @@ class TestBranchSelfTracking(unittest.TestCase):
         """Clean up test environment."""
         os.chdir(self.original_cwd)
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_branch_self_tracking_after_save_load_simple(self):
         """
         Verify branch_self tracks correct node after save/load (Issue #118).
-
-        This is a simplified test that verifies the conversation tree structure
-        is correct after save/load operations with branch_self.
+        This is a basic test to ensure save/load works with branch_self.
         """
         from bots.foundation.base import Bot
+        from bots.testing.mock_bot import MockBot
 
         # Create bot with branch_self tool
         bot = MockBot()
         import bots.tools.self_tools
+
         bot.add_tools(bots.tools.self_tools)
 
         # Step 1: Create initial conversation
         bot.respond("Hello")
-        initial_node = bot.conversation
 
-        # Step 2: Use branch_self to create branches
-        bot.respond("Use branch_self with prompts ['Task A', 'Task B']")
+        # Step 2: Use branch_self
+        bot.respond("Use branch_self with ['Task A', 'Task B']")
 
-        # At this point, the conversation tree should have branches
-        # The bot should be positioned at one of the branch leaves
+        # Step 3: Save and load
+        bot.save("simple_test.bot")
+        loaded_bot = Bot.load("simple_test.bot")
 
-        # Step 3: Save the bot
-        bot.save("test_tracking.bot")
+        # Step 4: Verify loaded bot has conversation
+        self.assertIsNotNone(loaded_bot.conversation, "Loaded bot should have conversation")
 
-        # Step 4: Load the bot
-        loaded_bot = Bot.load("test_tracking.bot")
-
-        # Step 5: Verify the loaded bot is positioned correctly
-        # With the fix (replies[-1]), it should be at the rightmost leaf
-        # Without the fix (replies[0]), it would be at the leftmost leaf
-
-        self.assertIsNotNone(loaded_bot.conversation, "Loaded bot should have a conversation")
-
-        # Navigate to root to examine tree structure
-        current = loaded_bot.conversation
-        while current.parent:
-            current = current.parent
-        root = current
-
-        # Count nodes in tree
+        # Navigate to root and count nodes
         def count_nodes(node):
             count = 1
             for reply in node.replies:
                 count += count_nodes(reply)
             return count
 
+        root = loaded_bot.conversation
+        while root.parent:
+            root = root.parent
+
         total_nodes = count_nodes(root)
         self.assertGreater(total_nodes, 2, "Tree should have multiple nodes after branch_self")
 
         # Verify loaded bot is at a leaf (no replies)
-        self.assertEqual(len(loaded_bot.conversation.replies), 0, 
-                        "Loaded bot should be positioned at a leaf node")
+        self.assertEqual(len(loaded_bot.conversation.replies), 0, "Loaded bot should be positioned at a leaf node")
 
         print(f"✅ Test passed: Tree has {total_nodes} nodes, loaded bot at leaf")
 
     def test_branch_self_position_after_load(self):
         """
-        Test that Bot.load() positions at the rightmost leaf (replies[-1]).
-
-        This directly tests the fix from PR #119.
+        Verify Bot.load() positions at replies[-1] (rightmost) not replies[0] (leftmost).
+        This is the CORE test for the Issue #118 fix.
         """
         from bots.foundation.base import Bot
 
         bot = MockBot()
         import bots.tools.self_tools
+
         bot.add_tools(bots.tools.self_tools)
 
         # Create a conversation with multiple branches
@@ -110,25 +100,25 @@ class TestBranchSelfTracking(unittest.TestCase):
         loaded_bot = Bot.load("position_test.bot")
 
         # The loaded bot should be at a leaf node
-        self.assertEqual(len(loaded_bot.conversation.replies), 0,
-                        "Loaded bot should be at a leaf (no replies)")
+        self.assertEqual(len(loaded_bot.conversation.replies), 0, "Loaded bot should be at a leaf (no replies)")
 
         # Navigate to parent to see siblings
         if loaded_bot.conversation.parent:
             parent = loaded_bot.conversation.parent
             num_siblings = len(parent.replies)
-
             # With replies[-1], we should be at the last sibling
             if num_siblings > 1:
                 last_sibling = parent.replies[-1]
-                self.assertEqual(loaded_bot.conversation, last_sibling,
-                               "Loaded bot should be positioned at the rightmost sibling (replies[-1])")
+                self.assertEqual(
+                    loaded_bot.conversation,
+                    last_sibling,
+                    "Loaded bot should be positioned at the rightmost sibling (replies[-1])",
+                )
                 print(f"✅ Test passed: Positioned at rightmost of {num_siblings} siblings")
             else:
-                print(f"✅ Test passed: Single branch, positioned correctly")
+                print("✅ Test passed: Single branch, positioned correctly")
         else:
             print("✅ Test passed: At root level")
-
 
     def test_multiple_branch_self_calls_with_save_load(self):
         """
@@ -141,6 +131,7 @@ class TestBranchSelfTracking(unittest.TestCase):
 
         bot = MockBot()
         import bots.tools.self_tools
+
         bot.add_tools(bots.tools.self_tools)
 
         # First branch_self call
@@ -169,16 +160,13 @@ class TestBranchSelfTracking(unittest.TestCase):
 
         # Verify tree structure is preserved
         nodes_after_load = count_tree(loaded_bot.conversation)
-        self.assertEqual(nodes_after_first, nodes_after_load,
-                        "Tree structure should be preserved after load")
+        self.assertEqual(nodes_after_first, nodes_after_load, "Tree structure should be preserved after load")
 
         # The key test: loaded bot should be positioned at a leaf
         # This verifies the replies[-1] fix
-        self.assertEqual(len(loaded_bot.conversation.replies), 0,
-                        "Loaded bot should be at a leaf node (replies[-1] fix)")
+        self.assertEqual(len(loaded_bot.conversation.replies), 0, "Loaded bot should be at a leaf node (replies[-1] fix)")
 
         print(f"✅ Test passed: Tree structure preserved ({nodes_after_load} nodes), positioned at leaf")
-
 
     def test_conversation_tree_integrity_after_save_load(self):
         """
@@ -189,6 +177,7 @@ class TestBranchSelfTracking(unittest.TestCase):
 
         bot = MockBot()
         import bots.tools.self_tools
+
         bot.add_tools(bots.tools.self_tools)
 
         # Create a complex tree
@@ -219,8 +208,9 @@ class TestBranchSelfTracking(unittest.TestCase):
         nodes_after = count_tree(loaded_bot.conversation)
 
         # Tree should have same number of nodes
-        self.assertEqual(nodes_before, nodes_after,
-                        f"Tree should have same structure: {nodes_before} nodes before, {nodes_after} after")
+        self.assertEqual(
+            nodes_before, nodes_after, f"Tree should have same structure: {nodes_before} nodes before, {nodes_after} after"
+        )
 
         print(f"✅ Test passed: Tree integrity preserved ({nodes_before} nodes)")
 
