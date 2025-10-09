@@ -18,10 +18,12 @@ pip install -e .[dev]
 Set your API key as an environment variable:
 
 **Windows PowerShell:**
-`powershell
+
+```powershell
 $env:ANTHROPIC_API_KEY="your-api-key-here"
+
 $env:OPENAI_API_KEY="your-api-key-here"
-`
+```
 
 ## Usage Patterns: From Basic to Advanced
 
