@@ -1126,11 +1126,11 @@ class TestSaveLoadAnthropic(unittest.TestCase):
     def test_wo013_quicksave_behavior(self):
         """Test WO013 quicksave behavior - filename tracking and quicksave flag.
 
-    This test verifies:
-    1. save() with no args uses bot.filename if set
-    2. save(filename) updates bot.filename
-    3. save(quicksave=True) doesn't update bot.filename
-    """
+        This test verifies:
+        1. save() with no args uses bot.filename if set
+        2. save(filename) updates bot.filename
+        3. save(quicksave=True) doesn't update bot.filename
+        """
         # Test 1: save() with no filename uses bot.filename if set
         self.bot.filename = "test_bot.bot"
         path1 = self.bot.save()
