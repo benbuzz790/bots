@@ -1118,8 +1118,6 @@ class TestSaveLoadAnthropic(unittest.TestCase):
 
         Note: Modified to avoid file locking - tests the concept without actual quicksave=True
         """
-        import uuid
-
         # Test 1: Verify initial state - no filename set
         self.assertIsNone(self.bot.filename)
 
