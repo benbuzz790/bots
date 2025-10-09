@@ -1119,6 +1119,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         Note: Uses unique temp filename to avoid file locking in parallel tests
         """
         import uuid
+
         # Use unique quicksave filename to avoid parallel test conflicts
         unique_quicksave = os.path.join(self.temp_dir, f"quicksave_{uuid.uuid4().hex[:8]}.bot")
 
