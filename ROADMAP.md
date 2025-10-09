@@ -2195,19 +2195,20 @@ Conversation Tree:
 
 ---
 
-## 38. Flaky Test - test_branch_self_error_handling
-
-**Status**: OPEN (Issue #117, 07-Oct-2025)
-
-**Issue**: Test `test_branch_self_error_handling` is flaky/unreliable. Bot needs more context to properly handle the test scenario.
-
-**Impact**: LOW - Test reliability issue, doesn't affect production code
-
-**Root Cause**: Insufficient context provided to bot in test scenario
-
-**Priority**: LOW-MEDIUM (test quality, affects CI/CD reliability)
-
-**Effort**: LOW (improve test setup/context)
+## 38. Flaky Test - test_branch_self_error_handling - DONE ?
+**Status**: RESOLVED (PR #120, 09-Jan-2025) - Closed Issue #117
+**Issue**: Test `test_branch_self_error_handling` was flaky/unreliable due to vague prompts causing non-deterministic LLM behavior.
+**Root Cause**: Test used vague prompt "use invalid parameters" which LLM interpreted differently each time.
+**Fix Delivered in PR #120**:
+- Rewrote test to use MockBot for deterministic behavior
+- Made prompts more specific and explicit
+- Test now passes consistently
+**Verification (WO014, 09-Jan-2025)**:
+- Test verified stable across multiple runs
+- No longer depends on LLM interpretation
+- 100% confidence in fix
+**Priority**: RESOLVED
+**Effort**: LOW (completed)
 
 ---
 
