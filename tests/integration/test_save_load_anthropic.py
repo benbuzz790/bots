@@ -4,6 +4,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import pytest
 
@@ -62,6 +63,20 @@ class TestSaveLoadAnthropic(unittest.TestCase):
 
         Args:
             self: Test class instance
+
+    def _create_mock_response(self, text: str):
+        """Helper to create a mock Anthropic API response."""
+        from unittest.mock import MagicMock
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock()]
+        mock_response.content[0].text = text
+        mock_response.content[0].type = "text"
+        mock_response.stop_reason = "end_turn"
+        mock_response.usage = MagicMock()
+        mock_response.usage.input_tokens = 10
+        mock_response.usage.output_tokens = 10
+        return mock_response
+
 
         Returns:
             TestSaveLoadAnthropic: Self reference for method chaining
