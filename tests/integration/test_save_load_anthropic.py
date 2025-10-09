@@ -4,7 +4,6 @@ import shutil
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
 
 import pytest
 
@@ -63,20 +62,6 @@ class TestSaveLoadAnthropic(unittest.TestCase):
 
         Args:
             self: Test class instance
-
-    def _create_mock_response(self, text: str):
-        """Helper to create a mock Anthropic API response."""
-        from unittest.mock import MagicMock
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock()]
-        mock_response.content[0].text = text
-        mock_response.content[0].type = "text"
-        mock_response.stop_reason = "end_turn"
-        mock_response.usage = MagicMock()
-        mock_response.usage.input_tokens = 10
-        mock_response.usage.output_tokens = 10
-        return mock_response
-
 
         Returns:
             TestSaveLoadAnthropic: Self reference for method chaining
@@ -141,6 +126,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
     def _create_mock_response(self, text: str):
         """Helper to create a mock Anthropic API response."""
         from unittest.mock import MagicMock
+
         mock_response = MagicMock()
         mock_response.content = [MagicMock()]
         mock_response.content[0].text = text
@@ -1182,23 +1168,23 @@ class TestSaveLoadAnthropic(unittest.TestCase):
 
         # Monkey-patch the save method to use our unique quicksave path
         original_save = bot.save
+
         def patched_save(filename=None, quicksave=False):
             if quicksave:
                 return original_save(unique_quicksave)
             return original_save(filename, quicksave)
+
         bot.save = patched_save
 
         # Respond should trigger autosave
-        with patch('bots.foundation.anthropic_bots.AnthropicMailbox.send_message') as mock_send:
+        with patch("bots.foundation.anthropic_bots.AnthropicMailbox.send_message") as mock_send:
             mock_send.return_value = self._create_mock_response("Test response")
             bot.respond("Test message")
 
         # Check that our unique quicksave file was created
-        self.assertTrue(os.path.exists(unique_quicksave), 
-                       f"Autosave should create {unique_quicksave}")
+        self.assertTrue(os.path.exists(unique_quicksave), f"Autosave should create {unique_quicksave}")
 
         # Cleanup is handled by tearDown (removes temp_dir)
-
 
 
 class TestDebugImports(unittest.TestCase):
