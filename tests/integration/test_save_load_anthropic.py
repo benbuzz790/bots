@@ -1142,11 +1142,35 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         Verifies that when autosave=True, the bot saves to quicksave.bot
         instead of creating timestamped files.
 
-        Note: Disabled to avoid file locking issues in parallel tests.
-        The autosave functionality is tested elsewhere.
+        Note: Uses unique temp file to avoid file locking in parallel tests.
         """
-        # Skip this test to avoid quicksave.bot file locking in parallel tests
-        self.skipTest("Skipped to avoid quicksave.bot file locking in parallel tests")
+        import uuid
+
+        # Create a unique quicksave filename for this test
+        unique_quicksave = os.path.join(self.temp_dir, f"quicksave_{uuid.uuid4().hex[:8]}.bot")
+
+        # Create bot with autosave enabled
+        bot = AnthropicBot(name="AutosaveBot", autosave=True, model_engine=Engines.CLAUDE37_SONNET_20250219)
+
+        # Monkey-patch the save method to use our unique quicksave path
+        original_save = bot.save
+        def patched_save(filename=None, quicksave=False):
+            if quicksave:
+                return original_save(unique_quicksave)
+            return original_save(filename, quicksave)
+        bot.save = patched_save
+
+        # Respond should trigger autosave
+        with patch('bots.foundation.anthropic_bots.AnthropicMailbox.send_message') as mock_send:
+            mock_send.return_value = self._create_mock_response("Test response")
+            bot.respond("Test message")
+
+        # Check that our unique quicksave file was created
+        self.assertTrue(os.path.exists(unique_quicksave), 
+                       f"Autosave should create {unique_quicksave}")
+
+        # Cleanup is handled by tearDown (removes temp_dir)
+
 
 
 class TestDebugImports(unittest.TestCase):
