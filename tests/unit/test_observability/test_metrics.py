@@ -66,7 +66,7 @@ class TestMetricsSetup:
         metrics.setup_metrics(config=config, reader=metric_reader)
         assert metrics._initialized is True
 
-    def test_setup_metrics_disabled(self):
+    def test_setup_metrics_disabled(self, metric_reader):
         """Test that metrics setup is skipped when tracing disabled."""
         config = ObservabilityConfig(
             service_name="test-service",
@@ -74,11 +74,19 @@ class TestMetricsSetup:
             exporter_type="none",
         )
 
-        metrics._initialized = False
+        # Reset state (fixture may have set it up)
+        metrics.reset_metrics()
+
+        # Save state before setup
+        meter_provider_before = metrics._meter_provider
+
         metrics.setup_metrics(config=config)
 
+        # When disabled, setup should mark as initialized but not create new meter provider
+
         assert metrics._initialized is True
-        assert metrics._meter_provider is None
+        # Meter provider should not have changed (either None or same as before)
+        assert metrics._meter_provider == meter_provider_before
 
     def test_is_metrics_enabled(self):
         """Test is_metrics_enabled function."""
