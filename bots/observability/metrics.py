@@ -518,7 +518,6 @@ def record_tool_failure(tool_name: str, error_type: str):
 # If OTEL_SDK_DISABLED=true, this becomes a no-op
 def _lazy_init():
     """Lazy initialization of metrics on first use."""
-    global _initialized
 
     if _initialized:
         return
