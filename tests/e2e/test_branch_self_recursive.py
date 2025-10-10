@@ -34,9 +34,9 @@ class TestBranchSelfRecursive(unittest.TestCase):
 
     def test_single_level_recursion(self):
         """
-    Test that branch_self can be called once within a branch.
-    This is the simplest recursive case.
-    """
+        Test that branch_self can be called once within a branch.
+        This is the simplest recursive case.
+        """
         bot = MockBot()
         import bots.tools.self_tools
 
@@ -77,9 +77,9 @@ class TestBranchSelfRecursive(unittest.TestCase):
 
     def test_two_level_recursion(self):
         """
-    Test that branch_self can be called twice within nested branches.
-    This tests deeper recursion.
-    """
+        Test that branch_self can be called twice within nested branches.
+        This tests deeper recursion.
+        """
         bot = MockBot()
         import bots.tools.self_tools
 
@@ -120,13 +120,13 @@ class TestBranchSelfRecursive(unittest.TestCase):
 
     def test_recursive_branching_no_infinite_loop(self):
         """
-    Test that recursive branching completes in reasonable time.
-    This is a timeout test to ensure no infinite loops.
-    """
+        Test that recursive branching completes in reasonable time.
+        This is a timeout test to ensure no infinite loops.
+        """
         import signal
 
         # Set a timeout to catch infinite loops
-        def timeout_handler(signum, frame):
+        def timeout_handler(_signum, _frame):
             raise TimeoutError("Test took too long - likely infinite loop")
 
         # Use alarm on Unix systems, or just rely on test framework timeout
@@ -163,9 +163,9 @@ class TestBranchSelfRecursive(unittest.TestCase):
 
     def test_branch_positioning_after_recursive_load(self):
         """
-    Test that after loading in a branch, the conversation is positioned
-    at the tagged node, not at replies[-1].
-    """
+        Test that after loading in a branch, the conversation is positioned
+        at the tagged node, not at replies[-1].
+        """
         from bots.foundation.base import Bot
 
         bot = MockBot()
@@ -210,13 +210,9 @@ class TestBranchSelfRecursive(unittest.TestCase):
         nodes_after = count_tree(loaded_bot.conversation)
 
         # Verify nodes were added
-        self.assertGreater(
-            nodes_after, nodes_before, "Recursive branch_self should add nodes"
-        )
+        self.assertGreater(nodes_after, nodes_before, "Recursive branch_self should add nodes")
 
-        print(
-            f"✅ Test passed: Branch positioning correct ({nodes_before} -> {nodes_after} nodes)"
-        )
+        print(f"✅ Test passed: Branch positioning correct ({nodes_before} -> {nodes_after} nodes)")
 
 
 if __name__ == "__main__":
