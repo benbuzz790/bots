@@ -16,6 +16,28 @@ from bots.testing.mock_bot import MockBot
 pytestmark = pytest.mark.e2e
 
 
+def count_tree(node):
+    """Count total nodes in conversation tree starting from given node.
+
+    Args:
+        node: A conversation node
+
+    Returns:
+        int: Total number of nodes in the tree
+    """
+    root = node
+    while root.parent:
+        root = root.parent
+
+    def count_recursive(n):
+        count = 1
+        for reply in n.replies:
+            count += count_recursive(reply)
+        return count
+
+    return count_recursive(root)
+
+
 class TestBranchSelfRecursive(unittest.TestCase):
     """Test recursive branch_self calls."""
 
@@ -49,19 +71,6 @@ class TestBranchSelfRecursive(unittest.TestCase):
         bot.respond("Use branch_self with ['Task A', 'Task B']")
 
         # Count nodes before second branch_self
-        def count_tree(node):
-            root = node
-            while root.parent:
-                root = root.parent
-
-            def count_recursive(n):
-                count = 1
-                for reply in n.replies:
-                    count += count_recursive(reply)
-                return count
-
-            return count_recursive(root)
-
         nodes_before = count_tree(bot.conversation)
 
         # Second level branch_self (within a branch)
@@ -98,19 +107,6 @@ class TestBranchSelfRecursive(unittest.TestCase):
         bot.respond("Use branch_self with ['Level3-A', 'Level3-B']")
 
         # If we got here without hanging, the test passed
-        def count_tree(node):
-            root = node
-            while root.parent:
-                root = root.parent
-
-            def count_recursive(n):
-                count = 1
-                for reply in n.replies:
-                    count += count_recursive(reply)
-                return count
-
-            return count_recursive(root)
-
         total_nodes = count_tree(bot.conversation)
 
         # With 3 levels of branching (2 branches each), we should have many nodes
@@ -178,19 +174,6 @@ class TestBranchSelfRecursive(unittest.TestCase):
         bot.respond("Use branch_self with ['Branch A', 'Branch B']")
 
         # Get the current node count
-        def count_tree(node):
-            root = node
-            while root.parent:
-                root = root.parent
-
-            def count_recursive(n):
-                count = 1
-                for reply in n.replies:
-                    count += count_recursive(reply)
-                return count
-
-            return count_recursive(root)
-
         nodes_before = count_tree(bot.conversation)
 
         # Save and load to simulate what happens in branch_self
