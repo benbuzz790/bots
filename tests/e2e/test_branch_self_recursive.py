@@ -126,8 +126,9 @@ class TestBranchSelfRecursive(unittest.TestCase):
             raise TimeoutError("Test took too long - likely infinite loop")
 
         # Use alarm on Unix systems, or just rely on test framework timeout
+        old_handler = None
         try:
-            signal.signal(signal.SIGALRM, timeout_handler)
+            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
             signal.alarm(30)  # 30 second timeout
         except (AttributeError, ValueError):
             # Windows doesn't have SIGALRM, skip timeout setup
@@ -146,16 +147,18 @@ class TestBranchSelfRecursive(unittest.TestCase):
             bot.respond("Use branch_self with ['A', 'B']")
             bot.respond("Use branch_self with ['C', 'D']")
 
-            # If we reach here, no infinite loop occurred
-            try:
-                signal.alarm(0)  # Cancel alarm
-            except (AttributeError, ValueError):
-                pass
-
             print("✅ Test passed: No infinite loop detected")
 
         except TimeoutError:
             self.fail("Recursive branching caused infinite loop (timeout)")
+        finally:
+            # Always clean up alarm and restore handler
+            try:
+                signal.alarm(0)  # Cancel alarm
+                if old_handler is not None:
+                    signal.signal(signal.SIGALRM, old_handler)
+            except (AttributeError, ValueError):
+                pass
 
     def test_branch_positioning_after_recursive_load(self):
         """
