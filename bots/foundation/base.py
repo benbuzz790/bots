@@ -4,6 +4,7 @@ import hashlib
 import importlib
 import inspect
 import json
+import logging
 import os
 import re
 import sys
@@ -16,6 +17,9 @@ from types import ModuleType
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 from bots.utils.helpers import _py_ast_to_source, formatted_datetime
+
+# Module-level logger
+logger = logging.getLogger(__name__)
 
 # OpenTelemetry imports with graceful degradation
 try:
@@ -33,6 +37,25 @@ except ImportError:
 
     def get_default_tracing_preference():
         return False
+
+
+# Import callbacks with graceful degradation
+try:
+    from bots.observability.callbacks import BotCallbacks
+
+    CALLBACKS_AVAILABLE = True
+except ImportError:
+    CALLBACKS_AVAILABLE = False
+    BotCallbacks = None
+
+# Import metrics with graceful degradation
+try:
+    from bots.observability import metrics
+
+    METRICS_AVAILABLE = True
+except ImportError:
+    METRICS_AVAILABLE = False
+    metrics = None
 
 
 """Core foundation classes for the bots framework.
@@ -871,30 +894,111 @@ class ToolHandler(ABC):
 
                     with tracer.start_as_current_span(f"tool.{tool_name}") as tool_span:
                         tool_span.set_attribute("tool.name", tool_name)
+
+                        # Invoke on_tool_start callback
+                        if hasattr(self, "bot") and self.bot and hasattr(self.bot, "callbacks") and self.bot.callbacks:
+                            try:
+                                self.bot.callbacks.on_tool_start(tool_name, metadata={"tool_args": str(input_kwargs)})
+                            except Exception:
+                                pass
+
+                        import time
+
+                        tool_start_time = time.time()
+
                         try:
                             if tool_name not in self.function_map:
                                 raise ToolNotFoundError(f"Tool '{tool_name}' not found in function map")
                             func = self.function_map[tool_name]
                             output_kwargs = func(**input_kwargs)
                             response_schema = self.generate_response_schema(request_schema, output_kwargs)
+
+                            # Record metrics for successful tool execution
+                            tool_duration = time.time() - tool_start_time
+                            if METRICS_AVAILABLE and metrics:
+                                try:
+                                    metrics.record_tool_execution(tool_duration, tool_name, success=True)
+                                except Exception:
+                                    pass
+
+                            # Invoke on_tool_complete callback
+                            if hasattr(self, "bot") and self.bot and hasattr(self.bot, "callbacks") and self.bot.callbacks:
+                                try:
+                                    self.bot.callbacks.on_tool_complete(
+                                        tool_name, output_kwargs, metadata={"duration": tool_duration}
+                                    )
+                                except Exception:
+                                    pass
+
                             tool_span.set_attribute("tool.status", "success")
                             if isinstance(output_kwargs, str):
                                 tool_span.set_attribute("tool.result_length", len(output_kwargs))
                         except ToolNotFoundError as e:
                             error_msg = "Error: Tool not found.\n\n" + str(e)
                             response_schema = self.generate_error_schema(request_schema, error_msg)
+
+                            # Record error metrics
+                            tool_duration = time.time() - tool_start_time
+                            if METRICS_AVAILABLE and metrics:
+                                try:
+                                    metrics.record_tool_execution(tool_duration, tool_name, success=False)
+                                    metrics.record_tool_failure(tool_name, "ToolNotFoundError")
+                                except Exception:
+                                    pass
+
+                            # Invoke on_tool_error callback
+                            if hasattr(self, "bot") and self.bot and hasattr(self.bot, "callbacks") and self.bot.callbacks:
+                                try:
+                                    self.bot.callbacks.on_tool_error(tool_name, e, metadata={"duration": tool_duration})
+                                except Exception:
+                                    pass
+
                             tool_span.set_attribute("tool.status", "error")
                             tool_span.set_attribute("tool.error_type", "ToolNotFoundError")
                             tool_span.record_exception(e)
                         except TypeError as e:
                             error_msg = f"Invalid arguments for tool '{tool_name}': {str(e)}"
                             response_schema = self.generate_error_schema(request_schema, error_msg)
+
+                            # Record error metrics
+                            tool_duration = time.time() - tool_start_time
+                            if METRICS_AVAILABLE and metrics:
+                                try:
+                                    metrics.record_tool_execution(tool_duration, tool_name, success=False)
+                                    metrics.record_tool_failure(tool_name, "TypeError")
+                                except Exception:
+                                    pass
+
+                            # Invoke on_tool_error callback
+                            if hasattr(self, "bot") and self.bot and hasattr(self.bot, "callbacks") and self.bot.callbacks:
+                                try:
+                                    self.bot.callbacks.on_tool_error(tool_name, e, metadata={"duration": tool_duration})
+                                except Exception:
+                                    pass
+
                             tool_span.set_attribute("tool.status", "error")
                             tool_span.set_attribute("tool.error_type", "TypeError")
                             tool_span.record_exception(e)
                         except Exception as e:
                             error_msg = f"Unexpected error while executing tool '{tool_name}': {str(e)}"
                             response_schema = self.generate_error_schema(request_schema, error_msg)
+
+                            # Record error metrics
+                            tool_duration = time.time() - tool_start_time
+                            if METRICS_AVAILABLE and metrics:
+                                try:
+                                    metrics.record_tool_execution(tool_duration, tool_name, success=False)
+                                    metrics.record_tool_failure(tool_name, type(e).__name__)
+                                except Exception:
+                                    pass
+
+                            # Invoke on_tool_error callback
+                            if hasattr(self, "bot") and self.bot and hasattr(self.bot, "callbacks") and self.bot.callbacks:
+                                try:
+                                    self.bot.callbacks.on_tool_error(tool_name, e, metadata={"duration": tool_duration})
+                                except Exception:
+                                    pass
+
                             tool_span.set_attribute("tool.status", "error")
                             tool_span.set_attribute("tool.error_type", type(e).__name__)
                             tool_span.record_exception(e)
@@ -902,27 +1006,107 @@ class ToolHandler(ABC):
                         results.append(response_schema)
         else:
             # Non-traced execution path
+            import time
+
             for request_schema in requests:
                 tool_name, input_kwargs = self.tool_name_and_input(request_schema)
                 if tool_name is None:
                     continue
+
+                # Invoke on_tool_start callback
+                if hasattr(self, "bot") and self.bot and hasattr(self.bot, "callbacks") and self.bot.callbacks:
+                    try:
+                        self.bot.callbacks.on_tool_start(tool_name, metadata={"tool_args": str(input_kwargs)})
+                    except Exception:
+                        pass
+
+                tool_start_time = time.time()
+
                 try:
                     if tool_name not in self.function_map:
                         raise ToolNotFoundError(f"Tool '{tool_name}' not found in function map")
                     func = self.function_map[tool_name]
                     output_kwargs = func(**input_kwargs)
                     response_schema = self.generate_response_schema(request_schema, output_kwargs)
+
+                    # Record metrics for successful tool execution
+                    tool_duration = time.time() - tool_start_time
+                    if METRICS_AVAILABLE and metrics:
+                        try:
+                            metrics.record_tool_execution(tool_duration, tool_name, success=True)
+                        except Exception:
+                            pass
+
+                    # Invoke on_tool_complete callback
+                    if hasattr(self, "bot") and self.bot and hasattr(self.bot, "callbacks") and self.bot.callbacks:
+                        try:
+                            self.bot.callbacks.on_tool_complete(tool_name, output_kwargs, metadata={"duration": tool_duration})
+                        except Exception:
+                            pass
+
                 except ToolNotFoundError as e:
                     error_msg = "Error: Tool not found.\n\n" + str(e)
                     response_schema = self.generate_error_schema(request_schema, error_msg)
+
+                    # Record error metrics
+                    tool_duration = time.time() - tool_start_time
+                    if METRICS_AVAILABLE and metrics:
+                        try:
+                            metrics.record_tool_execution(tool_duration, tool_name, success=False)
+                            metrics.record_tool_failure(tool_name, "ToolNotFoundError")
+                        except Exception:
+                            pass
+
+                    # Invoke on_tool_error callback
+                    if hasattr(self, "bot") and self.bot and hasattr(self.bot, "callbacks") and self.bot.callbacks:
+                        try:
+                            self.bot.callbacks.on_tool_error(tool_name, e, metadata={"duration": tool_duration})
+                        except Exception:
+                            pass
+
                 except TypeError as e:
                     error_msg = f"Invalid arguments for tool '{tool_name}': {str(e)}"
                     response_schema = self.generate_error_schema(request_schema, error_msg)
+
+                    # Record error metrics
+                    tool_duration = time.time() - tool_start_time
+                    if METRICS_AVAILABLE and metrics:
+                        try:
+                            metrics.record_tool_execution(tool_duration, tool_name, success=False)
+                            metrics.record_tool_failure(tool_name, "TypeError")
+                        except Exception:
+                            pass
+
+                    # Invoke on_tool_error callback
+                    if hasattr(self, "bot") and self.bot and hasattr(self.bot, "callbacks") and self.bot.callbacks:
+                        try:
+                            self.bot.callbacks.on_tool_error(tool_name, e, metadata={"duration": tool_duration})
+                        except Exception:
+                            pass
+
                 except Exception as e:
                     error_msg = f"Unexpected error while executing tool '{tool_name}': {str(e)}"
                     response_schema = self.generate_error_schema(request_schema, error_msg)
+
+                    # Record error metrics
+                    tool_duration = time.time() - tool_start_time
+                    if METRICS_AVAILABLE and metrics:
+                        try:
+                            metrics.record_tool_execution(tool_duration, tool_name, success=False)
+                            metrics.record_tool_failure(tool_name, type(e).__name__)
+                        except Exception:
+                            pass
+
+                    # Invoke on_tool_error callback
+                    if hasattr(self, "bot") and self.bot and hasattr(self.bot, "callbacks") and self.bot.callbacks:
+                        try:
+                            self.bot.callbacks.on_tool_error(tool_name, e, metadata={"duration": tool_duration})
+                        except Exception:
+                            pass
+
                 self.results.append(response_schema)
                 results.append(response_schema)
+
         return results
 
     def _create_builtin_wrapper(self, func: Callable) -> str:
@@ -2259,6 +2443,7 @@ class Bot(ABC):
         mailbox: Optional[Mailbox] = None,
         autosave: bool = True,
         enable_tracing: Optional[bool] = None,
+        callbacks: Optional["BotCallbacks"] = None,
     ) -> None:
         """Initialize a new Bot instance.
 
@@ -2275,6 +2460,7 @@ class Bot(ABC):
             mailbox (Optional[Mailbox]): Handler for LLM communication
             autosave (bool): Whether to automatically save state after responses. Saves to cwd.
             enable_tracing (Optional[bool]): Enable OpenTelemetry tracing. None uses default (True).
+            callbacks (Optional[BotCallbacks]): Callback system for progress/monitoring. None disables callbacks.
         """
         self.api_key = api_key
         self.name = name
@@ -2289,6 +2475,7 @@ class Bot(ABC):
         self.mailbox = mailbox
         self.autosave = autosave
         self.filename = None  # Track source filename for intelligent save behavior
+        self.callbacks = callbacks  # Optional callback system for progress/monitoring
 
         # Determine if tracing should be enabled
         # Determine if tracing should be enabled
@@ -2341,13 +2528,37 @@ class Bot(ABC):
 
     def _respond_impl(self, prompt: str, role: str = "user") -> str:
         """Internal implementation of respond without tracing."""
-        self.conversation = self.conversation._add_reply(content=prompt, role=role)
-        if self.autosave:
-            self.save(f"{self.name}", quicksave=True)
-        reply, _ = self._cvsn_respond()
-        if self.autosave:
-            self.save(f"{self.name}", quicksave=True)
-        return reply
+        # Invoke on_respond_start callback
+        if self.callbacks:
+            try:
+                self.callbacks.on_respond_start(prompt, metadata={"bot_name": self.name, "model": self.model_engine.value})
+            except Exception as e:
+                logger.warning(f"Callback on_respond_start failed: {e}")
+
+        try:
+            self.conversation = self.conversation._add_reply(content=prompt, role=role)
+            if self.autosave:
+                self.save(f"{self.name}", quicksave=True)
+            reply, _ = self._cvsn_respond()
+            if self.autosave:
+                self.save(f"{self.name}", quicksave=True)
+
+            # Invoke on_respond_complete callback
+            if self.callbacks:
+                try:
+                    self.callbacks.on_respond_complete(reply, metadata={"bot_name": self.name})
+                except Exception as e:
+                    logger.warning(f"Callback on_respond_complete failed: {e}")
+
+            return reply
+        except Exception as e:
+            # Invoke on_respond_error callback
+            if self.callbacks:
+                try:
+                    self.callbacks.on_respond_error(e, metadata={"bot_name": self.name, "prompt": prompt})
+                except Exception as callback_error:
+                    logger.warning(f"Callback on_respond_error failed: {callback_error}")
+            raise
 
     def add_tools(self, *args) -> None:
         """Add Python functions as tools available to the bot.

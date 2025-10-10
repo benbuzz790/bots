@@ -1,5 +1,5 @@
 # Project Ideas and Future Development Notes
-**Date**: 06-Oct-2025
+**Date**: 09-Oct-2025
 **Project**: bots - Agentic Programming Framework
 
 ## Overview
@@ -331,6 +331,16 @@ The bots project has unique competitive advantages that position it for commerci
 
 ## 9. Organize Tests Better - Best Practices
 
+**Status**: DONE (WO012, 09-Oct-2025)
+
+**Delivered**:
+- Reorganized tests into unit/, integration/, e2e/ structure
+- Created centralized fixtures/ directory
+- Implemented proper pytest fixtures and markers
+- Applied AAA (Arrange-Act-Assert) pattern consistently
+- Fixed test parallelism issues
+- Uniform tempfile handling implemented
+
 **Goal**: Implement testing best practices
 
 **Structure**: tests/unit/, tests/integration/, tests/e2e/, tests/fixtures/
@@ -382,6 +392,20 @@ The bots project has unique competitive advantages that position it for commerci
 ---
 
 ## 12. Add Callbacks to Major Bot Operation Steps
+
+**Status**: PARTIAL (PR #114, 09-Oct-2025)
+
+**Delivered**:
+- Foundation laid with OpenTelemetry integration
+- Callback infrastructure in bots/observability/callbacks.py
+- Basic callbacks for tracing and logging
+- Integration with AnthropicBot
+
+**Remaining Work**:
+- Progress indicators (four dots: . .. ... ....)
+- User-facing callback system for CLI
+- Full callback coverage for all bot operations
+- OpenAIBot and GeminiBot integration
 
 **Goal**: Implement callback system with progress indicators
 
@@ -1239,12 +1263,12 @@ Create `.github/pull_request_template.md`:
 9. Once approved + all checks green -> Merge
 
 **What Blocks a Merge**:
-- ' Any CI/CD test failures
-- ' Code coverage below threshold
-- ' Linting errors
-- ' No approval from reviewer
-- ' Unresolved conversations
-- ' Branch not up to date with main
+- Any CI/CD test failures
+- Code coverage below threshold
+- Linting errors
+- No approval from reviewer
+- Unresolved conversations
+- Branch not up to date with main
 
 **What Allows a Merge**:
 - [x] All tests passing (green checkmark)
