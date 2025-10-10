@@ -50,6 +50,13 @@ except ImportError:
     metrics = None
     calculate_cost = None
 
+# Import callbacks with typing fallback for flake8
+try:
+    from bots.observability.callbacks import BotCallbacks
+except ImportError:
+
+    BotCallbacks = Any
+
 # Set up logging
 import logging
 import time
@@ -398,22 +405,25 @@ class OpenAIMailbox(Mailbox):
                 span.set_attribute("output_tokens", response.usage.completion_tokens)
                 span.set_attribute("total_tokens", response.usage.total_tokens)
 
+            # Extract normalized model name for consistent use
+            model_name = model.value if hasattr(model, "value") else str(model)
+
             # Calculate and record cost and metrics
             if METRICS_AVAILABLE and hasattr(response, "usage") and response.usage:
                 try:
                     # Record token usage
                     metrics.record_tokens(
-                        response.usage.prompt_tokens, response.usage.completion_tokens, provider="openai", model=str(model)
+                        response.usage.prompt_tokens, response.usage.completion_tokens, provider="openai", model=model_name
                     )
 
                     # Calculate and record cost
                     cost = calculate_cost(
                         provider="openai",
-                        model=str(model),
+                        model=model_name,
                         input_tokens=response.usage.prompt_tokens,
                         output_tokens=response.usage.completion_tokens,
                     )
-                    metrics.record_cost(cost, provider="openai", model=str(model))
+                    metrics.record_cost(cost, provider="openai", model=model_name)
                 except Exception as e:
                     logger.warning(f"Failed to record metrics: {e}")
 
@@ -421,7 +431,7 @@ class OpenAIMailbox(Mailbox):
             if METRICS_AVAILABLE:
                 try:
                     api_duration = time.time() - api_start_time
-                    metrics.record_api_call(duration=api_duration, provider="openai", model=str(model), status="success")
+                    metrics.record_api_call(duration=api_duration, provider="openai", operation=model_name, status="success")
                 except Exception as e:
                     logger.warning(f"Failed to record API metrics: {e}")
 
@@ -430,7 +440,15 @@ class OpenAIMailbox(Mailbox):
             # Record error metrics
             if METRICS_AVAILABLE:
                 try:
-                    metrics.record_error(error_type=type(e).__name__, provider="openai", model=str(model))
+                    model_name = model.value if hasattr(model, "value") else str(model)
+                    metrics.record_error(error_type=type(e).__name__, provider="openai", operation=model_name)
+
+                    # Record failed API call with duration
+                    try:
+                        duration = time.time() - api_start_time
+                    except Exception:
+                        duration = 0
+                    metrics.record_api_call(provider="openai", operation=model_name, status="error", duration=duration)
                 except Exception as metric_error:
                     logger.warning(f"Failed to record error metrics: {metric_error}")
 

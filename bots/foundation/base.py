@@ -4,6 +4,7 @@ import hashlib
 import importlib
 import inspect
 import json
+import logging
 import os
 import re
 import sys
@@ -16,6 +17,9 @@ from types import ModuleType
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 from bots.utils.helpers import _py_ast_to_source, formatted_datetime
+
+# Module-level logger
+logger = logging.getLogger(__name__)
 
 # OpenTelemetry imports with graceful degradation
 try:
@@ -42,6 +46,7 @@ try:
     CALLBACKS_AVAILABLE = True
 except ImportError:
     CALLBACKS_AVAILABLE = False
+    BotCallbacks = None
 
 # Import metrics with graceful degradation
 try:
@@ -52,7 +57,6 @@ except ImportError:
     METRICS_AVAILABLE = False
     metrics = None
 
-    BotCallbacks = None
 
 """Core foundation classes for the bots framework.
 This module provides the fundamental abstractions and base classes that power the bots framework:

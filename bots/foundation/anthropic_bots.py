@@ -63,6 +63,12 @@ except ImportError:
     metrics = None
     calculate_cost = None
 
+# Import callbacks with graceful degradation
+try:
+    from bots.observability.callbacks import BotCallbacks
+except ImportError:
+    BotCallbacks = Any  # Fallback for type hints
+
 # Set up logging
 import logging
 
@@ -593,7 +599,7 @@ class AnthropicBot(Bot):
         role_description: str = "a friendly AI assistant",
         autosave: bool = True,
         enable_tracing: Optional[bool] = None,
-        callbacks: Optional["BotCallbacks"] = None,
+        callbacks: Optional[BotCallbacks] = None,
     ):
         """Initialize an AnthropicBot.
 

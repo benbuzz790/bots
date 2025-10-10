@@ -20,9 +20,7 @@ Test Coverage:
 
 import os
 import unittest
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
+from unittest.mock import patch
 
 from bots.observability import metrics, tracing
 from bots.observability.config import ObservabilityConfig, load_config_from_env

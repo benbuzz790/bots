@@ -48,6 +48,13 @@ except ImportError:
     metrics = None
     calculate_cost = None
 
+# Import BotCallbacks with fallback for type checking
+try:
+    from bots.observability.callbacks import BotCallbacks
+except ImportError:
+    # Fallback for type hints when callbacks module not available
+    BotCallbacks = Any  # type: ignore
+
 # Set up logging
 import logging
 

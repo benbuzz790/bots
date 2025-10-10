@@ -28,8 +28,8 @@ Example:
     ```
 """
 
-import time
-from typing import Any, Dict, Optional
+import threading
+from typing import Optional
 
 from bots.observability.config import load_config_from_env
 
@@ -51,6 +51,7 @@ except ImportError:
 # Global state
 _meter_provider: Optional[MeterProvider] = None
 _initialized: bool = False
+_init_lock = threading.Lock()  # Lock for thread-safe initialization
 
 # Metric instruments (initialized after setup)
 _response_time_histogram = None
@@ -80,7 +81,10 @@ def is_metrics_enabled() -> bool:
 
     # Reload config from environment to catch any changes
     config = load_config_from_env()
-    return config.tracing_enabled  # Metrics follow tracing_enabled for now
+    # Honor metrics_enabled if explicitly set, otherwise fall back to tracing_enabled
+    if config.metrics_enabled is not None:
+        return config.metrics_enabled
+    return config.tracing_enabled
 
 
 def reset_metrics():
@@ -146,7 +150,9 @@ def setup_metrics(config=None, reader=None):
     if config is None:
         config = load_config_from_env()
 
-    if not config.tracing_enabled:  # Metrics follow tracing_enabled
+    # Honor metrics_enabled if explicitly set, otherwise fall back to tracing_enabled
+    metrics_enabled = config.metrics_enabled if config.metrics_enabled is not None else config.tracing_enabled
+    if not metrics_enabled:
         _initialized = True
         return
 
@@ -155,10 +161,10 @@ def setup_metrics(config=None, reader=None):
 
     # Create metric reader based on exporter type
     if reader is None:
-        if config.exporter_type == "console":
+        if config.metrics_exporter_type == "console":
             exporter = ConsoleMetricExporter()
             reader = PeriodicExportingMetricReader(exporter, export_interval_millis=60000)
-        elif config.exporter_type == "otlp":
+        elif config.metrics_exporter_type == "otlp":
             # OTLP metric exporter (requires opentelemetry-exporter-otlp)
             try:
                 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
@@ -171,7 +177,7 @@ def setup_metrics(config=None, reader=None):
                 # Fall back to console if OTLP not installed
                 exporter = ConsoleMetricExporter()
                 reader = PeriodicExportingMetricReader(exporter, export_interval_millis=60000)
-        elif config.exporter_type == "none":
+        elif config.metrics_exporter_type == "none":
             # No exporter - metrics enabled but not exported
             reader = None
 
@@ -388,7 +394,13 @@ def record_message_building(duration: float, provider: str, model: str):
     )
 
 
-def record_tokens(input_tokens: int, output_tokens: int, provider: str, model: str):
+def record_tokens(
+    input_tokens: int,
+    output_tokens: int,
+    provider: str,
+    model: str,
+    cached_tokens: int = 0,
+):
     """Record token usage.
 
     Args:
@@ -396,6 +408,7 @@ def record_tokens(input_tokens: int, output_tokens: int, provider: str, model: s
         output_tokens: Number of output tokens
         provider: Provider name
         model: Model name
+        cached_tokens: Number of cached tokens (optional, default 0)
     """
     if not _initialized or _tokens_used_counter is None:
         return
@@ -417,6 +430,17 @@ def record_tokens(input_tokens: int, output_tokens: int, provider: str, model: s
             "token_type": "output",
         },
     )
+
+    # Record cached tokens if provided
+    if cached_tokens > 0:
+        _tokens_used_counter.add(
+            cached_tokens,
+            attributes={
+                "provider": provider,
+                "model": model,
+                "token_type": "cached",
+            },
+        )
 
 
 def record_cost(cost: float, provider: str, model: str):
@@ -492,3 +516,27 @@ def record_tool_failure(tool_name: str, error_type: str):
 # Auto-initialize on import (lazy initialization)
 # This ensures metrics are ready when first used
 # If OTEL_SDK_DISABLED=true, this becomes a no-op
+def _lazy_init():
+    """Lazy initialization of metrics on first use."""
+    global _initialized
+
+    if _initialized:
+        return
+
+    with _init_lock:
+        # Double-check after acquiring lock
+        if _initialized:
+            return
+
+        try:
+            setup_metrics()
+        except Exception as e:
+            # Log failure but don't crash - metrics become no-ops
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.debug(f"Metrics initialization failed: {e}")
+
+
+# Call lazy init on import
+_lazy_init()

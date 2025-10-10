@@ -9,7 +9,7 @@ Tests the callback system including:
 """
 
 import io
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 

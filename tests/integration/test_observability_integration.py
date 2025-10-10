@@ -14,9 +14,8 @@ Test Coverage:
 """
 
 import os
-import time
 import unittest
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -24,13 +23,11 @@ from bots import AnthropicBot, ChatGPT_Bot
 from bots.foundation.base import Engines
 from bots.foundation.gemini_bots import GeminiBot
 from bots.observability import metrics
-from bots.observability.callbacks import BotCallbacks, OpenTelemetryCallbacks, ProgressCallbacks
-from bots.observability.config import ObservabilityConfig
+from bots.observability.callbacks import BotCallbacks
 from bots.observability.cost_calculator import calculate_cost
 
 # Try to import OpenTelemetry for metrics verification
 try:
-    from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
     OTEL_AVAILABLE = True
@@ -230,7 +227,7 @@ class TestObservabilityIntegration(unittest.TestCase):
         bot.mailbox = mock_mailbox
 
         # Send a message
-        response = bot.respond("Test prompt")
+        bot.respond("Test prompt")
 
         # Verify callbacks were invoked
         self.assertGreater(len(callback_log), 0, "Callbacks should have been invoked")
@@ -293,7 +290,7 @@ class TestObservabilityIntegration(unittest.TestCase):
             bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, enable_tracing=True, autosave=False)
             bot.add_tools(sample_tool)  # Use add_tools instead of add_function
 
-            response = bot.respond("Use the tool")
+            bot.respond("Use the tool")
 
             # Get recorded metrics
             recorded = self._get_recorded_metrics()

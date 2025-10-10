@@ -15,7 +15,7 @@ Example:
 """
 
 import sys
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any, Dict, Optional
 
 # Try to import OpenTelemetry with graceful degradation

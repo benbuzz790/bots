@@ -5,15 +5,12 @@ Tests all metric recording functions using InMemoryMetricReader to verify
 metrics are properly recorded with correct attributes.
 """
 
-import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 # Import OpenTelemetry testing utilities
-from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
 # Import the metrics module
 from bots.observability import metrics

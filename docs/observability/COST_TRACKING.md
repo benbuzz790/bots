@@ -230,7 +230,7 @@ increase(bot_cost_total_usd[24h]) / increase(bot_api_calls_total[24h])
 #### Cache Effectiveness (Cost Savings)
 ```promql
 # Estimated savings from caching
-sum(rate(bot_tokens_used{token_type="cached"}[5m])) * 0.0027  # Anthropic cache savings
+sum(rate(bot_tokens_used{token_type="cached"}[5m])) * 0.0000027  # Anthropic cache savings ($2.70 per 1M tokens = $0.0000027 per token)
 ```
 **Use case:** Measure ROI of prompt caching
 
