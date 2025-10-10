@@ -28,6 +28,7 @@ def demo_recursive_branching():
             print("\n1. Creating MockBot with branch_self tool...")
             bot = MockBot()
             import bots.tools.self_tools
+
             bot.add_tools(bots.tools.self_tools)
             print("   ✓ Bot created")
 
@@ -79,10 +80,10 @@ def demo_recursive_branching():
             print("\n" + "=" * 70)
             print("SUMMARY")
             print("=" * 70)
-            print(f"✓ Successfully completed 3 levels of recursive branching")
-            print(f"✓ No infinite loops detected")
+            print("✓ Successfully completed 3 levels of recursive branching")
+            print("✓ No infinite loops detected")
             print(f"✓ Tree grew from {nodes_after_first} → {nodes_after_second} → {nodes_after_third} nodes")
-            print(f"✓ Recursive branch_self is now working correctly!")
+            print("✓ Recursive branch_self is now working correctly!")
             print("=" * 70)
 
         finally:
