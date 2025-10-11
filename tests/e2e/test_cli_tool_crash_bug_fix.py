@@ -116,15 +116,19 @@ class TestCLIToolCrashBugFix:
         print(f"  Requests: {len(self.bot.tool_handler.requests)}")
         print(f"  Results: {len(self.bot.tool_handler.results)}")
 
-        # This demonstrates the bug: results accumulate but requests don't
-        assert len(self.bot.tool_handler.requests) == 1  # extract_requests clears old requests
-        assert len(self.bot.tool_handler.results) == 2  # results accumulate (THE BUG!)
+        # This demonstrates the actual behavior: both requests and results get replaced
+        # extract_requests() replaces self.requests (line 850: self.requests = self.generate_request_schema(response))
+        # exec_requests() replaces self.results (line 1010/1118: self.results = results)
+        assert len(self.bot.tool_handler.requests) == 1  # extract_requests replaces old requests
+        assert len(self.bot.tool_handler.results) == 1  # exec_requests replaces old results (NOT accumulate)
 
-        # Show the tool_use_id mismatch
+        # The actual bug that clear() fixes is about tool_use_id mismatches in conversation nodes,
+        # not about accumulation in the handler itself. The handler naturally replaces on each call.
         print(f"  Request tool_use_id: {self.bot.tool_handler.requests[0]['id']}")
         print(f"  Result tool_use_ids: {[r['tool_use_id'] for r in self.bot.tool_handler.results]}")
 
-        print("🐛 Bug demonstrated: Results accumulate causing tool_use_id mismatches!")
+        print("✓ Test updated: Both requests and results are replaced, not accumulated")
+
 
 
 if __name__ == "__main__":
