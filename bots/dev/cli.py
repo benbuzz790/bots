@@ -1502,6 +1502,10 @@ class CLI:
             "/s": self._handle_save_prompt,
         }
 
+        # Disable console tracing output for CLI (too verbose)
+        # Set this before any tracing initialization happens
+        os.environ['BOTS_OTEL_EXPORTER'] = 'none'
+
         # Initialize metrics with verbose setting from config
         try:
             from bots.observability import metrics
