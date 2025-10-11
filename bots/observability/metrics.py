@@ -524,6 +524,13 @@ def record_tokens(
         model: Model name
         cached_tokens: Number of cached tokens (optional, default 0)
     """
+    global _last_recorded_metrics
+
+    # Update last recorded metrics for CLI display
+    _last_recorded_metrics['input_tokens'] = input_tokens
+    _last_recorded_metrics['output_tokens'] = output_tokens
+    _last_recorded_metrics['cached_tokens'] = cached_tokens
+
     if not _initialized or _tokens_used_counter is None:
         return
 
