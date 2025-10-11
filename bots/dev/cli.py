@@ -53,7 +53,7 @@ else:
     import select
     import termios
     import tty
-COLOR_USER = "\033[2m\033[36m"  # Dim Cyan
+COLOR_USER = "\033[36m"  # Cyan (not dim)
 COLOR_BOT = "\033[95m"  # Light Pink/Magenta
 COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
 COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
@@ -1583,17 +1583,21 @@ def pretty(string: str, name: Optional[str] = None, width: int = 1400, indent: i
 class CLI:
     """Main CLI class that orchestrates all handlers."""
 
-    def __init__(self, bot_filename: Optional[str] = None, function_filter: Optional[Callable[[str, Callable], bool]] = None):
+    def __init__(self, bot_filename: Optional[str] = None, function_filter: Optional[Callable] = None):
+        """Initialize the CLI with handlers and context."""
         self.context = CLIContext()
-        self.conversation = ConversationHandler()
-        self.context.conversation = self.conversation  # Add reference for handlers to use
-        self.state = StateHandler()
-        self.system = SystemHandler()
-        self.fp = DynamicFunctionalPromptHandler(function_filter)
-        self.prompts = PromptHandler()
         self.bot_filename = bot_filename
-        self.last_user_message = None  # Track last user message for /s command
-        self.pending_prefill = None  # Store text to prefill on next input
+        self.function_filter = function_filter
+        self.last_user_message = None
+        self.pending_prefill = None
+
+        # Initialize handlers
+        self.system = SystemHandler()
+        self.state = StateHandler()
+        self.conversation = ConversationHandler()
+        self.fp = DynamicFunctionalPromptHandler(function_filter=function_filter)
+
+        # Register commands
         self.commands = {
             "/help": self.system.help,
             "/verbose": self.system.verbose,
@@ -1618,11 +1622,11 @@ class CLI:
             "/s": self._handle_save_prompt,
         }
 
-        # Initialize metrics with verbose setting from config
+        # Initialize metrics with verbose=False since CLI handles its own display
         try:
             from bots.observability import metrics
 
-            metrics.setup_metrics(verbose=self.context.config.verbose)
+            metrics.setup_metrics(verbose=False)
         except Exception:
             pass
 
