@@ -8,21 +8,25 @@ def fibonacci(n):
     Returns:
         int: The nth Fibonacci number
 
-    Raises:
-        ValueError: If n is negative
+    Examples:
+        >>> fibonacci(0)
+        0
+        >>> fibonacci(1)
+        1
+        >>> fibonacci(10)
+        55
     """
     if n < 0:
-        raise ValueError("n must be non-negative")
-
-    if n <= 1:
-        return n
-
-    # Iterative approach for efficiency
-    a, b = 0, 1
-    for _ in range(2, n + 1):
-        a, b = b, a + b
-
-    return b
+        raise ValueError("n must be a non-negative integer")
+    elif n == 0:
+        return 0
+    elif n == 1:
+        return 1
+    else:
+        a, b = 0, 1
+        for _ in range(2, n + 1):
+            a, b = b, a + b
+        return b
 
 
 def fibonacci_recursive(n):
@@ -35,16 +39,14 @@ def fibonacci_recursive(n):
     Returns:
         int: The nth Fibonacci number
 
-    Raises:
-        ValueError: If n is negative
+    Note: This is less efficient than the iterative version for large n.
     """
     if n < 0:
-        raise ValueError("n must be non-negative")
-
-    if n <= 1:
+        raise ValueError("n must be a non-negative integer")
+    elif n <= 1:
         return n
-
-    return fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)
+    else:
+        return fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)
 
 
 def fibonacci_sequence(count):
@@ -56,25 +58,28 @@ def fibonacci_sequence(count):
 
     Returns:
         list: List of Fibonacci numbers
+
+    Example:
+        >>> fibonacci_sequence(10)
+        [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
     """
     if count <= 0:
         return []
+    elif count == 1:
+        return [0]
 
-    sequence = [0]
-    if count == 1:
-        return sequence
-
-    sequence.append(1)
+    sequence = [0, 1]
     for i in range(2, count):
         sequence.append(sequence[i - 1] + sequence[i - 2])
 
     return sequence
 
 
-# Example usage
 if __name__ == "__main__":
-    print("First 10 Fibonacci numbers:")
-    print(fibonacci_sequence(10))
+    # Test the functions
+    print("First 15 Fibonacci numbers:")
+    print(fibonacci_sequence(15))
 
-    print("\n10th Fibonacci number (iterative):", fibonacci(10))
-    print("10th Fibonacci number (recursive):", fibonacci_recursive(10))
+    print("\nIndividual Fibonacci numbers:")
+    for i in range(10):
+        print(f"fibonacci({i}) = {fibonacci(i)}")

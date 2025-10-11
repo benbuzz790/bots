@@ -1670,22 +1670,17 @@ class CLI:
                             self.context.config.indent,
                             COLOR_SYSTEM,
                         )
-                        user_input = input(f"{COLOR_USER}You: {COLOR_RESET}").strip()
-                    else:
-                        user_input = input(f"{COLOR_USER}You: {COLOR_RESET}").strip()
+                    user_input = input(f"{COLOR_USER}You: {COLOR_RESET}").strip()
+
+                    # Handle /exit command early
+                    if user_input == "/exit":
+                        raise SystemExit(0)
+
                     if not user_input:
                         continue
                     if user_input.startswith("/"):
-                        # Pass bot instance to _handle_command
-                        bot = self.context.bot_instance if self.context.bot_instance else None
-                        if bot:
-                            self._handle_command(bot, user_input)
-                        else:
-                            # Handle commands that don't require a bot (like /new, /help)
-                            # Create a temporary bot for command handling
-                            self._initialize_new_bot()
-                            if self.context.bot_instance:
-                                self._handle_command(self.context.bot_instance, user_input)
+                        # Pass bot instance to _handle_command (can be None)
+                        self._handle_command(self.context.bot_instance, user_input)
                     else:
                         if self.context.bot_instance:
                             self._handle_chat(self.context.bot_instance, user_input)
@@ -1794,7 +1789,7 @@ class CLI:
                     pretty(result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
             except Exception as e:
                 pretty(f"Command error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
-                if self.context.conversation_backup:
+                if self.context.conversation_backup and bot:
                     # Clear tool handler state to prevent corruption from failed tool executions
                     bot.tool_handler.clear()
                     bot.conversation = self.context.conversation_backup
