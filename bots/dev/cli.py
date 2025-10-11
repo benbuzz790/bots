@@ -630,6 +630,101 @@ Respond with just the name, no explanation."""
     def get_prompt_names(self) -> List[str]:
         """Get all prompt names."""
         return list(self.prompts_data["prompts"].keys())
+    class PromptHandler:
+        """Handler for prompt management commands."""
+
+        def __init__(self):
+            self.prompt_manager = PromptManager()
+
+        def _get_input_with_prefill(self, prompt_text: str, prefill: str = "") -> str:
+            """Get input with pre-filled text using readline if available."""
+            if not HAS_READLINE or not prefill:
+                return input(prompt_text)
+
+            def startup_hook():
+                readline.insert_text(prefill)
+                readline.redisplay()
+
+            readline.set_startup_hook(startup_hook)
+            try:
+                user_input = input(prompt_text)
+                return user_input
+            finally:
+                readline.set_startup_hook(None)
+
+        def load_prompt(self, bot: "Bot", context: "CLIContext", args: List[str]) -> tuple:
+            """Load a prompt with search and selection. Returns (message, prefill_text)."""
+            try:
+                # Get search query
+                if args:
+                    query = " ".join(args)
+                else:
+                    query = input("Enter prompt search: ").strip()
+
+                # Search for matching prompts
+                matches = self.prompt_manager.search_prompts(query)
+
+                if not matches:
+                    return ("No prompts found matching your search.", None)
+
+                if len(matches) == 1:
+                    # Single match - load directly
+                    name, content = matches[0]
+                    self.prompt_manager.load_prompt(name)  # Update recency
+                    return (f"Loaded prompt: {name}", content)
+
+                # Multiple matches - show selection
+                print(f"\nFound {len(matches)} matches:")
+                for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
+                    # Show preview of content
+                    preview = content[:100] + "..." if len(content) > 100 else content
+                    preview = preview.replace("\n", " ")  # Single line preview
+                    print(f"  {i}. {name}: {preview}")
+
+                if len(matches) > 10:
+                    print(f"  ... and {len(matches) - 10} more matches")
+
+                # Get selection
+                try:
+                    choice = input(f"\nSelect prompt (1-{min(len(matches), 10)}): ").strip()
+                    if not choice:
+                        return ("Selection cancelled.", None)
+
+                    choice_num = int(choice) - 1
+                    if choice_num < 0 or choice_num >= min(len(matches), 10):
+                        return (f"Invalid selection. Must be between 1 and {min(len(matches), 10)}.", None)
+
+                    name, content = matches[choice_num]
+                    self.prompt_manager.load_prompt(name)  # Update recency
+                    return (f"Loaded prompt: {name}", content)
+
+                except ValueError:
+                    return ("Invalid selection. Must be a number.", None)
+
+            except Exception as e:
+                return (f"Error loading prompt: {str(e)}", None)
+
+        def save_prompt(self, bot: "Bot", context: "CLIContext", args: List[str], last_user_message: str = None) -> str:
+            """Save a prompt. If args provided, save the args. Otherwise save last user message."""
+            try:
+                if args:
+                    # Save the provided text
+                    prompt_text = " ".join(args)
+                elif last_user_message:
+                    # Save the last user message
+                    prompt_text = last_user_message
+                else:
+                    return "No prompt to save. Either provide text with /s or use /s after sending a message."
+
+                if not prompt_text.strip():
+                    return "Cannot save empty prompt."
+
+                # Generate name and save
+                name = self.prompt_manager.save_prompt(prompt_text)
+                return f"Saved prompt as: {name}"
+
+            except Exception as e:
+                return f"Error saving prompt: {str(e)}"
 
 
 class ConversationHandler:
@@ -1596,6 +1691,7 @@ class CLI:
         self.state = StateHandler()
         self.conversation = ConversationHandler()
         self.fp = DynamicFunctionalPromptHandler(function_filter=function_filter)
+        self.prompts = PromptHandler()
 
         # Register commands
         self.commands = {
@@ -1818,7 +1914,8 @@ class CLI:
         if not user_input:
             return
         try:
-            # Display user message first
+            # Track last user message for /s command
+            self.last_user_message = user_input
 
             # Auto-stash if enabled
             if self.context.config.auto_stash:
