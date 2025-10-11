@@ -9,6 +9,10 @@ import textwrap
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+# Disable console tracing output for CLI (too verbose)
+# Must be set BEFORE importing any bots modules that might initialize tracing
+os.environ['BOTS_OTEL_EXPORTER'] = 'none'
+
 # Try to import readline, with fallback for Windows
 try:
     import readline
@@ -1502,11 +1506,7 @@ class CLI:
             "/s": self._handle_save_prompt,
         }
 
-        # Disable console tracing output for CLI (too verbose)
-        # Set this before any tracing initialization happens
-        os.environ['BOTS_OTEL_EXPORTER'] = 'none'
-
-        # Initialize metrics with verbose setting from config
+# Initialize metrics with verbose setting from config
         try:
             from bots.observability import metrics
             metrics.setup_metrics(verbose=self.context.config.verbose)
