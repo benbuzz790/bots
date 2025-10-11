@@ -11,6 +11,171 @@ from typing import Any, Callable, Dict, List, Optional
 
 # Disable console tracing output for CLI (too verbose)
 # Must be set BEFORE importing any bots modules that might initialize tracing
+os.environ['BOTS_OTEL_EXPORTER'] = 'none'
+
+
+# Try to import readline, with fallback for Windows
+try:
+    import readline
+
+    HAS_READLINE = True
+except ImportError:
+    HAS_READLINE = False
+import bots.flows.functional_prompts as fp
+import bots.flows.recombinators as recombinators
+from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.base import Bot, ConversationNode
+
+# Disable console span exporter if it was set up before we could set the env var
+# This happens because bots/__init__.py imports modules that initialize tracing
+try:
+    from bots.observability import tracing
+    if tracing._tracer_provider is not None:
+        # Remove all span processors to stop console output
+        tracing._tracer_provider._active_span_processor._span_processors.clear()
+except Exception:
+    pass  # If this fails, traces will still show but it's not critical
+import argparse
+import inspect
+import json
+import os
+import platform
+import re
+import sys
+import textwrap
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
+# Disable console tracing output for CLI (too verbose)
+# Must be set BEFORE importing any bots modules that might initialize tracing
+os.environ['BOTS_OTEL_EXPORTER'] = 'none'
+
+
+# Try to import readline, with fallback for Windows
+try:
+    import readline
+
+    HAS_READLINE = True
+except ImportError:
+    HAS_READLINE = False
+import bots.flows.functional_prompts as fp
+import bots.flows.recombinators as recombinators
+from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.base import Bot, ConversationNode
+import bots.flows.functional_prompts as fp
+import bots.flows.recombinators as recombinators
+from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.base import Bot, ConversationNode
+
+# Disable console span exporter if it was set up before we could set the env var
+# This happens because bots/__init__.py imports modules that initialize tracing
+try:
+    from bots.observability import tracing
+    if tracing._tracer_provider is not None:
+        # Remove all span processors to stop console output
+        tracing._tracer_provider._active_span_processor._span_processors.clear()
+except Exception:
+    pass  # If this fails, traces will still show but it's not critical
+
+"""
+CLI for bot interactions with improved architecture and dynamic parameter collection.
+Architecture:
+- Handler classes for logical command grouping
+- Command registry for easy extensibility
+- Dynamic parameter collection for functional prompts
+- Robust error handling with conversation backup
+- Configuration support for CLI settings
+"""
+if platform.system() == "Windows":
+    import msvcrt
+else:
+    import select
+    import termios
+    import tty
+COLOR_USER = "\033[36m"  # Cyan
+COLOR_ASSISTANT = "\033[36m"  # Cyan
+COLOR_SYSTEM = "\033[33m"  # Yellow
+COLOR_ERROR = "\033[31m"  # Red
+COLOR_RESET = "\033[0m"  # Reset
+COLOR_BOLD = "\033[1m"  # Bold
+COLOR_DIM = "\033[2m"  # Dim
+COLOR_TOOL_REQUEST = "\033[34m"  # Blue
+COLOR_TOOL_RESULT = "\033[32m"  # Green
+import argparse
+import inspect
+import json
+import os
+import platform
+import re
+import sys
+import textwrap
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
+
+# Try to import readline, with fallback for Windows
+try:
+    import readline
+
+    HAS_READLINE = True
+except ImportError:
+    HAS_READLINE = False
+import bots.flows.functional_prompts as fp
+import bots.flows.recombinators as recombinators
+from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.base import Bot, ConversationNode
+import bots.flows.functional_prompts as fp
+import bots.flows.recombinators as recombinators
+from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.base import Bot, ConversationNode
+
+# Disable console span exporter if it was set up before we could set the env var
+# This happens because bots/__init__.py imports modules that initialize tracing
+try:
+    from bots.observability import tracing
+    if tracing._tracer_provider is not None:
+        # Remove all span processors to stop console output
+        tracing._tracer_provider._active_span_processor._span_processors.clear()
+except Exception:
+    pass  # If this fails, traces will still show but it's not critical
+
+"""
+CLI for bot interactions with improved architecture and dynamic parameter collection.
+Architecture:
+- Handler classes for logical command grouping
+- Command registry for easy extensibility
+- Dynamic parameter collection for functional prompts
+- Robust error handling with conversation backup
+- Configuration support for CLI settings
+"""
+if platform.system() == "Windows":
+    import msvcrt
+else:
+    import select
+    import termios
+    import tty
+COLOR_USER = "\033[36m"  # Cyan
+COLOR_ASSISTANT = "\033[36m"  # Cyan
+COLOR_SYSTEM = "\033[33m"  # Yellow
+COLOR_ERROR = "\033[31m"  # Red
+COLOR_RESET = "\033[0m"  # Reset
+COLOR_BOLD = "\033[1m"  # Bold
+COLOR_DIM = "\033[2m"  # Dim
+COLOR_TOOL_REQUEST = "\033[34m"  # Blue
+COLOR_TOOL_RESULT = "\033[32m"  # Green
+import argparse
+import inspect
+import json
+import os
+import platform
+import re
+import sys
+import textwrap
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
+# Disable console tracing output for CLI (too verbose)
+# Must be set BEFORE importing any bots modules that might initialize tracing
 os.environ['BOTS_OTEL_EXPORTER'] = 'none' 
 
 
@@ -25,6 +190,20 @@ import bots.flows.functional_prompts as fp
 import bots.flows.recombinators as recombinators
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, ConversationNode
+import bots.flows.functional_prompts as fp
+import bots.flows.recombinators as recombinators
+from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.base import Bot, ConversationNode
+
+# Disable console span exporter if it was set up before we could set the env var
+# This happens because bots/__init__.py imports modules that initialize tracing
+try:
+    from bots.observability import tracing
+    if tracing._tracer_provider is not None:
+        # Remove all span processors to stop console output
+        tracing._tracer_provider._active_span_processor._span_processors.clear()
+except Exception:
+    pass  # If this fails, traces will still show but it's not critical
 
 """
 CLI for bot interactions with improved architecture and dynamic parameter collection.
@@ -1780,7 +1959,9 @@ class CLI:
             self.context.conversation_backup = bot.conversation
             callback = self.context.callbacks.get_standard_callback()
             responses, nodes = fp.chain(bot, [user_input], callback=callback)
-            pass
+
+            # Display metrics after the response
+            display_metrics(self.context, bot)
         except Exception as e:
             pretty(f"Chat error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
             if self.context.conversation_backup:

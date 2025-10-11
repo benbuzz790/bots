@@ -57,8 +57,9 @@ def load_config_from_env() -> ObservabilityConfig:
     otel_disabled = otel_disabled_raw.lower() == "true" if otel_disabled_raw else False
 
     # Get exporter type, handle empty strings
-    exporter_type_raw = os.getenv("BOTS_OTEL_EXPORTER", "console").strip()
-    exporter_type = exporter_type_raw.lower() if exporter_type_raw else "console"
+    # Default to 'none' to avoid verbose console output unless explicitly enabled
+    exporter_type_raw = os.getenv("BOTS_OTEL_EXPORTER", "none").strip()
+    exporter_type = exporter_type_raw.lower() if exporter_type_raw else "none"
 
     # Get service name, handle empty strings
     service_name_raw = os.getenv("OTEL_SERVICE_NAME", "bots").strip()
