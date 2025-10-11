@@ -9,6 +9,11 @@ import textwrap
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+# Disable console tracing output for CLI (too verbose)
+# Must be set BEFORE importing any bots modules that might initialize tracing
+os.environ['BOTS_OTEL_EXPORTER'] = 'none' 
+
+
 # Try to import readline, with fallback for Windows
 try:
     import readline
@@ -967,12 +972,28 @@ class SystemHandler:
             return "Tool output is already enabled (verbose mode is on)"
         context.config.verbose = True
         context.config.save_config()
+
+        # Also enable metrics verbose output
+        try:
+            from bots.observability import metrics
+            metrics.set_metrics_verbose(True)
+        except Exception:
+            pass
+
         return "Tool output enabled - will now show detailed tool requests and results"
 
     def quiet(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Disable verbose mode."""
         context.config.verbose = False
         context.config.save_config()
+
+        # Also disable metrics verbose output
+        try:
+            from bots.observability import metrics
+            metrics.set_metrics_verbose(False)
+        except Exception:
+            pass
+
         return "Tool output disabled"
 
     def config(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -992,7 +1013,14 @@ class SystemHandler:
             value = args[2]
             try:
                 if setting == "verbose":
-                    context.config.verbose = value.lower() in ("true", "1", "yes", "on")
+                    new_verbose = value.lower() in ("true", "1", "yes", "on")
+                    context.config.verbose = new_verbose
+                    # Sync metrics verbose setting
+                    try:
+                        from bots.observability import metrics
+                        metrics.set_metrics_verbose(new_verbose)
+                    except Exception:
+                        pass
                 elif setting == "width":
                     context.config.width = int(value)
                 elif setting == "indent":
@@ -1358,6 +1386,38 @@ def clean_dict(d: dict, indent: int = 4, level: int = 1):
     return cleaned_dict
 
 
+
+
+def display_metrics(context: CLIContext, bot: Bot):
+    """Display API metrics if verbose mode is on."""
+    if not context.config.verbose:
+        return
+
+    try:
+        from bots.observability import metrics
+
+        # Get the last recorded metrics
+        last_metrics = metrics.get_and_clear_last_metrics()
+
+        # Check if there are any metrics to display
+        if last_metrics['input_tokens'] == 0 and last_metrics['output_tokens'] == 0:
+            return
+
+        # Format the metrics nicely
+        total_tokens = last_metrics['input_tokens'] + last_metrics['output_tokens']
+        metrics_str = f"🔢 Tokens: {total_tokens:,} ({last_metrics['input_tokens']:,} in, {last_metrics['output_tokens']:,} out)"
+
+        if last_metrics['cached_tokens'] > 0:
+            metrics_str += f", {last_metrics['cached_tokens']:,} cached"
+
+        metrics_str += f"\n💰 Cost: ${last_metrics['cost']:.4f}"
+        metrics_str += f"\n⏱️  Response Time: {last_metrics['duration']:.2f}s"
+
+        pretty(metrics_str, "Metrics", context.config.width, context.config.indent, COLOR_SYSTEM)
+    except Exception:
+        pass
+
+
 def display_tool_results(bot: Bot, context: CLIContext):
     """Display tool requests and results first, then bot message."""
     requests = bot.tool_handler.requests
@@ -1372,6 +1432,9 @@ def display_tool_results(bot: Bot, context: CLIContext):
             tool_name, _ = bot.tool_handler.tool_name_and_input(request)
             pretty(f"{bot.name} used {tool_name}", "System", context.config.width, context.config.indent, COLOR_SYSTEM)
     pretty(bot.conversation.content, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
+
+    # Display metrics if verbose mode is on
+    display_metrics(context, bot)
 
 
 def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: int = 4, color: str = COLOR_RESET) -> None:
@@ -1478,6 +1541,13 @@ class CLI:
             "/p": self._handle_load_prompt,
             "/s": self._handle_save_prompt,
         }
+
+# Initialize metrics with verbose setting from config
+        try:
+            from bots.observability import metrics
+            metrics.setup_metrics(verbose=self.context.config.verbose)
+        except Exception:
+            pass
 
     def run(self):
         """Main CLI loop."""

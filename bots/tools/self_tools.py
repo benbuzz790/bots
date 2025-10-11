@@ -150,6 +150,11 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         original_autosave = bot.autosave
         bot.autosave = False
 
+        # Tag the current node so we can find it after load
+        # This prevents recursive branching issues
+        branch_tag = f"_branch_self_anchor_{uuid.uuid4().hex[:8]}"
+        setattr(original_node, branch_tag, True)
+
         # Create a modified conversation node with dummy tool results
         # This prevents 'tool_use without tool_result' errors in branches
         if original_node.tool_calls:
@@ -164,7 +169,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                 original_results = getattr(original_node, "tool_results", [])
                 original_node._add_tool_results(dummy_results)
 
-                # Save bot state with dummy results
+                # Save bot state with dummy results and tag
                 temp_id = str(uuid.uuid4())[:8]
                 temp_file = f"branch_self_{temp_id}.bot"
                 bot.save(temp_file)
@@ -188,6 +193,49 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                 # Create a fresh bot copy for this branch
                 branch_bot = Bot.load(temp_file)
                 branch_bot.autosave = False
+
+                # Find the tagged node in the loaded bot's conversation tree
+                # This ensures we branch from the correct point, not the newest node
+                def find_tagged_node(node):
+                    """Recursively search for the node with the branch tag."""
+                    # Check current node for any branch_self_anchor tags
+                    for attr in dir(node):
+                        if attr.startswith("_branch_self_anchor_"):
+                            return node
+                    # Search in parent chain
+                    current = node
+                    while current.parent:
+                        current = current.parent
+                        for attr in dir(current):
+                            if attr.startswith("_branch_self_anchor_"):
+                                return current
+                    # Search in all descendants from root
+                    root = node
+                    while root.parent:
+                        root = root.parent
+
+                    def search_tree(n):
+                        for attr in dir(n):
+                            if attr.startswith("_branch_self_anchor_"):
+                                return n
+                        for reply in n.replies:
+                            result = search_tree(reply)
+                            if result:
+                                return result
+                        return None
+
+                    return search_tree(root)
+
+                tagged_node = find_tagged_node(branch_bot.conversation)
+                if tagged_node:
+                    # Position at the tagged node
+                    branch_bot.conversation = tagged_node
+                    # Remove the tag from this branch's copy
+                    for attr in dir(tagged_node):
+                        if attr.startswith("_branch_self_anchor_"):
+                            delattr(tagged_node, attr)
+                            break
+
                 branching_node = branch_bot.conversation
 
                 # Ensure clean tool handler state for branch
@@ -234,6 +282,10 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                 response, node = execute_branch(prompt, original_node)
                 responses.append(response)
                 branch_nodes.append(node)
+
+        # Remove the tag from the original node
+        if hasattr(original_node, branch_tag):
+            delattr(original_node, branch_tag)
 
         # Restore original bot settings
         bot.autosave = original_autosave

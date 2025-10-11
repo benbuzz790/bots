@@ -39,6 +39,30 @@ except ImportError:
     tracer = None
     trace = None
 
+# Import OpenTelemetry metrics and cost calculator
+try:
+    from bots.observability import metrics
+    from bots.observability.cost_calculator import calculate_cost
+
+    METRICS_AVAILABLE = True
+except ImportError:
+    METRICS_AVAILABLE = False
+    metrics = None
+    calculate_cost = None
+
+# Import callbacks with typing fallback for flake8
+try:
+    from bots.observability.callbacks import BotCallbacks
+except ImportError:
+
+    BotCallbacks = Any
+
+# Set up logging
+import logging
+import time
+
+logger = logging.getLogger(__name__)
+
 
 class OpenAINode(ConversationNode):
     """A conversation node implementation specific to OpenAI's chat format.
@@ -349,6 +373,8 @@ class OpenAIMailbox(Mailbox):
         max_tokens = bot.max_tokens
         temperature = bot.temperature
         try:
+            api_start_time = time.time()
+
             if tools:
                 response = self.client.chat.completions.create(
                     model=model,
@@ -372,14 +398,60 @@ class OpenAIMailbox(Mailbox):
                 )
             except FileNotFoundError:
                 pass
+
             # Add token usage to span if available
             if span and hasattr(response, "usage") and response.usage:
                 span.set_attribute("input_tokens", response.usage.prompt_tokens)
                 span.set_attribute("output_tokens", response.usage.completion_tokens)
                 span.set_attribute("total_tokens", response.usage.total_tokens)
 
+            # Extract normalized model name for consistent use
+            model_name = model.value if hasattr(model, "value") else str(model)
+
+            # Calculate and record cost and metrics
+            if METRICS_AVAILABLE and hasattr(response, "usage") and response.usage:
+                try:
+                    # Record token usage
+                    metrics.record_tokens(
+                        response.usage.prompt_tokens, response.usage.completion_tokens, provider="openai", model=model_name
+                    )
+
+                    # Calculate and record cost
+                    cost = calculate_cost(
+                        provider="openai",
+                        model=model_name,
+                        input_tokens=response.usage.prompt_tokens,
+                        output_tokens=response.usage.completion_tokens,
+                    )
+                    metrics.record_cost(cost, provider="openai", model=model_name)
+                except Exception as e:
+                    logger.warning(f"Failed to record metrics: {e}")
+
+            # Record API call metrics
+            if METRICS_AVAILABLE:
+                try:
+                    api_duration = time.time() - api_start_time
+                    metrics.record_api_call(duration=api_duration, provider="openai", operation=model_name, status="success")
+                except Exception as e:
+                    logger.warning(f"Failed to record API metrics: {e}")
+
             return response
         except Exception as e:
+            # Record error metrics
+            if METRICS_AVAILABLE:
+                try:
+                    model_name = model.value if hasattr(model, "value") else str(model)
+                    metrics.record_error(error_type=type(e).__name__, provider="openai", operation=model_name)
+
+                    # Record failed API call with duration
+                    try:
+                        duration = time.time() - api_start_time
+                    except Exception:
+                        duration = 0
+                    metrics.record_api_call(provider="openai", operation=model_name, status="error", duration=duration)
+                except Exception as metric_error:
+                    logger.warning(f"Failed to record error metrics: {metric_error}")
+
             if span:
                 span.record_exception(e)
                 span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
@@ -464,11 +536,13 @@ class ChatGPT_Bot(Bot):
         role_description: str = "a friendly AI assistant",
         autosave: bool = True,
         enable_tracing: Optional[bool] = None,
+        callbacks: Optional["BotCallbacks"] = None,
     ):
         """Initialize a ChatGPT bot with OpenAI-specific components.
-        specific configuration.
+
         Sets up all necessary components for OpenAI interaction including
         conversation management, tool handling, and API communication.
+
         Parameters:
             api_key (Optional[str]): OpenAI API key. If not provided, attempts
                 to read from OPENAI_API_KEY environment variable
@@ -486,6 +560,11 @@ class ChatGPT_Bot(Bot):
                 defaults to 'a friendly AI assistant'. Guides bot behavior
             autosave (bool): Whether to automatically save conversation state,
                 defaults to True. Enables conversation recovery
+            enable_tracing (Optional[bool]): Enable OpenTelemetry tracing.
+                Defaults to None (uses global setting)
+            callbacks (Optional[BotCallbacks]): Optional callback system for
+                progress/monitoring. Defaults to None
+
         Note:
             The bot is initialized with OpenAI-specific implementations of:
             - OpenAIToolHandler for function calling
@@ -505,4 +584,8 @@ class ChatGPT_Bot(Bot):
             mailbox=OpenAIMailbox(),
             autosave=autosave,
             enable_tracing=enable_tracing,
+            callbacks=callbacks,
         )
+
+        # Set bot reference in tool_handler so callbacks can be invoked
+        self.tool_handler.bot = self

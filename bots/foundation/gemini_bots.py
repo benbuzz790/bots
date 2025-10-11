@@ -13,6 +13,7 @@ Key Components:
 
 import json
 import os
+import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from google import genai
@@ -25,6 +26,39 @@ from bots.foundation.base import (
     Mailbox,
     ToolHandler,
 )
+
+# Import OpenTelemetry tracing
+try:
+    from bots.observability.tracing import get_tracer
+
+    tracer = get_tracer(__name__)
+    TRACING_AVAILABLE = True
+except ImportError:
+    TRACING_AVAILABLE = False
+    tracer = None
+
+# Import OpenTelemetry metrics and cost calculator
+try:
+    from bots.observability import metrics
+    from bots.observability.cost_calculator import calculate_cost
+
+    METRICS_AVAILABLE = True
+except ImportError:
+    METRICS_AVAILABLE = False
+    metrics = None
+    calculate_cost = None
+
+# Import BotCallbacks with fallback for type checking
+try:
+    from bots.observability.callbacks import BotCallbacks
+except ImportError:
+    # Fallback for type hints when callbacks module not available
+    BotCallbacks = Any  # type: ignore
+
+# Set up logging
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class GeminiNode(ConversationNode):
@@ -152,6 +186,14 @@ class GeminiMailbox(Mailbox):
         self.client = genai.Client(api_key=self.api_key)
 
     def send_message(self, bot: Bot) -> Any:
+        """Send a message to the Gemini API with metrics tracking.
+
+        Args:
+            bot: The GeminiBot instance making the request
+
+        Returns:
+            The API response object from Gemini
+        """
         messages = bot.conversation._build_messages()
         tools = bot.tool_handler.tools if bot.tool_handler else None
         tool_decls = []
@@ -164,12 +206,69 @@ class GeminiMailbox(Mailbox):
         config = types.GenerateContentConfig()
         if tool_decls:
             config.tools = [types.Tool(function_declarations=tool_decls)]
-        response = self.client.models.generate_content(
-            model=bot.model_engine,
-            contents=messages,
-            config=config,
-        )
-        return response
+
+        # Track API call timing
+        api_start_time = time.time()
+
+        try:
+            response = self.client.models.generate_content(
+                model=bot.model_engine,
+                contents=messages,
+                config=config,
+            )
+
+            # Record metrics if available
+            if METRICS_AVAILABLE and hasattr(response, "usage_metadata"):
+                try:
+                    usage = response.usage_metadata
+
+                    # Record token usage
+                    input_tokens = getattr(usage, "prompt_token_count", 0)
+                    output_tokens = getattr(usage, "candidates_token_count", 0)
+
+                    metrics.record_tokens(
+                        input_tokens,
+                        output_tokens,
+                        provider="google",
+                        model=str(bot.model_engine.value) if hasattr(bot.model_engine, "value") else str(bot.model_engine),
+                    )
+
+                    # Calculate and record cost
+                    model_name = str(bot.model_engine.value) if hasattr(bot.model_engine, "value") else str(bot.model_engine)
+                    cost = calculate_cost(
+                        provider="google", model=model_name, input_tokens=input_tokens, output_tokens=output_tokens
+                    )
+                    metrics.record_cost(cost, provider="google", model=model_name)
+
+                except Exception as e:
+                    logger.warning(f"Failed to record metrics: {e}")
+
+            # Record API call metrics
+            if METRICS_AVAILABLE:
+                try:
+                    api_duration = time.time() - api_start_time
+                    model_name = str(bot.model_engine.value) if hasattr(bot.model_engine, "value") else str(bot.model_engine)
+                    metrics.record_api_call(duration=api_duration, provider="google", model=model_name, status="success")
+                except Exception as e:
+                    logger.warning(f"Failed to record API metrics: {e}")
+
+            return response
+
+        except Exception as e:
+            # Record error metric
+            if METRICS_AVAILABLE:
+                try:
+                    model_name = str(bot.model_engine.value) if hasattr(bot.model_engine, "value") else str(bot.model_engine)
+                    metrics.record_error(error_type=type(e).__name__, provider="google", operation="api_call")
+
+                    # Record failed API call
+                    api_duration = time.time() - api_start_time
+                    metrics.record_api_call(duration=api_duration, provider="google", model=model_name, status="error")
+                except Exception:
+                    pass
+
+            logger.error(f"Gemini API error: {e}")
+            raise
 
     def process_response(self, response: Any, bot: Bot, _recursion_depth: int = 0) -> Tuple[str, str, Dict[str, Any]]:
         # If there is a function call, handle it recursively
@@ -224,7 +323,12 @@ class GeminiBot(Bot):
         role_description: str = "a friendly AI assistant",
         autosave: bool = True,
         enable_tracing: Optional[bool] = None,
+        callbacks: Optional["BotCallbacks"] = None,
     ):
+        """Initialize a GeminiBot.
+
+        Sets up all necessary components for Google Gemini interaction.
+        """
         super().__init__(
             api_key=api_key,
             model_engine=model_engine,
@@ -238,4 +342,8 @@ class GeminiBot(Bot):
             mailbox=GeminiMailbox(api_key=api_key),
             autosave=autosave,
             enable_tracing=enable_tracing,
+            callbacks=callbacks,
         )
+
+        # Set bot reference in tool_handler so callbacks can be invoked
+        self.tool_handler.bot = self

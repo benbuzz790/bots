@@ -52,6 +52,23 @@ except ImportError:
     TRACING_AVAILABLE = False
     tracer = None
 
+# Import OpenTelemetry metrics and cost calculator
+try:
+    from bots.observability import metrics
+    from bots.observability.cost_calculator import calculate_cost
+
+    METRICS_AVAILABLE = True
+except ImportError:
+    METRICS_AVAILABLE = False
+    metrics = None
+    calculate_cost = None
+
+# Import callbacks with graceful degradation
+try:
+    from bots.observability.callbacks import BotCallbacks
+except ImportError:
+    BotCallbacks = Any  # Fallback for type hints
+
 # Set up logging
 import logging
 
@@ -353,13 +370,44 @@ class AnthropicMailbox(Mailbox):
                     if span:
                         span.add_event("api.call.attempt", {"attempt": attempt + 1})
 
+                    api_start_time = time.time()
                     response = self.client.messages.create(**create_dict)
 
                     # Capture token usage and cost
                     if span and hasattr(response, "usage"):
                         span.set_attribute("input_tokens", response.usage.input_tokens)
                         span.set_attribute("output_tokens", response.usage.output_tokens)
-                        # Note: Cost calculation would go here if available
+                    # Calculate and record cost and metrics
+                    if METRICS_AVAILABLE and hasattr(response, "usage"):
+                        try:
+                            # Record token usage
+                            metrics.record_tokens(
+                                response.usage.input_tokens,
+                                response.usage.output_tokens,
+                                provider="anthropic",
+                                model=bot.model_engine.value,
+                            )
+
+                            # Calculate and record cost
+                            cost = calculate_cost(
+                                provider="anthropic",
+                                model=bot.model_engine.value,
+                                input_tokens=response.usage.input_tokens,
+                                output_tokens=response.usage.output_tokens,
+                            )
+                            metrics.record_cost(cost, provider="anthropic", model=bot.model_engine.value)
+                        except Exception as e:
+                            logger.warning(f"Failed to record metrics: {e}")
+
+                    # Record API call metrics
+                    if METRICS_AVAILABLE:
+                        try:
+                            api_duration = time.time() - api_start_time
+                            metrics.record_api_call(
+                                duration=api_duration, provider="anthropic", model=bot.model_engine.value, status="success"
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to record API metrics: {e}")
 
                     if span:
                         span.add_event("api.call.success")
@@ -367,6 +415,13 @@ class AnthropicMailbox(Mailbox):
                     return response
 
                 except anthropic.APITimeoutError as e:
+                    # Record timeout error metric
+                    if METRICS_AVAILABLE:
+                        try:
+                            metrics.record_error(error_type="APITimeoutError", provider="anthropic", operation="api_call")
+                        except Exception:
+                            pass
+
                     # Special handling for timeout errors
                     if attempt < timeout_retries:
                         timeout_delay = timeout_base_delay * (attempt + 1)
@@ -544,7 +599,7 @@ class AnthropicBot(Bot):
         role_description: str = "a friendly AI assistant",
         autosave: bool = True,
         enable_tracing: Optional[bool] = None,
-        # allow_web_search: bool = False,
+        callbacks: Optional[BotCallbacks] = None,
     ):
         """Initialize an AnthropicBot.
 
@@ -561,6 +616,8 @@ class AnthropicBot(Bot):
             AI assistant')
             autosave: Whether to autosave state after responses (default: True,
             saves to cwd)
+            enable_tracing: Enable OpenTelemetry tracing (default: None, uses global setting)
+            callbacks: Optional callback system for progress/monitoring (default: None)
         """
         super().__init__(
             api_key,
@@ -575,7 +632,11 @@ class AnthropicBot(Bot):
             mailbox=AnthropicMailbox(),
             autosave=autosave,
             enable_tracing=enable_tracing,
+            callbacks=callbacks,
         )
+
+        # Set bot reference in tool_handler so callbacks can be invoked
+        self.tool_handler.bot = self
 
 
 # class AnthropicTools:
