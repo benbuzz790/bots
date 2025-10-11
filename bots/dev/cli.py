@@ -11,7 +11,8 @@ from typing import Any, Callable, Dict, List, Optional
 
 # Disable console tracing output for CLI (too verbose)
 # Must be set BEFORE importing any bots modules that might initialize tracing
-os.environ['BOTS_OTEL_EXPORTER'] = 'none'
+os.environ['BOTS_OTEL_EXPORTER'] = 'none' 
+
 
 # Try to import readline, with fallback for Windows
 try:
@@ -1385,6 +1386,38 @@ def clean_dict(d: dict, indent: int = 4, level: int = 1):
     return cleaned_dict
 
 
+
+
+def display_metrics(context: CLIContext, bot: Bot):
+    """Display API metrics if verbose mode is on."""
+    if not context.config.verbose:
+        return
+
+    try:
+        from bots.observability import metrics
+
+        # Get the last recorded metrics
+        last_metrics = metrics.get_and_clear_last_metrics()
+
+        # Check if there are any metrics to display
+        if last_metrics['input_tokens'] == 0 and last_metrics['output_tokens'] == 0:
+            return
+
+        # Format the metrics nicely
+        total_tokens = last_metrics['input_tokens'] + last_metrics['output_tokens']
+        metrics_str = f"🔢 Tokens: {total_tokens:,} ({last_metrics['input_tokens']:,} in, {last_metrics['output_tokens']:,} out)"
+
+        if last_metrics['cached_tokens'] > 0:
+            metrics_str += f", {last_metrics['cached_tokens']:,} cached"
+
+        metrics_str += f"\n💰 Cost: ${last_metrics['cost']:.4f}"
+        metrics_str += f"\n⏱️  Response Time: {last_metrics['duration']:.2f}s"
+
+        pretty(metrics_str, "Metrics", context.config.width, context.config.indent, COLOR_SYSTEM)
+    except Exception:
+        pass
+
+
 def display_tool_results(bot: Bot, context: CLIContext):
     """Display tool requests and results first, then bot message."""
     requests = bot.tool_handler.requests
@@ -1399,6 +1432,9 @@ def display_tool_results(bot: Bot, context: CLIContext):
             tool_name, _ = bot.tool_handler.tool_name_and_input(request)
             pretty(f"{bot.name} used {tool_name}", "System", context.config.width, context.config.indent, COLOR_SYSTEM)
     pretty(bot.conversation.content, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
+
+    # Display metrics if verbose mode is on
+    display_metrics(context, bot)
 
 
 def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: int = 4, color: str = COLOR_RESET) -> None:

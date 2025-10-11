@@ -62,6 +62,15 @@ _initialized: bool = False
 _init_lock = threading.Lock()  # Lock for thread-safe initialization
 _custom_exporter: Optional[object] = None  # Store reference to custom exporter
 
+# Track last recorded metrics for CLI display
+_last_recorded_metrics = {
+    'input_tokens': 0,
+    'output_tokens': 0,
+    'cached_tokens': 0,
+    'cost': 0.0,
+    'duration': 0.0
+}
+
 # Metric instruments (initialized after setup)
 _response_time_histogram = None
 _api_call_duration_histogram = None
@@ -420,6 +429,11 @@ def record_api_call(duration: float, provider: str, model: str, status: str = "s
         model: Model name
         status: Call status ("success", "error", "timeout")
     """
+    global _last_recorded_metrics
+
+    # Update last recorded metrics for CLI display
+    _last_recorded_metrics['duration'] = duration
+
     if not _initialized:
         return
 
@@ -551,6 +565,11 @@ def record_cost(cost: float, provider: str, model: str):
         provider: Provider name
         model: Model name
     """
+    global _last_recorded_metrics
+
+    # Update last recorded metrics for CLI display
+    _last_recorded_metrics['cost'] = cost
+
     if not _initialized:
         return
 
@@ -611,6 +630,29 @@ def record_tool_failure(tool_name: str, error_type: str):
             "error_type": error_type,
         },
     )
+
+
+def get_and_clear_last_metrics():
+    """Get the last recorded metrics and clear them.
+
+    Returns:
+        dict: Dictionary with keys: input_tokens, output_tokens, cached_tokens, cost, duration
+    """
+    global _last_recorded_metrics
+
+    # Make a copy
+    metrics_copy = _last_recorded_metrics.copy()
+
+    # Clear for next call
+    _last_recorded_metrics = {
+        'input_tokens': 0,
+        'output_tokens': 0,
+        'cached_tokens': 0,
+        'cost': 0.0,
+        'duration': 0.0
+    }
+
+    return metrics_copy
 
 
 # Auto-initialize on import (lazy initialization)
