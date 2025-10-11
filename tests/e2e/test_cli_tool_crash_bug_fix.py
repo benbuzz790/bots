@@ -130,7 +130,6 @@ class TestCLIToolCrashBugFix:
         print("✓ Test updated: Both requests and results are replaced, not accumulated")
 
 
-
 if __name__ == "__main__":
     test = TestCLIToolCrashBugFix()
     test.setup_method()

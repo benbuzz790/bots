@@ -540,7 +540,7 @@ class PowerShellManager:
                 self.cleanup()
                 self._start_new_session()
             return self._thread_local.session
-        except Exception as e:
+        except Exception:
             self._start_new_session()
             return self._thread_local.session
 

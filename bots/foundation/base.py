@@ -1047,9 +1047,7 @@ class ToolHandler(ABC):
                     # Invoke on_tool_complete callback
                     if hasattr(self, "bot") and self.bot and hasattr(self.bot, "callbacks") and self.bot.callbacks:
                         try:
-                            self.bot.callbacks.on_tool_complete(
-                                tool_name, output_kwargs, metadata={"duration": tool_duration}
-                            )
+                            self.bot.callbacks.on_tool_complete(tool_name, output_kwargs, metadata={"duration": tool_duration})
                         except Exception:
                             pass
 
@@ -2633,31 +2631,31 @@ class Bot(ABC):
     def _cvsn_respond(self) -> Tuple[str, ConversationNode]:
         """Process a conversation turn with the LLM, including tool handling.
 
-    Use when implementing core conversation flow. This method:
-    1. Gets LLM response using current conversation context
-    2. Handles any tool usage requests
-    3. Updates conversation history
-    4. Manages tool results and context
+        Use when implementing core conversation flow. This method:
+        1. Gets LLM response using current conversation context
+        2. Handles any tool usage requests
+        3. Updates conversation history
+        4. Manages tool results and context
 
-    Returns:
-        Tuple[str, ConversationNode]:
-            - response_text: The LLM's response text
-            - node: The new conversation node created
+        Returns:
+            Tuple[str, ConversationNode]:
+                - response_text: The LLM's response text
+                - node: The new conversation node created
 
-    Raises:
-        Exception: Any errors from LLM communication or tool execution
+        Raises:
+            Exception: Any errors from LLM communication or tool execution
 
-    Side Effects:
-        - Updates conversation tree with new node
-        - Processes tool requests if any
-        - Updates tool results in conversation context
+        Side Effects:
+            - Updates conversation tree with new node
+            - Processes tool requests if any
+            - Updates tool results in conversation context
 
-    Note:
-        - Clears tool handler state before processing
-        - Automatically handles tool request extraction
-        - Maintains conversation tree structure
-        - Preserves tool execution results
-    """
+        Note:
+            - Clears tool handler state before processing
+            - Automatically handles tool request extraction
+            - Maintains conversation tree structure
+            - Preserves tool execution results
+        """
         if self._tracing_enabled and tracer:
             with tracer.start_as_current_span("bot._cvsn_respond") as span:
                 try:
@@ -2673,10 +2671,7 @@ class Bot(ABC):
                     if self.callbacks:
                         try:
                             self.callbacks.on_api_call_complete(
-                                metadata={
-                                    "bot_response": text,
-                                    "tool_count": len(self.tool_handler.requests)
-                                }
+                                metadata={"bot_response": text, "tool_count": len(self.tool_handler.requests)}
                             )
                         except Exception as e:
                             logger.warning(f"Callback on_api_call_complete failed: {e}")
@@ -2701,10 +2696,7 @@ class Bot(ABC):
                 if self.callbacks:
                     try:
                         self.callbacks.on_api_call_complete(
-                            metadata={
-                                "bot_response": text,
-                                "tool_count": len(self.tool_handler.requests)
-                            }
+                            metadata={"bot_response": text, "tool_count": len(self.tool_handler.requests)}
                         )
                     except Exception as e:
                         logger.warning(f"Callback on_api_call_complete failed: {e}")

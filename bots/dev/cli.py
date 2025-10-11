@@ -21,11 +21,11 @@ try:
     HAS_READLINE = True
 except ImportError:
     HAS_READLINE = False
-import bots.flows.functional_prompts as fp
-import bots.flows.recombinators as recombinators
-from bots.foundation.anthropic_bots import AnthropicBot
-from bots.foundation.base import Bot, ConversationNode
-from bots.observability.callbacks import BotCallbacks
+import bots.flows.functional_prompts as fp  # noqa: E402
+import bots.flows.recombinators as recombinators  # noqa: E402
+from bots.foundation.anthropic_bots import AnthropicBot  # noqa: E402
+from bots.foundation.base import Bot, ConversationNode  # noqa: E402
+from bots.observability.callbacks import BotCallbacks  # noqa: E402
 
 # Disable console span exporter if it was set up before we could set the env var
 # This happens because bots/__init__.py imports modules that initialize tracing
@@ -66,6 +66,7 @@ COLOR_DIM = "\033[2m"  # Dim
 # Legacy colors for compatibility
 COLOR_ASSISTANT = COLOR_BOT
 COLOR_TOOL_REQUEST = "\033[34m"  # Blue
+
 
 def create_auto_stash() -> str:
     """Create an automatic git stash with AI-generated message based on current diff."""
@@ -375,7 +376,6 @@ class CLIConfig:
             pass  # Fail silently if config saving fails
 
 
-
 class RealTimeDisplayCallbacks(BotCallbacks):
     """Callback that displays bot response and tools in real-time as they execute."""
 
@@ -384,8 +384,8 @@ class RealTimeDisplayCallbacks(BotCallbacks):
 
     def on_api_call_complete(self, metadata=None):
         """Display bot response immediately after API call completes, before tools execute."""
-        if metadata and 'bot_response' in metadata:
-            bot_response = metadata['bot_response']
+        if metadata and "bot_response" in metadata:
+            bot_response = metadata["bot_response"]
             pretty(
                 bot_response,
                 "Bot",
@@ -399,9 +399,9 @@ class RealTimeDisplayCallbacks(BotCallbacks):
         if not self.context.config.verbose:
             return
 
-        if metadata and 'tool_args' in metadata:
+        if metadata and "tool_args" in metadata:
             # Extract just the input arguments, not the full request schema
-            tool_args = metadata['tool_args']
+            tool_args = metadata["tool_args"]
 
             # Format the arguments cleanly without JSON braces or quotes
             if tool_args:
@@ -410,7 +410,7 @@ class RealTimeDisplayCallbacks(BotCallbacks):
                 args_str = "(no arguments)"
 
             # Strip underscores from tool name for cleaner display
-            display_name = tool_name.replace('_', ' ')
+            display_name = tool_name.replace("_", " ")
 
             pretty(
                 args_str,
@@ -429,11 +429,11 @@ class RealTimeDisplayCallbacks(BotCallbacks):
             # Display result directly without wrapping in {'result': ...}
             if isinstance(result, str):
                 # Add leading newline for string results
-                result_str = '\n' + result
+                result_str = "\n" + result
             elif isinstance(result, dict):
                 result_str = format_tool_data(result, color=COLOR_TOOL_RESULT)
             else:
-                result_str = '\n' + str(result)
+                result_str = "\n" + str(result)
 
             pretty(
                 result_str,
@@ -466,10 +466,13 @@ class CLICallbacks:
         return message_only_callback
 
     def create_verbose_callback(self):
-        """Create a callback that shows only metrics (bot response and tools are shown in real-time by RealTimeDisplayCallbacks)."""
+        """
+        Create a callback that shows only metrics.
+        Bot response and tools are shown in real-time by RealTimeDisplayCallbacks.
+        """
 
         def verbose_callback(responses, nodes):
-            # Bot response and tools are already displayed in real-time by RealTimeDisplayCallbacks
+            # Bot response and tools are already displayed in real-time
             # Just show metrics at the end
             if hasattr(self.context, "bot_instance") and self.context.bot_instance:
                 bot = self.context.bot_instance
@@ -1369,6 +1372,8 @@ class DynamicFunctionalPromptHandler:
             return f"Broadcast completed: {fp_name} executed on {len(target_leaves)} leaves successfully"
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
+
+
 def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> str:
     """
     Format tool arguments or results in a clean, minimal way.
@@ -1385,11 +1390,11 @@ def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> s
     if len(data) == 1:
         key, value = next(iter(data.items()))
         if isinstance(value, str):
-            return '\n' + value
+            return "\n" + value
         elif isinstance(value, dict):
-            return '\n' + format_tool_data(value, indent, color)
+            return "\n" + format_tool_data(value, indent, color)
         else:
-            return '\n' + str(value)
+            return "\n" + str(value)
 
     # Multiple inputs - show key: value pairs
     lines = []
@@ -1401,14 +1406,14 @@ def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> s
             # Nested dict - format recursively with extra indent
             nested = format_tool_data(value, indent, color)
             lines.append(bold_key)
-            for nested_line in nested.split('\n'):
+            for nested_line in nested.split("\n"):
                 if nested_line:  # Skip empty lines
                     lines.append(" " * indent + nested_line)
         elif isinstance(value, str):
             # String value - handle multiline strings
-            if '\n' in value:
+            if "\n" in value:
                 lines.append(bold_key)
-                for line in value.split('\n'):
+                for line in value.split("\n"):
                     lines.append(" " * indent + line)
             else:
                 lines.append(f"{bold_key} {value}")
@@ -1420,7 +1425,7 @@ def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> s
             lines.append(f"{bold_key} {value}")
 
     # Add newline at the beginning so first key is on its own line
-    return '\n' + '\n'.join(lines)
+    return "\n" + "\n".join(lines)
 
 
 def check_for_interrupt() -> bool:
@@ -1478,58 +1483,6 @@ def clean_dict(d: dict, indent: int = 4, level: int = 1):
     cleaned_dict = cleaned_dict.replace('\\"', '"')
     cleaned_dict = cleaned_dict.replace("\\\\", "\\")
     return cleaned_dict
-def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> str:
-    """
-    Format tool arguments or results in a clean, minimal way.
-    No JSON braces, no quotes around keys, just key: value pairs.
-    Keys are bolded for emphasis.
-
-    Special case: If there's only one key-value pair, just return the value
-    without the key name (assumes it's the primary/required input).
-    """
-    if not data:
-        return "(empty)"
-
-    # Special case: single input - just show the value without the key
-    if len(data) == 1:
-        key, value = next(iter(data.items()))
-        if isinstance(value, str):
-            return '\n' + value
-        elif isinstance(value, dict):
-            return '\n' + format_tool_data(value, indent, color)
-        else:
-            return '\n' + str(value)
-
-    # Multiple inputs - show key: value pairs
-    lines = []
-    for key, value in data.items():
-        # Bold the key name with color, keep colon and value colored too
-        bold_key = f"{color}{COLOR_BOLD}{key}{COLOR_RESET}{color}:"
-
-        if isinstance(value, dict):
-            # Nested dict - format recursively with extra indent
-            nested = format_tool_data(value, indent, color)
-            lines.append(bold_key)
-            for nested_line in nested.split('\n'):
-                if nested_line:  # Skip empty lines
-                    lines.append(" " * indent + nested_line)
-        elif isinstance(value, str):
-            # String value - handle multiline strings
-            if '\n' in value:
-                lines.append(bold_key)
-                for line in value.split('\n'):
-                    lines.append(" " * indent + line)
-            else:
-                lines.append(f"{bold_key} {value}")
-        elif isinstance(value, (list, tuple)):
-            # List/tuple - format as compact representation
-            lines.append(f"{bold_key} {value}")
-        else:
-            # Other types (int, bool, None, etc.)
-            lines.append(f"{bold_key} {value}")
-
-    # Add newline at the beginning so first key is on its own line
-    return '\n' + '\n'.join(lines)
 
 
 def display_metrics(context: CLIContext, bot: Bot):
@@ -1681,8 +1634,20 @@ class CLI:
             if self.bot_filename:
                 result = self.state._load_bot_from_file(self.bot_filename, self.context)
                 if "Error" in result or "File not found" in result:
-                    pretty(f"Failed to load: {result}", "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
-                    pretty("Starting with new bot", "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
+                    pretty(
+                        f"Failed to load: {result}",
+                        "system",
+                        self.context.config.width,
+                        self.context.config.indent,
+                        COLOR_SYSTEM,
+                    )
+                    pretty(
+                        "Starting with new bot",
+                        "system",
+                        self.context.config.width,
+                        self.context.config.indent,
+                        COLOR_SYSTEM,
+                    )
                     self._initialize_new_bot()
                 else:
                     if self.context.bot_instance:
@@ -1695,91 +1660,51 @@ class CLI:
                         )
             else:
                 self._initialize_new_bot()
-            print("Ready. Type /help for commands.")
-            print()
             while True:
                 try:
-                    user_input = self._get_user_input("You: ").strip()
-                    if user_input == "/exit":
-                        raise SystemExit(0)
+                    if not self.context.bot_instance:
+                        pretty(
+                            "No bot instance available. Use /new to create one.",
+                            "system",
+                            self.context.config.width,
+                            self.context.config.indent,
+                            COLOR_SYSTEM,
+                        )
+                        user_input = input(f"{COLOR_USER}You: {COLOR_RESET}").strip()
+                    else:
+                        user_input = input(f"{COLOR_USER}You: {COLOR_RESET}").strip()
                     if not user_input:
                         continue
-                    words = user_input.split()
-                    if not words:
-                        continue
-                    command = None
-                    msg = None
-                    if words[0].startswith("/"):
-                        command = words[0]
-                        msg = " ".join(words[1:]) if len(words) > 1 else None
-                    elif words[-1].startswith("/"):
-                        command = words[-1]
-                        msg = " ".join(words[:-1]) if len(words) > 1 else None
-                    else:
-                        msg = user_input
-
-                    # Track user messages for /s command
-                    if not command:
-                        if msg:
-                            self.last_user_message = msg
+                    if user_input.startswith("/"):
+                        # Pass bot instance to _handle_command
+                        bot = self.context.bot_instance if self.context.bot_instance else None
+                        if bot:
+                            self._handle_command(bot, user_input)
                         else:
-                            self.last_user_message = user_input
-                    elif msg and command != "/s":
-                        self.last_user_message = msg
-                    if command:
-                        if command not in self.commands:
+                            # Handle commands that don't require a bot (like /new, /help)
+                            # Create a temporary bot for command handling
+                            self._initialize_new_bot()
+                            if self.context.bot_instance:
+                                self._handle_command(self.context.bot_instance, user_input)
+                    else:
+                        if self.context.bot_instance:
+                            self._handle_chat(self.context.bot_instance, user_input)
+                        else:
                             pretty(
-                                "Unrecognized command. Try /help.",
+                                "No bot instance. Use /new to create one.",
                                 "system",
                                 self.context.config.width,
                                 self.context.config.indent,
                                 COLOR_SYSTEM,
                             )
-                            continue
-                        # Early exit for /s command - never send prompts
-                        if command == "/s":
-                            self._handle_command(self.context.bot_instance, user_input)
-                            continue
-                        if msg:
-                            if command in [
-                                "/help",
-                                "/verbose",
-                                "/quiet",
-                                "/config",
-                                "/save",
-                                "/load",
-                                "/up",
-                                "/down",
-                                "/left",
-                                "/right",
-                                "/root",
-                                "/label",
-                                "/leaf",
-                                "/combine_leaves",
-                            ]:
-                                self._handle_command(self.context.bot_instance, user_input)
-                            if command in ["/up", "/down", "/left", "/right", "/root", "/label", "/leaf"]:
-                                self._handle_chat(self.context.bot_instance, msg)
-                                self._handle_command(self.context.bot_instance, user_input)
-                            else:
-                                self._handle_chat(self.context.bot_instance, msg)
-                                self._handle_command(self.context.bot_instance, user_input)
-                        else:
-                            self._handle_command(self.context.bot_instance, user_input)
-                    else:
-                        self._handle_chat(self.context.bot_instance, user_input)
                 except KeyboardInterrupt:
-                    print("\nUse /exit to quit")
+                    print("\nUse /exit to quit.")
+                    continue
                 except EOFError:
                     break
-                except Exception as e:
-                    print(f"Error: {str(e)}")
-                    if self.context.conversation_backup:
-                        self.context.bot_instance.conversation = self.context.conversation_backup
-                        print("Restored conversation from backup")
         finally:
             restore_terminal(self.context.old_terminal_settings)
-            print("Goodbye!")
+            print("\nGoodbye!")
 
     def _handle_load_prompt(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Handle /p command to load prompts."""
@@ -1889,8 +1814,6 @@ class CLI:
                 COLOR_SYSTEM,
             )
 
-    def _handle_chat(self, bot: Bot, user_input: str):
-        """Handle chat input."""
     def _handle_chat(self, bot: Bot, user_input: str):
         """Handle chat input."""
         if not user_input:

@@ -31,8 +31,8 @@ class TestQuietModeDuplicate(unittest.TestCase):
         def mock_chain_with_callback(bot, prompts, callback=None):
             # Simulate the RealTimeDisplayCallbacks behavior
             # The bot response is displayed via on_api_call_complete, not the callback
-            if hasattr(bot, 'callbacks') and bot.callbacks:
-                bot.callbacks.on_api_call_complete(metadata={'bot_response': test_response})
+            if hasattr(bot, "callbacks") and bot.callbacks:
+                bot.callbacks.on_api_call_complete(metadata={"bot_response": test_response})
 
             responses = [test_response]
             nodes = [self.mock_bot.conversation]
@@ -64,8 +64,8 @@ class TestQuietModeDuplicate(unittest.TestCase):
 
         def mock_chain_with_callback(bot, prompts, callback=None):
             # Simulate the RealTimeDisplayCallbacks behavior
-            if hasattr(bot, 'callbacks') and bot.callbacks:
-                bot.callbacks.on_api_call_complete(metadata={'bot_response': test_response})
+            if hasattr(bot, "callbacks") and bot.callbacks:
+                bot.callbacks.on_api_call_complete(metadata={"bot_response": test_response})
 
             responses = [test_response]
             nodes = [self.mock_bot.conversation]
@@ -97,8 +97,8 @@ class TestQuietModeDuplicate(unittest.TestCase):
 
         def mock_chain_with_callback(bot, prompts, callback=None):
             # Simulate the RealTimeDisplayCallbacks behavior
-            if hasattr(bot, 'callbacks') and bot.callbacks:
-                bot.callbacks.on_api_call_complete(metadata={'bot_response': test_response})
+            if hasattr(bot, "callbacks") and bot.callbacks:
+                bot.callbacks.on_api_call_complete(metadata={"bot_response": test_response})
 
             responses = [test_response]
             nodes = [self.mock_bot.conversation]
@@ -136,11 +136,11 @@ class TestQuietModeDuplicate(unittest.TestCase):
 
         def mock_chain_with_callback(bot, prompts, callback=None):
             # Simulate the RealTimeDisplayCallbacks behavior
-            if hasattr(bot, 'callbacks') and bot.callbacks:
-                bot.callbacks.on_api_call_complete(metadata={'bot_response': test_response})
+            if hasattr(bot, "callbacks") and bot.callbacks:
+                bot.callbacks.on_api_call_complete(metadata={"bot_response": test_response})
                 # Simulate tool execution
-                bot.callbacks.on_tool_start('test_tool', metadata={'tool_args': {'arg1': 'value1'}})
-                bot.callbacks.on_tool_complete('test_tool', 'test_result')
+                bot.callbacks.on_tool_start("test_tool", metadata={"tool_args": {"arg1": "value1"}})
+                bot.callbacks.on_tool_complete("test_tool", "test_result")
 
             responses = [test_response]
             nodes = [self.mock_bot.conversation]

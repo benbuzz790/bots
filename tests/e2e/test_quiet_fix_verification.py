@@ -27,8 +27,8 @@ class TestQuietModeFix(unittest.TestCase):
 
         def mock_chain_with_callback(bot, prompts, callback=None):
             # Simulate the RealTimeDisplayCallbacks behavior
-            if hasattr(bot, 'callbacks') and bot.callbacks:
-                bot.callbacks.on_api_call_complete(metadata={'bot_response': test_response})
+            if hasattr(bot, "callbacks") and bot.callbacks:
+                bot.callbacks.on_api_call_complete(metadata={"bot_response": test_response})
 
             responses = [test_response]
             nodes = [self.mock_bot.conversation]
