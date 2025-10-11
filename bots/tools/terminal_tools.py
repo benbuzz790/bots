@@ -535,15 +535,12 @@ class PowerShellManager:
         """
         try:
             if not hasattr(self._thread_local, "session"):
-                print(f"Session not found for {self.bot_id}, starting new session")
                 self._start_new_session()
             elif not self._is_session_valid():
-                print(f"Invalid session detected for {self.bot_id}, starting new session")
                 self.cleanup()
                 self._start_new_session()
             return self._thread_local.session
         except Exception as e:
-            print(f"Error accessing session: {str(e)}. Starting new session.")
             self._start_new_session()
             return self._thread_local.session
 

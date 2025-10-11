@@ -4,10 +4,9 @@ Custom metric exporters for the bots framework.
 Provides simplified, human-readable metric output for CLI usage.
 """
 
-from typing import Optional
-
 try:
     from opentelemetry.sdk.metrics.export import MetricExporter, MetricExportResult
+
     METRICS_AVAILABLE = True
 except ImportError:
     METRICS_AVAILABLE = False
@@ -78,28 +77,27 @@ class SimplifiedConsoleMetricExporter(MetricExporter):
                             for point in metric.data.data_points:
                                 api_duration += point.sum
 
-            # Print simplified output
+            # Print simplified output - terminal-native, minimal design
             if tokens_input > 0 or tokens_output > 0 or total_cost > 0:
-                print("\n" + "="*60)
-                print("📊 API Metrics Summary")
-                print("="*60)
+                parts = []
 
                 if tokens_input > 0 or tokens_output > 0:
                     total_tokens = tokens_input + tokens_output
-                    print(f"🔢 Tokens:        {total_tokens:,} ({tokens_input:,} in, {tokens_output:,} out)", end="")
+                    token_str = f"{total_tokens:,} tokens"
                     if tokens_cached > 0:
-                        print(f", {tokens_cached:,} cached", end="")
-                    print()
+                        token_str += f" ({tokens_cached:,} cached)"
+                    parts.append(token_str)
 
                 if total_cost > 0:
-                    print(f"💰 Cost:          ${total_cost:.4f}")
+                    parts.append(f"${total_cost:.4f}")
 
                 if api_duration > 0:
-                    print(f"⏱️  Response Time: {api_duration:.2f}s")
+                    parts.append(f"{api_duration:.2f}s")
 
-                print("="*60 + "\n")
+                if parts:
+                    print(" | ".join(parts))
 
-        except Exception as e:
+        except Exception:
             # Silently fail if there's an error parsing metrics
             pass
 

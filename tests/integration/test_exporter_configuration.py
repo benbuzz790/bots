@@ -153,7 +153,7 @@ class TestExporterConfiguration(unittest.TestCase):
         config = load_config_from_env()
 
         # Empty strings should use defaults
-        self.assertEqual(config.exporter_type, "console")
+        self.assertEqual(config.exporter_type, "none")  # Changed from "console" to "none"
         self.assertEqual(config.service_name, "bots")
 
     def test_whitespace_environment_variables(self):
@@ -164,7 +164,7 @@ class TestExporterConfiguration(unittest.TestCase):
         config = load_config_from_env()
 
         # Whitespace should be stripped and defaults used
-        self.assertEqual(config.exporter_type, "console")
+        self.assertEqual(config.exporter_type, "none")  # Changed from "console" to "none"
         self.assertEqual(config.service_name, "bots")
 
     def test_console_exporter_setup(self):

@@ -51,6 +51,7 @@ except ImportError:
 # Try to import our custom exporter
 try:
     from bots.observability.custom_exporters import SimplifiedConsoleMetricExporter
+
     CUSTOM_EXPORTER_AVAILABLE = True
 except ImportError:
     CUSTOM_EXPORTER_AVAILABLE = False
@@ -63,80 +64,7 @@ _init_lock = threading.Lock()  # Lock for thread-safe initialization
 _custom_exporter: Optional[object] = None  # Store reference to custom exporter
 
 # Track last recorded metrics for CLI display
-_last_recorded_metrics = {
-    'input_tokens': 0,
-    'output_tokens': 0,
-    'cached_tokens': 0,
-    'cost': 0.0,
-    'duration': 0.0
-}
-
-# Metric instruments (initialized after setup)
-_response_time_histogram = None
-_api_call_duration_histogram = None
-_tool_execution_duration_histogram = None
-_message_building_duration_histogram = None
-_api_calls_counter = None
-_tool_calls_counter = None
-_tokens_used_counter = None
-_cost_histogram = None
-_cost_counter = None
-_errors_counter = None
-_tool_failures_counter = None
-"""
-Metrics collection for the bots framework.
-
-Provides OpenTelemetry metrics for:
-- Performance tracking (response times, durations)
-- Usage tracking (API calls, tool calls, tokens)
-- Cost tracking (USD per operation)
-- Error tracking (failures by type)
-
-Example:
-    ```python
-    from bots.observability import metrics
-
-    # Record API call
-    metrics.record_api_call(
-        duration=2.5,
-        provider="anthropic",
-        model="claude-3-5-sonnet-latest",
-        status="success"
-    )
-
-    # Record cost
-    metrics.record_cost(
-        cost=0.015,
-        provider="anthropic",
-        model="claude-3-5-sonnet-latest"
-    )
-    ```
-"""
-
-import threading
-from typing import Optional
-
-from bots.observability.config import load_config_from_env
-
-# Try to import OpenTelemetry with graceful degradation
-try:
-    from opentelemetry import metrics
-    from opentelemetry.sdk.metrics import MeterProvider
-    from opentelemetry.sdk.metrics.export import (
-        ConsoleMetricExporter,
-        PeriodicExportingMetricReader,
-    )
-    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-
-    METRICS_AVAILABLE = True
-except ImportError:
-    METRICS_AVAILABLE = False
-    metrics = None
-
-# Global state
-_meter_provider: Optional[MeterProvider] = None
-_initialized: bool = False
-_init_lock = threading.Lock()  # Lock for thread-safe initialization
+_last_recorded_metrics = {"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0, "cost": 0.0, "duration": 0.0}
 
 # Metric instruments (initialized after setup)
 _response_time_histogram = None
@@ -185,6 +113,7 @@ def reset_metrics():
     global _tool_execution_duration_histogram, _message_building_duration_histogram
     global _api_calls_counter, _tool_calls_counter, _tokens_used_counter
     global _cost_histogram, _cost_counter, _errors_counter, _tool_failures_counter
+    global _last_recorded_metrics
 
     # Shutdown existing meter provider if it exists
     if _meter_provider is not None:
@@ -208,6 +137,13 @@ def reset_metrics():
     _cost_counter = None
     _errors_counter = None
     _tool_failures_counter = None
+    _last_recorded_metrics = {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cached_tokens": 0,
+        "cost": 0.0,
+        "duration": 0.0,
+    }
 
 
 def setup_metrics(config=None, reader=None, verbose=False):
@@ -274,8 +210,15 @@ def setup_metrics(config=None, reader=None, verbose=False):
                     exporter = ConsoleMetricExporter()
                 reader = PeriodicExportingMetricReader(exporter, export_interval_millis=60000)
         elif config.metrics_exporter_type == "none":
-            # No exporter - metrics enabled but not exported
-            reader = None
+            # When verbose=True, use simplified console exporter even with "none" config
+            # This allows CLI to show metrics on demand without changing env vars
+            if verbose and CUSTOM_EXPORTER_AVAILABLE:
+                _custom_exporter = SimplifiedConsoleMetricExporter(verbose=True)
+                exporter = _custom_exporter
+                reader = PeriodicExportingMetricReader(exporter, export_interval_millis=60000)
+            else:
+                # No exporter - metrics enabled but not exported
+                reader = None
 
     # Create meter provider
     if reader:
@@ -359,6 +302,8 @@ def setup_metrics(config=None, reader=None, verbose=False):
     )
 
     _initialized = True
+
+
 def set_metrics_verbose(verbose: bool):
     """Set whether metrics should be displayed in verbose mode.
 
@@ -370,7 +315,7 @@ def set_metrics_verbose(verbose: bool):
     """
     global _custom_exporter
 
-    if _custom_exporter is not None and hasattr(_custom_exporter, 'set_verbose'):
+    if _custom_exporter is not None and hasattr(_custom_exporter, "set_verbose"):
         _custom_exporter.set_verbose(verbose)
 
 
@@ -432,7 +377,7 @@ def record_api_call(duration: float, provider: str, model: str, status: str = "s
     global _last_recorded_metrics
 
     # Update last recorded metrics for CLI display
-    _last_recorded_metrics['duration'] = duration
+    _last_recorded_metrics["duration"] = duration
 
     if not _initialized:
         return
@@ -527,9 +472,9 @@ def record_tokens(
     global _last_recorded_metrics
 
     # Update last recorded metrics for CLI display
-    _last_recorded_metrics['input_tokens'] = input_tokens
-    _last_recorded_metrics['output_tokens'] = output_tokens
-    _last_recorded_metrics['cached_tokens'] = cached_tokens
+    _last_recorded_metrics["input_tokens"] = input_tokens
+    _last_recorded_metrics["output_tokens"] = output_tokens
+    _last_recorded_metrics["cached_tokens"] = cached_tokens
 
     if not _initialized or _tokens_used_counter is None:
         return
@@ -575,7 +520,7 @@ def record_cost(cost: float, provider: str, model: str):
     global _last_recorded_metrics
 
     # Update last recorded metrics for CLI display
-    _last_recorded_metrics['cost'] = cost
+    _last_recorded_metrics["cost"] = cost
 
     if not _initialized:
         return
@@ -651,13 +596,7 @@ def get_and_clear_last_metrics():
     metrics_copy = _last_recorded_metrics.copy()
 
     # Clear for next call
-    _last_recorded_metrics = {
-        'input_tokens': 0,
-        'output_tokens': 0,
-        'cached_tokens': 0,
-        'cost': 0.0,
-        'duration': 0.0
-    }
+    _last_recorded_metrics = {"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0, "cost": 0.0, "duration": 0.0}
 
     return metrics_copy
 

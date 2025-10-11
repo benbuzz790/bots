@@ -53,7 +53,7 @@ class TestLoadConfigFromEnv:
         config = load_config_from_env()
 
         assert config.tracing_enabled is True
-        assert config.exporter_type == "console"
+        assert config.exporter_type == "none"  # Changed from "console" to "none"
         assert config.service_name == "bots"
         assert config.otlp_endpoint is None
 
@@ -192,7 +192,7 @@ class TestLoadConfigFromEnv:
         config = load_config_from_env()
 
         # Empty strings should result in defaults
-        assert config.exporter_type == "console"
+        assert config.exporter_type == "none"  # Changed from "console" to "none"
         assert config.service_name == "bots"
 
 
