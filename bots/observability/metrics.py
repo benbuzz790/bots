@@ -48,6 +48,82 @@ except ImportError:
     METRICS_AVAILABLE = False
     metrics = None
 
+# Try to import our custom exporter
+try:
+    from bots.observability.custom_exporters import SimplifiedConsoleMetricExporter
+    CUSTOM_EXPORTER_AVAILABLE = True
+except ImportError:
+    CUSTOM_EXPORTER_AVAILABLE = False
+    SimplifiedConsoleMetricExporter = None
+
+# Global state
+_meter_provider: Optional[MeterProvider] = None
+_initialized: bool = False
+_init_lock = threading.Lock()  # Lock for thread-safe initialization
+_custom_exporter: Optional[object] = None  # Store reference to custom exporter
+
+# Metric instruments (initialized after setup)
+_response_time_histogram = None
+_api_call_duration_histogram = None
+_tool_execution_duration_histogram = None
+_message_building_duration_histogram = None
+_api_calls_counter = None
+_tool_calls_counter = None
+_tokens_used_counter = None
+_cost_histogram = None
+_cost_counter = None
+_errors_counter = None
+_tool_failures_counter = None
+"""
+Metrics collection for the bots framework.
+
+Provides OpenTelemetry metrics for:
+- Performance tracking (response times, durations)
+- Usage tracking (API calls, tool calls, tokens)
+- Cost tracking (USD per operation)
+- Error tracking (failures by type)
+
+Example:
+    ```python
+    from bots.observability import metrics
+
+    # Record API call
+    metrics.record_api_call(
+        duration=2.5,
+        provider="anthropic",
+        model="claude-3-5-sonnet-latest",
+        status="success"
+    )
+
+    # Record cost
+    metrics.record_cost(
+        cost=0.015,
+        provider="anthropic",
+        model="claude-3-5-sonnet-latest"
+    )
+    ```
+"""
+
+import threading
+from typing import Optional
+
+from bots.observability.config import load_config_from_env
+
+# Try to import OpenTelemetry with graceful degradation
+try:
+    from opentelemetry import metrics
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import (
+        ConsoleMetricExporter,
+        PeriodicExportingMetricReader,
+    )
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+
+    METRICS_AVAILABLE = True
+except ImportError:
+    METRICS_AVAILABLE = False
+    metrics = None
+
 # Global state
 _meter_provider: Optional[MeterProvider] = None
 _initialized: bool = False
@@ -95,7 +171,7 @@ def reset_metrics():
 
     Warning: This is not thread-safe and should only be used in test environments.
     """
-    global _meter_provider, _initialized
+    global _meter_provider, _initialized, _custom_exporter
     global _response_time_histogram, _api_call_duration_histogram
     global _tool_execution_duration_histogram, _message_building_duration_histogram
     global _api_calls_counter, _tool_calls_counter, _tokens_used_counter
@@ -111,6 +187,7 @@ def reset_metrics():
     # Reset all global state
     _meter_provider = None
     _initialized = False
+    _custom_exporter = None
     _response_time_histogram = None
     _api_call_duration_histogram = None
     _tool_execution_duration_histogram = None
@@ -124,7 +201,7 @@ def reset_metrics():
     _tool_failures_counter = None
 
 
-def setup_metrics(config=None, reader=None):
+def setup_metrics(config=None, reader=None, verbose=False):
     """Initialize OpenTelemetry metrics.
 
     This function should be called once at application startup.
@@ -133,8 +210,9 @@ def setup_metrics(config=None, reader=None):
     Args:
         config: Optional ObservabilityConfig. If None, loads from environment.
         reader: Optional custom MetricReader. If provided, overrides config.
+        verbose: If True, use simplified console output. If False, suppress console output.
     """
-    global _meter_provider, _initialized
+    global _meter_provider, _initialized, _custom_exporter
     global _response_time_histogram, _api_call_duration_histogram
     global _tool_execution_duration_histogram, _message_building_duration_histogram
     global _api_calls_counter, _tool_calls_counter, _tokens_used_counter
@@ -162,7 +240,12 @@ def setup_metrics(config=None, reader=None):
     # Create metric reader based on exporter type
     if reader is None:
         if config.metrics_exporter_type == "console":
-            exporter = ConsoleMetricExporter()
+            # Use our custom simplified exporter instead of the default ConsoleMetricExporter
+            if CUSTOM_EXPORTER_AVAILABLE:
+                _custom_exporter = SimplifiedConsoleMetricExporter(verbose=verbose)
+                exporter = _custom_exporter
+            else:
+                exporter = ConsoleMetricExporter()
             reader = PeriodicExportingMetricReader(exporter, export_interval_millis=60000)
         elif config.metrics_exporter_type == "otlp":
             # OTLP metric exporter (requires opentelemetry-exporter-otlp)
@@ -174,8 +257,12 @@ def setup_metrics(config=None, reader=None):
                 exporter = OTLPMetricExporter(endpoint=config.otlp_endpoint)
                 reader = PeriodicExportingMetricReader(exporter, export_interval_millis=60000)
             except ImportError:
-                # Fall back to console if OTLP not installed
-                exporter = ConsoleMetricExporter()
+                # Fall back to custom exporter if OTLP not installed
+                if CUSTOM_EXPORTER_AVAILABLE:
+                    _custom_exporter = SimplifiedConsoleMetricExporter(verbose=verbose)
+                    exporter = _custom_exporter
+                else:
+                    exporter = ConsoleMetricExporter()
                 reader = PeriodicExportingMetricReader(exporter, export_interval_millis=60000)
         elif config.metrics_exporter_type == "none":
             # No exporter - metrics enabled but not exported
@@ -263,6 +350,19 @@ def setup_metrics(config=None, reader=None):
     )
 
     _initialized = True
+def set_metrics_verbose(verbose: bool):
+    """Set whether metrics should be displayed in verbose mode.
+
+    This allows dynamic control of metric output visibility, useful for CLI
+    applications where verbose mode can be toggled.
+
+    Args:
+        verbose: If True, display simplified metrics. If False, suppress output.
+    """
+    global _custom_exporter
+
+    if _custom_exporter is not None and hasattr(_custom_exporter, 'set_verbose'):
+        _custom_exporter.set_verbose(verbose)
 
 
 def get_meter(name: str):

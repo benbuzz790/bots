@@ -967,12 +967,28 @@ class SystemHandler:
             return "Tool output is already enabled (verbose mode is on)"
         context.config.verbose = True
         context.config.save_config()
+
+        # Also enable metrics verbose output
+        try:
+            from bots.observability import metrics
+            metrics.set_metrics_verbose(True)
+        except Exception:
+            pass
+
         return "Tool output enabled - will now show detailed tool requests and results"
 
     def quiet(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Disable verbose mode."""
         context.config.verbose = False
         context.config.save_config()
+
+        # Also disable metrics verbose output
+        try:
+            from bots.observability import metrics
+            metrics.set_metrics_verbose(False)
+        except Exception:
+            pass
+
         return "Tool output disabled"
 
     def config(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -992,7 +1008,14 @@ class SystemHandler:
             value = args[2]
             try:
                 if setting == "verbose":
-                    context.config.verbose = value.lower() in ("true", "1", "yes", "on")
+                    new_verbose = value.lower() in ("true", "1", "yes", "on")
+                    context.config.verbose = new_verbose
+                    # Sync metrics verbose setting
+                    try:
+                        from bots.observability import metrics
+                        metrics.set_metrics_verbose(new_verbose)
+                    except Exception:
+                        pass
                 elif setting == "width":
                     context.config.width = int(value)
                 elif setting == "indent":
@@ -1478,6 +1501,13 @@ class CLI:
             "/p": self._handle_load_prompt,
             "/s": self._handle_save_prompt,
         }
+
+        # Initialize metrics with verbose setting from config
+        try:
+            from bots.observability import metrics
+            metrics.setup_metrics(verbose=self.context.config.verbose)
+        except Exception:
+            pass
 
     def run(self):
         """Main CLI loop."""
