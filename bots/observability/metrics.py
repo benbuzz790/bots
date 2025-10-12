@@ -113,6 +113,7 @@ def reset_metrics():
     global _tool_execution_duration_histogram, _message_building_duration_histogram
     global _api_calls_counter, _tool_calls_counter, _tokens_used_counter
     global _cost_histogram, _cost_counter, _errors_counter, _tool_failures_counter
+    global _last_recorded_metrics
 
     # Shutdown existing meter provider if it exists
     if _meter_provider is not None:
@@ -312,6 +313,7 @@ def set_metrics_verbose(verbose: bool):
     Args:
         verbose: If True, display simplified metrics. If False, suppress output.
     """
+    global _custom_exporter
 
     if _custom_exporter is not None and hasattr(_custom_exporter, "set_verbose"):
         _custom_exporter.set_verbose(verbose)
@@ -372,6 +374,7 @@ def record_api_call(duration: float, provider: str, model: str, status: str = "s
         model: Model name
         status: Call status ("success", "error", "timeout")
     """
+    global _last_recorded_metrics
 
     # Update last recorded metrics for CLI display
     _last_recorded_metrics["duration"] = duration
@@ -458,6 +461,7 @@ def record_tokens(
     cached_tokens: int = 0,
 ):
     """Record token usage.
+    global _last_recorded_metrics
 
     Args:
         input_tokens: Number of input tokens
@@ -513,6 +517,7 @@ def record_cost(cost: float, provider: str, model: str):
         provider: Provider name
         model: Model name
     """
+    global _last_recorded_metrics
 
     # Update last recorded metrics for CLI display
     _last_recorded_metrics["cost"] = cost
@@ -585,6 +590,7 @@ def get_and_clear_last_metrics():
     Returns:
         dict: Dictionary with keys: input_tokens, output_tokens, cached_tokens, cost, duration
     """
+    global _last_recorded_metrics
 
     # Make a copy
     metrics_copy = _last_recorded_metrics.copy()
