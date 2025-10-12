@@ -115,7 +115,6 @@ def reset_metrics():
     global _tool_execution_duration_histogram, _message_building_duration_histogram
     global _api_calls_counter, _tool_calls_counter, _tokens_used_counter
     global _cost_histogram, _cost_counter, _errors_counter, _tool_failures_counter
-    global _last_recorded_metrics
 
     # Shutdown existing meter provider if it exists
     if _meter_provider is not None:
@@ -459,8 +458,6 @@ def record_tokens(
         model: Model name
         cached_tokens: Number of cached tokens (optional, default 0)
     """
-    global _last_recorded_metrics
-
     # Update last recorded metrics for CLI display (thread-safe)
     with _metrics_lock:
         _last_recorded_metrics["input_tokens"] = input_tokens
@@ -508,8 +505,6 @@ def record_cost(cost: float, provider: str, model: str):
         provider: Provider name
         model: Model name
     """
-    global _last_recorded_metrics
-
     # Update last recorded metrics for CLI display (thread-safe)
     with _metrics_lock:
         _last_recorded_metrics["cost"] = cost
