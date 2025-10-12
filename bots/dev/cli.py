@@ -1132,10 +1132,7 @@ class SystemHandler:
                     last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
 
                     # Trigger on high last message tokens AND cooldown expired (at 0)
-                    if (
-                        last_input_tokens > context.remove_context_threshold
-                        and context.context_reduction_cooldown <= 0
-                    ):
+                    if last_input_tokens > context.remove_context_threshold and context.context_reduction_cooldown <= 0:
                         prompt = (
                             "please selectively trim your context a bit using "
                             "list_context and remove_context, it's getting quite long."

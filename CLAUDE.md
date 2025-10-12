@@ -100,6 +100,10 @@ python -m bots.dev.pr_comment_parser <REPO> <PR_NUMBER>
 ```powershell
 python -m bots.dev.pr_comment_parser owner/repo 123
 ```
+**Note for PowerShell:** Use quotes around the repo parameter to prevent path interpretation:
+```powershell
+python -m bots.dev.pr_comment_parser "owner/repo" 123
+```
 **Save to file:**
 ```powershell
 python -m bots.dev.pr_comment_parser owner/repo 123 output.txt
