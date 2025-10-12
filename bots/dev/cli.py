@@ -632,6 +632,7 @@ Respond with just the name, no explanation."""
         """Get all prompt names."""
         return list(self.prompts_data["prompts"].keys())
 
+
 class ConversationHandler:
     """Handler for conversation navigation commands."""
 
