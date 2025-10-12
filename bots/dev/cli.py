@@ -11,7 +11,8 @@ from typing import Any, Callable, Dict, List, Optional
 
 # Disable console tracing output for CLI (too verbose)
 # Must be set BEFORE importing any bots modules that might initialize tracing
-os.environ["BOTS_OTEL_EXPORTER"] = "none"
+if "BOTS_OTEL_EXPORTER" not in os.environ:
+    os.environ["BOTS_OTEL_EXPORTER"] = "none"
 
 
 # Try to import readline, with fallback for Windows
