@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import inspect
 import json
 import os
@@ -533,6 +533,16 @@ class CLIContext:
         self.bot_instance = None
         self.cached_leaves: List[ConversationNode] = []
         self.callbacks = CLICallbacks(self)
+        # Track session start time for cumulative metrics
+        import time
+
+        self.session_start_time = time.time()
+        # Track context reduction cooldown (counts down from 3 after each trigger)
+        # Starts at 0 so first time tokens exceed 60k, it triggers immediately
+        self.remove_context_threshold = 40000
+        self.context_reduction_cooldown = 0
+        # Track last message metrics (captured once per message, used by both display and auto)
+        self.last_message_metrics = None
 
 
 class PromptManager:
@@ -1112,13 +1122,48 @@ class SystemHandler:
                     restore_terminal(old_settings)
                     return "Bot finished autonomous execution"
 
-                # Display the automatic "ok" message
-                pretty("ok", "You", context.config.width, context.config.indent, COLOR_USER)
+                # Check last message input tokens (not total)
+                # Send context reduction message with cooldown (every 3 messages after trigger)
+                try:
+                    from bots.observability import metrics
+
+                    # Capture metrics once and store in context for both check and display
+                    context.last_message_metrics = metrics.get_and_clear_last_metrics()
+                    last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
+
+                    # Trigger on high last message tokens AND cooldown expired (at 0)
+                    if (
+                        last_input_tokens > context.remove_context_threshold
+                        and context.context_reduction_cooldown <= 0
+                    ):
+                        prompt = (
+                            "please selectively trim your context a bit using "
+                            "list_context and remove_context, it's getting quite long."
+                        )
+                        context.context_reduction_cooldown = 3  # Set cooldown for next 3 messages
+                    else:
+                        prompt = "ok"
+                        # Count down cooldown if active
+                        if context.context_reduction_cooldown > 0:
+                            context.context_reduction_cooldown -= 1
+                except Exception:
+                    # If metrics check fails, just use "ok"
+                    prompt = "ok"
+                    # Count down cooldown if active
+                    if context.context_reduction_cooldown > 0:
+                        context.context_reduction_cooldown -= 1
+
+                # Display the automatic prompt message
+                pretty(prompt, "You", context.config.width, context.config.indent, COLOR_USER)
 
                 callback = context.callbacks.get_standard_callback()
-                responses, nodes = fp.chain(bot, ["ok"], callback=callback)
-                # After sending ok, check again if tools were used
-                if responses and (not bot.tool_handler.requests):
+                response, node = fp.single_prompt(bot, prompt, callback=callback)
+
+                # Clear cached metrics after use
+                context.last_message_metrics = None
+
+                # After sending prompt, check again if tools were used
+                if not bot.tool_handler.requests:
                     restore_terminal(old_settings)
                     return "Bot finished autonomous execution"
         except Exception as e:
@@ -1489,8 +1534,11 @@ def display_metrics(context: CLIContext, bot: Bot):
     try:
         from bots.observability import metrics
 
-        # Get the last recorded metrics
-        last_metrics = metrics.get_and_clear_last_metrics()
+        # Use cached metrics from context if available, otherwise get fresh ones
+        if context.last_message_metrics is not None:
+            last_metrics = context.last_message_metrics
+        else:
+            last_metrics = metrics.get_and_clear_last_metrics()
 
         # Check if there are any metrics to display
         if last_metrics["input_tokens"] == 0 and last_metrics["output_tokens"] == 0:
@@ -1503,6 +1551,21 @@ def display_metrics(context: CLIContext, bot: Bot):
             metrics_str += f", {last_metrics['cached_tokens']:,} cached"
         metrics_str += f"\nCost: ${last_metrics['cost']:.4f}"
         metrics_str += f"\nTime: {last_metrics['duration']:.2f}s"
+
+        # Add session totals
+        try:
+            session_tokens = metrics.get_total_tokens(context.session_start_time)
+            session_cost = metrics.get_total_cost(context.session_start_time)
+
+            metrics_str += "\n\nSession totals:"
+            metrics_str += f"\n  Tokens: {session_tokens['input']:,} in, {session_tokens['output']:,} out"
+            if session_tokens["cached"] > 0:
+                metrics_str += f", {session_tokens['cached']:,} cached"
+            metrics_str += f"\n  Total: {session_tokens['total']:,} tokens"
+            metrics_str += f"\n  Cost: ${session_cost:.4f}"
+        except Exception:
+            # If session totals fail, just show the per-call metrics
+            pass
 
         pretty(metrics_str, "metrics", context.config.width, context.config.indent, COLOR_METRICS)
     except Exception:
@@ -1767,11 +1830,23 @@ class CLI:
         from bots.tools.code_tools import view, view_dir
         from bots.tools.python_edit import python_edit, python_view
         from bots.tools.python_execution_tool import execute_python
-        from bots.tools.self_tools import branch_self
+        from bots.tools.self_tools import branch_self, list_context, remove_context
         from bots.tools.terminal_tools import execute_powershell
         from bots.tools.web_tool import web_search
 
-        bot.add_tools(view, view_dir, execute_powershell, execute_python, branch_self, web_search, python_edit, python_view)
+        bot.add_tools(
+            view,
+            view_dir,
+            python_view,
+            execute_powershell,
+            execute_python,
+            branch_self,
+            remove_context,
+            list_context,
+            web_search,
+            python_edit,
+        )
+
         sys_msg = textwrap.dedent(
             """You're a coding agent. When greeting users, always start with "Hello! I'm here to help you".
             Please follow these rules:
@@ -1847,6 +1922,14 @@ class CLI:
             self.context.conversation_backup = bot.conversation
             callback = self.context.callbacks.get_standard_callback()
             responses, nodes = fp.chain(bot, [user_input], callback=callback)
+
+            # Capture metrics after the response for potential future use
+            try:
+                from bots.observability import metrics
+
+                self.context.last_message_metrics = metrics.get_and_clear_last_metrics()
+            except Exception:
+                pass
 
             # Note: Metrics are now displayed inside the verbose callback, not here
             # Quiet mode shows no metrics at all

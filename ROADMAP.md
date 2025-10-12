@@ -5,26 +5,6 @@
 ## Overview
 This document tracks development ideas, feature requests, and architectural improvements for the bots project. Each item includes context, rationale, and implementation considerations.
 
-
----
-
-
-## Recent Development Activity (Since v3.0.0 - Oct 2025)
-
-### PR #111 - PR Comment Parser Utility (04-Oct-2025)
-**Type**: Development Tooling
-
-**Description**: Added utility to extract CodeRabbit AI prompts from GitHub PR comments
-- Tool: `bots/dev/pr_comment_parser.py`
-- Extracts actionable AI prompts from CodeRabbit review comments
-- Supports both regular and inline review comments
-- Filters outdated comments
-- CLI usage: `python -m bots.dev.pr_comment_parser owner/repo PR_NUMBER [output_file]`
-
-**Impact**: Improves developer workflow when addressing CodeRabbit feedback
-
-**Roadmap Status**: Not a planned roadmap item - ancillary development tooling
-
 ---
 
 ## Development Philosophy & Strategic Direction
@@ -377,6 +357,8 @@ The bots project has unique competitive advantages that position it for commerci
 
 ## 11. Remove Print Statements from anthropic_bots.py
 
+**Status**: [DONE] COMPLETED (PR #114 - 06-Oct-2025)
+
 **Goal**: Remove all print statements and replace with logging or callbacks
 
 **Locations**: Mailbox send, tool execution, API calls, state transitions
@@ -387,7 +369,6 @@ The bots project has unique competitive advantages that position it for commerci
 
 **Priority**: Medium
 
-**Status**: [DONE] COMPLETED (PR #114 - 06-Oct-2025)
 
 ---
 
@@ -515,6 +496,8 @@ mcp_server.start()
 ---
 
 ## 14. OpenTelemetry Integration for Observability
+
+**Status**: Phases 1-3 Complete. Phase 4 not started.
 
 **Current State**: 
 - Print statements scattered throughout code (item 11)
@@ -944,6 +927,7 @@ Instead of manually implementing each provider, use LiteLLM to get instant suppo
 **Priority**: Medium
 
 ### 17. Tool Requirements Decorator
+**Status**: Partially complete - bots.dev.decorators 'toolify'
 **Goal**: Decorator that applies tool requirements to functions
 **Priority**: Low-Medium
 
@@ -2261,10 +2245,9 @@ Conversation Tree:
    - Separated quicksave from named saves
    - All 4 proposed changes delivered with full test coverage
 
-4. [!] **OpenTelemetry Phases 3-4** (item 14) - PARTIAL
-4. [DONE] **OpenTelemetry Integration** (item 14) - DONE (WO015, 10-Oct-2025) ✅
-   - All 4 phases complete: Tracing, Logging, Metrics, Production Observability
-   - 176 observability tests, 173 passing (98.3%)
+4. [Partial] **OpenTelemetry Integration** (item 14) - DONE (WO015, 10-Oct-2025) ✅
+   - First 3 phases complete: Tracing, Logging, Metrics
+   - Phase 4 not started.
 
 5. [DONE] **Callback System** (item 12) - DONE (WO015, 10-Oct-2025) ✅
    - Complete callback infrastructure (BotCallbacks, OpenTelemetryCallbacks, ProgressCallbacks)
