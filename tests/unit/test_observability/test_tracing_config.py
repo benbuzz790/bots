@@ -15,30 +15,30 @@ class TestObservabilityConfig:
 
         Verifies:
         - tracing_enabled defaults to True
-        - exporter_type defaults to "console"
+        - exporter_type defaults to "none" (to avoid verbose output)
         - service_name defaults to "bots"
         - otlp_endpoint is None by default
         """
         config = ObservabilityConfig()
 
         assert config.tracing_enabled is True
-        assert config.exporter_type == "console"
+        assert config.exporter_type == "none"
         assert config.service_name == "bots"
         assert config.otlp_endpoint is None
 
     def test_custom_config_values(self):
-        """Test creating ObservabilityConfig with custom values.
-
-        Verifies that all fields can be set to custom values.
-        """
+        """Test that ObservabilityConfig accepts custom values."""
         config = ObservabilityConfig(
-            tracing_enabled=False, exporter_type="otlp", service_name="my-service", otlp_endpoint="http://localhost:4317"
+            tracing_enabled=False,
+            exporter_type="otlp",
+            otlp_endpoint="http://localhost:4317",
+            service_name="custom-service",
         )
 
         assert config.tracing_enabled is False
         assert config.exporter_type == "otlp"
-        assert config.service_name == "my-service"
         assert config.otlp_endpoint == "http://localhost:4317"
+        assert config.service_name == "custom-service"
 
 
 class TestLoadConfigFromEnv:
@@ -53,7 +53,7 @@ class TestLoadConfigFromEnv:
         config = load_config_from_env()
 
         assert config.tracing_enabled is True
-        assert config.exporter_type == "console"
+        assert config.exporter_type == "none"  # Changed from "console" to "none"
         assert config.service_name == "bots"
         assert config.otlp_endpoint is None
 
@@ -192,7 +192,7 @@ class TestLoadConfigFromEnv:
         config = load_config_from_env()
 
         # Empty strings should result in defaults
-        assert config.exporter_type == "console"
+        assert config.exporter_type == "none"  # Changed from "console" to "none"
         assert config.service_name == "bots"
 
 

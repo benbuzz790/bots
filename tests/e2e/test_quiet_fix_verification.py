@@ -26,6 +26,10 @@ class TestQuietModeFix(unittest.TestCase):
         test_response = "Message should appear once in quiet mode"
 
         def mock_chain_with_callback(bot, prompts, callback=None):
+            # Simulate the RealTimeDisplayCallbacks behavior
+            if hasattr(bot, "callbacks") and bot.callbacks:
+                bot.callbacks.on_api_call_complete(metadata={"bot_response": test_response})
+
             responses = [test_response]
             nodes = [self.mock_bot.conversation]
             if callback:
@@ -36,6 +40,10 @@ class TestQuietModeFix(unittest.TestCase):
         cli = cli_module.CLI()
         cli.context = self.context
         cli.context.config.verbose = False
+
+        # Set up RealTimeDisplayCallbacks on the mock bot
+        self.mock_bot.callbacks = cli_module.RealTimeDisplayCallbacks(cli.context)
+
         with StringIO() as buf, redirect_stdout(buf):
             cli._handle_chat(self.mock_bot, "Test input")
             output = buf.getvalue()

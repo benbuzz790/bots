@@ -1,0 +1,66 @@
+=== CodeRabbit Prompt #1 ===
+In bots/dev/cli.py around lines 12 to 14, the code unconditionally sets
+os.environ['BOTS_OTEL_EXPORTER'] = 'none' which overwrites any user-provided
+value; change it to only set this default when the environment variable is not
+already present (e.g., check if 'BOTS_OTEL_EXPORTER' not in os.environ before
+assigning) so user-supplied values like 'console' are honored.
+
+=== CodeRabbit Prompt #2 ===
+In bots/dev/cli.py around lines 38 to 141 there are near‑identical duplicated
+header/import/comment blocks—duplicate imports, color constants, platform
+handling, and tracing-disable logic—which cause lint errors and maintenance
+issues; remove the repeated block(s) and keep a single canonical header: one
+group of imports (each module imported once), one platform branch (msvcrt vs
+select/termios/tty), one set of COLOR_* constants, one environment variable set
+for BOTS_OTEL_EXPORTER, and a single tracing-disable try/except; after
+consolidating, run the linter to ensure no unused/duplicated names remain and
+adjust imports ordering if necessary.
+
+=== CodeRabbit Prompt #3 ===
+In tests/test_cli/test_prompt_commands.py around lines 305 to 309, the test
+assigns the result of cli.commands['/p'](...) to a variable named result which
+is never used, triggering flake8 F841; remove the unused assignment by calling
+cli.commands['/p'](mock_bot, cli.context, ["loadable"]) without assigning it, or
+alternatively assert or otherwise use the returned value (e.g., assert result is
+...), then keep the existing assertion that cli.pending_prefill == "Loaded
+content".
+
+=== CodeRabbit Prompt #4 ===
+In tests/test_cli/test_prompt_commands.py around lines 345 to 366, the two calls
+that assign to the unused variable `load_result` should be changed to just call
+the CLI command without assignment to avoid flake8 F841; remove the `load_result
+=` from both places (leave the function calls in place) and keep the existing
+assertions that check cli.pending_prefill and the save_result assertion
+unchanged.
+
+=== CodeRabbit Prompt #5 ===
+In tests/test_cli/test_prompt_commands.py around lines 370 to 371, remove the
+unused assignment "mock_bot = MagicMock()" and the blank line after it to
+eliminate the flake8 F841 unused-variable warning; ensure no other references to
+mock_bot exist before committing.
+
+=== CodeRabbit Prompt #6 ===
+In bots/dev/cli.py around lines 635 to 730, there is a nested PromptHandler
+class defined inside PromptManager that duplicates the module-level
+PromptHandler (lines ~2012-2107) and is unused; remove the entire nested
+PromptHandler class block (all lines from the class declaration through its end)
+so only the single module-level PromptHandler remains, and run a quick search to
+confirm no remaining references rely on the nested definition.
+
+=== CodeRabbit Prompt #7 ===
+In bots/dev/cli.py around lines 1267 to 1299 there is a duplicate standalone
+auto(self, bot, context, args) function that duplicates SystemHandler.auto and
+is never used (CLI routes call self.system.auto); remove the entire standalone
+function block (lines 1267-1299) and any leftover imports or references that
+were only used by it, then run linters/tests to ensure no name collisions or
+unused-symbol warnings remain.
+
+=== CodeRabbit Prompt #8 ===
+In bots/observability/metrics.py around lines 64 and 66-67, updates to the
+shared dict _last_recorded_metrics are racy because multiple recording functions
+mutate it concurrently; fix by adding a module-level lock (e.g., import
+threading and create _metrics_lock = threading.Lock()) and wrap every mutation
+of _last_recorded_metrics in a with _metrics_lock: block inside record_api_call,
+record_tokens, record_cost (and any other writers) so updates are atomic and
+consistent.
+

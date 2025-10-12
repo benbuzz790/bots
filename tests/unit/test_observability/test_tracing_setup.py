@@ -93,10 +93,10 @@ class TestTracingSetup:
         assert provider is not None
 
     def test_setup_tracing_with_console_exporter(self, clean_otel_env, reset_tracing):
-        """Test that setup_tracing() configures console exporter by default.
+        """Test that setup_tracing() uses 'none' exporter by default.
 
-        The default configuration should use ConsoleSpanExporter for
-        easy debugging during development.
+        The default configuration now uses no exporter to avoid verbose output.
+        Console exporter can be enabled by setting BOTS_OTEL_EXPORTER=console.
         """
         from bots.observability.tracing import setup_tracing
 
@@ -106,9 +106,9 @@ class TestTracingSetup:
         # Check for TracerProvider-specific attributes (works with ProxyTracerProvider too)
         assert hasattr(provider, "_active_span_processor") or hasattr(provider, "add_span_processor")
 
-        # Verify that span processors were added (if it's a real TracerProvider)
+        # Verify that no span processors were added (default is now "none")
         if hasattr(provider, "_active_span_processor"):
-            assert len(provider._active_span_processor._span_processors) > 0
+            assert len(provider._active_span_processor._span_processors) == 0
 
     def test_setup_tracing_with_none_exporter(self, clean_otel_env, reset_tracing):
         """Test that setup_tracing() can be configured with no exporter.

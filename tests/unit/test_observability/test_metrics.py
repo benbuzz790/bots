@@ -389,9 +389,185 @@ class TestGetMeter:
         metrics._meter_provider = None
 
         # Should auto-initialize or return None
-        meter = metrics.get_meter("test_module")
+        _ = metrics.get_meter("test_module")
         # Either initialized and returned meter, or returned None
-        assert meter is None or meter is not None
+        # Meter should either be None or a valid meter object
+        # This is acceptable behavior - no assertion needed as it should not raise
+
+
+class TestCustomExporter:
+    """Test SimplifiedConsoleMetricExporter."""
+
+    def test_simplified_exporter_import(self):
+        """Test that SimplifiedConsoleMetricExporter can be imported."""
+        from bots.observability.custom_exporters import SimplifiedConsoleMetricExporter
+
+        assert SimplifiedConsoleMetricExporter is not None
+
+    def test_simplified_exporter_verbose_on(self, capsys):
+        """Test that SimplifiedConsoleMetricExporter displays output when verbose=True."""
+        from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+
+        from bots.observability.custom_exporters import SimplifiedConsoleMetricExporter
+
+        # Reset and setup with custom exporter
+        metrics.reset_metrics()
+        # Create custom exporter with verbose=True
+        exporter = SimplifiedConsoleMetricExporter(verbose=True)
+        reader = InMemoryMetricReader()
+        config = ObservabilityConfig(
+            service_name="test-service",
+            tracing_enabled=True,
+            exporter_type="none",
+        )
+        metrics.setup_metrics(config=config, reader=reader, verbose=True)
+        # Record some metrics
+        metrics.record_tokens(input_tokens=1000, output_tokens=100, provider="anthropic", model="claude-sonnet-4")
+        metrics.record_cost(0.05, "anthropic", "claude-sonnet-4")
+        metrics.record_api_call(2.5, "anthropic", "claude-sonnet-4", "success")
+        # Get metrics data and export it
+        metric_data = reader.get_metrics_data()
+        result = exporter.export(metric_data)
+        # Check that output was printed (new minimal format)
+        captured = capsys.readouterr()
+        assert "tokens" in captured.out
+        assert "$" in captured.out
+        assert "s" in captured.out
+        assert "|" in captured.out  # Pipe separator in new format
+        # Verify export was successful
+        from opentelemetry.sdk.metrics.export import MetricExportResult
+
+        assert result == MetricExportResult.SUCCESS
+
+    def test_simplified_exporter_verbose_off(self, capsys):
+        """Test that SimplifiedConsoleMetricExporter suppresses output when verbose=False."""
+        from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+
+        from bots.observability.custom_exporters import SimplifiedConsoleMetricExporter
+
+        # Reset and setup
+        metrics.reset_metrics()
+        # Create custom exporter with verbose=False
+        exporter = SimplifiedConsoleMetricExporter(verbose=False)
+        reader = InMemoryMetricReader()
+        config = ObservabilityConfig(
+            service_name="test-service",
+            tracing_enabled=True,
+            exporter_type="none",
+        )
+        metrics.setup_metrics(config=config, reader=reader, verbose=False)
+        # Record some metrics
+        metrics.record_tokens(1000, 100, "anthropic", "claude-sonnet-4")
+        metrics.record_cost(0.05, "anthropic", "claude-sonnet-4")
+        # Get metrics data and export it
+        metric_data = reader.get_metrics_data()
+        result = exporter.export(metric_data)
+        # Check that NO output was printed
+        captured = capsys.readouterr()
+        assert "API Metrics Summary" not in captured.out
+        assert "Tokens:" not in captured.out
+        # Verify export was still successful
+        from opentelemetry.sdk.metrics.export import MetricExportResult
+
+        assert result == MetricExportResult.SUCCESS
+
+    def test_simplified_exporter_toggle_verbose(self, capsys):
+        """Test toggling verbose mode on SimplifiedConsoleMetricExporter."""
+        from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+
+        from bots.observability.custom_exporters import SimplifiedConsoleMetricExporter
+
+        # Create exporter starting with verbose=False
+        exporter = SimplifiedConsoleMetricExporter(verbose=False)
+        reader = InMemoryMetricReader()
+        metrics.reset_metrics()
+        config = ObservabilityConfig(
+            service_name="test-service",
+            tracing_enabled=True,
+            exporter_type="none",
+        )
+        metrics.setup_metrics(config=config, reader=reader, verbose=False)
+        # Record metrics and export - should be silent
+        metrics.record_tokens(500, 50, "anthropic", "claude")
+        metric_data = reader.get_metrics_data()
+        exporter.export(metric_data)
+        captured = capsys.readouterr()
+        assert "tokens" not in captured.out
+        # Now toggle verbose ON
+        exporter.set_verbose(True)
+        # Record more metrics and export - should show output
+        metrics.record_tokens(500, 50, "anthropic", "claude")
+        metric_data = reader.get_metrics_data()
+        exporter.export(metric_data)
+        captured = capsys.readouterr()
+        assert "tokens" in captured.out
+
+
+class TestSetMetricsVerbose:
+    """Test set_metrics_verbose function."""
+
+    def test_set_metrics_verbose_function_exists(self):
+        """Test that set_metrics_verbose function exists."""
+        assert hasattr(metrics, "set_metrics_verbose")
+        assert callable(metrics.set_metrics_verbose)
+
+    def test_set_metrics_verbose_with_custom_exporter(self):
+        """Test set_metrics_verbose updates the custom exporter."""
+        from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+
+        from bots.observability.custom_exporters import SimplifiedConsoleMetricExporter
+
+        # Reset and setup with custom exporter
+        metrics.reset_metrics()
+        # Create custom exporter
+        custom_exporter = SimplifiedConsoleMetricExporter(verbose=False)
+        reader = InMemoryMetricReader()
+        config = ObservabilityConfig(
+            service_name="test-service",
+            tracing_enabled=True,
+            exporter_type="none",
+        )
+        # Setup with verbose=False
+        metrics.setup_metrics(config=config, reader=reader, verbose=False)
+        # Store reference to custom exporter
+        metrics._custom_exporter = custom_exporter
+        # Initially verbose is False
+        assert custom_exporter.verbose is False
+        # Call set_metrics_verbose(True)
+        metrics.set_metrics_verbose(True)
+        # Verify it was updated
+        assert custom_exporter.verbose is True
+        # Call set_metrics_verbose(False)
+        metrics.set_metrics_verbose(False)
+        # Verify it was updated
+        assert custom_exporter.verbose is False
+
+    def test_set_metrics_verbose_without_custom_exporter(self):
+        """Test set_metrics_verbose doesn't crash when no custom exporter exists."""
+        metrics.reset_metrics()
+        metrics._custom_exporter = None
+        # Should not raise exception
+        metrics.set_metrics_verbose(True)
+        metrics.set_metrics_verbose(False)
+
+    def test_setup_metrics_with_verbose_parameter(self):
+        """Test that setup_metrics accepts verbose parameter."""
+        from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+
+        metrics.reset_metrics()
+        reader = InMemoryMetricReader()
+        config = ObservabilityConfig(
+            service_name="test-service",
+            tracing_enabled=True,
+            exporter_type="none",
+        )
+        # Should not raise exception
+        metrics.setup_metrics(config=config, reader=reader, verbose=True)
+        assert metrics._initialized is True
+        metrics.reset_metrics()
+        reader2 = InMemoryMetricReader()
+        metrics.setup_metrics(config=config, reader=reader2, verbose=False)
+        assert metrics._initialized is True
 
 
 if __name__ == "__main__":

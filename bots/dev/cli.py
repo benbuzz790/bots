@@ -9,6 +9,12 @@ import textwrap
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+# Disable console tracing output for CLI (too verbose)
+# Must be set BEFORE importing any bots modules that might initialize tracing
+if "BOTS_OTEL_EXPORTER" not in os.environ:
+    os.environ["BOTS_OTEL_EXPORTER"] = "none"
+
+
 # Try to import readline, with fallback for Windows
 try:
     import readline
@@ -16,10 +22,45 @@ try:
     HAS_READLINE = True
 except ImportError:
     HAS_READLINE = False
-import bots.flows.functional_prompts as fp
-import bots.flows.recombinators as recombinators
+
+from bots.flows import functional_prompts as fp
+from bots.flows import recombinators
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, ConversationNode
+from bots.observability import tracing
+from bots.observability.callbacks import BotCallbacks
+
+# Disable tracing span processors to prevent console output
+try:
+    if hasattr(tracing, "_tracer_provider") and tracing._tracer_provider is not None:
+        tracing._tracer_provider._active_span_processor._span_processors.clear()
+except Exception:
+    pass  # If this fails, traces will still show but it's not critical
+
+
+def _find_leaves_util(node: ConversationNode) -> List[ConversationNode]:
+    """Utility function to recursively find all leaf nodes from a given node.
+
+    This is a standalone utility that can be used by any handler.
+
+    Args:
+        node: The starting conversation node
+
+    Returns:
+        List of leaf nodes (nodes with no replies)
+    """
+    leaves = []
+
+    def dfs(current_node):
+        if not current_node.replies:  # This is a leaf
+            leaves.append(current_node)
+        else:
+            for reply in current_node.replies:
+                dfs(reply)
+
+    dfs(node)
+    return leaves
+
 
 """
 CLI for bot interactions with improved architecture and dynamic parameter collection.
@@ -36,15 +77,19 @@ else:
     import select
     import termios
     import tty
-COLOR_USER = "\033[36m"  # Cyan
-COLOR_ASSISTANT = "\033[36m"  # Cyan
-COLOR_SYSTEM = "\033[33m"  # Yellow
+COLOR_USER = "\033[36m"  # Cyan (not dim)
+COLOR_BOT = "\033[95m"  # Light Pink/Magenta
+COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
+COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
+COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
+COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
 COLOR_ERROR = "\033[31m"  # Red
 COLOR_RESET = "\033[0m"  # Reset
 COLOR_BOLD = "\033[1m"  # Bold
 COLOR_DIM = "\033[2m"  # Dim
+# Legacy colors for compatibility
+COLOR_ASSISTANT = COLOR_BOT
 COLOR_TOOL_REQUEST = "\033[34m"  # Blue
-COLOR_TOOL_RESULT = "\033[32m"  # Green
 
 
 def create_auto_stash() -> str:
@@ -326,7 +371,7 @@ class CLIConfig:
 
     def __init__(self):
         self.verbose = True
-        self.width = 1000
+        self.width = 1400
         self.indent = 4
         self.auto_stash = False
         self.config_file = "cli_config.json"
@@ -355,6 +400,74 @@ class CLIConfig:
             pass  # Fail silently if config saving fails
 
 
+class RealTimeDisplayCallbacks(BotCallbacks):
+    """Callback that displays bot response and tools in real-time as they execute."""
+
+    def __init__(self, context: "CLIContext"):
+        self.context = context
+
+    def on_api_call_complete(self, metadata=None):
+        """Display bot response immediately after API call completes, before tools execute."""
+        if metadata and "bot_response" in metadata:
+            bot_response = metadata["bot_response"]
+            pretty(
+                bot_response,
+                "Bot",
+                self.context.config.width,
+                self.context.config.indent,
+                COLOR_BOT,
+            )
+
+    def on_tool_start(self, tool_name: str, metadata=None):
+        """Display tool request when it starts - show only the tool name and input parameters."""
+        if not self.context.config.verbose:
+            return
+
+        if metadata and "tool_args" in metadata:
+            # Extract just the input arguments, not the full request schema
+            tool_args = metadata["tool_args"]
+
+            # Format the arguments cleanly without JSON braces or quotes
+            if tool_args:
+                args_str = format_tool_data(tool_args, color=COLOR_TOOL_NAME)
+            else:
+                args_str = "(no arguments)"
+
+            # Strip underscores from tool name for cleaner display
+            display_name = tool_name.replace("_", " ")
+
+            pretty(
+                args_str,
+                display_name,
+                self.context.config.width,
+                self.context.config.indent,
+                COLOR_TOOL_NAME,
+            )
+
+    def on_tool_complete(self, tool_name: str, result, metadata=None):
+        """Display tool result when it completes - show just the result, not wrapped in a dict."""
+        if not self.context.config.verbose:
+            return
+
+        if result is not None:
+            # Display result directly without wrapping in {'result': ...}
+            if isinstance(result, str):
+                # Add leading newline for string results
+                result_str = "\n" + result
+            elif isinstance(result, dict):
+                result_str = format_tool_data(result, color=COLOR_TOOL_RESULT)
+            else:
+                result_str = "\n" + str(result)
+
+            pretty(
+                result_str,
+                "result",  # lowercase to match tool name formatting
+                self.context.config.width,
+                self.context.config.indent,
+                COLOR_TOOL_RESULT,
+            )
+
+
 class CLICallbacks:
     """Centralized callback management for CLI operations."""
 
@@ -368,81 +481,36 @@ class CLICallbacks:
             if responses and responses[-1]:
                 pretty(
                     responses[-1],
-                    self.context.bot_instance.name if self.context.bot_instance else "Bot",
+                    "Bot",
                     self.context.config.width,
                     self.context.config.indent,
-                    COLOR_ASSISTANT,
+                    COLOR_BOT,
                 )
 
         return message_only_callback
 
     def create_verbose_callback(self):
-        """Create a callback that shows everything: tool info first, then messages."""
+        """
+        Create a callback that shows only metrics.
+        Bot response and tools are shown in real-time by RealTimeDisplayCallbacks.
+        """
 
         def verbose_callback(responses, nodes):
+            # Bot response and tools are already displayed in real-time
+            # Just show metrics at the end
             if hasattr(self.context, "bot_instance") and self.context.bot_instance:
                 bot = self.context.bot_instance
-                requests = bot.tool_handler.requests
-                results = bot.tool_handler.results
-                if requests:
-                    request_str = "".join((clean_dict(r) for r in requests))
-                    pretty(
-                        f"Tool Requests\n\n{request_str}",
-                        "Tool Requests",
-                        self.context.config.width,
-                        self.context.config.indent,
-                        COLOR_TOOL_REQUEST,
-                    )
-                if results:
-                    result_str = "".join((clean_dict(r) for r in results))
-                    if result_str.strip():
-                        pretty(
-                            f"Tool Results\n\n{result_str}",
-                            "Tool Results",
-                            self.context.config.width,
-                            self.context.config.indent,
-                            COLOR_TOOL_RESULT,
-                        )
-            if responses and responses[-1]:
-                pretty(
-                    responses[-1],
-                    self.context.bot_instance.name if self.context.bot_instance else "Bot",
-                    self.context.config.width,
-                    self.context.config.indent,
-                    COLOR_ASSISTANT,
-                )
+                display_metrics(self.context, bot)
 
         return verbose_callback
 
     def create_quiet_callback(self):
-        """Create a callback that shows tool usage summary first, then response."""
+        """Create a callback that shows only user and bot messages (no tools, no metrics)."""
 
         def quiet_callback(responses, nodes):
-            if nodes and nodes[-1] and hasattr(self.context, "bot_instance") and self.context.bot_instance:
-                current_node = nodes[-1]
-                if hasattr(current_node, "tool_calls") and current_node.tool_calls:
-                    tool_names = []
-                    for tool_call in current_node.tool_calls:
-                        if "function" in tool_call and "name" in tool_call["function"]:
-                            tool_names.append(tool_call["function"]["name"])
-                        elif "name" in tool_call:
-                            tool_names.append(tool_call["name"])
-                    if tool_names:
-                        pretty(
-                            f"Used tools: {', '.join(set(tool_names))}",
-                            "System",
-                            self.context.config.width,
-                            self.context.config.indent,
-                            COLOR_SYSTEM,
-                        )
-            if responses and responses[-1]:
-                pretty(
-                    responses[-1],
-                    self.context.bot_instance.name if self.context.bot_instance else "Bot",
-                    self.context.config.width,
-                    self.context.config.indent,
-                    COLOR_ASSISTANT,
-                )
+            # In quiet mode, RealTimeDisplayCallbacks still shows the bot response
+            # but we don't show tools or metrics
+            pass
 
         return quiet_callback
 
@@ -798,17 +866,7 @@ class ConversationHandler:
 
     def _find_leaves(self, node: ConversationNode) -> List[ConversationNode]:
         """Recursively find all leaf nodes from a given node."""
-        leaves = []
-
-        def dfs(current_node):
-            if not current_node.replies:  # This is a leaf
-                leaves.append(current_node)
-            else:
-                for reply in current_node.replies:
-                    dfs(reply)
-
-        dfs(node)
-        return leaves
+        return _find_leaves_util(node)
 
     def _calculate_depth(self, start_node: ConversationNode, target_node: ConversationNode) -> int:
         """Calculate the depth/distance from start_node to target_node."""
@@ -967,12 +1025,30 @@ class SystemHandler:
             return "Tool output is already enabled (verbose mode is on)"
         context.config.verbose = True
         context.config.save_config()
+
+        # Also enable metrics verbose output
+        try:
+            from bots.observability import metrics
+
+            metrics.set_metrics_verbose(True)
+        except Exception:
+            pass
+
         return "Tool output enabled - will now show detailed tool requests and results"
 
     def quiet(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Disable verbose mode."""
         context.config.verbose = False
         context.config.save_config()
+
+        # Also disable metrics verbose output
+        try:
+            from bots.observability import metrics
+
+            metrics.set_metrics_verbose(False)
+        except Exception:
+            pass
+
         return "Tool output disabled"
 
     def config(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -992,7 +1068,15 @@ class SystemHandler:
             value = args[2]
             try:
                 if setting == "verbose":
-                    context.config.verbose = value.lower() in ("true", "1", "yes", "on")
+                    new_verbose = value.lower() in ("true", "1", "yes", "on")
+                    context.config.verbose = new_verbose
+                    # Sync metrics verbose setting
+                    try:
+                        from bots.observability import metrics
+
+                        metrics.set_metrics_verbose(new_verbose)
+                    except Exception:
+                        pass
                 elif setting == "width":
                     context.config.width = int(value)
                 elif setting == "indent":
@@ -1015,13 +1099,25 @@ class SystemHandler:
             context.conversation_backup = bot.conversation
             old_settings = setup_raw_mode()
             context.old_terminal_settings = old_settings
-            print("Bot running autonomously. Press ESC to interrupt...")
+
             while True:
+                # Check for interrupt first
                 if check_for_interrupt():
                     restore_terminal(old_settings)
                     return "Autonomous execution interrupted by user"
+
+                # Check if the last response used tools
+                # If not, stop without sending "ok"
+                if not bot.tool_handler.requests:
+                    restore_terminal(old_settings)
+                    return "Bot finished autonomous execution"
+
+                # Display the automatic "ok" message
+                pretty("ok", "You", context.config.width, context.config.indent, COLOR_USER)
+
                 callback = context.callbacks.get_standard_callback()
                 responses, nodes = fp.chain(bot, ["ok"], callback=callback)
+                # After sending ok, check again if tools were used
                 if responses and (not bot.tool_handler.requests):
                     restore_terminal(old_settings)
                     return "Bot finished autonomous execution"
@@ -1154,7 +1250,7 @@ class DynamicFunctionalPromptHandler:
                                 tool_calls_str = "".join((clean_dict(call) for call in node.tool_calls))
                                 pretty(
                                     f"Tool Requests\n\n{tool_calls_str}",
-                                    "System",
+                                    "system",
                                     context.config.width,
                                     context.config.indent,
                                     COLOR_TOOL_REQUEST,
@@ -1164,7 +1260,7 @@ class DynamicFunctionalPromptHandler:
                                 if tool_results_str.strip():
                                     pretty(
                                         f"Tool Results\n\n{tool_results_str}",
-                                        "System",
+                                        "system",
                                         context.config.width,
                                         context.config.indent,
                                         COLOR_TOOL_RESULT,
@@ -1201,7 +1297,8 @@ class DynamicFunctionalPromptHandler:
     def broadcast_fp(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Execute broadcast_fp functional prompt with leaf selection by number."""
         try:
-            leaves = context.conversation._find_leaves(bot.conversation)
+            # Use the utility function to find leaves
+            leaves = _find_leaves_util(bot.conversation)
             if not leaves:
                 return "No leaves found from current node"
             print(f"\nFound {len(leaves)} leaf nodes:")
@@ -1237,68 +1334,94 @@ class DynamicFunctionalPromptHandler:
                 ("par_branch", fp.par_branch),
                 ("par_branch_while", fp.par_branch_while),
             ]
-            print("\nSelect functional prompt to broadcast:")
+            print("\nAvailable functional prompts:")
             for i, (name, _) in enumerate(fp_options, 1):
                 print(f"  {i}. {name}")
-            fp_choice_input = input("Enter number: ").strip()
-            try:
-                fp_choice = int(fp_choice_input) - 1
-                if not 0 <= fp_choice < len(fp_options):
-                    return "Invalid functional prompt selection"
-            except ValueError:
+            fp_choice = input("\nSelect functional prompt (number or name): ").strip()
+            selected_fp = None
+            if fp_choice.isdigit():
+                idx = int(fp_choice) - 1
+                if 0 <= idx < len(fp_options):
+                    selected_fp = fp_options[idx]
+            else:
+                for name, func in fp_options:
+                    if name.lower() == fp_choice.lower():
+                        selected_fp = (name, func)
+                        break
+            if not selected_fp:
                 return "Invalid functional prompt selection"
-            fp_name, fp_function = fp_options[fp_choice]
-            print(f"\nCollecting parameters for {fp_name}:")
-            params = self.collector.collect_parameters(fp_function)
+            fp_name, fp_func = selected_fp
+            print(f"\nUsing functional prompt: {fp_name}")
+            params = self.collector.collect_parameters(fp_func)
             if params is None:
                 return "Parameter collection cancelled"
-
-            # Check if the function accepts a callback parameter
-            sig = inspect.signature(fp_function)
-            accepts_callback = "callback" in sig.parameters
-
-            if accepts_callback:
-                callback = context.callbacks.get_standard_callback()
-                params["callback"] = callback
-
-            context.conversation_backup = bot.conversation
-            print(f"Broadcasting {fp_name} to {len(target_leaves)} selected leaves...")
-
-            # Save current bot state
-            original_conversation = bot.conversation
-            original_autosave = bot.autosave
-            bot.autosave = False
-
-            # Execute the FP function on each target leaf
-            all_responses = []
-            all_nodes = []
-            for leaf in target_leaves:
-                try:
-                    # Set bot conversation to this leaf
-                    bot.conversation = leaf
-
-                    # Execute the FP function
-                    result = fp_function(bot, **params)
-
-                    # Handle the result
-                    if isinstance(result, tuple) and len(result) == 2:
-                        responses, nodes = result
-                        if isinstance(responses, list):
-                            all_responses.extend(responses)
-                            all_nodes.extend(nodes)
-                        else:
-                            all_responses.append(responses)
-                            all_nodes.append(nodes)
-                except Exception as e:
-                    print(f"Error broadcasting to leaf: {str(e)}")
-
-            # Restore original conversation
-            bot.conversation = original_conversation
-            bot.autosave = original_autosave
-
-            return f"Broadcast completed: {fp_name} executed on {len(target_leaves)} leaves successfully"
+            print(f"\nBroadcasting {fp_name} to {len(target_leaves)} leaves...")
+            callback = context.callbacks.get_standard_callback()
+            responses, nodes = fp.broadcast_fp(
+                bot=bot, leaves=target_leaves, functional_prompt=fp_func, callback=callback, **params
+            )
+            print(f"\nBroadcast complete! Generated {len(responses)} responses")
+            for i, response in enumerate(responses, 1):
+                if response:
+                    print(f"\nResponse {i}:")
+                    pretty(response, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
+            return f"Broadcast complete with {len(responses)} responses"
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
+
+
+def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> str:
+    """
+    Format tool arguments or results in a clean, minimal way.
+    No JSON braces, no quotes around keys, just key: value pairs.
+    Keys are bolded for emphasis.
+
+    Special case: If there's only one key-value pair, just return the value
+    without the key name (assumes it's the primary/required input).
+    """
+    if not data:
+        return "(empty)"
+
+    # Special case: single input - just show the value without the key
+    if len(data) == 1:
+        key, value = next(iter(data.items()))
+        if isinstance(value, str):
+            return "\n" + value
+        elif isinstance(value, dict):
+            return "\n" + format_tool_data(value, indent, color)
+        else:
+            return "\n" + str(value)
+
+    # Multiple inputs - show key: value pairs
+    lines = []
+    for key, value in data.items():
+        # Bold the key name with color, keep colon and value colored too
+        bold_key = f"{color}{COLOR_BOLD}{key}{COLOR_RESET}{color}:"
+
+        if isinstance(value, dict):
+            # Nested dict - format recursively with extra indent
+            nested = format_tool_data(value, indent, color)
+            lines.append(bold_key)
+            for nested_line in nested.split("\n"):
+                if nested_line:  # Skip empty lines
+                    lines.append(" " * indent + nested_line)
+        elif isinstance(value, str):
+            # String value - handle multiline strings
+            if "\n" in value:
+                lines.append(bold_key)
+                for line in value.split("\n"):
+                    lines.append(" " * indent + line)
+            else:
+                lines.append(f"{bold_key} {value}")
+        elif isinstance(value, (list, tuple)):
+            # List/tuple - format as compact representation
+            lines.append(f"{bold_key} {value}")
+        else:
+            # Other types (int, bool, None, etc.)
+            lines.append(f"{bold_key} {value}")
+
+    # Add newline at the beginning so first key is on its own line
+    return "\n" + "\n".join(lines)
 
 
 def check_for_interrupt() -> bool:
@@ -1358,23 +1481,35 @@ def clean_dict(d: dict, indent: int = 4, level: int = 1):
     return cleaned_dict
 
 
-def display_tool_results(bot: Bot, context: CLIContext):
-    """Display tool requests and results first, then bot message."""
-    requests = bot.tool_handler.requests
-    results = bot.tool_handler.results
-    if requests and context.config.verbose:
-        request_str = "".join((clean_dict(r) for r in requests))
-        result_str = "".join((clean_dict(r) for r in results))
-        pretty(f"Tool Requests\n\n{request_str}", "System", context.config.width, context.config.indent, COLOR_TOOL_REQUEST)
-        pretty(f"Tool Results\n\n{result_str}", "System", context.config.width, context.config.indent, COLOR_TOOL_RESULT)
-    elif requests and (not context.config.verbose):
-        for request in requests:
-            tool_name, _ = bot.tool_handler.tool_name_and_input(request)
-            pretty(f"{bot.name} used {tool_name}", "System", context.config.width, context.config.indent, COLOR_SYSTEM)
-    pretty(bot.conversation.content, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
+def display_metrics(context: CLIContext, bot: Bot):
+    """Display API metrics if verbose mode is on."""
+    if not context.config.verbose:
+        return
+
+    try:
+        from bots.observability import metrics
+
+        # Get the last recorded metrics
+        last_metrics = metrics.get_and_clear_last_metrics()
+
+        # Check if there are any metrics to display
+        if last_metrics["input_tokens"] == 0 and last_metrics["output_tokens"] == 0:
+            return
+
+        # Format the metrics nicely - terminal-native, no emojis
+        metrics_str = f"\nTokens: {last_metrics['input_tokens']:,} in, {last_metrics['output_tokens']:,} out"
+
+        if last_metrics["cached_tokens"] > 0:
+            metrics_str += f", {last_metrics['cached_tokens']:,} cached"
+        metrics_str += f"\nCost: ${last_metrics['cost']:.4f}"
+        metrics_str += f"\nTime: {last_metrics['duration']:.2f}s"
+
+        pretty(metrics_str, "metrics", context.config.width, context.config.indent, COLOR_METRICS)
+    except Exception:
+        pass
 
 
-def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: int = 4, color: str = COLOR_RESET) -> None:
+def pretty(string: str, name: Optional[str] = None, width: int = 1400, indent: int = 4, color: str = COLOR_RESET) -> None:
     """Print a string nicely formatted with explicit color."""
     print()
     prefix = f"{color}{COLOR_BOLD}{name}: {COLOR_RESET}{color}" if name is not None else color
@@ -1444,17 +1579,22 @@ def pretty(string: str, name: Optional[str] = None, width: int = 1000, indent: i
 class CLI:
     """Main CLI class that orchestrates all handlers."""
 
-    def __init__(self, bot_filename: Optional[str] = None, function_filter: Optional[Callable[[str, Callable], bool]] = None):
+    def __init__(self, bot_filename: Optional[str] = None, function_filter: Optional[Callable] = None):
+        """Initialize the CLI with handlers and context."""
         self.context = CLIContext()
-        self.conversation = ConversationHandler()
-        self.context.conversation = self.conversation  # Add reference for handlers to use
-        self.state = StateHandler()
-        self.system = SystemHandler()
-        self.fp = DynamicFunctionalPromptHandler(function_filter)
-        self.prompts = PromptHandler()
         self.bot_filename = bot_filename
-        self.last_user_message = None  # Track last user message for /s command
-        self.pending_prefill = None  # Store text to prefill on next input
+        self.function_filter = function_filter
+        self.last_user_message = None
+        self.pending_prefill = None
+
+        # Initialize handlers
+        self.system = SystemHandler()
+        self.state = StateHandler()
+        self.conversation = ConversationHandler()
+        self.fp = DynamicFunctionalPromptHandler(function_filter=function_filter)
+        self.prompts = PromptHandler()
+
+        # Register commands
         self.commands = {
             "/help": self.system.help,
             "/verbose": self.system.verbose,
@@ -1479,113 +1619,105 @@ class CLI:
             "/s": self._handle_save_prompt,
         }
 
+        # Initialize metrics with verbose=False since CLI handles its own display
+        try:
+            from bots.observability import metrics
+
+            metrics.setup_metrics(verbose=False)
+        except Exception:
+            pass
+
     def run(self):
         """Main CLI loop."""
         try:
-            print("Hello, world! Combined CLI with Dynamic Parameter Collection")
+            print("Hello, world! ")
             self.context.old_terminal_settings = setup_raw_mode()
             if self.bot_filename:
                 result = self.state._load_bot_from_file(self.bot_filename, self.context)
                 if "Error" in result or "File not found" in result:
-                    print(f"Failed to load bot: {result}")
-                    print("Starting with new bot instead...")
+                    pretty(
+                        f"Failed to load: {result}",
+                        "system",
+                        self.context.config.width,
+                        self.context.config.indent,
+                        COLOR_SYSTEM,
+                    )
+                    pretty(
+                        "Starting with new bot",
+                        "system",
+                        self.context.config.width,
+                        self.context.config.indent,
+                        COLOR_SYSTEM,
+                    )
                     self._initialize_new_bot()
                 else:
-                    print(result)
                     if self.context.bot_instance:
                         pretty(
-                            f"Bot loaded: {self.context.bot_instance.name}",
-                            "System",
+                            f"{self.context.bot_instance.name} loaded",
+                            "system",
                             self.context.config.width,
                             self.context.config.indent,
                             COLOR_SYSTEM,
                         )
             else:
                 self._initialize_new_bot()
-            print("CLI started. Type /help for commands or chat normally.")
             while True:
                 try:
-                    user_input = self._get_user_input(">>> ").strip()
+                    if not self.context.bot_instance:
+                        pretty(
+                            "No bot instance available. Use /new to create one.",
+                            "system",
+                            self.context.config.width,
+                            self.context.config.indent,
+                            COLOR_SYSTEM,
+                        )
+                    user_input = input(f"{COLOR_USER}You: {COLOR_RESET}").strip()
+
+                    # Handle /exit command early
                     if user_input == "/exit":
                         raise SystemExit(0)
+
                     if not user_input:
                         continue
-                    words = user_input.split()
-                    if not words:
-                        continue
-                    command = None
-                    msg = None
-                    if words[0].startswith("/"):
-                        command = words[0]
-                        msg = " ".join(words[1:]) if len(words) > 1 else None
-                    elif words[-1].startswith("/"):
-                        command = words[-1]
-                        msg = " ".join(words[:-1]) if len(words) > 1 else None
-                    else:
-                        msg = user_input
 
-                    # Track user messages for /s command
-                    if not command:
-                        if msg:
-                            self.last_user_message = msg
+                    # Check if input contains a command at the end
+                    parts = user_input.split()
+                    has_command_at_end = len(parts) > 1 and parts[-1].startswith("/")
+
+                    if has_command_at_end:
+                        # Extract message and command
+                        message = " ".join(parts[:-1])
+                        command = parts[-1]
+
+                        # First send the message as chat
+                        if self.context.bot_instance and message:
+                            self._handle_chat(self.context.bot_instance, message)
+
+                        # Then execute the command
+                        self._handle_command(self.context.bot_instance, command)
+                    elif user_input.startswith("/"):
+                        # Command at start - handle normally
+                        self._handle_command(self.context.bot_instance, user_input)
+                    else:
+                        # Regular chat
+                        if self.context.bot_instance:
+                            self._handle_chat(self.context.bot_instance, user_input)
                         else:
-                            self.last_user_message = user_input
-                    elif msg and command != "/s":
-                        self.last_user_message = msg
-                    if command:
-                        if command not in self.commands:
                             pretty(
-                                "Unrecognized command. Try /help.",
-                                "System",
+                                "No bot instance. Use /new to create one.",
+                                "system",
                                 self.context.config.width,
                                 self.context.config.indent,
                                 COLOR_SYSTEM,
                             )
-                            continue
-                        # Early exit for /s command - never send prompts
-                        if command == "/s":
-                            self._handle_command(self.context.bot_instance, user_input)
-                            continue
-                        if msg:
-                            if command in [
-                                "/help",
-                                "/verbose",
-                                "/quiet",
-                                "/config",
-                                "/save",
-                                "/load",
-                                "/up",
-                                "/down",
-                                "/left",
-                                "/right",
-                                "/root",
-                                "/label",
-                                "/leaf",
-                                "/combine_leaves",
-                            ]:
-                                self._handle_command(self.context.bot_instance, user_input)
-                            if command in ["/up", "/down", "/left", "/right", "/root", "/label", "/leaf"]:
-                                self._handle_chat(self.context.bot_instance, msg)
-                                self._handle_command(self.context.bot_instance, user_input)
-                            else:
-                                self._handle_chat(self.context.bot_instance, msg)
-                                self._handle_command(self.context.bot_instance, user_input)
-                        else:
-                            self._handle_command(self.context.bot_instance, user_input)
-                    else:
-                        self._handle_chat(self.context.bot_instance, user_input)
                 except KeyboardInterrupt:
-                    print("\nUse /exit to quit")
+                    print("\nUse /exit to quit.")
+                    continue
                 except EOFError:
                     break
-                except Exception as e:
-                    print(f"Error: {str(e)}")
-                    if self.context.conversation_backup:
-                        self.context.bot_instance.conversation = self.context.conversation_backup
-                        print("Restored conversation from backup")
         finally:
             restore_terminal(self.context.old_terminal_settings)
-            print("Goodbye!")
+            print("\nGoodbye!")
 
     def _handle_load_prompt(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Handle /p command to load prompts."""
@@ -1628,6 +1760,8 @@ class CLI:
 
         bot = AnthropicBot(model_engine=Engines.CLAUDE45_SONNET, max_tokens=16000)
         self.context.bot_instance = bot
+        # Attach real-time display callback
+        self.context.bot_instance.callbacks = RealTimeDisplayCallbacks(self.context)
 
         # bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools, bots.tools.self_tools)
         from bots.tools.code_tools import view, view_dir
@@ -1670,16 +1804,16 @@ class CLI:
             try:
                 result = self.commands[command](bot, self.context, args)
                 if result:
-                    pretty(result, "System", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
+                    pretty(result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
             except Exception as e:
                 pretty(f"Command error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
-                if self.context.conversation_backup:
+                if self.context.conversation_backup and bot:
                     # Clear tool handler state to prevent corruption from failed tool executions
                     bot.tool_handler.clear()
                     bot.conversation = self.context.conversation_backup
                     pretty(
                         "Restored conversation from backup",
-                        "System",
+                        "system",
                         self.context.config.width,
                         self.context.config.indent,
                         COLOR_SYSTEM,
@@ -1687,7 +1821,7 @@ class CLI:
         else:
             pretty(
                 "Unrecognized command. Try /help.",
-                "System",
+                "system",
                 self.context.config.width,
                 self.context.config.indent,
                 COLOR_SYSTEM,
@@ -1698,19 +1832,24 @@ class CLI:
         if not user_input:
             return
         try:
+            # Track last user message for /s command
+            self.last_user_message = user_input
+
             # Auto-stash if enabled
             if self.context.config.auto_stash:
                 stash_result = create_auto_stash()
                 if "Auto-stash created:" in stash_result:
-                    pretty(stash_result, "System", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
+                    pretty(stash_result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
                 elif "No changes to stash" not in stash_result:
                     # Show errors but not "no changes" message
-                    pretty(stash_result, "System", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
+                    pretty(stash_result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
 
             self.context.conversation_backup = bot.conversation
             callback = self.context.callbacks.get_standard_callback()
             responses, nodes = fp.chain(bot, [user_input], callback=callback)
-            pass
+
+            # Note: Metrics are now displayed inside the verbose callback, not here
+            # Quiet mode shows no metrics at all
         except Exception as e:
             pretty(f"Chat error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
             if self.context.conversation_backup:
@@ -1719,7 +1858,7 @@ class CLI:
                 bot.conversation = self.context.conversation_backup
                 pretty(
                     "Restored conversation from backup",
-                    "System",
+                    "system",
                     self.context.config.width,
                     self.context.config.indent,
                     COLOR_SYSTEM,

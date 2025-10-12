@@ -157,7 +157,7 @@ class TestWebToolIntegration(unittest.TestCase):
         # Add tool to bot
         self.bot.add_tools(web_search)
 
-        # Check tool function docstring
+        # Check tool function docstring (comes from @toolify decorator)
         web_search_func = self.bot.tool_handler.function_map["web_search"]
         self.assertIn("agentic web search", web_search_func.__doc__)
         self.assertIn("Claude's internal web search", web_search_func.__doc__)

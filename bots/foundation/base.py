@@ -898,7 +898,9 @@ class ToolHandler(ABC):
                         # Invoke on_tool_start callback
                         if hasattr(self, "bot") and self.bot and hasattr(self.bot, "callbacks") and self.bot.callbacks:
                             try:
-                                self.bot.callbacks.on_tool_start(tool_name, metadata={"tool_args": str(input_kwargs)})
+                                self.bot.callbacks.on_tool_start(
+                                    tool_name, metadata={"request": request_schema, "tool_args": input_kwargs}
+                                )
                             except Exception:
                                 pass
 
@@ -1002,12 +1004,13 @@ class ToolHandler(ABC):
                             tool_span.set_attribute("tool.status", "error")
                             tool_span.set_attribute("tool.error_type", type(e).__name__)
                             tool_span.record_exception(e)
-                        self.results.append(response_schema)
-                        results.append(response_schema)
-        else:
-            # Non-traced execution path
-            import time
 
+                        results.append(response_schema)
+
+                self.results = results
+                return results
+        else:
+            # Non-tracing path
             for request_schema in requests:
                 tool_name, input_kwargs = self.tool_name_and_input(request_schema)
                 if tool_name is None:
@@ -1016,9 +1019,13 @@ class ToolHandler(ABC):
                 # Invoke on_tool_start callback
                 if hasattr(self, "bot") and self.bot and hasattr(self.bot, "callbacks") and self.bot.callbacks:
                     try:
-                        self.bot.callbacks.on_tool_start(tool_name, metadata={"tool_args": str(input_kwargs)})
+                        self.bot.callbacks.on_tool_start(
+                            tool_name, metadata={"request": request_schema, "tool_args": input_kwargs}
+                        )
                     except Exception:
                         pass
+
+                import time
 
                 tool_start_time = time.time()
 
@@ -1104,10 +1111,10 @@ class ToolHandler(ABC):
                         except Exception:
                             pass
 
-                self.results.append(response_schema)
                 results.append(response_schema)
 
-        return results
+            self.results = results
+            return results
 
     def _create_builtin_wrapper(self, func: Callable) -> str:
         """Create a wrapper function source code for built-in functions.
@@ -2659,6 +2666,16 @@ class Bot(ABC):
                     text, role, data = self.mailbox.process_response(response, self)
                     self.conversation = self.conversation._add_reply(content=text, role=role, **data)
                     self.conversation._add_tool_calls(self.tool_handler.requests)
+
+                    # Invoke callback to display bot response before tools execute
+                    if self.callbacks:
+                        try:
+                            self.callbacks.on_api_call_complete(
+                                metadata={"bot_response": text, "tool_count": len(self.tool_handler.requests)}
+                            )
+                        except Exception as e:
+                            logger.warning(f"Callback on_api_call_complete failed: {e}")
+
                     _ = self.tool_handler.exec_requests()
                     span.set_attribute("tool.result_count", len(self.tool_handler.results))
                     self.conversation._add_tool_results(self.tool_handler.results)
@@ -2674,6 +2691,16 @@ class Bot(ABC):
                 text, role, data = self.mailbox.process_response(response, self)
                 self.conversation = self.conversation._add_reply(content=text, role=role, **data)
                 self.conversation._add_tool_calls(self.tool_handler.requests)
+
+                # Invoke callback to display bot response before tools execute
+                if self.callbacks:
+                    try:
+                        self.callbacks.on_api_call_complete(
+                            metadata={"bot_response": text, "tool_count": len(self.tool_handler.requests)}
+                        )
+                    except Exception as e:
+                        logger.warning(f"Callback on_api_call_complete failed: {e}")
+
                 _ = self.tool_handler.exec_requests()
                 self.conversation._add_tool_results(self.tool_handler.results)
                 return (text, self.conversation)

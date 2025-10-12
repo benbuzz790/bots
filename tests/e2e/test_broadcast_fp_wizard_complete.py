@@ -54,7 +54,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
         # Should show branch broadcast execution
         self.assertIn("branch", output)
         self.assertIn("Broadcasting branch", output)
-        self.assertIn("Broadcast completed", output)
+        self.assertIn("Broadcast complete", output)
 
     @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
@@ -84,7 +84,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
         # Should show tree_of_thought broadcast execution
         self.assertIn("tree_of_thought", output)
         self.assertIn("Broadcasting tree_of_thought", output)
-        self.assertIn("Broadcast completed", output)
+        self.assertIn("Broadcast complete", output)
 
     @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
@@ -112,7 +112,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
         # Should show prompt_while broadcast execution
         self.assertIn("prompt_while", output)
         self.assertIn("Broadcasting prompt_while", output)
-        self.assertIn("Broadcast completed", output)
+        self.assertIn("Broadcast complete", output)
 
     @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
@@ -143,7 +143,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
         # Should show chain_while broadcast execution
         self.assertIn("chain_while", output)
         self.assertIn("Broadcasting chain_while", output)
-        self.assertIn("Broadcast completed", output)
+        self.assertIn("Broadcast complete", output)
 
     @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
@@ -174,7 +174,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
         # Should show branch_while broadcast execution
         self.assertIn("branch_while", output)
         self.assertIn("Broadcasting branch_while", output)
-        self.assertIn("Broadcast completed", output)
+        self.assertIn("Broadcast complete", output)
 
     @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
@@ -201,7 +201,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
 
         # Should show selective leaf targeting
         self.assertIn("Broadcasting single_prompt", output)
-        self.assertIn("Broadcast completed", output)
+        self.assertIn("Broadcast complete", output)
 
     @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
@@ -307,7 +307,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
         # Should show recursive par_branch execution
         self.assertIn("par_branch", output)
         self.assertIn("Broadcasting par_branch", output)
-        self.assertIn("Broadcast completed", output)
+        self.assertIn("Broadcast complete", output)
 
     @unittest.skip("Does not halt")
     @patch("builtins.input")

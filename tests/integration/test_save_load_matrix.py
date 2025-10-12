@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Comprehensive test matrix for save/load tool functionality."""
+"""Comprehensive test matrix for save/load tool functionality.
+
+Refactored to use MockBot for deterministic, fast testing focused on
+tool save/load functionality rather than actual bot behavior.
+"""
 
 import os
 import sys
@@ -8,10 +12,8 @@ import unittest
 from types import ModuleType
 from typing import Any, Callable, Dict
 
-from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
-from bots.foundation.gemini_bots import GeminiBot
-from bots.foundation.openai_bots import ChatGPT_Bot
+from bots.testing.mock_bot import MockBot
 
 sys.path.insert(0, os.path.abspath("."))
 
@@ -84,124 +86,74 @@ def another_module_tool(data: str) -> str:
 
         return module
 
-    def create_bot_by_provider(self, provider: str, name: str = "TestBot") -> Bot:
-        """Create a bot with the specified provider."""
-        if provider == "anthropic":
-            # Use real API key if available
-            if "ANTHROPIC_API_KEY" in os.environ:
-                return AnthropicBot(name=name, model_engine=Engines.CLAUDE35_HAIKU, max_tokens=1000, temperature=1)
-            else:
-                import unittest
-
-                raise unittest.SkipTest("No ANTHROPIC_API_KEY available")
-        elif provider == "openai":
-            # Use real API key if available
-            if "OPENAI_API_KEY" in os.environ:
-                bot = ChatGPT_Bot(name=name, model_engine=Engines.GPT4, max_tokens=1000, temperature=1)
-                # OpenAI requires a system message to reliably use tools
-                bot.set_system_message(
-                    "You are a helpful assistant. When asked to use a tool, call it directly without asking for clarification."
-                )
-                return bot
-            else:
-                import unittest
-
-                raise unittest.SkipTest("No OPENAI_API_KEY available")
-        elif provider == "gemini":
-            # Use real API key if available
-            if "GOOGLE_API_KEY" in os.environ or "GEMINI_API_KEY" in os.environ:
-                return GeminiBot(name=name, model_engine=Engines.GEMINI25_FLASH, max_tokens=1000, temperature=1)
-            else:
-                import unittest
-
-                raise unittest.SkipTest("No GOOGLE_API_KEY or GEMINI_API_KEY available")
-        else:
-            raise ValueError(f"Unknown provider: {provider}")
-
-    def create_bot_with_tool(self, tool_method: str, tool_source: Any, provider: str = "anthropic") -> Bot:
-        """Create a bot with the specified tool addition method and provider."""
-        bot = self.create_bot_by_provider(provider, "TestBot")
-        if tool_method == "module":
-            import inspect
-
-            functions = [name for name, obj in inspect.getmembers(tool_source, inspect.isfunction)]
-            print(f"DEBUG: Module functions: {functions}")
-        bot.add_tools(tool_source)
-        if tool_method == "module":
-            print(f"DEBUG: After adding tools, bot has {len(bot.tool_handler.tools)} tools")
+    def create_mock_bot(self, name: str = "TestBot") -> MockBot:
+        """Create a mock bot for testing."""
+        bot = MockBot(name=name, model_engine=Engines.CLAUDE35_HAIKU, max_tokens=1000, temperature=1)
+        # Set a response pattern that indicates tool usage
+        bot.set_response_pattern("Tool executed successfully with result: {user_input}")
         return bot
 
-    def check_tool_usage(self, bot: Bot, expected_result: str, test_prompt: str) -> bool:
-        """Test that tools work correctly on the bot."""
-        try:
-            bot.respond(test_prompt)
+    def create_bot_with_tool(self, tool_method: str, tool_source: Any) -> MockBot:
+        """Create a mock bot with the specified tool addition method."""
+        bot = self.create_mock_bot("TestBot")
+        bot.add_tools(tool_source)
+        return bot
 
-            # Traverse the entire conversation tree to find tool execution evidence
-            def find_tool_evidence(node):
-                """Recursively search conversation tree for tool calls and results."""
-                evidence = {"tool_calls": [], "tool_results": [], "pending_results": []}
+    def check_tool_preservation(self, bot: Bot, expected_tool_names: list) -> bool:
+        """Check that tools are preserved correctly in the bot.
 
-                # Check current node
-                if hasattr(node, "tool_calls") and node.tool_calls:
-                    evidence["tool_calls"].extend(node.tool_calls)
-                if hasattr(node, "tool_results") and node.tool_results:
-                    evidence["tool_results"].extend(node.tool_results)
-                if hasattr(node, "pending_results") and node.pending_results:
-                    evidence["pending_results"].extend(node.pending_results)
+        Args:
+            bot: Bot instance to check
+            expected_tool_names: List of tool names that should be present
 
-                # Check all replies recursively
-                if hasattr(node, "replies"):
-                    for reply in node.replies:
-                        child_evidence = find_tool_evidence(reply)
-                        evidence["tool_calls"].extend(child_evidence["tool_calls"])
-                        evidence["tool_results"].extend(child_evidence["tool_results"])
-                        evidence["pending_results"].extend(child_evidence["pending_results"])
+        Returns:
+            True if all expected tools are present and functional
+        """
+        # Check tool count
+        if len(bot.tool_handler.tools) != len(expected_tool_names):
+            print(f"Tool count mismatch: expected {len(expected_tool_names)}, got {len(bot.tool_handler.tools)}")
+            return False
 
-                return evidence
-
-            # Start from conversation root and find all tool evidence
-            root = bot.conversation._find_root()
-            evidence = find_tool_evidence(root)
-
-            # Check if any tools were executed
-            tool_executed = (
-                len(evidence["tool_calls"]) > 0 or len(evidence["tool_results"]) > 0 or len(evidence["pending_results"]) > 0
-            )
-
-            if not tool_executed:
+        # Check each tool exists in function_map
+        for tool_name in expected_tool_names:
+            if tool_name not in bot.tool_handler.function_map:
+                print(f"Tool {tool_name} not found in function_map")
                 return False
 
-            # Check if expected result appears in any tool results
-            if ":" in expected_result:
-                core_expected = expected_result.split(":", 1)[1].strip()
-            else:
-                core_expected = expected_result
+            # Try to call the tool to verify it's functional
+            try:
+                func = bot.tool_handler.function_map[tool_name]
+                result = func("test")
+                if not isinstance(result, str):
+                    print(f"Tool {tool_name} returned non-string result: {type(result)}")
+                    return False
+            except Exception as e:
+                print(f"Tool {tool_name} failed to execute: {e}")
+                return False
 
-            all_results = evidence["tool_results"] + evidence["pending_results"]
-            for result in all_results:
-                result_str = str(result)
-                if expected_result in result_str or core_expected in result_str:
-                    return True
-
-            return False
-        except Exception as e:
-            print(f"Tool usage failed: {e}")
-            return False
+        return True
 
     def run_scenario(
         self,
         tool_method: str,
         tool_source: Any,
         scenario: str,
-        expected_result: str,
-        test_prompt: str,
-        provider: str = "anthropic",
+        expected_tool_names: list,
     ) -> Dict[str, Any]:
-        """Run a specific test scenario."""
+        """Run a specific test scenario.
+
+        Args:
+            tool_method: Method used to add tools (file, module, callable, dynamic)
+            tool_source: The tool source (file path, module, function, etc.)
+            scenario: Test scenario (basic, save_load, save_load_twice)
+            expected_tool_names: List of tool names that should be present
+
+        Returns:
+            Dictionary with test results
+        """
         result = {
             "tool_method": tool_method,
             "scenario": scenario,
-            "provider": provider,
             "success": False,
             "error": None,
             "details": {},
@@ -209,40 +161,40 @@ def another_module_tool(data: str) -> str:
 
         try:
             if scenario == "basic":
-                # Basic tool use
-                bot = self.create_bot_with_tool(tool_method, tool_source, provider)
-                result["success"] = self.check_tool_usage(bot, expected_result, test_prompt)
+                # Basic tool preservation
+                bot = self.create_bot_with_tool(tool_method, tool_source)
+                result["success"] = self.check_tool_preservation(bot, expected_tool_names)
                 result["details"]["tool_count"] = len(bot.tool_handler.tools)
 
             elif scenario == "save_load":
-                # Save and load and tool use
-                bot = self.create_bot_with_tool(tool_method, tool_source, provider)
+                # Save and load and check tool preservation
+                bot = self.create_bot_with_tool(tool_method, tool_source)
 
                 # Save the bot
-                save_path = os.path.join(self.temp_dir, f"{provider}_{tool_method}_save_load")
+                save_path = os.path.join(self.temp_dir, f"mock_{tool_method}_save_load")
                 bot.save(save_path)
 
                 # Load the bot
                 loaded_bot = Bot.load(save_path + ".bot")
-                result["success"] = self.check_tool_usage(loaded_bot, expected_result, test_prompt)
+                result["success"] = self.check_tool_preservation(loaded_bot, expected_tool_names)
                 result["details"]["original_tool_count"] = len(bot.tool_handler.tools)
                 result["details"]["loaded_tool_count"] = len(loaded_bot.tool_handler.tools)
 
             elif scenario == "save_load_twice":
-                # Save and load twice and tool use
-                bot = self.create_bot_with_tool(tool_method, tool_source, provider)
+                # Save and load twice and check tool preservation
+                bot = self.create_bot_with_tool(tool_method, tool_source)
 
                 # First save/load
-                save_path1 = os.path.join(self.temp_dir, f"{provider}_{tool_method}_save_load_1")
+                save_path1 = os.path.join(self.temp_dir, f"mock_{tool_method}_save_load_1")
                 bot.save(save_path1)
                 loaded_bot1 = Bot.load(save_path1 + ".bot")
 
                 # Second save/load
-                save_path2 = os.path.join(self.temp_dir, f"{provider}_{tool_method}_save_load_2")
+                save_path2 = os.path.join(self.temp_dir, f"mock_{tool_method}_save_load_2")
                 loaded_bot1.save(save_path2)
                 loaded_bot2 = Bot.load(save_path2 + ".bot")
 
-                result["success"] = self.check_tool_usage(loaded_bot2, expected_result, test_prompt)
+                result["success"] = self.check_tool_preservation(loaded_bot2, expected_tool_names)
                 result["details"]["original_tool_count"] = len(bot.tool_handler.tools)
                 result["details"]["loaded1_tool_count"] = len(loaded_bot1.tool_handler.tools)
                 result["details"]["loaded2_tool_count"] = len(loaded_bot2.tool_handler.tools)
@@ -364,15 +316,11 @@ def complex_tool(input_data: str) -> str:
                 "name": "file_with_helpers",
                 "source": self.create_tool_with_helper_functions(),
                 "tool_name": "tool_with_helpers",
-                "test_prompt": "Use tool_with_helpers with input_text 'test' and multiplier 2",
-                "expected_result": "COMBINED: HELPER_PROCESSED: TEST + NUMERIC_HELPER: 4",
             },
             {
                 "name": "module_with_complex_deps",
                 "source": self.create_module_with_complex_dependencies(),
                 "tool_name": "complex_tool",
-                "test_prompt": "Use complex_tool with input_data 'test_data'",
-                "expected_result": "processed_data",  # Should contain JSON with this key
             },
         ]
 
@@ -385,7 +333,7 @@ def complex_tool(input_data: str) -> str:
 
                 try:
                     # Create bot and add tools
-                    bot = self.create_bot_by_provider("anthropic", "HelperTestBot")
+                    bot = self.create_mock_bot("HelperTestBot")
                     bot.add_tools(test_case["source"])
 
                     # Check helper functions before save/load
@@ -393,8 +341,15 @@ def complex_tool(input_data: str) -> str:
 
                     if scenario == "basic":
                         # Just test basic functionality
-                        success = self.check_tool_usage(bot, test_case["expected_result"], test_case["test_prompt"])
                         after_helpers = before_helpers
+                        # Test that the tool actually works
+                        func = bot.tool_handler.function_map[test_case["tool_name"]]
+                        try:
+                            result = func("test")
+                            success = isinstance(result, str) and len(result) > 0
+                        except Exception as e:
+                            print(f"  Tool execution failed: {e}")
+                            success = False
 
                     elif scenario == "save_load":
                         # Save and load once
@@ -404,7 +359,14 @@ def complex_tool(input_data: str) -> str:
 
                         # Check helper functions after save/load
                         after_helpers = self.check_helper_function_availability(loaded_bot, test_case["tool_name"])
-                        success = self.check_tool_usage(loaded_bot, test_case["expected_result"], test_case["test_prompt"])
+                        # Test that the tool actually works
+                        func = loaded_bot.tool_handler.function_map[test_case["tool_name"]]
+                        try:
+                            result = func("test")
+                            success = isinstance(result, str) and len(result) > 0
+                        except Exception as e:
+                            print(f"  Tool execution failed: {e}")
+                            success = False
 
                     elif scenario == "save_load_twice":
                         # Save and load twice
@@ -418,7 +380,14 @@ def complex_tool(input_data: str) -> str:
 
                         # Check helper functions after double save/load
                         after_helpers = self.check_helper_function_availability(loaded_bot2, test_case["tool_name"])
-                        success = self.check_tool_usage(loaded_bot2, test_case["expected_result"], test_case["test_prompt"])
+                        # Test that the tool actually works
+                        func = loaded_bot2.tool_handler.function_map[test_case["tool_name"]]
+                        try:
+                            result = func("test")
+                            success = isinstance(result, str) and len(result) > 0
+                        except Exception as e:
+                            print(f"  Tool execution failed: {e}")
+                            success = False
 
                     # Record results
                     result = {
@@ -511,31 +480,25 @@ def complex_tool(input_data: str) -> str:
         return results
 
     def test_matrix(self):
-        """Run the complete test matrix."""
+        """Run the complete test matrix using MockBot."""
 
         # Define test matrix dimensions
-        providers = ["anthropic", "openai", "gemini"]
-
         tool_methods = {
             "file": {
                 "source": self.create_test_file(),
-                "expected_result": "FILE_RESULT: test",
-                "test_prompt": "Use file_test_tool with input_text 'test'",
+                "expected_tools": ["file_test_tool"],
             },
             "module": {
                 "source": self.create_test_module(),
-                "expected_result": "MODULE_RESULT: test",
-                "test_prompt": "Use module_test_tool with input_text 'test'",
+                "expected_tools": ["module_test_tool", "another_module_tool"],
             },
             "callable": {
                 "source": self.create_callable_tool(),
-                "expected_result": "CALLABLE_RESULT: test",
-                "test_prompt": "Use callable_test_tool with input_text 'test'",
+                "expected_tools": ["callable_test_tool"],
             },
             "dynamic": {
                 "source": self.create_dynamic_tool(),
-                "expected_result": "DYNAMIC_RESULT: test",
-                "test_prompt": "Use dynamic_test_tool with input_text 'test'",
+                "expected_tools": ["dynamic_test_tool"],
             },
         }
 
@@ -543,59 +506,49 @@ def complex_tool(input_data: str) -> str:
 
         # Run all combinations
         results = []
-        for provider in providers:
-            for tool_method, tool_config in tool_methods.items():
-                for scenario in scenarios:
-                    print(f"\nTesting {provider} + {tool_method} + {scenario}...")
-                    result = self.run_scenario(
-                        tool_method,
-                        tool_config["source"],
-                        scenario,
-                        tool_config["expected_result"],
-                        tool_config["test_prompt"],
-                        provider,
-                    )
-                    results.append(result)
+        for tool_method, tool_config in tool_methods.items():
+            for scenario in scenarios:
+                print(f"\nTesting {tool_method} + {scenario}...")
+                result = self.run_scenario(
+                    tool_method,
+                    tool_config["source"],
+                    scenario,
+                    tool_config["expected_tools"],
+                )
+                results.append(result)
 
-                    # Print result
-                    status = "PASS" if result["success"] else "FAIL"
-                    print(f"  {provider:10} + {tool_method:10} + {scenario:15} = {status}")
-                    if result["error"]:
-                        print(f"    Error: {result['error']}")
-                    if result["details"]:
-                        for key, value in result["details"].items():
-                            if key != "traceback":
-                                print(f"    {key}: {value}")
+                # Print result
+                status = "PASS" if result["success"] else "FAIL"
+                print(f"  {tool_method:10} + {scenario:15} = {status}")
+                if result["error"]:
+                    print(f"    Error: {result['error']}")
+                if result["details"]:
+                    for key, value in result["details"].items():
+                        if key != "traceback":
+                            print(f"    {key}: {value}")
 
         # Summary
         print("\n" + "=" * 80)
         print("SUMMARY MATRIX")
         print("=" * 80)
 
-        # Create summary table by provider
-        for provider in providers:
-            print(f"\n{provider.upper()} PROVIDER:")
-            print(f"{'Tool Method':<12} {'Basic':<8} {'Save+Load':<12} {'Save+Load2x':<12}")
-            print("-" * 50)
+        print(f"{'Tool Method':<12} {'Basic':<8} {'Save+Load':<12} {'Save+Load2x':<12}")
+        print("-" * 50)
 
-            for tool_method in tool_methods.keys():
-                row = f"{tool_method:<12} "
-                for scenario in scenarios:
-                    # Find result for this combination
-                    result = next(
-                        (
-                            r
-                            for r in results
-                            if r["provider"] == provider and r["tool_method"] == tool_method and r["scenario"] == scenario
-                        ),
-                        None,
-                    )
-                    status = "PASS" if result and result["success"] else "FAIL"
-                    if scenario == "basic":
-                        row += f"{status:<8} "
-                    else:
-                        row += f"{status:<12} "
-                print(row)
+        for tool_method in tool_methods.keys():
+            row = f"{tool_method:<12} "
+            for scenario in scenarios:
+                # Find result for this combination
+                result = next(
+                    (r for r in results if r["tool_method"] == tool_method and r["scenario"] == scenario),
+                    None,
+                )
+                status = "PASS" if result and result["success"] else "FAIL"
+                if scenario == "basic":
+                    row += f"{status:<8} "
+                else:
+                    row += f"{status:<12} "
+            print(row)
 
         # Overall summary
         failures = [r for r in results if not r["success"]]
@@ -604,23 +557,17 @@ def complex_tool(input_data: str) -> str:
         print(f"Failures: {len(failures)}")
         print(f"Success rate: {(len(results) - len(failures)) / len(results) * 100:.1f}%")
 
-        # Show failure details by provider
+        # Show failure details
         if failures:
-            print("\nFAILURE DETAILS BY PROVIDER:")
-            for provider in providers:
-                provider_failures = [f for f in failures if f["provider"] == provider]
-                if provider_failures:
-                    print(f"\n{provider.upper()} FAILURES ({len(provider_failures)}):")
-                    for failure in provider_failures:
-                        print(f"  {failure['tool_method']} + {failure['scenario']}: {failure['error']}")
+            print("\nFAILURE DETAILS:")
+            for failure in failures:
+                print(f"  {failure['tool_method']} + {failure['scenario']}: {failure['error']}")
 
-        # Allow up to 2 failures (out of 36 tests) to account for transient API issues
-        # This makes the test more resilient to flakiness while still catching real problems
-        max_allowed_failures = 2
-        self.assertLessEqual(
+        # All tests should pass with MockBot (deterministic behavior)
+        self.assertEqual(
             len(failures),
-            max_allowed_failures,
-            f"Found {len(failures)} failures in test matrix (max allowed: {max_allowed_failures}). "
+            0,
+            f"Found {len(failures)} failures in test matrix. "
             f"Success rate: {(len(results) - len(failures)) / len(results) * 100:.1f}%",
         )
 

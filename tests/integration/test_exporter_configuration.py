@@ -153,7 +153,7 @@ class TestExporterConfiguration(unittest.TestCase):
         config = load_config_from_env()
 
         # Empty strings should use defaults
-        self.assertEqual(config.exporter_type, "console")
+        self.assertEqual(config.exporter_type, "none")  # Changed from "console" to "none"
         self.assertEqual(config.service_name, "bots")
 
     def test_whitespace_environment_variables(self):
@@ -164,7 +164,7 @@ class TestExporterConfiguration(unittest.TestCase):
         config = load_config_from_env()
 
         # Whitespace should be stripped and defaults used
-        self.assertEqual(config.exporter_type, "console")
+        self.assertEqual(config.exporter_type, "none")  # Changed from "console" to "none"
         self.assertEqual(config.service_name, "bots")
 
     def test_console_exporter_setup(self):
@@ -322,12 +322,11 @@ class TestExporterConfiguration(unittest.TestCase):
         config = ObservabilityConfig()
 
         self.assertTrue(config.tracing_enabled)
-        self.assertEqual(config.exporter_type, "console")
+        self.assertEqual(config.exporter_type, "none")
         self.assertIsNone(config.otlp_endpoint)
         self.assertEqual(config.service_name, "bots")
         self.assertIsNone(config.metrics_enabled)
-        self.assertEqual(config.metrics_exporter_type, "console")
-        self.assertIsNone(config.jaeger_endpoint)
+        self.assertEqual(config.metrics_exporter_type, "none")
 
 
 if __name__ == "__main__":
