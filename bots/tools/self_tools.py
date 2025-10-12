@@ -399,19 +399,28 @@ def remove_context(message_ids: str) -> str:
 
     # Find nodes to remove
     nodes_to_remove = []
+    missing_ids = []
     for msg_id in id_list:
         if msg_id in node_map:
             nodes_to_remove.append(node_map[msg_id])
         else:
-            return f"Error: Message ID '{msg_id}' not found in conversation tree"
+            missing_ids.append(msg_id)
+
+    # Report missing IDs but continue with valid ones
+    if missing_ids and not nodes_to_remove:
+        return f"Error: None of the provided message IDs were found: {missing_ids}"
 
     # Remove each node and stitch the tree
     removed_count = 0
+    errors = []
+
     for node in nodes_to_remove:
         try:
             # Check if node has a parent
             if not node.parent:
-                return f"Error: Cannot remove root node (ID: {node.id if hasattr(node, 'id') else 'unknown'})"
+                node_id = node.id if hasattr(node, 'id') else 'unknown'
+                errors.append(f"Cannot remove root node (ID: {node_id})")
+                continue
 
             parent = node.parent
 
@@ -436,9 +445,23 @@ def remove_context(message_ids: str) -> str:
             removed_count += 1
 
         except Exception as e:
-            return f"Error removing node: {str(e)}"
+            node_id = node.id if hasattr(node, 'id') else 'unknown'
+            errors.append(f"Failed to remove node {node_id}: {str(e)}")
+            continue
 
-    return f"Successfully removed {removed_count} message(s) from conversation tree"
+    # Build result message
+    result_parts = []
+    if removed_count > 0:
+        result_parts.append(f"Successfully removed {removed_count} message(s)")
+    if missing_ids:
+        result_parts.append(f"Missing IDs: {missing_ids}")
+    if errors:
+        result_parts.append(f"Errors: {'; '.join(errors)}")
+
+    if not result_parts:
+        return "No messages were removed"
+
+    return " | ".join(result_parts)
 
 
 def _process_string_array(input_str: str) -> List[str]:
