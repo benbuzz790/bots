@@ -302,7 +302,7 @@ class TestCLIIntegration:
 
         mock_bot = MagicMock()
 
-        result = cli.commands['/p'](mock_bot, cli.context, ["loadable"])
+        cli.commands['/p'](mock_bot, cli.context, ["loadable"])
 
         # Should set pending_prefill
         assert cli.pending_prefill == "Loaded content"
@@ -342,7 +342,7 @@ class TestEndToEnd:
             assert "Saved prompt as: workflow_test" in save_result
 
         # Step 2: Load the prompt
-        load_result = cli.commands['/p'](mock_bot, cli.context, ["workflow"])
+        cli.commands['/p'](mock_bot, cli.context, ["workflow"])
         assert cli.pending_prefill == "Workflow test prompt"
 
     def test_save_after_chat_then_load(self, cli_with_temp_prompts):
@@ -361,14 +361,12 @@ class TestEndToEnd:
             assert "Saved prompt as: important_msg" in save_result
 
         # Step 3: Load it back
-        load_result = cli.commands['/p'](mock_bot, cli.context, ["important"])
+        cli.commands['/p'](mock_bot, cli.context, ["important"])
         assert cli.pending_prefill == "Important message to save"
 
     def test_multiple_saves_and_search(self, cli_with_temp_prompts):
         """Test saving multiple prompts and searching through them."""
         cli = cli_with_temp_prompts
-        mock_bot = MagicMock()
-
         # Save multiple prompts
         prompts = [
             ("coding_task", "Write a function to sort a list"),
