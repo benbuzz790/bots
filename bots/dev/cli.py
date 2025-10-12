@@ -630,6 +630,7 @@ Respond with just the name, no explanation."""
     def get_prompt_names(self) -> List[str]:
         """Get all prompt names."""
         return list(self.prompts_data["prompts"].keys())
+
     class PromptHandler:
         """Handler for prompt management commands."""
 
@@ -1180,16 +1181,25 @@ class SystemHandler:
             context.conversation_backup = bot.conversation
             old_settings = setup_raw_mode()
             context.old_terminal_settings = old_settings
+
             while True:
+                # Check for interrupt first
                 if check_for_interrupt():
                     restore_terminal(old_settings)
                     return "Autonomous execution interrupted by user"
+
+                # Check if the last response used tools
+                # If not, stop without sending "ok"
+                if not bot.tool_handler.requests:
+                    restore_terminal(old_settings)
+                    return "Bot finished autonomous execution"
 
                 # Display the automatic "ok" message
                 pretty("ok", "You", context.config.width, context.config.indent, COLOR_USER)
 
                 callback = context.callbacks.get_standard_callback()
                 responses, nodes = fp.chain(bot, ["ok"], callback=callback)
+                # After sending ok, check again if tools were used
                 if responses and (not bot.tool_handler.requests):
                     restore_terminal(old_settings)
                     return "Bot finished autonomous execution"
@@ -1251,6 +1261,40 @@ class SystemHandler:
             return f"Git error: {e.stderr.decode() if e.stderr else str(e)}"
         except Exception as e:
             return f"Error loading stash: {str(e)}"
+
+
+def auto(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+    """Run bot autonomously until it stops using tools."""
+    try:
+        import bots.flows.functional_prompts as fp
+
+        context.conversation_backup = bot.conversation
+        old_settings = setup_raw_mode()
+        context.old_terminal_settings = old_settings
+
+        # Check if the last response used tools before starting the loop
+        # If not, don't send any "ok" messages
+        if not bot.tool_handler.requests:
+            restore_terminal(old_settings)
+            return "Bot finished autonomous execution (no tools used)"
+
+        while True:
+            if check_for_interrupt():
+                restore_terminal(old_settings)
+                return "Autonomous execution interrupted by user"
+
+            # Display the automatic "ok" message
+            pretty("ok", "You", context.config.width, context.config.indent, COLOR_USER)
+
+            callback = context.callbacks.get_standard_callback()
+            responses, nodes = fp.chain(bot, ["ok"], callback=callback)
+            if responses and (not bot.tool_handler.requests):
+                restore_terminal(old_settings)
+                return "Bot finished autonomous execution"
+    except Exception as e:
+        if context.old_terminal_settings:
+            restore_terminal(context.old_terminal_settings)
+        return f"Error during autonomous execution: {str(e)}"
 
 
 class DynamicFunctionalPromptHandler:
@@ -1778,10 +1822,27 @@ class CLI:
 
                     if not user_input:
                         continue
-                    if user_input.startswith("/"):
-                        # Pass bot instance to _handle_command (can be None)
+
+                    # Check if input contains a command at the end
+                    parts = user_input.split()
+                    has_command_at_end = len(parts) > 1 and parts[-1].startswith("/")
+
+                    if has_command_at_end:
+                        # Extract message and command
+                        message = " ".join(parts[:-1])
+                        command = parts[-1]
+
+                        # First send the message as chat
+                        if self.context.bot_instance and message:
+                            self._handle_chat(self.context.bot_instance, message)
+
+                        # Then execute the command
+                        self._handle_command(self.context.bot_instance, command)
+                    elif user_input.startswith("/"):
+                        # Command at start - handle normally
                         self._handle_command(self.context.bot_instance, user_input)
                     else:
+                        # Regular chat
                         if self.context.bot_instance:
                             self._handle_chat(self.context.bot_instance, user_input)
                         else:
