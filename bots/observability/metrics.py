@@ -301,16 +301,11 @@ def setup_metrics(config=None, reader=None, verbose=False):
 
 
 def set_metrics_verbose(verbose: bool):
-    """Set whether metrics should be displayed in verbose mode.
-
-    This allows dynamic control of metric output visibility, useful for CLI
-    applications where verbose mode can be toggled.
+    """Set verbose mode for metrics output.
 
     Args:
         verbose: If True, display simplified metrics. If False, suppress output.
     """
-    global _custom_exporter
-
     if _custom_exporter is not None and hasattr(_custom_exporter, "set_verbose"):
         _custom_exporter.set_verbose(verbose)
 
@@ -370,8 +365,6 @@ def record_api_call(duration: float, provider: str, model: str, status: str = "s
         model: Model name
         status: Call status ("success", "error", "timeout")
     """
-    global _last_recorded_metrics
-
     # Update last recorded metrics for CLI display (thread-safe)
     with _metrics_lock:
         _last_recorded_metrics["duration"] = duration
