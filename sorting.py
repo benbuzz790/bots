@@ -1,12 +1,44 @@
-def bubble_sort(arr):
+"""
+Sorting algorithms implementation
+"""
+
+
+def quicksort(arr):
     """
-    Sort an array using bubble sort algorithm.
+    QuickSort algorithm implementation.
+
+    Time Complexity: O(n log n) average, O(n²) worst case
+    Space Complexity: O(log n) due to recursion
 
     Args:
-        arr (list): List to be sorted
+        arr: List of comparable elements to sort
 
     Returns:
-        list: Sorted list
+        Sorted list in ascending order
+    """
+    if len(arr) <= 1:
+        return arr
+
+    pivot = arr[len(arr) // 2]
+    left = [x for x in arr if x < pivot]
+    middle = [x for x in arr if x == pivot]
+    right = [x for x in arr if x > pivot]
+
+    return quicksort(left) + middle + quicksort(right)
+
+
+def bubble_sort(arr):
+    """
+    Bubble Sort algorithm implementation.
+
+    Time Complexity: O(n²)
+    Space Complexity: O(1)
+
+    Args:
+        arr: List of comparable elements to sort
+
+    Returns:
+        Sorted list in ascending order
     """
     arr = arr.copy()  # Don't modify original
     n = len(arr)
@@ -23,36 +55,18 @@ def bubble_sort(arr):
     return arr
 
 
-def quick_sort(arr):
-    """
-    Sort an array using quick sort algorithm.
-
-    Args:
-        arr (list): List to be sorted
-
-    Returns:
-        list: Sorted list
-    """
-    if len(arr) <= 1:
-        return arr
-
-    pivot = arr[len(arr) // 2]
-    left = [x for x in arr if x < pivot]
-    middle = [x for x in arr if x == pivot]
-    right = [x for x in arr if x > pivot]
-
-    return quick_sort(left) + middle + quick_sort(right)
-
-
 def merge_sort(arr):
     """
-    Sort an array using merge sort algorithm.
+    Merge Sort algorithm implementation.
+
+    Time Complexity: O(n log n)
+    Space Complexity: O(n)
 
     Args:
-        arr (list): List to be sorted
+        arr: List of comparable elements to sort
 
     Returns:
-        list: Sorted list
+        Sorted list in ascending order
     """
     if len(arr) <= 1:
         return arr
@@ -65,16 +79,7 @@ def merge_sort(arr):
 
 
 def merge(left, right):
-    """
-    Helper function to merge two sorted arrays.
-
-    Args:
-        left (list): First sorted list
-        right (list): Second sorted list
-
-    Returns:
-        list: Merged sorted list
-    """
+    """Helper function for merge_sort"""
     result = []
     i = j = 0
 
@@ -90,3 +95,13 @@ def merge(left, right):
     result.extend(right[j:])
 
     return result
+
+
+if __name__ == "__main__":
+    # Example usage
+    test_array = [64, 34, 25, 12, 22, 11, 90]
+
+    print("Original array:", test_array)
+    print("QuickSort:", quicksort(test_array))
+    print("Bubble Sort:", bubble_sort(test_array))
+    print("Merge Sort:", merge_sort(test_array))

@@ -1,4 +1,4 @@
-﻿import argparse
+import argparse
 import inspect
 import json
 import os
@@ -1124,12 +1124,11 @@ class SystemHandler:
 
                 # Check last message input tokens (not total)
                 # Send context reduction message with cooldown (every 3 messages after trigger)
+                # Use cached metrics from previous iteration if available
                 try:
-                    from bots.observability import metrics
-
-                    # Capture metrics once and store in context for both check and display
-                    context.last_message_metrics = metrics.get_and_clear_last_metrics()
-                    last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
+                    last_input_tokens = 0
+                    if context.last_message_metrics:
+                        last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
 
                     # Trigger on high last message tokens AND cooldown expired (at 0)
                     if last_input_tokens > context.remove_context_threshold and context.context_reduction_cooldown <= 0:
@@ -1156,8 +1155,13 @@ class SystemHandler:
                 callback = context.callbacks.get_standard_callback()
                 response, node = fp.single_prompt(bot, prompt, callback=callback)
 
-                # Clear cached metrics after use
-                context.last_message_metrics = None
+                # Capture metrics after the response (matching chat mode timing)
+                try:
+                    from bots.observability import metrics
+
+                    context.last_message_metrics = metrics.get_and_clear_last_metrics()
+                except Exception:
+                    pass
 
                 # After sending prompt, check again if tools were used
                 if not bot.tool_handler.requests:
