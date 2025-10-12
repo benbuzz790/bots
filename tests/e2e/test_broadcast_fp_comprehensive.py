@@ -133,7 +133,7 @@ class TestBroadcastFPFunctionalSuccess(unittest.TestCase):
         # par_branch is now available in the menu and attempts to execute
         # Should show that par_branch option exists
         self.assertIn("par_branch", output)
-        self.assertIn("Broadcast completed", output)
+        self.assertIn("Broadcast complete", output)
 
     @patch("builtins.input")
     def test_broadcast_fp_with_par_branch_while_via_cli(self, mock_input):
@@ -159,7 +159,7 @@ class TestBroadcastFPFunctionalSuccess(unittest.TestCase):
 
         # par_branch_while is now available and attempts to execute
         self.assertIn("par_branch_while", output)
-        self.assertIn("Broadcast completed", output)
+        self.assertIn("Broadcast complete", output)
 
 
 class TestBroadcastFPRecursiveBranching(unittest.TestCase):

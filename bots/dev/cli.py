@@ -22,22 +22,45 @@ try:
     HAS_READLINE = True
 except ImportError:
     HAS_READLINE = False
-import bots.flows.functional_prompts as fp  # noqa: E402
-import bots.flows.recombinators as recombinators  # noqa: E402
-from bots.foundation.anthropic_bots import AnthropicBot  # noqa: E402
-from bots.foundation.base import Bot, ConversationNode  # noqa: E402
-from bots.observability.callbacks import BotCallbacks  # noqa: E402
 
-# Disable console span exporter if it was set up before we could set the env var
-# This happens because bots/__init__.py imports modules that initialize tracing
+from bots.flows import functional_prompts as fp
+from bots.flows import recombinators
+from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.base import Bot, ConversationNode
+from bots.observability import tracing
+from bots.observability.callbacks import BotCallbacks
+
+# Disable tracing span processors to prevent console output
 try:
-    from bots.observability import tracing
-
-    if tracing._tracer_provider is not None:
-        # Remove all span processors to stop console output
+    if hasattr(tracing, "_tracer_provider") and tracing._tracer_provider is not None:
         tracing._tracer_provider._active_span_processor._span_processors.clear()
 except Exception:
     pass  # If this fails, traces will still show but it's not critical
+
+
+def _find_leaves_util(node: ConversationNode) -> List[ConversationNode]:
+    """Utility function to recursively find all leaf nodes from a given node.
+
+    This is a standalone utility that can be used by any handler.
+
+    Args:
+        node: The starting conversation node
+
+    Returns:
+        List of leaf nodes (nodes with no replies)
+    """
+    leaves = []
+
+    def dfs(current_node):
+        if not current_node.replies:  # This is a leaf
+            leaves.append(current_node)
+        else:
+            for reply in current_node.replies:
+                dfs(reply)
+
+    dfs(node)
+    return leaves
+
 
 """
 CLI for bot interactions with improved architecture and dynamic parameter collection.
@@ -843,17 +866,7 @@ class ConversationHandler:
 
     def _find_leaves(self, node: ConversationNode) -> List[ConversationNode]:
         """Recursively find all leaf nodes from a given node."""
-        leaves = []
-
-        def dfs(current_node):
-            if not current_node.replies:  # This is a leaf
-                leaves.append(current_node)
-            else:
-                for reply in current_node.replies:
-                    dfs(reply)
-
-        dfs(node)
-        return leaves
+        return _find_leaves_util(node)
 
     def _calculate_depth(self, start_node: ConversationNode, target_node: ConversationNode) -> int:
         """Calculate the depth/distance from start_node to target_node."""
@@ -1284,17 +1297,8 @@ class DynamicFunctionalPromptHandler:
     def broadcast_fp(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Execute broadcast_fp functional prompt with leaf selection by number."""
         try:
-            # Define helper function to find leaves
-            def find_leaves(node) -> list:
-                """Recursively find all leaf nodes from the given node."""
-                if not node.replies:
-                    return [node]
-                leaves = []
-                for reply in node.replies:
-                    leaves.extend(find_leaves(reply))
-                return leaves
-
-            leaves = find_leaves(bot.conversation)
+            # Use the utility function to find leaves
+            leaves = _find_leaves_util(bot.conversation)
             if not leaves:
                 return "No leaves found from current node"
             print(f"\nFound {len(leaves)} leaf nodes:")

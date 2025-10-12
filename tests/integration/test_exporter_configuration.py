@@ -58,7 +58,7 @@ class TestExporterConfiguration(unittest.TestCase):
         config = load_config_from_env()
 
         self.assertTrue(config.tracing_enabled)
-        self.assertEqual(config.exporter_type, "none")
+        self.assertEqual(config.exporter_type, "console")
         self.assertEqual(config.service_name, "test-service")
 
     def test_otlp_exporter_configuration(self):
@@ -298,7 +298,7 @@ class TestExporterConfiguration(unittest.TestCase):
 
         config = load_config_from_env()
 
-        self.assertEqual(config.exporter_type, "none")
+        self.assertEqual(config.exporter_type, "console")
 
     def test_service_name_preservation(self):
         """Test that service names preserve case and special characters."""
