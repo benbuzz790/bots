@@ -212,15 +212,9 @@ def setup_metrics(config=None, reader=None, verbose=False):
                     exporter = ConsoleMetricExporter()
                 reader = PeriodicExportingMetricReader(exporter, export_interval_millis=60000)
         elif config.metrics_exporter_type == "none":
-            # When verbose=True, use simplified console exporter even with "none" config
-            # This allows CLI to show metrics on demand without changing env vars
-            if verbose and CUSTOM_EXPORTER_AVAILABLE:
-                _custom_exporter = SimplifiedConsoleMetricExporter(verbose=True)
-                exporter = _custom_exporter
-                reader = PeriodicExportingMetricReader(exporter, export_interval_millis=60000)
-            else:
-                # No exporter - metrics enabled but not exported
-                reader = None
+            # No exporter - metrics are tracked internally but not exported periodically
+            # CLI can still display metrics on-demand via get_and_clear_last_metrics()
+            reader = None
 
     # Create meter provider
     if reader:
