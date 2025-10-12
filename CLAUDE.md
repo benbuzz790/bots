@@ -1,5 +1,6 @@
 # CI/CD Pipeline Commands Reference for Claude
 This document provides essential commands for accessing information from GitHub Actions CI/CD pipeline runs.
+
 ## Essential Commands
 
 ### 0. Running linters
@@ -16,6 +17,17 @@ black .
 isort .
 python -m bots.dev.remove_boms
 ```
+
+**IMPORTANT: Best Practices for Linting**
+- **Always run linters WITHOUT output truncation** before committing/pushing
+- **Never use `output_length_limit` parameter** when running linters - you might miss critical errors
+- **Run the full command** exactly as shown above to catch all issues
+- **Verify versions match CI**: Local linter versions should match GitHub Actions
+  - Local versions: flake8 6.1.0, black 25.9.0, isort 6.0.1
+  - CI installs latest versions (not pinned) - may detect additional issues
+  - If CI fails but local passes, check for version differences
+
+**Common Pitfall**: Running `flake8 <single_file>` only checks that file. Always run `flake8 .` to check the entire codebase before pushing.
 
 ### 1. View PR Check Status
 Get a quick overview of all checks for a PR:
@@ -93,5 +105,27 @@ python -m bots.dev.pr_comment_parser owner/repo 123
 python -m bots.dev.pr_comment_parser owner/repo 123 output.txt
 ```
 This tool extracts the "🤖 Prompt for AI Agents" sections from CodeRabbit comments, filtering out outdated comments and including both regular and inline review comments.
+
+---
+
+## Linter Version Management
+
+### Current Versions (as of Oct 2025)
+- **Local**: flake8 6.1.0, black 25.9.0, isort 6.0.1
+- **CI (GitHub Actions)**: Installs latest versions (not pinned)
+
+### Issue: Version Mismatch
+The CI workflow (`.github/workflows/pr-checks.yml` line 117) installs linters without version pinning:
+```yaml
+pip install black isort flake8 mypy
+```
+
+This can cause CI to detect issues that local linters miss due to version differences.
+
+### Recommendation
+To ensure consistency between local and CI environments, consider:
+1. **Pin linter versions** in requirements.txt or a separate requirements-dev.txt
+2. **OR** regularly update local linters to match CI: `pip install --upgrade black isort flake8`
+3. **Check versions** before each PR: `flake8 --version`, `black --version`, `isort --version`
 
 ---
