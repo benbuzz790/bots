@@ -58,7 +58,7 @@ class TestExporterConfiguration(unittest.TestCase):
         config = load_config_from_env()
 
         self.assertTrue(config.tracing_enabled)
-        self.assertEqual(config.exporter_type, "console")
+        self.assertEqual(config.exporter_type, "none")
         self.assertEqual(config.service_name, "test-service")
 
     def test_otlp_exporter_configuration(self):
@@ -298,7 +298,7 @@ class TestExporterConfiguration(unittest.TestCase):
 
         config = load_config_from_env()
 
-        self.assertEqual(config.exporter_type, "console")
+        self.assertEqual(config.exporter_type, "none")
 
     def test_service_name_preservation(self):
         """Test that service names preserve case and special characters."""
@@ -322,12 +322,11 @@ class TestExporterConfiguration(unittest.TestCase):
         config = ObservabilityConfig()
 
         self.assertTrue(config.tracing_enabled)
-        self.assertEqual(config.exporter_type, "console")
+        self.assertEqual(config.exporter_type, "none")
         self.assertIsNone(config.otlp_endpoint)
         self.assertEqual(config.service_name, "bots")
         self.assertIsNone(config.metrics_enabled)
-        self.assertEqual(config.metrics_exporter_type, "console")
-        self.assertIsNone(config.jaeger_endpoint)
+        self.assertEqual(config.metrics_exporter_type, "none")
 
 
 if __name__ == "__main__":

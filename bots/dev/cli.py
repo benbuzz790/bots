@@ -1284,7 +1284,17 @@ class DynamicFunctionalPromptHandler:
     def broadcast_fp(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Execute broadcast_fp functional prompt with leaf selection by number."""
         try:
-            leaves = context.conversation._find_leaves(bot.conversation)
+            # Define helper function to find leaves
+            def find_leaves(node) -> list:
+                """Recursively find all leaf nodes from the given node."""
+                if not node.replies:
+                    return [node]
+                leaves = []
+                for reply in node.replies:
+                    leaves.extend(find_leaves(reply))
+                return leaves
+
+            leaves = find_leaves(bot.conversation)
             if not leaves:
                 return "No leaves found from current node"
             print(f"\nFound {len(leaves)} leaf nodes:")
@@ -1320,66 +1330,38 @@ class DynamicFunctionalPromptHandler:
                 ("par_branch", fp.par_branch),
                 ("par_branch_while", fp.par_branch_while),
             ]
-            print("\nSelect functional prompt to broadcast:")
+            print("\nAvailable functional prompts:")
             for i, (name, _) in enumerate(fp_options, 1):
                 print(f"  {i}. {name}")
-            fp_choice_input = input("Enter number: ").strip()
-            try:
-                fp_choice = int(fp_choice_input) - 1
-                if not 0 <= fp_choice < len(fp_options):
-                    return "Invalid functional prompt selection"
-            except ValueError:
+            fp_choice = input("\nSelect functional prompt (number or name): ").strip()
+            selected_fp = None
+            if fp_choice.isdigit():
+                idx = int(fp_choice) - 1
+                if 0 <= idx < len(fp_options):
+                    selected_fp = fp_options[idx]
+            else:
+                for name, func in fp_options:
+                    if name.lower() == fp_choice.lower():
+                        selected_fp = (name, func)
+                        break
+            if not selected_fp:
                 return "Invalid functional prompt selection"
-            fp_name, fp_function = fp_options[fp_choice]
-            print(f"\nCollecting parameters for {fp_name}:")
-            params = self.collector.collect_parameters(fp_function)
+            fp_name, fp_func = selected_fp
+            print(f"\nUsing functional prompt: {fp_name}")
+            params = self.collector.collect_parameters(fp_func)
             if params is None:
                 return "Parameter collection cancelled"
-
-            # Check if the function accepts a callback parameter
-            sig = inspect.signature(fp_function)
-            accepts_callback = "callback" in sig.parameters
-
-            if accepts_callback:
-                callback = context.callbacks.get_standard_callback()
-                params["callback"] = callback
-
-            context.conversation_backup = bot.conversation
-            print(f"Broadcasting {fp_name} to {len(target_leaves)} selected leaves...")
-
-            # Save current bot state
-            original_conversation = bot.conversation
-            original_autosave = bot.autosave
-            bot.autosave = False
-
-            # Execute the FP function on each target leaf
-            all_responses = []
-            all_nodes = []
-            for leaf in target_leaves:
-                try:
-                    # Set bot conversation to this leaf
-                    bot.conversation = leaf
-
-                    # Execute the FP function
-                    result = fp_function(bot, **params)
-
-                    # Handle the result
-                    if isinstance(result, tuple) and len(result) == 2:
-                        responses, nodes = result
-                        if isinstance(responses, list):
-                            all_responses.extend(responses)
-                            all_nodes.extend(nodes)
-                        else:
-                            all_responses.append(responses)
-                            all_nodes.append(nodes)
-                except Exception as e:
-                    print(f"Error broadcasting to leaf: {str(e)}")
-
-            # Restore original conversation
-            bot.conversation = original_conversation
-            bot.autosave = original_autosave
-
-            return f"Broadcast completed: {fp_name} executed on {len(target_leaves)} leaves successfully"
+            print(f"\nBroadcasting {fp_name} to {len(target_leaves)} leaves...")
+            callback = context.callbacks.get_standard_callback()
+            responses, nodes = fp.broadcast_fp(
+                bot=bot, leaves=target_leaves, functional_prompt=fp_func, callback=callback, **params
+            )
+            print(f"\nBroadcast complete! Generated {len(responses)} responses")
+            for i, response in enumerate(responses, 1):
+                if response:
+                    print(f"\nResponse {i}:")
+                    pretty(response, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
+            return f"Broadcast complete with {len(responses)} responses"
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
 
