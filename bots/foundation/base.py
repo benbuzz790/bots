@@ -1615,16 +1615,26 @@ class ToolHandler(ABC):
         """Add necessary imports to module source code by extracting existing imports."""
         source = module_context.source
         imports_needed = []
+
+        # Track import line numbers so we can remove them later
+        import_line_numbers = set()
+
         try:
             tree = ast.parse(source)
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
+                    # Track line numbers of import statements
+                    if hasattr(node, 'lineno'):
+                        import_line_numbers.add(node.lineno)
                     for alias in node.names:
                         if alias.asname:
                             imports_needed.append(f"import {alias.name} as {alias.asname}")
                         else:
                             imports_needed.append(f"import {alias.name}")
                 elif isinstance(node, ast.ImportFrom):
+                    # Track line numbers of from...import statements
+                    if hasattr(node, 'lineno'):
+                        import_line_numbers.add(node.lineno)
                     module_name = node.module or ""
                     names = []
                     for alias in node.names:
@@ -1636,11 +1646,13 @@ class ToolHandler(ABC):
                         imports_needed.append(f"from {module_name} import {', '.join(names)}")
         except SyntaxError:
             import_patterns = ["^import\\s+[\\w\\.,\\s]+", "^from\\s+[\\w\\.]+\\s+import\\s+[\\w\\.,\\s\\*]+"]
-            for line in source.split("\n"):
-                line = line.strip()
+            source_lines = source.split("\n")
+            for line_num, line in enumerate(source_lines, 1):
+                line_stripped = line.strip()
                 for pattern in import_patterns:
-                    if re.match(pattern, line):
-                        imports_needed.append(line)
+                    if re.match(pattern, line_stripped):
+                        imports_needed.append(line_stripped)
+                        import_line_numbers.add(line_num)
                         break
         try:
             tree = ast.parse(source)
@@ -1720,15 +1732,33 @@ class ToolHandler(ABC):
                         imports_needed.append(module_import)
         except Exception:
             pass
+
+        # Remove duplicate imports
         unique_imports = []
         seen = set()
         for imp in imports_needed:
             if imp not in seen:
                 unique_imports.append(imp)
                 seen.add(imp)
+
+        # Remove existing import lines from source before adding them back
+        if import_line_numbers:
+            source_lines = source.split("\n")
+            # Filter out lines that are imports (1-indexed line numbers)
+            filtered_lines = [
+                line for i, line in enumerate(source_lines, 1)
+                if i not in import_line_numbers
+            ]
+            # Remove leading empty lines
+            while filtered_lines and not filtered_lines[0].strip():
+                filtered_lines.pop(0)
+            source = "\n".join(filtered_lines)
+
+        # Add imports to the beginning
         if unique_imports:
             import_block = "\n".join(unique_imports) + "\n\n"
             source = import_block + source
+
         return source
 
     def to_dict(self) -> Dict[str, Any]:
@@ -1999,34 +2029,34 @@ class ToolHandler(ABC):
     def from_dict(cls, data: Dict[str, Any]) -> "ToolHandler":
         """Reconstruct a ToolHandler instance from serialized state.
 
-        Use when restoring a previously serialized tool handler,
-        such as when loading a saved bot state.
+    Use when restoring a previously serialized tool handler,
+    such as when loading a saved bot state.
 
-        Parameters:
-            data (Dict[str, Any]): Serialized state from to_dict()
+    Parameters:
+        data (Dict[str, Any]): Serialized state from to_dict()
 
-        Returns:
-            ToolHandler: Reconstructed handler instance
+    Returns:
+        ToolHandler: Reconstructed handler instance
 
-        Side Effects:
-            - Creates new module contexts
-            - Reconstructs function objects
-            - Restores tool registry
-            - Preserves request/result history
+    Side Effects:
+        - Creates new module contexts
+        - Reconstructs function objects
+        - Restores tool registry
+        - Preserves request/result history
 
-        Note:
-            - Only restores explicitly registered tools
-            - Verifies code hashes for security
-            - Maintains original module structure
-            - Preserves execution state (requests/results)
+    Note:
+        - Only restores explicitly registered tools
+        - Verifies code hashes for security
+        - Maintains original module structure
+        - Preserves execution state (requests/results)
 
-        Example:
-            ```python
-            saved_state = handler.to_dict()
-            # Later...
-            new_handler = ToolHandler.from_dict(saved_state)
-            ```
-        """
+    Example:
+        ```python
+        saved_state = handler.to_dict()
+        # Later...
+        new_handler = ToolHandler.from_dict(saved_state)
+        ```
+    """
         handler = cls()
         handler.results = data.get("results", [])
         handler.requests = data.get("requests", [])
@@ -2043,6 +2073,7 @@ class ToolHandler(ABC):
                 source = module_data["source"]
                 if "globals" in module_data:
                     cls._deserialize_globals(module.__dict__, module_data["globals"])
+
                 exec(source, module.__dict__)
                 module_context = ModuleContext(
                     name=module_data["name"],
