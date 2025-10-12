@@ -108,6 +108,7 @@ def reset_metrics():
 
     Warning: This is not thread-safe and should only be used in test environments.
     """
+    global _last_recorded_metrics
     global _meter_provider, _initialized, _custom_exporter
     global _response_time_histogram, _api_call_duration_histogram
     global _tool_execution_duration_histogram, _message_building_duration_histogram
