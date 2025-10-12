@@ -5,18 +5,17 @@ Tests for CLI /s (save prompt) and /p (load prompt) commands.
 import json
 import os
 import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bots.dev.cli import CLI, CLIContext, PromptHandler, PromptManager
+from bots.dev.cli import CLI, PromptHandler, PromptManager
 
 
 @pytest.fixture
 def temp_prompts_file():
     """Create a temporary prompts file for testing."""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         temp_path = f.name
         # Initialize with empty structure
         json.dump({"recents": [], "prompts": {}}, f)
@@ -64,7 +63,7 @@ class TestPromptManager:
 
     def test_save_prompt_without_name(self, prompt_manager):
         """Test saving a prompt without a name (auto-generated)."""
-        with patch.object(prompt_manager, '_generate_prompt_name', return_value='auto_generated'):
+        with patch.object(prompt_manager, "_generate_prompt_name", return_value="auto_generated"):
             prompt_text = "This is a test prompt"
             name = prompt_manager.save_prompt(prompt_text)
 
@@ -154,7 +153,7 @@ class TestPromptHandler:
         mock_context = MagicMock()
         args = ["This", "is", "a", "test"]
 
-        with patch.object(prompt_handler.prompt_manager, 'save_prompt', return_value='test_name') as mock_save:
+        with patch.object(prompt_handler.prompt_manager, "save_prompt", return_value="test_name") as mock_save:
             result = prompt_handler.save_prompt(mock_bot, mock_context, args, last_user_message=None)
 
             mock_save.assert_called_once_with("This is a test")
@@ -167,7 +166,7 @@ class TestPromptHandler:
         args = []
         last_message = "Save this message"
 
-        with patch.object(prompt_handler.prompt_manager, 'save_prompt', return_value='saved_msg') as mock_save:
+        with patch.object(prompt_handler.prompt_manager, "save_prompt", return_value="saved_msg") as mock_save:
             result = prompt_handler.save_prompt(mock_bot, mock_context, args, last_user_message=last_message)
 
             mock_save.assert_called_once_with("Save this message")
@@ -228,7 +227,7 @@ class TestPromptHandler:
         mock_context = MagicMock()
         args = ["test"]
 
-        with patch('builtins.input', return_value='1'):
+        with patch("builtins.input", return_value="1"):
             message, prefill = prompt_handler.load_prompt(mock_bot, mock_context, args)
 
             assert "Loaded prompt:" in message
@@ -244,7 +243,7 @@ class TestPromptHandler:
         mock_context = MagicMock()
         args = ["test"]
 
-        with patch('builtins.input', return_value='99'):
+        with patch("builtins.input", return_value="99"):
             message, prefill = prompt_handler.load_prompt(mock_bot, mock_context, args)
 
             assert "Invalid selection" in message
@@ -260,7 +259,7 @@ class TestPromptHandler:
         mock_context = MagicMock()
         args = ["test"]
 
-        with patch('builtins.input', return_value=''):
+        with patch("builtins.input", return_value=""):
             message, prefill = prompt_handler.load_prompt(mock_bot, mock_context, args)
 
             assert "Selection cancelled" in message
@@ -275,8 +274,8 @@ class TestCLIIntegration:
         cli = cli_with_temp_prompts
         mock_bot = MagicMock()
 
-        with patch.object(cli.prompts.prompt_manager, '_generate_prompt_name', return_value='test_save'):
-            result = cli.commands['/s'](mock_bot, cli.context, ["Save", "this", "text"])
+        with patch.object(cli.prompts.prompt_manager, "_generate_prompt_name", return_value="test_save"):
+            result = cli.commands["/s"](mock_bot, cli.context, ["Save", "this", "text"])
 
             assert "Saved prompt as:" in result
             assert "test_save" in cli.prompts.prompt_manager.prompts_data["prompts"]
@@ -287,8 +286,8 @@ class TestCLIIntegration:
         cli.last_user_message = "This was my last message"
         mock_bot = MagicMock()
 
-        with patch.object(cli.prompts.prompt_manager, '_generate_prompt_name', return_value='last_msg'):
-            result = cli.commands['/s'](mock_bot, cli.context, [])
+        with patch.object(cli.prompts.prompt_manager, "_generate_prompt_name", return_value="last_msg"):
+            result = cli.commands["/s"](mock_bot, cli.context, [])
 
             assert "Saved prompt as:" in result
             assert cli.prompts.prompt_manager.prompts_data["prompts"]["last_msg"] == "This was my last message"
@@ -302,7 +301,7 @@ class TestCLIIntegration:
 
         mock_bot = MagicMock()
 
-        cli.commands['/p'](mock_bot, cli.context, ["loadable"])
+        cli.commands["/p"](mock_bot, cli.context, ["loadable"])
 
         # Should set pending_prefill
         assert cli.pending_prefill == "Loaded content"
@@ -313,7 +312,7 @@ class TestCLIIntegration:
         mock_bot = MagicMock()
         mock_bot.conversation = MagicMock()
 
-        with patch('bots.flows.functional_prompts.chain', return_value=(["response"], [MagicMock()])):
+        with patch("bots.flows.functional_prompts.chain", return_value=(["response"], [MagicMock()])):
             cli._handle_chat(mock_bot, "Test user input")
 
             assert cli.last_user_message == "Test user input"
@@ -322,10 +321,10 @@ class TestCLIIntegration:
         """Test that /s and /p commands are properly registered."""
         cli = cli_with_temp_prompts
 
-        assert '/s' in cli.commands
-        assert '/p' in cli.commands
-        assert cli.commands['/s'] == cli._handle_save_prompt
-        assert cli.commands['/p'] == cli._handle_load_prompt
+        assert "/s" in cli.commands
+        assert "/p" in cli.commands
+        assert cli.commands["/s"] == cli._handle_save_prompt
+        assert cli.commands["/p"] == cli._handle_load_prompt
 
 
 class TestEndToEnd:
@@ -337,12 +336,12 @@ class TestEndToEnd:
         mock_bot = MagicMock()
 
         # Step 1: Save a prompt
-        with patch.object(cli.prompts.prompt_manager, '_generate_prompt_name', return_value='workflow_test'):
-            save_result = cli.commands['/s'](mock_bot, cli.context, ["Workflow", "test", "prompt"])
+        with patch.object(cli.prompts.prompt_manager, "_generate_prompt_name", return_value="workflow_test"):
+            save_result = cli.commands["/s"](mock_bot, cli.context, ["Workflow", "test", "prompt"])
             assert "Saved prompt as: workflow_test" in save_result
 
         # Step 2: Load the prompt
-        cli.commands['/p'](mock_bot, cli.context, ["workflow"])
+        cli.commands["/p"](mock_bot, cli.context, ["workflow"])
         assert cli.pending_prefill == "Workflow test prompt"
 
     def test_save_after_chat_then_load(self, cli_with_temp_prompts):
@@ -352,16 +351,16 @@ class TestEndToEnd:
         mock_bot.conversation = MagicMock()
 
         # Step 1: Simulate a chat message
-        with patch('bots.flows.functional_prompts.chain', return_value=(["response"], [MagicMock()])):
+        with patch("bots.flows.functional_prompts.chain", return_value=(["response"], [MagicMock()])):
             cli._handle_chat(mock_bot, "Important message to save")
 
         # Step 2: Save the last message
-        with patch.object(cli.prompts.prompt_manager, '_generate_prompt_name', return_value='important_msg'):
-            save_result = cli.commands['/s'](mock_bot, cli.context, [])
+        with patch.object(cli.prompts.prompt_manager, "_generate_prompt_name", return_value="important_msg"):
+            save_result = cli.commands["/s"](mock_bot, cli.context, [])
             assert "Saved prompt as: important_msg" in save_result
 
         # Step 3: Load it back
-        cli.commands['/p'](mock_bot, cli.context, ["important"])
+        cli.commands["/p"](mock_bot, cli.context, ["important"])
         assert cli.pending_prefill == "Important message to save"
 
     def test_multiple_saves_and_search(self, cli_with_temp_prompts):
