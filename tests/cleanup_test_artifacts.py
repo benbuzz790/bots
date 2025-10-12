@@ -10,7 +10,7 @@ def cleanup_test_artifacts():
         "test_clone_dir_*",
         "temp_test_repo_*",
         "test.txt",
-        "rapid.txt", 
+        "rapid.txt",
         "simple.txt",
         "test_bom.*",
         "simple_function.py",
