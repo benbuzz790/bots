@@ -313,7 +313,6 @@ def set_metrics_verbose(verbose: bool):
     Args:
         verbose: If True, display simplified metrics. If False, suppress output.
     """
-    global _custom_exporter
 
     if _custom_exporter is not None and hasattr(_custom_exporter, "set_verbose"):
         _custom_exporter.set_verbose(verbose)
@@ -374,7 +373,6 @@ def record_api_call(duration: float, provider: str, model: str, status: str = "s
         model: Model name
         status: Call status ("success", "error", "timeout")
     """
-    global _last_recorded_metrics
 
     # Update last recorded metrics for CLI display
     _last_recorded_metrics["duration"] = duration
@@ -469,7 +467,6 @@ def record_tokens(
         model: Model name
         cached_tokens: Number of cached tokens (optional, default 0)
     """
-    global _last_recorded_metrics
 
     # Update last recorded metrics for CLI display
     _last_recorded_metrics["input_tokens"] = input_tokens
@@ -517,7 +514,6 @@ def record_cost(cost: float, provider: str, model: str):
         provider: Provider name
         model: Model name
     """
-    global _last_recorded_metrics
 
     # Update last recorded metrics for CLI display
     _last_recorded_metrics["cost"] = cost
