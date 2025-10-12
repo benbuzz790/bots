@@ -13,12 +13,12 @@ class TestObservabilityConfig:
     def test_default_config(self):
         """Test that ObservabilityConfig has correct default values.
 
-    Verifies:
-    - tracing_enabled defaults to True
-    - exporter_type defaults to "none" (to avoid verbose output)
-    - service_name defaults to "bots"
-    - otlp_endpoint is None by default
-    """
+        Verifies:
+        - tracing_enabled defaults to True
+        - exporter_type defaults to "none" (to avoid verbose output)
+        - service_name defaults to "bots"
+        - otlp_endpoint is None by default
+        """
         config = ObservabilityConfig()
 
         assert config.tracing_enabled is True
@@ -27,18 +27,18 @@ class TestObservabilityConfig:
         assert config.otlp_endpoint is None
 
     def test_custom_config_values(self):
-        """Test creating ObservabilityConfig with custom values.
-
-        Verifies that all fields can be set to custom values.
-        """
+        """Test that ObservabilityConfig accepts custom values."""
         config = ObservabilityConfig(
-            tracing_enabled=False, exporter_type="otlp", service_name="my-service", otlp_endpoint="http://localhost:4317"
+            tracing_enabled=False,
+            exporter_type="otlp",
+            otlp_endpoint="http://localhost:4317",
+            service_name="custom-service",
         )
 
         assert config.tracing_enabled is False
         assert config.exporter_type == "otlp"
-        assert config.service_name == "my-service"
         assert config.otlp_endpoint == "http://localhost:4317"
+        assert config.service_name == "custom-service"
 
 
 class TestLoadConfigFromEnv:
