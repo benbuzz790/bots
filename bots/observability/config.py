@@ -28,11 +28,11 @@ class ObservabilityConfig:
     """
 
     tracing_enabled: bool = True
-    exporter_type: str = "console"
+    exporter_type: str = "none"
     otlp_endpoint: Optional[str] = None
     service_name: str = "bots"
     metrics_enabled: Optional[bool] = None  # None means follow tracing_enabled
-    metrics_exporter_type: str = "console"
+    metrics_exporter_type: str = "none"
     jaeger_endpoint: Optional[str] = None
 
 
@@ -73,9 +73,9 @@ def load_config_from_env() -> ObservabilityConfig:
     else:
         metrics_enabled = None  # Will follow tracing_enabled
 
-    # Get metrics exporter type
-    metrics_exporter_raw = os.getenv("BOTS_OTEL_METRICS_EXPORTER", "console").strip()
-    metrics_exporter_type = metrics_exporter_raw.lower() if metrics_exporter_raw else "console"
+    # Get metrics exporter type - default to 'none' to match BOTS_OTEL_EXPORTER default
+    metrics_exporter_raw = os.getenv("BOTS_OTEL_METRICS_EXPORTER", "none").strip()
+    metrics_exporter_type = metrics_exporter_raw.lower() if metrics_exporter_raw else "none"
 
     config = ObservabilityConfig(
         tracing_enabled=not otel_disabled,
