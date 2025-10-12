@@ -301,6 +301,7 @@ class TestCLIIntegration:
 
         mock_bot = MagicMock()
 
+        # Call without assignment to avoid unused variable
         cli.commands["/p"](mock_bot, cli.context, ["loadable"])
 
         # Should set pending_prefill

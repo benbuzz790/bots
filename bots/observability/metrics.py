@@ -65,6 +65,7 @@ _custom_exporter: Optional[object] = None  # Store reference to custom exporter
 
 # Track last recorded metrics for CLI display
 _last_recorded_metrics = {"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0, "cost": 0.0, "duration": 0.0}
+_metrics_lock = threading.Lock()  # Lock for thread-safe metrics updates
 
 # Metric instruments (initialized after setup)
 _response_time_histogram = None
@@ -377,8 +378,9 @@ def record_api_call(duration: float, provider: str, model: str, status: str = "s
     """
     global _last_recorded_metrics
 
-    # Update last recorded metrics for CLI display
-    _last_recorded_metrics["duration"] = duration
+    # Update last recorded metrics for CLI display (thread-safe)
+    with _metrics_lock:
+        _last_recorded_metrics["duration"] = duration
 
     if not _initialized:
         return
@@ -462,7 +464,6 @@ def record_tokens(
     cached_tokens: int = 0,
 ):
     """Record token usage.
-    global _last_recorded_metrics
 
     Args:
         input_tokens: Number of input tokens
@@ -471,11 +472,13 @@ def record_tokens(
         model: Model name
         cached_tokens: Number of cached tokens (optional, default 0)
     """
+    global _last_recorded_metrics
 
-    # Update last recorded metrics for CLI display
-    _last_recorded_metrics["input_tokens"] = input_tokens
-    _last_recorded_metrics["output_tokens"] = output_tokens
-    _last_recorded_metrics["cached_tokens"] = cached_tokens
+    # Update last recorded metrics for CLI display (thread-safe)
+    with _metrics_lock:
+        _last_recorded_metrics["input_tokens"] = input_tokens
+        _last_recorded_metrics["output_tokens"] = output_tokens
+        _last_recorded_metrics["cached_tokens"] = cached_tokens
 
     if not _initialized or _tokens_used_counter is None:
         return
@@ -520,8 +523,9 @@ def record_cost(cost: float, provider: str, model: str):
     """
     global _last_recorded_metrics
 
-    # Update last recorded metrics for CLI display
-    _last_recorded_metrics["cost"] = cost
+    # Update last recorded metrics for CLI display (thread-safe)
+    with _metrics_lock:
+        _last_recorded_metrics["cost"] = cost
 
     if not _initialized:
         return
@@ -593,11 +597,16 @@ def get_and_clear_last_metrics():
     """
     global _last_recorded_metrics
 
-    # Make a copy
-    metrics_copy = _last_recorded_metrics.copy()
-
-    # Clear for next call
-    _last_recorded_metrics = {"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0, "cost": 0.0, "duration": 0.0}
+    # Make a copy and clear atomically (thread-safe)
+    with _metrics_lock:
+        metrics_copy = _last_recorded_metrics.copy()
+        _last_recorded_metrics = {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cached_tokens": 0,
+            "cost": 0.0,
+            "duration": 0.0,
+        }
 
     return metrics_copy
 
