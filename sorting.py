@@ -17,7 +17,7 @@ def quicksort(arr):
         Sorted list in ascending order
     """
     if len(arr) <= 1:
-        return arr
+        return arr.copy() if arr else []
 
     pivot = arr[len(arr) // 2]
     left = [x for x in arr if x < pivot]
@@ -69,7 +69,7 @@ def merge_sort(arr):
         Sorted list in ascending order
     """
     if len(arr) <= 1:
-        return arr
+        return arr.copy() if arr else []
 
     mid = len(arr) // 2
     left = merge_sort(arr[:mid])

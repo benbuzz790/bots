@@ -570,9 +570,10 @@ def remove_context(labels: str) -> str:
                     parent.replies.insert(insert_index, child)
                     insert_index += 1
             else:
-                # If bot_node not in parent.replies, just update children's parent
+                # If bot_node not in parent.replies, still add children and update parent
                 for child in user_node.replies:
                     child.parent = parent
+                    parent.replies.append(child)
 
             # If the current conversation pointer is at the bot node, user node,
             # or a descendant of the user node, move it to the parent

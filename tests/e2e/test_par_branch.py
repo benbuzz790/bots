@@ -20,6 +20,7 @@ import pytest
 from bots.flows.functional_prompts import par_branch, par_branch_while
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
+from bots.testing.mock_bot import MockBot
 
 pytestmark = pytest.mark.e2e
 
@@ -60,16 +61,8 @@ def test_par_branch_structure() -> None:
     The test uses multiple prompts to ensure proper parallel branch creation
     and structural integrity of the conversation tree.
     """
-    bot = AnthropicBot(
-        api_key=None,
-        model_engine=Engines.CLAUDE37_SONNET_20250219,
-        max_tokens=1000,
-        temperature=0.7,
-        name="TestBot",
-        role="test assistant",
-        role_description="A bot for testing",
-        autosave=False,
-    )
+    bot = MockBot()
+    bot.set_response_pattern("Mock response to: {user_input}")
     original_node = bot.conversation
     prompts = ["test prompt 1", "test prompt 2", "test prompt 3"]
     responses, nodes = par_branch(bot, prompts)
@@ -102,22 +95,14 @@ def test_par_branch_while_structure() -> None:
     The test includes detailed logging of conversation structure and response
     content to aid in debugging and verification.
     """
-    bot = AnthropicBot(
-        api_key=None,
-        model_engine=Engines.CLAUDE37_SONNET_20250219,
-        max_tokens=1000,
-        temperature=0.7,
-        name="TestBot",
-        role="test assistant",
-        role_description="A bot for testing",
-        autosave=False,
-    )
+    bot = MockBot()
+    bot.set_response_pattern("Mock response to: {user_input}")
     original_node = bot.conversation
 
-    def stop_after_two(bot: AnthropicBot) -> bool:
+    def stop_after_two(bot: MockBot) -> bool:
         """Stop condition that halts iteration after two responses.
         Parameters:
-            bot (AnthropicBot): The bot instance being tested
+            bot (MockBot): The bot instance being tested
         Returns:
             bool: True if iteration count >= 2, False otherwise
         """

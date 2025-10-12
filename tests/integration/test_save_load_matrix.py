@@ -289,9 +289,7 @@ def complex_tool(input_data: str) -> str:
                     globals_dict = func.__globals__
                     # Look for helper functions (typically start with _)
                     helper_funcs = [
-                        name
-                        for name in globals_dict.keys()
-                        if name.startswith("_") and callable(globals_dict.get(name))
+                        name for name in globals_dict.keys() if name.startswith("_") and callable(globals_dict.get(name))
                     ]
                     result["helper_functions_available"] = len(helper_funcs) > 0
                     result["helper_function_names"] = helper_funcs
@@ -408,23 +406,18 @@ def test_tool(input_data: str) -> str:
 
         if not line_count_stable:
             print(f"WARNING: Line count increased from {source_line_counts[0]} to {source_line_counts[-1]}")
-            growth_per_cycle = [
-                (source_line_counts[i] - source_line_counts[i - 1]) for i in range(1, len(source_line_counts))
-            ]
+            growth_per_cycle = [(source_line_counts[i] - source_line_counts[i - 1]) for i in range(1, len(source_line_counts))]
             print(f"  Growth per cycle: {growth_per_cycle}")
 
         if not import_count_stable:
             print(f"WARNING: Import count increased from {import_line_counts[0]} to {import_line_counts[-1]}")
-            growth_per_cycle = [
-                (import_line_counts[i] - import_line_counts[i - 1]) for i in range(1, len(import_line_counts))
-            ]
+            growth_per_cycle = [(import_line_counts[i] - import_line_counts[i - 1]) for i in range(1, len(import_line_counts))]
             print(f"  Growth per cycle: {growth_per_cycle}")
 
         # Test should fail if imports are duplicating
         self.assertTrue(
             line_count_stable and import_count_stable,
-            f"Import duplication detected! Line counts: {source_line_counts}, "
-            f"Import counts: {import_line_counts}",
+            f"Import duplication detected! Line counts: {source_line_counts}, " f"Import counts: {import_line_counts}",
         )
 
     def test_helper_function_preservation(self):
@@ -561,11 +554,7 @@ def test_tool(input_data: str) -> str:
             row = f"{test_case['name']:<25} "
             for scenario in scenarios:
                 result = next(
-                    (
-                        r
-                        for r in results
-                        if r["test_case"] == test_case["name"] and r["scenario"] == scenario
-                    ),
+                    (r for r in results if r["test_case"] == test_case["name"] and r["scenario"] == scenario),
                     None,
                 )
                 if result:

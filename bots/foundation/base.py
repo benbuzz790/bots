@@ -1624,7 +1624,7 @@ class ToolHandler(ABC):
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     # Track line numbers of import statements
-                    if hasattr(node, 'lineno'):
+                    if hasattr(node, "lineno"):
                         import_line_numbers.add(node.lineno)
                     for alias in node.names:
                         if alias.asname:
@@ -1633,7 +1633,7 @@ class ToolHandler(ABC):
                             imports_needed.append(f"import {alias.name}")
                 elif isinstance(node, ast.ImportFrom):
                     # Track line numbers of from...import statements
-                    if hasattr(node, 'lineno'):
+                    if hasattr(node, "lineno"):
                         import_line_numbers.add(node.lineno)
                     module_name = node.module or ""
                     names = []
@@ -1745,10 +1745,7 @@ class ToolHandler(ABC):
         if import_line_numbers:
             source_lines = source.split("\n")
             # Filter out lines that are imports (1-indexed line numbers)
-            filtered_lines = [
-                line for i, line in enumerate(source_lines, 1)
-                if i not in import_line_numbers
-            ]
+            filtered_lines = [line for i, line in enumerate(source_lines, 1) if i not in import_line_numbers]
             # Remove leading empty lines
             while filtered_lines and not filtered_lines[0].strip():
                 filtered_lines.pop(0)
@@ -2029,34 +2026,34 @@ class ToolHandler(ABC):
     def from_dict(cls, data: Dict[str, Any]) -> "ToolHandler":
         """Reconstruct a ToolHandler instance from serialized state.
 
-    Use when restoring a previously serialized tool handler,
-    such as when loading a saved bot state.
+        Use when restoring a previously serialized tool handler,
+        such as when loading a saved bot state.
 
-    Parameters:
-        data (Dict[str, Any]): Serialized state from to_dict()
+        Parameters:
+            data (Dict[str, Any]): Serialized state from to_dict()
 
-    Returns:
-        ToolHandler: Reconstructed handler instance
+        Returns:
+            ToolHandler: Reconstructed handler instance
 
-    Side Effects:
-        - Creates new module contexts
-        - Reconstructs function objects
-        - Restores tool registry
-        - Preserves request/result history
+        Side Effects:
+            - Creates new module contexts
+            - Reconstructs function objects
+            - Restores tool registry
+            - Preserves request/result history
 
-    Note:
-        - Only restores explicitly registered tools
-        - Verifies code hashes for security
-        - Maintains original module structure
-        - Preserves execution state (requests/results)
+        Note:
+            - Only restores explicitly registered tools
+            - Verifies code hashes for security
+            - Maintains original module structure
+            - Preserves execution state (requests/results)
 
-    Example:
-        ```python
-        saved_state = handler.to_dict()
-        # Later...
-        new_handler = ToolHandler.from_dict(saved_state)
-        ```
-    """
+        Example:
+            ```python
+            saved_state = handler.to_dict()
+            # Later...
+            new_handler = ToolHandler.from_dict(saved_state)
+            ```
+        """
         handler = cls()
         handler.results = data.get("results", [])
         handler.requests = data.get("requests", [])
