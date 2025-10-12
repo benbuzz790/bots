@@ -350,6 +350,95 @@ def add_tools(filepath: str) -> str:
     """
     bot = _get_calling_bot()
     bot.add_tools(filepath)
+@toolify()
+def remove_context(message_ids: str) -> str:
+    """Remove bot-user message pairs from the conversation history.
+
+    Use when you need to delete specific messages from your conversation tree
+    to reduce context or remove irrelevant information. This is a demo tool
+    that removes message pairs by stitching the tree after deletion.
+
+    Note: This tool has limitations with branched conversations and will
+    attempt to handle the simplest case (linear conversation paths).
+
+    Parameters:
+        message_ids (str): String representation of a list of message IDs to remove.
+            Format: "['id1', 'id2', 'id3']"
+            Each ID should correspond to a message in the conversation tree.
+
+    Returns:
+        str: Success message with count of removed pairs, or error message
+
+    Example:
+        remove_context("['msg_001', 'msg_002']")
+    """
+    bot = _get_calling_bot()
+    if not bot:
+        return "Error: Could not find calling bot"
+
+    # Parse the message IDs
+    try:
+        id_list = _process_string_array(message_ids)
+        if not id_list:
+            return "Error: No valid message IDs provided"
+    except Exception as e:
+        return f"Error parsing message IDs: {str(e)}"
+
+    # Find all nodes in the conversation tree and build an ID map
+    def collect_nodes_with_ids(node, node_map):
+        """Recursively collect all nodes that have an 'id' attribute."""
+        if hasattr(node, 'id') and node.id:
+            node_map[node.id] = node
+        for reply in node.replies:
+            collect_nodes_with_ids(reply, node_map)
+
+    # Start from root
+    root = bot.conversation._find_root()
+    node_map = {}
+    collect_nodes_with_ids(root, node_map)
+
+    # Find nodes to remove
+    nodes_to_remove = []
+    for msg_id in id_list:
+        if msg_id in node_map:
+            nodes_to_remove.append(node_map[msg_id])
+        else:
+            return f"Error: Message ID '{msg_id}' not found in conversation tree"
+
+    # Remove each node and stitch the tree
+    removed_count = 0
+    for node in nodes_to_remove:
+        try:
+            # Check if node has a parent
+            if not node.parent:
+                return f"Error: Cannot remove root node (ID: {node.id if hasattr(node, 'id') else 'unknown'})"
+
+            parent = node.parent
+
+            # Remove this node from parent's replies
+            if node in parent.replies:
+                parent.replies.remove(node)
+
+            # Stitch: attach this node's children to its parent
+            for child in node.replies:
+                child.parent = parent
+                parent.replies.append(child)
+
+            # If the current conversation pointer is at this node or a descendant,
+            # move it to the parent
+            current = bot.conversation
+            while current:
+                if current == node:
+                    bot.conversation = parent
+                    break
+                current = current.parent
+
+            removed_count += 1
+
+        except Exception as e:
+            return f"Error removing node: {str(e)}"
+
+    return f"Successfully removed {removed_count} message(s) from conversation tree"
 
 
 def _process_string_array(input_str: str) -> List[str]:
