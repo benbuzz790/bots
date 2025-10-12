@@ -2757,37 +2757,59 @@ class Bot(ABC):
     def load(cls, filepath: str, api_key: Optional[str] = None) -> "Bot":
         """Load a saved bot from a file.
 
-        Use to restore a previously saved bot with its complete state,
-        including conversation history, tools, and configuration.
+    Use to restore a previously saved bot with its complete state,
+    including conversation history, tools, and configuration.
 
-        Parameters:
-            filepath (str): Path to the .bot file to load
-            api_key (Optional[str]): New API key to use, if different from saved
+    Parameters:
+        filepath (str): Path to the .bot file to load
+        api_key (Optional[str]): New API key to use, if different from saved
 
-        Returns:
-            Bot: Reconstructed bot instance with restored state
+    Returns:
+        Bot: Reconstructed bot instance with restored state
 
-        Raises:
-            FileNotFoundError: If the specified file doesn't exist
-            ValueError: If the file contains invalid bot data
+    Raises:
+        FileNotFoundError: If the specified file doesn't exist
+        ValueError: If the file contains invalid bot data
 
-        Example:
-            ```python
-            # Save bot state
-            bot.save("code_review_bot.bot")
+    Example:
+        ```python
+        # Save bot state
+        bot.save("code_review_bot.bot")
 
-            # Later, restore the bot
-            bot = Bot.load("code_review_bot.bot", api_key="new_key")
-            ```
+        # Later, restore the bot
+        bot = Bot.load("code_review_bot.bot", api_key="new_key")
+        ```
 
-        Note:
-            - API keys are not saved for security
-            - Tool functions are fully restored with their context
-            - Conversation history is preserved exactly
-        """
+    Note:
+        - API keys are not saved for security
+        - Tool functions are fully restored with their context
+        - Conversation history is preserved exactly
+    """
         with open(filepath, "r") as file:
             data = json.load(file)
-        bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
+
+        # Try to load the exact bot class if saved, otherwise fall back to engine-based lookup
+        if "bot_class" in data:
+            # Try to import the bot class from common locations
+            bot_class = None
+            class_name = data["bot_class"]
+
+            # Try common module paths
+            for module_path in ["bots.testing.mock_bot", "bots.foundation.openai_bots", "bots.foundation.base"]:
+                try:
+                    module = importlib.import_module(module_path)
+                    if hasattr(module, class_name):
+                        bot_class = getattr(module, class_name)
+                        break
+                except (ImportError, AttributeError):
+                    continue
+
+            # Fall back to engine-based lookup if class not found
+            if bot_class is None:
+                bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
+        else:
+            bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
+
         init_params = inspect.signature(bot_class.__init__).parameters
         constructor_args = {k: v for k, v in data.items() if k in init_params}
         bot = bot_class(**constructor_args)
