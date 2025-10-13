@@ -1068,11 +1068,87 @@ def _apply_scope_aware_truncation(source_code: str, max_lines: int) -> str:
         if len(result_lines) <= max_lines:
             return "\n".join(result_lines)
 
-    # No fallback - if we can't fit it, return the most aggressive truncation
+    # If even depth=0 doesn't fit, create a signature-only outline
     result_lines = _create_outline_view(scope_entries, 0, lines)
     if len(result_lines) > max_lines:
-        result_lines = result_lines[:max_lines]
+        result_lines = _create_signature_outline(scope_entries, lines, max_lines)
     return "\n".join(result_lines)
+
+
+def _create_signature_outline(scope_entries, lines, max_lines):
+    """Create a compact signature-only outline when aggressive truncation still exceeds max_lines.
+
+    This shows:
+    - A summary of imports (first few + count)
+    - Top-level class/function signatures only
+    - Nested items as indented signatures with ...
+    """
+    result_lines = []
+
+    # Find where the first top-level definition starts
+    first_def_line = min((e["start_line"] for e in scope_entries if e["depth"] == 0), default=len(lines))
+
+    # Collect and summarize imports/module-level code before first definition
+    import_section = lines[:first_def_line]
+    import_lines = [line for line in import_section if line.strip().startswith(("import ", "from "))]
+
+    if import_lines:
+        # Show first 3 imports and indicate if there are more
+        result_lines.extend(import_lines[:3])
+        if len(import_lines) > 3:
+            result_lines.append(f"# ... {len(import_lines) - 3} more imports ...")
+        result_lines.append("")
+
+    # Get top-level entries only (depth 0)
+    top_level_entries = sorted([e for e in scope_entries if e["depth"] == 0], key=lambda x: x["start_line"])
+
+    # Show top-level signatures
+    lines_used = len(result_lines)
+    entries_shown = 0
+    for entry in top_level_entries:
+        if lines_used >= max_lines - 5:  # Reserve space for truncation message
+            break
+
+        # Add the signature line
+        sig_line = lines[entry["start_line"]]
+        result_lines.append(sig_line)
+        lines_used += 1
+        entries_shown += 1
+
+        # For classes, show nested items as signatures
+        if entry["type"] == "ClassDef":
+            nested = [
+                e
+                for e in scope_entries
+                if e["depth"] == 1 and e["start_line"] > entry["start_line"] and e["start_line"] < entry["end_line"]
+            ]
+            if nested:
+                # Show first few nested items
+                for nested_entry in nested[:3]:
+                    if lines_used >= max_lines - 3:
+                        break
+                    nested_sig = lines[nested_entry["start_line"]]
+                    result_lines.append(nested_sig)
+                    lines_used += 1
+
+                if len(nested) > 3:
+                    indent = len(sig_line) - len(sig_line.lstrip())
+                    result_lines.append(" " * (indent + 4) + f"# ... {len(nested) - 3} more methods ...")
+                    lines_used += 1
+        else:
+            # For functions, just add ...
+            indent = len(sig_line) - len(sig_line.lstrip())
+            result_lines.append(" " * (indent + 4) + "...")
+            lines_used += 1
+
+        result_lines.append("")  # Blank line between top-level items
+        lines_used += 1
+
+    # Add truncation message if we didn't show everything
+    if entries_shown < len(top_level_entries):
+        result_lines.append(f"# ... {len(top_level_entries) - entries_shown} more top-level definitions ...")
+
+    return result_lines
 
 
 def _get_module_name(module: cst.Attribute) -> str:
