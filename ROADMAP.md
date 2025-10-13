@@ -207,16 +207,22 @@ The bots project has unique competitive advantages that position it for commerci
 
 ---
 
-## 2. Make CLI Prettier
+## 2. Make CLI Prettier - PARTIAL
 
-**Goal**: Enhance visual presentation and user experience
+**Status**: PARTIAL (PR #125, 13-Oct-2025)
 
-**Potential Improvements**:
+**Delivered**:
+- Session-wide metrics display (tokens, cost, response time)
+- Auto-prompt for context reduction when threshold exceeded
+
+**Remaining Work**:
 - Color coding for different message types
 - Syntax highlighting for code in tool results
 - Progress indicators for long-running operations (see item 12)
 - Rich text formatting (using `rich` or `textual`)
 - Better error message formatting
+
+**Goal**: Enhance visual presentation and user experience
 
 **Priority**: Medium
 
@@ -333,7 +339,20 @@ The bots project has unique competitive advantages that position it for commerci
 
 ---
 
-## 10. Expand self_tools Beyond branch_self
+## 10. Expand self_tools Beyond branch_self - PARTIAL
+
+**Status**: PARTIAL (PR #125, 13-Oct-2025)
+
+**Delivered**:
+- list_context: Display bot messages with labels for removal
+- remove_context: Remove bot-user message pairs by label
+- CLI auto-prompts context reduction when token threshold exceeded
+- Session-wide metrics tracking and display
+
+**Remaining Work**:
+- Phase 1: fork_from_node (create branch from earlier point)
+- Phase 2: summarize_context, merge_branches
+- Phase 3: mark_checkpoint, goto_checkpoint
 
 **Goal**: Add more tools for bots to manage their own conversation context
 
@@ -1731,7 +1750,110 @@ class TenantContext:
 ---
 
 
-## 39. Tutorial Expansion
+## 42. Issue Resolver GitHub App
+
+**Goal**: Automated issue resolution through PR submissions
+
+**Description**: 
+A GitHub App that monitors repository issues and automatically submits PRs with fixes, similar to CodeRabbit's review capabilities but focused on issue resolution.
+
+**Components**:
+1. **Issue Monitoring**:
+   - Webhook listener for new issues and issue comments
+   - Issue classification (bug, feature request, documentation, etc.)
+   - Priority scoring based on labels, assignees, and content
+   - Filter for auto-resolvable issues
+
+2. **Issue Analysis**:
+   - Use conversation trees to explore issue context
+   - Analyze related code and files
+   - Review issue history and similar past issues
+   - Determine feasibility of automated fix
+
+3. **Solution Generation**:
+   - Use branch_self to explore multiple solution approaches
+   - Generate code fixes using python_edit and other tools
+   - Run tests to verify fixes
+   - Create comprehensive PR description with reasoning
+
+4. **PR Submission**:
+   - Create branch with fix
+   - Submit PR with detailed explanation
+   - Link PR to original issue
+   - Request review from appropriate maintainers
+   - Add labels and metadata
+
+5. **Feedback Loop**:
+   - Monitor PR comments and review feedback
+   - Iterate on solution if requested
+   - Learn from accepted/rejected PRs
+   - Track success metrics
+
+**Workflow**:
+```
+1. Webhook receives new issue event
+2. Classify and score issue for auto-resolution
+3. If suitable, use branch_self to explore solution approaches
+4. Generate fix using repository tools
+5. Run test suite to verify fix
+6. Create PR with fix and detailed explanation
+7. Monitor PR for feedback and iterate if needed
+8. Track resolution metrics (success rate, time to fix, etc.)
+```
+
+**Competitive Advantages**:
+- Conversation tree exploration shows reasoning process
+- branch_self enables exploring multiple solution approaches
+- OpenTelemetry tracking for cost and performance metrics
+- Self-context management for handling complex issues
+
+**Pricing Model**:
+- $100-300/month per repository
+- Free tier for open source (marketing + training data)
+- Usage-based for high-volume repos
+- Can bundle with documentation service
+
+**Priority**: Medium (Phase 4 - After Documentation Service Launch)
+
+**Effort**: High - Requires robust issue analysis and code generation
+
+**Impact**: High - Second revenue stream, leverages same infrastructure as documentation service
+
+**Related**: Requires items 27 (GitHub integration), 14 (metrics), repository-level tools
+
+---
+
+## 43. Revert README.md to Non-Sample Version
+
+**Goal**: Restore README.md to proper project documentation
+
+**Issue**: README.md was replaced with a sample file containing placeholder content ("My Awesome Project", hello_world.py references, etc.)
+
+**Solution**: Revert README.md to the last non-sample version from git history
+
+**Priority**: High (documentation quality)
+
+**Effort**: Low (simple git revert)
+
+---
+
+## 44. Remove Print Statements from terminal_tools.py
+
+**Goal**: Remove print statements from file operation functions
+
+**Issue**: terminal_tools.py contains print statements when file operations are performed, which pollutes output and doesn't follow logging best practices
+
+**Solution**: Remove print statements from file operation functions in terminal_tools.py
+
+**Priority**: Medium (code quality)
+
+**Effort**: Low (simple cleanup)
+
+**Related**: Item 11 (Remove print statements from anthropic_bots.py - DONE)
+
+---
+
+## 36. Tutorial Expansion
 
 **Current State**:
 - Single tutorial: `tutorials/01_getting_started.md` (47 lines, very minimal)
@@ -1765,7 +1887,7 @@ class TenantContext:
 
 ---
 
-## 40. CHATME.bot - Interactive Welcome Bot
+## 37. CHATME.bot - Interactive Welcome Bot
 
 **Current State**:
 - 19 .bot files exist in repo (examples, tests, dev bots)
@@ -1805,13 +1927,15 @@ class TenantContext:
 
 
 
-## 41. Unix/Linux/Mac Compatibility
+## 38. Unix/Linux/Mac Compatibility
 
 **Current State**:
 - Repository is **Windows-centric**
 - PowerShell-only terminal tools
 - Windows-only CI/CD testing
 - Unix/Mac users cannot use terminal execution features
+
+**Note**: This is not a blocking bug - the framework works on all platforms, but terminal execution features are Windows-only. This is a significant effort with moderate payoff compared to revenue-generating features.
 
 **Goal**: Full cross-platform compatibility for Windows, Linux, and macOS
 
@@ -1863,7 +1987,7 @@ class TenantContext:
 
 ---
 
-## 42. Multi-OS Testing Infrastructure
+## 39. Multi-OS Testing Infrastructure
 
 **Current State**:
 - All CI/CD workflows run exclusively on Windows (windows-latest)
@@ -1909,7 +2033,7 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 
 ---
 
-## 43. .bot File Association - Open in Terminal
+## 40. .bot File Association - Open in Terminal
 
 **Current State**:
 - CLI supports loading: `python -m bots.dev.cli [filepath]`
@@ -1966,7 +2090,7 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 
 ---
 
-## 44. Repository-Level Tools
+## 41. Repository-Level Tools
 
 **Current State**:
 - File-level tools exist (view, edit individual files)
@@ -2030,7 +2154,7 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 
 ---
 
-## 33. Functional Prompts on Specific Branches
+## 48. Functional Prompts on Specific Branches
 
 **Current State**:
 - Functional prompts always operate from `bot.conversation` (current node)
@@ -2074,7 +2198,7 @@ Create context manager for cleaner syntax when working with specific nodes.
 
 ---
 
-## 34. Improve Save/Load Behavior
+## 49. Improve Save/Load Behavior
 
 **Current State**:
 - **Critical inconsistency**: `Bot.load()` uses `replies[0]` (first/oldest), but CLI overrides to `replies[-1]` (last/most recent)
@@ -2120,7 +2244,7 @@ Create context manager for cleaner syntax when working with specific nodes.
 
 ---
 
-## 35. Cross-Directory Bot Loading - RESOLVED
+## 50. Cross-Directory Bot Loading - RESOLVED
 
 **Status**: RESOLVED (07-Oct-2025) - NOT A BUG
 
@@ -2156,7 +2280,7 @@ The system already stores full tool source code (not just file paths) and handle
 
 
 
-## 36. branch_self Loses Track of Branching Node - DONE ✅
+## 45. branch_self Loses Track of Branching Node - DONE ✅
 
 **Status**: RESOLVED (PR #119, 08-Oct-2025) - VERIFIED (09-Oct-2025)
 
@@ -2193,7 +2317,7 @@ Conversation Tree:
 **Effort**: Verification completed (4-6 hours)
 ---
 
-## 37. CLI /s Command Bug - DONE
+## 46. CLI /s Command Bug - DONE
 
 **Status**: DONE (PR #119, 08-Oct-2025) - Closes Issue #115
 
@@ -2208,7 +2332,7 @@ Conversation Tree:
 
 ---
 
-## 38. Flaky Test - test_branch_self_error_handling - DONE ✅
+## 47. Flaky Test - test_branch_self_error_handling - DONE ✅
 **Status**: RESOLVED (PR #120, 09-Oct-2025) - Closed Issue #117
 **Issue**: Test `test_branch_self_error_handling` was flaky/unreliable due to vague prompts causing non-deterministic LLM behavior.
 **Root Cause**: Test used vague prompt "use invalid parameters" which LLM interpreted differently each time.
@@ -2374,7 +2498,7 @@ Conversation Tree:
 
 ---
 
-**Last Updated**: 10-Oct-2025
+**Last Updated**: 13-Oct-2025
 **Maintainer**: Ben Rinauto
 **Status**: Active Planning
 ---

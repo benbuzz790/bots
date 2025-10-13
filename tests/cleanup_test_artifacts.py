@@ -33,6 +33,13 @@ def cleanup_test_artifacts():
         "**/test_workspace_*",
         "**/*.pyc",
         "**/__pycache__",
+        # Additional test artifacts from issue #128
+        "data.json",
+        "quotes.txt",
+        "styles.css",
+        "index.html",  # Root level only
+        "hello_world.py",
+        "my_module.py",
     ]
     cleanup_dirs = [
         "test_patch_file.txt_dir",

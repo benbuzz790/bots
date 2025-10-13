@@ -1075,6 +1075,22 @@ def _apply_scope_aware_truncation(source_code: str, max_lines: int) -> str:
     return "\n".join(result_lines)
 
 
+def _get_module_name(module: cst.Attribute) -> str:
+    """Extract module name from CST Attribute or Name node."""
+    if isinstance(module, cst.Name):
+        return module.value
+    elif isinstance(module, cst.Attribute):
+        parts = []
+        current = module
+        while isinstance(current, cst.Attribute):
+            parts.append(current.attr.value)
+            current = current.value
+        if isinstance(current, cst.Name):
+            parts.append(current.value)
+        return ".".join(reversed(parts))
+    return ""
+
+
 def _collect_scope_entries(node, entries, depth):
     """Collect information about scopes (classes, functions) in the AST."""
     import ast
@@ -1127,11 +1143,73 @@ def _create_outline_view(scope_entries, max_depth, lines):
 
 
 def _handle_file_start_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module) -> str:
-    """Handle insertion at the beginning of a file."""
-    new_body = list(new_module.body) + list(tree.body)
-    modified_tree = tree.with_changes(body=new_body)
+    """Handle insertion at the beginning of a file, avoiding duplicate imports."""
+    # Collect existing imports from the original file
+    existing_imports = set()
+    for stmt in tree.body:
+        if isinstance(stmt, (cst.SimpleStatementLine,)):
+            for s in stmt.body:
+                if isinstance(s, cst.Import):
+                    # Track "import x" statements
+                    for name in s.names:
+                        if isinstance(name, cst.ImportAlias):
+                            existing_imports.add(("import", name.name.value))
+                elif isinstance(s, cst.ImportFrom):
+                    # Track "from x import y" statements
+                    if s.module:
+                        module_name = _get_module_name(s.module)
+                        for name in s.names:
+                            if isinstance(name, cst.ImportAlias):
+                                existing_imports.add(("from", module_name, name.name.value))
+                            elif isinstance(name, cst.ImportStar):
+                                existing_imports.add(("from", module_name, "*"))
+
+    # Filter out duplicate imports from new_module
+    new_body = []
+    for stmt in new_module.body:
+        if isinstance(stmt, (cst.SimpleStatementLine,)):
+            filtered_imports = []
+            non_import_stmts = []
+
+            for s in stmt.body:
+                if isinstance(s, cst.Import):
+                    # Check each import name
+                    new_names = []
+                    for name in s.names:
+                        if isinstance(name, cst.ImportAlias):
+                            if ("import", name.name.value) not in existing_imports:
+                                new_names.append(name)
+                    if new_names:
+                        filtered_imports.append(s.with_changes(names=new_names))
+                elif isinstance(s, cst.ImportFrom):
+                    # Check from imports
+                    if s.module:
+                        module_name = _get_module_name(s.module)
+                        new_names = []
+                        for name in s.names:
+                            if isinstance(name, cst.ImportAlias):
+                                if ("from", module_name, name.name.value) not in existing_imports:
+                                    new_names.append(name)
+                            elif isinstance(name, cst.ImportStar):
+                                if ("from", module_name, "*") not in existing_imports:
+                                    new_names.append(name)
+                        if new_names:
+                            filtered_imports.append(s.with_changes(names=new_names))
+                else:
+                    non_import_stmts.append(s)
+
+            # Add filtered imports and non-import statements
+            if filtered_imports or non_import_stmts:
+                new_body.append(stmt.with_changes(body=filtered_imports + non_import_stmts))
+        else:
+            # Non-import statements are added as-is
+            new_body.append(stmt)
+
+    # Combine filtered new body with existing body
+    combined_body = new_body + list(tree.body)
+    modified_tree = tree.with_changes(body=combined_body)
     _write_file_bom_safe(abs_path, modified_tree.code)
-    return f"Code inserted at start of '{abs_path}'."
+    return f"Code inserted at start of '{abs_path}' (duplicate imports filtered)."
 
 
 def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module, insert_after: str) -> str:
