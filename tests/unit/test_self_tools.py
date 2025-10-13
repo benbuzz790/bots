@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 import bots.tools.self_tools as self_tools
-from bots.foundation.anthropic_bots import AnthropicBot
+from bots.testing.mock_bot import MockBot
 from bots.foundation.base import Engines
 
 
@@ -19,17 +19,17 @@ class TestSelfTools(unittest.TestCase):
 
     Attributes:
         temp_dir (str): Temporary directory path for test file operations
-        bot (AnthropicBot): Test bot instance with Claude 3.5 Sonnet configuration
+        bot (MockBot): Test bot instance with Claude 3.5 Sonnet configuration
     """
 
     def setUp(self) -> None:
         """Set up test environment before each test.
 
-        Creates a temporary directory and initializes a test AnthropicBot instance
-        with Claude 3.5 Sonnet configuration and self_tools loaded.
+        Creates a temporary directory and initializes a test MockBot instance
+        with self_tools loaded.
         """
         self.temp_dir = tempfile.mkdtemp()
-        self.bot = AnthropicBot(name="TestBot", max_tokens=1000, model_engine=Engines.CLAUDE37_SONNET_20250219)
+        self.bot = MockBot(name="TestBot", max_tokens=1000, model_engine=Engines.GPT4)
         self.bot.add_tools(self_tools)
 
     def tearDown(self) -> None:
@@ -64,7 +64,7 @@ class TestSelfTools(unittest.TestCase):
 
     def test_branch_self_recursive(self) -> None:
         """Test that branch_self works when branches branch"""
-        # Use MockBot instead of AnthropicBot
+        # Use MockBot instead of MockBot
         from bots.testing.mock_bot import MockBot
 
         mock_bot = MockBot(name="TestBot")
@@ -299,9 +299,9 @@ class TestSelfTools(unittest.TestCase):
         try:
             print("\n=== TESTING SEQUENTIAL BRANCHING ===")
             # Test sequential branching (uses branch_while)
-            bot1 = AnthropicBot(
+            bot1 = MockBot(
                 name="SequentialBot",
-                model_engine=Engines.CLAUDE37_SONNET_20250219,
+                model_engine=Engines.GPT4,
                 max_tokens=1000,
             )
             bot1.add_tools(self_tools)
@@ -325,7 +325,7 @@ class TestSelfTools(unittest.TestCase):
                 print(f"Sequential - Follow-up failed: {str(e)[:100]}")
             print("\n=== TESTING PARALLEL BRANCHING ===")
             # Test parallel branching (uses par_branch_while)
-            bot2 = AnthropicBot(name="ParallelBot", max_tokens=1000, model_engine=Engines.CLAUDE37_SONNET_20250219)
+            bot2 = MockBot(name="ParallelBot", max_tokens=1000, model_engine=Engines.GPT4)
             bot2.add_tools(self_tools)
             initial_tool_results_par = len(bot2.tool_handler.results)
             response_par = bot2.respond(
@@ -365,7 +365,7 @@ class TestSelfTools(unittest.TestCase):
         os.chdir(self.temp_dir)
         try:
             print("\n=== TESTING DEEPER NESTING ===")
-            bot = AnthropicBot(name="DeepNestBot", max_tokens=1000, model_engine=Engines.CLAUDE37_SONNET_20250219)
+            bot = MockBot(name="DeepNestBot", max_tokens=1000, model_engine=Engines.GPT4)
             bot.add_tools(self_tools)
             initial_tool_results = len(bot.tool_handler.results)
             initial_conversation_tool_results = len(bot.conversation.tool_results)
