@@ -1,4 +1,4 @@
-﻿"""
+"""
 Metrics collection for the bots framework.
 
 Provides OpenTelemetry metrics for:

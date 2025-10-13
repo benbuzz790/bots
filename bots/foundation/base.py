@@ -2820,8 +2820,24 @@ class Bot(ABC):
             module = importlib.import_module(module_name)
             actual_class = getattr(module, class_name)
             bot.tool_handler = actual_class().from_dict(data["tool_handler"])
+
+        # Deserialize callbacks (fix for issue #129)
+        if "callbacks" in data and data["callbacks"] is not None:
+            callback_class_path = data["callbacks"]["class"]
+            module_name, class_name = callback_class_path.rsplit(".", 1)
+            try:
+                module = importlib.import_module(module_name)
+                callback_class = getattr(module, class_name)
+                # Reconstruct callback with saved init args
+                init_args = data["callbacks"].get("init_args", {})
+                bot.callbacks = callback_class(**init_args)
+            except (ImportError, AttributeError) as e:
+                # If callback class can't be loaded, just skip it
+                print(f"Warning: Could not restore callbacks: {e}")
+                bot.callbacks = None
+
         for key, value in data.items():
-            if key not in constructor_args and key not in ("conversation", "tool_handler", "tools"):
+            if key not in constructor_args and key not in ("conversation", "tool_handler", "tools", "callbacks"):
                 setattr(bot, key, value)
         if "conversation" in data and data["conversation"]:
             node_class = Engines.get_conversation_node_class(data["conversation"]["node_class"])
@@ -2888,6 +2904,20 @@ class Bot(ABC):
         if hasattr(self, "_tracing_enabled"):
             data["enable_tracing"] = self._tracing_enabled
             data["tool_handler"] = self.tool_handler.to_dict()
+
+        # Serialize callbacks (fix for issue #129)
+        if hasattr(self, "callbacks") and self.callbacks is not None:
+            callback_class = self.callbacks.__class__
+            callback_data = {"class": f"{callback_class.__module__}.{callback_class.__name__}", "init_args": {}}
+            # Serialize callback instance attributes for reconstruction
+            for attr_name in dir(self.callbacks):
+                if not attr_name.startswith("_") and not callable(getattr(self.callbacks, attr_name)):
+                    attr_value = getattr(self.callbacks, attr_name)
+                    # Only serialize simple types
+                    if isinstance(attr_value, (str, int, float, bool, type(None))):
+                        callback_data["init_args"][attr_name] = attr_value
+            data["callbacks"] = callback_data
+
         for key, value in data.items():
             if not isinstance(value, (str, int, float, bool, list, dict, type(None))):
                 data[key] = str(value)

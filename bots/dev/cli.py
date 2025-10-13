@@ -371,9 +371,10 @@ class CLIConfig:
 
     def __init__(self):
         self.verbose = True
-        self.width = 1400
+        self.width = 160
         self.indent = 4
         self.auto_stash = False
+        self.remove_context_threshold = 40000
         self.config_file = "cli_config.json"
         self.load_config()
 
@@ -384,16 +385,23 @@ class CLIConfig:
                 with open(self.config_file, "r") as f:
                     config_data = json.load(f)
                     self.verbose = config_data.get("verbose", True)
-                    self.width = config_data.get("width", 1000)
+                    self.width = config_data.get("width", 160)
                     self.indent = config_data.get("indent", 4)
                     self.auto_stash = config_data.get("auto_stash", False)
+                    self.remove_context_threshold = config_data.get("remove_context_threshold", 40000)
         except Exception:
             pass  # Use defaults if config loading fails
 
     def save_config(self):
         """Save current configuration to file."""
         try:
-            config_data = {"verbose": self.verbose, "width": self.width, "indent": self.indent, "auto_stash": self.auto_stash}
+            config_data = {
+                "verbose": self.verbose,
+                "width": self.width,
+                "indent": self.indent,
+                "auto_stash": self.auto_stash,
+                "remove_context_threshold": self.remove_context_threshold,
+            }
             with open(self.config_file, "w") as f:
                 json.dump(config_data, f, indent=2)
         except Exception:
@@ -538,8 +546,7 @@ class CLIContext:
 
         self.session_start_time = time.time()
         # Track context reduction cooldown (counts down from 3 after each trigger)
-        # Starts at 0 so first time tokens exceed 60k, it triggers immediately
-        self.remove_context_threshold = 40000
+        # Starts at 0 so first time tokens exceed threshold, it triggers immediately
         self.context_reduction_cooldown = 0
         # Track last message metrics (captured once per message, used by both display and auto)
         self.last_message_metrics = None
@@ -1070,6 +1077,7 @@ class SystemHandler:
                 f"    width: {context.config.width}",
                 f"    indent: {context.config.indent}",
                 f"    auto_stash: {context.config.auto_stash}",
+                f"    remove_context_threshold: {context.config.remove_context_threshold}",
                 "Use '/config set <setting> <value>' to modify settings.",
             ]
             return "\n".join(config_lines)
@@ -1093,6 +1101,8 @@ class SystemHandler:
                     context.config.indent = int(value)
                 elif setting == "auto_stash":
                     context.config.auto_stash = value.lower() in ("true", "1", "yes", "on")
+                elif setting == "remove_context_threshold":
+                    context.config.remove_context_threshold = int(value)
                 else:
                     return f"Unknown setting: {setting}"
                 context.config.save_config()
@@ -1131,7 +1141,7 @@ class SystemHandler:
                         last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
 
                     # Trigger on high last message tokens AND cooldown expired (at 0)
-                    if last_input_tokens > context.remove_context_threshold and context.context_reduction_cooldown <= 0:
+                    if last_input_tokens > context.config.remove_context_threshold and context.context_reduction_cooldown <= 0:
                         prompt = (
                             "please selectively trim your context a bit using "
                             "list_context and remove_context, it's getting quite long."

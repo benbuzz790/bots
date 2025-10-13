@@ -193,6 +193,8 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                 # Create a fresh bot copy for this branch
                 branch_bot = Bot.load(temp_file)
                 branch_bot.autosave = False
+                # Preserve callbacks from parent bot
+                branch_bot.callbacks = bot.callbacks
 
                 # Find the tagged node in the loaded bot's conversation tree
                 # This ensures we branch from the correct point, not the newest node

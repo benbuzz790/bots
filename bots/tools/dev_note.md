@@ -1,4 +1,4 @@
-﻿# Context Management Enhancement Ideas
+# Context Management Enhancement Ideas
 ## Current Behavior
 The emove_context tool currently deletes bot-user message pairs from the conversation tree, stitching the tree back together. This provides:
 - Intentional, traceable removal (labels shift)

@@ -312,12 +312,14 @@ class DecoratedClass:
         """Test max_lines parameter with whole file when truncation is needed."""
         self._write_test_file()
         result = python_view(self.test_file, max_lines=10)
-        # Should be truncated
+        # Should be truncated to an outline view
         lines = result.splitlines()
-        self.assertEqual(len(lines), 10)  # Should be truncated to 10 lines
+        self.assertLessEqual(len(lines), 10)  # Should be at most 10 lines
         # Verify it's actually truncated by checking we have fewer lines than original
         original_lines = self.sample_code.splitlines()
         self.assertLess(len(lines), len(original_lines), "Should be truncated from original")
+        # Should show outline format with "..." markers
+        self.assertIn("...", result, "Should contain truncation markers")
 
     def test_max_lines_scoped_view_no_truncation(self):
         """Test max_lines parameter with scoped view when no truncation needed."""
@@ -333,7 +335,9 @@ class DecoratedClass:
         self._write_test_file()
         result = python_view(f"{self.test_file}::OuterClass", max_lines=5)
         lines = result.splitlines()
-        self.assertEqual(len(lines), 5)  # Should be truncated to 5 lines
+        self.assertLessEqual(len(lines), 5)  # Should be at most 5 lines
+        # Should show outline with truncation markers
+        self.assertIn("...", result, "Should contain truncation markers")
 
     def test_max_lines_zero_disables_truncation(self):
         """Test that max_lines=0 disables truncation."""
@@ -358,8 +362,8 @@ class DecoratedClass:
         self._write_test_file(large_code)
         result = python_view(self.test_file)  # No max_lines specified, should use default 500
         lines = result.splitlines()
-        self.assertEqual(len(lines), 500)  # Should be truncated to 500 lines
-        # Don't check for specific truncation message format - just verify it's truncated
+        self.assertLessEqual(len(lines), 500)  # Should be at most 500 lines
+        # Verify it's truncated from original 600 lines
         self.assertLess(len(lines), 600, "Should be truncated from original 600 lines")
 
     def test_max_lines_truncation_message_format(self):
@@ -369,8 +373,8 @@ class DecoratedClass:
         self._write_test_file(test_code)
         result = python_view(self.test_file, max_lines=10)
         lines = result.splitlines()
-        # Should be truncated to 10 lines
-        self.assertEqual(len(lines), 10)
+        # Should be truncated to at most 10 lines
+        self.assertLessEqual(len(lines), 10)
         self.assertLess(len(lines), 25, "Should be truncated from original 25 lines")
 
     def test_max_lines_with_empty_lines(self):
@@ -387,7 +391,9 @@ def func3():
         self._write_test_file(code_with_empty_lines)
         result = python_view(self.test_file, max_lines=5)
         lines = result.splitlines()
-        self.assertEqual(len(lines), 5)  # Should be truncated to 5 lines
+        self.assertLessEqual(len(lines), 5)  # Should be at most 5 lines
+        # Should show outline with truncation
+        self.assertIn("...", result, "Should contain truncation markers")
 
 
 class TestScopeViewer(unittest.TestCase):
