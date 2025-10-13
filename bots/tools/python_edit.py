@@ -1109,6 +1109,10 @@ def _create_signature_outline(scope_entries, lines, max_lines):
         if lines_used >= max_lines - 5:  # Reserve space for truncation message
             break
 
+        # Bounds check before accessing lines
+        if not (0 <= entry["start_line"] < len(lines)):
+            continue
+
         # Add the signature line
         sig_line = lines[entry["start_line"]]
         result_lines.append(sig_line)
@@ -1127,6 +1131,9 @@ def _create_signature_outline(scope_entries, lines, max_lines):
                 for nested_entry in nested[:3]:
                     if lines_used >= max_lines - 3:
                         break
+                    # Bounds check before accessing lines
+                    if not (0 <= nested_entry["start_line"] < len(lines)):
+                        continue
                     nested_sig = lines[nested_entry["start_line"]]
                     result_lines.append(nested_sig)
                     lines_used += 1
