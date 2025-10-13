@@ -8,9 +8,12 @@ without making actual API calls to LLM services.
 import json
 import re
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from bots.foundation.base import Bot, ConversationNode, Engines, Mailbox, ToolHandler
+
+if TYPE_CHECKING:
+    from bots.observability.callbacks import BotCallbacks
 
 
 class MockConversationNode(ConversationNode):
@@ -443,6 +446,7 @@ class MockBot(Bot):
         conversation: Optional[ConversationNode] = None,
         autosave: bool = False,  # Default to False for testing
         enable_tracing: Optional[bool] = None,  # Support tracing parameter
+        callbacks: Optional["BotCallbacks"] = None,  # Support callbacks parameter
     ):
         """Initialize a mock bot.
 
@@ -456,6 +460,7 @@ class MockBot(Bot):
             conversation: Initial conversation state
             autosave: Whether to autosave (disabled by default for testing)
             enable_tracing: Whether to enable OpenTelemetry tracing (None = use default)
+            callbacks: Optional callback system for progress/monitoring
         """
         # Convert string to Engines enum if needed
         if isinstance(model_engine, str):
@@ -487,6 +492,7 @@ class MockBot(Bot):
             mailbox=mock_mailbox,
             autosave=autosave,
             enable_tracing=enable_tracing,  # Pass through tracing parameter
+            callbacks=callbacks,  # Pass through callbacks parameter
         )
 
         # Additional mock-specific attributes

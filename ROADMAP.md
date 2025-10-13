@@ -2498,6 +2498,96 @@ Conversation Tree:
 
 ---
 
+## 51. Cache Controller Enhancement
+
+**Current State**:
+- Anthropic supports prompt caching with manually managed cache breakpoints
+- Only 4 cache points allowed (Anthropic limitation)
+- No caching support for Gemini or OpenAI
+- Cache points are not optimally placed in conversation tree
+
+**Goal**: Enhance cache_controller to support multiple providers and intelligently select cache points
+
+**Components**:
+
+**1. Add Caching for Gemini and OpenAI**:
+- Implement caching for Google Gemini (context caching API)
+- Implement caching for OpenAI (prompt caching if/when available)
+- Unified cache controller interface across providers
+- Provider-specific cache configuration
+
+**2. Intelligent Cache Point Selection for Anthropic**:
+- **Challenge**: Anthropic only allows 4 manually managed cache breakpoints
+- **Goal**: Automatically pick the most efficient forking points in conversation tree
+- **Strategy**: Analyze conversation tree structure to identify optimal cache locations
+
+**Cache Point Selection Algorithm**:
+```
+Optimal cache points are nodes that:
+1. Have multiple children (branching points)
+2. Are frequently revisited
+3. Have substantial context before them (worth caching)
+4. Maximize cache hit rate across conversation tree
+
+Algorithm:
+- Identify all branching points in conversation tree
+- Score each point by:
+  * Number of descendant nodes (more descendants = higher value)
+  * Depth in tree (deeper = more context to cache)
+  * Frequency of access (if tracked)
+- Select top 4 scoring points as cache breakpoints
+- Update cache points dynamically as tree grows
+```
+
+**Implementation Approach**:
+
+**Phase 1: Multi-Provider Caching**
+- Abstract cache controller interface
+- Implement Gemini caching support
+- Implement OpenAI caching support (when available)
+- Provider-specific configuration
+
+**Phase 2: Intelligent Cache Point Selection**
+- Implement conversation tree analysis
+- Develop scoring algorithm for cache point selection
+- Automatic cache point updates as tree evolves
+- Metrics tracking for cache hit rates
+
+**Phase 3: Optimization**
+- A/B testing different selection strategies
+- Cost/benefit analysis of cache placement
+- Integration with OpenTelemetry for cache metrics
+- User-configurable cache strategies
+
+**Benefits**:
+- **Cost Reduction**: Optimal cache placement reduces token usage
+- **Performance**: Faster response times with effective caching
+- **Multi-Provider**: Consistent caching across all providers
+- **Automatic**: No manual cache point management required
+
+**Technical Considerations**:
+- Anthropic's 4-cache-point limit requires careful optimization
+- Cache invalidation strategy when tree is modified
+- Balance between cache overhead and token savings
+- Provider-specific caching APIs and limitations
+
+**Metrics to Track** (via OpenTelemetry):
+- Cache hit rate per provider
+- Token savings from caching
+- Cost reduction from caching
+- Cache point selection effectiveness
+- Average response time improvement
+
+**Priority**: Medium-High (cost optimization, multi-provider support)
+
+**Effort**: Medium (Phase 1), High (Phase 2-3)
+
+**Impact**: High - Significant cost savings and performance improvement
+
+**Related**: Item 14 (OpenTelemetry - for cache metrics), Item 15 (LiteLLM - multi-provider support)
+
+---
+
 **Last Updated**: 13-Oct-2025
 **Maintainer**: Ben Rinauto
 **Status**: Active Planning
