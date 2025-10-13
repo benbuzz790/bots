@@ -457,7 +457,277 @@
                                                                   "content": "C:\\Users\\benbu\\Code\\repo_working\\bots> python -m pytest tests/e2e/tes...\n============================= test session starts =============================\nplatform win32 -- Python 3.12.9, pytest-7.4.3, pluggy-1.5.0 -- C:\\Users\\benbu\\AppData\\Local\\Programs\\Python\\Python312-arm64\\python.exe\ncachedir: .pytest_cache\nrootdir: C:\\Users\\benbu\\Code\\repo_working\\bots\nconfigfile: pytest.ini\nplugins: anyio-4.9.0, asyncio-0.21.1, cov-4.1.0, forked-1.6.0, timeout-2.4.0, xdist-3.7.0\nasyncio: mode=Mode.STRICT\ntimeout: 300.0s\ntimeout method: thread\ntimeout func_only: True\ncreated: 12/12 workers\n12 workers [1 item]\nscheduling tests via LoadGroupScheduling\ntests/e2e/test_par_branch.py::test_par_branch_while_structure \n[gw0] [100%] PASSED tests/e2e/test_par_branch.py::test_par_branch_while_structure \n- generated xml file: C:\\Users\\benbu\\Code\\repo_working\\bots\\test_results.xml --\n============================== 1 passed in 5.51s =============================="
                                                                  }
                                                                 ],
-                                                                "node_class": "AnthropicNode"
+                                                                "node_class": "AnthropicNode",
+                                                                "replies": [
+                                                                 {
+                                                                  "content": "Perfect! The test passes now. Let me commit these changes:",
+                                                                  "pending_results": [],
+                                                                  "role": "assistant",
+                                                                  "tool_calls": [
+                                                                   {
+                                                                    "type": "tool_use",
+                                                                    "id": "toolu_01TkD4fq2CzCASwQAjtZcATs",
+                                                                    "name": "execute_powershell",
+                                                                    "input": {
+                                                                     "command": "git add -A"
+                                                                    }
+                                                                   }
+                                                                  ],
+                                                                  "tool_results": [],
+                                                                  "node_class": "AnthropicNode",
+                                                                  "replies": [
+                                                                   {
+                                                                    "content": "ok",
+                                                                    "pending_results": [],
+                                                                    "role": "user",
+                                                                    "tool_calls": [],
+                                                                    "tool_results": [
+                                                                     {
+                                                                      "type": "tool_result",
+                                                                      "tool_use_id": "toolu_01TkD4fq2CzCASwQAjtZcATs",
+                                                                      "content": "C:\\Users\\benbu\\Code\\repo_working\\bots> git add -A"
+                                                                     }
+                                                                    ],
+                                                                    "node_class": "AnthropicNode",
+                                                                    "replies": [
+                                                                     {
+                                                                      "content": "~",
+                                                                      "pending_results": [],
+                                                                      "role": "assistant",
+                                                                      "tool_calls": [
+                                                                       {
+                                                                        "type": "tool_use",
+                                                                        "id": "toolu_01XrbMn2qvXeCezsH3rZpYSH",
+                                                                        "name": "execute_powershell",
+                                                                        "input": {
+                                                                         "command": "git commit -m \"Fix Bot.load to preserve bot class type and fix metrics warnings\n\n- Modified Bot.load() to use saved bot_class field instead of only relying on model_engine\n- This ensures MockBot and other bot subclasses are restored correctly after save/load\n- Fixed openai_bots.py to use correct parameter names for metrics functions (operation= instead of mode=)\n- Fixes test_par_branch_while_structure which was failing due to MockBot being loaded as OpenAIBot\n- Eliminates 'unexpected keyword argument operation' warnings in tests\""
+                                                                        }
+                                                                       }
+                                                                      ],
+                                                                      "tool_results": [],
+                                                                      "node_class": "AnthropicNode",
+                                                                      "replies": [
+                                                                       {
+                                                                        "content": "ok",
+                                                                        "pending_results": [],
+                                                                        "role": "user",
+                                                                        "tool_calls": [],
+                                                                        "tool_results": [
+                                                                         {
+                                                                          "type": "tool_result",
+                                                                          "tool_use_id": "toolu_01XrbMn2qvXeCezsH3rZpYSH",
+                                                                          "content": "C:\\Users\\benbu\\Code\\repo_working\\bots> git commit -m \"Fix Bot.load to...\n[feat/context-editing 0c970ed] Fix Bot.load to preserve bot class type and fix metrics warnings - Modified Bot.load() to use saved bot_class field instead of only relying on model_engine - This ensures MockBot and other bot subclasses are restored correctly after save/load - Fixed openai_bots.py to use correct parameter names for metrics functions (operation= instead of mode=) - Fixes test_par_branch_while_structure which was failing due to MockBot being loaded as OpenAIBot - Eliminates 'unexpected keyword argument operation' warnings in tests\n 4 files changed, 170 insertions(+), 420 deletions(-)"
+                                                                         }
+                                                                        ],
+                                                                        "node_class": "AnthropicNode",
+                                                                        "replies": [
+                                                                         {
+                                                                          "content": "~",
+                                                                          "pending_results": [],
+                                                                          "role": "assistant",
+                                                                          "tool_calls": [
+                                                                           {
+                                                                            "type": "tool_use",
+                                                                            "id": "toolu_017KZnR1pxfrJKudu5FEg97h",
+                                                                            "name": "execute_powershell",
+                                                                            "input": {
+                                                                             "command": "git push origin feat/context-editing"
+                                                                            }
+                                                                           }
+                                                                          ],
+                                                                          "tool_results": [],
+                                                                          "node_class": "AnthropicNode",
+                                                                          "replies": [
+                                                                           {
+                                                                            "content": "ok",
+                                                                            "pending_results": [],
+                                                                            "role": "user",
+                                                                            "tool_calls": [],
+                                                                            "tool_results": [
+                                                                             {
+                                                                              "type": "tool_result",
+                                                                              "tool_use_id": "toolu_017KZnR1pxfrJKudu5FEg97h",
+                                                                              "content": "C:\\Users\\benbu\\Code\\repo_working\\bots> git push origin feat/context-e...\n\nErrors:\nTo https://github.com/benbuzz790/bots.git\n   3b38454..0c970ed  feat/context-editing -> feat/context-editing"
+                                                                             }
+                                                                            ],
+                                                                            "node_class": "AnthropicNode",
+                                                                            "replies": [
+                                                                             {
+                                                                              "content": "~",
+                                                                              "pending_results": [],
+                                                                              "role": "assistant",
+                                                                              "tool_calls": [
+                                                                               {
+                                                                                "type": "tool_use",
+                                                                                "id": "toolu_01DRxcqXwVr8ZrzphPaRrvvU",
+                                                                                "name": "execute_powershell",
+                                                                                "input": {
+                                                                                 "command": "gh pr comment 125 --body \"## Additional Fixes\n\nFixed two more issues discovered during testing:\n\n### 1. Bot.load() now preserves bot class type\n**Problem**: When saving/loading a MockBot (or any Bot subclass), it was being reconstructed as the base engine class (e.g., OpenAIBot) instead of the original class type.\n\n**Solution**: Modified `Bot.load()` to check for the saved `bot_class` field and attempt to import the correct class from common module paths before falling back to engine-based lookup.\n\n**Impact**: MockBot and other bot subclasses now save/load correctly, fixing `test_par_branch_while_structure`.\n\n### 2. Fixed metrics recording warnings\n**Problem**: Calls to `record_api_call()` and `record_error()` were using incorrect parameter name `mode=` instead of `operation=`.\n\n**Solution**: Updated all calls in `openai_bots.py` to use the correct parameter names.\n\n**Impact**: Eliminates warnings like 'unexpected keyword argument operation' in test output.\n\nAll tests now pass cleanly! \u2705\""
+                                                                                }
+                                                                               }
+                                                                              ],
+                                                                              "tool_results": [],
+                                                                              "node_class": "AnthropicNode",
+                                                                              "replies": [
+                                                                               {
+                                                                                "content": "ok",
+                                                                                "pending_results": [],
+                                                                                "role": "user",
+                                                                                "tool_calls": [],
+                                                                                "tool_results": [
+                                                                                 {
+                                                                                  "type": "tool_result",
+                                                                                  "tool_use_id": "toolu_01DRxcqXwVr8ZrzphPaRrvvU",
+                                                                                  "content": "C:\\Users\\benbu\\Code\\repo_working\\bots> gh pr comment 125 --body \"## A...\nhttps://github.com/benbuzz790/bots/pull/125#issuecomment-3395484620"
+                                                                                 }
+                                                                                ],
+                                                                                "node_class": "AnthropicNode",
+                                                                                "replies": [
+                                                                                 {
+                                                                                  "content": "Perfect! I've successfully:\n\n1. \u2705 **Fixed the import duplication bug** - Imports no longer accumulate on save/load cycles\n2. \u2705 **Fixed Bot.load() to preserve bot class type** - MockBot and other subclasses now restore correctly\n3. \u2705 **Fixed metrics warnings** - Corrected parameter names in openai_bots.py\n4. \u2705 **All tests pass** - Including the previously failing test_par_branch_while_structure\n5. \u2705 **Committed and pushed** - All changes are on the feat/context-editing branch\n6. \u2705 **Updated PR #125** - Added detailed comments explaining all fixes\n\nThe PR is ready for review at: https://github.com/benbuzz790/bots/pull/125\n\nAll the issues you reported have been resolved! \ud83c\udf89",
+                                                                                  "pending_results": [],
+                                                                                  "role": "assistant",
+                                                                                  "tool_calls": [],
+                                                                                  "tool_results": [],
+                                                                                  "node_class": "AnthropicNode",
+                                                                                  "replies": [
+                                                                                   {
+                                                                                    "content": "Did you make an update comment for that most recent push?",
+                                                                                    "pending_results": [],
+                                                                                    "role": "user",
+                                                                                    "tool_calls": [],
+                                                                                    "tool_results": [],
+                                                                                    "node_class": "AnthropicNode",
+                                                                                    "replies": [
+                                                                                     {
+                                                                                      "content": "Yes, I did! I added a comment to PR #125 explaining the two additional fixes:\n1. Bot.load() now preserves bot class type (fixing MockBot save/load)\n2. Fixed metrics recording warnings (corrected parameter names)\n\nYou can see the comment at: https://github.com/benbuzz790/bots/pull/125#issuecomment-3395484620",
+                                                                                      "pending_results": [],
+                                                                                      "role": "assistant",
+                                                                                      "tool_calls": [],
+                                                                                      "tool_results": [],
+                                                                                      "node_class": "AnthropicNode",
+                                                                                      "replies": [
+                                                                                       {
+                                                                                        "content": "ah, I see it now. Thank you.",
+                                                                                        "pending_results": [],
+                                                                                        "role": "user",
+                                                                                        "tool_calls": [],
+                                                                                        "tool_results": [],
+                                                                                        "node_class": "AnthropicNode",
+                                                                                        "replies": [
+                                                                                         {
+                                                                                          "content": "You're welcome! Happy to help debug and fix those issues. The import duplication bug was a tricky one, and discovering the Bot.load() issue along the way was a nice bonus. Let me know if you need anything else! \ud83d\ude0a",
+                                                                                          "pending_results": [],
+                                                                                          "role": "assistant",
+                                                                                          "tool_calls": [],
+                                                                                          "tool_results": [],
+                                                                                          "node_class": "AnthropicNode",
+                                                                                          "replies": [
+                                                                                           {
+                                                                                            "content": "Ah, well, lint error. would you please check black formatting?",
+                                                                                            "pending_results": [],
+                                                                                            "role": "user",
+                                                                                            "tool_calls": [],
+                                                                                            "tool_results": [],
+                                                                                            "node_class": "AnthropicNode",
+                                                                                            "replies": [
+                                                                                             {
+                                                                                              "content": "~",
+                                                                                              "pending_results": [],
+                                                                                              "role": "assistant",
+                                                                                              "tool_calls": [
+                                                                                               {
+                                                                                                "type": "tool_use",
+                                                                                                "id": "toolu_01SjGzJ1HfKG7mNj6TNowouP",
+                                                                                                "name": "execute_powershell",
+                                                                                                "input": {
+                                                                                                 "command": "black --check --diff bots/foundation/base.py bots/foundation/openai_bots.py"
+                                                                                                }
+                                                                                               }
+                                                                                              ],
+                                                                                              "tool_results": [],
+                                                                                              "node_class": "AnthropicNode",
+                                                                                              "replies": [
+                                                                                               {
+                                                                                                "content": "ok",
+                                                                                                "pending_results": [],
+                                                                                                "role": "user",
+                                                                                                "tool_calls": [],
+                                                                                                "tool_results": [
+                                                                                                 {
+                                                                                                  "type": "tool_result",
+                                                                                                  "tool_use_id": "toolu_01SjGzJ1HfKG7mNj6TNowouP",
+                                                                                                  "content": "C:\\Users\\benbu\\Code\\repo_working\\bots> black --check --diff bots/foun...\n--- bots\\foundation\\openai_bots.py\t2025-10-12 23:56:38.888646+00:00\n+++ bots\\foundation\\openai_bots.py\t2025-10-13 00:02:33.844143+00:00\n@@ -482,10 +482,12 @@\n             bot.conversation = bot.conversation._add_reply(role=\"assistant\", content=message.content or \"~\")\n             bot.conversation._add_tool_calls(calls=bot.tool_handler.requests)\n             bot.conversation._add_tool_results(results=bot.tool_handler.exec_requests())\n             bot.tool_handler.clear()\n             return self.process_response(bot.mailbox.send_message(bot), bot)\n+\n+\n pass  # Record API call metrics\n class ChatGPT_Bot(Bot):\n     \"\"\"A bot implementation using the OpenAI GPT API.\n@@ -588,6 +590,5 @@\n             callbacks=callbacks,\n         )\n         # Set bot reference in tool_handler so callbacks can be invoked\n         self.tool_handler.bot = self\n-\n--- bots\\foundation\\base.py\t2025-10-12 23:59:09.723586+00:00\n+++ bots\\foundation\\base.py\t2025-10-13 00:02:36.841963+00:00\n@@ -2755,38 +2755,38 @@\n     @classmethod\n     def load(cls, filepath: str, api_key: Optional[str] = None) -> \"Bot\":\n         \"\"\"Load a saved bot from a file.\n-    Use to restore a previously saved bot with its complete state,\n-    including conversation history, tools, and configuration.\n-\n-    Parameters:\n-        filepath (str): Path to the .bot file to load\n-        api_key (Optional[str]): New API key to use, if different from saved\n-\n-    Returns:\n-        Bot: Reconstructed bot instance with restored state\n-\n-    Raises:\n-        FileNotFoundError: If the specified file doesn't exist\n-        ValueError: If the file contains invalid bot data\n-\n-    Example:\n-        ```python\n-        # Save bot state\n-        bot.save(\"code_review_bot.bot\")\n-\n-        # Later, restore the bot\n-        bot = Bot.load(\"code_review_bot.bot\", api_key=\"new_key\")\n-        ```\n-\n-    Note:\n-        - API keys are not saved for security\n-        - Tool functions are fully restored with their context\n-        - Conversation history is preserved exactly\n-    \"\"\"\n+        Use to restore a previously saved bot with its complete state,\n+        including conversation history, tools, and configuration.\n+\n+        Parameters:\n+            filepath (str): Path to the .bot file to load\n+            api_key (Optional[str]): New API key to use, if different from saved\n+\n+        Returns:\n+            Bot: Reconstructed bot instance with restored state\n+\n+        Raises:\n+            FileNotFoundError: If the specified file doesn't exist\n+            ValueError: If the file contains invalid bot data\n+\n+        Example:\n+            ```python\n+            # Save bot state\n+            bot.save(\"code_review_bot.bot\")\n+\n+            # Later, restore the bot\n+            bot = Bot.load(\"code_review_bot.bot\", api_key=\"new_key\")\n+            ```\n+\n+        Note:\n+            - API keys are not saved for security\n+            - Tool functions are fully restored with their context\n+            - Conversation history is preserved exactly\n+        \"\"\"\n         with open(filepath, \"r\") as file:\n             data = json.load(file)\n         # Try to load the exact bot class if saved, otherwise fall back to engine-based lookup\n         if \"bot_class\" in data:\n@@ -3086,6 +3086,6 @@\n             while hasattr(root, \"parent\") and root.parent:\n                 if root.parent._is_empty() and len(root.parent.replies) == 1:\n                     break\n                 root = root.parent\n             lines.extend(format_conversation(root))\n-        return \"\\n\".join(lines)\n\\ No newline at end of file\n+        return \"\\n\".join(lines)\n\nErrors:\nwould reformat bots\\foundation\\openai_bots.py\nwould reformat bots\\foundation\\base.py\nOh no! \ud83d\udca5 \ud83d\udc94 \ud83d\udca5\n2 files would be reformatted."
+                                                                                                 }
+                                                                                                ],
+                                                                                                "node_class": "AnthropicNode",
+                                                                                                "replies": [
+                                                                                                 {
+                                                                                                  "content": "Let me fix the formatting:",
+                                                                                                  "pending_results": [],
+                                                                                                  "role": "assistant",
+                                                                                                  "tool_calls": [
+                                                                                                   {
+                                                                                                    "type": "tool_use",
+                                                                                                    "id": "toolu_01WLA9wv8JQ4v5QmdPChR41K",
+                                                                                                    "name": "execute_powershell",
+                                                                                                    "input": {
+                                                                                                     "command": "black bots/foundation/base.py bots/foundation/openai_bots.py"
+                                                                                                    }
+                                                                                                   }
+                                                                                                  ],
+                                                                                                  "tool_results": [],
+                                                                                                  "node_class": "AnthropicNode",
+                                                                                                  "replies": [
+                                                                                                   {
+                                                                                                    "content": "ok",
+                                                                                                    "pending_results": [],
+                                                                                                    "role": "user",
+                                                                                                    "tool_calls": [],
+                                                                                                    "tool_results": [
+                                                                                                     {
+                                                                                                      "type": "tool_result",
+                                                                                                      "tool_use_id": "toolu_01WLA9wv8JQ4v5QmdPChR41K",
+                                                                                                      "content": "C:\\Users\\benbu\\Code\\repo_working\\bots> black bots/foundation/base.py ...\n\nErrors:\nreformatted bots\\foundation\\openai_bots.py\nreformatted bots\\foundation\\base.py\nAll done! \u2728 \ud83c\udf70 \u2728\n2 files reformatted."
+                                                                                                     }
+                                                                                                    ],
+                                                                                                    "node_class": "AnthropicNode"
+                                                                                                   }
+                                                                                                  ]
+                                                                                                 }
+                                                                                                ]
+                                                                                               }
+                                                                                              ]
+                                                                                             }
+                                                                                            ]
+                                                                                           }
+                                                                                          ]
+                                                                                         }
+                                                                                        ]
+                                                                                       }
+                                                                                      ]
+                                                                                     }
+                                                                                    ]
+                                                                                   }
+                                                                                  ]
+                                                                                 }
+                                                                                ]
+                                                                               }
+                                                                              ]
+                                                                             }
+                                                                            ]
+                                                                           }
+                                                                          ]
+                                                                         }
+                                                                        ]
+                                                                       }
+                                                                      ]
+                                                                     }
+                                                                    ]
+                                                                   }
+                                                                  ]
+                                                                 }
+                                                                ]
                                                                }
                                                               ]
                                                              }
@@ -726,18 +996,18 @@
   "requests": [
    {
     "type": "tool_use",
-    "id": "toolu_01VytJCiueioDpXAAakAs4TK",
+    "id": "toolu_01WLA9wv8JQ4v5QmdPChR41K",
     "name": "execute_powershell",
     "input": {
-     "command": "python -m pytest tests/e2e/test_par_branch.py::test_par_branch_while_structure -v"
+     "command": "black bots/foundation/base.py bots/foundation/openai_bots.py"
     }
    }
   ],
   "results": [
    {
     "type": "tool_result",
-    "tool_use_id": "toolu_01VytJCiueioDpXAAakAs4TK",
-    "content": "C:\\Users\\benbu\\Code\\repo_working\\bots> python -m pytest tests/e2e/tes...\n============================= test session starts =============================\nplatform win32 -- Python 3.12.9, pytest-7.4.3, pluggy-1.5.0 -- C:\\Users\\benbu\\AppData\\Local\\Programs\\Python\\Python312-arm64\\python.exe\ncachedir: .pytest_cache\nrootdir: C:\\Users\\benbu\\Code\\repo_working\\bots\nconfigfile: pytest.ini\nplugins: anyio-4.9.0, asyncio-0.21.1, cov-4.1.0, forked-1.6.0, timeout-2.4.0, xdist-3.7.0\nasyncio: mode=Mode.STRICT\ntimeout: 300.0s\ntimeout method: thread\ntimeout func_only: True\ncreated: 12/12 workers\n12 workers [1 item]\nscheduling tests via LoadGroupScheduling\ntests/e2e/test_par_branch.py::test_par_branch_while_structure \n[gw0] [100%] PASSED tests/e2e/test_par_branch.py::test_par_branch_while_structure \n- generated xml file: C:\\Users\\benbu\\Code\\repo_working\\bots\\test_results.xml --\n============================== 1 passed in 5.51s =============================="
+    "tool_use_id": "toolu_01WLA9wv8JQ4v5QmdPChR41K",
+    "content": "C:\\Users\\benbu\\Code\\repo_working\\bots> black bots/foundation/base.py ...\n\nErrors:\nreformatted bots\\foundation\\openai_bots.py\nreformatted bots\\foundation\\base.py\nAll done! \u2728 \ud83c\udf70 \u2728\n2 files reformatted."
    }
   ],
   "modules": {

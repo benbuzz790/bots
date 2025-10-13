@@ -2757,34 +2757,34 @@ class Bot(ABC):
     def load(cls, filepath: str, api_key: Optional[str] = None) -> "Bot":
         """Load a saved bot from a file.
 
-    Use to restore a previously saved bot with its complete state,
-    including conversation history, tools, and configuration.
+        Use to restore a previously saved bot with its complete state,
+        including conversation history, tools, and configuration.
 
-    Parameters:
-        filepath (str): Path to the .bot file to load
-        api_key (Optional[str]): New API key to use, if different from saved
+        Parameters:
+            filepath (str): Path to the .bot file to load
+            api_key (Optional[str]): New API key to use, if different from saved
 
-    Returns:
-        Bot: Reconstructed bot instance with restored state
+        Returns:
+            Bot: Reconstructed bot instance with restored state
 
-    Raises:
-        FileNotFoundError: If the specified file doesn't exist
-        ValueError: If the file contains invalid bot data
+        Raises:
+            FileNotFoundError: If the specified file doesn't exist
+            ValueError: If the file contains invalid bot data
 
-    Example:
-        ```python
-        # Save bot state
-        bot.save("code_review_bot.bot")
+        Example:
+            ```python
+            # Save bot state
+            bot.save("code_review_bot.bot")
 
-        # Later, restore the bot
-        bot = Bot.load("code_review_bot.bot", api_key="new_key")
-        ```
+            # Later, restore the bot
+            bot = Bot.load("code_review_bot.bot", api_key="new_key")
+            ```
 
-    Note:
-        - API keys are not saved for security
-        - Tool functions are fully restored with their context
-        - Conversation history is preserved exactly
-    """
+        Note:
+            - API keys are not saved for security
+            - Tool functions are fully restored with their context
+            - Conversation history is preserved exactly
+        """
         with open(filepath, "r") as file:
             data = json.load(file)
 

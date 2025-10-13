@@ -484,6 +484,8 @@ class OpenAIMailbox(Mailbox):
             bot.conversation._add_tool_results(results=bot.tool_handler.exec_requests())
             bot.tool_handler.clear()
             return self.process_response(bot.mailbox.send_message(bot), bot)
+
+
 pass  # Record API call metrics
 
 
@@ -590,4 +592,3 @@ class ChatGPT_Bot(Bot):
 
         # Set bot reference in tool_handler so callbacks can be invoked
         self.tool_handler.bot = self
-
