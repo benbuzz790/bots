@@ -1,10 +1,20 @@
-# bots: making LLM tool use convenient and powerful
+# bots
+
+**bots built bots**
 
 ## Overview
 
-**bots** (bɒts), ***n.pl.*** : Language Models which are instruct-tuned, have the ability to use tools, and are encapsulated with model parameters, metadata, and conversation history.
+**bots** is yet another agent framework. What sets bots apart is that it represents conversations as graphs. Messages are nodes, and the conversation is a tree.
 
-The bots library provides a structured interface for working with such agents, aiming to make LLM tools more convenient, accessible, and sharable for developers and researchers.
+This structure facilitates the development of tools which allow bots to manage their own context in various ways, including agentic context removal and agentic branching.
+
+A cli is built on top of this architecture, allowing the user to command a bot which can self-branch and self-prune.
+
+The conversation trees are packaged with python functions and llm model metadata as a "bot". The specified llm will be allowed and able to call those python functions on your system. Agentic branching and pruning are implemented as tools this way. 
+
+**bots** also supports saving and loading. Tools, conversation, and metadata are preserved in a single .bot (json) file.
+
+The bots library also provides a structured interface for programming with such agents, aiming to make agents with dynamic context accessible and sharable for researchers and other sentients. 
 
 ## Foundation (bots.foundation)
 
