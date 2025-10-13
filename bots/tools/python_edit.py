@@ -1151,7 +1151,7 @@ def _create_signature_outline(scope_entries, lines, max_lines):
     return result_lines
 
 
-def _get_module_name(module: cst.Attribute) -> str:
+def _get_module_name(module: Union[cst.Attribute, cst.Name]) -> str:
     """Extract module name from CST Attribute or Name node."""
     if isinstance(module, cst.Name):
         return module.value
@@ -1229,14 +1229,16 @@ def _handle_file_start_insertion(abs_path: str, tree: cst.Module, new_module: cs
                     # Track "import x" statements
                     for name in s.names:
                         if isinstance(name, cst.ImportAlias):
-                            existing_imports.add(("import", name.name.value))
+                            import_name = _get_module_name(name.name)
+                            existing_imports.add(("import", import_name))
                 elif isinstance(s, cst.ImportFrom):
                     # Track "from x import y" statements
                     if s.module:
                         module_name = _get_module_name(s.module)
                         for name in s.names:
                             if isinstance(name, cst.ImportAlias):
-                                existing_imports.add(("from", module_name, name.name.value))
+                                imported_name = _get_module_name(name.name)
+                                existing_imports.add(("from", module_name, imported_name))
                             elif isinstance(name, cst.ImportStar):
                                 existing_imports.add(("from", module_name, "*"))
 
@@ -1253,7 +1255,8 @@ def _handle_file_start_insertion(abs_path: str, tree: cst.Module, new_module: cs
                     new_names = []
                     for name in s.names:
                         if isinstance(name, cst.ImportAlias):
-                            if ("import", name.name.value) not in existing_imports:
+                            import_name = _get_module_name(name.name)
+                            if ("import", import_name) not in existing_imports:
                                 new_names.append(name)
                     if new_names:
                         filtered_imports.append(s.with_changes(names=new_names))
@@ -1264,7 +1267,8 @@ def _handle_file_start_insertion(abs_path: str, tree: cst.Module, new_module: cs
                         new_names = []
                         for name in s.names:
                             if isinstance(name, cst.ImportAlias):
-                                if ("from", module_name, name.name.value) not in existing_imports:
+                                imported_name = _get_module_name(name.name)
+                                if ("from", module_name, imported_name) not in existing_imports:
                                     new_names.append(name)
                             elif isinstance(name, cst.ImportStar):
                                 if ("from", module_name, "*") not in existing_imports:
