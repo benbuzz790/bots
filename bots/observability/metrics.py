@@ -1,4 +1,4 @@
-"""
+﻿"""
 Metrics collection for the bots framework.
 
 Provides OpenTelemetry metrics for:
@@ -7,9 +7,15 @@ Provides OpenTelemetry metrics for:
 - Cost tracking (USD per operation)
 - Error tracking (failures by type)
 
+Session Tracking:
+- Timestamp-based metrics history for tracking cumulative usage within a session
+- History resets when a new Python process/CLI instance starts
+- Use get_total_tokens(timestamp) and get_total_cost(timestamp) to query metrics since a specific time
+
 Example:
     ```python
     from bots.observability import metrics
+    import time
 
     # Record API call
     metrics.record_api_call(
@@ -25,11 +31,18 @@ Example:
         provider="anthropic",
         model="claude-3-5-sonnet-latest"
     )
+
+    # Track session totals
+    session_start = time.time()
+    # ... make API calls ...
+    totals = metrics.get_total_tokens(session_start)
+    cost = metrics.get_total_cost(session_start)
     ```
 """
 
 import threading
-from typing import Optional
+import time
+from typing import Dict, List, Optional, Tuple
 
 from bots.observability.config import load_config_from_env
 
@@ -66,6 +79,12 @@ _custom_exporter: Optional[object] = None  # Store reference to custom exporter
 # Track last recorded metrics for CLI display
 _last_recorded_metrics = {"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0, "cost": 0.0, "duration": 0.0}
 _metrics_lock = threading.Lock()  # Lock for thread-safe metrics updates
+
+# Metrics history for session tracking
+# Each entry is a tuple: (timestamp, input_tokens, output_tokens, cached_tokens, cost)
+# This list resets when a new Python process/CLI instance starts
+# Used by get_total_tokens() and get_total_cost() to calculate cumulative totals since a given timestamp
+_metrics_history: List[Tuple[float, int, int, int, float]] = []
 
 # Metric instruments (initialized after setup)
 _response_time_histogram = None
@@ -109,7 +128,7 @@ def reset_metrics():
 
     Warning: This is not thread-safe and should only be used in test environments.
     """
-    global _last_recorded_metrics
+    global _last_recorded_metrics, _metrics_history
     global _meter_provider, _initialized, _custom_exporter
     global _response_time_histogram, _api_call_duration_histogram
     global _tool_execution_duration_histogram, _message_building_duration_histogram
@@ -145,6 +164,7 @@ def reset_metrics():
         "cost": 0.0,
         "duration": 0.0,
     }
+    _metrics_history = []
 
 
 def setup_metrics(config=None, reader=None, verbose=False):
@@ -297,6 +317,79 @@ def setup_metrics(config=None, reader=None, verbose=False):
     )
 
     _initialized = True
+
+
+def get_total_tokens(since_timestamp: float) -> Dict[str, int]:
+    """Get total token usage since a given timestamp.
+
+    This function sums all token recordings that occurred after the specified timestamp.
+    The metrics history resets when a new Python process/CLI instance starts.
+
+    Args:
+        since_timestamp: Unix timestamp (from time.time()). Only metrics recorded after
+                        this time will be included in the totals.
+
+    Returns:
+        dict: Dictionary with keys:
+            - 'input': Total input tokens (represents conversation size in context-aware APIs)
+            - 'output': Total output tokens (bot responses)
+            - 'cached': Total cached tokens
+            - 'total': Sum of input + output + cached tokens
+
+    Example:
+        >>> import time
+        >>> session_start = time.time()
+        >>> # ... make API calls ...
+        >>> totals = get_total_tokens(session_start)
+        >>> print(f"Input tokens: {totals['input']}")
+    """
+    with _metrics_lock:
+        input_total = 0
+        output_total = 0
+        cached_total = 0
+
+        for timestamp, input_tokens, output_tokens, cached_tokens, _ in _metrics_history:
+            if timestamp > since_timestamp:
+                input_total += input_tokens
+                output_total += output_tokens
+                cached_total += cached_tokens
+
+        return {
+            "input": input_total,
+            "output": output_total,
+            "cached": cached_total,
+            "total": input_total + output_total + cached_total,
+        }
+
+
+def get_total_cost(since_timestamp: float) -> float:
+    """Get total cost since a given timestamp.
+
+    This function sums all cost recordings that occurred after the specified timestamp.
+    The metrics history resets when a new Python process/CLI instance starts.
+
+    Args:
+        since_timestamp: Unix timestamp (from time.time()). Only costs recorded after
+                        this time will be included in the total.
+
+    Returns:
+        float: Total cost in USD since the given timestamp
+
+    Example:
+        >>> import time
+        >>> session_start = time.time()
+        >>> # ... make API calls ...
+        >>> total_cost = get_total_cost(session_start)
+        >>> print(f"Session cost: ${total_cost:.4f}")
+    """
+    with _metrics_lock:
+        cost_total = 0.0
+
+        for timestamp, _, _, _, cost in _metrics_history:
+            if timestamp > since_timestamp:
+                cost_total += cost
+
+        return cost_total
 
 
 def set_metrics_verbose(verbose: bool):
@@ -464,6 +557,11 @@ def record_tokens(
         _last_recorded_metrics["output_tokens"] = output_tokens
         _last_recorded_metrics["cached_tokens"] = cached_tokens
 
+        # Add to metrics history for session tracking
+        _metrics_history.append(
+            (time.time(), input_tokens, output_tokens, cached_tokens, 0.0)  # cost will be recorded separately
+        )
+
     if not _initialized or _tokens_used_counter is None:
         return
 
@@ -508,6 +606,17 @@ def record_cost(cost: float, provider: str, model: str):
     # Update last recorded metrics for CLI display (thread-safe)
     with _metrics_lock:
         _last_recorded_metrics["cost"] = cost
+
+        # Add to metrics history for session tracking
+        _metrics_history.append(
+            (
+                time.time(),
+                0,  # input_tokens (recorded separately)
+                0,  # output_tokens (recorded separately)
+                0,  # cached_tokens (recorded separately)
+                cost,
+            )
+        )
 
     if not _initialized:
         return

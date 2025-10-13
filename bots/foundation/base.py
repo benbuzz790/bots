@@ -1615,16 +1615,26 @@ class ToolHandler(ABC):
         """Add necessary imports to module source code by extracting existing imports."""
         source = module_context.source
         imports_needed = []
+
+        # Track import line numbers so we can remove them later
+        import_line_numbers = set()
+
         try:
             tree = ast.parse(source)
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
+                    # Track line numbers of import statements
+                    if hasattr(node, "lineno"):
+                        import_line_numbers.add(node.lineno)
                     for alias in node.names:
                         if alias.asname:
                             imports_needed.append(f"import {alias.name} as {alias.asname}")
                         else:
                             imports_needed.append(f"import {alias.name}")
                 elif isinstance(node, ast.ImportFrom):
+                    # Track line numbers of from...import statements
+                    if hasattr(node, "lineno"):
+                        import_line_numbers.add(node.lineno)
                     module_name = node.module or ""
                     names = []
                     for alias in node.names:
@@ -1636,11 +1646,13 @@ class ToolHandler(ABC):
                         imports_needed.append(f"from {module_name} import {', '.join(names)}")
         except SyntaxError:
             import_patterns = ["^import\\s+[\\w\\.,\\s]+", "^from\\s+[\\w\\.]+\\s+import\\s+[\\w\\.,\\s\\*]+"]
-            for line in source.split("\n"):
-                line = line.strip()
+            source_lines = source.split("\n")
+            for line_num, line in enumerate(source_lines, 1):
+                line_stripped = line.strip()
                 for pattern in import_patterns:
-                    if re.match(pattern, line):
-                        imports_needed.append(line)
+                    if re.match(pattern, line_stripped):
+                        imports_needed.append(line_stripped)
+                        import_line_numbers.add(line_num)
                         break
         try:
             tree = ast.parse(source)
@@ -1720,15 +1732,30 @@ class ToolHandler(ABC):
                         imports_needed.append(module_import)
         except Exception:
             pass
+
+        # Remove duplicate imports
         unique_imports = []
         seen = set()
         for imp in imports_needed:
             if imp not in seen:
                 unique_imports.append(imp)
                 seen.add(imp)
+
+        # Remove existing import lines from source before adding them back
+        if import_line_numbers:
+            source_lines = source.split("\n")
+            # Filter out lines that are imports (1-indexed line numbers)
+            filtered_lines = [line for i, line in enumerate(source_lines, 1) if i not in import_line_numbers]
+            # Remove leading empty lines
+            while filtered_lines and not filtered_lines[0].strip():
+                filtered_lines.pop(0)
+            source = "\n".join(filtered_lines)
+
+        # Add imports to the beginning
         if unique_imports:
             import_block = "\n".join(unique_imports) + "\n\n"
             source = import_block + source
+
         return source
 
     def to_dict(self) -> Dict[str, Any]:
@@ -2043,6 +2070,7 @@ class ToolHandler(ABC):
                 source = module_data["source"]
                 if "globals" in module_data:
                     cls._deserialize_globals(module.__dict__, module_data["globals"])
+
                 exec(source, module.__dict__)
                 module_context = ModuleContext(
                     name=module_data["name"],
@@ -2759,7 +2787,29 @@ class Bot(ABC):
         """
         with open(filepath, "r") as file:
             data = json.load(file)
-        bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
+
+        # Try to load the exact bot class if saved, otherwise fall back to engine-based lookup
+        if "bot_class" in data:
+            # Try to import the bot class from common locations
+            bot_class = None
+            class_name = data["bot_class"]
+
+            # Try common module paths
+            for module_path in ["bots.testing.mock_bot", "bots.foundation.openai_bots", "bots.foundation.base"]:
+                try:
+                    module = importlib.import_module(module_path)
+                    if hasattr(module, class_name):
+                        bot_class = getattr(module, class_name)
+                        break
+                except (ImportError, AttributeError):
+                    continue
+
+            # Fall back to engine-based lookup if class not found
+            if bot_class is None:
+                bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
+        else:
+            bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
+
         init_params = inspect.signature(bot_class.__init__).parameters
         constructor_args = {k: v for k, v in data.items() if k in init_params}
         bot = bot_class(**constructor_args)

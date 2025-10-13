@@ -212,7 +212,9 @@ class conditions:
         return "DONE" in bot.conversation.content
 
 
-def single_prompt(bot: Bot, prompt: Prompt) -> Tuple[Response, ResponseNode]:
+def single_prompt(
+    bot: Bot, prompt: Prompt, callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
+) -> Tuple[Response, ResponseNode]:
     """Execute a single prompt and return both response and conversation state.
 
     Use when you need:
@@ -232,6 +234,9 @@ def single_prompt(bot: Bot, prompt: Prompt) -> Tuple[Response, ResponseNode]:
             state is preserved and updated with this interaction
         prompt (Prompt): The prompt to send to the bot. Should be a clear,
             self-contained instruction or question
+        callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
+            A function (with arguments list[response], list[node]) which is called
+            after the response from the bot.
 
     Returns:
         Tuple[Response, ResponseNode]: A tuple containing:
@@ -267,6 +272,11 @@ def single_prompt(bot: Bot, prompt: Prompt) -> Tuple[Response, ResponseNode]:
     """
     response = bot.respond(prompt)
     node = bot.conversation
+    if callback:
+        try:
+            callback([response], [node])
+        except Exception:
+            pass  # Don't let callback errors break the main function
     return (response, node)
 
 

@@ -18,114 +18,40 @@ isort .
 python -m bots.dev.remove_boms
 ```
 
-**IMPORTANT: Best Practices for Linting**
-- **Always run linters WITHOUT output truncation** before committing/pushing
-- **Never use `output_length_limit` parameter** when running linters - you might miss critical errors
-- **Run the full command** exactly as shown above to catch all issues
-- **Verify versions match CI**: Local linter versions should match GitHub Actions
-  - Local versions: flake8 6.1.0, black 25.9.0, isort 6.0.1
-  - CI installs latest versions (not pinned) - may detect additional issues
-  - If CI fails but local passes, check for version differences
+**Best Practices for Linting**
+- Run linters without output truncation and exactly as shown above
 
-**Common Pitfall**: Running `flake8 <single_file>` only checks that file. Always run `flake8 .` to check the entire codebase before pushing.
+### 1. Running PRs
 
-### 1. View PR Check Status
-Get a quick overview of all checks for a PR:
 ```powershell
 gh pr checks <PR_NUMBER>
-```
-### 2. View Detailed Run Logs
-Get the full logs from a specific workflow run:
-```powershell
-gh run view <RUN_ID> --log
+gh run view <RUN_ID> --log-failed
+gh run view <RUN_ID> --log | Select-String -Pattern "error|FAILED|would reformat|AssertionError|E[0-9]{3}|F[0-9]{3}" -Context x,y
+gh pr comment <PR_NUMBER> --body "## Update:..."
+
 ```
 **Tip:** Get the RUN_ID from the URL in gh pr checks output.
-
----
-### 3. View Only Failed Logs
-Get just the failed job logs:
-```powershell
-gh run view <RUN_ID> --log-failed
-```
-
----
-### 4. Search Logs for Specific Patterns
-Filter logs to find specific errors or patterns:
-```powershell
-gh run view <RUN_ID> --log | Select-String -Pattern "error|FAILED|would reformat" -Context 0,2
-```
-**Example - Find formatting issues:**
-```powershell
-gh run view 18234577748 --log | Select-String -Pattern "would reformat" -Context 1,3
-```
-**Example - Find test failures:**
-```powershell
-gh run view 18234577748 --log-failed | Select-String -Pattern "FAILED|AssertionError" -Context 0,2
-```
-
----
-### 5. View PR Comments (including CodeRabbit)
-View all comments on a PR:
-```powershell
-gh pr view <PR_NUMBER> --comments
-```
-
----
-## Common Patterns
-### Check if PR is ready to merge
-```powershell
-gh pr checks <PR_NUMBER> | Select-String -Pattern "pass|fail"
-```
-### Get summary of test failures
-```powershell
-gh run view <RUN_ID> --log | Select-String -Pattern "FAILED tests/" -Context 0,1
-```
-### Check Black formatting issues
-```powershell
-gh run view <RUN_ID> --log | Select-String -Pattern "would reformat" -Context 2,5
-```
-### Check flake8 linting issues
-```powershell
-gh run view <RUN_ID> --log | Select-String -Pattern "E[0-9]{3}|F[0-9]{3}" -Context 0,1
-```
+**Please:** Always submit an update comment.
 
 ---
 
-### 6. Extract CodeRabbit AI Prompts
+### 2. Extract CodeRabbit AI Prompts
 Extract actionable AI prompts from CodeRabbit review comments:
 ```powershell
 python -m bots.dev.pr_comment_parser <REPO> <PR_NUMBER>
+python -m bots.dev.pr_comment_parser "owner/repo" 123
 ```
-**Example:**
-```powershell
-python -m bots.dev.pr_comment_parser owner/repo 123
-```
-**Save to file:**
-```powershell
-python -m bots.dev.pr_comment_parser owner/repo 123 output.txt
-```
-This tool extracts the "🤖 Prompt for AI Agents" sections from CodeRabbit comments, filtering out outdated comments and including both regular and inline review comments.
+
+This tool extracts the "🤖 Prompt for AI Agents" sections from the most recent CodeRabbit comments.
 
 ---
-
-## Linter Version Management
-
-### Current Versions (as of Oct 2025)
-- **Local**: flake8 6.1.0, black 25.9.0, isort 6.0.1
-- **CI (GitHub Actions)**: Installs latest versions (not pinned)
 
 ### Issue: Version Mismatch
 The CI workflow (`.github/workflows/pr-checks.yml` line 117) installs linters without version pinning:
 ```yaml
 pip install black isort flake8 mypy
 ```
-
 This can cause CI to detect issues that local linters miss due to version differences.
-
-### Recommendation
-To ensure consistency between local and CI environments, consider:
-1. **Pin linter versions** in requirements.txt or a separate requirements-dev.txt
-2. **OR** regularly update local linters to match CI: `pip install --upgrade black isort flake8`
-3. **Check versions** before each PR: `flake8 --version`, `black --version`, `isort --version`
+Regularly update local linters to match CI: `pip install --upgrade black isort flake8`
 
 ---

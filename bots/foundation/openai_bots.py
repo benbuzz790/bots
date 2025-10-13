@@ -431,7 +431,7 @@ class OpenAIMailbox(Mailbox):
             if METRICS_AVAILABLE:
                 try:
                     api_duration = time.time() - api_start_time
-                    metrics.record_api_call(duration=api_duration, provider="openai", operation=model_name, status="success")
+                    metrics.record_api_call(duration=api_duration, provider="openai", model=model_name, status="success")
                 except Exception as e:
                     logger.warning(f"Failed to record API metrics: {e}")
 
@@ -448,7 +448,7 @@ class OpenAIMailbox(Mailbox):
                         duration = time.time() - api_start_time
                     except Exception:
                         duration = 0
-                    metrics.record_api_call(provider="openai", operation=model_name, status="error", duration=duration)
+                    metrics.record_api_call(provider="openai", model=model_name, status="error", duration=duration)
                 except Exception as metric_error:
                     logger.warning(f"Failed to record error metrics: {metric_error}")
 
@@ -484,6 +484,9 @@ class OpenAIMailbox(Mailbox):
             bot.conversation._add_tool_results(results=bot.tool_handler.exec_requests())
             bot.tool_handler.clear()
             return self.process_response(bot.mailbox.send_message(bot), bot)
+
+
+pass  # Record API call metrics
 
 
 class ChatGPT_Bot(Bot):

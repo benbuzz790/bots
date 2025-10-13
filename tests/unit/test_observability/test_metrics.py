@@ -570,5 +570,462 @@ class TestSetMetricsVerbose:
         assert metrics._initialized is True
 
 
+class TestGetAndClearLastMetrics:
+    """Test get_and_clear_last_metrics function."""
+
+    def test_get_and_clear_last_metrics_initial_state(self):
+        """Test that initial state returns zeros."""
+        metrics.reset_metrics()
+        result = metrics.get_and_clear_last_metrics()
+
+        assert result["input_tokens"] == 0
+        assert result["output_tokens"] == 0
+        assert result["cached_tokens"] == 0
+        assert result["cost"] == 0.0
+        assert result["duration"] == 0.0
+
+    def test_get_and_clear_last_metrics_after_recording(self, setup_test_metrics):
+        """Test that last metrics are returned and cleared."""
+        # Record some metrics
+        metrics.record_tokens(1000, 500, "anthropic", "claude-3-5-sonnet-latest", cached_tokens=200)
+        metrics.record_cost(0.05, "anthropic", "claude-3-5-sonnet-latest")
+        metrics.record_api_call(2.5, "anthropic", "claude-3-5-sonnet-latest", "success")
+
+        # Get and clear
+        result = metrics.get_and_clear_last_metrics()
+
+        assert result["input_tokens"] == 1000
+        assert result["output_tokens"] == 500
+        assert result["cached_tokens"] == 200
+        assert result["cost"] == 0.05
+        assert result["duration"] == 2.5
+
+        # Verify cleared
+        result2 = metrics.get_and_clear_last_metrics()
+        assert result2["input_tokens"] == 0
+        assert result2["output_tokens"] == 0
+        assert result2["cached_tokens"] == 0
+        assert result2["cost"] == 0.0
+        assert result2["duration"] == 0.0
+
+
+class TestGetTotalTokens:
+    """Test get_total_tokens function with timestamp-based tracking."""
+
+    def test_get_total_tokens_empty_history(self):
+        """Test get_total_tokens with no recorded metrics."""
+        metrics.reset_metrics()
+        import time
+
+        timestamp = time.time()
+
+        result = metrics.get_total_tokens(timestamp)
+
+        assert result["input"] == 0
+        assert result["output"] == 0
+        assert result["cached"] == 0
+        assert result["total"] == 0
+
+    def test_get_total_tokens_single_recording(self, setup_test_metrics):
+        """Test get_total_tokens with a single recording."""
+        import time
+
+        metrics.reset_metrics()
+        timestamp = time.time()
+
+        # Record tokens after timestamp
+        time.sleep(0.01)  # Ensure timestamp difference
+        metrics.record_tokens(1000, 500, "anthropic", "claude-3-5-sonnet-latest", cached_tokens=100)
+
+        result = metrics.get_total_tokens(timestamp)
+
+        assert result["input"] == 1000
+        assert result["output"] == 500
+        assert result["cached"] == 100
+        assert result["total"] == 1600
+
+    def test_get_total_tokens_multiple_recordings(self, setup_test_metrics):
+        """Test get_total_tokens accumulates multiple recordings."""
+        import time
+
+        metrics.reset_metrics()
+        timestamp = time.time()
+
+        # Record multiple token usages
+        time.sleep(0.01)
+        metrics.record_tokens(1000, 500, "anthropic", "claude-3-5-sonnet-latest")
+        time.sleep(0.01)
+        metrics.record_tokens(2000, 800, "anthropic", "claude-3-5-sonnet-latest", cached_tokens=300)
+        time.sleep(0.01)
+        metrics.record_tokens(1500, 600, "anthropic", "claude-3-5-sonnet-latest", cached_tokens=200)
+
+        result = metrics.get_total_tokens(timestamp)
+
+        assert result["input"] == 4500  # 1000 + 2000 + 1500
+        assert result["output"] == 1900  # 500 + 800 + 600
+        assert result["cached"] == 500  # 0 + 300 + 200
+        assert result["total"] == 6900  # 4500 + 1900 + 500
+
+    def test_get_total_tokens_filters_by_timestamp(self, setup_test_metrics):
+        """Test that get_total_tokens only includes metrics after timestamp."""
+        import time
+
+        metrics.reset_metrics()
+
+        # Record some tokens before timestamp
+        metrics.record_tokens(1000, 500, "anthropic", "claude-3-5-sonnet-latest")
+        time.sleep(0.01)
+
+        # Set timestamp here
+        timestamp = time.time()
+        time.sleep(0.01)
+
+        # Record tokens after timestamp
+        metrics.record_tokens(2000, 800, "anthropic", "claude-3-5-sonnet-latest")
+
+        result = metrics.get_total_tokens(timestamp)
+
+        # Should only include the second recording
+        assert result["input"] == 2000
+        assert result["output"] == 800
+        assert result["cached"] == 0
+        assert result["total"] == 2800
+
+    def test_get_total_tokens_zero_tokens(self, setup_test_metrics):
+        """Test get_total_tokens with zero token recordings."""
+        import time
+
+        metrics.reset_metrics()
+        timestamp = time.time()
+
+        time.sleep(0.01)
+        metrics.record_tokens(0, 0, "anthropic", "claude-3-5-sonnet-latest")
+
+        result = metrics.get_total_tokens(timestamp)
+
+        assert result["input"] == 0
+        assert result["output"] == 0
+        assert result["cached"] == 0
+        assert result["total"] == 0
+
+    def test_get_total_tokens_thread_safety(self, setup_test_metrics):
+        """Test that get_total_tokens is thread-safe."""
+        import threading
+        import time
+
+        metrics.reset_metrics()
+        timestamp = time.time()
+
+        def record_tokens_thread():
+            for _ in range(10):
+                metrics.record_tokens(100, 50, "anthropic", "claude")
+                time.sleep(0.001)
+
+        # Start multiple threads
+        threads = [threading.Thread(target=record_tokens_thread) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        result = metrics.get_total_tokens(timestamp)
+
+        # Should have recorded 30 times (3 threads * 10 recordings)
+        # Use >= to account for potential timing issues in parallel execution
+        assert result["input"] >= 2900  # Should be close to 3000 (30 * 100)
+        assert result["output"] >= 1450  # Should be close to 1500 (30 * 50)
+        assert result["input"] <= 3000  # Should not exceed expected
+        assert result["output"] <= 1500  # Should not exceed expected
+
+
+class TestGetTotalCost:
+    """Test get_total_cost function with timestamp-based tracking."""
+
+    def test_get_total_cost_empty_history(self):
+        """Test get_total_cost with no recorded metrics."""
+        metrics.reset_metrics()
+        import time
+
+        timestamp = time.time()
+
+        result = metrics.get_total_cost(timestamp)
+
+        assert result == 0.0
+
+    def test_get_total_cost_single_recording(self, setup_test_metrics):
+        """Test get_total_cost with a single recording."""
+        import time
+
+        metrics.reset_metrics()
+        timestamp = time.time()
+
+        # Record cost after timestamp
+        time.sleep(0.01)
+        metrics.record_cost(0.05, "anthropic", "claude-3-5-sonnet-latest")
+
+        result = metrics.get_total_cost(timestamp)
+
+        assert result == 0.05
+
+    def test_get_total_cost_multiple_recordings(self, setup_test_metrics):
+        """Test get_total_cost accumulates multiple recordings."""
+        import time
+
+        metrics.reset_metrics()
+        timestamp = time.time()
+
+        # Record multiple costs
+        time.sleep(0.01)
+        metrics.record_cost(0.05, "anthropic", "claude-3-5-sonnet-latest")
+        time.sleep(0.01)
+        metrics.record_cost(0.03, "anthropic", "claude-3-5-sonnet-latest")
+        time.sleep(0.01)
+        metrics.record_cost(0.02, "anthropic", "claude-3-5-sonnet-latest")
+
+        result = metrics.get_total_cost(timestamp)
+
+        assert abs(result - 0.10) < 0.0001  # Use approximate comparison for floats
+
+    def test_get_total_cost_filters_by_timestamp(self, setup_test_metrics):
+        """Test that get_total_cost only includes metrics after timestamp."""
+        import time
+
+        metrics.reset_metrics()
+
+        # Record cost before timestamp
+        metrics.record_cost(0.05, "anthropic", "claude-3-5-sonnet-latest")
+        time.sleep(0.01)
+
+        # Set timestamp here
+        timestamp = time.time()
+        time.sleep(0.01)
+
+        # Record cost after timestamp
+        metrics.record_cost(0.03, "anthropic", "claude-3-5-sonnet-latest")
+
+        result = metrics.get_total_cost(timestamp)
+
+        # Should only include the second recording
+        assert abs(result - 0.03) < 0.0001
+
+    def test_get_total_cost_zero_cost(self, setup_test_metrics):
+        """Test get_total_cost with zero cost recordings."""
+        import time
+
+        metrics.reset_metrics()
+        timestamp = time.time()
+
+        time.sleep(0.01)
+        metrics.record_cost(0.0, "anthropic", "claude-3-5-sonnet-latest")
+
+        result = metrics.get_total_cost(timestamp)
+
+        assert result == 0.0
+
+    def test_get_total_cost_large_values(self, setup_test_metrics):
+        """Test get_total_cost with large cost values."""
+        import time
+
+        metrics.reset_metrics()
+        timestamp = time.time()
+
+        time.sleep(0.01)
+        metrics.record_cost(10.50, "anthropic", "claude-3-5-sonnet-latest")
+        time.sleep(0.01)
+        metrics.record_cost(25.75, "anthropic", "claude-3-5-sonnet-latest")
+
+        result = metrics.get_total_cost(timestamp)
+
+        assert abs(result - 36.25) < 0.0001
+
+    def test_get_total_cost_thread_safety(self, setup_test_metrics):
+        """Test that get_total_cost is thread-safe."""
+        import threading
+        import time
+
+        metrics.reset_metrics()
+        timestamp = time.time()
+
+        def record_cost_thread():
+            for _ in range(10):
+                metrics.record_cost(0.01, "anthropic", "claude")
+                time.sleep(0.001)
+
+        # Start multiple threads
+        threads = [threading.Thread(target=record_cost_thread) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        result = metrics.get_total_cost(timestamp)
+
+        # Should have recorded 30 times (3 threads * 10 recordings)
+        # Use a wider range to account for timing issues in parallel execution
+        assert result >= 0.27  # At least 27 recordings
+        assert result <= 0.31  # Allow for floating point precision issues
+
+
+class TestMetricsHistoryIntegration:
+    """Test integration between tokens and cost tracking."""
+
+    def test_tokens_and_cost_recorded_separately(self, setup_test_metrics):
+        """Test that tokens and cost are recorded as separate history entries."""
+        import time
+
+        metrics.reset_metrics()
+        timestamp = time.time()
+
+        time.sleep(0.01)
+        # Record tokens
+        metrics.record_tokens(1000, 500, "anthropic", "claude-3-5-sonnet-latest")
+        # Record cost
+        metrics.record_cost(0.05, "anthropic", "claude-3-5-sonnet-latest")
+
+        # Both should be retrievable
+        tokens = metrics.get_total_tokens(timestamp)
+        cost = metrics.get_total_cost(timestamp)
+
+        assert tokens["input"] == 1000
+        assert tokens["output"] == 500
+        assert cost == 0.05
+
+    def test_metrics_history_persists_across_get_and_clear(self, setup_test_metrics):
+        """Test that metrics history is not affected by get_and_clear_last_metrics."""
+        import time
+
+        metrics.reset_metrics()
+        timestamp = time.time()
+
+        time.sleep(0.01)
+        metrics.record_tokens(1000, 500, "anthropic", "claude-3-5-sonnet-latest")
+        metrics.record_cost(0.05, "anthropic", "claude-3-5-sonnet-latest")
+
+        # Clear last metrics
+        metrics.get_and_clear_last_metrics()
+
+        # History should still be intact
+        tokens = metrics.get_total_tokens(timestamp)
+        cost = metrics.get_total_cost(timestamp)
+
+        assert tokens["input"] == 1000
+        assert tokens["output"] == 500
+        assert cost == 0.05
+
+    def test_reset_metrics_clears_history(self, setup_test_metrics):
+        """Test that reset_metrics clears the metrics history."""
+        import time
+
+        timestamp = time.time()
+
+        time.sleep(0.01)
+        metrics.record_tokens(1000, 500, "anthropic", "claude-3-5-sonnet-latest")
+        metrics.record_cost(0.05, "anthropic", "claude-3-5-sonnet-latest")
+
+        # Reset should clear history
+        metrics.reset_metrics()
+
+        tokens = metrics.get_total_tokens(timestamp)
+        cost = metrics.get_total_cost(timestamp)
+
+        assert tokens["input"] == 0
+        assert tokens["output"] == 0
+        assert cost == 0.0
+
+    def test_session_simulation(self, setup_test_metrics):
+        """Test simulating a CLI session with multiple API calls."""
+        import time
+
+        metrics.reset_metrics()
+        session_start = time.time()
+
+        # Simulate multiple API calls in a session
+        time.sleep(0.01)
+        metrics.record_tokens(1000, 500, "anthropic", "claude-3-5-sonnet-latest")
+        metrics.record_cost(0.05, "anthropic", "claude-3-5-sonnet-latest")
+
+        time.sleep(0.01)
+        metrics.record_tokens(2000, 800, "anthropic", "claude-3-5-sonnet-latest", cached_tokens=500)
+        metrics.record_cost(0.08, "anthropic", "claude-3-5-sonnet-latest")
+
+        time.sleep(0.01)
+        metrics.record_tokens(3000, 1200, "anthropic", "claude-3-5-sonnet-latest", cached_tokens=1000)
+        metrics.record_cost(0.12, "anthropic", "claude-3-5-sonnet-latest")
+
+        # Get session totals
+        tokens = metrics.get_total_tokens(session_start)
+        cost = metrics.get_total_cost(session_start)
+
+        assert tokens["input"] == 6000  # 1000 + 2000 + 3000
+        assert tokens["output"] == 2500  # 500 + 800 + 1200
+        assert tokens["cached"] == 1500  # 0 + 500 + 1000
+        assert tokens["total"] == 10000
+        assert abs(cost - 0.25) < 0.0001  # 0.05 + 0.08 + 0.12
+
+
+class TestMetricsHistoryEdgeCases:
+    """Test edge cases for metrics history tracking."""
+
+    def test_timestamp_exactly_at_recording_time(self, setup_test_metrics):
+        """Test behavior when timestamp equals recording time."""
+        import time
+
+        metrics.reset_metrics()
+
+        # Get timestamp before recording
+        before_time = time.time()
+        time.sleep(0.01)  # Ensure recording happens after before_time
+
+        # Record at a specific time
+        metrics.record_tokens(1000, 500, "anthropic", "claude")
+
+        time.sleep(0.01)  # Ensure after_time is after recording
+        after_time = time.time()
+
+        # Query with timestamp before recording
+        result_before = metrics.get_total_tokens(before_time)
+        # Query with timestamp after recording
+        result_after = metrics.get_total_tokens(after_time)
+
+        # Before should include the recording (timestamp < recording time)
+        assert result_before["input"] == 1000
+        # After should not include it (timestamp > recording time)
+        assert result_after["input"] == 0
+
+    def test_future_timestamp(self, setup_test_metrics):
+        """Test querying with a future timestamp."""
+        import time
+
+        metrics.reset_metrics()
+
+        metrics.record_tokens(1000, 500, "anthropic", "claude")
+
+        # Query with future timestamp
+        future = time.time() + 1000
+        result = metrics.get_total_tokens(future)
+
+        assert result["input"] == 0
+        assert result["output"] == 0
+        assert result["total"] == 0
+
+    def test_very_old_timestamp(self, setup_test_metrics):
+        """Test querying with a very old timestamp."""
+        import time
+
+        metrics.reset_metrics()
+
+        # Use timestamp from the past
+        old_timestamp = time.time() - 1000
+
+        time.sleep(0.01)
+        metrics.record_tokens(1000, 500, "anthropic", "claude")
+
+        result = metrics.get_total_tokens(old_timestamp)
+
+        # Should include all recordings
+        assert result["input"] == 1000
+        assert result["output"] == 500
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -305,6 +305,121 @@ def complex_tool(input_data: str) -> str:
 
         return result
 
+    def test_import_duplication_bug(self):
+        """Test that imports are not duplicated on repeated save/load cycles.
+
+        This test specifically checks for the bug where _add_imports_to_source
+        keeps adding imports to source that already has imports, causing them
+        to accumulate on each save/load cycle.
+        """
+        print("\n" + "=" * 80)
+        print("TESTING IMPORT DUPLICATION BUG")
+        print("=" * 80)
+
+        # Create a module with imports
+        import types
+
+        module_content = """import os
+import json
+from typing import Dict, Any
+
+def test_tool(input_data: str) -> str:
+    result = {"data": input_data}
+    return json.dumps(result)
+"""
+
+        module = types.ModuleType("import_test_module")
+        module.__source__ = module_content
+        exec(module_content, module.__dict__)
+
+        # Create bot and add the module
+        bot = self.create_mock_bot("ImportTestBot")
+        bot.add_tools(module)
+
+        # Track source line counts through save/load cycles
+        source_line_counts = []
+        import_line_counts = []
+
+        # Get initial source
+        module_context = list(bot.tool_handler.modules.values())[0]
+        initial_source = module_context.source
+        source_line_counts.append(len(initial_source.split("\n")))
+        import_line_counts.append(initial_source.count("import"))
+
+        print(f"\nInitial source ({source_line_counts[0]} lines, {import_line_counts[0]} import statements):")
+        for i, line in enumerate(initial_source.split("\n")[:10], 1):
+            print(f"  {i:2d}: {line}")
+
+        # Perform multiple save/load cycles
+        num_cycles = 3
+        current_bot = bot
+
+        for cycle in range(1, num_cycles + 1):
+            print(f"\n--- Save/Load Cycle {cycle} ---")
+
+            # Save
+            save_path = os.path.join(self.temp_dir, f"import_test_cycle_{cycle}")
+            current_bot.save(save_path)
+
+            # Load
+            loaded_bot = Bot.load(save_path + ".bot")
+
+            # Get source from loaded bot
+            module_context = list(loaded_bot.tool_handler.modules.values())[0]
+            loaded_source = module_context.source
+            line_count = len(loaded_source.split("\n"))
+            import_count = loaded_source.count("import")
+
+            source_line_counts.append(line_count)
+            import_line_counts.append(import_count)
+
+            print(f"After cycle {cycle}: {line_count} lines, {import_count} import statements")
+            print("First 15 lines:")
+            for i, line in enumerate(loaded_source.split("\n")[:15], 1):
+                print(f"  {i:2d}: {line}")
+
+            # Check if tool still works
+            try:
+                func = loaded_bot.tool_handler.function_map["test_tool"]
+                result = func("test")
+                tool_works = "test" in result
+                print(f"Tool works: {tool_works}")
+            except Exception as e:
+                print(f"Tool FAILED: {e}")
+                tool_works = False
+
+            current_bot = loaded_bot
+
+        # Analysis
+        print("\n" + "=" * 80)
+        print("ANALYSIS")
+        print("=" * 80)
+        print(f"Source line count progression: {source_line_counts}")
+        print(f"Import statement count progression: {import_line_counts}")
+
+        # Check for duplication
+        line_count_stable = len(set(source_line_counts)) == 1
+        import_count_stable = len(set(import_line_counts)) == 1
+
+        print(f"\nLine count stable: {line_count_stable}")
+        print(f"Import count stable: {import_count_stable}")
+
+        if not line_count_stable:
+            print(f"WARNING: Line count increased from {source_line_counts[0]} to {source_line_counts[-1]}")
+            growth_per_cycle = [(source_line_counts[i] - source_line_counts[i - 1]) for i in range(1, len(source_line_counts))]
+            print(f"  Growth per cycle: {growth_per_cycle}")
+
+        if not import_count_stable:
+            print(f"WARNING: Import count increased from {import_line_counts[0]} to {import_line_counts[-1]}")
+            growth_per_cycle = [(import_line_counts[i] - import_line_counts[i - 1]) for i in range(1, len(import_line_counts))]
+            print(f"  Growth per cycle: {growth_per_cycle}")
+
+        # Test should fail if imports are duplicating
+        self.assertTrue(
+            line_count_stable and import_count_stable,
+            f"Import duplication detected! Line counts: {source_line_counts}, " f"Import counts: {import_line_counts}",
+        )
+
     def test_helper_function_preservation(self):
         """Test that helper functions are preserved across save/load cycles."""
         print("\n" + "=" * 60)
@@ -438,7 +553,10 @@ def complex_tool(input_data: str) -> str:
         for test_case in test_cases:
             row = f"{test_case['name']:<25} "
             for scenario in scenarios:
-                result = next((r for r in results if r["test_case"] == test_case["name"] and r["scenario"] == scenario), None)
+                result = next(
+                    (r for r in results if r["test_case"] == test_case["name"] and r["scenario"] == scenario),
+                    None,
+                )
                 if result:
                     if result.get("tool_works") and result.get("helper_preservation"):
                         status = "PASS"
@@ -570,6 +688,81 @@ def complex_tool(input_data: str) -> str:
             f"Found {len(failures)} failures in test matrix. "
             f"Success rate: {(len(results) - len(failures)) / len(results) * 100:.1f}%",
         )
+
+    def test_cli_save_load(self):
+        """Test that CLI can be saved and loaded, preserving its state and configuration."""
+        print("\n" + "=" * 60)
+        print("TESTING CLI SAVE/LOAD")
+        print("=" * 60)
+
+        from bots.dev.cli import CLI
+
+        # Create a CLI instance with custom configuration
+        cli = CLI()
+
+        # Customize the CLI state
+        cli.last_user_message = "Test message for CLI"
+        cli.pending_prefill = "Test prefill content"
+        cli.context.config.verbose = True
+        cli.context.config.auto_stash = True
+
+        # Add a labeled node to the context
+        bot = self.create_mock_bot("CLITestBot")
+        bot.add_tools(self.create_test_file())
+        cli.context.bot_instance = bot
+
+        # Create a conversation with labeled nodes
+        bot.respond("Hello")
+        cli.context.labeled_nodes["test_label"] = bot.conversation
+
+        # Test tool operation before save
+        print("\nTesting tool before save...")
+        tool_func_before = bot.tool_handler.function_map["file_test_tool"]
+        result_before = tool_func_before("test_input")
+        print(f"Tool result before save: {result_before}")
+        tool_works_before = "FILE_RESULT: test_input" in result_before
+
+        # Save the bot (which contains the CLI state indirectly through conversation)
+        save_path = os.path.join(self.temp_dir, "cli_test_bot")
+        bot.save(save_path)
+
+        # Load the bot back
+        loaded_bot = Bot.load(save_path + ".bot")
+
+        # Create a new CLI and restore state
+        new_cli = CLI()
+        new_cli.context.bot_instance = loaded_bot
+
+        # Verify the bot was loaded correctly
+        print(f"\nOriginal bot tools: {len(bot.tool_handler.tools)}")
+        print(f"Loaded bot tools: {len(loaded_bot.tool_handler.tools)}")
+
+        # Check that tools are preserved
+        tools_preserved = self.check_tool_preservation(loaded_bot, ["file_test_tool"])
+
+        # Test tool operation after load
+        print("\nTesting tool after load...")
+        tool_func_after = loaded_bot.tool_handler.function_map["file_test_tool"]
+        result_after = tool_func_after("test_input")
+        print(f"Tool result after load: {result_after}")
+        tool_works_after = "FILE_RESULT: test_input" in result_after
+
+        # Check that conversation is preserved
+        conversation_preserved = loaded_bot.conversation is not None
+
+        print(f"\nTools preserved: {tools_preserved}")
+        print(f"Tool works before save: {tool_works_before}")
+        print(f"Tool works after load: {tool_works_after}")
+        print(f"Conversation preserved: {conversation_preserved}")
+
+        # Overall test result - all conditions must pass
+        test_passed = tools_preserved and tool_works_before and tool_works_after and conversation_preserved
+
+        print(f"\nCLI Save/Load Test: {'PASS' if test_passed else 'FAIL'}")
+
+        self.assertTrue(test_passed, "CLI save/load test failed")
+
+        return test_passed
 
 
 if __name__ == "__main__":

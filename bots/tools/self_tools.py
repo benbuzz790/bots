@@ -352,6 +352,259 @@ def add_tools(filepath: str) -> str:
     bot.add_tools(filepath)
 
 
+@toolify()
+def list_context() -> str:
+    """List all bot messages in the conversation with labels for removal.
+
+    Use this before remove_context to see what messages are in your conversation.
+    Shows bot messages only (since removal happens in user-bot pairs) with:
+    - A label [A], [B], [C], etc. for reference
+    - Truncated tool calls (if any) with parameters
+    - Truncated response text
+
+    Returns:
+        str: Formatted list of bot messages with labels, or error message
+
+    Example output:
+        [A] Bot: <tool_name param="value..."> | "Response text..."
+        [B] Bot: "Response text without tools..."
+    """
+    bot = _get_calling_bot()
+    if not bot:
+        return "Error: Could not find calling bot"
+
+    # Collect all bot nodes from root
+    root = bot.conversation._find_root()
+    bot_nodes = []
+
+    def collect_bot_nodes(node):
+        """Recursively collect all bot (assistant) nodes in order."""
+        if hasattr(node, "role") and node.role == "assistant":
+            bot_nodes.append(node)
+        for reply in node.replies:
+            collect_bot_nodes(reply)
+
+    collect_bot_nodes(root)
+
+    if not bot_nodes:
+        return "No bot messages found in conversation"
+
+    # Generate labels A, B, C, ... Z, AA, AB, etc.
+    def generate_label(index):
+        """Generate Excel-style column labels: A, B, ..., Z, AA, AB, ..."""
+        label = ""
+        index += 1  # Make it 1-indexed for the algorithm
+        while index > 0:
+            index -= 1
+            label = chr(65 + (index % 26)) + label
+            index //= 26
+        return label
+
+    # Build the output
+    lines = []
+    for i, node in enumerate(bot_nodes):
+        label = generate_label(i)
+        parts = []
+
+        # Add tool calls if present
+        if hasattr(node, "tool_calls") and node.tool_calls:
+            tool_strs = []
+            for tool_call in node.tool_calls:
+                tool_name = tool_call.get("name", "unknown")
+                tool_input = tool_call.get("input", {})
+
+                # Truncate tool parameters
+                if isinstance(tool_input, dict):
+                    param_parts = []
+                    for key, value in tool_input.items():
+                        value_str = str(value)
+                        if len(value_str) > 20:
+                            value_str = value_str[:20] + "..."
+                        param_parts.append(f"{key}={value_str}")
+                    params_str = ", ".join(param_parts)
+                else:
+                    params_str = str(tool_input)
+                    if len(params_str) > 20:
+                        params_str = params_str[:20] + "..."
+
+                tool_strs.append(f"<{tool_name} {params_str}>")
+
+            parts.append(" ".join(tool_strs))
+
+        # Add response content
+        if hasattr(node, "content") and node.content:
+            content = node.content.replace("\n", " ")
+            if len(content) > 50:
+                content = content[:50] + "..."
+            parts.append(f'"{content}"')
+
+        # Combine parts
+        if parts:
+            message_str = " | ".join(parts)
+        else:
+            message_str = "<empty message>"
+
+        lines.append(f"[{label}] Bot: {message_str}")
+
+    return "\n".join(lines)
+
+
+@toolify()
+def remove_context(labels: str) -> str:
+    """Remove bot-user message pairs from the conversation history.
+
+    Use when you need to delete specific messages from your conversation tree
+    to reduce context or remove irrelevant information. This is a demo tool
+    that removes message pairs by stitching the tree after deletion.
+
+    Note: This tool has limitations with branched conversations and will
+    attempt to handle the simplest case (linear conversation paths).
+
+    Parameters:
+        labels (str): String representation of a list of labels to remove.
+            Format: "['A', 'B', 'C']"
+            Use list_context() first to see available labels.
+
+    Returns:
+        str: Success message with count of removed pairs, or error message
+
+    Example:
+        remove_context("['A', 'C']")
+    """
+    bot = _get_calling_bot()
+    if not bot:
+        return "Error: Could not find calling bot"
+
+    # Parse the labels
+    try:
+        label_list = _process_string_array(labels)
+        if not label_list:
+            return "Error: No valid labels provided"
+    except Exception as e:
+        return f"Error parsing labels: {str(e)}"
+
+    # Collect all bot nodes from root
+    root = bot.conversation._find_root()
+    bot_nodes = []
+
+    def collect_bot_nodes(node):
+        """Recursively collect all bot (assistant) nodes in order."""
+        if hasattr(node, "role") and node.role == "assistant":
+            bot_nodes.append(node)
+        for reply in node.replies:
+            collect_bot_nodes(reply)
+
+    collect_bot_nodes(root)
+
+    if not bot_nodes:
+        return "Error: No bot messages found in conversation"
+
+    # Generate labels and create mapping
+    def generate_label(index):
+        """Generate Excel-style column labels: A, B, ..., Z, AA, AB, ..."""
+        label = ""
+        index += 1  # Make it 1-indexed for the algorithm
+        while index > 0:
+            index -= 1
+            label = chr(65 + (index % 26)) + label
+            index //= 26
+        return label
+
+    label_to_node = {}
+    for i, node in enumerate(bot_nodes):
+        label = generate_label(i)
+        label_to_node[label] = node
+
+    # Find nodes to remove
+    nodes_to_remove = []
+    missing_labels = []
+    for label in label_list:
+        if label in label_to_node:
+            nodes_to_remove.append(label_to_node[label])
+        else:
+            missing_labels.append(label)
+
+    # Report missing labels but continue with valid ones
+    if missing_labels and not nodes_to_remove:
+        return f"Error: None of the provided labels were found: {missing_labels}"
+
+    # Remove each bot node and its child user node (the pair)
+    removed_count = 0
+    errors = []
+
+    for bot_node in nodes_to_remove:
+        try:
+            # Check if bot node has a parent
+            if not bot_node.parent:
+                errors.append("Cannot remove root node")
+                continue
+
+            parent = bot_node.parent
+
+            # Check if bot node has exactly one child that is a user node
+            if len(bot_node.replies) == 0:
+                errors.append("Bot node has no child user node to remove")
+                continue
+
+            if len(bot_node.replies) > 1:
+                errors.append("Bot node has multiple children - cannot determine which to remove")
+                continue
+
+            user_node = bot_node.replies[0]
+
+            # Verify the child is actually a user node
+            if not (hasattr(user_node, "role") and user_node.role == "user"):
+                errors.append("Bot node's child is not a user node")
+                continue
+
+            # Remove the bot node from parent's replies and preserve order
+            if bot_node in parent.replies:
+                # Find the index where bot_node was located
+                original_index = parent.replies.index(bot_node)
+                parent.replies.remove(bot_node)
+
+                # Insert user_node's children at the same position to preserve order
+                insert_index = original_index
+                for child in user_node.replies:
+                    child.parent = parent
+                    parent.replies.insert(insert_index, child)
+                    insert_index += 1
+            else:
+                # If bot_node not in parent.replies, still add children and update parent
+                for child in user_node.replies:
+                    child.parent = parent
+                    parent.replies.append(child)
+
+            # If the current conversation pointer is at the bot node, user node,
+            # or a descendant of the user node, move it to the parent
+            current = bot.conversation
+            while current:
+                if current == bot_node or current == user_node:
+                    bot.conversation = parent
+                    break
+                current = current.parent
+
+            removed_count += 1
+
+        except Exception as e:
+            errors.append(f"Failed to remove node pair: {str(e)}")
+            continue
+
+    # Build result message
+    result_parts = []
+    if removed_count > 0:
+        result_parts.append(f"Successfully removed {removed_count} message pair(s)")
+    if missing_labels:
+        result_parts.append(f"Missing labels: {missing_labels}")
+    if errors:
+        result_parts.append(f"Errors: {'; '.join(errors)}")
+
+    if not result_parts:
+        return "No messages were removed"
+
+    return " | ".join(result_parts)
+
+
 def _process_string_array(input_str: str) -> List[str]:
     """Parse a string representation of an array into a list of strings.
     Only works with properly formatted Python list literals.
