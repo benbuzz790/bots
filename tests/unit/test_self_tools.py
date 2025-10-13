@@ -6,8 +6,8 @@ import unittest
 from unittest.mock import patch
 
 import bots.tools.self_tools as self_tools
-from bots.testing.mock_bot import MockBot
 from bots.foundation.base import Engines
+from bots.testing.mock_bot import MockBot
 
 
 class TestSelfTools(unittest.TestCase):
