@@ -33,70 +33,50 @@ The core of the Bots library is built on a robust foundation:
 
 ## Key Features
 
-1. **Auto Terminal (bots.dev.auto_terminal)**
+1. **Auto Terminal (bots.dev.cli)**
    ```bash
-   python -m bots.dev.auto_terminal
+   python -m bots.dev.cli [filename.bot]
    ```
-   - Advanced terminal interface for autonomous coding
-   - Full conversation tree navigation (/up, /down, /left, /right)
-   - Autonomous mode (/auto) - bot works until task completion
-   - Tool usage visibility controls (/verbose, /quiet)
-   - Save/load bot states for different tasks
-   - Integrated Python and PowerShell execution
+This cli is similar to claude code. Use /help to see all commands.
 
 2. **Tool System (bots.tools)**
-   - Standardized tool requirements:
-     - Clear docstrings with usage instructions
-     - Consistent error handling
-     - Predictable return formats
-     - Self-contained with explicit dependencies
+   - Supports parallel tool calls
    - Built-in tools for:
-     - File operations (read, write, modify)
-     - Code manipulation
-     - GitHub integration
-     - Terminal operations
-   - Tool portability and preservation
+     - Reliable python editing
+     - Powershell operations
+     - Agentic context manipulation
+     - General textfile editing
 
 3. **Functional Prompts (bots.flows.functional_prompts)**
-   - Core operations: chain(), branch(), tree_of_thought()
-   - Composable patterns for complex tasks
-   - Iteration control (prompt_while, chain_while)
-   - Support for parallel exploration
+   - Core operations: 
+      - prompt_while(bot, task_prompt, continue_prompt, condition): bot works in an agentic loop
    - Parallel execution functions:
-     - par_branch() - Like branch() but processes in parallel
-     - par_branch_while() - Like branch_while() but processes in parallel
-     - par_dispatch() - Run any functional prompt across multiple bots in parallel
-   ```python
-   # Example: Parallel analysis using branch()
-   responses, nodes = fp.branch(bot, [
-       "Technical perspective",
-       "User perspective",
-       "Business perspective"
-   ])
+     - par_branch_while() - processes multiple branches from the current conversation node in parallel
 
-   # Example: Parallel processing with par_branch()
-   responses, nodes = fp.par_branch(bot, [
-       "Analyze code structure",
-       "Review documentation",
-       "Check test coverage",
-       "Audit dependencies"
+   ```python
+   # Example: after discussing a task, execute on multiple files:
+   responses, nodes = fp.par_branch_while(bot, [
+       "Execute on file one",
+       "Execute on file two",
+       "Execute on file three"
    ])
 
    # Example: Parallel dispatch across multiple bots
    results = fp.par_dispatch(
        bot_list=[bot1, bot2, bot3],
-       functional_prompt=fp.chain,
-       prompts=["Analyze this component", "Suggest improvements"]
+       functional_prompt=fp.chain_while,
+       prompts=["Commit your changes", "Push to a new PR"]
    )
    ```
 
 4. **Lazy Decorator (bots.lazy)**
+   - An experiment
    - Runtime code generation via LLM
-   - Context-aware implementations
    ```python
    @lazy("Sort using a funny algorithm. Name variables as though you're a clown.")
    def sort(arr: list[int]) -> list[int]:
        pass
+   # Source code is filled out (and executes) the first time the function is called.
    ```
 
 ## Installation
@@ -146,61 +126,9 @@ review_bot = bots.load("repo_context.bot", autosave=False)
 review_bot.respond("Review PR #123")
 ```
 
-4. Functional Patterns:
-```python
-import bots.flows.functional_prompts as fp
-
-# Chain of thought
-responses, nodes = fp.chain(bot, [
-    "Look at the directory",
-    "Read x, y, z",
-    "Refactor these three files to better separate concerns"
-])
-
-# Parallel exploration
-analyses, nodes = fp.branch(bot, [
-    "Security analysis",
-    "Performance analysis",
-    "Usability analysis"
-])
-
-# Iterative refinement
-fp.prompt_while(
-    bot,
-    "Run tests and create issues",
-    continue_prompt="ok",
-    stop_condition=fp.conditions.tool_not_used
-)
-```
-
-## Advanced Usage
-
-### Tool Development
-
-Tools must follow these patterns for reliability:
-
-```python
-def my_tool(param: type) -> str:
-    """Clear description of what the tool does.
-    
-    Use when you need to [specific use case].
-    
-    Parameters:
-    - param (type): Parameter description
-    
-    Returns:
-    str: Description of return format
-    """
-    try:
-        result = do_operation()
-        return json.dumps(result)  # For complex returns
-    except Exception as e:
-        return f'Error: {str(e)}'
-```
-
 ## Contributing
 
-We welcome contributions!
+We welcome contributions! Read [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## License
 
