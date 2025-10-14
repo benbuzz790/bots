@@ -54,6 +54,8 @@ This cli is similar to claude code. Use /help to see all commands.
      - par_branch_while() - processes multiple branches from the current conversation node in parallel
 
    ```python
+   from bots.flows import functional_prompts as fp
+
    # Example: after discussing a task, execute on multiple files:
    responses, nodes = fp.par_branch_while(bot, [
        "Execute on file one",
