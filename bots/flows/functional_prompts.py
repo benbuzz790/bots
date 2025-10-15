@@ -51,7 +51,7 @@ Response = str  # A string containing a bot's response
 PromptNode = ConversationNode  # A conversation node containing a prompt
 ResponseNode = ConversationNode  # A conversation node containing a response
 Condition = Callable[[Bot], bool]  # Function that evaluates bot state
-DynamicPrompt = Callable[[Any], Prompt]  # Function that generates prompts
+DynamicPrompt = Callable[[Bot, int], Prompt]  # Function that generates prompts from bot state and iteration
 
 RecombinatorFunction = Callable[
     [List[Response], List[ResponseNode]], Tuple[Response, ResponseNode]
@@ -210,6 +210,53 @@ class conditions:
             bool: True if the response contains 'DONE', False otherwise
         """
         return "DONE" in bot.conversation.content
+
+
+
+class dynamic_prompts:
+    """Factory functions for creating dynamic prompts based on bot state.
+
+    This class provides methods for creating dynamic prompt functions that
+    can adapt based on the bot's state and iteration count.
+    """
+
+    @staticmethod
+    def policy(rules: List[Tuple[Callable[[Bot, int], bool], str]], default: str = "ok") -> DynamicPrompt:
+        """Create a dynamic prompt that selects prompts based on rules.
+
+        Evaluates rules in order and returns the prompt associated with the first
+        rule whose condition evaluates to True. If no rules match, returns the default.
+
+        Args:
+            rules: List of (condition, prompt) tuples where:
+                - condition: Callable[[Bot, int], bool] that takes bot and iteration
+                - prompt: str to return if condition is True
+            default: str to return if no rules match (default: "ok")
+
+        Returns:
+            DynamicPrompt: A function that takes (bot, iteration) and returns a prompt string
+
+        Example:
+            >>> continue_prompt = dynamic_prompts.policy(
+            ...     rules=[
+            ...         (lambda b, i: i > 5, "You've done 5 iterations, wrap up."),
+            ...         (lambda b, i: len(b.conversation.content) > 1000, "Please be more concise."),
+            ...     ],
+            ...     default="ok"
+            ... )
+            >>> prompt_while(bot, "Start task", continue_prompt=continue_prompt)
+        """
+        def dynamic_prompt_func(bot: Bot, iteration: int) -> str:
+            for condition, prompt in rules:
+                try:
+                    if condition(bot, iteration):
+                        return prompt
+                except Exception:
+                    # If condition evaluation fails, skip this rule
+                    pass
+            return default
+
+        return dynamic_prompt_func
 
 
 def single_prompt(

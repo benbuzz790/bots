@@ -1120,63 +1120,76 @@ class SystemHandler:
             old_settings = setup_raw_mode()
             context.old_terminal_settings = old_settings
 
-            while True:
-                # Check for interrupt first
-                if check_for_interrupt():
-                    restore_terminal(old_settings)
-                    return "Autonomous execution interrupted by user"
+            # Check for interrupt before starting
+            if check_for_interrupt():
+                restore_terminal(old_settings)
+                return "Autonomous execution interrupted by user"
 
-                # Check if the last response used tools
-                # If not, stop without sending "ok"
-                if not bot.tool_handler.requests:
-                    restore_terminal(old_settings)
-                    return "Bot finished autonomous execution"
+            # Create dynamic continue prompt using policy
+            continue_prompt = fp.dynamic_prompts.policy(
+                rules=[
+                    # High token count with cooldown expired -> request context reduction
+                    (lambda b, i: (
+                        context.last_message_metrics
+                        and context.last_message_metrics.get("input_tokens", 0) > context.config.remove_context_threshold
+                        and context.context_reduction_cooldown <= 0
+                    ), "please selectively trim your context a bit using list_context and remove_context, it's getting quite long."),
+                ],
+                default="ok"
+            )
 
-                # Check last message input tokens (not total)
-                # Send context reduction message with cooldown (every 3 messages after trigger)
-                # Use cached metrics from previous iteration if available
-                try:
-                    last_input_tokens = 0
-                    if context.last_message_metrics:
-                        last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
+            # Use prompt_while with the dynamic continue prompt
+            def stop_on_no_tools(bot: Bot) -> bool:
+                return not bot.tool_handler.requests
 
-                    # Trigger on high last message tokens AND cooldown expired (at 0)
+            def auto_callback(responses, nodes):
+                # Update cooldown after each iteration
+                if context.last_message_metrics:
+                    last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
                     if last_input_tokens > context.config.remove_context_threshold and context.context_reduction_cooldown <= 0:
-                        prompt = (
-                            "please selectively trim your context a bit using "
-                            "list_context and remove_context, it's getting quite long."
-                        )
-                        context.context_reduction_cooldown = 3  # Set cooldown for next 3 messages
-                    else:
-                        prompt = "ok"
-                        # Count down cooldown if active
-                        if context.context_reduction_cooldown > 0:
-                            context.context_reduction_cooldown -= 1
-                except Exception:
-                    # If metrics check fails, just use "ok"
-                    prompt = "ok"
-                    # Count down cooldown if active
-                    if context.context_reduction_cooldown > 0:
+                        context.context_reduction_cooldown = 3
+                    elif context.context_reduction_cooldown > 0:
                         context.context_reduction_cooldown -= 1
 
-                # Display the automatic prompt message
-                pretty(prompt, "You", context.config.width, context.config.indent, COLOR_USER)
-
-                callback = context.callbacks.get_standard_callback()
-                response, node = fp.single_prompt(bot, prompt, callback=callback)
-
-                # Capture metrics after the response (matching chat mode timing)
+                # Capture metrics after each response
                 try:
                     from bots.observability import metrics
-
                     context.last_message_metrics = metrics.get_and_clear_last_metrics()
                 except Exception:
                     pass
 
-                # After sending prompt, check again if tools were used
-                if not bot.tool_handler.requests:
-                    restore_terminal(old_settings)
-                    return "Bot finished autonomous execution"
+                # Check for interrupt
+                if check_for_interrupt():
+                    raise KeyboardInterrupt("User interrupted")
+
+            # Get the standard callback for display
+            display_callback = context.callbacks.get_standard_callback()
+
+            # Combine callbacks
+            def combined_callback(responses, nodes):
+                # First run auto callback for logic
+                auto_callback(responses, nodes)
+                # Then run display callback if it exists
+                if display_callback:
+                    display_callback()
+
+            # Run prompt_while with dynamic continue prompt
+            # This will send "ok" first, then check if tools were used
+            responses, nodes = fp.prompt_while(
+                bot,
+                first_prompt="ok",  # First continuation
+                continue_prompt=continue_prompt,
+                stop_condition=stop_on_no_tools,
+                callback=combined_callback
+            )
+
+            restore_terminal(old_settings)
+            return "Bot finished autonomous execution"
+
+        except KeyboardInterrupt:
+            if context.old_terminal_settings:
+                restore_terminal(context.old_terminal_settings)
+            return "Autonomous execution interrupted by user"
         except Exception as e:
             if context.old_terminal_settings:
                 restore_terminal(context.old_terminal_settings)
