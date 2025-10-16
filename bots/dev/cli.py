@@ -1142,6 +1142,9 @@ class SystemHandler:
             def stop_on_no_tools(bot: Bot) -> bool:
                 return not bot.tool_handler.requests
 
+            # Track iteration count to know when we're past the first prompt
+            iteration_count = [0]
+
             def auto_callback(responses, nodes):
                 # Update cooldown after each iteration
                 if context.last_message_metrics:
@@ -1162,6 +1165,24 @@ class SystemHandler:
                 if check_for_interrupt():
                     raise KeyboardInterrupt("User interrupted")
 
+                # After each iteration, if we're continuing, display metrics and next user prompt
+                iteration_count[0] += 1
+                if not stop_on_no_tools(bot):
+                    # Display metrics before the next user message
+                    display_metrics(context, bot)
+
+                    # Get the next prompt text
+                    next_prompt = continue_prompt(bot, iteration_count[0]) if callable(continue_prompt) else continue_prompt
+
+                    # Display the user prompt
+                    pretty(
+                        next_prompt,
+                        "User",
+                        context.config.width,
+                        context.config.indent,
+                        COLOR_USER,
+                    )
+
             # Get the standard callback for display
             display_callback = context.callbacks.get_standard_callback()
 
@@ -1172,6 +1193,15 @@ class SystemHandler:
                 # Then run display callback if it exists
                 if display_callback:
                     display_callback()
+
+            # Display the first user prompt
+            pretty(
+                "ok",
+                "User",
+                context.config.width,
+                context.config.indent,
+                COLOR_USER,
+            )
 
             # Run prompt_while with dynamic continue prompt
             # This will send "ok" first, then check if tools were used
