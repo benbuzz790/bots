@@ -345,12 +345,13 @@ class AnthropicMailbox(Mailbox):
                 tools = bot.tool_handler.tools
                 tools[-1]["cache_control"] = {"type": "ephemeral"}
 
+            cc = CacheController()
             # Build the create dictionary
             create_dict: Dict[str, Any] = {
                 "model": bot.model_engine.value,
                 "max_tokens": bot.max_tokens,
                 "temperature": bot.temperature,
-                "messages": conversation._build_messages(),
+                "messages": cc.manage_cache_controls(conversation._build_messages()),
             }
 
             if bot.system_message:
