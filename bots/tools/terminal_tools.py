@@ -333,7 +333,7 @@ class PowerShellSession:
         """
         file_operations = self._detect_file_operations(code)
         if not file_operations:
-            return 0        bom_count = 0
+            return 0        #bom_count = 0
         try:
             bom_count += self._bom_remover.remove_bom_from_directory(current_dir, recursive=False)
             if any(("Export-" in op for op in file_operations)):
@@ -343,7 +343,7 @@ class PowerShellSession:
             if any(("redirection" in op for op in file_operations)):
                 bom_count += self._bom_remover.remove_bom_from_pattern(os.path.join(current_dir, "*.txt"))
                 bom_count += self._bom_remover.remove_bom_from_pattern(os.path.join(current_dir, "*.log"))
-        except Exception as e:        if bom_count > 0:        return bom_count
+        except Exception as e:  pass      #if bom_count > 0:        return bom_count
 
     def execute(self, code: str, timeout: float = 60) -> str:
         """
