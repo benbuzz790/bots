@@ -554,12 +554,14 @@ class RealTimeDisplayCallbacks(BotCallbacks):
         """Display bot response immediately after API call completes, before tools execute."""
         if metadata and "bot_response" in metadata:
             bot_response = metadata["bot_response"]
+            bot_name = self.context.bot_instance.name if self.context.bot_instance else "Bot"
             pretty(
                 bot_response,
-                "Bot",
+                bot_name,
                 self.context.config.width,
                 self.context.config.indent,
                 COLOR_BOT,
+                newline_after_name=False,
             )
 
     def on_tool_start(self, tool_name: str, metadata=None):
@@ -623,12 +625,14 @@ class CLICallbacks:
 
         def message_only_callback(responses, nodes):
             if responses and responses[-1]:
+                bot_name = self.context.bot_instance.name if self.context.bot_instance else "Bot"
                 pretty(
                     responses[-1],
-                    "Bot",
+                    bot_name,
                     self.context.config.width,
                     self.context.config.indent,
                     COLOR_BOT,
+                    newline_after_name=False,
                 )
 
         return message_only_callback
@@ -1040,7 +1044,7 @@ class ConversationHandler:
             context.conversation_backup = bot.conversation
             print(f"Combining {len(leaves)} leaves using {recombinator_name}...")
             final_response, final_node = fp.recombine(bot, responses, leaves, recombinator_func)
-            pretty(final_response, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
+            pretty(final_response, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT, newline_after_name=False)
             return f"Successfully combined {len(leaves)} leaves using {recombinator_name}"
         except Exception as e:
             return f"Error combining leaves: {str(e)}"
@@ -1078,7 +1082,7 @@ class ConversationHandler:
     def _display_conversation_context(self, bot: Bot, context: CLIContext):
         """Display current conversation context."""
         if bot.conversation.content:
-            pretty(bot.conversation.content, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
+            pretty(bot.conversation.content, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT, newline_after_name=False)
 
 
 class StateHandler:
@@ -1362,10 +1366,11 @@ class SystemHandler:
                     # Display the user prompt
                     pretty(
                         next_prompt,
-                        "User",
+                        "You",
                         context.config.width,
                         context.config.indent,
                         COLOR_USER,
+                        newline_after_name=False,
                     )
 
             # Get the standard callback for display
@@ -1382,10 +1387,11 @@ class SystemHandler:
             # Display the first user prompt
             pretty(
                 "ok",
-                "User",
+                "You",
                 context.config.width,
                 context.config.indent,
                 COLOR_USER,
+                newline_after_name=False,
             )
 
             # Run the autonomous loop
@@ -1633,17 +1639,11 @@ class DynamicFunctionalPromptHandler:
                 if isinstance(responses, list):
                     for i, response in enumerate(responses):
                         if response:
-                            pretty(
-                                f"Response {i+1}: {response}",
-                                bot.name,
-                                context.config.width,
-                                context.config.indent,
-                                COLOR_ASSISTANT,
-                            )
+                            pretty(f"Response {i+1}: {response}", bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT, newline_after_name=False)
                     return f"Functional prompt '{fp_name}' completed with {len(responses)} responses"
                 else:
                     if responses:
-                        pretty(responses, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
+                        pretty(responses, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT, newline_after_name=False)
                     return f"Functional prompt '{fp_name}' completed"
             else:
                 return f"Functional prompt '{fp_name}' completed with result: {result}"
@@ -1720,7 +1720,7 @@ class DynamicFunctionalPromptHandler:
             for i, response in enumerate(responses, 1):
                 if response:
                     print(f"\nResponse {i}:")
-                    pretty(response, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
+                    pretty(response, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT, newline_after_name=False)
             return f"Broadcast complete with {len(responses)} responses"
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
@@ -1870,15 +1870,21 @@ def display_metrics(context: CLIContext, bot: Bot):
             # If session totals fail, just show the per-call metrics
             pass
 
-        pretty(metrics_str, "metrics", context.config.width, context.config.indent, COLOR_METRICS)
+        pretty(metrics_str, "metrics", context.config.width, context.config.indent, COLOR_METRICS, newline_after_name=True)
     except Exception:
         pass
 
 
-def pretty(string: str, name: Optional[str] = None, width: int = 1400, indent: int = 4, color: str = COLOR_RESET) -> None:
+def pretty(string: str, name: Optional[str] = None, width: int = 1400, indent: int = 4, color: str = COLOR_RESET, newline_after_name: bool = True) -> None:
     """Print a string nicely formatted with explicit color."""
     print()
-    prefix = f"{color}{COLOR_BOLD}{name}:{COLOR_RESET}\n{' ' * indent}{color}" if name is not None else color
+    if name is not None:
+        if newline_after_name:
+            prefix = f"{color}{COLOR_BOLD}{name}:{COLOR_RESET}\n{' ' * indent}{color}"
+        else:
+            prefix = f"{color}{COLOR_BOLD}{name}: {COLOR_RESET}{color}"
+    else:
+        prefix = color
     if not isinstance(string, str):
         string = str(string)
 
