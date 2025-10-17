@@ -1,3 +1,12 @@
+"""
+CLI for bot interactions with improved architecture and dynamic parameter collection.
+Architecture:
+- Handler classes for logical command grouping
+- Command registry for easy extensibility
+- Dynamic parameter collection for functional prompts
+- Robust error handling with conversation backup
+- Configuration support for CLI settings
+"""
 import argparse
 import inspect
 import json
@@ -30,12 +39,100 @@ from bots.foundation.base import Bot, ConversationNode
 from bots.observability import tracing
 from bots.observability.callbacks import BotCallbacks
 
+
 # Disable tracing span processors to prevent console output
 try:
     if hasattr(tracing, "_tracer_provider") and tracing._tracer_provider is not None:
         tracing._tracer_provider._active_span_processor._span_processors.clear()
 except Exception:
     pass  # If this fails, traces will still show but it's not critical
+
+
+
+
+class EscapeException(Exception):
+    """Exception raised when user presses ESC to cancel input."""
+    pass
+
+
+def input_with_esc(prompt: str = "") -> str:
+    """
+    Get user input with ESC key support to cancel/interrupt.
+
+    Args:
+        prompt: The prompt string to display
+
+    Returns:
+        The user's input string
+
+    Raises:
+        EscapeException: If user presses ESC key
+    """
+    if platform.system() == "Windows":
+        # Windows implementation
+        import msvcrt
+        print(prompt, end='', flush=True)
+        chars = []
+        while True:
+            if msvcrt.kbhit():
+                char = msvcrt.getch()
+                if char == b'\x1b':  # ESC key
+                    print()  # New line
+                    raise EscapeException("Input cancelled by ESC key")
+                elif char == b'\r':  # Enter key
+                    print()  # New line
+                    return ''.join(chars)
+                elif char == b'\x08':  # Backspace
+                    if chars:
+                        chars.pop()
+                        # Erase character on screen
+                        print('\b \b', end='', flush=True)
+                elif char == b'\x03':  # Ctrl+C
+                    print()
+                    raise KeyboardInterrupt()
+                else:
+                    try:
+                        decoded = char.decode('utf-8')
+                        chars.append(decoded)
+                        print(decoded, end='', flush=True)
+                    except UnicodeDecodeError:
+                        pass
+    else:
+        # Unix/Linux/Mac implementation
+        import select
+        import sys
+        import termios
+        import tty
+
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            print(prompt, end='', flush=True)
+            chars = []
+
+            while True:
+                if select.select([sys.stdin], [], [], 0.1)[0]:
+                    char = sys.stdin.read(1)
+
+                    if char == '\x1b':  # ESC key
+                        print('\r\n', end='', flush=True)
+                        raise EscapeException("Input cancelled by ESC key")
+                    elif char == '\r' or char == '\n':  # Enter key
+                        print('\r\n', end='', flush=True)
+                        return ''.join(chars)
+                    elif char == '\x7f':  # Backspace/Delete
+                        if chars:
+                            chars.pop()
+                            print('\b \b', end='', flush=True)
+                    elif char == '\x03':  # Ctrl+C
+                        print('\r\n', end='', flush=True)
+                        raise KeyboardInterrupt()
+                    elif ord(char) >= 32:  # Printable characters
+                        chars.append(char)
+                        print(char, end='', flush=True)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
 
 def _find_leaves_util(node: ConversationNode) -> List[ConversationNode]:
@@ -62,15 +159,6 @@ def _find_leaves_util(node: ConversationNode) -> List[ConversationNode]:
     return leaves
 
 
-"""
-CLI for bot interactions with improved architecture and dynamic parameter collection.
-Architecture:
-- Handler classes for logical command grouping
-- Command registry for easy extensibility
-- Dynamic parameter collection for functional prompts
-- Robust error handling with conversation backup
-- Configuration support for CLI settings
-"""
 if platform.system() == "Windows":
     import msvcrt
 else:
@@ -239,9 +327,13 @@ class DynamicParameterCollector:
     def _collect_prompts(self, param_name: str, default: Any) -> Optional[List[str]]:
         """Collect a list of prompts from user."""
         prompts = []
-        print(f"\nEnter {param_name} (empty line to finish):")
+        print(f"\nEnter {param_name} (empty line to finish, ESC to cancel):")
         while True:
-            prompt = input(f"Prompt {len(prompts) + 1}: ").strip()
+            try:
+                prompt = input_with_esc(f"Prompt {len(prompts) + 1}: ").strip()
+            except EscapeException:
+                print("Cancelled")
+                return None
             if not prompt:
                 break
             prompts.append(prompt)
@@ -252,7 +344,11 @@ class DynamicParameterCollector:
 
     def _collect_single_prompt(self, param_name: str, default: Any) -> Optional[str]:
         """Collect a single prompt from user."""
-        prompt = input(f"Enter {param_name}: ").strip()
+        try:
+            prompt = input_with_esc(f"Enter {param_name}: ").strip()
+        except EscapeException:
+            print("Cancelled")
+            return None
         return prompt if prompt else None
 
     def _collect_condition(self, param_name: str, default: Any) -> Optional[Callable]:
@@ -261,7 +357,11 @@ class DynamicParameterCollector:
         for key, (name, _) in self.conditions.items():
             print(f"  {key}. {name}")
         default_display = self._format_default_value(default)
-        choice = input(f"Select condition (default: {default_display}): ").strip()
+        try:
+            choice = input_with_esc(f"Select condition (default: {default_display}): ").strip()
+        except EscapeException:
+            print("Cancelled")
+            return None
         if not choice and default != inspect.Parameter.empty:
             return default
         elif choice in self.conditions:
@@ -273,17 +373,25 @@ class DynamicParameterCollector:
     def _collect_continue_prompt(self, param_name: str, default: Any) -> Optional[str]:
         """Collect continue prompt with default handling."""
         default_display = self._format_default_value(default)
-        if default != inspect.Parameter.empty:
-            prompt = input(f"Enter {param_name} (default: {default_display}): ").strip()
-            return prompt if prompt else default
-        else:
-            prompt = input(f"Enter {param_name}: ").strip()
-            return prompt if prompt else None
+        try:
+            if default != inspect.Parameter.empty:
+                prompt = input_with_esc(f"Enter {param_name} (default: {default_display}): ").strip()
+                return prompt if prompt else default
+            else:
+                prompt = input_with_esc(f"Enter {param_name}: ").strip()
+                return prompt if prompt else None
+        except EscapeException:
+            print("Cancelled")
+            return None
 
     def _collect_boolean(self, param_name: str, default: Any) -> Optional[bool]:
         """Collect boolean parameter."""
         default_display = self._format_default_value(default)
-        choice = input(f"Enter {param_name} (y/n, default: {default_display}): ").strip().lower()
+        try:
+            choice = input_with_esc(f"Enter {param_name} (y/n, default: {default_display}): ").strip().lower()
+        except EscapeException:
+            print("Cancelled")
+            return None
         if not choice and default != inspect.Parameter.empty:
             return default
         elif choice in ["y", "yes", "true", "1"]:
@@ -295,7 +403,11 @@ class DynamicParameterCollector:
 
     def _collect_skip_labels(self, param_name: str, default: Any) -> List[str]:
         """Collect skip labels for broadcast functions."""
-        skip_input = input(f"Enter {param_name} (comma-separated, or empty for none): ").strip()
+        try:
+            skip_input = input_with_esc(f"Enter {param_name} (comma-separated, or empty for none): ").strip()
+        except EscapeException:
+            print("Cancelled")
+            return []
         if skip_input:
             return [label.strip() for label in skip_input.split(",")]
         else:
@@ -313,7 +425,11 @@ class DynamicParameterCollector:
         for key, (name, _) in recombinator_options.items():
             print(f"  {key}. {name}")
         default_display = self._format_default_value(default)
-        choice = input(f"Select recombinator (default: {default_display}): ").strip()
+        try:
+            choice = input_with_esc(f"Select recombinator (default: {default_display}): ").strip()
+        except EscapeException:
+            print("Cancelled")
+            return None
         if not choice and default != inspect.Parameter.empty:
             return default
         elif choice in recombinator_options:
@@ -348,7 +464,11 @@ class DynamicParameterCollector:
         }
         for key, (name, _) in fp_options.items():
             print(f"  {key}. {name}")
-        choice = input("Select functional prompt: ").strip()
+        try:
+            choice = input_with_esc("Select functional prompt: ").strip()
+        except EscapeException:
+            print("Cancelled")
+            return None
         if choice in fp_options:
             return fp_options[choice][1]
         else:
@@ -358,12 +478,16 @@ class DynamicParameterCollector:
     def _collect_generic_parameter(self, param_name: str, default: Any) -> Optional[Any]:
         """Generic parameter collection for unknown parameter types."""
         default_display = self._format_default_value(default)
-        if default != inspect.Parameter.empty:
-            value = input(f"Enter {param_name} (default: {default_display}): ").strip()
-            return value if value else default
-        else:
-            value = input(f"Enter {param_name}: ").strip()
-            return value if value else None
+        try:
+            if default != inspect.Parameter.empty:
+                value = input_with_esc(f"Enter {param_name} (default: {default_display}): ").strip()
+                return value if value else default
+            else:
+                value = input_with_esc(f"Enter {param_name}: ").strip()
+                return value if value else None
+        except EscapeException:
+            print("Cancelled")
+            return None
 
 
 class CLIConfig:
@@ -728,7 +852,10 @@ class ConversationHandler:
             idx = 0
             if max_index > 0:
                 try:
-                    idx = int(input(f"Reply index (max {max_index}): "))
+                    try:
+                        idx = int(input_with_esc(f"Reply index (max {max_index}): "))
+                    except EscapeException:
+                        return "Selection cancelled"
                     if idx < 0 or idx > max_index:
                         return f"Invalid index. Must be between 0 and {max_index}"
                 except ValueError:
@@ -801,7 +928,10 @@ class ConversationHandler:
             print()
 
         # Get label input from user
-        label = input("Enter label name (new to create, existing to jump): ").strip()
+        try:
+            label = input_with_esc("Enter label name (new to create, existing to jump): ").strip()
+        except EscapeException:
+            return "Label operation cancelled"
         if not label:
             return "No label entered"
 
@@ -957,7 +1087,10 @@ class StateHandler:
     def save(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Save bot state."""
         try:
-            filename = input("Save filename (without extension): ").strip()
+            try:
+                filename = input_with_esc("Save filename (without extension): ").strip()
+            except EscapeException:
+                return "Save cancelled"
             if not filename:
                 return "Save cancelled - no filename provided"
             if not filename.endswith(".bot"):
@@ -983,7 +1116,10 @@ class StateHandler:
             else:
                 print("\nNo .bot files found in current directory.")
 
-            filename = input("Load filename (or number from list): ").strip()
+            try:
+                filename = input_with_esc("Load filename (or number from list): ").strip()
+            except EscapeException:
+                return "Load cancelled"
             if not filename:
                 return "Load cancelled - no filename provided"
 
@@ -1742,7 +1878,7 @@ def display_metrics(context: CLIContext, bot: Bot):
 def pretty(string: str, name: Optional[str] = None, width: int = 1400, indent: int = 4, color: str = COLOR_RESET) -> None:
     """Print a string nicely formatted with explicit color."""
     print()
-    prefix = f"{color}{COLOR_BOLD}{name}: {COLOR_RESET}{color}" if name is not None else color
+    prefix = f"{color}{COLOR_BOLD}{name}:{COLOR_RESET}\n{' ' * indent}{color}" if name is not None else color
     if not isinstance(string, str):
         string = str(string)
 
@@ -2158,7 +2294,10 @@ class PromptHandler:
             if args:
                 query = " ".join(args)
             else:
-                query = input("Enter prompt search: ").strip()
+                try:
+                    query = input_with_esc("Enter prompt search: ").strip()
+                except EscapeException:
+                    return ("Selection cancelled", None)
 
             # Search for matching prompts
             matches = self.prompt_manager.search_prompts(query)
@@ -2186,7 +2325,11 @@ class PromptHandler:
 
             # Get selection (default to 1 if just Enter is pressed)
             try:
-                choice = input(f"\nSelect prompt (1-{min(len(matches), 10)}, default=1): ").strip()
+                try:
+                    choice = input_with_esc(f"\nSelect prompt (1-{min(len(matches), 10)}, default=1): ").strip()
+                except EscapeException:
+                    return ("Selection cancelled", None)
+
                 if not choice:
                     choice_num = 0  # Default to first match
                 else:
