@@ -1968,10 +1968,7 @@ class CLI:
     
     def _handle_recent_prompts(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Handle /r command to show recent prompts."""
-        message, prefill = self.prompts.recent_prompts(bot, context, args)
-        if prefill:
-            self.pending_prefill = prefill
-        return message
+        return self.prompts.recent_prompts(bot, context, args)
 
     def _get_user_input(self, prompt_text: str = ">>> ") -> str:
         """Get user input, with optional pre-fill support."""
@@ -2228,6 +2225,39 @@ class PromptHandler:
 
         except Exception as e:
             return f"Error saving prompt: {str(e)}"
+    def delete_prompt(self, bot: "Bot", context: "CLIContext", args: List[str]) -> str:
+        """Delete a prompt by name."""
+        try:
+            if not args:
+                return "Usage: /d <prompt_name>"
+
+            name = " ".join(args)
+            if self.prompt_manager.delete_prompt(name):
+                return f"Deleted prompt: {name}"
+            else:
+                return f"Prompt not found: {name}"
+
+        except Exception as e:
+            return f"Error deleting prompt: {str(e)}"
+    
+    def recent_prompts(self, bot: "Bot", context: "CLIContext", args: List[str]) -> str:
+        """Show recent prompts."""
+        try:
+            recents = self.prompt_manager.get_recents()
+
+            if not recents:
+                return "No recent prompts."
+
+            result = "Recent prompts:\n"
+            for i, (name, content) in enumerate(recents, 1):
+                preview = content[:80] + "..." if len(content) > 80 else content
+                preview = preview.replace("\n", " ")
+                result += f"  {i}. {name}: {preview}\n"
+
+            return result.rstrip()
+
+        except Exception as e:
+            return f"Error getting recent prompts: {str(e)}"
     def delete_prompt(self, bot: "Bot", context: "CLIContext", args: List[str]) -> str:
         """Delete a saved prompt."""
         try:
