@@ -1133,7 +1133,7 @@ class SystemHandler:
                         context.last_message_metrics
                         and context.last_message_metrics.get("input_tokens", 0) > context.config.remove_context_threshold
                         and context.context_reduction_cooldown <= 0
-                    ), "please selectively trim your context a bit using list_context and remove_context, it's getting quite long."),
+                    ), "trim useless context"),
                 ],
                 default="ok"
             )
@@ -1494,8 +1494,10 @@ def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> s
     # Multiple inputs - show key: value pairs
     lines = []
     for key, value in data.items():
+        # Strip underscores from parameter names for cleaner display
+        display_key = key.replace("_", " ")
         # Bold the key name with color, keep colon and value colored too
-        bold_key = f"{color}{COLOR_BOLD}{key}{COLOR_RESET}{color}:"
+        bold_key = f"{color}{COLOR_BOLD}{display_key}{COLOR_RESET}{color}:"
 
         if isinstance(value, dict):
             # Nested dict - format recursively with extra indent
@@ -1518,9 +1520,6 @@ def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> s
         else:
             # Other types (int, bool, None, etc.)
             lines.append(f"{bold_key} {value}")
-
-    # Add newline at the beginning so first key is on its own line
-    return "\n" + "\n".join(lines)
 
 
 def check_for_interrupt() -> bool:
