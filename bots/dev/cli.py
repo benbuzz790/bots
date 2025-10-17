@@ -1694,25 +1694,18 @@ def display_metrics(context: CLIContext, bot: Bot):
         if last_metrics["input_tokens"] == 0 and last_metrics["output_tokens"] == 0:
             return
 
-        # Format the metrics nicely - terminal-native, no emojis
-        metrics_str = f"\nTokens: {last_metrics['input_tokens']:,} in, {last_metrics['output_tokens']:,} out"
+        # Calculate total tokens for this call
+        total_tokens = last_metrics['input_tokens'] + last_metrics['output_tokens']
 
-        if last_metrics["cached_tokens"] > 0:
-            metrics_str += f", {last_metrics['cached_tokens']:,} cached"
-        metrics_str += f"\nCost: ${last_metrics['cost']:.4f}"
-        metrics_str += f"\nTime: {last_metrics['duration']:.2f}s"
+        # Format the metrics in a single line: [tokens] | $[cost] | [time]s
+        metrics_str = f"{total_tokens:,} | ${last_metrics['cost']:.4f} | {last_metrics['duration']:.2f}s"
 
-        # Add session totals
+        # Add session totals on second line
         try:
             session_tokens = metrics.get_total_tokens(context.session_start_time)
             session_cost = metrics.get_total_cost(context.session_start_time)
 
-            metrics_str += "\n\nSession totals:"
-            metrics_str += f"\n  Tokens: {session_tokens['input']:,} in, {session_tokens['output']:,} out"
-            if session_tokens["cached"] > 0:
-                metrics_str += f", {session_tokens['cached']:,} cached"
-            metrics_str += f"\n  Total: {session_tokens['total']:,} tokens"
-            metrics_str += f"\n  Cost: ${session_cost:.4f}"
+            metrics_str += f"\n{session_tokens['total']:,} | ${session_cost:.4f}"
         except Exception:
             # If session totals fail, just show the per-call metrics
             pass
