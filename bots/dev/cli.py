@@ -375,6 +375,10 @@ class CLIConfig:
         self.indent = 4
         self.auto_stash = False
         self.remove_context_threshold = 40000
+        self.auto_mode_neutral_prompt = "ok"
+        self.auto_mode_reduce_context_prompt = "trim useless context"
+        self.max_tokens = 4096
+        self.temperature = 1.0
         self.config_file = "cli_config.json"
         self.load_config()
 
@@ -389,6 +393,10 @@ class CLIConfig:
                     self.indent = config_data.get("indent", 4)
                     self.auto_stash = config_data.get("auto_stash", False)
                     self.remove_context_threshold = config_data.get("remove_context_threshold", 40000)
+                    self.auto_mode_neutral_prompt = config_data.get("auto_mode_neutral_prompt", "ok")
+                    self.auto_mode_reduce_context_prompt = config_data.get("auto_mode_reduce_context_prompt", "trim useless context")
+                    self.max_tokens = config_data.get("max_tokens", 4096)
+                    self.temperature = config_data.get("temperature", 1.0)
         except Exception:
             pass  # Use defaults if config loading fails
 
@@ -401,6 +409,10 @@ class CLIConfig:
                 "indent": self.indent,
                 "auto_stash": self.auto_stash,
                 "remove_context_threshold": self.remove_context_threshold,
+                "auto_mode_neutral_prompt": self.auto_mode_neutral_prompt,
+                "auto_mode_reduce_context_prompt": self.auto_mode_reduce_context_prompt,
+                "max_tokens": self.max_tokens,
+                "temperature": self.temperature,
             }
             with open(self.config_file, "w") as f:
                 json.dump(config_data, f, indent=2)
@@ -1079,12 +1091,16 @@ class SystemHandler:
                 f"    indent: {context.config.indent}",
                 f"    auto_stash: {context.config.auto_stash}",
                 f"    remove_context_threshold: {context.config.remove_context_threshold}",
+                f"    auto_mode_neutral_prompt: {context.config.auto_mode_neutral_prompt}",
+                f"    auto_mode_reduce_context_prompt: {context.config.auto_mode_reduce_context_prompt}",
+                f"    max_tokens: {context.config.max_tokens}",
+                f"    temperature: {context.config.temperature}",
                 "Use '/config set <setting> <value>' to modify settings.",
             ]
             return "\n".join(config_lines)
         if len(args) >= 3 and args[0] == "set":
             setting = args[1]
-            value = args[2]
+            value = " ".join(args[2:])  # Allow spaces in prompt values
             try:
                 if setting == "verbose":
                     new_verbose = value.lower() in ("true", "1", "yes", "on")
@@ -1104,6 +1120,14 @@ class SystemHandler:
                     context.config.auto_stash = value.lower() in ("true", "1", "yes", "on")
                 elif setting == "remove_context_threshold":
                     context.config.remove_context_threshold = int(value)
+                elif setting == "auto_mode_neutral_prompt":
+                    context.config.auto_mode_neutral_prompt = value
+                elif setting == "auto_mode_reduce_context_prompt":
+                    context.config.auto_mode_reduce_context_prompt = value
+                elif setting == "max_tokens":
+                    context.config.max_tokens = int(value)
+                elif setting == "temperature":
+                    context.config.temperature = float(value)
                 else:
                     return f"Unknown setting: {setting}"
                 context.config.save_config()
@@ -1126,7 +1150,7 @@ class SystemHandler:
                 restore_terminal(old_settings)
                 return "Autonomous execution interrupted by user"
 
-            # Create dynamic continue prompt using policy
+            # Create dynamic continue prompt using policy with configurable prompts
             continue_prompt = fp.dynamic_prompts.policy(
                 rules=[
                     # High token count with cooldown expired -> request context reduction
@@ -1134,9 +1158,9 @@ class SystemHandler:
                         context.last_message_metrics
                         and context.last_message_metrics.get("input_tokens", 0) > context.config.remove_context_threshold
                         and context.context_reduction_cooldown <= 0
-                    ), "trim useless context"),
+                    ), context.config.auto_mode_reduce_context_prompt),
                 ],
-                default="ok"
+                default=context.config.auto_mode_neutral_prompt
             )
 
             # Use prompt_while with the dynamic continue prompt
@@ -1204,27 +1228,27 @@ class SystemHandler:
                 COLOR_USER,
             )
 
-            # Run prompt_while with dynamic continue prompt
-            # This will send "ok" first, then check if tools were used
-            responses, nodes = fp.prompt_while(
+            # Run the autonomous loop
+            fp.prompt_while(
                 bot,
-                first_prompt="ok",  # First continuation
+                "ok",
                 continue_prompt=continue_prompt,
                 stop_condition=stop_on_no_tools,
-                callback=combined_callback
+                callback=combined_callback,
             )
 
             restore_terminal(old_settings)
-            return "Bot finished autonomous execution"
+            display_metrics(context, bot)
+            return ""
 
         except KeyboardInterrupt:
             if context.old_terminal_settings:
                 restore_terminal(context.old_terminal_settings)
-            return "Autonomous execution interrupted by user"
+            return "\nAutonomous execution interrupted by user"
         except Exception as e:
             if context.old_terminal_settings:
                 restore_terminal(context.old_terminal_settings)
-            return f"Error during autonomous execution: {str(e)}"
+            return f"Error in autonomous mode: {str(e)}"
 
     def auto_stash(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Toggle auto git stash functionality."""
@@ -1948,7 +1972,11 @@ class CLI:
         """Initialize a new bot with default tools."""
         from bots import Engines
 
-        bot = AnthropicBot(model_engine=Engines.CLAUDE45_SONNET, max_tokens=16000)
+        bot = AnthropicBot(
+            model_engine=Engines.CLAUDE45_SONNET, 
+            max_tokens=self.context.config.max_tokens,
+            temperature=self.context.config.temperature
+        )
         self.context.bot_instance = bot
         # Attach real-time display callback
         self.context.bot_instance.callbacks = RealTimeDisplayCallbacks(self.context)
@@ -1976,12 +2004,12 @@ class CLI:
 
         sys_msg = textwrap.dedent(
             """You're a coding agent. When greeting users, always start with "Hello! I'm here to help you".
-            Please follow these rules:
-                    1. Keep edits and even writing new files to small chunks. You have a low max_token limit
-                       and will hit tool errors if you try making too big of a change.
-                    2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
-                       Instead, use full relative paths.
-            """
+        Please follow these rules:
+                1. Keep edits and even writing new files to small chunks. You have a low max_token limit
+                   and will hit tool errors if you try making too big of a change.
+                2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
+                   Instead, use full relative paths.
+        """
         )
         bot.set_system_message(sys_msg)
 
