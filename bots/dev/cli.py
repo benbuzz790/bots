@@ -683,6 +683,28 @@ Respond with just the name, no explanation."""
     def get_prompt_names(self) -> List[str]:
         """Get all prompt names."""
         return list(self.prompts_data["prompts"].keys())
+    def delete_prompt(self, name: str) -> bool:
+        """Delete a prompt by name. Returns True if deleted, False if not found."""
+        if name not in self.prompts_data["prompts"]:
+            return False
+
+        # Remove from prompts
+        del self.prompts_data["prompts"][name]
+
+        # Remove from recents if present
+        if name in self.prompts_data["recents"]:
+            self.prompts_data["recents"].remove(name)
+
+        self._save_prompts()
+        return True
+    
+    def get_recents(self) -> List[tuple]:
+        """Get recent prompts as list of (name, content) tuples."""
+        results = []
+        for name in self.prompts_data["recents"]:
+            if name in self.prompts_data["prompts"]:
+                results.append((name, self.prompts_data["prompts"][name]))
+        return results
 
 
 class ConversationHandler:
@@ -1039,6 +1061,8 @@ class SystemHandler:
             "/broadcast_fp: Execute functional prompts on all leaf nodes",
             "/p [search]: Load a saved prompt (searches by name and content, pre-fills input)",
             "/s [text]: Save a prompt - saves provided text or last user message if no text given",
+            "/r: Show recent prompts and select one to load",
+            "/d [search]: Delete a saved prompt",
             "/add_tool [tool_name]: Add a tool to the bot (shows list if no name provided)",
             "/config: Show or modify CLI configuration",
             "/auto_stash: Toggle auto git stash before user messages",
@@ -1824,6 +1848,8 @@ class CLI:
             "/p": self._handle_load_prompt,
             "/s": self._handle_save_prompt,
             "/add_tool": self.system.add_tool,
+            "/d": self._handle_delete_prompt,
+            "/r": self._handle_recent_prompts,
         }
 
         # Initialize metrics with verbose=False since CLI handles its own display
@@ -1936,6 +1962,16 @@ class CLI:
     def _handle_save_prompt(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Handle /s command to save prompts."""
         return self.prompts.save_prompt(bot, context, args, self.last_user_message)
+    def _handle_delete_prompt(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Handle /d command to delete prompts."""
+        return self.prompts.delete_prompt(bot, context, args)
+    
+    def _handle_recent_prompts(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Handle /r command to show recent prompts."""
+        message, prefill = self.prompts.recent_prompts(bot, context, args)
+        if prefill:
+            self.pending_prefill = prefill
+        return message
 
     def _get_user_input(self, prompt_text: str = ">>> ") -> str:
         """Get user input, with optional pre-fill support."""
@@ -2192,6 +2228,117 @@ class PromptHandler:
 
         except Exception as e:
             return f"Error saving prompt: {str(e)}"
+    def delete_prompt(self, bot: "Bot", context: "CLIContext", args: List[str]) -> str:
+        """Delete a saved prompt."""
+        try:
+            # Get prompt name
+            if args:
+                query = " ".join(args)
+            else:
+                query = input("Enter prompt name or search: ").strip()
+
+            if not query:
+                return "Delete cancelled."
+
+            # Search for matching prompts
+            matches = self.prompt_manager.search_prompts(query)
+
+            if not matches:
+                return "No prompts found matching your search."
+
+            if len(matches) == 1:
+                # Single match - confirm and delete
+                name, content = matches[0]
+                preview = content[:100] + "..." if len(content) > 100 else content
+                preview = preview.replace("\n", " ")
+                print(f"\nPrompt to delete: {name}")
+                print(f"Content: {preview}")
+                confirm = input("Delete this prompt? (y/n): ").strip().lower()
+
+                if confirm == 'y':
+                    if self.prompt_manager.delete_prompt(name):
+                        return f"Deleted prompt: {name}"
+                    else:
+                        return f"Failed to delete prompt: {name}"
+                else:
+                    return "Delete cancelled."
+
+            # Multiple matches - show selection
+            print(f"\nFound {len(matches)} matches:")
+            for i, (name, content) in enumerate(matches[:10], 1):
+                preview = content[:100] + "..." if len(content) > 100 else content
+                preview = preview.replace("\n", " ")
+                print(f"  {i}. {name}: {preview}")
+
+            if len(matches) > 10:
+                print(f"  ... and {len(matches) - 10} more matches")
+
+            # Get selection
+            try:
+                choice = input(f"\nSelect prompt to delete (1-{min(len(matches), 10)}): ").strip()
+                if not choice:
+                    return "Delete cancelled."
+
+                choice_num = int(choice) - 1
+                if choice_num < 0 or choice_num >= min(len(matches), 10):
+                    return f"Invalid selection. Must be between 1 and {min(len(matches), 10)}."
+
+                name, content = matches[choice_num]
+                preview = content[:100] + "..." if len(content) > 100 else content
+                preview = preview.replace("\n", " ")
+                print(f"\nPrompt to delete: {name}")
+                print(f"Content: {preview}")
+                confirm = input("Delete this prompt? (y/n): ").strip().lower()
+
+                if confirm == 'y':
+                    if self.prompt_manager.delete_prompt(name):
+                        return f"Deleted prompt: {name}"
+                    else:
+                        return f"Failed to delete prompt: {name}"
+                else:
+                    return "Delete cancelled."
+
+            except ValueError:
+                return "Invalid selection. Must be a number."
+
+        except Exception as e:
+            return f"Error deleting prompt: {str(e)}"
+    
+    def recent_prompts(self, bot: "Bot", context: "CLIContext", args: List[str]) -> tuple:
+        """Show recent prompts and optionally select one. Returns (message, prefill_text)."""
+        try:
+            recents = self.prompt_manager.get_recents()
+
+            if not recents:
+                return ("No recent prompts.", None)
+
+            # Show recents
+            print(f"\nRecent prompts ({len(recents)}):")
+            for i, (name, content) in enumerate(recents, 1):
+                preview = content[:100] + "..." if len(content) > 100 else content
+                preview = preview.replace("\n", " ")
+                print(f"  {i}. {name}: {preview}")
+
+            # Get selection
+            try:
+                choice = input(f"\nSelect prompt (1-{len(recents)}, or Enter to cancel): ").strip()
+                if not choice:
+                    return ("Selection cancelled.", None)
+
+                choice_num = int(choice) - 1
+                if choice_num < 0 or choice_num >= len(recents):
+                    return (f"Invalid selection. Must be between 1 and {len(recents)}.", None)
+
+                name, content = recents[choice_num]
+                self.prompt_manager.load_prompt(name)  # Update recency
+
+                return (f"Loaded prompt: {name}", content)
+
+            except ValueError:
+                return ("Invalid selection. Must be a number.", None)
+
+        except Exception as e:
+            return (f"Error loading recent prompts: {str(e)}", None)
 
 
 def parse_args():
