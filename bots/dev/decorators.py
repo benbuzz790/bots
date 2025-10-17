@@ -775,8 +775,10 @@ def toolify(description: str = None):
                 if "missing" in error_msg and "required" in error_msg and "argument" in error_msg:
                     # Add special message for output token limitation
                     enhanced_error = TypeError(
-                        f"{error_msg} - this is usually due to running out of output tokens "
-                        f"before finishing the message. Try making the function parameters shorter."
+                        f"{error_msg}\n\n"
+                        f"⚠️  This error is commonly caused by hitting the max_tokens limit before completing the tool call.\n"
+                        f"The response was truncated mid-parameter, making it appear that required parameters are missing.\n"
+                        f"To fix this: Work in SMALLER CHUNKS. Edit fewer lines at a time, or break your task into multiple steps."
                     )
                     from bots.utils.helpers import _process_error
 
