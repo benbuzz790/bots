@@ -661,23 +661,24 @@ def _remove_dummy_from_tree(node, dummy_content):
         for child in node.replies:
             _remove_dummy_from_tree(child, dummy_content)
 @toolify()
-def subagent(task: str, autosave: str = "False", max_iterations: str = "20") -> str:
-    """Create a subagent bot to work on a task autonomously with dynamic prompts.
+def subagent(tasks: str, max_iterations: str = "20") -> str:
+    """Create subagent bots to work on tasks autonomously with dynamic prompts.
 
-    The subagent works in a loop with the same dynamic prompt system as CLI auto mode:
+    Each subagent works in a loop with the same dynamic prompt system as CLI auto mode:
     - Continues with neutral prompt ("ok") by default
     - Prompted to trim context when token count is high
     - Stops when it doesn't use tools
     - On first no-tool response, prompted to write a summary
 
     Args:
-        task (str): The task/prompt for the subagent to work on
-        autosave (str): 'True' to enable autosave, 'False' (default) to disable
-        max_iterations (str): Maximum number of iterations (default: "20")
+        tasks (str): List of tasks as a string array, like ['task 1', 'task 2', 'task 3']
+                    Each task gets its own subagent
+        max_iterations (str): Maximum number of iterations per subagent (default: "20")
 
     Returns:
-        str: The subagent's final response/summary
+        str: Combined results from all subagents
     """
+    import os
     import uuid
     from bots.flows import functional_prompts as fp
     from bots.foundation.base import Bot
@@ -687,86 +688,229 @@ def subagent(task: str, autosave: str = "False", max_iterations: str = "20") -> 
         return "Error: Could not find calling bot"
 
     # Parse parameters
-    autosave_bool = autosave.lower() == "true"
     try:
         max_iter = int(max_iterations)
     except ValueError:
         return f"Error: max_iterations must be a number, got '{max_iterations}'"
 
+    # Process the tasks
     try:
-        # Create a subagent bot with similar settings to parent
-        subagent = Bot.load_from_bot(bot)
-        subagent.autosave = autosave_bool
-        subagent.name = f"subagent_{uuid.uuid4().hex[:6]}"
-
-        # Track metrics for context management
-        last_input_tokens = 0
-        context_reduction_cooldown = 0
-        remove_context_threshold = 40000
-
-        # Track if we've already asked for summary
-        summary_requested = False
-
-        # Create dynamic continue prompt using policy (same as CLI auto mode)
-        def continue_prompt_func(bot: Bot, iteration: int) -> str:
-            nonlocal last_input_tokens, context_reduction_cooldown, summary_requested
-
-            # Check if bot used tools in last response
-            used_tools = bool(bot.tool_handler.requests)
-
-            # If no tools used and haven't requested summary yet, ask for one
-            if not used_tools and not summary_requested:
-                summary_requested = True
-                return "Please write a summary of your work in your text response."
-
-            # High token count with cooldown expired -> request context reduction
-            if last_input_tokens > remove_context_threshold and context_reduction_cooldown <= 0:
-                context_reduction_cooldown = 3
-                return "trim useless context"
-
-            # Decrement cooldown
-            if context_reduction_cooldown > 0:
-                context_reduction_cooldown -= 1
-
-            return "ok"
-
-        # Stop condition: no tools used
-        def stop_on_no_tools(bot: Bot) -> bool:
-            return not bot.tool_handler.requests
-
-        # Callback to update metrics
-        iteration_count = [0]
-        def metrics_callback(responses, nodes):
-            nonlocal last_input_tokens
-            iteration_count[0] += 1
-
-            # Try to get token metrics (may not be available in all contexts)
-            try:
-                from bots.observability import metrics
-                last_metrics = metrics.get_and_clear_last_metrics()
-                last_input_tokens = last_metrics.get("input_tokens", 0)
-            except Exception:
-                pass
-
-            # Stop if max iterations reached
-            if iteration_count[0] >= max_iter:
-                raise StopIteration("Max iterations reached")
-
-        # Run the subagent with dynamic prompts
-        fp.prompt_while(
-            bot=subagent,
-            first_prompt=task,
-            continue_prompt=continue_prompt_func,
-            stop_condition=stop_on_no_tools,
-            callback=metrics_callback,
-        )
-
-        # Return the final response
-        final_response = subagent.conversation.content
-        return final_response
-
-    except StopIteration as e:
-        # Max iterations reached, return what we have
-        return f"Subagent stopped: {str(e)}\n\nLast response:\n{subagent.conversation.content}"
+        task_list = _process_string_array(tasks)
+        if not task_list:
+            return "Error: No valid tasks provided"
     except Exception as e:
-        return f"Error running subagent: {str(e)}"
+        return f"Error parsing tasks: {str(e)}"
+
+    try:
+        # Store original conversation point and bot settings
+        original_node = bot.conversation
+        original_autosave = bot.autosave
+        bot.autosave = False
+
+        # Tag the current node so we can find it after load
+        branch_tag = f"_subagent_anchor_{uuid.uuid4().hex[:8]}"
+        setattr(original_node, branch_tag, True)
+
+        # Create a modified conversation node with dummy tool results
+        # This prevents 'tool_use without tool_result' errors in subagents
+        if original_node.tool_calls:
+            dummy_results = []
+            for tool_call in original_node.tool_calls:
+                if tool_call.get("name") == "subagent":
+                    dummy_result = {"tool_use_id": tool_call["id"], "content": "Subagent working..."}
+                    dummy_results.append(dummy_result)
+
+            if dummy_results:
+                # Temporarily add dummy results for saving
+                original_results = getattr(original_node, "tool_results", [])
+                original_node._add_tool_results(dummy_results)
+
+                # Save bot state with dummy results and tag
+                temp_id = str(uuid.uuid4())[:8]
+                temp_file = f"subagent_{temp_id}.bot"
+                bot.save(temp_file)
+
+                # Restore original results (remove dummy results from current bot)
+                original_node.tool_results = original_results
+            else:
+                # No dummy results needed, save normally
+                temp_id = str(uuid.uuid4())[:8]
+                temp_file = f"subagent_{temp_id}.bot"
+                bot.save(temp_file)
+        else:
+            # No tool calls, save normally
+            temp_id = str(uuid.uuid4())[:8]
+            temp_file = f"subagent_{temp_id}.bot"
+            bot.save(temp_file)
+
+        def execute_subagent(task, parent_bot_node):
+            """Execute a single subagent with the given task."""
+            try:
+                # Create a fresh bot copy for this subagent
+                subagent = Bot.load(temp_file)
+                subagent.autosave = False
+                subagent.name = f"subagent_{uuid.uuid4().hex[:6]}"
+                # Preserve callbacks from parent bot
+                subagent.callbacks = bot.callbacks
+
+                # Find the tagged node in the loaded bot's conversation tree
+                def find_tagged_node(node):
+                    """Recursively search for the node with the subagent tag."""
+                    # Check current node for any subagent_anchor tags
+                    for attr in dir(node):
+                        if attr.startswith("_subagent_anchor_"):
+                            return node
+                    # Search in parent chain
+                    current = node
+                    while current.parent:
+                        current = current.parent
+                        for attr in dir(current):
+                            if attr.startswith("_subagent_anchor_"):
+                                return current
+                    # Search in all descendants from root
+                    root = node
+                    while root.parent:
+                        root = root.parent
+
+                    def search_tree(n):
+                        for attr in dir(n):
+                            if attr.startswith("_subagent_anchor_"):
+                                return n
+                        for reply in n.replies:
+                            result = search_tree(reply)
+                            if result:
+                                return result
+                        return None
+
+                    return search_tree(root)
+
+                tagged_node = find_tagged_node(subagent.conversation)
+                if tagged_node:
+                    # Position at the tagged node
+                    subagent.conversation = tagged_node
+                    # Remove the tag from this subagent's copy
+                    for attr in dir(tagged_node):
+                        if attr.startswith("_subagent_anchor_"):
+                            delattr(tagged_node, attr)
+                            break
+
+                branching_node = subagent.conversation
+
+                # Ensure clean tool handler state for subagent
+                if hasattr(subagent, "tool_handler") and subagent.tool_handler:
+                    subagent.tool_handler.clear()
+
+                # Track metrics for context management
+                last_input_tokens = [0]
+                context_reduction_cooldown = [0]
+                remove_context_threshold = 40000
+
+                # Track if we've already asked for summary
+                summary_requested = [False]
+
+                # Create dynamic continue prompt using policy (same as CLI auto mode)
+                def continue_prompt_func(bot: Bot, iteration: int) -> str:
+                    # Check if bot used tools in last response
+                    used_tools = bool(bot.tool_handler.requests)
+
+                    # If no tools used and haven't requested summary yet, ask for one
+                    if not used_tools and not summary_requested[0]:
+                        summary_requested[0] = True
+                        return "Please write a summary of your work in your text response."
+
+                    # High token count with cooldown expired -> request context reduction
+                    if last_input_tokens[0] > remove_context_threshold and context_reduction_cooldown[0] <= 0:
+                        context_reduction_cooldown[0] = 3
+                        return "trim useless context"
+
+                    # Decrement cooldown
+                    if context_reduction_cooldown[0] > 0:
+                        context_reduction_cooldown[0] -= 1
+
+                    return "ok"
+
+                # Stop condition: no tools used
+                def stop_on_no_tools(bot: Bot) -> bool:
+                    return not bot.tool_handler.requests
+
+                # Callback to update metrics
+                iteration_count = [0]
+                def metrics_callback(responses, nodes):
+                    iteration_count[0] += 1
+
+                    # Try to get token metrics (may not be available in all contexts)
+                    try:
+                        from bots.observability import metrics
+                        last_metrics = metrics.get_and_clear_last_metrics()
+                        last_input_tokens[0] = last_metrics.get("input_tokens", 0)
+                    except Exception:
+                        pass
+
+                    # Stop if max iterations reached
+                    if iteration_count[0] >= max_iter:
+                        raise StopIteration("Max iterations reached")
+
+                # Run the subagent with dynamic prompts
+                fp.prompt_while(
+                    bot=subagent,
+                    first_prompt=f"(subagent task): {task}",
+                    continue_prompt=continue_prompt_func,
+                    stop_condition=stop_on_no_tools,
+                    callback=metrics_callback,
+                )
+
+                # Stitch completed conversation back onto bot conversation
+                parent_bot_node.replies.extend(branching_node.replies)
+                for node in branching_node.replies:
+                    node.parent = parent_bot_node
+
+                # Return the final response
+                final_response = subagent.conversation.content
+                return final_response, subagent.conversation
+
+            except StopIteration as e:
+                # Max iterations reached, return what we have
+                return f"Subagent stopped: {str(e)}\n\nLast response:\n{subagent.conversation.content}", subagent.conversation
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                return f"Error running subagent: {str(e)}", None
+
+        # Execute subagents sequentially
+        responses = []
+        subagent_nodes = []
+
+        for task in task_list:
+            response, node = execute_subagent(task, original_node)
+            responses.append(response)
+            subagent_nodes.append(node)
+
+        # Remove the tag from the original node
+        if hasattr(original_node, branch_tag):
+            delattr(original_node, branch_tag)
+
+        # Restore original bot settings
+        bot.autosave = original_autosave
+
+        # Clean up temp file
+        try:
+            os.remove(temp_file)
+        except OSError:
+            pass
+
+        # Count successful subagents
+        success_count = sum(1 for r in responses if r and not r.startswith("Error"))
+
+        # Format results
+        result_parts = [f"Successfully completed {success_count}/{len(task_list)} subagent tasks.\n"]
+        for i, (task, response) in enumerate(zip(task_list, responses), 1):
+            result_parts.append(f"\n--- Subagent {i}: {task[:50]}{'...' if len(task) > 50 else ''} ---")
+            result_parts.append(response)
+
+        return "\n".join(result_parts)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f"Error in subagent: {str(e)}"
+

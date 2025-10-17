@@ -2999,10 +2999,25 @@ class Bot(ABC):
         Note:
             - Each copy is completely independent
             - Copies include all configuration and tools
+            - Callbacks are preserved and shared across copies
         """
         if isinstance(other, int):
-            return [copy.deepcopy(self) for _ in range(other)]
-        raise NotImplementedError("Bot multiplcation not defined for non-integer values")
+            # Store callbacks before deepcopy (they may not be deepcopy-able)
+            original_callbacks = self.callbacks
+
+            # Temporarily remove callbacks for deepcopy
+            self.callbacks = None
+
+            # Create copies
+            copies = [copy.deepcopy(self) for _ in range(other)]
+
+            # Restore callbacks to original and all copies
+            self.callbacks = original_callbacks
+            for bot_copy in copies:
+                bot_copy.callbacks = original_callbacks
+
+            return copies
+        raise NotImplementedError("Bot multiplication not defined for non-integer values")
 
     def __str__(self) -> str:
         """Create a human-readable string representation of the bot.
