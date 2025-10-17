@@ -2172,26 +2172,27 @@ class PromptHandler:
                 self.prompt_manager.load_prompt(name)  # Update recency
                 return (f"Loaded prompt: {name}", content)
 
-            # Multiple matches - show selection
-            print(f"\nFound {len(matches)} matches:")
+            # Multiple matches - show selection with best match highlighted
+            print(f"\nFound {len(matches)} matches (best match first):")
             for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
                 # Show preview of content
-                preview = content[:1000] + "..." if len(content) > 100 else content
+                preview = content[:80] + "..." if len(content) > 80 else content
                 preview = preview.replace("\n", " ")  # Single line preview
-                print(f"  {i}. {name}: {preview}")
+                marker = "→" if i == 1 else " "
+                print(f"  {marker} {i}. {name}: {preview}")
 
             if len(matches) > 10:
                 print(f"  ... and {len(matches) - 10} more matches")
 
-            # Get selection
+            # Get selection (default to 1 if just Enter is pressed)
             try:
-                choice = input(f"\nSelect prompt (1-{min(len(matches), 10)}): ").strip()
+                choice = input(f"\nSelect prompt (1-{min(len(matches), 10)}, default=1): ").strip()
                 if not choice:
-                    return ("Selection cancelled.", None)
-
-                choice_num = int(choice) - 1
-                if choice_num < 0 or choice_num >= min(len(matches), 10):
-                    return (f"Invalid selection. Must be between 1 and {min(len(matches), 10)}.", None)
+                    choice_num = 0  # Default to first match
+                else:
+                    choice_num = int(choice) - 1
+                    if choice_num < 0 or choice_num >= min(len(matches), 10):
+                        return (f"Invalid selection. Must be between 1 and {min(len(matches), 10)}.", None)
 
                 name, content = matches[choice_num]
                 self.prompt_manager.load_prompt(name)  # Update recency
