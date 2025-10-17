@@ -1027,6 +1027,7 @@ class SystemHandler:
             "/broadcast_fp: Execute functional prompts on all leaf nodes",
             "/p [search]: Load a saved prompt (searches by name and content, pre-fills input)",
             "/s [text]: Save a prompt - saves provided text or last user message if no text given",
+            "/add_tool [tool_name]: Add a tool to the bot (shows list if no name provided)",
             "/config: Show or modify CLI configuration",
             "/auto_stash: Toggle auto git stash before user messages",
             "/load_stash <name_or_index>: Load a git stash by name or index",
@@ -1278,6 +1279,78 @@ class SystemHandler:
             return f"Git error: {e.stderr.decode() if e.stderr else str(e)}"
         except Exception as e:
             return f"Error loading stash: {str(e)}"
+    def add_tool(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Add a tool to the bot from available tool modules."""
+        # Import all available tools
+        from bots.tools.code_tools import view, view_dir
+        from bots.tools.python_edit import python_edit, python_view
+        from bots.tools.python_execution_tool import execute_python
+        from bots.tools.self_tools import branch_self, list_context, remove_context
+        from bots.tools.terminal_tools import execute_powershell
+        from bots.tools.web_tool import web_search
+
+        # Map of available tools
+        available_tools = {
+            "view": view,
+            "view_dir": view_dir,
+            "python_view": python_view,
+            "python_edit": python_edit,
+            "execute_python": execute_python,
+            "execute_powershell": execute_powershell,
+            "branch_self": branch_self,
+            "list_context": list_context,
+            "remove_context": remove_context,
+            "web_search": web_search,
+        }
+
+        # If no args, show view_dir of python files and allow choice
+        if not args:
+            try:
+                # Show available tools
+                tools_list = "\n".join([f"  {i+1}. {name}" for i, name in enumerate(sorted(available_tools.keys()))])
+                pretty(
+                    f"Available tools:\n{tools_list}\n\nEnter tool name or number to add:",
+                    "System",
+                    context.config.width,
+                    context.config.indent,
+                    COLOR_SYSTEM,
+                )
+
+                # Get user input
+                choice = input(f"{COLOR_USER}> {COLOR_RESET}").strip()
+
+                # Handle numeric choice
+                try:
+                    choice_num = int(choice)
+                    tool_names = sorted(available_tools.keys())
+                    if 1 <= choice_num <= len(tool_names):
+                        choice = tool_names[choice_num - 1]
+                except ValueError:
+                    pass  # Not a number, treat as tool name
+
+                args = [choice]
+            except Exception as e:
+                return f"Error: {str(e)}"
+
+        # Add the specified tool(s)
+        added = []
+        not_found = []
+
+        for tool_name in args:
+            tool_name = tool_name.strip()
+            if tool_name in available_tools:
+                bot.add_tools(available_tools[tool_name])
+                added.append(tool_name)
+            else:
+                not_found.append(tool_name)
+
+        result = []
+        if added:
+            result.append(f"Added tools: {', '.join(added)}")
+        if not_found:
+            result.append(f"Tools not found: {', '.join(not_found)}")
+
+        return "\n".join(result) if result else "No tools added"
 
 
 class DynamicFunctionalPromptHandler:
@@ -1733,6 +1806,7 @@ class CLI:
             "/broadcast_fp": self.fp.broadcast_fp,
             "/p": self._handle_load_prompt,
             "/s": self._handle_save_prompt,
+            "/add_tool": self.system.add_tool,
         }
 
         # Initialize metrics with verbose=False since CLI handles its own display
