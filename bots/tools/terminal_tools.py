@@ -91,14 +91,14 @@ class BOMRemover:
     @staticmethod
     def remove_bom_from_file(file_path: str) -> bool:
         """
-        Remove BOM from a single file if present.
+    Remove BOM from a single file if present.
 
-        Args:
-            file_path: Path to the file
+    Args:
+        file_path: Path to the file
 
-        Returns:
-            bool: True if BOM was removed, False otherwise
-        """
+    Returns:
+        bool: True if BOM was removed, False otherwise
+    """
         try:
             if not BOMRemover.should_process_file(file_path):
                 return False
@@ -107,11 +107,8 @@ class BOMRemover:
             if content.startswith(codecs.BOM_UTF8):
                 with open(file_path, "wb") as file:
                     file.write(content[len(codecs.BOM_UTF8) :])
-                print(f"[BOM] Removed BOM from: {file_path}")
                 return True
-        except Exception as e:
-            print(f"[BOM] Error processing {file_path}: {str(e)}")
-        return False
+        except Exception as e:        return False
 
     @staticmethod
     def remove_bom_from_directory(directory: str, recursive: bool = True) -> int:
@@ -141,9 +138,7 @@ class BOMRemover:
                     file_path = os.path.join(directory, file)
                     if BOMRemover.remove_bom_from_file(file_path):
                         bom_count += 1
-        except Exception as e:
-            print(f"[BOM] Error processing directory {directory}: {str(e)}")
-        return bom_count
+        except Exception as e:        return bom_count
 
     @staticmethod
     def remove_bom_from_pattern(pattern: str) -> int:
@@ -161,9 +156,7 @@ class BOMRemover:
             for file_path in glob.glob(pattern, recursive=True):
                 if BOMRemover.remove_bom_from_file(file_path):
                     bom_count += 1
-        except Exception as e:
-            print(f"[BOM] Error processing pattern {pattern}: {str(e)}")
-        return bom_count
+        except Exception as e:        return bom_count
 
 
 @log_errors
@@ -340,9 +333,7 @@ class PowerShellSession:
         """
         file_operations = self._detect_file_operations(code)
         if not file_operations:
-            return 0
-        print(f"[BOM] Detected file operations: {', '.join(file_operations)}")
-        bom_count = 0
+            return 0        bom_count = 0
         try:
             bom_count += self._bom_remover.remove_bom_from_directory(current_dir, recursive=False)
             if any(("Export-" in op for op in file_operations)):
@@ -352,11 +343,7 @@ class PowerShellSession:
             if any(("redirection" in op for op in file_operations)):
                 bom_count += self._bom_remover.remove_bom_from_pattern(os.path.join(current_dir, "*.txt"))
                 bom_count += self._bom_remover.remove_bom_from_pattern(os.path.join(current_dir, "*.log"))
-        except Exception as e:
-            print(f"[BOM] Error during post-execution cleanup: {str(e)}")
-        if bom_count > 0:
-            print(f"[BOM] Post-execution cleanup: {bom_count} BOMs removed")
-        return bom_count
+        except Exception as e:        if bom_count > 0:        return bom_count
 
     def execute(self, code: str, timeout: float = 60) -> str:
         """
