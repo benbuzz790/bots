@@ -660,3 +660,113 @@ def _remove_dummy_from_tree(node, dummy_content):
     if hasattr(node, "replies"):
         for child in node.replies:
             _remove_dummy_from_tree(child, dummy_content)
+@toolify()
+def subagent(task: str, autosave: str = "False", max_iterations: str = "20") -> str:
+    """Create a subagent bot to work on a task autonomously with dynamic prompts.
+
+    The subagent works in a loop with the same dynamic prompt system as CLI auto mode:
+    - Continues with neutral prompt ("ok") by default
+    - Prompted to trim context when token count is high
+    - Stops when it doesn't use tools
+    - On first no-tool response, prompted to write a summary
+
+    Args:
+        task (str): The task/prompt for the subagent to work on
+        autosave (str): 'True' to enable autosave, 'False' (default) to disable
+        max_iterations (str): Maximum number of iterations (default: "20")
+
+    Returns:
+        str: The subagent's final response/summary
+    """
+    import uuid
+    from bots.flows import functional_prompts as fp
+    from bots.foundation.base import Bot
+
+    bot = _get_calling_bot()
+    if not bot:
+        return "Error: Could not find calling bot"
+
+    # Parse parameters
+    autosave_bool = autosave.lower() == "true"
+    try:
+        max_iter = int(max_iterations)
+    except ValueError:
+        return f"Error: max_iterations must be a number, got '{max_iterations}'"
+
+    try:
+        # Create a subagent bot with similar settings to parent
+        subagent = Bot.load_from_bot(bot)
+        subagent.autosave = autosave_bool
+        subagent.name = f"subagent_{uuid.uuid4().hex[:6]}"
+
+        # Track metrics for context management
+        last_input_tokens = 0
+        context_reduction_cooldown = 0
+        remove_context_threshold = 40000
+
+        # Track if we've already asked for summary
+        summary_requested = False
+
+        # Create dynamic continue prompt using policy (same as CLI auto mode)
+        def continue_prompt_func(bot: Bot, iteration: int) -> str:
+            nonlocal last_input_tokens, context_reduction_cooldown, summary_requested
+
+            # Check if bot used tools in last response
+            used_tools = bool(bot.tool_handler.requests)
+
+            # If no tools used and haven't requested summary yet, ask for one
+            if not used_tools and not summary_requested:
+                summary_requested = True
+                return "Please write a summary of your work in your text response."
+
+            # High token count with cooldown expired -> request context reduction
+            if last_input_tokens > remove_context_threshold and context_reduction_cooldown <= 0:
+                context_reduction_cooldown = 3
+                return "trim useless context"
+
+            # Decrement cooldown
+            if context_reduction_cooldown > 0:
+                context_reduction_cooldown -= 1
+
+            return "ok"
+
+        # Stop condition: no tools used
+        def stop_on_no_tools(bot: Bot) -> bool:
+            return not bot.tool_handler.requests
+
+        # Callback to update metrics
+        iteration_count = [0]
+        def metrics_callback(responses, nodes):
+            nonlocal last_input_tokens
+            iteration_count[0] += 1
+
+            # Try to get token metrics (may not be available in all contexts)
+            try:
+                from bots.observability import metrics
+                last_metrics = metrics.get_and_clear_last_metrics()
+                last_input_tokens = last_metrics.get("input_tokens", 0)
+            except Exception:
+                pass
+
+            # Stop if max iterations reached
+            if iteration_count[0] >= max_iter:
+                raise StopIteration("Max iterations reached")
+
+        # Run the subagent with dynamic prompts
+        fp.prompt_while(
+            bot=subagent,
+            first_prompt=task,
+            continue_prompt=continue_prompt_func,
+            stop_condition=stop_on_no_tools,
+            callback=metrics_callback,
+        )
+
+        # Return the final response
+        final_response = subagent.conversation.content
+        return final_response
+
+    except StopIteration as e:
+        # Max iterations reached, return what we have
+        return f"Subagent stopped: {str(e)}\n\nLast response:\n{subagent.conversation.content}"
+    except Exception as e:
+        return f"Error running subagent: {str(e)}"
