@@ -1,5 +1,6 @@
 import codecs
 import glob
+import logging
 import os
 import subprocess
 import threading
@@ -11,6 +12,8 @@ from threading import Lock, Thread, local
 from typing import Dict, Generator, List
 
 from bots.dev.decorators import log_errors, toolify
+
+logger = logging.getLogger(__name__)
 
 
 class BOMRemover:
@@ -139,8 +142,12 @@ class BOMRemover:
                     file_path = os.path.join(directory, file)
                     if BOMRemover.remove_bom_from_file(file_path):
                         bom_count += 1
-        except Exception:
+        except (FileNotFoundError, UnicodeDecodeError, OSError) as e:
+            logger.error("Error removing BOMs from directory %s: %s", directory, str(e), exc_info=True)
             return bom_count
+        except Exception:
+            logger.exception("Unexpected error removing BOMs from directory %s", directory)
+            raise
 
     @staticmethod
     def remove_bom_from_pattern(pattern: str) -> int:
@@ -158,8 +165,12 @@ class BOMRemover:
             for file_path in glob.glob(pattern, recursive=True):
                 if BOMRemover.remove_bom_from_file(file_path):
                     bom_count += 1
-        except Exception:
+        except (FileNotFoundError, UnicodeDecodeError, OSError) as e:
+            logger.error("Error removing BOMs from pattern %s: %s", pattern, str(e), exc_info=True)
             return bom_count
+        except Exception:
+            logger.exception("Unexpected error removing BOMs from pattern %s", pattern)
+            raise
 
 
 @log_errors

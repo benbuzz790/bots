@@ -23,10 +23,11 @@ def main():
     """
 
     def should_stop(bot):
-        if bot.conversation.parent and bot.conversation.parent.parent:
+        # Check if parent and parent.parent exist before accessing content
+        if bot.conversation.parent and bot.conversation.parent.parent and bot.conversation.parent.parent.content:
             return word in bot.conversation.parent.parent.content or bot.conversation._node_count() > 50
-        else:
-            return False
+        # Also check node count even if parent chain doesn't exist
+        return bot.conversation._node_count() > 50
 
     def print_callback(responses, nodes):
         print()

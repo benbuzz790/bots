@@ -720,7 +720,8 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
             dummy_results = []
             for tool_call in original_node.tool_calls:
                 if tool_call.get("name") == "subagent":
-                    dummy_result = {"tool_use_id": tool_call["id"], "content": "Subagent working..."}
+                    # Use OpenAI-style format for tool results
+                    dummy_result = {"role": "tool", "content": "Subagent working...", "tool_call_id": tool_call["id"]}
                     dummy_results.append(dummy_result)
 
             if dummy_results:
@@ -832,10 +833,6 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
 
                     return "ok"
 
-                # Stop condition: no tools used
-                def stop_on_no_tools(bot: Bot) -> bool:
-                    return not bot.tool_handler.requests
-
                 # Callback to update metrics
                 iteration_count = [0]
 
@@ -851,9 +848,13 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
                     except Exception:
                         pass
 
+                # Stop condition: no tools used AND summary has been requested, OR max iterations reached
+                def stop_on_no_tools(bot: Bot) -> bool:
                     # Stop if max iterations reached
                     if iteration_count[0] >= max_iter:
-                        raise StopIteration("Max iterations reached")
+                        return True
+                    # Stop if no tools used AND summary has already been requested
+                    return not bot.tool_handler.requests and summary_requested[0]
 
                 # Run the subagent with dynamic prompts
                 fp.prompt_while(

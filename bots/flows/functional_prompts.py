@@ -39,11 +39,14 @@ Example:
     ... ])
 """
 
+import logging
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 from bots.foundation.base import Bot, ConversationNode
+
+logger = logging.getLogger(__name__)
 
 # Type Aliases
 Prompt = str  # A string containing a prompt to be sent to the bot
@@ -52,6 +55,7 @@ PromptNode = ConversationNode  # A conversation node containing a prompt
 ResponseNode = ConversationNode  # A conversation node containing a response
 Condition = Callable[[Bot], bool]  # Function that evaluates bot state
 DynamicPrompt = Callable[[Bot, int], Prompt]  # Function that generates prompts from bot state and iteration
+ItemPrompt = Callable[[Any], Prompt]  # Function that generates prompts from an item
 
 RecombinatorFunction = Callable[
     [List[Response], List[ResponseNode]], Tuple[Response, ResponseNode]
@@ -274,9 +278,16 @@ class dynamic_prompts:
                 try:
                     if condition(bot, iteration):
                         return prompt
-                except Exception:
+                except Exception as e:
                     # If condition evaluation fails, skip this rule
-                    pass
+                    logger.warning(
+                        "Error evaluating policy rule %d for bot=%s iteration=%d: %s",
+                        rules.index((condition, prompt)),
+                        getattr(bot, "id", "<no-id>"),
+                        iteration,
+                        str(e),
+                        exc_info=True,
+                    )
             return default
 
         return dynamic_prompt_func
@@ -788,7 +799,7 @@ def prompt_while(
 def prompt_for(
     bot: Bot,
     items: List[Any],
-    dynamic_prompt: DynamicPrompt,
+    dynamic_prompt: ItemPrompt,
     should_branch: bool = False,
     callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None,
 ) -> Tuple[List[Response], List[ResponseNode]]:
