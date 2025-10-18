@@ -1,0 +1,30 @@
+{
+ "name": "TestBot",
+ "model_engine": "claude-3-7-sonnet-latest",
+ "max_tokens": 1000,
+ "temperature": 0.7,
+ "role": "test assistant",
+ "role_description": "A bot for testing",
+ "conversation": {
+  "content": "",
+  "pending_results": [],
+  "role": "empty",
+  "tool_calls": [],
+  "tool_results": [],
+  "node_class": "AnthropicNode"
+ },
+ "system_message": "",
+ "tool_handler": {
+  "class": "bots.foundation.anthropic_bots.AnthropicToolHandler",
+  "tools": [],
+  "requests": [],
+  "results": [],
+  "modules": {},
+  "function_paths": {}
+ },
+ "autosave": false,
+ "filename": null,
+ "callbacks": null,
+ "bot_class": "AnthropicBot",
+ "enable_tracing": true
+}

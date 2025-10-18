@@ -883,6 +883,7 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
             - "file.py::MyClass" (class)
             - "file.py::my_function" (function)
             - "file.py::MyClass::method" (method)
+            - "file.py::__FIRST__" (first top-level definition)
 
         code : str
             Python code. This code will replace the entire target scope by default,
@@ -924,7 +925,7 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
         if not file_path.endswith(".py"):
             return _process_error(ValueError(f"File path must end with .py: {file_path}"))
         for element in path_elements:
-            if not element.isidentifier():
+            if not element.isidentifier() and element != "__FIRST__":
                 return _process_error(ValueError(f"Invalid identifier in path: {element}"))
         abs_path = _make_file(file_path)
         try:
@@ -969,6 +970,13 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
                         return _process_error(ValueError(f"Error parsing new code: {str(e)}"))
         except Exception as e:
             return _process_error(ValueError(f"Error processing new code: {str(e)}"))
+
+        # Handle special __FIRST__ scope
+        if path_elements and path_elements[0] == "__FIRST__":
+            if len(path_elements) > 1:
+                return _process_error(ValueError("__FIRST__ cannot be combined with other path elements"))
+            return _handle_first_definition(abs_path, tree, new_module, coscope_with)
+
         if coscope_with == "__FILE_START__":
             return _handle_file_start_insertion(abs_path, tree, new_module)
         elif coscope_with == "__FILE_END__":
@@ -1025,6 +1033,36 @@ def _handle_file_end_insertion(abs_path: str, tree: cst.Module, new_module: cst.
 
     _write_file_bom_safe(abs_path, final_code)
     return f"Code inserted at end of '{abs_path}'."
+
+
+def _handle_first_definition(abs_path: str, tree: cst.Module, new_module: cst.Module, coscope_with: str = None) -> str:
+    """Handle editing the first top-level definition in a file."""
+    if not tree.body:
+        return _process_error(ValueError("File has no top-level definitions to edit"))
+
+    # Find the first function or class definition
+    first_def_index = None
+    for i, stmt in enumerate(tree.body):
+        # Only consider FunctionDef and ClassDef as the "first definition"
+        if isinstance(stmt, (cst.FunctionDef, cst.ClassDef)):
+            first_def_index = i
+            break
+
+    if first_def_index is None:
+        return _process_error(ValueError("No function or class definition found in file"))
+
+    if coscope_with:
+        # Insert after the first definition
+        new_body = list(tree.body[: first_def_index + 1]) + list(new_module.body) + list(tree.body[first_def_index + 1 :])
+        modified_tree = tree.with_changes(body=new_body)
+        _write_file_bom_safe(abs_path, modified_tree.code)
+        return f"Code inserted after first definition in '{abs_path}'."
+    else:
+        # Replace the first definition
+        new_body = list(tree.body[:first_def_index]) + list(new_module.body) + list(tree.body[first_def_index + 1 :])
+        modified_tree = tree.with_changes(body=new_body)
+        _write_file_bom_safe(abs_path, modified_tree.code)
+        return f"First definition replaced in '{abs_path}'."
 
 
 def _create_statement_with_comment(comment_text: str, indent_level: int = 0) -> cst.SimpleStatementLine:
