@@ -1376,7 +1376,7 @@ class SystemHandler:
 
                 # Check for interrupt
                 if check_for_interrupt():
-                    raise KeyboardInterrupt("User interrupted")
+                    raise KeyboardInterrupt()
 
                 # After each iteration, if we're continuing, display metrics and next user prompt
                 iteration_count[0] += 1

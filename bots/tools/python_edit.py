@@ -1040,19 +1040,13 @@ def _handle_first_definition(abs_path: str, tree: cst.Module, new_module: cst.Mo
     if not tree.body:
         return _process_error(ValueError("File has no top-level definitions to edit"))
 
-    # Find the first non-import, non-comment statement
+    # Find the first function or class definition
     first_def_index = None
     for i, stmt in enumerate(tree.body):
-        # Skip imports and simple statements (like comments, docstrings)
+        # Only consider FunctionDef and ClassDef as the "first definition"
         if isinstance(stmt, (cst.FunctionDef, cst.ClassDef)):
             first_def_index = i
             break
-        elif isinstance(stmt, cst.SimpleStatementLine):
-            # Check if it's not an import
-            has_import = any(isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body)
-            if not has_import:
-                first_def_index = i
-                break
 
     if first_def_index is None:
         return _process_error(ValueError("No function or class definition found in file"))
