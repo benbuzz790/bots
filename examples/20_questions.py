@@ -40,7 +40,7 @@ def main():
     def haiku_prompt(word, question):
         return (
             f"You're a 20 questions judge. Answer with yes, no, sometimes, "
-            f"'I don't know,' 'you got it!', or 'It was \'{word}\''. "
+            f"'I don't know,' 'you got it!', or 'It was '{word}''. "
             f"Do not say anything else. Do not explain your reasoning. You are the arbiter. "
             f"Here is what you're judging: the thing is '{word}'. The question is '{question}'"
         )
