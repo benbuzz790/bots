@@ -212,7 +212,6 @@ class conditions:
         return "DONE" in bot.conversation.content
 
 
-
 class dynamic_prompts:
     """Factory functions for creating dynamic prompts based on bot state.
 
@@ -237,6 +236,7 @@ class dynamic_prompts:
             >>> continue_prompt = dynamic_prompts.static("ok")
             >>> prompt_while(bot, "Start task", continue_prompt=continue_prompt)
         """
+
         def static_prompt_func(bot: Bot, iteration: int) -> str:
             return prompt
 
@@ -268,6 +268,7 @@ class dynamic_prompts:
             ... )
             >>> prompt_while(bot, "Start task", continue_prompt=continue_prompt)
         """
+
         def dynamic_prompt_func(bot: Bot, iteration: int) -> str:
             for condition, prompt in rules:
                 try:

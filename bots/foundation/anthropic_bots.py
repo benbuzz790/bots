@@ -600,7 +600,7 @@ class AnthropicBot(Bot):
         role_description: str = "a friendly AI assistant",
         autosave: bool = True,
         enable_tracing: Optional[bool] = None,
-        callbacks: Optional[BotCallbacks] = None, # type: ignore
+        callbacks: Optional[BotCallbacks] = None,  # type: ignore
     ):
         """Initialize an AnthropicBot.
 

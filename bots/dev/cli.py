@@ -7,6 +7,7 @@ Architecture:
 - Robust error handling with conversation backup
 - Configuration support for CLI settings
 """
+
 import argparse
 import inspect
 import json
@@ -17,6 +18,7 @@ import sys
 import textwrap
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+import time
 
 # Disable console tracing output for CLI (too verbose)
 # Must be set BEFORE importing any bots modules that might initialize tracing
@@ -39,7 +41,6 @@ from bots.foundation.base import Bot, ConversationNode
 from bots.observability import tracing
 from bots.observability.callbacks import BotCallbacks
 
-
 # Disable tracing span processors to prevent console output
 try:
     if hasattr(tracing, "_tracer_provider") and tracing._tracer_provider is not None:
@@ -48,10 +49,9 @@ except Exception:
     pass  # If this fails, traces will still show but it's not critical
 
 
-
-
 class EscapeException(Exception):
     """Exception raised when user presses ESC to cancel input."""
+
     pass
 
 
@@ -71,32 +71,35 @@ def input_with_esc(prompt: str = "") -> str:
     if platform.system() == "Windows":
         # Windows implementation
         import msvcrt
-        print(prompt, end='', flush=True)
+
+        print(prompt, end="", flush=True)
         chars = []
         while True:
             if msvcrt.kbhit():
                 char = msvcrt.getch()
-                if char == b'\x1b':  # ESC key
+                if char == b"\x1b":  # ESC key
                     print()  # New line
                     raise EscapeException("Input cancelled by ESC key")
-                elif char == b'\r':  # Enter key
+                elif char == b"\r":  # Enter key
                     print()  # New line
-                    return ''.join(chars)
-                elif char == b'\x08':  # Backspace
+                    return "".join(chars)
+                elif char == b"\x08":  # Backspace
                     if chars:
                         chars.pop()
                         # Erase character on screen
-                        print('\b \b', end='', flush=True)
-                elif char == b'\x03':  # Ctrl+C
+                        print("\b \b", end="", flush=True)
+                elif char == b"\x03":  # Ctrl+C
                     print()
                     raise KeyboardInterrupt()
                 else:
                     try:
-                        decoded = char.decode('utf-8')
+                        decoded = char.decode("utf-8")
                         chars.append(decoded)
-                        print(decoded, end='', flush=True)
+                        print(decoded, end="", flush=True)
                     except UnicodeDecodeError:
                         pass
+            else:
+                time.sleep(0.01)
     else:
         # Unix/Linux/Mac implementation
         import select
@@ -108,29 +111,29 @@ def input_with_esc(prompt: str = "") -> str:
         old_settings = termios.tcgetattr(fd)
         try:
             tty.setraw(fd)
-            print(prompt, end='', flush=True)
+            print(prompt, end="", flush=True)
             chars = []
 
             while True:
                 if select.select([sys.stdin], [], [], 0.1)[0]:
                     char = sys.stdin.read(1)
 
-                    if char == '\x1b':  # ESC key
-                        print('\r\n', end='', flush=True)
+                    if char == "\x1b":  # ESC key
+                        print("\r\n", end="", flush=True)
                         raise EscapeException("Input cancelled by ESC key")
-                    elif char == '\r' or char == '\n':  # Enter key
-                        print('\r\n', end='', flush=True)
-                        return ''.join(chars)
-                    elif char == '\x7f':  # Backspace/Delete
+                    elif char == "\r" or char == "\n":  # Enter key
+                        print("\r\n", end="", flush=True)
+                        return "".join(chars)
+                    elif char == "\x7f":  # Backspace/Delete
                         if chars:
                             chars.pop()
-                            print('\b \b', end='', flush=True)
-                    elif char == '\x03':  # Ctrl+C
-                        print('\r\n', end='', flush=True)
+                            print("\b \b", end="", flush=True)
+                    elif char == "\x03":  # Ctrl+C
+                        print("\r\n", end="", flush=True)
                         raise KeyboardInterrupt()
                     elif ord(char) >= 32:  # Printable characters
                         chars.append(char)
-                        print(char, end='', flush=True)
+                        print(char, end="", flush=True)
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
@@ -518,7 +521,9 @@ class CLIConfig:
                     self.auto_stash = config_data.get("auto_stash", False)
                     self.remove_context_threshold = config_data.get("remove_context_threshold", 40000)
                     self.auto_mode_neutral_prompt = config_data.get("auto_mode_neutral_prompt", "ok")
-                    self.auto_mode_reduce_context_prompt = config_data.get("auto_mode_reduce_context_prompt", "trim useless context")
+                    self.auto_mode_reduce_context_prompt = config_data.get(
+                        "auto_mode_reduce_context_prompt", "trim useless context"
+                    )
                     self.max_tokens = config_data.get("max_tokens", 4096)
                     self.temperature = config_data.get("temperature", 1.0)
         except Exception:
@@ -811,6 +816,7 @@ Respond with just the name, no explanation."""
     def get_prompt_names(self) -> List[str]:
         """Get all prompt names."""
         return list(self.prompts_data["prompts"].keys())
+
     def delete_prompt(self, name: str) -> bool:
         """Delete a prompt by name. Returns True if deleted, False if not found."""
         if name not in self.prompts_data["prompts"]:
@@ -825,7 +831,7 @@ Respond with just the name, no explanation."""
 
         self._save_prompts()
         return True
-    
+
     def get_recents(self) -> List[tuple]:
         """Get recent prompts as list of (name, content) tuples."""
         results = []
@@ -1044,7 +1050,14 @@ class ConversationHandler:
             context.conversation_backup = bot.conversation
             print(f"Combining {len(leaves)} leaves using {recombinator_name}...")
             final_response, final_node = fp.recombine(bot, responses, leaves, recombinator_func)
-            pretty(final_response, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT, newline_after_name=False)
+            pretty(
+                final_response,
+                bot.name,
+                context.config.width,
+                context.config.indent,
+                COLOR_ASSISTANT,
+                newline_after_name=False,
+            )
             return f"Successfully combined {len(leaves)} leaves using {recombinator_name}"
         except Exception as e:
             return f"Error combining leaves: {str(e)}"
@@ -1082,7 +1095,14 @@ class ConversationHandler:
     def _display_conversation_context(self, bot: Bot, context: CLIContext):
         """Display current conversation context."""
         if bot.conversation.content:
-            pretty(bot.conversation.content, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT, newline_after_name=False)
+            pretty(
+                bot.conversation.content,
+                bot.name,
+                context.config.width,
+                context.config.indent,
+                COLOR_ASSISTANT,
+                newline_after_name=False,
+            )
 
 
 class StateHandler:
@@ -1318,13 +1338,16 @@ class SystemHandler:
             continue_prompt = fp.dynamic_prompts.policy(
                 rules=[
                     # High token count with cooldown expired -> request context reduction
-                    (lambda b, i: (
-                        context.last_message_metrics
-                        and context.last_message_metrics.get("input_tokens", 0) > context.config.remove_context_threshold
-                        and context.context_reduction_cooldown <= 0
-                    ), context.config.auto_mode_reduce_context_prompt),
+                    (
+                        lambda b, i: (
+                            context.last_message_metrics
+                            and context.last_message_metrics.get("input_tokens", 0) > context.config.remove_context_threshold
+                            and context.context_reduction_cooldown <= 0
+                        ),
+                        context.config.auto_mode_reduce_context_prompt,
+                    ),
                 ],
-                default=context.config.auto_mode_neutral_prompt
+                default=context.config.auto_mode_neutral_prompt,
             )
 
             # Use prompt_while with the dynamic continue prompt
@@ -1346,6 +1369,7 @@ class SystemHandler:
                 # Capture metrics after each response
                 try:
                     from bots.observability import metrics
+
                     context.last_message_metrics = metrics.get_and_clear_last_metrics()
                 except Exception:
                     pass
@@ -1382,7 +1406,7 @@ class SystemHandler:
                 auto_callback(responses, nodes)
                 # Then run display callback if it exists
                 if display_callback:
-                    display_callback()
+                    display_callback(responses, nodes)
 
             # Display the first user prompt
             pretty(
@@ -1469,6 +1493,7 @@ class SystemHandler:
             return f"Git error: {e.stderr.decode() if e.stderr else str(e)}"
         except Exception as e:
             return f"Error loading stash: {str(e)}"
+
     def add_tool(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Add a tool to the bot from available tool modules."""
         # Import all available tools
@@ -1639,11 +1664,25 @@ class DynamicFunctionalPromptHandler:
                 if isinstance(responses, list):
                     for i, response in enumerate(responses):
                         if response:
-                            pretty(f"Response {i+1}: {response}", bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT, newline_after_name=False)
+                            pretty(
+                                f"Response {i+1}: {response}",
+                                bot.name,
+                                context.config.width,
+                                context.config.indent,
+                                COLOR_ASSISTANT,
+                                newline_after_name=False,
+                            )
                     return f"Functional prompt '{fp_name}' completed with {len(responses)} responses"
                 else:
                     if responses:
-                        pretty(responses, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT, newline_after_name=False)
+                        pretty(
+                            responses,
+                            bot.name,
+                            context.config.width,
+                            context.config.indent,
+                            COLOR_ASSISTANT,
+                            newline_after_name=False,
+                        )
                     return f"Functional prompt '{fp_name}' completed"
             else:
                 return f"Functional prompt '{fp_name}' completed with result: {result}"
@@ -1720,7 +1759,14 @@ class DynamicFunctionalPromptHandler:
             for i, response in enumerate(responses, 1):
                 if response:
                     print(f"\nResponse {i}:")
-                    pretty(response, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT, newline_after_name=False)
+                    pretty(
+                        response,
+                        bot.name,
+                        context.config.width,
+                        context.config.indent,
+                        COLOR_ASSISTANT,
+                        newline_after_name=False,
+                    )
             return f"Broadcast complete with {len(responses)} responses"
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
@@ -1855,7 +1901,7 @@ def display_metrics(context: CLIContext, bot: Bot):
             return
 
         # Calculate total tokens for this call
-        total_tokens = last_metrics['input_tokens'] + last_metrics['output_tokens']
+        total_tokens = last_metrics["input_tokens"] + last_metrics["output_tokens"]
 
         # Format the metrics in a single line: [tokens] | $[cost] | [time]s
         metrics_str = f"{total_tokens:,} | ${last_metrics['cost']:.4f} | {last_metrics['duration']:.2f}s"
@@ -1875,7 +1921,14 @@ def display_metrics(context: CLIContext, bot: Bot):
         pass
 
 
-def pretty(string: str, name: Optional[str] = None, width: int = 1400, indent: int = 4, color: str = COLOR_RESET, newline_after_name: bool = True) -> None:
+def pretty(
+    string: str,
+    name: Optional[str] = None,
+    width: int = 1400,
+    indent: int = 4,
+    color: str = COLOR_RESET,
+    newline_after_name: bool = True,
+) -> None:
     """Print a string nicely formatted with explicit color."""
     print()
     if name is not None:
@@ -2104,10 +2157,11 @@ class CLI:
     def _handle_save_prompt(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Handle /s command to save prompts."""
         return self.prompts.save_prompt(bot, context, args, self.last_user_message)
+
     def _handle_delete_prompt(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Handle /d command to delete prompts."""
         return self.prompts.delete_prompt(bot, context, args)
-    
+
     def _handle_recent_prompts(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Handle /r command to show recent prompts."""
         return self.prompts.recent_prompts(bot, context, args)
@@ -2141,9 +2195,9 @@ class CLI:
         from bots import Engines
 
         bot = AnthropicBot(
-            model_engine=Engines.CLAUDE45_SONNET, 
+            model_engine=Engines.CLAUDE45_SONNET,
             max_tokens=self.context.config.max_tokens,
-            temperature=self.context.config.temperature
+            temperature=self.context.config.temperature,
         )
         self.context.bot_instance = bot
         # Attach real-time display callback
@@ -2375,39 +2429,7 @@ class PromptHandler:
 
         except Exception as e:
             return f"Error saving prompt: {str(e)}"
-    def delete_prompt(self, bot: "Bot", context: "CLIContext", args: List[str]) -> str:
-        """Delete a prompt by name."""
-        try:
-            if not args:
-                return "Usage: /d <prompt_name>"
 
-            name = " ".join(args)
-            if self.prompt_manager.delete_prompt(name):
-                return f"Deleted prompt: {name}"
-            else:
-                return f"Prompt not found: {name}"
-
-        except Exception as e:
-            return f"Error deleting prompt: {str(e)}"
-    
-    def recent_prompts(self, bot: "Bot", context: "CLIContext", args: List[str]) -> str:
-        """Show recent prompts."""
-        try:
-            recents = self.prompt_manager.get_recents()
-
-            if not recents:
-                return "No recent prompts."
-
-            result = "Recent prompts:\n"
-            for i, (name, content) in enumerate(recents, 1):
-                preview = content[:80] + "..." if len(content) > 80 else content
-                preview = preview.replace("\n", " ")
-                result += f"  {i}. {name}: {preview}\n"
-
-            return result.rstrip()
-
-        except Exception as e:
-            return f"Error getting recent prompts: {str(e)}"
     def delete_prompt(self, bot: "Bot", context: "CLIContext", args: List[str]) -> str:
         """Delete a saved prompt."""
         try:
@@ -2435,7 +2457,7 @@ class PromptHandler:
                 print(f"Content: {preview}")
                 confirm = input("Delete this prompt? (y/n): ").strip().lower()
 
-                if confirm == 'y':
+                if confirm == "y":
                     if self.prompt_manager.delete_prompt(name):
                         return f"Deleted prompt: {name}"
                     else:
@@ -2470,7 +2492,7 @@ class PromptHandler:
                 print(f"Content: {preview}")
                 confirm = input("Delete this prompt? (y/n): ").strip().lower()
 
-                if confirm == 'y':
+                if confirm == "y":
                     if self.prompt_manager.delete_prompt(name):
                         return f"Deleted prompt: {name}"
                     else:
@@ -2483,7 +2505,7 @@ class PromptHandler:
 
         except Exception as e:
             return f"Error deleting prompt: {str(e)}"
-    
+
     def recent_prompts(self, bot: "Bot", context: "CLIContext", args: List[str]) -> tuple:
         """Show recent prompts and optionally select one. Returns (message, prefill_text)."""
         try:
