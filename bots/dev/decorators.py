@@ -778,7 +778,8 @@ def toolify(description: str = None):
                         f"{error_msg}\n\n"
                         f"⚠️  This error is commonly caused by hitting the max_tokens limit before completing the tool call.\n"
                         f"The response was truncated mid-parameter, making it appear that required parameters are missing.\n"
-                        f"To fix this: Work in SMALLER CHUNKS. Edit fewer lines at a time, or break your task into multiple steps."
+                        f"To fix this: Work in SMALLER CHUNKS. Edit fewer lines at a time, "
+                        f"or break your task into multiple steps."
                     )
                     from bots.utils.helpers import _process_error
 

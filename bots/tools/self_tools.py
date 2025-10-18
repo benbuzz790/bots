@@ -660,6 +660,8 @@ def _remove_dummy_from_tree(node, dummy_content):
     if hasattr(node, "replies"):
         for child in node.replies:
             _remove_dummy_from_tree(child, dummy_content)
+
+
 @toolify()
 def subagent(tasks: str, max_iterations: str = "20") -> str:
     """Create subagent bots to work on tasks autonomously with dynamic prompts.
@@ -680,6 +682,7 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
     """
     import os
     import uuid
+
     from bots.flows import functional_prompts as fp
     from bots.foundation.base import Bot
 
@@ -835,12 +838,14 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
 
                 # Callback to update metrics
                 iteration_count = [0]
+
                 def metrics_callback(responses, nodes):
                     iteration_count[0] += 1
 
                     # Try to get token metrics (may not be available in all contexts)
                     try:
                         from bots.observability import metrics
+
                         last_metrics = metrics.get_and_clear_last_metrics()
                         last_input_tokens[0] = last_metrics.get("input_tokens", 0)
                     except Exception:
@@ -873,6 +878,7 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
                 return f"Subagent stopped: {str(e)}\n\nLast response:\n{subagent.conversation.content}", subagent.conversation
             except Exception as e:
                 import traceback
+
                 traceback.print_exc()
                 return f"Error running subagent: {str(e)}", None
 
@@ -911,6 +917,6 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
 
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         return f"Error in subagent: {str(e)}"
-

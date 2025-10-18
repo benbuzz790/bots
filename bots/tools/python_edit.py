@@ -1012,40 +1012,6 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
                 return f"Code replaced at '{target_scope}'."
     except Exception as e:
         return _process_error(e)
-def _handle_first_definition(abs_path: str, tree: cst.Module, new_module: cst.Module, coscope_with: str = None) -> str:
-    """Handle editing the first top-level definition in a file."""
-    if not tree.body:
-        return _process_error(ValueError("File has no top-level definitions to edit"))
-
-    # Find the first non-import, non-comment statement
-    first_def_index = None
-    for i, stmt in enumerate(tree.body):
-        # Skip imports and simple statements (like comments, docstrings)
-        if isinstance(stmt, (cst.FunctionDef, cst.ClassDef)):
-            first_def_index = i
-            break
-        elif isinstance(stmt, cst.SimpleStatementLine):
-            # Check if it's not an import
-            has_import = any(isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body)
-            if not has_import:
-                first_def_index = i
-                break
-
-    if first_def_index is None:
-        return _process_error(ValueError("No function or class definition found in file"))
-
-    if coscope_with:
-        # Insert after the first definition
-        new_body = list(tree.body[:first_def_index + 1]) + list(new_module.body) + list(tree.body[first_def_index + 1:])
-        modified_tree = tree.with_changes(body=new_body)
-        _write_file_bom_safe(abs_path, modified_tree.code)
-        return f"Code inserted after first definition in '{abs_path}'."
-    else:
-        # Replace the first definition
-        new_body = list(tree.body[:first_def_index]) + list(new_module.body) + list(tree.body[first_def_index + 1:])
-        modified_tree = tree.with_changes(body=new_body)
-        _write_file_bom_safe(abs_path, modified_tree.code)
-        return f"First definition replaced in '{abs_path}'."
 
 
 def _handle_file_end_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module) -> str:
@@ -1067,6 +1033,8 @@ def _handle_file_end_insertion(abs_path: str, tree: cst.Module, new_module: cst.
 
     _write_file_bom_safe(abs_path, final_code)
     return f"Code inserted at end of '{abs_path}'."
+
+
 def _handle_first_definition(abs_path: str, tree: cst.Module, new_module: cst.Module, coscope_with: str = None) -> str:
     """Handle editing the first top-level definition in a file."""
     if not tree.body:
@@ -1091,13 +1059,13 @@ def _handle_first_definition(abs_path: str, tree: cst.Module, new_module: cst.Mo
 
     if coscope_with:
         # Insert after the first definition
-        new_body = list(tree.body[:first_def_index + 1]) + list(new_module.body) + list(tree.body[first_def_index + 1:])
+        new_body = list(tree.body[: first_def_index + 1]) + list(new_module.body) + list(tree.body[first_def_index + 1 :])
         modified_tree = tree.with_changes(body=new_body)
         _write_file_bom_safe(abs_path, modified_tree.code)
         return f"Code inserted after first definition in '{abs_path}'."
     else:
         # Replace the first definition
-        new_body = list(tree.body[:first_def_index]) + list(new_module.body) + list(tree.body[first_def_index + 1:])
+        new_body = list(tree.body[:first_def_index]) + list(new_module.body) + list(tree.body[first_def_index + 1 :])
         modified_tree = tree.with_changes(body=new_body)
         _write_file_bom_safe(abs_path, modified_tree.code)
         return f"First definition replaced in '{abs_path}'."
