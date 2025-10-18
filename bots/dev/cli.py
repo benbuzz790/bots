@@ -16,9 +16,9 @@ import platform
 import re
 import sys
 import textwrap
+import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
-import time
 
 # Disable console tracing output for CLI (too verbose)
 # Must be set BEFORE importing any bots modules that might initialize tracing
