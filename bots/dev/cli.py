@@ -98,8 +98,6 @@ def input_with_esc(prompt: str = "") -> str:
                         print(decoded, end="", flush=True)
                     except UnicodeDecodeError:
                         pass
-            else:
-                time.sleep(0.01)
     else:
         # Unix/Linux/Mac implementation
         import select
