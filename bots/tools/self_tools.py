@@ -191,7 +191,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
             # No tool calls, save normally
             temp_id = str(uuid.uuid4())[:8]
             worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
-                temp_file = f"branch_self_{temp_id}_{worker_id}.bot"
+            temp_file = f"branch_self_{temp_id}_{worker_id}.bot"
             bot.save(temp_file)
 
         def execute_branch(prompt, parent_bot_node):
@@ -756,8 +756,8 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
         else:
             # No tool calls, save normally
             temp_id = str(uuid.uuid4())[:8]
-                worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
-                temp_file = f"subagent_{temp_id}_{worker_id}.bot"
+            worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+            temp_file = f"subagent_{temp_id}_{worker_id}.bot"
             bot.save(temp_file)
 
         def execute_subagent(task, parent_bot_node):
