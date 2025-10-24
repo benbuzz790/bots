@@ -720,8 +720,11 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
             dummy_results = []
             for tool_call in original_node.tool_calls:
                 if tool_call.get("name") == "subagent":
-                    # Use OpenAI-style format for tool results
-                    dummy_result = {"role": "tool", "content": "Subagent working...", "tool_call_id": tool_call["id"]}
+                    # Use bot's tool_handler to generate provider-appropriate format
+                    dummy_result = bot.tool_handler.generate_response_schema(
+                        tool_call, 
+                        "Subagent working..."
+                    )
                     dummy_results.append(dummy_result)
 
             if dummy_results:
