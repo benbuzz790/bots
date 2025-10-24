@@ -267,17 +267,55 @@ class PowerShellSession:
                 "$OutputEncoding=[System.Text.Encoding]::UTF8",
                 "$env:PYTHONIOENCODING='utf-8'",
                 """
-            function Invoke-SafeCommand {
-                param([string]$Command)
-                try {
-                    Invoke-Expression $Command
-                    return $true
-                } catch {
-                    Write-Error $_
-                    return $false
+        function Invoke-SafeCommand {
+            param([string]$Command)
+            try {
+                Invoke-Expression $Command
+                return $true
+            } catch {
+                Write-Error $_
+                return $false
+            }
+        }
+                        """.strip(),
+                """
+        Add-Type -AssemblyName Microsoft.VisualBasic
+        function Remove-ItemSafely {
+            param(
+                [Parameter(Mandatory=$true, ValueFromPipeline=$true, Position=0)]
+                [string[]]$Path,
+                [switch]$Recurse,
+                [switch]$Force
+            )
+            process {
+                foreach ($item in $Path) {
+                    $fullPath = $null
+                    try {
+                        $fullPath = Resolve-Path $item -ErrorAction Stop
+                    } catch {
+                        Write-Error "Cannot find path '$item' because it does not exist."
+                        continue
+                    }
+
+                    if (Test-Path $fullPath -PathType Container) {
+                        [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory(
+                            $fullPath,
+                            'OnlyErrorDialogs',
+                            'SendToRecycleBin'
+                        )
+                    } else {
+                        [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile(
+                            $fullPath,
+                            'OnlyErrorDialogs',
+                            'SendToRecycleBin'
+                        )
+                    }
                 }
             }
-                            """.strip(),
+        }
+        Set-Alias -Name rm -Value Remove-ItemSafely -Option AllScope
+        Set-Alias -Name del -Value Remove-ItemSafely -Option AllScope
+                        """.strip(),
             ]
             for cmd in init_commands:
                 self._process.stdin.write(cmd + "\n")
