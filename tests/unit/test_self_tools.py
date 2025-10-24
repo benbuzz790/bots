@@ -3,11 +3,38 @@ import os
 import shutil
 import tempfile
 import unittest
+import glob
+import pytest
+import unittest
 from unittest.mock import patch
 
 import bots.tools.self_tools as self_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
+@pytest.fixture(autouse=True)
+def cleanup_temp_bot_files():
+    """Clean up temporary bot files created during tests.
+
+    This fixture runs automatically before and after each test to ensure
+    no leftover subagent_*.bot or branch_self_*.bot files remain.
+    """
+    # Cleanup before test
+    for pattern in ["subagent_*.bot", "branch_self_*.bot"]:
+        for f in glob.glob(pattern):
+            try:
+                os.remove(f)
+            except Exception:
+                pass
+
+    yield
+
+    # Cleanup after test
+    for pattern in ["subagent_*.bot", "branch_self_*.bot"]:
+        for f in glob.glob(pattern):
+            try:
+                os.remove(f)
+            except Exception:
+                pass
 
 
 class TestSelfTools(unittest.TestCase):
