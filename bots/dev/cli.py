@@ -1172,6 +1172,10 @@ class StateHandler:
             new_bot = Bot.load(filename)
             while new_bot.conversation.replies:
                 new_bot.conversation = new_bot.conversation.replies[-1]
+
+            # Attach CLI callbacks for proper display
+            new_bot.callbacks = RealTimeDisplayCallbacks(context)
+
             context.bot_instance = new_bot
             context.labeled_nodes = {}
             self._rebuild_labels(new_bot.conversation, context)
