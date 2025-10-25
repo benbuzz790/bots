@@ -875,14 +875,11 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
     """
         Edit Python code using pytest-style scope syntax and optional expression matching.
 
-        **IMPORTANT: Use ONLY for .py Python files. For other file types (txt, md, json, etc.), 
-        use patch_edit or view/write operations instead.**
-
         Parameters:
         -----------
         target_scope : str
             Location to edit in pytest-style scope syntax:
-            - "file.py" (whole file) - MUST end with .py extension
+            - "file.py" (whole file)
             - "file.py::MyClass" (class)
             - "file.py::my_function" (function)
             - "file.py::MyClass::method" (method)
@@ -925,24 +922,94 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
     """
     try:
         file_path, *path_elements = target_scope.split("::")
-
-        # Check if file exists and is not a .py file - only reject existing non-Python files
-        if os.path.exists(file_path) and not file_path.endswith(".py"):
-            return _process_error(ValueError(f"python_edit only works with .py files. The file '{file_path}' exists and is not a Python file. Use patch_edit or view/write operations instead."))
-
-        # For new files, warn but allow if it doesn't end with .py (they might be creating it)
         if not file_path.endswith(".py"):
-            # This will be created as a Python file, so warn but proceed
-            pass
-
+            return _process_error(ValueError(f"File path must end with .py: {file_path}"))
         for element in path_elements:
             if not element.isidentifier() and element != "__FIRST__":
                 return _process_error(ValueError(f"Invalid identifier in path: {element}"))
         abs_path = _make_file(file_path)
-        if coscope_with:
-            return _insert_with_coscope(abs_path, path_elements, code, coscope_with, delete_a_lot)
+        try:
+            original_content = _read_file_bom_safe(abs_path)
+            was_originally_empty = not original_content.strip()
+        except Exception as e:
+            return _process_error(ValueError(f"Error reading file {abs_path}: {str(e)}"))
+        try:
+            # Parse the original file first, before processing new code
+            if original_content.strip():
+                tree = cst.parse_module(original_content)
+            else:
+                tree = cst.parse_module("")
+        except Exception as e:
+            return _process_error(ValueError(f"Error parsing file {abs_path}: {str(e)}"))
+        try:
+            import textwrap
+
+            cleaned_code = textwrap.dedent(code).strip()
+            if not cleaned_code:
+                # Handle empty code - delete the target section instead of raising an error
+                if coscope_with:
+                    return _process_error(ValueError("Cannot use empty code with insert_after - nothing to insert"))
+                # For replacement operations, empty code means delete the target
+                return _handle_deletion(abs_path, target_scope, path_elements, original_content, tree, delete_a_lot)
+            elif was_originally_empty and (not path_elements):
+                _write_file_bom_safe(abs_path, cleaned_code)
+                return f"Code added to '{abs_path}'."
+
+            # Only parse new_module if we have code to parse
+            new_module = None
+            if cleaned_code:
+                try:
+                    new_module = cst.parse_module(cleaned_code)
+                except Exception as e:
+                    # If parsing fails, check if it's a comment-only code
+                    if cleaned_code.strip().startswith("#"):
+                        # Create a pass statement with the comment
+                        comment_stmt = _create_statement_with_comment(cleaned_code.strip())
+                        new_module = cst.Module(body=[comment_stmt])
+                    else:
+                        return _process_error(ValueError(f"Error parsing new code: {str(e)}"))
+        except Exception as e:
+            return _process_error(ValueError(f"Error processing new code: {str(e)}"))
+
+        # Handle special __FIRST__ scope
+        if path_elements and path_elements[0] == "__FIRST__":
+            if len(path_elements) > 1:
+                return _process_error(ValueError("__FIRST__ cannot be combined with other path elements"))
+            return _handle_first_definition(abs_path, tree, new_module, coscope_with)
+
+        if coscope_with == "__FILE_START__":
+            return _handle_file_start_insertion(abs_path, tree, new_module)
+        elif coscope_with == "__FILE_END__":
+            return _handle_file_end_insertion(abs_path, tree, new_module)
+        elif not path_elements:
+            if coscope_with:
+                return _handle_file_level_insertion(abs_path, tree, new_module, coscope_with)
+            else:
+                # Safety check for file-level replacements
+                lines_to_delete = _count_lines_to_be_deleted(original_content, cleaned_code)
+                if lines_to_delete > 100 and not delete_a_lot:
+                    return _process_error(
+                        ValueError(
+                            f"Safety check: this operation would delete {lines_to_delete} lines. "
+                            + "If intentional, set delete_a_lot=True. "
+                            "Consider using 'insert_after' parameter to add code without deleting existing content."
+                        )
+                    )
+                _write_file_bom_safe(abs_path, cleaned_code)
+                return f"Code replaced at file level in '{abs_path}'."
         else:
-            return _replace_scope(abs_path, path_elements, code, delete_a_lot)
+            replacer = ScopeReplacer(path_elements, new_module, coscope_with, tree)
+            modified_tree = tree.visit(replacer)
+            if not replacer.modified:
+                if coscope_with:
+                    return _process_error(ValueError(f"Insert point not found: {coscope_with}"))
+                else:
+                    return _process_error(ValueError(f"Target scope not found: {target_scope}"))
+            _write_file_bom_safe(abs_path, modified_tree.code)
+            if coscope_with:
+                return f"Code inserted after '{coscope_with}' in '{abs_path}'."
+            else:
+                return f"Code replaced at '{target_scope}'."
     except Exception as e:
         return _process_error(e)
 
