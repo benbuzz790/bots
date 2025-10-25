@@ -238,3 +238,76 @@ class TestCLILoad(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+import pytest
+import os
+import tempfile
+from unittest.mock import Mock, patch, MagicMock
+from bots.dev.cli import CLI, CLIContext, RealTimeDisplayCallbacks, StateHandler
+from bots import AnthropicBot, Engines
+
+
+class TestCLILoadCallbacksRegression:
+    """Test that verifies callbacks are properly attached when loading bots in CLI."""
+
+    def test_loaded_bot_missing_cli_callbacks(self, tmp_path):
+        """
+        REGRESSION TEST: When loading a bot in the CLI, the RealTimeDisplayCallbacks
+        are not attached, causing the CLI to not display tool execution properly.
+
+        This test reproduces the bug where:
+        1. A bot is saved with some state
+        2. The bot is loaded via CLI startup or /load command
+        3. The loaded bot doesn't have the CLI's RealTimeDisplayCallbacks attached
+        4. Tool execution and streaming don't work properly in the CLI
+        """
+        # Create and save a bot
+        bot = AnthropicBot(model_engine=Engines.CLAUDE45_SONNET)
+        bot_file = tmp_path / "test_bot.bot"
+        bot.save(str(bot_file))
+
+        # Simulate CLI loading the bot (current behavior)
+        context = CLIContext()
+        state_handler = StateHandler()
+
+        # Load the bot using the CLI's method
+        result = state_handler._load_bot_from_file(str(bot_file), context)
+
+        # The bug: loaded bot should have RealTimeDisplayCallbacks but doesn't
+        loaded_bot = context.bot_instance
+
+        # This assertion should pass but currently fails
+        assert isinstance(loaded_bot.callbacks, RealTimeDisplayCallbacks), (
+            f"Loaded bot should have RealTimeDisplayCallbacks attached, "
+            f"but has {type(loaded_bot.callbacks).__name__} instead. "
+            f"This causes CLI display issues."
+        )
+
+    def test_cli_startup_with_bot_file_missing_callbacks(self, tmp_path):
+        """
+        Test that CLI startup with a bot file doesn't attach proper callbacks.
+        """
+        # Create and save a bot
+        bot = AnthropicBot(model_engine=Engines.CLAUDE45_SONNET)
+        bot_file = tmp_path / "startup_bot.bot"
+        bot.save(str(bot_file))
+
+        # Initialize CLI with bot filename (simulates: python -m bots.dev startup_bot.bot)
+        cli = CLI(bot_filename=str(bot_file))
+
+        # Mock the run loop to just load and stop
+        with patch.object(cli, '_initialize_new_bot'):
+            with patch('builtins.input', side_effect=['/exit']):
+                with patch('bots.dev.cli.setup_raw_mode', return_value=None):
+                    with patch('bots.dev.cli.restore_terminal'):
+                        try:
+                            cli.run()
+                        except SystemExit:
+                            pass
+
+        # Check if callbacks were attached
+        loaded_bot = cli.context.bot_instance
+        if loaded_bot:
+            assert isinstance(loaded_bot.callbacks, RealTimeDisplayCallbacks), (
+                f"CLI-loaded bot should have RealTimeDisplayCallbacks, "
+                f"but has {type(loaded_bot.callbacks).__name__}"
+            )

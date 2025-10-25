@@ -2026,34 +2026,36 @@ class ToolHandler(ABC):
     def from_dict(cls, data: Dict[str, Any]) -> "ToolHandler":
         """Reconstruct a ToolHandler instance from serialized state.
 
-        Use when restoring a previously serialized tool handler,
-        such as when loading a saved bot state.
+    Use when restoring a previously serialized tool handler,
+    such as when loading a saved bot state.
 
-        Parameters:
-            data (Dict[str, Any]): Serialized state from to_dict()
+    Parameters:
+        data (Dict[str, Any]): Serialized state from to_dict()
 
-        Returns:
-            ToolHandler: Reconstructed handler instance
+    Returns:
+        ToolHandler: Reconstructed handler instance
 
-        Side Effects:
-            - Creates new module contexts
-            - Reconstructs function objects
-            - Restores tool registry
-            - Preserves request/result history
+    Side Effects:
+        - Creates new module contexts
+        - Reconstructs function objects
+        - Restores tool registry
+        - Preserves request/result history
 
-        Note:
-            - Only restores explicitly registered tools
-            - Verifies code hashes for security
-            - Maintains original module structure
-            - Preserves execution state (requests/results)
+    Note:
+        - Only restores explicitly registered tools
+        - Verifies code hashes for security
+        - Maintains original module structure
+        - Preserves execution state (requests/results)
 
-        Example:
-            ```python
-            saved_state = handler.to_dict()
-            # Later...
-            new_handler = ToolHandler.from_dict(saved_state)
-            ```
-        """
+    Example:
+        ```python
+        saved_state = handler.to_dict()
+        # Later...
+        new_handler = ToolHandler.from_dict(saved_state)
+        ```
+    """
+        import traceback
+
         handler = cls()
         handler.results = data.get("results", [])
         handler.requests = data.get("requests", [])
@@ -2071,7 +2073,18 @@ class ToolHandler(ABC):
                 if "globals" in module_data:
                     cls._deserialize_globals(module.__dict__, module_data["globals"])
 
-                exec(source, module.__dict__)
+                # Add the directory containing the module to sys.path temporarily
+                # This ensures imports within the module can be resolved
+                module_dir = os.path.dirname(module_data["file_path"]) if os.path.isabs(module_data["file_path"]) else None
+                if module_dir and module_dir not in sys.path:
+                    sys.path.insert(0, module_dir)
+                    try:
+                        exec(source, module.__dict__)
+                    finally:
+                        sys.path.remove(module_dir)
+                else:
+                    exec(source, module.__dict__)
+
                 module_context = ModuleContext(
                     name=module_data["name"],
                     source=source,
@@ -2087,9 +2100,6 @@ class ToolHandler(ABC):
                             func.__module_context__ = module_context
                             handler.function_map[func_name] = func
             except Exception as e:
-                import sys
-                import traceback
-
                 print(f"Warning: Failed to load module {file_path}")
                 print(f"  Error: {type(e).__name__}: {str(e)}")
                 exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -2108,20 +2118,9 @@ class ToolHandler(ABC):
                 if tb_lines:
                     print("  Full stack trace:")
                     for i, line in enumerate(tb_lines):
-                        print(f"    Frame {i}: {line.strip()}")
-                if exc_traceback and hasattr(exc_traceback, "tb_lineno"):
-                    try:
-                        source_lines = source.split("\n")
-                        error_line = exc_traceback.tb_lineno
-                        start_line = max(0, error_line - 3)
-                        end_line = min(len(source_lines), error_line + 2)
-                        print(f"  Source context (lines {start_line + 1}-{end_line}):")
-                        for i in range(start_line, end_line):
-                            prefix = ">>> " if i + 1 == error_line else "    "
-                            print(f"  {prefix}{i + 1:3d}: {source_lines[i]}")
-                    except Exception:
-                        pass
+                        print(f"    {line.rstrip()}")
                 continue
+
         # Restore dynamic functions
         if "dynamic_functions" in data:
             for func_name, func_data in data["dynamic_functions"].items():
