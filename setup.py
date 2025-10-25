@@ -55,18 +55,24 @@ INSTALL_REQUIRES: List[str] = [
     "openai",
     # Required for Python 3.6+ type hint compatibility
     "typing_extensions",
-    # Required for Python code parsing and editing
-    "libcst",
-    # Required for serialization
-    "dill",
-    # Required for process management
-    "psutil",
+]
+INSTALL_REQUIRES: List[str] = [
+    # Required for Claude LLM integration
+    "anthropic",
+    # Required for GPT LLM integration
+    "openai",
+    # Required for Python 3.6+ type hint compatibility
+    "typing_extensions",
     # OpenTelemetry core packages for observability
     "opentelemetry-api>=1.20.0",
     "opentelemetry-sdk>=1.20.0",
 ]
 
 # Optional development dependencies for testing and development
+EXTRAS_REQUIRE: Dict[str, List[str]] = {
+    # Testing framework for running the test suite
+    "dev": ["pytest"],
+}
 EXTRAS_REQUIRE: Dict[str, List[str]] = {
     # Testing framework for running the test suite
     "dev": ["pytest"],

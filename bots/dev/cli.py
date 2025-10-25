@@ -1,4 +1,4 @@
-﻿"""
+"""
 CLI for bot interactions with improved architecture and dynamic parameter collection.
 Architecture:
 - Handler classes for logical command grouping
@@ -7,6 +7,7 @@ Architecture:
 - Robust error handling with conversation backup
 - Configuration support for CLI settings
 """
+
 import argparse
 import inspect
 import json
@@ -18,22 +19,28 @@ import textwrap
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
 # Disable console tracing output for CLI (too verbose)
 # Must be set BEFORE importing any bots modules that might initialize tracing
 if "BOTS_OTEL_EXPORTER" not in os.environ:
     os.environ["BOTS_OTEL_EXPORTER"] = "none"
+
+
 # Try to import readline, with fallback for Windows
 try:
     import readline
+
     HAS_READLINE = True
 except ImportError:
     HAS_READLINE = False
+
 from bots.flows import functional_prompts as fp
 from bots.flows import recombinators
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, ConversationNode
 from bots.observability import tracing
 from bots.observability.callbacks import BotCallbacks
+
 # Disable tracing span processors to prevent console output
 try:
     if hasattr(tracing, "_tracer_provider") and tracing._tracer_provider is not None:
@@ -127,25 +134,6 @@ def input_with_esc(prompt: str = "") -> str:
                         print(char, end="", flush=True)
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 def _find_leaves_util(node: ConversationNode) -> List[ConversationNode]:
@@ -170,25 +158,6 @@ def _find_leaves_util(node: ConversationNode) -> List[ConversationNode]:
 
     dfs(node)
     return leaves
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 if platform.system() == "Windows":
@@ -197,25 +166,6 @@ else:
     import select
     import termios
     import tty
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 COLOR_USER = "\033[36m"  # Cyan (not dim)
 COLOR_BOT = "\033[95m"  # Light Pink/Magenta
 COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
@@ -539,25 +489,6 @@ class DynamicParameterCollector:
         except EscapeException:
             print("Cancelled")
             return None
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 class CLIConfig:
@@ -573,7 +504,6 @@ class CLIConfig:
         self.auto_mode_reduce_context_prompt = "trim useless context"
         self.max_tokens = 4096
         self.temperature = 1.0
-        self.terminal_timeout = 300
         self.config_file = "cli_config.json"
         self.load_config()
 
@@ -594,7 +524,6 @@ class CLIConfig:
                     )
                     self.max_tokens = config_data.get("max_tokens", 4096)
                     self.temperature = config_data.get("temperature", 1.0)
-                    self.terminal_timeout = config_data.get("terminal_timeout", 300)
         except Exception:
             pass  # Use defaults if config loading fails
 
@@ -611,7 +540,6 @@ class CLIConfig:
                 "auto_mode_reduce_context_prompt": self.auto_mode_reduce_context_prompt,
                 "max_tokens": self.max_tokens,
                 "temperature": self.temperature,
-                "terminal_timeout": self.terminal_timeout,
             }
             with open(self.config_file, "w") as f:
                 json.dump(config_data, f, indent=2)
@@ -644,27 +572,26 @@ class RealTimeDisplayCallbacks(BotCallbacks):
         if not self.context.config.verbose:
             return
 
-        # Extract tool arguments from metadata
-        tool_args = None
-        if metadata:
-            tool_args = metadata.get("tool_args")
+        if metadata and "tool_args" in metadata:
+            # Extract just the input arguments, not the full request schema
+            tool_args = metadata["tool_args"]
 
-        # Format the arguments cleanly without JSON braces or quotes
-        if tool_args:
-            args_str = format_tool_data(tool_args, color=COLOR_TOOL_NAME)
-        else:
-            args_str = "(no arguments)"
+            # Format the arguments cleanly without JSON braces or quotes
+            if tool_args:
+                args_str = format_tool_data(tool_args, color=COLOR_TOOL_NAME)
+            else:
+                args_str = "(no arguments)"
 
-        # Strip underscores from tool name for cleaner display
-        display_name = tool_name.replace("_", " ")
+            # Strip underscores from tool name for cleaner display
+            display_name = tool_name.replace("_", " ")
 
-        pretty(
-            args_str,
-            display_name,
-            self.context.config.width,
-            self.context.config.indent,
-            COLOR_TOOL_NAME,
-        )
+            pretty(
+                args_str,
+                display_name,
+                self.context.config.width,
+                self.context.config.indent,
+                COLOR_TOOL_NAME,
+            )
 
     def on_tool_complete(self, tool_name: str, result, metadata=None):
         """Display tool result when it completes - show just the result, not wrapped in a dict."""
@@ -688,25 +615,6 @@ class RealTimeDisplayCallbacks(BotCallbacks):
                 self.context.config.indent,
                 COLOR_TOOL_RESULT,
             )
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 class CLICallbacks:
@@ -763,25 +671,6 @@ class CLICallbacks:
             return self.create_verbose_callback()
         else:
             return self.create_quiet_callback()
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 class CLIContext:
@@ -1212,25 +1101,6 @@ class ConversationHandler:
                 COLOR_ASSISTANT,
                 newline_after_name=False,
             )
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 class StateHandler:
@@ -1317,25 +1187,6 @@ class StateHandler:
                 context.labeled_nodes[label] = node
         for reply in node.replies:
             self._rebuild_labels(reply, context)
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 class SystemHandler:
@@ -1426,7 +1277,6 @@ class SystemHandler:
                 f"    auto_mode_reduce_context_prompt: {context.config.auto_mode_reduce_context_prompt}",
                 f"    max_tokens: {context.config.max_tokens}",
                 f"    temperature: {context.config.temperature}",
-                f"    terminal_timeout: {context.config.terminal_timeout}",
                 "Use '/config set <setting> <value>' to modify settings.",
             ]
             return "\n".join(config_lines)
@@ -1440,6 +1290,7 @@ class SystemHandler:
                     # Sync metrics verbose setting
                     try:
                         from bots.observability import metrics
+
                         metrics.set_metrics_verbose(new_verbose)
                     except Exception:
                         pass
@@ -1457,140 +1308,125 @@ class SystemHandler:
                     context.config.auto_mode_reduce_context_prompt = value
                 elif setting == "max_tokens":
                     context.config.max_tokens = int(value)
-                    # Also update bot's max_tokens if bot exists
-                    if bot:
-                        bot.max_tokens = int(value)
                 elif setting == "temperature":
                     context.config.temperature = float(value)
-                    # Also update bot's temperature if bot exists
-                    if bot:
-                        bot.temperature = float(value)
-                elif setting == "terminal_timeout":
-                    context.config.terminal_timeout = int(value)
                 else:
                     return f"Unknown setting: {setting}"
                 context.config.save_config()
                 return f"Set {setting} to {getattr(context.config, setting)}"
-            except ValueError as e:
-                return f"Error setting {setting}: {e}"
-        return "Usage: /config [set <setting> <value>]"
+            except ValueError:
+                return f"Invalid value for {setting}: {value}"
+        return "Usage: /config or /config set <setting> <value>"
 
     def auto(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Start autonomous execution mode."""
+        """Run bot autonomously until it stops using tools."""
         try:
-            import platform
+            import bots.flows.functional_prompts as fp
 
-            # Store original terminal settings for cleanup
-            if platform.system() != "Windows":
-                import sys
-                import termios
+            context.conversation_backup = bot.conversation
+            old_settings = setup_raw_mode()
+            context.old_terminal_settings = old_settings
 
-                fd = sys.stdin.fileno()
-                old_settings = termios.tcgetattr(fd)
-                context.old_terminal_settings = old_settings
-            else:
-                old_settings = None
+            # Check for interrupt before starting
+            if check_for_interrupt():
+                restore_terminal(old_settings)
+                return "Autonomous execution interrupted by user"
 
-            # Auto-stash if enabled
-            if context.config.auto_stash:
-                stash_result = create_auto_stash()
-                if "Auto-stash created:" in stash_result:
-                    pretty(stash_result, "system", context.config.width, context.config.indent, COLOR_SYSTEM)
+            # Create dynamic continue prompt using policy with configurable prompts
+            continue_prompt = fp.dynamic_prompts.policy(
+                rules=[
+                    # High token count with cooldown expired -> request context reduction
+                    (
+                        lambda b, i: (
+                            context.last_message_metrics
+                            and context.last_message_metrics.get("input_tokens", 0) > context.config.remove_context_threshold
+                            and context.context_reduction_cooldown <= 0
+                        ),
+                        context.config.auto_mode_reduce_context_prompt,
+                    ),
+                ],
+                default=context.config.auto_mode_neutral_prompt,
+            )
 
-            # Set up terminal for raw mode for ESC detection
-            if platform.system() != "Windows":
-                setup_raw_mode()
+            # Use prompt_while with the dynamic continue prompt
+            def stop_on_no_tools(bot: Bot) -> bool:
+                return not bot.tool_handler.requests
 
-            def stop_on_no_tools(bot):
-                """Stop condition: bot didn't use any tools."""
-                return not bool(bot.conversation.tool_calls)
+            # Track iteration count to know when we're past the first prompt
+            iteration_count = [0]
 
-            def continue_prompt(bot, iteration):
-                """Generate continue prompt based on token count."""
-                # Try to get current token count
+            def auto_callback(responses, nodes):
+                # Update cooldown after each iteration
+                if context.last_message_metrics:
+                    last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
+                    if last_input_tokens > context.config.remove_context_threshold and context.context_reduction_cooldown <= 0:
+                        context.context_reduction_cooldown = 3
+                    elif context.context_reduction_cooldown > 0:
+                        context.context_reduction_cooldown -= 1
+
+                # Capture metrics after each response
                 try:
-                    if OBSERVABILITY_AVAILABLE:
-                        from bots.observability import metrics
+                    from bots.observability import metrics
 
-                        last_metrics = metrics.get_and_clear_last_metrics()
-                        context.last_message_metrics = last_metrics
-                        total_tokens = last_metrics.get("input_tokens", 0) + last_metrics.get("output_tokens", 0)
-
-                        # Check if we should reduce context
-                        if total_tokens > context.config.remove_context_threshold:
-                            if context.context_reduction_cooldown <= 0:
-                                # Time to reduce context
-                                context.context_reduction_cooldown = 3
-                                return context.config.auto_mode_reduce_context_prompt
-                            else:
-                                # Still in cooldown
-                                context.context_reduction_cooldown -= 1
-                                return context.config.auto_mode_neutral_prompt
-                        else:
-                            # Normal operation
-                            return context.config.auto_mode_neutral_prompt
+                    context.last_message_metrics = metrics.get_and_clear_last_metrics()
                 except Exception:
                     pass
 
-                return context.config.auto_mode_neutral_prompt
+                # Check for interrupt
+                if check_for_interrupt():
+                    raise KeyboardInterrupt()
 
-            # Create callback for autonomous mode
-            def auto_callback(responses, nodes):
-                """Check for interrupts and handle context reduction."""
-                iteration_count = [0]
+                # After each iteration, if we're continuing, display metrics and next user prompt
+                iteration_count[0] += 1
+                if not stop_on_no_tools(bot):
+                    # Display metrics before the next user message
+                    display_metrics(context, bot)
 
-                def inner_callback(responses, nodes):
-                    if check_for_interrupt():
-                        raise KeyboardInterrupt()
+                    # Get the next prompt text
+                    next_prompt = continue_prompt(bot, iteration_count[0]) if callable(continue_prompt) else continue_prompt
 
-                    # After each iteration, if we're continuing, display next user prompt
-                    iteration_count[0] += 1
-                    if not stop_on_no_tools(bot):
-                        # Get the next prompt text
-                        next_prompt = continue_prompt(bot, iteration_count[0]) if callable(continue_prompt) else continue_prompt
+                    # Display the user prompt
+                    pretty(
+                        next_prompt,
+                        "You",
+                        context.config.width,
+                        context.config.indent,
+                        COLOR_USER,
+                        newline_after_name=False,
+                    )
 
-                        # Display the user prompt
-                        pretty(
-                            next_prompt,
-                            "You",
-                            context.config.width,
-                            context.config.indent,
-                            COLOR_USER,
-                            newline_after_name=False,
-                        )
+            # Get the standard callback for display
+            display_callback = context.callbacks.get_standard_callback()
 
-                # Get the standard callback for display
-                display_callback = context.callbacks.get_standard_callback()
+            # Combine callbacks
+            def combined_callback(responses, nodes):
+                # First run auto callback for logic
+                auto_callback(responses, nodes)
+                # Then run display callback if it exists
+                if display_callback:
+                    display_callback(responses, nodes)
 
-                # Combine callbacks
-                def combined_callback(responses, nodes):
-                    # First run auto callback for logic
-                    auto_callback(responses, nodes)
-                    # Then run display callback if it exists
-                    if display_callback:
-                        display_callback(responses, nodes)
+            # Display the first user prompt
+            pretty(
+                "ok",
+                "You",
+                context.config.width,
+                context.config.indent,
+                COLOR_USER,
+                newline_after_name=False,
+            )
 
-                # Display the first user prompt
-                pretty(
-                    "ok",
-                    "You",
-                    context.config.width,
-                    context.config.indent,
-                    COLOR_USER,
-                    newline_after_name=False,
-                )
-
-                # Run the autonomous loop
-                fp.prompt_while(
-                    bot,
-                    "ok",
-                    continue_prompt=continue_prompt,
-                    stop_condition=stop_on_no_tools,
-                    callback=combined_callback,
-                )
+            # Run the autonomous loop
+            fp.prompt_while(
+                bot,
+                "ok",
+                continue_prompt=continue_prompt,
+                stop_condition=stop_on_no_tools,
+                callback=combined_callback,
+            )
 
             restore_terminal(old_settings)
-            # Metrics are now displayed in the callback, not here
+            display_metrics(context, bot)
             return ""
 
         except KeyboardInterrupt:
@@ -1600,7 +1436,7 @@ class SystemHandler:
         except Exception as e:
             if context.old_terminal_settings:
                 restore_terminal(context.old_terminal_settings)
-            return f"Error in auto mode: {str(e)}"
+            return f"Error in autonomous mode: {str(e)}"
 
     def auto_stash(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Toggle auto git stash functionality."""
@@ -1728,25 +1564,6 @@ class SystemHandler:
             result.append(f"Tools not found: {', '.join(not_found)}")
 
         return "\n".join(result) if result else "No tools added"
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 class DynamicFunctionalPromptHandler:
@@ -1951,25 +1768,6 @@ class DynamicFunctionalPromptHandler:
             return f"Broadcast complete with {len(responses)} responses"
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> str:
@@ -2023,25 +1821,6 @@ def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> s
         else:
             # Other types (int, bool, None, etc.)
             lines.append(f"{bold_key} {value}")
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 def check_for_interrupt() -> bool:
@@ -2057,25 +1836,6 @@ def check_for_interrupt() -> bool:
             termios.tcflush(sys.stdin, termios.TCIOFLUSH)
             return key == "\x1b"  # ESC key
         return False
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 def setup_raw_mode():
@@ -2157,25 +1917,6 @@ def display_metrics(context: CLIContext, bot: Bot):
         pretty(metrics_str, "metrics", context.config.width, context.config.indent, COLOR_METRICS, newline_after_name=True)
     except Exception:
         pass
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 def pretty(
@@ -2256,25 +1997,6 @@ def pretty(
     for line in formatted_lines:
         print(line)
     print()
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 class CLI:
@@ -2425,21 +2147,9 @@ class CLI:
 
     def _handle_load_prompt(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Handle /p command to load prompts."""
-        message, prompt_text, should_send = self.prompts.load_prompt(bot, context, args)
-
-        if prompt_text and should_send:
-            # Send the prompt directly to the bot
-            pretty(
-                prompt_text,
-                "You",
-                context.config.width,
-                context.config.indent,
-                COLOR_USER,
-                newline_after_name=False,
-            )
-            self._handle_chat(bot, prompt_text)
-            return ""  # Don't show additional system message
-
+        message, prefill_text = self.prompts.load_prompt(bot, context, args)
+        if prefill_text:
+            self.pending_prefill = prefill_text
         return message
 
     def _handle_save_prompt(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
@@ -2452,22 +2162,7 @@ class CLI:
 
     def _handle_recent_prompts(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Handle /r command to show recent prompts."""
-        message, prompt_text, should_send = self.prompts.recent_prompts(bot, context, args)
-
-        if prompt_text and should_send:
-            # Send the prompt directly to the bot
-            pretty(
-                prompt_text,
-                "You",
-                context.config.width,
-                context.config.indent,
-                COLOR_USER,
-                newline_after_name=False,
-            )
-            self._handle_chat(bot, prompt_text)
-            return ""  # Don't show additional system message
-
-        return message
+        return self.prompts.recent_prompts(bot, context, args)
 
     def _get_user_input(self, prompt_text: str = ">>> ") -> str:
         """Get user input, with optional pre-fill support."""
@@ -2544,93 +2239,43 @@ class CLI:
     def _handle_command(self, bot: Bot, user_input: str):
         """Handle command input."""
         parts = user_input.split()
-
-        # Check if there are multiple commands (e.g., "/config set X /auto")
-        # Find all parts that start with "/"
-        command_indices = [i for i, p in enumerate(parts) if p.startswith("/")]
-
-        if len(command_indices) > 1:
-            # Multiple commands - handle them in sequence
-            for i, cmd_idx in enumerate(command_indices):
-                # Get the command
-                command = parts[cmd_idx]
-
-                # Get args for this command (everything between this command and next)
-                if i + 1 < len(command_indices):
-                    # There's another command after this one
-                    next_cmd_idx = command_indices[i + 1]
-                    args = parts[cmd_idx + 1:next_cmd_idx]
-                else:
-                    # This is the last command
-                    args = parts[cmd_idx + 1:]
-
-                # Execute this command
-                if command in self.commands:
-                    try:
-                        result = self.commands[command](bot, self.context, args)
-                        if result:
-                            pretty(result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
-                    except Exception as e:
-                        pretty(f"Command error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
-                        if self.context.conversation_backup and bot:
-                            # Clear tool handler state to prevent corruption from failed tool executions
-                            bot.tool_handler.clear()
-                            bot.conversation = self.context.conversation_backup
-                            pretty(
-                                "Restored conversation from backup",
-                                "system",
-                                self.context.config.width,
-                                self.context.config.indent,
-                                COLOR_SYSTEM,
-                            )
-                else:
+        command = None
+        args = []
+        if parts[0].startswith("/"):
+            command = parts[0]
+            args = parts[1:]
+        elif parts[-1].startswith("/"):
+            command = parts[-1]
+            args = parts[:-1]  # Everything except the command
+        else:
+            command = parts[0]
+            args = parts[1:]
+        if command in self.commands:
+            try:
+                result = self.commands[command](bot, self.context, args)
+                if result:
+                    pretty(result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
+            except Exception as e:
+                pretty(f"Command error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
+                if self.context.conversation_backup and bot:
+                    # Clear tool handler state to prevent corruption from failed tool executions
+                    bot.tool_handler.clear()
+                    bot.conversation = self.context.conversation_backup
                     pretty(
-                        f"Unrecognized command: {command}. Try /help.",
+                        "Restored conversation from backup",
                         "system",
                         self.context.config.width,
                         self.context.config.indent,
                         COLOR_SYSTEM,
                     )
         else:
-            # Single command - handle as before
-            command = None
-            args = []
-            if parts[0].startswith("/"):
-                command = parts[0]
-                args = parts[1:]
-            elif parts[-1].startswith("/"):
-                command = parts[-1]
-                args = parts[:-1]  # Everything except the command
-            else:
-                command = parts[0]
-                args = parts[1:]
-
-            if command in self.commands:
-                try:
-                    result = self.commands[command](bot, self.context, args)
-                    if result:
-                        pretty(result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
-                except Exception as e:
-                    pretty(f"Command error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
-                    if self.context.conversation_backup and bot:
-                        # Clear tool handler state to prevent corruption from failed tool executions
-                        bot.tool_handler.clear()
-                        bot.conversation = self.context.conversation_backup
-                        pretty(
-                            "Restored conversation from backup",
-                            "system",
-                            self.context.config.width,
-                            self.context.config.indent,
-                            COLOR_SYSTEM,
-                        )
-            else:
-                pretty(
-                    "Unrecognized command. Try /help.",
-                    "system",
-                    self.context.config.width,
-                    self.context.config.indent,
-                    COLOR_SYSTEM,
-                )
+            pretty(
+                "Unrecognized command. Try /help.",
+                "system",
+                self.context.config.width,
+                self.context.config.indent,
+                COLOR_SYSTEM,
+            )
 
     def _handle_chat(self, bot: Bot, user_input: str):
         """Handle chat input."""
@@ -2676,25 +2321,6 @@ class CLI:
                     self.context.config.indent,
                     COLOR_SYSTEM,
                 )
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 class PromptHandler:
@@ -2720,63 +2346,36 @@ class PromptHandler:
             readline.set_startup_hook(None)
 
     def load_prompt(self, bot: "Bot", context: "CLIContext", args: List[str]) -> tuple:
-        """Load a prompt with search and selection. Returns (message, prompt_text, should_send)."""
+        """Load a prompt with search and selection. Returns (message, prefill_text)."""
         try:
-            # If no args provided, show recent prompts instead of searching
-            if not args:
-                recents = self.prompt_manager.get_recents()
-
-                if not recents:
-                    return ("No recent prompts.", None, False)
-
-                # Show recents with numbers
-                print(f"\nRecent prompts ({len(recents)}):")
-                for i, (name, content) in enumerate(recents[:10], 1):
-                    # Show full preview for recent prompts
-                    preview = content[:150] + "..." if len(content) > 150 else content
-                    preview = preview.replace("\n", " ")
-                    print(f"  {i}. {name}: {preview}")
-
-                # Get selection
+            # Get search query
+            if args:
+                query = " ".join(args)
+            else:
                 try:
-                    choice = input(f"\nSelect prompt (1-{min(len(recents), 10)}, or Enter to cancel): ").strip()
-                    if not choice:
-                        return ("Selection cancelled.", None, False)
-
-                    choice_num = int(choice) - 1
-                    if choice_num < 0 or choice_num >= min(len(recents), 10):
-                        return (f"Invalid selection. Must be between 1 and {min(len(recents), 10)}.", None, False)
-
-                    name, content = recents[choice_num]
-                    self.prompt_manager.load_prompt(name)  # Update recency
-
-                    return (f"Loaded prompt: {name}", content, True)
-
-                except ValueError:
-                    return ("Invalid selection. Must be a number.", None, False)
-
-            # Args provided - search for prompts
-            query = " ".join(args)
+                    query = input_with_esc("Enter prompt search: ").strip()
+                except EscapeException:
+                    return ("Selection cancelled", None)
 
             # Search for matching prompts
             matches = self.prompt_manager.search_prompts(query)
 
             if not matches:
-                return ("No prompts found matching your search.", None, False)
+                return ("No prompts found matching your search.", None)
 
             if len(matches) == 1:
                 # Single match - load directly
                 name, content = matches[0]
                 self.prompt_manager.load_prompt(name)  # Update recency
-                return (f"Loaded prompt: {name}", content, True)
+                return (f"Loaded prompt: {name}", content)
 
             # Multiple matches - show selection with best match highlighted
             print(f"\nFound {len(matches)} matches (best match first):")
             for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
-                # Show full preview
-                preview = content[:150] + "..." if len(content) > 150 else content
-                preview = preview.replace("\n", " ")
-                marker = "â†’" if i == 1 else " "
+                # Show preview of content
+                preview = content[:80] + "..." if len(content) > 80 else content
+                preview = preview.replace("\n", " ")  # Single line preview
+                marker = "→" if i == 1 else " "
                 print(f"  {marker} {i}. {name}: {preview}")
 
             if len(matches) > 10:
@@ -2787,25 +2386,25 @@ class PromptHandler:
                 try:
                     choice = input_with_esc(f"\nSelect prompt (1-{min(len(matches), 10)}, default=1): ").strip()
                 except EscapeException:
-                    return ("Selection cancelled", None, False)
+                    return ("Selection cancelled", None)
 
                 if not choice:
                     choice_num = 0  # Default to first match
                 else:
                     choice_num = int(choice) - 1
                     if choice_num < 0 or choice_num >= min(len(matches), 10):
-                        return (f"Invalid selection. Must be between 1 and {min(len(matches), 10)}.", None, False)
+                        return (f"Invalid selection. Must be between 1 and {min(len(matches), 10)}.", None)
 
                 name, content = matches[choice_num]
                 self.prompt_manager.load_prompt(name)  # Update recency
 
-                return (f"Loaded prompt: {name}", content, True)
+                return (f"Loaded prompt: {name}", content)
 
             except ValueError:
-                return ("Invalid selection. Must be a number.", None, False)
+                return ("Invalid selection. Must be a number.", None)
 
         except Exception as e:
-            return (f"Error loading prompt: {str(e)}", None, False)
+            return (f"Error loading prompt: {str(e)}", None)
 
     def save_prompt(self, bot: "Bot", context: "CLIContext", args: List[str], last_user_message: str = None) -> str:
         """Save a prompt. If args provided, save the args. Otherwise save last user message."""
@@ -2906,17 +2505,17 @@ class PromptHandler:
             return f"Error deleting prompt: {str(e)}"
 
     def recent_prompts(self, bot: "Bot", context: "CLIContext", args: List[str]) -> tuple:
-        """Show recent prompts and optionally select one. Returns (message, prompt_text, should_send)."""
+        """Show recent prompts and optionally select one. Returns (message, prefill_text)."""
         try:
             recents = self.prompt_manager.get_recents()
 
             if not recents:
-                return ("No recent prompts.", None, False)
+                return ("No recent prompts.", None)
 
             # Show recents
             print(f"\nRecent prompts ({len(recents)}):")
             for i, (name, content) in enumerate(recents, 1):
-                preview = content[:150] + "..." if len(content) > 150 else content
+                preview = content[:100] + "..." if len(content) > 100 else content
                 preview = preview.replace("\n", " ")
                 print(f"  {i}. {name}: {preview}")
 
@@ -2924,41 +2523,22 @@ class PromptHandler:
             try:
                 choice = input(f"\nSelect prompt (1-{len(recents)}, or Enter to cancel): ").strip()
                 if not choice:
-                    return ("Selection cancelled.", None, False)
+                    return ("Selection cancelled.", None)
 
                 choice_num = int(choice) - 1
                 if choice_num < 0 or choice_num >= len(recents):
-                    return (f"Invalid selection. Must be between 1 and {len(recents)}.", None, False)
+                    return (f"Invalid selection. Must be between 1 and {len(recents)}.", None)
 
                 name, content = recents[choice_num]
                 self.prompt_manager.load_prompt(name)  # Update recency
 
-                return (f"Loaded prompt: {name}", content, True)
+                return (f"Loaded prompt: {name}", content)
 
             except ValueError:
-                return ("Invalid selection. Must be a number.", None, False)
+                return ("Invalid selection. Must be a number.", None)
 
         except Exception as e:
-            return (f"Error loading recent prompts: {str(e)}", None, False)
-if platform.system() == "Windows":
-    import msvcrt
-else:
-    import select
-    import termios
-    import tty
-COLOR_USER = "\033[38;5;80m"  # More teal (between cyan and green)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
-# Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
+            return (f"Error loading recent prompts: {str(e)}", None)
 
 
 def parse_args():
