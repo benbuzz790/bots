@@ -247,15 +247,23 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
 
                 branching_node = branch_bot.conversation
 
-                # Ensure clean tool handler state for branch
-                if hasattr(branch_bot, "tool_handler") and branch_bot.tool_handler:
-                    branch_bot.tool_handler.clear()
+                # DON'T clear tool handler here - it breaks the while loop condition
+                # The condition checks tool_handler.requests which would be empty after clear()
 
                 if allow_work:
                     # Use iterative approach for work
                     response = branch_bot.respond(prompt)
-                    while not fp.conditions.tool_not_used(branch_bot):
+                    # Continue working until no tools are used (bot is done)
+                    iteration_count = 0
+                    max_iterations = 20  # Safety limit
+                    while iteration_count < max_iterations:
+                        # Check if tools were used in the last response
+                        if not branch_bot.conversation.tool_calls:
+                            # No tools used, bot is done
+                            break
+                        # Tools were used, continue with "ok"
                         response = branch_bot.respond("ok")
+                        iteration_count += 1
                 else:
                     # Single response
                     response = branch_bot.respond(prompt)
