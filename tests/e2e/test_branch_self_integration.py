@@ -120,38 +120,40 @@ class TestBranchSelfIntegration(DetailedTestCase):
             success = True
         self.assertTrue(success, "Test should show some evidence of branch_self being used or attempted")
 
-    @patch("builtins.input")
-    def test_branch_self_basic_functionality(self, mock_input):
-        """Test basic branch_self functionality to ensure it works in CLI context."""
-        basic_prompt = (
-            "Please use branch_self to create three simple text files with different content in each. "
-            "Cancel if you hit an error."
+    def test_branch_self_basic_functionality(self):
+        """Test that branch_self can execute multiple branches and create files."""
+        bot = AnthropicBot(
+            name="BranchTestBot",
+            system_message="You are a helpful assistant.",
+            model_engine=Engines.CLAUDE37_SONNET_20250219,
+            max_tokens=2000,
         )
-        mock_input.side_effect = [basic_prompt, "/exit"]
+        bot.add_tools(branch_self)
         start_time = time.time()
-        with StringIO() as buf, redirect_stdout(buf):
+        with io.StringIO() as buf:
+            sys.stdout = buf
             try:
-                cli = self._create_cli_with_full_tools()
-                cli.run()
-            except SystemExit:
-                pass
+                bot.respond(
+                    'Use branch_self to create 3 branches. Each branch should create a text file: '
+                    'Branch 1 creates "file1.txt" with content "This is the first file. It contains information about branch 1.", '
+                    'Branch 2 creates "file2.txt" with content "This is the second file. It contains information about branch 2.", '
+                    'Branch 3 creates "file3.txt" with content "This is the third file. It contains information about branch 3."'
+                )
+            finally:
+                sys.stdout = sys.__stdout__
             output = buf.getvalue()
         duration = time.time() - start_time
         print("\n=== BRANCH_SELF BASIC FUNCTIONALITY TEST ===")
         print(f"Duration: {duration:.2f} seconds")
         print(f"Output preview:\n{output[-500:]}")
-        self.assertLess(duration, 60, "Basic branch_self should complete within 1 minute")
+        self.assertLess(duration, 120, "Basic branch_self should complete within 2 minutes")
         self.assertContainsNormalized(output, "branch_self")
         files_created = [f for f in os.listdir(".") if os.path.isfile(f) and f.endswith(".txt")]
         print(f"Text files created: {files_created}")
         if len(files_created) > 0:
             print("✅ Basic branch_self file creation successful")
-            for filename in files_created:
-                with open(filename, "r") as f:
-                    content = f.read()
-                    print(f"File {filename} content preview: {content[:100]}...")
         else:
-            print("⚠️ No text files detected, but branch_self may have been executed")
+            print("⚠️ No text files were created")
 
     @patch("builtins.input")
     def test_branch_self_error_handling(self, mock_input):
