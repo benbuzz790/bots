@@ -98,10 +98,14 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
 def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "False", recombine: str = "concatenate") -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
 
-    Simplified approach that creates isolated conversation branches:
-    1. Save current bot state to temporary file
+    Creates isolated conversation branches using deepcopy:
+    1. Deepcopy current bot state (uses __getstate__/__setstate__ for proper serialization)
     2. Execute each branch with independent bot instances
     3. Stitch results back into main conversation tree
+
+    Note: Uses deepcopy with __getstate__/__setstate__ which leverages the hybrid
+    serialization strategy (source code + dill for helpers). See bots/foundation/tool_handling.md.
+
     Args:
         self_prompts (str): List of prompts as a string array, like ['task 1', 'task 2', 'task 3']
                            Each prompt becomes a separate conversation branch
@@ -114,11 +118,10 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
     Returns:
         str: Success message with branch count, or error details if something went wrong
     """
-    import os
+    import copy
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     from bots.flows import functional_prompts as fp
-    from bots.foundation.base import Bot
 
     bot = _get_calling_bot()
     if not bot:
@@ -150,13 +153,12 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         original_autosave = bot.autosave
         bot.autosave = False
 
-        # Tag the current node so we can find it after load
-        # This prevents recursive branching issues
-        branch_tag = f"_branch_self_anchor_{uuid.uuid4().hex[:8]}"
-        setattr(original_node, branch_tag, True)
+        # Handle tool_use without tool_result issue
+        # If the current node has tool_calls (the branch_self call itself), 
+        # we need to add a dummy result before copying to avoid API errors
+        dummy_results_added = False
+        original_results = None
 
-        # Create a modified conversation node with dummy tool results
-        # This prevents 'tool_use without tool_result' errors in branches
         if original_node.tool_calls:
             dummy_results = []
             for tool_call in original_node.tool_calls:
@@ -169,82 +171,21 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                     dummy_results.append(dummy_result)
 
             if dummy_results:
-                # Temporarily add dummy results for saving
+                # Temporarily add dummy results for copying
                 original_results = getattr(original_node, "tool_results", [])
                 original_node._add_tool_results(dummy_results)
-
-                # Save bot state with dummy results and tag
-                temp_id = str(uuid.uuid4())[:8]
-                worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
-                temp_file = f"branch_self_{temp_id}_{worker_id}.bot"
-                bot.save(temp_file)
-
-                # Restore original results (remove dummy results from current bot)
-                original_node.tool_results = original_results
-            else:
-                # No dummy results needed, save normally
-                temp_id = str(uuid.uuid4())[:8]
-                worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
-                temp_file = f"branch_self_{temp_id}_{worker_id}.bot"
-                bot.save(temp_file)
-        else:
-            # No tool calls, save normally
-            temp_id = str(uuid.uuid4())[:8]
-            worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
-            temp_file = f"branch_self_{temp_id}_{worker_id}.bot"
-            bot.save(temp_file)
+                dummy_results_added = True
 
         def execute_branch(prompt, parent_bot_node):
             """Execute a single branch with the given prompt."""
             try:
-                # Create a fresh bot copy for this branch
-                branch_bot = Bot.load(temp_file)
+                # Create a fresh bot copy using deepcopy
+                # This uses __getstate__/__setstate__ which calls _serialize()/_deserialize()
+                branch_bot = copy.deepcopy(bot)
                 branch_bot.autosave = False
-                # Preserve callbacks from parent bot
-                branch_bot.callbacks = bot.callbacks
+                # Callbacks are preserved by deepcopy
 
-                # Find the tagged node in the loaded bot's conversation tree
-                # This ensures we branch from the correct point, not the newest node
-                def find_tagged_node(node):
-                    """Recursively search for the node with the branch tag."""
-                    # Check current node for any branch_self_anchor tags
-                    for attr in dir(node):
-                        if attr.startswith("_branch_self_anchor_"):
-                            return node
-                    # Search in parent chain
-                    current = node
-                    while current.parent:
-                        current = current.parent
-                        for attr in dir(current):
-                            if attr.startswith("_branch_self_anchor_"):
-                                return current
-                    # Search in all descendants from root
-                    root = node
-                    while root.parent:
-                        root = root.parent
-
-                    def search_tree(n):
-                        for attr in dir(n):
-                            if attr.startswith("_branch_self_anchor_"):
-                                return n
-                        for reply in n.replies:
-                            result = search_tree(reply)
-                            if result:
-                                return result
-                        return None
-
-                    return search_tree(root)
-
-                tagged_node = find_tagged_node(branch_bot.conversation)
-                if tagged_node:
-                    # Position at the tagged node
-                    branch_bot.conversation = tagged_node
-                    # Remove the tag from this branch's copy
-                    for attr in dir(tagged_node):
-                        if attr.startswith("_branch_self_anchor_"):
-                            delattr(tagged_node, attr)
-                            break
-
+                # Store the branching point (branch_bot.conversation is at same point as bot.conversation)
                 branching_node = branch_bot.conversation
 
                 # Ensure clean tool handler state for branch
@@ -260,7 +201,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                     # Single response
                     response = branch_bot.respond(prompt)
 
-                # Stitch completed conversation back onto bot conversation
+                # Stitch completed conversation back onto parent bot conversation
                 parent_bot_node.replies.extend(branching_node.replies)
                 for node in branching_node.replies:
                     node.parent = parent_bot_node
@@ -292,18 +233,12 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                 responses.append(response)
                 branch_nodes.append(node)
 
-        # Remove the tag from the original node
-        if hasattr(original_node, branch_tag):
-            delattr(original_node, branch_tag)
+        # Remove dummy results if we added them
+        if dummy_results_added:
+            original_node.tool_results = original_results
 
         # Restore original bot settings
         bot.autosave = original_autosave
-
-        # Clean up temp file
-        try:
-            os.remove(temp_file)
-        except OSError:
-            pass
 
         # Count successful branches
         success_count = sum(1 for r in responses if r is not None)
