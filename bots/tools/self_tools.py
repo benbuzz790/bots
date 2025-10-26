@@ -1,7 +1,6 @@
 import ast
 import inspect
 import json
-import uuid
 from typing import List, Optional
 
 from bots.dev.decorators import toolify
@@ -170,7 +169,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
 
             if dummy_results:
                 # Temporarily add dummy results for copying
-                original_results = getattr(original_node, "tool_results", [])
+                original_results = list(getattr(original_node, "tool_results", []))
                 original_node._add_tool_results(dummy_results)
                 dummy_results_added = True
 
@@ -625,8 +624,9 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
     Returns:
         str: Combined results from all subagents
     """
-    import os
+    import copy
     import threading
+    import uuid
 
     from bots.flows import functional_prompts as fp
     from bots.foundation.base import Bot
@@ -655,12 +655,8 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
         original_autosave = bot.autosave
         bot.autosave = False
 
-        # Tag the current node so we can find it after load
-        branch_tag = f"_subagent_anchor_{uuid.uuid4().hex[:8]}"
-        setattr(original_node, branch_tag, True)
-
-        # Create a modified conversation node with dummy tool results
-        # This prevents 'tool_use without tool_result' errors in subagents
+        # Add dummy tool results if needed (to prevent serialization errors)
+        dummy_results_added = False
         if original_node.tool_calls:
             dummy_results = []
             for tool_call in original_node.tool_calls:
@@ -670,30 +666,10 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
                     dummy_results.append(dummy_result)
 
             if dummy_results:
-                # Temporarily add dummy results for saving
-                original_results = getattr(original_node, "tool_results", [])
+                # Temporarily add dummy results for copying (use list() to make a copy)
+                original_results = list(getattr(original_node, "tool_results", []))
                 original_node._add_tool_results(dummy_results)
-
-                # Save bot state with dummy results and tag
-                temp_id = str(uuid.uuid4())[:8]
-                worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
-                temp_file = f"subagent_{temp_id}_{worker_id}.bot"
-                bot.save(temp_file)
-
-                # Restore original results (remove dummy results from current bot)
-                original_node.tool_results = original_results
-            else:
-                # No dummy results needed, save normally
-                temp_id = str(uuid.uuid4())[:8]
-                worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
-                temp_file = f"subagent_{temp_id}_{worker_id}.bot"
-                bot.save(temp_file)
-        else:
-            # No tool calls, save normally
-            temp_id = str(uuid.uuid4())[:8]
-            worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
-            temp_file = f"subagent_{temp_id}_{worker_id}.bot"
-            bot.save(temp_file)
+                dummy_results_added = True
 
         # Create lock for thread-safe mutations
         replies_lock = threading.Lock()
@@ -701,54 +677,12 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
         def execute_subagent(task, parent_bot_node):
             """Execute a single subagent with the given task."""
             try:
-                # Create a fresh bot copy for this subagent
-                subagent = Bot.load(temp_file)
+                # Create a fresh bot copy using deepcopy
+                subagent = copy.deepcopy(bot)
                 subagent.autosave = False
                 subagent.name = f"subagent_{uuid.uuid4().hex[:6]}"
-                # Preserve callbacks from parent bot
-                subagent.callbacks = bot.callbacks
 
-                # Find the tagged node in the loaded bot's conversation tree
-                def find_tagged_node(node):
-                    """Recursively search for the node with the subagent tag."""
-                    # Check current node for any subagent_anchor tags
-                    for attr in dir(node):
-                        if attr.startswith("_subagent_anchor_"):
-                            return node
-                    # Search in parent chain
-                    current = node
-                    while current.parent:
-                        current = current.parent
-                        for attr in dir(current):
-                            if attr.startswith("_subagent_anchor_"):
-                                return current
-                    # Search in all descendants from root
-                    root = node
-                    while root.parent:
-                        root = root.parent
-
-                    def search_tree(n):
-                        for attr in dir(n):
-                            if attr.startswith("_subagent_anchor_"):
-                                return n
-                        for reply in n.replies:
-                            result = search_tree(reply)
-                            if result:
-                                return result
-                        return None
-
-                    return search_tree(root)
-
-                tagged_node = find_tagged_node(subagent.conversation)
-                if tagged_node:
-                    # Position at the tagged node
-                    subagent.conversation = tagged_node
-                    # Remove the tag from this subagent's copy
-                    for attr in dir(tagged_node):
-                        if attr.startswith("_subagent_anchor_"):
-                            delattr(tagged_node, attr)
-                            break
-
+                # Position at the original node
                 branching_node = subagent.conversation
 
                 # Ensure clean tool handler state for subagent
@@ -829,7 +763,10 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
 
             except StopIteration as e:
                 # Max iterations reached, return what we have
-                return f"Subagent stopped: {str(e)}\n\nLast response:\n{subagent.conversation.content}", subagent.conversation
+                return (
+                    f"Subagent stopped: {str(e)}\n\nLast response:\n{subagent.conversation.content}",
+                    subagent.conversation,
+                )
             except Exception as e:
                 import traceback
 
@@ -845,18 +782,12 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
             responses.append(response)
             subagent_nodes.append(node)
 
-        # Remove the tag from the original node
-        if hasattr(original_node, branch_tag):
-            delattr(original_node, branch_tag)
+        # Remove dummy results if we added them
+        if dummy_results_added:
+            original_node.tool_results = original_results
 
         # Restore original bot settings
         bot.autosave = original_autosave
-
-        # Clean up temp file
-        try:
-            os.remove(temp_file)
-        except OSError:
-            pass
 
         # Count successful subagents
         success_count = sum(1 for r in responses if r and not r.startswith("Error"))
@@ -874,12 +805,3 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
 
         traceback.print_exc()
         return f"Error in subagent: {str(e)}"
-    finally:
-        # Ensure temp file cleanup on all paths
-        try:
-            if "temp_file" in locals() and temp_file:
-                if os.path.exists(temp_file):
-                    os.remove(temp_file)
-        except Exception:
-            # Swallow any cleanup errors to avoid masking original exception
-            pass
