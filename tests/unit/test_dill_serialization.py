@@ -9,17 +9,17 @@ This test verifies:
 """
 
 import os
+import shutil
 import sys
 import tempfile
-import shutil
 import unittest
-from types import ModuleType
 from io import StringIO
-
-sys.path.insert(0, os.path.abspath("."))
+from types import ModuleType
 
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
+
+sys.path.insert(0, os.path.abspath("."))
 
 
 class TestDillSerialization(unittest.TestCase):
@@ -36,9 +36,12 @@ class TestDillSerialization(unittest.TestCase):
     def test_dill_succeeds_for_same_runtime_functions(self):
         """Test that dill successfully serializes/deserializes same-runtime functions."""
         # Create a bot and add a tool from a real module (not dynamic)
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(
+            name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000
+        )
 
         from bots.tools.code_tools import view
+
         bot.add_tools(view)
 
         # Save and load the bot (save adds .bot extension)
@@ -54,23 +57,29 @@ class TestDillSerialization(unittest.TestCase):
         # Test that the function actually works (can be called)
         # Note: We don't test execution here, just that it's callable and has right signature
         import inspect
+
         sig = inspect.signature(func)
         self.assertIn("file_path", sig.parameters)
 
     def test_dill_fails_silently_for_dynamic_modules(self):
         """Test that dill failures for dynamic modules are silent (no warnings printed)."""
         # Create a bot with a dynamically loaded tool
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(
+            name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000
+        )
 
         # Create a dynamic module with a synthetic __module__ name
         dynamic_module = ModuleType("__runtime__.dynamic_module_test")
 
         # Define a function in the dynamic module
-        exec("""
+        exec(
+            """
 def test_dynamic_func(x: int) -> str:
     '''A test function from a dynamic module.'''
     return f"Result: {x * 2}"
-""", dynamic_module.__dict__)
+""",
+            dynamic_module.__dict__,
+        )
 
         test_func = dynamic_module.__dict__["test_dynamic_func"]
 
@@ -104,7 +113,9 @@ def test_dynamic_func(x: int) -> str:
     def test_source_code_fallback_works(self):
         """Test that source code fallback successfully recreates functions when dill fails."""
         # Create a bot with a function that has helper functions
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(
+            name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000
+        )
 
         # Create a module with a main function and helper function
         test_module = ModuleType("test_module_with_helpers")
@@ -159,7 +170,7 @@ def main_function(x: int) -> int:
 
         # Verify the helper function is also available by checking the function's globals
         # (this tests that source code execution recreated it)
-        if hasattr(func, '__module_context__'):
+        if hasattr(func, "__module_context__"):
             # If module context exists, check there
             module_context = func.__module_context__
             self.assertIn("_helper_function", module_context.namespace.__dict__)
@@ -175,7 +186,9 @@ def main_function(x: int) -> int:
         """Test that branching operations don't produce dill warnings."""
         from bots.tools.self_tools import branch_self
 
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(
+            name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000
+        )
         bot.add_tools(branch_self)
 
         # Capture stdout during bot state serialization (used in branching)
@@ -205,7 +218,9 @@ def main_function(x: int) -> int:
     def test_actual_failure_case_missing_source(self):
         """Test that actual failures (missing source AND dill failure) are still detected."""
         # Create a bot
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(
+            name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000
+        )
 
         # Create a function with no source code available
         # This simulates a truly broken case
@@ -220,15 +235,16 @@ def main_function(x: int) -> int:
         actual_path = bot.save(save_path)
 
         import json
-        with open(actual_path, 'r') as f:
+
+        with open(actual_path, "r") as f:
             state = json.load(f)
 
         # Corrupt the source code for all modules
-        if 'tool_handler' in state and 'modules' in state['tool_handler']:
-            for module_key in state['tool_handler']['modules']:
-                state['tool_handler']['modules'][module_key]['source'] = ""
+        if "tool_handler" in state and "modules" in state["tool_handler"]:
+            for module_key in state["tool_handler"]["modules"]:
+                state["tool_handler"]["modules"][module_key]["source"] = ""
 
-        with open(actual_path, 'w') as f:
+        with open(actual_path, "w") as f:
             json.dump(state, f)
 
         # Try to load - this should fail or at least show the function is broken
@@ -250,7 +266,7 @@ def main_function(x: int) -> int:
 
         self.assertTrue(
             function_missing or warning_present,
-            "Expected either missing function or warning when both dill and source fail"
+            "Expected either missing function or warning when both dill and source fail",
         )
 
 

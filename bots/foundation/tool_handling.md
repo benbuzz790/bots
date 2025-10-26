@@ -1,4 +1,4 @@
-﻿# Tool Handling System Documentation
+# Tool Handling System Documentation
 
 ## Overview
 
