@@ -36,9 +36,7 @@ class TestDillSerialization(unittest.TestCase):
     def test_dill_succeeds_for_same_runtime_functions(self):
         """Test that dill successfully serializes/deserializes same-runtime functions."""
         # Create a bot and add a tool from a real module (not dynamic)
-        bot = AnthropicBot(
-            name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000
-        )
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
 
         from bots.tools.code_tools import view
 
@@ -64,9 +62,7 @@ class TestDillSerialization(unittest.TestCase):
     def test_dill_fails_silently_for_dynamic_modules(self):
         """Test that dill failures for dynamic modules are silent (no warnings printed)."""
         # Create a bot with a dynamically loaded tool
-        bot = AnthropicBot(
-            name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000
-        )
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
 
         # Create a dynamic module with a synthetic __module__ name
         dynamic_module = ModuleType("__runtime__.dynamic_module_test")
@@ -113,9 +109,7 @@ def test_dynamic_func(x: int) -> str:
     def test_source_code_fallback_works(self):
         """Test that source code fallback successfully recreates functions when dill fails."""
         # Create a bot with a function that has helper functions
-        bot = AnthropicBot(
-            name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000
-        )
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
 
         # Create a module with a main function and helper function
         test_module = ModuleType("test_module_with_helpers")
@@ -186,9 +180,7 @@ def main_function(x: int) -> int:
         """Test that branching operations don't produce dill warnings."""
         from bots.tools.self_tools import branch_self
 
-        bot = AnthropicBot(
-            name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000
-        )
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
         bot.add_tools(branch_self)
 
         # Capture stdout during bot state serialization (used in branching)
@@ -218,9 +210,7 @@ def main_function(x: int) -> int:
     def test_actual_failure_case_missing_source(self):
         """Test that actual failures (missing source AND dill failure) are still detected."""
         # Create a bot
-        bot = AnthropicBot(
-            name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000
-        )
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
 
         # Create a function with no source code available
         # This simulates a truly broken case
