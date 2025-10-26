@@ -2054,6 +2054,8 @@ class ToolHandler(ABC):
             new_handler = ToolHandler.from_dict(saved_state)
             ```
         """
+        import traceback
+
         handler = cls()
         handler.results = data.get("results", [])
         handler.requests = data.get("requests", [])
@@ -2071,7 +2073,18 @@ class ToolHandler(ABC):
                 if "globals" in module_data:
                     cls._deserialize_globals(module.__dict__, module_data["globals"])
 
-                exec(source, module.__dict__)
+                # Add the directory containing the module to sys.path temporarily
+                # This ensures imports within the module can be resolved
+                module_dir = os.path.dirname(module_data["file_path"]) if os.path.isabs(module_data["file_path"]) else None
+                if module_dir and module_dir not in sys.path:
+                    sys.path.insert(0, module_dir)
+                    try:
+                        exec(source, module.__dict__)
+                    finally:
+                        sys.path.remove(module_dir)
+                else:
+                    exec(source, module.__dict__)
+
                 module_context = ModuleContext(
                     name=module_data["name"],
                     source=source,
@@ -2087,9 +2100,6 @@ class ToolHandler(ABC):
                             func.__module_context__ = module_context
                             handler.function_map[func_name] = func
             except Exception as e:
-                import sys
-                import traceback
-
                 print(f"Warning: Failed to load module {file_path}")
                 print(f"  Error: {type(e).__name__}: {str(e)}")
                 exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -2108,20 +2118,9 @@ class ToolHandler(ABC):
                 if tb_lines:
                     print("  Full stack trace:")
                     for i, line in enumerate(tb_lines):
-                        print(f"    Frame {i}: {line.strip()}")
-                if exc_traceback and hasattr(exc_traceback, "tb_lineno"):
-                    try:
-                        source_lines = source.split("\n")
-                        error_line = exc_traceback.tb_lineno
-                        start_line = max(0, error_line - 3)
-                        end_line = min(len(source_lines), error_line + 2)
-                        print(f"  Source context (lines {start_line + 1}-{end_line}):")
-                        for i in range(start_line, end_line):
-                            prefix = ">>> " if i + 1 == error_line else "    "
-                            print(f"  {prefix}{i + 1:3d}: {source_lines[i]}")
-                    except Exception:
-                        pass
+                        print(f"    {line.rstrip()}")
                 continue
+
         # Restore dynamic functions
         if "dynamic_functions" in data:
             for func_name, func_data in data["dynamic_functions"].items():
@@ -2753,6 +2752,137 @@ class Bot(ABC):
         """
         self.system_message = message
 
+    def _serialize(self) -> dict:
+        """Serialize the bot's state to a dictionary.
+
+        This is the core serialization logic extracted from save().
+        Converts the bot's state into a JSON-serializable dictionary.
+
+        Returns:
+            dict: Serialized bot state
+
+        Note:
+            - API keys are not serialized for security
+            - Callbacks are not serialized (environment-specific)
+            - Uses hybrid serialization for tool handlers (see tool_handling.md)
+        """
+        data = {key: value for key, value in self.__dict__.items() if not key.startswith("_")}
+        data.pop("api_key", None)
+        data.pop("mailbox", None)
+        data.pop("callbacks", None)  # Callbacks are environment-specific, not serialized
+        data["bot_class"] = self.__class__.__name__
+        data["model_engine"] = self.model_engine.value
+        data["conversation"] = self.conversation._root_dict()
+        # Preserve tracing state
+        if hasattr(self, "_tracing_enabled"):
+            data["enable_tracing"] = self._tracing_enabled
+        data["tool_handler"] = self.tool_handler.to_dict()
+
+        for key, value in data.items():
+            if not isinstance(value, (str, int, float, bool, list, dict, type(None))):
+                data[key] = str(value)
+
+        return data
+
+    @classmethod
+    def _deserialize(cls, data: dict, api_key: Optional[str] = None) -> "Bot":
+        """Deserialize a bot from a dictionary.
+
+        This is the core deserialization logic extracted from load().
+        Reconstructs a bot instance from a serialized state dictionary.
+
+        Parameters:
+            data (dict): Serialized bot state
+            api_key (Optional[str]): API key to use (overrides any saved key)
+
+        Returns:
+            Bot: Reconstructed bot instance
+
+        Note:
+            - API keys must be provided (not stored in serialized data)
+            - Callbacks must be injected after deserialization
+            - Uses hybrid deserialization for tool handlers (see tool_handling.md)
+        """
+        # Try to load the exact bot class if saved, otherwise fall back to engine-based lookup
+        if "bot_class" in data:
+            # Try to import the bot class from common locations
+            bot_class = None
+            class_name = data["bot_class"]
+
+            # Try common module paths
+            for module_path in ["bots.testing.mock_bot", "bots.foundation.openai_bots", "bots.foundation.base"]:
+                try:
+                    module = importlib.import_module(module_path)
+                    if hasattr(module, class_name):
+                        bot_class = getattr(module, class_name)
+                        break
+                except (ImportError, AttributeError):
+                    continue
+
+            # Fall back to engine-based lookup if class not found
+            if bot_class is None:
+                bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
+        else:
+            bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
+
+        init_params = inspect.signature(bot_class.__init__).parameters
+        constructor_args = {k: v for k, v in data.items() if k in init_params}
+        bot = bot_class(**constructor_args)
+        bot.api_key = api_key if api_key is not None else None
+
+        if "tool_handler" in data:
+            tool_handler_class = data["tool_handler"]["class"]
+            module_name, class_name = tool_handler_class.rsplit(".", 1)
+            module = importlib.import_module(module_name)
+            actual_class = getattr(module, class_name)
+            bot.tool_handler = actual_class().from_dict(data["tool_handler"])
+            # Restore bot reference in tool_handler so callbacks can be invoked
+            bot.tool_handler.bot = bot
+
+        # Callbacks are not deserialized - they are environment-specific and must be
+        # injected after load (e.g., by CLI or by tools like branch_self)
+
+        for key, value in data.items():
+            if key not in constructor_args and key not in ("conversation", "tool_handler", "tools", "callbacks"):
+                setattr(bot, key, value)
+
+        if "conversation" in data and data["conversation"]:
+            node_class = Engines.get_conversation_node_class(data["conversation"]["node_class"])
+            bot.conversation = node_class._from_dict(data["conversation"])
+            while bot.conversation.replies:
+                bot.conversation = bot.conversation.replies[-1]
+
+        return bot
+
+    def __getstate__(self):
+        """Support for pickle and deepcopy.
+
+        Returns the bot's state as a picklable dictionary.
+        Uses our existing _serialize() method which already handles all the
+        complex serialization (modules, functions, tool handlers, etc).
+
+        Returns:
+            dict: Serialized bot state (picklable)
+        """
+        return self._serialize()
+
+    def __setstate__(self, state):
+        """Support for pickle and deepcopy.
+
+        Reconstructs the bot from a pickled state dictionary.
+        Uses our existing _deserialize() method which already handles all the
+        complex deserialization (modules, functions, tool handlers, etc).
+
+        Parameters:
+            state (dict): Serialized bot state
+        """
+        # _deserialize is a classmethod that returns a new bot instance
+        # We need to transfer its state to self
+        temp_bot = self.__class__._deserialize(state, api_key=state.get("api_key"))
+
+        # Copy all attributes from temp_bot to self
+        self.__dict__.update(temp_bot.__dict__)
+
     @classmethod
     def load(cls, filepath: str, api_key: Optional[str] = None) -> "Bot":
         """Load a saved bot from a file.
@@ -2782,69 +2912,20 @@ class Bot(ABC):
 
         Note:
             - API keys are not saved for security
+            - Callbacks are not restored (environment-specific, must be injected after load)
             - Tool functions are fully restored with their context
             - Conversation history is preserved exactly
         """
+        # Read file
         with open(filepath, "r") as file:
             data = json.load(file)
 
-        # Try to load the exact bot class if saved, otherwise fall back to engine-based lookup
-        if "bot_class" in data:
-            # Try to import the bot class from common locations
-            bot_class = None
-            class_name = data["bot_class"]
+        # Deserialize bot
+        bot = cls._deserialize(data, api_key)
 
-            # Try common module paths
-            for module_path in ["bots.testing.mock_bot", "bots.foundation.openai_bots", "bots.foundation.base"]:
-                try:
-                    module = importlib.import_module(module_path)
-                    if hasattr(module, class_name):
-                        bot_class = getattr(module, class_name)
-                        break
-                except (ImportError, AttributeError):
-                    continue
-
-            # Fall back to engine-based lookup if class not found
-            if bot_class is None:
-                bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
-        else:
-            bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
-
-        init_params = inspect.signature(bot_class.__init__).parameters
-        constructor_args = {k: v for k, v in data.items() if k in init_params}
-        bot = bot_class(**constructor_args)
-        bot.api_key = api_key if api_key is not None else None
-        if "tool_handler" in data:
-            tool_handler_class = data["tool_handler"]["class"]
-            module_name, class_name = tool_handler_class.rsplit(".", 1)
-            module = importlib.import_module(module_name)
-            actual_class = getattr(module, class_name)
-            bot.tool_handler = actual_class().from_dict(data["tool_handler"])
-
-        # Deserialize callbacks (fix for issue #129)
-        if "callbacks" in data and data["callbacks"] is not None:
-            callback_class_path = data["callbacks"]["class"]
-            module_name, class_name = callback_class_path.rsplit(".", 1)
-            try:
-                module = importlib.import_module(module_name)
-                callback_class = getattr(module, class_name)
-                # Reconstruct callback with saved init args
-                init_args = data["callbacks"].get("init_args", {})
-                bot.callbacks = callback_class(**init_args)
-            except (ImportError, AttributeError) as e:
-                # If callback class can't be loaded, just skip it
-                print(f"Warning: Could not restore callbacks: {e}")
-                bot.callbacks = None
-
-        for key, value in data.items():
-            if key not in constructor_args and key not in ("conversation", "tool_handler", "tools", "callbacks"):
-                setattr(bot, key, value)
-        if "conversation" in data and data["conversation"]:
-            node_class = Engines.get_conversation_node_class(data["conversation"]["node_class"])
-            bot.conversation = node_class._from_dict(data["conversation"])
-            while bot.conversation.replies:
-                bot.conversation = bot.conversation.replies[-1]
+        # Set filename
         bot.filename = filepath
+
         return bot
 
     def save(self, filename: Optional[str] = None, quicksave: bool = False) -> str:
@@ -2880,9 +2961,11 @@ class Bot(ABC):
 
         Note:
             - API keys are not saved for security
+            - Callbacks are not saved (environment-specific, must be injected on load)
             - Creates directories in path if they don't exist
             - Maintains complete tool context for restoration
         """
+        # Determine filename
         if quicksave:
             filename = "quicksave.bot"
         elif filename is None:
@@ -2890,41 +2973,20 @@ class Bot(ABC):
 
         if not filename.endswith(".bot"):
             filename = filename + ".bot"
+
+        # Create directory if needed
         directory = os.path.dirname(filename)
         if directory and (not os.path.exists(directory)):
             os.makedirs(directory)
-        data = {key: value for key, value in self.__dict__.items() if not key.startswith("_")}
-        data.pop("api_key", None)
-        data.pop("mailbox", None)
-        data["bot_class"] = self.__class__.__name__
-        data["model_engine"] = self.model_engine.value
-        data["conversation"] = self.conversation._root_dict()
-        data["conversation"] = self.conversation._root_dict()
-        # Preserve tracing state
-        if hasattr(self, "_tracing_enabled"):
-            data["enable_tracing"] = self._tracing_enabled
-            data["tool_handler"] = self.tool_handler.to_dict()
 
-        # Serialize callbacks (fix for issue #129)
-        if hasattr(self, "callbacks") and self.callbacks is not None:
-            callback_class = self.callbacks.__class__
-            callback_data = {"class": f"{callback_class.__module__}.{callback_class.__name__}", "init_args": {}}
-            # Serialize callback instance attributes for reconstruction
-            for attr_name in dir(self.callbacks):
-                if not attr_name.startswith("_") and not callable(getattr(self.callbacks, attr_name)):
-                    attr_value = getattr(self.callbacks, attr_name)
-                    # Only serialize simple types
-                    if isinstance(attr_value, (str, int, float, bool, type(None))):
-                        callback_data["init_args"][attr_name] = attr_value
-            data["callbacks"] = callback_data
+        # Serialize bot state
+        data = self._serialize()
 
-        for key, value in data.items():
-            if not isinstance(value, (str, int, float, bool, list, dict, type(None))):
-                data[key] = str(value)
+        # Write to file
         with open(filename, "w") as file:
             json.dump(data, file, indent=1)
 
-        # Only update tracked filename for non-quicksave saves
+        # Update tracked filename (except for quicksaves)
         if not quicksave:
             self.filename = filename
 
@@ -2999,10 +3061,28 @@ class Bot(ABC):
         Note:
             - Each copy is completely independent
             - Copies include all configuration and tools
+            - Callbacks are preserved and shared across copies
         """
         if isinstance(other, int):
-            return [copy.deepcopy(self) for _ in range(other)]
-        raise NotImplementedError("Bot multiplcation not defined for non-integer values")
+            # Store callbacks and api_key before deepcopy (they may not be deepcopy-able)
+            original_callbacks = self.callbacks
+            original_api_key = self.api_key
+
+            # Temporarily remove callbacks for deepcopy
+            self.callbacks = None
+
+            # Create copies
+            copies = [copy.deepcopy(self) for _ in range(other)]
+
+            # Restore callbacks and api_key to original and all copies
+            self.callbacks = original_callbacks
+            self.api_key = original_api_key
+            for bot_copy in copies:
+                bot_copy.callbacks = original_callbacks
+                bot_copy.api_key = original_api_key
+
+            return copies
+        raise NotImplementedError("Bot multiplication not defined for non-integer values")
 
     def __str__(self) -> str:
         """Create a human-readable string representation of the bot.

@@ -39,11 +39,14 @@ Example:
     ... ])
 """
 
+import logging
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 from bots.foundation.base import Bot, ConversationNode
+
+logger = logging.getLogger(__name__)
 
 # Type Aliases
 Prompt = str  # A string containing a prompt to be sent to the bot
@@ -51,7 +54,8 @@ Response = str  # A string containing a bot's response
 PromptNode = ConversationNode  # A conversation node containing a prompt
 ResponseNode = ConversationNode  # A conversation node containing a response
 Condition = Callable[[Bot], bool]  # Function that evaluates bot state
-DynamicPrompt = Callable[[Any], Prompt]  # Function that generates prompts
+DynamicPrompt = Callable[[Bot, int], Prompt]  # Function that generates prompts from bot state and iteration
+ItemPrompt = Callable[[Any], Prompt]  # Function that generates prompts from an item
 
 RecombinatorFunction = Callable[
     [List[Response], List[ResponseNode]], Tuple[Response, ResponseNode]
@@ -210,6 +214,83 @@ class conditions:
             bool: True if the response contains 'DONE', False otherwise
         """
         return "DONE" in bot.conversation.content
+
+
+class dynamic_prompts:
+    """Factory functions for creating dynamic prompts based on bot state.
+
+    This class provides methods for creating dynamic prompt functions that
+    can adapt based on the bot's state and iteration count.
+    """
+
+    @staticmethod
+    def static(prompt: str) -> DynamicPrompt:
+        """Create a dynamic prompt that always returns the same string.
+
+        Use this to wrap static strings so they can be used uniformly with
+        dynamic prompts.
+
+        Args:
+            prompt: The static prompt string to return
+
+        Returns:
+            DynamicPrompt: A function that takes (bot, iteration) and returns the prompt string
+
+        Example:
+            >>> continue_prompt = dynamic_prompts.static("ok")
+            >>> prompt_while(bot, "Start task", continue_prompt=continue_prompt)
+        """
+
+        def static_prompt_func(bot: Bot, iteration: int) -> str:
+            return prompt
+
+        return static_prompt_func
+
+    @staticmethod
+    def policy(rules: List[Tuple[Callable[[Bot, int], bool], str]], default: str = "ok") -> DynamicPrompt:
+        """Create a dynamic prompt that selects prompts based on rules.
+
+        Evaluates rules in order and returns the prompt associated with the first
+        rule whose condition evaluates to True. If no rules match, returns the default.
+
+        Args:
+            rules: List of (condition, prompt) tuples where:
+                - condition: Callable[[Bot, int], bool] that takes bot and iteration
+                - prompt: str to return if condition is True
+            default: str to return if no rules match (default: "ok")
+
+        Returns:
+            DynamicPrompt: A function that takes (bot, iteration) and returns a prompt string
+
+        Example:
+            >>> continue_prompt = dynamic_prompts.policy(
+            ...     rules=[
+            ...         (lambda b, i: i > 5, "You've done 5 iterations, wrap up."),
+            ...         (lambda b, i: len(b.conversation.content) > 1000, "Please be more concise."),
+            ...     ],
+            ...     default="ok"
+            ... )
+            >>> prompt_while(bot, "Start task", continue_prompt=continue_prompt)
+        """
+
+        def dynamic_prompt_func(bot: Bot, iteration: int) -> str:
+            for condition, prompt in rules:
+                try:
+                    if condition(bot, iteration):
+                        return prompt
+                except Exception as e:
+                    # If condition evaluation fails, skip this rule
+                    logger.warning(
+                        "Error evaluating policy rule %d for bot=%s iteration=%d: %s",
+                        rules.index((condition, prompt)),
+                        getattr(bot, "id", "<no-id>"),
+                        iteration,
+                        str(e),
+                        exc_info=True,
+                    )
+            return default
+
+        return dynamic_prompt_func
 
 
 def single_prompt(
@@ -691,13 +772,20 @@ def prompt_while(
         - Supports progressive refinement
         - Enables self-guided completion
     """
+    # Wrap static string prompts as DynamicPrompts
+    if not callable(continue_prompt):
+        continue_prompt = dynamic_prompts.static(continue_prompt)
+
     responses = []
     nodes = []
     response = bot.respond(first_prompt)
     responses.append(response)
     nodes.append(bot.conversation)
+    iteration = 0
     while not stop_condition(bot):
-        response = bot.respond(continue_prompt)
+        iteration += 1
+        prompt_text = continue_prompt(bot, iteration)
+        response = bot.respond(prompt_text)
         responses.append(response)
         nodes.append(bot.conversation)
         if callback:
@@ -711,7 +799,7 @@ def prompt_while(
 def prompt_for(
     bot: Bot,
     items: List[Any],
-    dynamic_prompt: DynamicPrompt,
+    dynamic_prompt: ItemPrompt,
     should_branch: bool = False,
     callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None,
 ) -> Tuple[List[Response], List[ResponseNode]]:

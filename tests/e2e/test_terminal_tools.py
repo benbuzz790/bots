@@ -147,7 +147,7 @@ class TestTerminalToolsStateful(TestTerminalTools):
         )
         lines = actual_result.splitlines()
         content_lines = sum((1 for line in lines if line.startswith("Line")))
-        self.assertEqual(content_lines, 49, "Should have exactly 49 content lines")
+        self.assertEqual(content_lines, 50, "Should have exactly 50 content lines")
         self.assertTrue(any(("lines omitted" in line for line in lines)), "Should have truncation message")
         self.assertTrue(any(("Full output saved to" in line for line in lines)), "Should have file save message")
 

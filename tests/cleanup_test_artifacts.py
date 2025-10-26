@@ -40,6 +40,8 @@ def cleanup_test_artifacts():
         "index.html",  # Root level only
         "hello_world.py",
         "my_module.py",
+        # Additional test artifacts from issue #159
+        "string_utils.py",  # Created by E2E tests
     ]
     cleanup_dirs = [
         "test_patch_file.txt_dir",

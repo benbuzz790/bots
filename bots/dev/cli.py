@@ -1,3 +1,13 @@
+"""
+CLI for bot interactions with improved architecture and dynamic parameter collection.
+Architecture:
+- Handler classes for logical command grouping
+- Command registry for easy extensibility
+- Dynamic parameter collection for functional prompts
+- Robust error handling with conversation backup
+- Configuration support for CLI settings
+"""
+
 import argparse
 import inspect
 import json
@@ -6,6 +16,7 @@ import platform
 import re
 import sys
 import textwrap
+import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -38,6 +49,93 @@ except Exception:
     pass  # If this fails, traces will still show but it's not critical
 
 
+class EscapeException(Exception):
+    """Exception raised when user presses ESC to cancel input."""
+
+    pass
+
+
+def input_with_esc(prompt: str = "") -> str:
+    """
+    Get user input with ESC key support to cancel/interrupt.
+
+    Args:
+        prompt: The prompt string to display
+
+    Returns:
+        The user's input string
+
+    Raises:
+        EscapeException: If user presses ESC key
+    """
+    if platform.system() == "Windows":
+        # Windows implementation
+        import msvcrt
+
+        print(prompt, end="", flush=True)
+        chars = []
+        while True:
+            if msvcrt.kbhit():
+                char = msvcrt.getch()
+                if char == b"\x1b":  # ESC key
+                    print()  # New line
+                    raise EscapeException("Input cancelled by ESC key")
+                elif char == b"\r":  # Enter key
+                    print()  # New line
+                    return "".join(chars)
+                elif char == b"\x08":  # Backspace
+                    if chars:
+                        chars.pop()
+                        # Erase character on screen
+                        print("\b \b", end="", flush=True)
+                elif char == b"\x03":  # Ctrl+C
+                    print()
+                    raise KeyboardInterrupt()
+                else:
+                    try:
+                        decoded = char.decode("utf-8")
+                        chars.append(decoded)
+                        print(decoded, end="", flush=True)
+                    except UnicodeDecodeError:
+                        pass
+    else:
+        # Unix/Linux/Mac implementation
+        import select
+        import sys
+        import termios
+        import tty
+
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            print(prompt, end="", flush=True)
+            chars = []
+
+            while True:
+                if select.select([sys.stdin], [], [], 0.1)[0]:
+                    char = sys.stdin.read(1)
+
+                    if char == "\x1b":  # ESC key
+                        print("\r\n", end="", flush=True)
+                        raise EscapeException("Input cancelled by ESC key")
+                    elif char == "\r" or char == "\n":  # Enter key
+                        print("\r\n", end="", flush=True)
+                        return "".join(chars)
+                    elif char == "\x7f":  # Backspace/Delete
+                        if chars:
+                            chars.pop()
+                            print("\b \b", end="", flush=True)
+                    elif char == "\x03":  # Ctrl+C
+                        print("\r\n", end="", flush=True)
+                        raise KeyboardInterrupt()
+                    elif ord(char) >= 32:  # Printable characters
+                        chars.append(char)
+                        print(char, end="", flush=True)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+
 def _find_leaves_util(node: ConversationNode) -> List[ConversationNode]:
     """Utility function to recursively find all leaf nodes from a given node.
 
@@ -62,15 +160,6 @@ def _find_leaves_util(node: ConversationNode) -> List[ConversationNode]:
     return leaves
 
 
-"""
-CLI for bot interactions with improved architecture and dynamic parameter collection.
-Architecture:
-- Handler classes for logical command grouping
-- Command registry for easy extensibility
-- Dynamic parameter collection for functional prompts
-- Robust error handling with conversation backup
-- Configuration support for CLI settings
-"""
 if platform.system() == "Windows":
     import msvcrt
 else:
@@ -239,9 +328,13 @@ class DynamicParameterCollector:
     def _collect_prompts(self, param_name: str, default: Any) -> Optional[List[str]]:
         """Collect a list of prompts from user."""
         prompts = []
-        print(f"\nEnter {param_name} (empty line to finish):")
+        print(f"\nEnter {param_name} (empty line to finish, ESC to cancel):")
         while True:
-            prompt = input(f"Prompt {len(prompts) + 1}: ").strip()
+            try:
+                prompt = input_with_esc(f"Prompt {len(prompts) + 1}: ").strip()
+            except EscapeException:
+                print("Cancelled")
+                return None
             if not prompt:
                 break
             prompts.append(prompt)
@@ -252,7 +345,11 @@ class DynamicParameterCollector:
 
     def _collect_single_prompt(self, param_name: str, default: Any) -> Optional[str]:
         """Collect a single prompt from user."""
-        prompt = input(f"Enter {param_name}: ").strip()
+        try:
+            prompt = input_with_esc(f"Enter {param_name}: ").strip()
+        except EscapeException:
+            print("Cancelled")
+            return None
         return prompt if prompt else None
 
     def _collect_condition(self, param_name: str, default: Any) -> Optional[Callable]:
@@ -261,7 +358,11 @@ class DynamicParameterCollector:
         for key, (name, _) in self.conditions.items():
             print(f"  {key}. {name}")
         default_display = self._format_default_value(default)
-        choice = input(f"Select condition (default: {default_display}): ").strip()
+        try:
+            choice = input_with_esc(f"Select condition (default: {default_display}): ").strip()
+        except EscapeException:
+            print("Cancelled")
+            return None
         if not choice and default != inspect.Parameter.empty:
             return default
         elif choice in self.conditions:
@@ -273,17 +374,25 @@ class DynamicParameterCollector:
     def _collect_continue_prompt(self, param_name: str, default: Any) -> Optional[str]:
         """Collect continue prompt with default handling."""
         default_display = self._format_default_value(default)
-        if default != inspect.Parameter.empty:
-            prompt = input(f"Enter {param_name} (default: {default_display}): ").strip()
-            return prompt if prompt else default
-        else:
-            prompt = input(f"Enter {param_name}: ").strip()
-            return prompt if prompt else None
+        try:
+            if default != inspect.Parameter.empty:
+                prompt = input_with_esc(f"Enter {param_name} (default: {default_display}): ").strip()
+                return prompt if prompt else default
+            else:
+                prompt = input_with_esc(f"Enter {param_name}: ").strip()
+                return prompt if prompt else None
+        except EscapeException:
+            print("Cancelled")
+            return None
 
     def _collect_boolean(self, param_name: str, default: Any) -> Optional[bool]:
         """Collect boolean parameter."""
         default_display = self._format_default_value(default)
-        choice = input(f"Enter {param_name} (y/n, default: {default_display}): ").strip().lower()
+        try:
+            choice = input_with_esc(f"Enter {param_name} (y/n, default: {default_display}): ").strip().lower()
+        except EscapeException:
+            print("Cancelled")
+            return None
         if not choice and default != inspect.Parameter.empty:
             return default
         elif choice in ["y", "yes", "true", "1"]:
@@ -295,7 +404,11 @@ class DynamicParameterCollector:
 
     def _collect_skip_labels(self, param_name: str, default: Any) -> List[str]:
         """Collect skip labels for broadcast functions."""
-        skip_input = input(f"Enter {param_name} (comma-separated, or empty for none): ").strip()
+        try:
+            skip_input = input_with_esc(f"Enter {param_name} (comma-separated, or empty for none): ").strip()
+        except EscapeException:
+            print("Cancelled")
+            return []
         if skip_input:
             return [label.strip() for label in skip_input.split(",")]
         else:
@@ -313,7 +426,11 @@ class DynamicParameterCollector:
         for key, (name, _) in recombinator_options.items():
             print(f"  {key}. {name}")
         default_display = self._format_default_value(default)
-        choice = input(f"Select recombinator (default: {default_display}): ").strip()
+        try:
+            choice = input_with_esc(f"Select recombinator (default: {default_display}): ").strip()
+        except EscapeException:
+            print("Cancelled")
+            return None
         if not choice and default != inspect.Parameter.empty:
             return default
         elif choice in recombinator_options:
@@ -348,7 +465,11 @@ class DynamicParameterCollector:
         }
         for key, (name, _) in fp_options.items():
             print(f"  {key}. {name}")
-        choice = input("Select functional prompt: ").strip()
+        try:
+            choice = input_with_esc("Select functional prompt: ").strip()
+        except EscapeException:
+            print("Cancelled")
+            return None
         if choice in fp_options:
             return fp_options[choice][1]
         else:
@@ -358,12 +479,16 @@ class DynamicParameterCollector:
     def _collect_generic_parameter(self, param_name: str, default: Any) -> Optional[Any]:
         """Generic parameter collection for unknown parameter types."""
         default_display = self._format_default_value(default)
-        if default != inspect.Parameter.empty:
-            value = input(f"Enter {param_name} (default: {default_display}): ").strip()
-            return value if value else default
-        else:
-            value = input(f"Enter {param_name}: ").strip()
-            return value if value else None
+        try:
+            if default != inspect.Parameter.empty:
+                value = input_with_esc(f"Enter {param_name} (default: {default_display}): ").strip()
+                return value if value else default
+            else:
+                value = input_with_esc(f"Enter {param_name}: ").strip()
+                return value if value else None
+        except EscapeException:
+            print("Cancelled")
+            return None
 
 
 class CLIConfig:
@@ -375,6 +500,10 @@ class CLIConfig:
         self.indent = 4
         self.auto_stash = False
         self.remove_context_threshold = 40000
+        self.auto_mode_neutral_prompt = "ok"
+        self.auto_mode_reduce_context_prompt = "trim useless context"
+        self.max_tokens = 4096
+        self.temperature = 1.0
         self.config_file = "cli_config.json"
         self.load_config()
 
@@ -389,6 +518,12 @@ class CLIConfig:
                     self.indent = config_data.get("indent", 4)
                     self.auto_stash = config_data.get("auto_stash", False)
                     self.remove_context_threshold = config_data.get("remove_context_threshold", 40000)
+                    self.auto_mode_neutral_prompt = config_data.get("auto_mode_neutral_prompt", "ok")
+                    self.auto_mode_reduce_context_prompt = config_data.get(
+                        "auto_mode_reduce_context_prompt", "trim useless context"
+                    )
+                    self.max_tokens = config_data.get("max_tokens", 4096)
+                    self.temperature = config_data.get("temperature", 1.0)
         except Exception:
             pass  # Use defaults if config loading fails
 
@@ -401,6 +536,10 @@ class CLIConfig:
                 "indent": self.indent,
                 "auto_stash": self.auto_stash,
                 "remove_context_threshold": self.remove_context_threshold,
+                "auto_mode_neutral_prompt": self.auto_mode_neutral_prompt,
+                "auto_mode_reduce_context_prompt": self.auto_mode_reduce_context_prompt,
+                "max_tokens": self.max_tokens,
+                "temperature": self.temperature,
             }
             with open(self.config_file, "w") as f:
                 json.dump(config_data, f, indent=2)
@@ -418,12 +557,14 @@ class RealTimeDisplayCallbacks(BotCallbacks):
         """Display bot response immediately after API call completes, before tools execute."""
         if metadata and "bot_response" in metadata:
             bot_response = metadata["bot_response"]
+            bot_name = self.context.bot_instance.name if self.context.bot_instance else "Bot"
             pretty(
                 bot_response,
-                "Bot",
+                bot_name,
                 self.context.config.width,
                 self.context.config.indent,
                 COLOR_BOT,
+                newline_after_name=False,
             )
 
     def on_tool_start(self, tool_name: str, metadata=None):
@@ -487,12 +628,14 @@ class CLICallbacks:
 
         def message_only_callback(responses, nodes):
             if responses and responses[-1]:
+                bot_name = self.context.bot_instance.name if self.context.bot_instance else "Bot"
                 pretty(
                     responses[-1],
-                    "Bot",
+                    bot_name,
                     self.context.config.width,
                     self.context.config.indent,
                     COLOR_BOT,
+                    newline_after_name=False,
                 )
 
         return message_only_callback
@@ -542,8 +685,6 @@ class CLIContext:
         self.cached_leaves: List[ConversationNode] = []
         self.callbacks = CLICallbacks(self)
         # Track session start time for cumulative metrics
-        import time
-
         self.session_start_time = time.time()
         # Track context reduction cooldown (counts down from 3 after each trigger)
         # Starts at 0 so first time tokens exceed threshold, it triggers immediately
@@ -618,8 +759,6 @@ Respond with just the name, no explanation."""
 
         except Exception:
             # Fallback to timestamp-based name
-            import time
-
             return f"prompt_{int(time.time())}"
 
     def search_prompts(self, query: str) -> List[tuple]:
@@ -672,6 +811,29 @@ Respond with just the name, no explanation."""
         """Get all prompt names."""
         return list(self.prompts_data["prompts"].keys())
 
+    def delete_prompt(self, name: str) -> bool:
+        """Delete a prompt by name. Returns True if deleted, False if not found."""
+        if name not in self.prompts_data["prompts"]:
+            return False
+
+        # Remove from prompts
+        del self.prompts_data["prompts"][name]
+
+        # Remove from recents if present
+        if name in self.prompts_data["recents"]:
+            self.prompts_data["recents"].remove(name)
+
+        self._save_prompts()
+        return True
+
+    def get_recents(self) -> List[tuple]:
+        """Get recent prompts as list of (name, content) tuples."""
+        results = []
+        for name in self.prompts_data["recents"]:
+            if name in self.prompts_data["prompts"]:
+                results.append((name, self.prompts_data["prompts"][name]))
+        return results
+
 
 class ConversationHandler:
     """Handler for conversation navigation commands."""
@@ -694,7 +856,10 @@ class ConversationHandler:
             idx = 0
             if max_index > 0:
                 try:
-                    idx = int(input(f"Reply index (max {max_index}): "))
+                    try:
+                        idx = int(input_with_esc(f"Reply index (max {max_index}): "))
+                    except EscapeException:
+                        return "Selection cancelled"
                     if idx < 0 or idx > max_index:
                         return f"Invalid index. Must be between 0 and {max_index}"
                 except ValueError:
@@ -767,7 +932,10 @@ class ConversationHandler:
             print()
 
         # Get label input from user
-        label = input("Enter label name (new to create, existing to jump): ").strip()
+        try:
+            label = input_with_esc("Enter label name (new to create, existing to jump): ").strip()
+        except EscapeException:
+            return "Label operation cancelled"
         if not label:
             return "No label entered"
 
@@ -876,7 +1044,14 @@ class ConversationHandler:
             context.conversation_backup = bot.conversation
             print(f"Combining {len(leaves)} leaves using {recombinator_name}...")
             final_response, final_node = fp.recombine(bot, responses, leaves, recombinator_func)
-            pretty(final_response, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
+            pretty(
+                final_response,
+                bot.name,
+                context.config.width,
+                context.config.indent,
+                COLOR_ASSISTANT,
+                newline_after_name=False,
+            )
             return f"Successfully combined {len(leaves)} leaves using {recombinator_name}"
         except Exception as e:
             return f"Error combining leaves: {str(e)}"
@@ -914,7 +1089,14 @@ class ConversationHandler:
     def _display_conversation_context(self, bot: Bot, context: CLIContext):
         """Display current conversation context."""
         if bot.conversation.content:
-            pretty(bot.conversation.content, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
+            pretty(
+                bot.conversation.content,
+                bot.name,
+                context.config.width,
+                context.config.indent,
+                COLOR_ASSISTANT,
+                newline_after_name=False,
+            )
 
 
 class StateHandler:
@@ -923,7 +1105,10 @@ class StateHandler:
     def save(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Save bot state."""
         try:
-            filename = input("Save filename (without extension): ").strip()
+            try:
+                filename = input_with_esc("Save filename (without extension): ").strip()
+            except EscapeException:
+                return "Save cancelled"
             if not filename:
                 return "Save cancelled - no filename provided"
             if not filename.endswith(".bot"):
@@ -949,7 +1134,10 @@ class StateHandler:
             else:
                 print("\nNo .bot files found in current directory.")
 
-            filename = input("Load filename (or number from list): ").strip()
+            try:
+                filename = input_with_esc("Load filename (or number from list): ").strip()
+            except EscapeException:
+                return "Load cancelled"
             if not filename:
                 return "Load cancelled - no filename provided"
 
@@ -980,6 +1168,10 @@ class StateHandler:
             new_bot = Bot.load(filename)
             while new_bot.conversation.replies:
                 new_bot.conversation = new_bot.conversation.replies[-1]
+
+            # Attach CLI callbacks for proper display
+            new_bot.callbacks = RealTimeDisplayCallbacks(context)
+
             context.bot_instance = new_bot
             context.labeled_nodes = {}
             self._rebuild_labels(new_bot.conversation, context)
@@ -1027,6 +1219,9 @@ class SystemHandler:
             "/broadcast_fp: Execute functional prompts on all leaf nodes",
             "/p [search]: Load a saved prompt (searches by name and content, pre-fills input)",
             "/s [text]: Save a prompt - saves provided text or last user message if no text given",
+            "/r: Show recent prompts and select one to load",
+            "/d [search]: Delete a saved prompt",
+            "/add_tool [tool_name]: Add a tool to the bot (shows list if no name provided)",
             "/config: Show or modify CLI configuration",
             "/auto_stash: Toggle auto git stash before user messages",
             "/load_stash <name_or_index>: Load a git stash by name or index",
@@ -1078,12 +1273,16 @@ class SystemHandler:
                 f"    indent: {context.config.indent}",
                 f"    auto_stash: {context.config.auto_stash}",
                 f"    remove_context_threshold: {context.config.remove_context_threshold}",
+                f"    auto_mode_neutral_prompt: {context.config.auto_mode_neutral_prompt}",
+                f"    auto_mode_reduce_context_prompt: {context.config.auto_mode_reduce_context_prompt}",
+                f"    max_tokens: {context.config.max_tokens}",
+                f"    temperature: {context.config.temperature}",
                 "Use '/config set <setting> <value>' to modify settings.",
             ]
             return "\n".join(config_lines)
         if len(args) >= 3 and args[0] == "set":
             setting = args[1]
-            value = args[2]
+            value = " ".join(args[2:])  # Allow spaces in prompt values
             try:
                 if setting == "verbose":
                     new_verbose = value.lower() in ("true", "1", "yes", "on")
@@ -1103,6 +1302,14 @@ class SystemHandler:
                     context.config.auto_stash = value.lower() in ("true", "1", "yes", "on")
                 elif setting == "remove_context_threshold":
                     context.config.remove_context_threshold = int(value)
+                elif setting == "auto_mode_neutral_prompt":
+                    context.config.auto_mode_neutral_prompt = value
+                elif setting == "auto_mode_reduce_context_prompt":
+                    context.config.auto_mode_reduce_context_prompt = value
+                elif setting == "max_tokens":
+                    context.config.max_tokens = int(value)
+                elif setting == "temperature":
+                    context.config.temperature = float(value)
                 else:
                     return f"Unknown setting: {setting}"
                 context.config.save_config()
@@ -1120,52 +1327,44 @@ class SystemHandler:
             old_settings = setup_raw_mode()
             context.old_terminal_settings = old_settings
 
-            while True:
-                # Check for interrupt first
-                if check_for_interrupt():
-                    restore_terminal(old_settings)
-                    return "Autonomous execution interrupted by user"
+            # Check for interrupt before starting
+            if check_for_interrupt():
+                restore_terminal(old_settings)
+                return "Autonomous execution interrupted by user"
 
-                # Check if the last response used tools
-                # If not, stop without sending "ok"
-                if not bot.tool_handler.requests:
-                    restore_terminal(old_settings)
-                    return "Bot finished autonomous execution"
+            # Create dynamic continue prompt using policy with configurable prompts
+            continue_prompt = fp.dynamic_prompts.policy(
+                rules=[
+                    # High token count with cooldown expired -> request context reduction
+                    (
+                        lambda b, i: (
+                            context.last_message_metrics
+                            and context.last_message_metrics.get("input_tokens", 0) > context.config.remove_context_threshold
+                            and context.context_reduction_cooldown <= 0
+                        ),
+                        context.config.auto_mode_reduce_context_prompt,
+                    ),
+                ],
+                default=context.config.auto_mode_neutral_prompt,
+            )
 
-                # Check last message input tokens (not total)
-                # Send context reduction message with cooldown (every 3 messages after trigger)
-                # Use cached metrics from previous iteration if available
-                try:
-                    last_input_tokens = 0
-                    if context.last_message_metrics:
-                        last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
+            # Use prompt_while with the dynamic continue prompt
+            def stop_on_no_tools(bot: Bot) -> bool:
+                return not bot.tool_handler.requests
 
-                    # Trigger on high last message tokens AND cooldown expired (at 0)
+            # Track iteration count to know when we're past the first prompt
+            iteration_count = [0]
+
+            def auto_callback(responses, nodes):
+                # Update cooldown after each iteration
+                if context.last_message_metrics:
+                    last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
                     if last_input_tokens > context.config.remove_context_threshold and context.context_reduction_cooldown <= 0:
-                        prompt = (
-                            "please selectively trim your context a bit using "
-                            "list_context and remove_context, it's getting quite long."
-                        )
-                        context.context_reduction_cooldown = 3  # Set cooldown for next 3 messages
-                    else:
-                        prompt = "ok"
-                        # Count down cooldown if active
-                        if context.context_reduction_cooldown > 0:
-                            context.context_reduction_cooldown -= 1
-                except Exception:
-                    # If metrics check fails, just use "ok"
-                    prompt = "ok"
-                    # Count down cooldown if active
-                    if context.context_reduction_cooldown > 0:
+                        context.context_reduction_cooldown = 3
+                    elif context.context_reduction_cooldown > 0:
                         context.context_reduction_cooldown -= 1
 
-                # Display the automatic prompt message
-                pretty(prompt, "You", context.config.width, context.config.indent, COLOR_USER)
-
-                callback = context.callbacks.get_standard_callback()
-                response, node = fp.single_prompt(bot, prompt, callback=callback)
-
-                # Capture metrics after the response (matching chat mode timing)
+                # Capture metrics after each response
                 try:
                     from bots.observability import metrics
 
@@ -1173,14 +1372,71 @@ class SystemHandler:
                 except Exception:
                     pass
 
-                # After sending prompt, check again if tools were used
-                if not bot.tool_handler.requests:
-                    restore_terminal(old_settings)
-                    return "Bot finished autonomous execution"
+                # Check for interrupt
+                if check_for_interrupt():
+                    raise KeyboardInterrupt()
+
+                # After each iteration, if we're continuing, display metrics and next user prompt
+                iteration_count[0] += 1
+                if not stop_on_no_tools(bot):
+                    # Display metrics before the next user message
+                    display_metrics(context, bot)
+
+                    # Get the next prompt text
+                    next_prompt = continue_prompt(bot, iteration_count[0]) if callable(continue_prompt) else continue_prompt
+
+                    # Display the user prompt
+                    pretty(
+                        next_prompt,
+                        "You",
+                        context.config.width,
+                        context.config.indent,
+                        COLOR_USER,
+                        newline_after_name=False,
+                    )
+
+            # Get the standard callback for display
+            display_callback = context.callbacks.get_standard_callback()
+
+            # Combine callbacks
+            def combined_callback(responses, nodes):
+                # First run auto callback for logic
+                auto_callback(responses, nodes)
+                # Then run display callback if it exists
+                if display_callback:
+                    display_callback(responses, nodes)
+
+            # Display the first user prompt
+            pretty(
+                "ok",
+                "You",
+                context.config.width,
+                context.config.indent,
+                COLOR_USER,
+                newline_after_name=False,
+            )
+
+            # Run the autonomous loop
+            fp.prompt_while(
+                bot,
+                "ok",
+                continue_prompt=continue_prompt,
+                stop_condition=stop_on_no_tools,
+                callback=combined_callback,
+            )
+
+            restore_terminal(old_settings)
+            display_metrics(context, bot)
+            return ""
+
+        except KeyboardInterrupt:
+            if context.old_terminal_settings:
+                restore_terminal(context.old_terminal_settings)
+            return "\nAutonomous execution interrupted by user"
         except Exception as e:
             if context.old_terminal_settings:
                 restore_terminal(context.old_terminal_settings)
-            return f"Error during autonomous execution: {str(e)}"
+            return f"Error in autonomous mode: {str(e)}"
 
     def auto_stash(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Toggle auto git stash functionality."""
@@ -1235,6 +1491,79 @@ class SystemHandler:
             return f"Git error: {e.stderr.decode() if e.stderr else str(e)}"
         except Exception as e:
             return f"Error loading stash: {str(e)}"
+
+    def add_tool(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Add a tool to the bot from available tool modules."""
+        # Import all available tools
+        from bots.tools.code_tools import view, view_dir
+        from bots.tools.python_edit import python_edit, python_view
+        from bots.tools.python_execution_tool import execute_python
+        from bots.tools.self_tools import branch_self, list_context, remove_context
+        from bots.tools.terminal_tools import execute_powershell
+        from bots.tools.web_tool import web_search
+
+        # Map of available tools
+        available_tools = {
+            "view": view,
+            "view_dir": view_dir,
+            "python_view": python_view,
+            "python_edit": python_edit,
+            "execute_python": execute_python,
+            "execute_powershell": execute_powershell,
+            "branch_self": branch_self,
+            "list_context": list_context,
+            "remove_context": remove_context,
+            "web_search": web_search,
+        }
+
+        # If no args, show view_dir of python files and allow choice
+        if not args:
+            try:
+                # Show available tools
+                tools_list = "\n".join([f"  {i+1}. {name}" for i, name in enumerate(sorted(available_tools.keys()))])
+                pretty(
+                    f"Available tools:\n{tools_list}\n\nEnter tool name or number to add:",
+                    "System",
+                    context.config.width,
+                    context.config.indent,
+                    COLOR_SYSTEM,
+                )
+
+                # Get user input
+                choice = input(f"{COLOR_USER}> {COLOR_RESET}").strip()
+
+                # Handle numeric choice
+                try:
+                    choice_num = int(choice)
+                    tool_names = sorted(available_tools.keys())
+                    if 1 <= choice_num <= len(tool_names):
+                        choice = tool_names[choice_num - 1]
+                except ValueError:
+                    pass  # Not a number, treat as tool name
+
+                args = [choice]
+            except Exception as e:
+                return f"Error: {str(e)}"
+
+        # Add the specified tool(s)
+        added = []
+        not_found = []
+
+        for tool_name in args:
+            tool_name = tool_name.strip()
+            if tool_name in available_tools:
+                bot.add_tools(available_tools[tool_name])
+                added.append(tool_name)
+            else:
+                not_found.append(tool_name)
+
+        result = []
+        if added:
+            result.append(f"Added tools: {', '.join(added)}")
+        if not_found:
+            result.append(f"Tools not found: {', '.join(not_found)}")
+
+        return "\n".join(result) if result else "No tools added"
 
 
 class DynamicFunctionalPromptHandler:
@@ -1339,11 +1668,19 @@ class DynamicFunctionalPromptHandler:
                                 context.config.width,
                                 context.config.indent,
                                 COLOR_ASSISTANT,
+                                newline_after_name=False,
                             )
                     return f"Functional prompt '{fp_name}' completed with {len(responses)} responses"
                 else:
                     if responses:
-                        pretty(responses, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
+                        pretty(
+                            responses,
+                            bot.name,
+                            context.config.width,
+                            context.config.indent,
+                            COLOR_ASSISTANT,
+                            newline_after_name=False,
+                        )
                     return f"Functional prompt '{fp_name}' completed"
             else:
                 return f"Functional prompt '{fp_name}' completed with result: {result}"
@@ -1420,7 +1757,14 @@ class DynamicFunctionalPromptHandler:
             for i, response in enumerate(responses, 1):
                 if response:
                     print(f"\nResponse {i}:")
-                    pretty(response, bot.name, context.config.width, context.config.indent, COLOR_ASSISTANT)
+                    pretty(
+                        response,
+                        bot.name,
+                        context.config.width,
+                        context.config.indent,
+                        COLOR_ASSISTANT,
+                        newline_after_name=False,
+                    )
             return f"Broadcast complete with {len(responses)} responses"
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
@@ -1451,8 +1795,10 @@ def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> s
     # Multiple inputs - show key: value pairs
     lines = []
     for key, value in data.items():
+        # Strip underscores from parameter names for cleaner display
+        display_key = key.replace("_", " ")
         # Bold the key name with color, keep colon and value colored too
-        bold_key = f"{color}{COLOR_BOLD}{key}{COLOR_RESET}{color}:"
+        bold_key = f"{color}{COLOR_BOLD}{display_key}{COLOR_RESET}{color}:"
 
         if isinstance(value, dict):
             # Nested dict - format recursively with extra indent
@@ -1475,9 +1821,6 @@ def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> s
         else:
             # Other types (int, bool, None, etc.)
             lines.append(f"{bold_key} {value}")
-
-    # Add newline at the beginning so first key is on its own line
-    return "\n" + "\n".join(lines)
 
 
 def check_for_interrupt() -> bool:
@@ -1555,38 +1898,44 @@ def display_metrics(context: CLIContext, bot: Bot):
         if last_metrics["input_tokens"] == 0 and last_metrics["output_tokens"] == 0:
             return
 
-        # Format the metrics nicely - terminal-native, no emojis
-        metrics_str = f"\nTokens: {last_metrics['input_tokens']:,} in, {last_metrics['output_tokens']:,} out"
+        # Calculate total tokens for this call
+        total_tokens = last_metrics["input_tokens"] + last_metrics["output_tokens"]
 
-        if last_metrics["cached_tokens"] > 0:
-            metrics_str += f", {last_metrics['cached_tokens']:,} cached"
-        metrics_str += f"\nCost: ${last_metrics['cost']:.4f}"
-        metrics_str += f"\nTime: {last_metrics['duration']:.2f}s"
+        # Format the metrics in a single line: [tokens] | $[cost] | [time]s
+        metrics_str = f"{total_tokens:,} | ${last_metrics['cost']:.4f} | {last_metrics['duration']:.2f}s"
 
-        # Add session totals
+        # Add session totals on second line
         try:
             session_tokens = metrics.get_total_tokens(context.session_start_time)
             session_cost = metrics.get_total_cost(context.session_start_time)
 
-            metrics_str += "\n\nSession totals:"
-            metrics_str += f"\n  Tokens: {session_tokens['input']:,} in, {session_tokens['output']:,} out"
-            if session_tokens["cached"] > 0:
-                metrics_str += f", {session_tokens['cached']:,} cached"
-            metrics_str += f"\n  Total: {session_tokens['total']:,} tokens"
-            metrics_str += f"\n  Cost: ${session_cost:.4f}"
+            metrics_str += f"\n{session_tokens['total']:,} | ${session_cost:.4f}"
         except Exception:
             # If session totals fail, just show the per-call metrics
             pass
 
-        pretty(metrics_str, "metrics", context.config.width, context.config.indent, COLOR_METRICS)
+        pretty(metrics_str, "metrics", context.config.width, context.config.indent, COLOR_METRICS, newline_after_name=True)
     except Exception:
         pass
 
 
-def pretty(string: str, name: Optional[str] = None, width: int = 1400, indent: int = 4, color: str = COLOR_RESET) -> None:
+def pretty(
+    string: str,
+    name: Optional[str] = None,
+    width: int = 1400,
+    indent: int = 4,
+    color: str = COLOR_RESET,
+    newline_after_name: bool = True,
+) -> None:
     """Print a string nicely formatted with explicit color."""
     print()
-    prefix = f"{color}{COLOR_BOLD}{name}: {COLOR_RESET}{color}" if name is not None else color
+    if name is not None:
+        if newline_after_name:
+            prefix = f"{color}{COLOR_BOLD}{name}:{COLOR_RESET}\n{' ' * indent}{color}"
+        else:
+            prefix = f"{color}{COLOR_BOLD}{name}: {COLOR_RESET}{color}"
+    else:
+        prefix = color
     if not isinstance(string, str):
         string = str(string)
 
@@ -1691,6 +2040,9 @@ class CLI:
             "/broadcast_fp": self.fp.broadcast_fp,
             "/p": self._handle_load_prompt,
             "/s": self._handle_save_prompt,
+            "/add_tool": self.system.add_tool,
+            "/d": self._handle_delete_prompt,
+            "/r": self._handle_recent_prompts,
         }
 
         # Initialize metrics with verbose=False since CLI handles its own display
@@ -1804,6 +2156,17 @@ class CLI:
         """Handle /s command to save prompts."""
         return self.prompts.save_prompt(bot, context, args, self.last_user_message)
 
+    def _handle_delete_prompt(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Handle /d command to delete prompts."""
+        return self.prompts.delete_prompt(bot, context, args)
+
+    def _handle_recent_prompts(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Handle /r command to show recent prompts."""
+        message, prefill_text = self.prompts.recent_prompts(bot, context, args)
+        if prefill_text:
+            self.pending_prefill = prefill_text
+        return message
+
     def _get_user_input(self, prompt_text: str = ">>> ") -> str:
         """Get user input, with optional pre-fill support."""
         if self.pending_prefill and HAS_READLINE:
@@ -1832,7 +2195,11 @@ class CLI:
         """Initialize a new bot with default tools."""
         from bots import Engines
 
-        bot = AnthropicBot(model_engine=Engines.CLAUDE45_SONNET, max_tokens=16000)
+        bot = AnthropicBot(
+            model_engine=Engines.CLAUDE45_SONNET,
+            max_tokens=self.context.config.max_tokens,
+            temperature=self.context.config.temperature,
+        )
         self.context.bot_instance = bot
         # Attach real-time display callback
         self.context.bot_instance.callbacks = RealTimeDisplayCallbacks(self.context)
@@ -1860,12 +2227,12 @@ class CLI:
 
         sys_msg = textwrap.dedent(
             """You're a coding agent. When greeting users, always start with "Hello! I'm here to help you".
-            Please follow these rules:
-                    1. Keep edits and even writing new files to small chunks. You have a low max_token limit
-                       and will hit tool errors if you try making too big of a change.
-                    2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
-                       Instead, use full relative paths.
-            """
+        Please follow these rules:
+                1. Keep edits and even writing new files to small chunks. You have a low max_token limit
+                   and will hit tool errors if you try making too big of a change.
+                2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
+                   Instead, use full relative paths.
+        """
         )
         bot.set_system_message(sys_msg)
 
@@ -1988,7 +2355,10 @@ class PromptHandler:
             if args:
                 query = " ".join(args)
             else:
-                query = input("Enter prompt search: ").strip()
+                try:
+                    query = input_with_esc("Enter prompt search: ").strip()
+                except EscapeException:
+                    return ("Selection cancelled", None)
 
             # Search for matching prompts
             matches = self.prompt_manager.search_prompts(query)
@@ -2002,26 +2372,31 @@ class PromptHandler:
                 self.prompt_manager.load_prompt(name)  # Update recency
                 return (f"Loaded prompt: {name}", content)
 
-            # Multiple matches - show selection
-            print(f"\nFound {len(matches)} matches:")
+            # Multiple matches - show selection with best match highlighted
+            print(f"\nFound {len(matches)} matches (best match first):")
             for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
                 # Show preview of content
-                preview = content[:1000] + "..." if len(content) > 100 else content
+                preview = content[:80] + "..." if len(content) > 80 else content
                 preview = preview.replace("\n", " ")  # Single line preview
-                print(f"  {i}. {name}: {preview}")
+                marker = "â†’" if i == 1 else " "
+                print(f"  {marker} {i}. {name}: {preview}")
 
             if len(matches) > 10:
                 print(f"  ... and {len(matches) - 10} more matches")
 
-            # Get selection
+            # Get selection (default to 1 if just Enter is pressed)
             try:
-                choice = input(f"\nSelect prompt (1-{min(len(matches), 10)}): ").strip()
-                if not choice:
-                    return ("Selection cancelled.", None)
+                try:
+                    choice = input_with_esc(f"\nSelect prompt (1-{min(len(matches), 10)}, default=1): ").strip()
+                except EscapeException:
+                    return ("Selection cancelled", None)
 
-                choice_num = int(choice) - 1
-                if choice_num < 0 or choice_num >= min(len(matches), 10):
-                    return (f"Invalid selection. Must be between 1 and {min(len(matches), 10)}.", None)
+                if not choice:
+                    choice_num = 0  # Default to first match
+                else:
+                    choice_num = int(choice) - 1
+                    if choice_num < 0 or choice_num >= min(len(matches), 10):
+                        return (f"Invalid selection. Must be between 1 and {min(len(matches), 10)}.", None)
 
                 name, content = matches[choice_num]
                 self.prompt_manager.load_prompt(name)  # Update recency
@@ -2055,6 +2430,118 @@ class PromptHandler:
 
         except Exception as e:
             return f"Error saving prompt: {str(e)}"
+
+    def delete_prompt(self, bot: "Bot", context: "CLIContext", args: List[str]) -> str:
+        """Delete a saved prompt."""
+        try:
+            # Get prompt name
+            if args:
+                query = " ".join(args)
+            else:
+                query = input("Enter prompt name or search: ").strip()
+
+            if not query:
+                return "Delete cancelled."
+
+            # Search for matching prompts
+            matches = self.prompt_manager.search_prompts(query)
+
+            if not matches:
+                return "No prompts found matching your search."
+
+            if len(matches) == 1:
+                # Single match - confirm and delete
+                name, content = matches[0]
+                preview = content[:100] + "..." if len(content) > 100 else content
+                preview = preview.replace("\n", " ")
+                print(f"\nPrompt to delete: {name}")
+                print(f"Content: {preview}")
+                confirm = input("Delete this prompt? (y/n): ").strip().lower()
+
+                if confirm == "y":
+                    if self.prompt_manager.delete_prompt(name):
+                        return f"Deleted prompt: {name}"
+                    else:
+                        return f"Failed to delete prompt: {name}"
+                else:
+                    return "Delete cancelled."
+
+            # Multiple matches - show selection
+            print(f"\nFound {len(matches)} matches:")
+            for i, (name, content) in enumerate(matches[:10], 1):
+                preview = content[:100] + "..." if len(content) > 100 else content
+                preview = preview.replace("\n", " ")
+                print(f"  {i}. {name}: {preview}")
+
+            if len(matches) > 10:
+                print(f"  ... and {len(matches) - 10} more matches")
+
+            # Get selection
+            try:
+                choice = input(f"\nSelect prompt to delete (1-{min(len(matches), 10)}): ").strip()
+                if not choice:
+                    return "Delete cancelled."
+
+                choice_num = int(choice) - 1
+                if choice_num < 0 or choice_num >= min(len(matches), 10):
+                    return f"Invalid selection. Must be between 1 and {min(len(matches), 10)}."
+
+                name, content = matches[choice_num]
+                preview = content[:100] + "..." if len(content) > 100 else content
+                preview = preview.replace("\n", " ")
+                print(f"\nPrompt to delete: {name}")
+                print(f"Content: {preview}")
+                confirm = input("Delete this prompt? (y/n): ").strip().lower()
+
+                if confirm == "y":
+                    if self.prompt_manager.delete_prompt(name):
+                        return f"Deleted prompt: {name}"
+                    else:
+                        return f"Failed to delete prompt: {name}"
+                else:
+                    return "Delete cancelled."
+
+            except ValueError:
+                return "Invalid selection. Must be a number."
+
+        except Exception as e:
+            return f"Error deleting prompt: {str(e)}"
+
+    def recent_prompts(self, bot: "Bot", context: "CLIContext", args: List[str]) -> tuple:
+        """Show recent prompts and optionally select one. Returns (message, prefill_text)."""
+        try:
+            recents = self.prompt_manager.get_recents()
+
+            if not recents:
+                return ("No recent prompts.", None)
+
+            # Show recents
+            print(f"\nRecent prompts ({len(recents)}):")
+            for i, (name, content) in enumerate(recents, 1):
+                preview = content[:100] + "..." if len(content) > 100 else content
+                preview = preview.replace("\n", " ")
+                print(f"  {i}. {name}: {preview}")
+
+            # Get selection
+            try:
+                choice = input(f"\nSelect prompt (1-{len(recents)}, or Enter to cancel): ").strip()
+                if not choice:
+                    return ("Selection cancelled.", None)
+
+                choice_num = int(choice) - 1
+                if choice_num < 0 or choice_num >= len(recents):
+                    return (f"Invalid selection. Must be between 1 and {len(recents)}.", None)
+
+                name, content = recents[choice_num]
+                self.prompt_manager.load_prompt(name)  # Update recency
+
+                return (f"Loaded prompt: {name}", content)
+
+            except ValueError:
+                return ("Invalid selection. Must be a number.", None)
+
+        except Exception as e:
+            return (f"Error loading recent prompts: {str(e)}", None)
 
 
 def parse_args():

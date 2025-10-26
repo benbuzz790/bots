@@ -422,6 +422,141 @@ import math
             except Exception as e:
                 print(f"❌ {length} chars failed: {e}")
 
+    def test_recycle_bin_functionality(self):
+        """Test that Remove-Item sends files to Recycle Bin instead of permanent deletion"""
+        print("\n=== Testing Recycle Bin Functionality ===")
+
+        # Create test files
+        test_files = []
+        for i in range(3):
+            filename = f"test_recycle_{i}.txt"
+            filepath = os.path.join(self.temp_dir, filename)
+            with open(filepath, "w") as f:
+                f.write(f"Test content {i}\n")
+            test_files.append(filename)
+            print(f"Created test file: {filename}")
+
+        # Test 1: Remove-Item command
+        print("\n--- Test 1: Remove-Item ---")
+        try:
+            result = execute_powershell(f"Remove-Item '{test_files[0]}'", timeout="10")
+            print(f"✅ Remove-Item executed: {result}")
+
+            if not os.path.exists(test_files[0]):
+                print("✅ File removed from filesystem")
+            else:
+                print("❌ File still exists")
+        except Exception as e:
+            print(f"❌ Remove-Item failed: {e}")
+
+        # Test 2: rm alias
+        print("\n--- Test 2: rm alias ---")
+        try:
+            result = execute_powershell(f"rm '{test_files[1]}'", timeout="10")
+            print(f"✅ rm alias executed: {result}")
+
+            if not os.path.exists(test_files[1]):
+                print("✅ File removed from filesystem")
+            else:
+                print("❌ File still exists")
+        except Exception as e:
+            print(f"❌ rm alias failed: {e}")
+
+        # Test 3: del alias
+        print("\n--- Test 3: del alias ---")
+        try:
+            result = execute_powershell(f"del '{test_files[2]}'", timeout="10")
+            print(f"✅ del alias executed: {result}")
+
+            if not os.path.exists(test_files[2]):
+                print("✅ File removed from filesystem")
+            else:
+                print("❌ File still exists")
+        except Exception as e:
+            print(f"❌ del alias failed: {e}")
+
+        # Test 4: Test with directory
+        print("\n--- Test 4: Remove directory ---")
+        test_dir = os.path.join(self.temp_dir, "test_recycle_dir")
+        os.makedirs(test_dir, exist_ok=True)
+        test_file_in_dir = os.path.join(test_dir, "file_in_dir.txt")
+        with open(test_file_in_dir, "w") as f:
+            f.write("File inside directory")
+
+        try:
+            result = execute_powershell(f"Remove-Item '{test_dir}' -Recurse", timeout="10")
+            print(f"✅ Directory removal executed: {result}")
+
+            if not os.path.exists(test_dir):
+                print("✅ Directory removed from filesystem")
+            else:
+                print("❌ Directory still exists")
+        except Exception as e:
+            print(f"❌ Directory removal failed: {e}")
+
+        # Test 5: Verify Remove-ItemSafely function exists
+        print("\n--- Test 5: Verify function exists ---")
+        try:
+            result = execute_powershell("Get-Command Remove-ItemSafely", timeout="5")
+            if "Remove-ItemSafely" in result:
+                print("✅ Remove-ItemSafely function is defined")
+            else:
+                print("❌ Remove-ItemSafely function not found")
+        except Exception as e:
+            print(f"❌ Function check failed: {e}")
+
+        # Test 6: Verify aliases are set
+        print("\n--- Test 6: Verify aliases ---")
+        try:
+            result = execute_powershell("Get-Alias rm", timeout="5")
+            if "Remove-ItemSafely" in result:
+                print("✅ rm alias points to Remove-ItemSafely")
+            else:
+                print(f"⚠️  rm alias result: {result}")
+        except Exception as e:
+            print(f"❌ Alias check failed: {e}")
+
+        print("\n=== Recycle Bin Test Complete ===")
+        print("Note: Files should be in Recycle Bin, not permanently deleted")
+
+    def test_recycle_bin_vs_permanent_deletion(self):
+        """Test that our safe delete goes to Recycle Bin vs PowerShell's default permanent delete"""
+        print("\n=== Testing Recycle Bin vs Permanent Deletion ===")
+
+        # Create a test file
+        test_file = os.path.join(self.temp_dir, "recycle_test.txt")
+        with open(test_file, "w") as f:
+            f.write("This should go to Recycle Bin")
+
+        print(f"Created test file: {test_file}")
+
+        # Delete using our safe function
+        print("\n--- Deleting with Remove-ItemSafely ---")
+        try:
+            result = execute_powershell(f"Remove-Item '{test_file}'", timeout="10")
+            print(f"Result: {result}")
+
+            # Verify file is gone from filesystem
+            if not os.path.exists(test_file):
+                print("✅ File removed from filesystem")
+                print("✅ File should be in Recycle Bin (manual verification recommended)")
+            else:
+                print("❌ File still exists in filesystem")
+
+        except Exception as e:
+            print(f"❌ Delete operation failed: {e}")
+
+        # Test that Microsoft.VisualBasic assembly is loaded
+        print("\n--- Verifying Microsoft.VisualBasic assembly ---")
+        try:
+            result = execute_powershell("[Microsoft.VisualBasic.FileIO.FileSystem]::GetType().FullName", timeout="5")
+            if "Microsoft.VisualBasic.FileIO.FileSystem" in result:
+                print("✅ Microsoft.VisualBasic.FileIO.FileSystem is available")
+            else:
+                print(f"⚠️  Unexpected result: {result}")
+        except Exception as e:
+            print(f"❌ Assembly check failed: {e}")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

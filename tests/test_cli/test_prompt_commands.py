@@ -262,8 +262,9 @@ class TestPromptHandler:
         with patch("builtins.input", return_value=""):
             message, prefill = prompt_handler.load_prompt(mock_bot, mock_context, args)
 
-            assert "Selection cancelled" in message
-            assert prefill is None
+            # Empty input now selects the first (best match) prompt
+            assert "Loaded prompt: test_1" in message
+            assert prefill == "Content 1"
 
 
 class TestCLIIntegration:

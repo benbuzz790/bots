@@ -1,7 +1,6 @@
 import ast
 import inspect
 import json
-import uuid
 from typing import List, Optional
 
 from bots.dev.decorators import toolify
@@ -98,10 +97,14 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
 def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "False", recombine: str = "concatenate") -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
 
-    Simplified approach that creates isolated conversation branches:
-    1. Save current bot state to temporary file
+    Creates isolated conversation branches using deepcopy:
+    1. Deepcopy current bot state (uses __getstate__/__setstate__ for proper serialization)
     2. Execute each branch with independent bot instances
     3. Stitch results back into main conversation tree
+
+    Note: Uses deepcopy with __getstate__/__setstate__ which leverages the hybrid
+    serialization strategy (source code + dill for helpers). See bots/foundation/tool_handling.md.
+
     Args:
         self_prompts (str): List of prompts as a string array, like ['task 1', 'task 2', 'task 3']
                            Each prompt becomes a separate conversation branch
@@ -114,11 +117,11 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
     Returns:
         str: Success message with branch count, or error details if something went wrong
     """
-    import os
+    import copy
+    import threading
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     from bots.flows import functional_prompts as fp
-    from bots.foundation.base import Bot
 
     bot = _get_calling_bot()
     if not bot:
@@ -150,94 +153,39 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         original_autosave = bot.autosave
         bot.autosave = False
 
-        # Tag the current node so we can find it after load
-        # This prevents recursive branching issues
-        branch_tag = f"_branch_self_anchor_{uuid.uuid4().hex[:8]}"
-        setattr(original_node, branch_tag, True)
+        # Handle tool_use without tool_result issue
+        # If the current node has tool_calls (the branch_self call itself),
+        # we need to add a dummy result before copying to avoid API errors
+        dummy_results_added = False
+        original_results = None
 
-        # Create a modified conversation node with dummy tool results
-        # This prevents 'tool_use without tool_result' errors in branches
         if original_node.tool_calls:
             dummy_results = []
             for tool_call in original_node.tool_calls:
                 if tool_call.get("name") == "branch_self":
-                    dummy_result = {"tool_use_id": tool_call["id"], "content": "Branching in progress..."}
+                    # Use bot's tool_handler to generate provider-appropriate format
+                    dummy_result = bot.tool_handler.generate_response_schema(tool_call, "Branching in progress...")
                     dummy_results.append(dummy_result)
 
             if dummy_results:
-                # Temporarily add dummy results for saving
-                original_results = getattr(original_node, "tool_results", [])
+                # Temporarily add dummy results for copying
+                original_results = list(getattr(original_node, "tool_results", []))
                 original_node._add_tool_results(dummy_results)
+                dummy_results_added = True
 
-                # Save bot state with dummy results and tag
-                temp_id = str(uuid.uuid4())[:8]
-                temp_file = f"branch_self_{temp_id}.bot"
-                bot.save(temp_file)
-
-                # Restore original results (remove dummy results from current bot)
-                original_node.tool_results = original_results
-            else:
-                # No dummy results needed, save normally
-                temp_id = str(uuid.uuid4())[:8]
-                temp_file = f"branch_self_{temp_id}.bot"
-                bot.save(temp_file)
-        else:
-            # No tool calls, save normally
-            temp_id = str(uuid.uuid4())[:8]
-            temp_file = f"branch_self_{temp_id}.bot"
-            bot.save(temp_file)
+        # Create lock for thread-safe mutations
+        replies_lock = threading.Lock()
 
         def execute_branch(prompt, parent_bot_node):
             """Execute a single branch with the given prompt."""
             try:
-                # Create a fresh bot copy for this branch
-                branch_bot = Bot.load(temp_file)
+                # Create a fresh bot copy using deepcopy
+                # This uses __getstate__/__setstate__ which calls _serialize()/_deserialize()
+                branch_bot = copy.deepcopy(bot)
                 branch_bot.autosave = False
-                # Preserve callbacks from parent bot
-                branch_bot.callbacks = bot.callbacks
+                # Callbacks are preserved by deepcopy
 
-                # Find the tagged node in the loaded bot's conversation tree
-                # This ensures we branch from the correct point, not the newest node
-                def find_tagged_node(node):
-                    """Recursively search for the node with the branch tag."""
-                    # Check current node for any branch_self_anchor tags
-                    for attr in dir(node):
-                        if attr.startswith("_branch_self_anchor_"):
-                            return node
-                    # Search in parent chain
-                    current = node
-                    while current.parent:
-                        current = current.parent
-                        for attr in dir(current):
-                            if attr.startswith("_branch_self_anchor_"):
-                                return current
-                    # Search in all descendants from root
-                    root = node
-                    while root.parent:
-                        root = root.parent
-
-                    def search_tree(n):
-                        for attr in dir(n):
-                            if attr.startswith("_branch_self_anchor_"):
-                                return n
-                        for reply in n.replies:
-                            result = search_tree(reply)
-                            if result:
-                                return result
-                        return None
-
-                    return search_tree(root)
-
-                tagged_node = find_tagged_node(branch_bot.conversation)
-                if tagged_node:
-                    # Position at the tagged node
-                    branch_bot.conversation = tagged_node
-                    # Remove the tag from this branch's copy
-                    for attr in dir(tagged_node):
-                        if attr.startswith("_branch_self_anchor_"):
-                            delattr(tagged_node, attr)
-                            break
-
+                # Store the branching point (branch_bot.conversation is at same point as bot.conversation)
                 branching_node = branch_bot.conversation
 
                 # Ensure clean tool handler state for branch
@@ -253,10 +201,12 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                     # Single response
                     response = branch_bot.respond(prompt)
 
-                # Stitch completed conversation back onto bot conversation
-                parent_bot_node.replies.extend(branching_node.replies)
-                for node in branching_node.replies:
-                    node.parent = parent_bot_node
+                # Stitch completed conversation back onto parent bot conversation
+                # Thread-safe mutation with lock
+                with replies_lock:
+                    parent_bot_node.replies.extend(branching_node.replies)
+                    for node in branching_node.replies:
+                        node.parent = parent_bot_node
 
                 return response, branch_bot.conversation
 
@@ -285,18 +235,12 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                 responses.append(response)
                 branch_nodes.append(node)
 
-        # Remove the tag from the original node
-        if hasattr(original_node, branch_tag):
-            delattr(original_node, branch_tag)
+        # Remove dummy results if we added them
+        if dummy_results_added:
+            original_node.tool_results = original_results
 
         # Restore original bot settings
         bot.autosave = original_autosave
-
-        # Clean up temp file
-        try:
-            os.remove(temp_file)
-        except OSError:
-            pass
 
         # Count successful branches
         success_count = sum(1 for r in responses if r is not None)
@@ -660,3 +604,204 @@ def _remove_dummy_from_tree(node, dummy_content):
     if hasattr(node, "replies"):
         for child in node.replies:
             _remove_dummy_from_tree(child, dummy_content)
+
+
+@toolify()
+def subagent(tasks: str, max_iterations: str = "20") -> str:
+    """Create subagent bots to work on tasks autonomously with dynamic prompts.
+
+    Each subagent works in a loop with the same dynamic prompt system as CLI auto mode:
+    - Continues with neutral prompt ("ok") by default
+    - Prompted to trim context when token count is high
+    - Stops when it doesn't use tools
+    - On first no-tool response, prompted to write a summary
+
+    Args:
+        tasks (str): List of tasks as a string array, like ['task 1', 'task 2', 'task 3']
+                    Each task gets its own subagent
+        max_iterations (str): Maximum number of iterations per subagent (default: "20")
+
+    Returns:
+        str: Combined results from all subagents
+    """
+    import copy
+    import threading
+    import uuid
+
+    from bots.flows import functional_prompts as fp
+    from bots.foundation.base import Bot
+
+    bot = _get_calling_bot()
+    if not bot:
+        return "Error: Could not find calling bot"
+
+    # Parse parameters
+    try:
+        max_iter = int(max_iterations)
+    except ValueError:
+        return f"Error: max_iterations must be a number, got '{max_iterations}'"
+
+    # Process the tasks
+    try:
+        task_list = _process_string_array(tasks)
+        if not task_list:
+            return "Error: No valid tasks provided"
+    except Exception as e:
+        return f"Error parsing tasks: {str(e)}"
+
+    try:
+        # Store original conversation point and bot settings
+        original_node = bot.conversation
+        original_autosave = bot.autosave
+        bot.autosave = False
+
+        # Add dummy tool results if needed (to prevent serialization errors)
+        dummy_results_added = False
+        if original_node.tool_calls:
+            dummy_results = []
+            for tool_call in original_node.tool_calls:
+                if tool_call.get("name") == "subagent":
+                    # Use bot's tool_handler to generate provider-appropriate format
+                    dummy_result = bot.tool_handler.generate_response_schema(tool_call, "Subagent working...")
+                    dummy_results.append(dummy_result)
+
+            if dummy_results:
+                # Temporarily add dummy results for copying (use list() to make a copy)
+                original_results = list(getattr(original_node, "tool_results", []))
+                original_node._add_tool_results(dummy_results)
+                dummy_results_added = True
+
+        # Create lock for thread-safe mutations
+        replies_lock = threading.Lock()
+
+        def execute_subagent(task, parent_bot_node):
+            """Execute a single subagent with the given task."""
+            try:
+                # Create a fresh bot copy using deepcopy
+                subagent = copy.deepcopy(bot)
+                subagent.autosave = False
+                subagent.name = f"subagent_{uuid.uuid4().hex[:6]}"
+
+                # Position at the original node
+                branching_node = subagent.conversation
+
+                # Ensure clean tool handler state for subagent
+                if hasattr(subagent, "tool_handler") and subagent.tool_handler:
+                    subagent.tool_handler.clear()
+
+                # Track metrics for context management
+                last_input_tokens = [0]
+                context_reduction_cooldown = [0]
+                remove_context_threshold = 40000
+
+                # Track if we've already asked for summary
+                summary_requested = [False]
+
+                # Create dynamic continue prompt using policy (same as CLI auto mode)
+                def continue_prompt_func(bot: Bot, iteration: int) -> str:
+                    # Check if bot used tools in last response
+                    used_tools = bool(bot.tool_handler.requests)
+
+                    # If no tools used and haven't requested summary yet, ask for one
+                    if not used_tools and not summary_requested[0]:
+                        summary_requested[0] = True
+                        return "Please write a summary of your work in your text response."
+
+                    # High token count with cooldown expired -> request context reduction
+                    if last_input_tokens[0] > remove_context_threshold and context_reduction_cooldown[0] <= 0:
+                        context_reduction_cooldown[0] = 3
+                        return "trim useless context"
+
+                    # Decrement cooldown
+                    if context_reduction_cooldown[0] > 0:
+                        context_reduction_cooldown[0] -= 1
+
+                    return "ok"
+
+                # Callback to update metrics
+                iteration_count = [0]
+
+                def metrics_callback(responses, nodes):
+                    iteration_count[0] += 1
+
+                    # Try to get token metrics (may not be available in all contexts)
+                    try:
+                        from bots.observability import metrics
+
+                        last_metrics = metrics.get_and_clear_last_metrics()
+                        last_input_tokens[0] = last_metrics.get("input_tokens", 0)
+                    except Exception:
+                        pass
+
+                # Stop condition: no tools used AND summary has been requested, OR max iterations reached
+                def stop_on_no_tools(bot: Bot) -> bool:
+                    # Stop if max iterations reached
+                    if iteration_count[0] >= max_iter:
+                        return True
+                    # Stop if no tools used AND summary has already been requested
+                    return not bot.tool_handler.requests and summary_requested[0]
+
+                # Run the subagent with dynamic prompts
+                fp.prompt_while(
+                    bot=subagent,
+                    first_prompt=f"(subagent task): {task}",
+                    continue_prompt=continue_prompt_func,
+                    stop_condition=stop_on_no_tools,
+                    callback=metrics_callback,
+                )
+
+                # Stitch completed conversation back onto bot conversation
+                # Thread-safe mutation with lock
+                with replies_lock:
+                    parent_bot_node.replies.extend(branching_node.replies)
+                    for node in branching_node.replies:
+                        node.parent = parent_bot_node
+
+                # Return the final response
+                final_response = subagent.conversation.content
+                return final_response, subagent.conversation
+
+            except StopIteration as e:
+                # Max iterations reached, return what we have
+                return (
+                    f"Subagent stopped: {str(e)}\n\nLast response:\n{subagent.conversation.content}",
+                    subagent.conversation,
+                )
+            except Exception as e:
+                import traceback
+
+                traceback.print_exc()
+                return f"Error running subagent: {str(e)}", None
+
+        # Execute subagents sequentially
+        responses = []
+        subagent_nodes = []
+
+        for task in task_list:
+            response, node = execute_subagent(task, original_node)
+            responses.append(response)
+            subagent_nodes.append(node)
+
+        # Remove dummy results if we added them
+        if dummy_results_added:
+            original_node.tool_results = original_results
+
+        # Restore original bot settings
+        bot.autosave = original_autosave
+
+        # Count successful subagents
+        success_count = sum(1 for r in responses if r and not r.startswith("Error"))
+
+        # Format results
+        result_parts = [f"Successfully completed {success_count}/{len(task_list)} subagent tasks.\n"]
+        for i, (task, response) in enumerate(zip(task_list, responses), 1):
+            result_parts.append(f"\n--- Subagent {i}: {task[:50]}{'...' if len(task) > 50 else ''} ---")
+            result_parts.append(response)
+
+        return "\n".join(result_parts)
+
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        return f"Error in subagent: {str(e)}"

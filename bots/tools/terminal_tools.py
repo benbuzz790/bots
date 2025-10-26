@@ -1,5 +1,6 @@
 import codecs
 import glob
+import logging
 import os
 import subprocess
 import threading
@@ -11,6 +12,8 @@ from threading import Lock, Thread, local
 from typing import Dict, Generator, List
 
 from bots.dev.decorators import log_errors, toolify
+
+logger = logging.getLogger(__name__)
 
 
 class BOMRemover:
@@ -107,11 +110,9 @@ class BOMRemover:
             if content.startswith(codecs.BOM_UTF8):
                 with open(file_path, "wb") as file:
                     file.write(content[len(codecs.BOM_UTF8) :])
-                print(f"[BOM] Removed BOM from: {file_path}")
                 return True
-        except Exception as e:
-            print(f"[BOM] Error processing {file_path}: {str(e)}")
-        return False
+        except Exception:
+            return False
 
     @staticmethod
     def remove_bom_from_directory(directory: str, recursive: bool = True) -> int:
@@ -141,9 +142,12 @@ class BOMRemover:
                     file_path = os.path.join(directory, file)
                     if BOMRemover.remove_bom_from_file(file_path):
                         bom_count += 1
-        except Exception as e:
-            print(f"[BOM] Error processing directory {directory}: {str(e)}")
-        return bom_count
+        except (FileNotFoundError, UnicodeDecodeError, OSError) as e:
+            logger.error("Error removing BOMs from directory %s: %s", directory, str(e), exc_info=True)
+            return bom_count
+        except Exception:
+            logger.exception("Unexpected error removing BOMs from directory %s", directory)
+            raise
 
     @staticmethod
     def remove_bom_from_pattern(pattern: str) -> int:
@@ -161,9 +165,12 @@ class BOMRemover:
             for file_path in glob.glob(pattern, recursive=True):
                 if BOMRemover.remove_bom_from_file(file_path):
                     bom_count += 1
-        except Exception as e:
-            print(f"[BOM] Error processing pattern {pattern}: {str(e)}")
-        return bom_count
+        except (FileNotFoundError, UnicodeDecodeError, OSError) as e:
+            logger.error("Error removing BOMs from pattern %s: %s", pattern, str(e), exc_info=True)
+            return bom_count
+        except Exception:
+            logger.exception("Unexpected error removing BOMs from pattern %s", pattern)
+            raise
 
 
 @log_errors
@@ -260,17 +267,88 @@ class PowerShellSession:
                 "$OutputEncoding=[System.Text.Encoding]::UTF8",
                 "$env:PYTHONIOENCODING='utf-8'",
                 """
-            function Invoke-SafeCommand {
-                param([string]$Command)
-                try {
-                    Invoke-Expression $Command
-                    return $true
-                } catch {
-                    Write-Error $_
-                    return $false
+        function Invoke-SafeCommand {
+            param([string]$Command)
+            try {
+                Invoke-Expression $Command
+                return $true
+            } catch {
+                Write-Error $_
+                return $false
+            }
+        }
+                        """.strip(),
+                """
+        # Detect Windows platform reliably across PowerShell versions
+        $isWindows = $false
+        if ($PSVersionTable.PSVersion.Major -ge 6) {
+            # PowerShell Core - use built-in $IsWindows variable
+            $isWindows = $IsWindows
+        } else {
+            # Windows PowerShell - check environment variable
+            $isWindows = $env:OS -eq 'Windows_NT'
+        }
+
+        if ($isWindows) {
+            # Windows-specific: Use Recycle Bin
+            Add-Type -AssemblyName Microsoft.VisualBasic
+            function Remove-ItemSafely {
+                param(
+                    [Parameter(Mandatory=$true, ValueFromPipeline=$true, Position=0)]
+                    [string[]]$Path,
+                    [switch]$Recurse,
+                    [switch]$Force
+                )
+                process {
+                    foreach ($item in $Path) {
+                        $fullPath = $null
+                        try {
+                            $fullPath = Resolve-Path $item -ErrorAction Stop
+                        } catch {
+                            Write-Error "Cannot find path '$item' because it does not exist."
+                            continue
+                        }
+
+                        if (Test-Path $fullPath -PathType Container) {
+                            [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory(
+                                $fullPath,
+                                'OnlyErrorDialogs',
+                                'SendToRecycleBin'
+                            )
+                        } else {
+                            [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile(
+                                $fullPath,
+                                'OnlyErrorDialogs',
+                                'SendToRecycleBin'
+                            )
+                        }
+                    }
                 }
             }
-                            """.strip(),
+        } else {
+            # Non-Windows: Use standard Remove-Item
+            function Remove-ItemSafely {
+                param(
+                    [Parameter(Mandatory=$true, ValueFromPipeline=$true, Position=0)]
+                    [string[]]$Path,
+                    [switch]$Recurse,
+                    [switch]$Force
+                )
+                process {
+                    foreach ($item in $Path) {
+                        $params = @{Path = $item}
+                        if ($Recurse) { $params.Recurse = $true }
+                        if ($Force) { $params.Force = $true }
+                        Remove-Item @params
+                    }
+                }
+            }
+        }
+
+        # Set aliases on all platforms
+        Set-Alias -Name rm -Value Remove-ItemSafely -Option AllScope
+        Set-Alias -Name del -Value Remove-ItemSafely -Option AllScope
+                        """.strip(),
             ]
             for cmd in init_commands:
                 self._process.stdin.write(cmd + "\n")
@@ -340,8 +418,7 @@ class PowerShellSession:
         """
         file_operations = self._detect_file_operations(code)
         if not file_operations:
-            return 0
-        print(f"[BOM] Detected file operations: {', '.join(file_operations)}")
+            return 0  # bom_count = 0
         bom_count = 0
         try:
             bom_count += self._bom_remover.remove_bom_from_directory(current_dir, recursive=False)
@@ -352,11 +429,8 @@ class PowerShellSession:
             if any(("redirection" in op for op in file_operations)):
                 bom_count += self._bom_remover.remove_bom_from_pattern(os.path.join(current_dir, "*.txt"))
                 bom_count += self._bom_remover.remove_bom_from_pattern(os.path.join(current_dir, "*.log"))
-        except Exception as e:
-            print(f"[BOM] Error during post-execution cleanup: {str(e)}")
-        if bom_count > 0:
-            print(f"[BOM] Post-execution cleanup: {bom_count} BOMs removed")
-        return bom_count
+        except Exception:
+            pass  # if bom_count > 0:        return bom_count
 
     def execute(self, code: str, timeout: float = 60) -> str:
         """

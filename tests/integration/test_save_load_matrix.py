@@ -14,6 +14,7 @@ from typing import Any, Callable, Dict
 
 from bots.foundation.base import Bot, Engines
 from bots.testing.mock_bot import MockBot
+from bots.tools import code_tools, python_edit
 
 sys.path.insert(0, os.path.abspath("."))
 
@@ -763,6 +764,44 @@ def test_tool(input_data: str) -> str:
         self.assertTrue(test_passed, "CLI save/load test failed")
 
         return test_passed
+
+
+def test_clean_unicode_string_available_after_load():
+    """Test that clean_unicode_string is available after bot load (Issue #158)."""
+    # Create a bot and add tools that use clean_unicode_string
+    bot = MockBot()
+    bot.add_tools(code_tools)
+    bot.add_tools(python_edit)
+
+    # Save the bot
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".bot", delete=False) as f:
+        bot_file = f.name
+
+    try:
+        bot.save(bot_file)
+
+        # Load the bot
+        loaded_bot = MockBot.load(bot_file)
+
+        # Verify that view function is loaded
+        view_func = loaded_bot.tool_handler.function_map.get("view")
+        assert view_func is not None, "view function should be loaded"
+
+        # Create a test file
+        test_file = "test_unicode_check_temp.txt"
+        try:
+            with open(test_file, "w") as f:
+                f.write("test content for unicode check")
+
+            # This should work without "clean_unicode_string not defined" error
+            output = view_func(test_file)
+            assert "test content for unicode check" in output
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+    finally:
+        if os.path.exists(bot_file):
+            os.remove(bot_file)
 
 
 if __name__ == "__main__":
