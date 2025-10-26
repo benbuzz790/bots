@@ -1866,8 +1866,22 @@ class ToolHandler(ABC):
                         except Exception as e:
                             print(f"Warning: Could not dill serialize helper function {k}: {e}")
                             pass  # Skip if we can't pickle
+                elif callable(v) and not k.startswith("_"):
+                    # Serialize imported callables (decorators, imported functions)
+                    # These are necessary dependencies that need to be available during deserialization
+                    try:
+                        import base64
+
+                        import dill
+
+                        pickled_func = dill.dumps(v)
+                        encoded_func = base64.b64encode(pickled_func).decode("ascii")
+                        serialized[k] = {"__imported_callable__": True, "pickled": encoded_func, "name": v.__name__}
+                    except Exception as e:
+                        print(f"Warning: Could not dill serialize imported callable {k}: {e}")
+                        pass  # Skip if we can't pickle
                 else:
-                    pass  # Skip other non-helper functions
+                    pass  # Skip other non-callable objects
         return serialized
 
     def _serialize_dynamic_function(self, func: Callable) -> Dict[str, Any]:
@@ -2156,8 +2170,8 @@ class ToolHandler(ABC):
                     encoded_func = v["pickled"]
                     pickled_func = base64.b64decode(encoded_func.encode("ascii"))
                     module_dict[k] = dill.loads(pickled_func)
-                except Exception as e:
-                    print(f"Warning: Could not dill deserialize _original_func: {e}")
+                except Exception:
+                    # Silently skip - source code execution will handle this
                     pass
             elif isinstance(v, dict) and v.get("__helper_func__"):
                 # Reconstruct helper function from pickled data
@@ -2169,8 +2183,21 @@ class ToolHandler(ABC):
                     encoded_func = v["pickled"]
                     pickled_func = base64.b64decode(encoded_func.encode("ascii"))
                     module_dict[k] = dill.loads(pickled_func)
-                except Exception as e:
-                    print(f"Warning: Could not dill deserialize helper function {k}: {e}")
+                except Exception:
+                    # Silently skip - source code execution will handle this
+                    pass
+            elif isinstance(v, dict) and v.get("__imported_callable__"):
+                # Reconstruct imported callable (decorator, imported function) from pickled data
+                try:
+                    import base64
+
+                    import dill
+
+                    encoded_func = v["pickled"]
+                    pickled_func = base64.b64decode(encoded_func.encode("ascii"))
+                    module_dict[k] = dill.loads(pickled_func)
+                except Exception:
+                    # Silently skip - these are from dynamic modules and will be recreated by source code execution
                     pass
             else:
                 module_dict[k] = v
