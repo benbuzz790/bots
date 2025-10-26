@@ -65,7 +65,7 @@ def main():
         p1,
         continue_prompt=user_prompt,
         stop_condition=should_stop,
-        callbacks=[print_callback],
+        callback=print_callback,
     )
 
 

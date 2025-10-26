@@ -3064,8 +3064,9 @@ class Bot(ABC):
             - Callbacks are preserved and shared across copies
         """
         if isinstance(other, int):
-            # Store callbacks before deepcopy (they may not be deepcopy-able)
+            # Store callbacks and api_key before deepcopy (they may not be deepcopy-able)
             original_callbacks = self.callbacks
+            original_api_key = self.api_key
 
             # Temporarily remove callbacks for deepcopy
             self.callbacks = None
@@ -3073,10 +3074,12 @@ class Bot(ABC):
             # Create copies
             copies = [copy.deepcopy(self) for _ in range(other)]
 
-            # Restore callbacks to original and all copies
+            # Restore callbacks and api_key to original and all copies
             self.callbacks = original_callbacks
+            self.api_key = original_api_key
             for bot_copy in copies:
                 bot_copy.callbacks = original_callbacks
+                bot_copy.api_key = original_api_key
 
             return copies
         raise NotImplementedError("Bot multiplication not defined for non-integer values")

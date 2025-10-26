@@ -2162,7 +2162,10 @@ class CLI:
 
     def _handle_recent_prompts(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Handle /r command to show recent prompts."""
-        return self.prompts.recent_prompts(bot, context, args)
+        message, prefill_text = self.prompts.recent_prompts(bot, context, args)
+        if prefill_text:
+            self.pending_prefill = prefill_text
+        return message
 
     def _get_user_input(self, prompt_text: str = ">>> ") -> str:
         """Get user input, with optional pre-fill support."""

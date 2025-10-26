@@ -40,7 +40,6 @@ This requires API calls, so should be run with pytest and credentials.
 
 import os
 
-
 import pytest
 
 from bots import AnthropicBot

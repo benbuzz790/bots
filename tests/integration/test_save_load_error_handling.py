@@ -107,7 +107,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
 
             # Simulate tool execution callbacks
             loaded_bot.callbacks.on_tool_start(
-                "view_dir", metadata={"tool_args": {"start_path": ".", "target_extensions": "['py']"}}
+                "view_dir", metadata={"tool_args": {"start_path": ".", "target_extensions": ["py"]}}
             )
             loaded_bot.callbacks.on_tool_complete("view_dir", "Test result")
 
@@ -146,10 +146,15 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
             data = json.load(f)
 
         # Change the code hash to force mismatch
-        if "tool_handler" in data and "modules" in data["tool_handler"]:
-            for module_path, module_data in data["tool_handler"]["modules"].items():
-                module_data["code_hash"] = "intentionally_wrong_hash"
-                break
+
+        # Ensure modules exist
+        assert "tool_handler" in data, "tool_handler missing from saved data"
+        assert "modules" in data["tool_handler"], "modules missing from tool_handler"
+        assert len(data["tool_handler"]["modules"]) > 0, "No modules found in tool_handler"
+
+        # Get the first module and mutate its hash
+        first_module = next(iter(data["tool_handler"]["modules"].values()))
+        first_module["code_hash"] = "intentionally_wrong_hash"
 
         with open(save_path, "w") as f:
             json.dump(data, f)

@@ -119,6 +119,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         str: Success message with branch count, or error details if something went wrong
     """
     import copy
+    import threading
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     from bots.flows import functional_prompts as fp
@@ -173,6 +174,9 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                 original_node._add_tool_results(dummy_results)
                 dummy_results_added = True
 
+        # Create lock for thread-safe mutations
+        replies_lock = threading.Lock()
+
         def execute_branch(prompt, parent_bot_node):
             """Execute a single branch with the given prompt."""
             try:
@@ -199,9 +203,11 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                     response = branch_bot.respond(prompt)
 
                 # Stitch completed conversation back onto parent bot conversation
-                parent_bot_node.replies.extend(branching_node.replies)
-                for node in branching_node.replies:
-                    node.parent = parent_bot_node
+                # Thread-safe mutation with lock
+                with replies_lock:
+                    parent_bot_node.replies.extend(branching_node.replies)
+                    for node in branching_node.replies:
+                        node.parent = parent_bot_node
 
                 return response, branch_bot.conversation
 
@@ -620,6 +626,7 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
         str: Combined results from all subagents
     """
     import os
+    import threading
 
     from bots.flows import functional_prompts as fp
     from bots.foundation.base import Bot
@@ -687,6 +694,9 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
             worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
             temp_file = f"subagent_{temp_id}_{worker_id}.bot"
             bot.save(temp_file)
+
+        # Create lock for thread-safe mutations
+        replies_lock = threading.Lock()
 
         def execute_subagent(task, parent_bot_node):
             """Execute a single subagent with the given task."""
@@ -807,9 +817,11 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
                 )
 
                 # Stitch completed conversation back onto bot conversation
-                parent_bot_node.replies.extend(branching_node.replies)
-                for node in branching_node.replies:
-                    node.parent = parent_bot_node
+                # Thread-safe mutation with lock
+                with replies_lock:
+                    parent_bot_node.replies.extend(branching_node.replies)
+                    for node in branching_node.replies:
+                        node.parent = parent_bot_node
 
                 # Return the final response
                 final_response = subagent.conversation.content
@@ -862,3 +874,12 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
 
         traceback.print_exc()
         return f"Error in subagent: {str(e)}"
+    finally:
+        # Ensure temp file cleanup on all paths
+        try:
+            if "temp_file" in locals() and temp_file:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+        except Exception:
+            # Swallow any cleanup errors to avoid masking original exception
+            pass

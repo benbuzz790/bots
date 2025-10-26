@@ -3,11 +3,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import bots.dev.cli as cli_module
 from bots import AnthropicBot, Engines
 from bots.dev.cli import CLI, CLIContext, RealTimeDisplayCallbacks, StateHandler
-
-
-import bots.dev.cli as cli_module
 
 pytestmark = pytest.mark.e2e
 

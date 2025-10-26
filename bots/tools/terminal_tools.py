@@ -279,40 +279,73 @@ class PowerShellSession:
         }
                         """.strip(),
                 """
-        Add-Type -AssemblyName Microsoft.VisualBasic
-        function Remove-ItemSafely {
-            param(
-                [Parameter(Mandatory=$true, ValueFromPipeline=$true, Position=0)]
-                [string[]]$Path,
-                [switch]$Recurse,
-                [switch]$Force
-            )
-            process {
-                foreach ($item in $Path) {
-                    $fullPath = $null
-                    try {
-                        $fullPath = Resolve-Path $item -ErrorAction Stop
-                    } catch {
-                        Write-Error "Cannot find path '$item' because it does not exist."
-                        continue
-                    }
+        # Detect Windows platform reliably across PowerShell versions
+        $isWindows = $false
+        if ($PSVersionTable.PSVersion.Major -ge 6) {
+            # PowerShell Core - use built-in $IsWindows variable
+            $isWindows = $IsWindows
+        } else {
+            # Windows PowerShell - check environment variable
+            $isWindows = $env:OS -eq 'Windows_NT'
+        }
 
-                    if (Test-Path $fullPath -PathType Container) {
-                        [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory(
-                            $fullPath,
-                            'OnlyErrorDialogs',
-                            'SendToRecycleBin'
-                        )
-                    } else {
-                        [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile(
-                            $fullPath,
-                            'OnlyErrorDialogs',
-                            'SendToRecycleBin'
-                        )
+        if ($isWindows) {
+            # Windows-specific: Use Recycle Bin
+            Add-Type -AssemblyName Microsoft.VisualBasic
+            function Remove-ItemSafely {
+                param(
+                    [Parameter(Mandatory=$true, ValueFromPipeline=$true, Position=0)]
+                    [string[]]$Path,
+                    [switch]$Recurse,
+                    [switch]$Force
+                )
+                process {
+                    foreach ($item in $Path) {
+                        $fullPath = $null
+                        try {
+                            $fullPath = Resolve-Path $item -ErrorAction Stop
+                        } catch {
+                            Write-Error "Cannot find path '$item' because it does not exist."
+                            continue
+                        }
+
+                        if (Test-Path $fullPath -PathType Container) {
+                            [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory(
+                                $fullPath,
+                                'OnlyErrorDialogs',
+                                'SendToRecycleBin'
+                            )
+                        } else {
+                            [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile(
+                                $fullPath,
+                                'OnlyErrorDialogs',
+                                'SendToRecycleBin'
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            # Non-Windows: Use standard Remove-Item
+            function Remove-ItemSafely {
+                param(
+                    [Parameter(Mandatory=$true, ValueFromPipeline=$true, Position=0)]
+                    [string[]]$Path,
+                    [switch]$Recurse,
+                    [switch]$Force
+                )
+                process {
+                    foreach ($item in $Path) {
+                        $params = @{Path = $item}
+                        if ($Recurse) { $params.Recurse = $true }
+                        if ($Force) { $params.Force = $true }
+                        Remove-Item @params
                     }
                 }
             }
         }
+
+        # Set aliases on all platforms
         Set-Alias -Name rm -Value Remove-ItemSafely -Option AllScope
         Set-Alias -Name del -Value Remove-ItemSafely -Option AllScope
                         """.strip(),
