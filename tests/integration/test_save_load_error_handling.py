@@ -25,6 +25,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
     def tearDown(self):
         """Clean up test environment."""
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_successful_load_produces_no_excessive_output(self):
@@ -34,13 +35,10 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         warning spam or debug output that would clutter the CLI.
         """
         # Create and save a bot
-        bot = AnthropicBot(
-            name="TestBot",
-            model_engine=Engines.CLAUDE37_SONNET_20250219,
-            max_tokens=1000
-        )
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
+
         bot.add_tools(view_dir)
 
         save_path = os.path.join(self.temp_dir, "test_bot.bot")
@@ -54,7 +52,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         try:
             sys.stdout = captured
             sys.stderr = captured
-            loaded_bot = Bot.load(save_path)
+            Bot.load(save_path)
         finally:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
@@ -62,11 +60,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         output = captured.getvalue()
 
         # Successful load should produce minimal or no output
-        self.assertLess(
-            len(output), 
-            500, 
-            f"Successful load produced excessive output ({len(output)} chars):\n{output[:200]}"
-        )
+        self.assertLess(len(output), 500, f"Successful load produced excessive output ({len(output)} chars):\n{output[:200]}")
 
         # Should not contain error patterns
         self.assertNotIn("Full stack trace:", output)
@@ -80,13 +74,10 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         the verbose mode properly displays tool requests and results.
         """
         # Create and save a bot
-        bot = AnthropicBot(
-            name="TestBot",
-            model_engine=Engines.CLAUDE37_SONNET_20250219,
-            max_tokens=1000
-        )
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
+
         bot.add_tools(view_dir)
 
         save_path = os.path.join(self.temp_dir, "test_bot.bot")
@@ -116,8 +107,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
 
             # Simulate tool execution callbacks
             loaded_bot.callbacks.on_tool_start(
-                "view_dir", 
-                metadata={"tool_args": {"start_path": ".", "target_extensions": "['py']"}}
+                "view_dir", metadata={"tool_args": {"start_path": ".", "target_extensions": "['py']"}}
             )
             loaded_bot.callbacks.on_tool_complete("view_dir", "Test result")
 
@@ -127,18 +117,11 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         callback_output = captured.getvalue()
 
         # Callbacks should produce output in verbose mode
-        self.assertGreater(
-            len(callback_output), 
-            20, 
-            f"Verbose callbacks should produce output, got: {repr(callback_output)}"
-        )
+        self.assertGreater(len(callback_output), 20, f"Verbose callbacks should produce output, got: {repr(callback_output)}")
 
         # Should contain tool-related output
         # Note: The exact format may vary, but there should be visible output
-        self.assertTrue(
-            len(callback_output.strip()) > 0,
-            "Callbacks should produce visible output in verbose mode"
-        )
+        self.assertTrue(len(callback_output.strip()) > 0, "Callbacks should produce visible output in verbose mode")
 
     def test_code_hash_mismatch_warning_is_concise(self):
         """Test that code hash mismatch warnings are concise, not verbose.
@@ -147,13 +130,10 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         not include the entire source code.
         """
         # Create and save a bot
-        bot = AnthropicBot(
-            name="TestBot",
-            model_engine=Engines.CLAUDE37_SONNET_20250219,
-            max_tokens=1000
-        )
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
+
         bot.add_tools(view_dir)
 
         save_path = os.path.join(self.temp_dir, "test_bot.bot")
@@ -161,6 +141,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
 
         # Modify the saved file to trigger code hash mismatch
         import json
+
         with open(save_path, "r") as f:
             data = json.load(f)
 
@@ -181,7 +162,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         try:
             sys.stdout = captured
             sys.stderr = captured
-            loaded_bot = Bot.load(save_path)
+            Bot.load(save_path)
         finally:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
@@ -189,11 +170,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         output = captured.getvalue()
 
         # Warning should be concise (< 500 chars for a single module warning)
-        self.assertLess(
-            len(output),
-            500,
-            f"Code hash mismatch warning too verbose ({len(output)} chars):\n{output[:300]}"
-        )
+        self.assertLess(len(output), 500, f"Code hash mismatch warning too verbose ({len(output)} chars):\n{output[:300]}")
 
         # Should contain the expected warning
         self.assertIn("Warning: Code hash mismatch", output)
@@ -201,8 +178,6 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         # Should NOT contain excessive detail
         self.assertNotIn("Full stack trace:", output)
         self.assertNotIn("Source context (lines", output)
-
-
 
     def test_tool_handler_bot_reference_preserved_after_load(self):
         """Test that tool_handler.bot reference is properly set after bot load.
@@ -214,13 +189,10 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         Root cause: tool_handler.bot was None after load, preventing callback invocation
         """
         # Create and save a bot with tools
-        bot = AnthropicBot(
-            name="TestBot",
-            model_engine=Engines.CLAUDE37_SONNET_20250219,
-            max_tokens=1000
-        )
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
+
         bot.add_tools(view_dir)
 
         # Verify reference exists before save
@@ -235,19 +207,10 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         loaded_bot = Bot.load(save_path)
 
         # Verify reference is restored after load
-        self.assertTrue(
-            hasattr(loaded_bot.tool_handler, "bot"),
-            "tool_handler.bot attribute should exist after load"
-        )
-        self.assertIsNotNone(
-            loaded_bot.tool_handler.bot,
-            "tool_handler.bot should not be None after load"
-        )
-        self.assertIs(
-            loaded_bot.tool_handler.bot,
-            loaded_bot,
-            "tool_handler.bot should reference the loaded bot instance"
-        )
+        self.assertTrue(hasattr(loaded_bot.tool_handler, "bot"), "tool_handler.bot attribute should exist after load")
+        self.assertIsNotNone(loaded_bot.tool_handler.bot, "tool_handler.bot should not be None after load")
+        self.assertIs(loaded_bot.tool_handler.bot, loaded_bot, "tool_handler.bot should reference the loaded bot instance")
+
 
 if __name__ == "__main__":
     unittest.main()

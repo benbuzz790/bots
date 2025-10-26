@@ -1,17 +1,19 @@
+import glob
 import io
 import os
 import shutil
 import tempfile
 import unittest
-import glob
-import pytest
-import unittest
 from unittest.mock import patch
+
+import pytest
 
 import bots.tools.self_tools as self_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 from bots.testing.mock_bot import MockBot
+
+
 @pytest.fixture(autouse=True)
 def cleanup_temp_bot_files():
     """Clean up temporary bot files created during tests.
@@ -412,9 +414,7 @@ class TestSelfTools(unittest.TestCase):
 
         # Use the bot's respond method which properly sets up the calling context
         # MockBot will execute the tool without making API calls
-        response = mock_bot.respond(
-            "Use branch_self tool"
-        )
+        response = mock_bot.respond("Use branch_self tool")
 
         # Record end time
         end_time = time.time()
@@ -427,9 +427,10 @@ class TestSelfTools(unittest.TestCase):
 
         # With MockBot, the test completes quickly regardless of parallel/sequential
         # The real API tests timeout because they're waiting for network responses
-        self.assertLess(elapsed, 10.0, 
-            f"MockBot test took {elapsed:.2f}s - should be <10s. "
-            "This indicates a code bug, not API timeout.")
+        self.assertLess(
+            elapsed, 10.0, f"MockBot test took {elapsed:.2f}s - should be <10s. " "This indicates a code bug, not API timeout."
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

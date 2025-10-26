@@ -3,6 +3,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from bots import AnthropicBot, Engines
+from bots.dev.cli import CLI, CLIContext, RealTimeDisplayCallbacks, StateHandler
+
+
 import bots.dev.cli as cli_module
 
 pytestmark = pytest.mark.e2e
@@ -238,12 +242,6 @@ class TestCLILoad(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-import pytest
-import os
-import tempfile
-from unittest.mock import Mock, patch, MagicMock
-from bots.dev.cli import CLI, CLIContext, RealTimeDisplayCallbacks, StateHandler
-from bots import AnthropicBot, Engines
 
 
 class TestCLILoadCallbacksRegression:
@@ -270,7 +268,7 @@ class TestCLILoadCallbacksRegression:
         state_handler = StateHandler()
 
         # Load the bot using the CLI's method
-        result = state_handler._load_bot_from_file(str(bot_file), context)
+        state_handler._load_bot_from_file(str(bot_file), context)
 
         # The bug: loaded bot should have RealTimeDisplayCallbacks but doesn't
         loaded_bot = context.bot_instance
@@ -295,10 +293,10 @@ class TestCLILoadCallbacksRegression:
         cli = CLI(bot_filename=str(bot_file))
 
         # Mock the run loop to just load and stop
-        with patch.object(cli, '_initialize_new_bot'):
-            with patch('builtins.input', side_effect=['/exit']):
-                with patch('bots.dev.cli.setup_raw_mode', return_value=None):
-                    with patch('bots.dev.cli.restore_terminal'):
+        with patch.object(cli, "_initialize_new_bot"):
+            with patch("builtins.input", side_effect=["/exit"]):
+                with patch("bots.dev.cli.setup_raw_mode", return_value=None):
+                    with patch("bots.dev.cli.restore_terminal"):
                         try:
                             cli.run()
                         except SystemExit:
@@ -308,6 +306,5 @@ class TestCLILoadCallbacksRegression:
         loaded_bot = cli.context.bot_instance
         if loaded_bot:
             assert isinstance(loaded_bot.callbacks, RealTimeDisplayCallbacks), (
-                f"CLI-loaded bot should have RealTimeDisplayCallbacks, "
-                f"but has {type(loaded_bot.callbacks).__name__}"
+                f"CLI-loaded bot should have RealTimeDisplayCallbacks, " f"but has {type(loaded_bot.callbacks).__name__}"
             )

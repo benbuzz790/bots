@@ -5,6 +5,8 @@ from contextlib import redirect_stdout
 from io import StringIO
 from unittest.mock import patch
 
+import pytest
+
 import bots.dev.cli as cli_module
 
 """Tests for /save and /auto commands."""
@@ -117,6 +119,7 @@ class TestAutoCommand(unittest.TestCase):
         # Should show interruption message
         self.assertIn("Autonomous execution interrupted by user", output)
 
+    @pytest.mark.serial
     @patch("builtins.input")
     def test_auto_command_error_handling(self, mock_input):
         """Test /auto command error handling."""
@@ -130,7 +133,7 @@ class TestAutoCommand(unittest.TestCase):
 
         # Should handle the case gracefully - /auto returns a message which gets displayed
         # The command completes without crashing
-        self.assertIn("user", output.lower())  # User message should be present
+        self.assertIn("you:", output.lower())  # User prompt should be present
 
 
 if __name__ == "__main__":

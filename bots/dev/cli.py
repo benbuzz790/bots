@@ -685,8 +685,6 @@ class CLIContext:
         self.cached_leaves: List[ConversationNode] = []
         self.callbacks = CLICallbacks(self)
         # Track session start time for cumulative metrics
-        import time
-
         self.session_start_time = time.time()
         # Track context reduction cooldown (counts down from 3 after each trigger)
         # Starts at 0 so first time tokens exceed threshold, it triggers immediately
@@ -761,8 +759,6 @@ Respond with just the name, no explanation."""
 
         except Exception:
             # Fallback to timestamp-based name
-            import time
-
             return f"prompt_{int(time.time())}"
 
     def search_prompts(self, query: str) -> List[tuple]:
@@ -2379,7 +2375,7 @@ class PromptHandler:
                 # Show preview of content
                 preview = content[:80] + "..." if len(content) > 80 else content
                 preview = preview.replace("\n", " ")  # Single line preview
-                marker = "→" if i == 1 else " "
+                marker = "â†’" if i == 1 else " "
                 print(f"  {marker} {i}. {name}: {preview}")
 
             if len(matches) > 10:

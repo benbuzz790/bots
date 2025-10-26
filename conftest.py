@@ -81,6 +81,8 @@ def cleanup_session():
     """Session-level fixture to ensure cleanup happens."""
     yield
     cleanup_test_artifacts()
+
+
 @pytest.fixture(autouse=True)
 def patch_input_with_esc_for_tests(monkeypatch):
     """Automatically patch input_with_esc to use builtins.input in tests.
@@ -97,7 +99,7 @@ def patch_input_with_esc_for_tests(monkeypatch):
     def test_input_with_esc(prompt: str = "") -> str:
         return input(prompt)
 
-    monkeypatch.setattr(cli, 'input_with_esc', test_input_with_esc)
+    monkeypatch.setattr(cli, "input_with_esc", test_input_with_esc)
     yield
 
 
@@ -120,24 +122,6 @@ def safe_temp_dir():
     register_test_dir(temp_dir)
     yield temp_dir
     # Cleanup happens automatically via atexit
-@pytest.fixture(autouse=True)
-def patch_input_with_esc_for_tests(monkeypatch):
-    """Automatically patch input_with_esc to use builtins.input in tests.
-
-    This prevents tests from hanging when they mock builtins.input, since
-    input_with_esc() uses platform-specific keyboard input that doesn't
-    call builtins.input.
-
-    This fixture runs automatically for all tests.
-    """
-    from bots.dev import cli
-
-    # Replace input_with_esc with standard input for test compatibility
-    def test_input_with_esc(prompt: str = "") -> str:
-        return input(prompt)
-
-    monkeypatch.setattr(cli, 'input_with_esc', test_input_with_esc)
-    yield
 
 
 @pytest.fixture
@@ -148,24 +132,6 @@ def safe_temp_file():
     register_test_file(temp_file)
     yield temp_file
     # Cleanup happens automatically via atexit
-@pytest.fixture(autouse=True)
-def patch_input_with_esc_for_tests(monkeypatch):
-    """Automatically patch input_with_esc to use builtins.input in tests.
-
-    This prevents tests from hanging when they mock builtins.input, since
-    input_with_esc() uses platform-specific keyboard input that doesn't
-    call builtins.input.
-
-    This fixture runs automatically for all tests.
-    """
-    from bots.dev import cli
-
-    # Replace input_with_esc with standard input for test compatibility
-    def test_input_with_esc(prompt: str = "") -> str:
-        return input(prompt)
-
-    monkeypatch.setattr(cli, 'input_with_esc', test_input_with_esc)
-    yield
 
 
 def pytest_addoption(parser):
@@ -227,21 +193,3 @@ def clean_otel_env(monkeypatch):
     yield
 
     # Cleanup happens automatically via monkeypatch
-@pytest.fixture(autouse=True)
-def patch_input_with_esc_for_tests(monkeypatch):
-    """Automatically patch input_with_esc to use builtins.input in tests.
-
-    This prevents tests from hanging when they mock builtins.input, since
-    input_with_esc() uses platform-specific keyboard input that doesn't
-    call builtins.input.
-
-    This fixture runs automatically for all tests.
-    """
-    from bots.dev import cli
-
-    # Replace input_with_esc with standard input for test compatibility
-    def test_input_with_esc(prompt: str = "") -> str:
-        return input(prompt)
-
-    monkeypatch.setattr(cli, 'input_with_esc', test_input_with_esc)
-    yield

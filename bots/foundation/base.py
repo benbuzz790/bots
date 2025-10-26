@@ -2026,34 +2026,34 @@ class ToolHandler(ABC):
     def from_dict(cls, data: Dict[str, Any]) -> "ToolHandler":
         """Reconstruct a ToolHandler instance from serialized state.
 
-    Use when restoring a previously serialized tool handler,
-    such as when loading a saved bot state.
+        Use when restoring a previously serialized tool handler,
+        such as when loading a saved bot state.
 
-    Parameters:
-        data (Dict[str, Any]): Serialized state from to_dict()
+        Parameters:
+            data (Dict[str, Any]): Serialized state from to_dict()
 
-    Returns:
-        ToolHandler: Reconstructed handler instance
+        Returns:
+            ToolHandler: Reconstructed handler instance
 
-    Side Effects:
-        - Creates new module contexts
-        - Reconstructs function objects
-        - Restores tool registry
-        - Preserves request/result history
+        Side Effects:
+            - Creates new module contexts
+            - Reconstructs function objects
+            - Restores tool registry
+            - Preserves request/result history
 
-    Note:
-        - Only restores explicitly registered tools
-        - Verifies code hashes for security
-        - Maintains original module structure
-        - Preserves execution state (requests/results)
+        Note:
+            - Only restores explicitly registered tools
+            - Verifies code hashes for security
+            - Maintains original module structure
+            - Preserves execution state (requests/results)
 
-    Example:
-        ```python
-        saved_state = handler.to_dict()
-        # Later...
-        new_handler = ToolHandler.from_dict(saved_state)
-        ```
-    """
+        Example:
+            ```python
+            saved_state = handler.to_dict()
+            # Later...
+            new_handler = ToolHandler.from_dict(saved_state)
+            ```
+        """
         import traceback
 
         handler = cls()
@@ -2737,34 +2737,35 @@ class Bot(ABC):
     def set_system_message(self, message: str) -> None:
         """Set the system-level instructions for the bot.
 
-    Use to provide high-level guidance or constraints that should
-    apply to all of the bot's responses.
+        Use to provide high-level guidance or constraints that should
+        apply to all of the bot's responses.
 
-    Parameters:
-        message (str): System instructions for the bot
+        Parameters:
+            message (str): System instructions for the bot
 
-    Example:
-        ```python
-        bot.set_system_message(
-            "You are a code review expert. Focus on security and performance."
-        )
-        ```
-    """
+        Example:
+            ```python
+            bot.set_system_message(
+                "You are a code review expert. Focus on security and performance."
+            )
+            ```
+        """
         self.system_message = message
+
     def _serialize(self) -> dict:
         """Serialize the bot's state to a dictionary.
 
-    This is the core serialization logic extracted from save().
-    Converts the bot's state into a JSON-serializable dictionary.
+        This is the core serialization logic extracted from save().
+        Converts the bot's state into a JSON-serializable dictionary.
 
-    Returns:
-        dict: Serialized bot state
+        Returns:
+            dict: Serialized bot state
 
-    Note:
-        - API keys are not serialized for security
-        - Callbacks are not serialized (environment-specific)
-        - Uses hybrid serialization for tool handlers (see tool_handling.md)
-    """
+        Note:
+            - API keys are not serialized for security
+            - Callbacks are not serialized (environment-specific)
+            - Uses hybrid serialization for tool handlers (see tool_handling.md)
+        """
         data = {key: value for key, value in self.__dict__.items() if not key.startswith("_")}
         data.pop("api_key", None)
         data.pop("mailbox", None)
@@ -2782,27 +2783,26 @@ class Bot(ABC):
                 data[key] = str(value)
 
         return data
-    
-    
+
     @classmethod
     def _deserialize(cls, data: dict, api_key: Optional[str] = None) -> "Bot":
         """Deserialize a bot from a dictionary.
 
-    This is the core deserialization logic extracted from load().
-    Reconstructs a bot instance from a serialized state dictionary.
+        This is the core deserialization logic extracted from load().
+        Reconstructs a bot instance from a serialized state dictionary.
 
-    Parameters:
-        data (dict): Serialized bot state
-        api_key (Optional[str]): API key to use (overrides any saved key)
+        Parameters:
+            data (dict): Serialized bot state
+            api_key (Optional[str]): API key to use (overrides any saved key)
 
-    Returns:
-        Bot: Reconstructed bot instance
+        Returns:
+            Bot: Reconstructed bot instance
 
-    Note:
-        - API keys must be provided (not stored in serialized data)
-        - Callbacks must be injected after deserialization
-        - Uses hybrid deserialization for tool handlers (see tool_handling.md)
-    """
+        Note:
+            - API keys must be provided (not stored in serialized data)
+            - Callbacks must be injected after deserialization
+            - Uses hybrid deserialization for tool handlers (see tool_handling.md)
+        """
         # Try to load the exact bot class if saved, otherwise fall back to engine-based lookup
         if "bot_class" in data:
             # Try to import the bot class from common locations
@@ -2853,29 +2853,29 @@ class Bot(ABC):
                 bot.conversation = bot.conversation.replies[-1]
 
         return bot
+
     def __getstate__(self):
         """Support for pickle and deepcopy.
 
-    Returns the bot's state as a picklable dictionary.
-    Uses our existing _serialize() method which already handles all the
-    complex serialization (modules, functions, tool handlers, etc).
+        Returns the bot's state as a picklable dictionary.
+        Uses our existing _serialize() method which already handles all the
+        complex serialization (modules, functions, tool handlers, etc).
 
-    Returns:
-        dict: Serialized bot state (picklable)
-    """
+        Returns:
+            dict: Serialized bot state (picklable)
+        """
         return self._serialize()
-    
-    
+
     def __setstate__(self, state):
         """Support for pickle and deepcopy.
 
-    Reconstructs the bot from a pickled state dictionary.
-    Uses our existing _deserialize() method which already handles all the
-    complex deserialization (modules, functions, tool handlers, etc).
+        Reconstructs the bot from a pickled state dictionary.
+        Uses our existing _deserialize() method which already handles all the
+        complex deserialization (modules, functions, tool handlers, etc).
 
-    Parameters:
-        state (dict): Serialized bot state
-    """
+        Parameters:
+            state (dict): Serialized bot state
+        """
         # _deserialize is a classmethod that returns a new bot instance
         # We need to transfer its state to self
         temp_bot = self.__class__._deserialize(state, api_key=state.get("api_key"))

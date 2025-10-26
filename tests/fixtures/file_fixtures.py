@@ -104,7 +104,6 @@ def cleanup_temp_files():
             pass
 
 
-
 @pytest.fixture
 def isolated_filesystem():
     """Create an isolated filesystem environment for tests.
@@ -169,11 +168,11 @@ def isolated_filesystem():
         try:
             if temp_path.exists():
                 import shutil
+
                 shutil.rmtree(temp_path)
         except Exception as e:
             # Log but don't fail the test if cleanup has issues
             print(f"Warning: Could not clean up isolated filesystem at {temp_path}: {e}")
-
 
 
 def get_unique_filename(prefix="test", extension="py"):

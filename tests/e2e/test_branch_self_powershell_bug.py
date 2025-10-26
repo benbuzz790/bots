@@ -37,9 +37,12 @@ To truly replicate the bug, we need to:
 
 This requires API calls, so should be run with pytest and credentials.
 """
+
 import os
-import tempfile
+
+
 import pytest
+
 from bots import AnthropicBot
 
 
@@ -49,20 +52,16 @@ def test_branch_self_powershell_bug():
 
     Steps:
     1. Create a bot with execute_powershell tool
-    2. Call branch_self with a prompt that uses execute_powershell  
+    2. Call branch_self with a prompt that uses execute_powershell
     3. Observe the error about PowerShellManager
 
     This test uses Haiku to keep costs low.
     """
-    import bots.tools.terminal_tools
     import bots.tools.self_tools
+    import bots.tools.terminal_tools
 
     # Create a bot with the terminal tools (includes execute_powershell)
-    bot = AnthropicBot(
-        model_engine="claude-3-5-haiku-latest",
-        max_tokens=4000,
-        temperature=0.0
-    )
+    bot = AnthropicBot(model_engine="claude-3-5-haiku-latest", max_tokens=4000, temperature=0.0)
     bot.add_tools(bots.tools.terminal_tools, bots.tools.self_tools)
 
     # Give it an initial prompt
@@ -83,7 +82,7 @@ def test_branch_self_powershell_bug():
     print(f"Has tool_calls: {hasattr(bot.conversation, 'tool_calls') and len(bot.conversation.tool_calls) > 0}")
     print(f"Has tool_results: {hasattr(bot.conversation, 'tool_results') and len(bot.conversation.tool_results) > 0}")
 
-    if hasattr(bot.conversation, 'tool_calls'):
+    if hasattr(bot.conversation, "tool_calls"):
         print(f"Tool calls: {[tc.get('name') for tc in bot.conversation.tool_calls]}")
 
     # The LLM response with tool call doesn't automatically get tool results
@@ -95,10 +94,10 @@ def test_branch_self_powershell_bug():
     print(response2)
 
     print("\n=== SECOND NODE TOOL_RESULTS ===")
-    if hasattr(bot.conversation, 'tool_results'):
+    if hasattr(bot.conversation, "tool_results"):
         print(f"Found {len(bot.conversation.tool_results)} tool results")
         for i, result in enumerate(bot.conversation.tool_results):
-            content = result.get('content', '')
+            content = result.get("content", "")
             print(f"\n--- Tool Result {i} ---")
             print(content[:1000])
 
@@ -106,33 +105,33 @@ def test_branch_self_powershell_bug():
 
     # Collect all text
     tool_result_text = ""
-    if hasattr(bot.conversation, 'tool_results'):
+    if hasattr(bot.conversation, "tool_results"):
         for result in bot.conversation.tool_results:
-            tool_result_text += str(result.get('content', ''))
+            tool_result_text += str(result.get("content", ""))
 
     # Check parent node too (where branch_self was called)
     parent_tool_results = ""
-    if bot.conversation.parent and hasattr(bot.conversation.parent, 'tool_results'):
+    if bot.conversation.parent and hasattr(bot.conversation.parent, "tool_results"):
         for result in bot.conversation.parent.tool_results:
-            parent_tool_results += str(result.get('content', ''))
-            print(f"\n--- Parent Tool Result ---")
-            print(result.get('content', '')[:1000])
+            parent_tool_results += str(result.get("content", ""))
+            print("\n--- Parent Tool Result ---")
+            print(result.get("content", "")[:1000])
 
     all_text = response + response2 + tool_result_text + parent_tool_results
 
     # Check for the bug patterns
     if "0/1" in all_text and ("failed" in all_text.lower() or "error" in all_text.lower()):
-        print("\n✓ BUG REPRODUCED: branch_self reported 0/1 branches succeeded")
+        print("\nâœ“ BUG REPRODUCED: branch_self reported 0/1 branches succeeded")
         pytest.fail("Bug reproduced: branch_self failed - 0/1 branches succeeded")
     elif "PowerShellManager" in all_text and "not being defined" in all_text:
-        print("\n✓ BUG REPRODUCED: PowerShellManager not being defined error")
+        print("\nâœ“ BUG REPRODUCED: PowerShellManager not being defined error")
         pytest.fail("Bug reproduced: PowerShellManager not being defined")
     elif "Tool Failed" in all_text:
-        print(f"\n✓ BUG REPRODUCED: Tool Failed error")
+        print("\nâœ“ BUG REPRODUCED: Tool Failed error")
         print(f"Error text: {all_text[:1000]}")
-        pytest.fail(f"Bug reproduced: Tool Failed error")
+        pytest.fail("Bug reproduced: Tool Failed error")
     elif "test123" in all_text:
-        print("\n✗ NO BUG: PowerShell executed successfully and returned 'test123'")
+        print("\nâœ— NO BUG: PowerShell executed successfully and returned 'test123'")
     else:
         print("\n? UNCLEAR: No clear error or success indicator")
         print(f"All text (first 1000 chars): {all_text[:1000]}")
@@ -147,13 +146,12 @@ def test_branch_self_tool_isolation():
 
     RESULT: PASSES - Tools are properly serialized and PowerShellManager can be instantiated.
     """
-    bot = AnthropicBot(
-        model_engine="claude-3-5-haiku-latest",
-        max_tokens=1000,
-        temperature=0.0
-    )
-    bot.add_tools("bots/tools/terminal_tools.py")
-    bot.add_tools("bots/tools/self_tools.py")
+    import bots.tools.self_tools
+    import bots.tools.terminal_tools
+
+    bot = AnthropicBot(model_engine="claude-3-5-haiku-latest", max_tokens=1000, temperature=0.0)
+    bot.add_tools(bots.tools.terminal_tools)
+    bot.add_tools(bots.tools.self_tools)
 
     # Check that bot has the tools
     tool_names = [tool.get("name") for tool in bot.tool_handler.tools]
@@ -170,14 +168,14 @@ def test_branch_self_tool_isolation():
     try:
         # Load the bot (simulating what branch_self does)
         from bots.foundation.base import Bot
+
         loaded_bot = Bot.load(temp_file)
 
         # Check if loaded bot has the tools
         loaded_tool_names = [tool.get("name") for tool in loaded_bot.tool_handler.tools]
         print(f"Loaded bot tools: {loaded_tool_names}")
 
-        assert "execute_powershell" in loaded_tool_names, \
-            "Bug found: execute_powershell not available in loaded bot"
+        assert "execute_powershell" in loaded_tool_names, "Bug found: execute_powershell not available in loaded bot"
 
         # Try to access the PowerShellManager from the loaded bot's context
         # This simulates what happens when execute_powershell is called
@@ -200,6 +198,6 @@ def test_branch_self_tool_isolation():
 if __name__ == "__main__":
     print("Running test_branch_self_tool_isolation...")
     test_branch_self_tool_isolation()
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("\nNote: test_branch_self_powershell_bug requires API calls")
     print("and would need to be run with pytest and proper credentials")

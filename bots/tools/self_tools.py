@@ -154,7 +154,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         bot.autosave = False
 
         # Handle tool_use without tool_result issue
-        # If the current node has tool_calls (the branch_self call itself), 
+        # If the current node has tool_calls (the branch_self call itself),
         # we need to add a dummy result before copying to avoid API errors
         dummy_results_added = False
         original_results = None
@@ -164,10 +164,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
             for tool_call in original_node.tool_calls:
                 if tool_call.get("name") == "branch_self":
                     # Use bot's tool_handler to generate provider-appropriate format
-                    dummy_result = bot.tool_handler.generate_response_schema(
-                        tool_call,
-                        "Branching in progress..."
-                    )
+                    dummy_result = bot.tool_handler.generate_response_schema(tool_call, "Branching in progress...")
                     dummy_results.append(dummy_result)
 
             if dummy_results:
@@ -623,7 +620,6 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
         str: Combined results from all subagents
     """
     import os
-    import uuid
 
     from bots.flows import functional_prompts as fp
     from bots.foundation.base import Bot
@@ -663,10 +659,7 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
             for tool_call in original_node.tool_calls:
                 if tool_call.get("name") == "subagent":
                     # Use bot's tool_handler to generate provider-appropriate format
-                    dummy_result = bot.tool_handler.generate_response_schema(
-                        tool_call, 
-                        "Subagent working..."
-                    )
+                    dummy_result = bot.tool_handler.generate_response_schema(tool_call, "Subagent working...")
                     dummy_results.append(dummy_result)
 
             if dummy_results:

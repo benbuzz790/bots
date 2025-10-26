@@ -15,7 +15,7 @@ def auto_isolated_filesystem(request, isolated_filesystem):
         @pytest.mark.no_isolation
     """
     # Check if test is marked to skip isolation
-    if request.node.get_closest_marker('no_isolation'):
+    if request.node.get_closest_marker("no_isolation"):
         yield
     else:
         # Use the isolated filesystem

@@ -421,6 +421,7 @@ import math
                 break
             except Exception as e:
                 print(f"❌ {length} chars failed: {e}")
+
     def test_recycle_bin_functionality(self):
         """Test that Remove-Item sends files to Recycle Bin instead of permanent deletion"""
         print("\n=== Testing Recycle Bin Functionality ===")
@@ -430,7 +431,7 @@ import math
         for i in range(3):
             filename = f"test_recycle_{i}.txt"
             filepath = os.path.join(self.temp_dir, filename)
-            with open(filepath, 'w') as f:
+            with open(filepath, "w") as f:
                 f.write(f"Test content {i}\n")
             test_files.append(filename)
             print(f"Created test file: {filename}")
@@ -479,7 +480,7 @@ import math
         test_dir = os.path.join(self.temp_dir, "test_recycle_dir")
         os.makedirs(test_dir, exist_ok=True)
         test_file_in_dir = os.path.join(test_dir, "file_in_dir.txt")
-        with open(test_file_in_dir, 'w') as f:
+        with open(test_file_in_dir, "w") as f:
             f.write("File inside directory")
 
         try:
@@ -517,13 +518,14 @@ import math
 
         print("\n=== Recycle Bin Test Complete ===")
         print("Note: Files should be in Recycle Bin, not permanently deleted")
+
     def test_recycle_bin_vs_permanent_deletion(self):
         """Test that our safe delete goes to Recycle Bin vs PowerShell's default permanent delete"""
         print("\n=== Testing Recycle Bin vs Permanent Deletion ===")
 
         # Create a test file
         test_file = os.path.join(self.temp_dir, "recycle_test.txt")
-        with open(test_file, 'w') as f:
+        with open(test_file, "w") as f:
             f.write("This should go to Recycle Bin")
 
         print(f"Created test file: {test_file}")
@@ -547,10 +549,7 @@ import math
         # Test that Microsoft.VisualBasic assembly is loaded
         print("\n--- Verifying Microsoft.VisualBasic assembly ---")
         try:
-            result = execute_powershell(
-                "[Microsoft.VisualBasic.FileIO.FileSystem]::GetType().FullName",
-                timeout="5"
-            )
+            result = execute_powershell("[Microsoft.VisualBasic.FileIO.FileSystem]::GetType().FullName", timeout="5")
             if "Microsoft.VisualBasic.FileIO.FileSystem" in result:
                 print("✅ Microsoft.VisualBasic.FileIO.FileSystem is available")
             else:

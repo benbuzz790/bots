@@ -1,0 +1,43 @@
+# Context Summary for Git Management Task
+## Current Situation:
+- Working on branch: ix-dynamic-prompts-infrastructure
+- Branch has 37 commits ahead of main
+- Branch has grown significantly beyond original "dynamic prompts" scope
+- Includes many bug fixes and improvements
+- Latest commit: 46e0a41 (branch_self deepcopy refactor)
+## Recent Work Completed:
+- Refactored branch_self to use deepcopy instead of save/load
+- Implemented __getstate__ and __setstate__ for Bot class
+- Fixed PowerShell bug in branches (module namespace preservation)
+- All tests passing: 247 passed (up from 242)
+## Current Task:
+**Git Management - Preparing for new PR**
+### Plan (Option B):
+1. Close current PR (fix-dynamic-prompts-infrastructure)
+2. Create new branch with better name reflecting full scope
+3. Rebase onto latest main (1 commit behind: 4efe69b)
+4. Open new PR with comprehensive description
+### Test Status:
+Just ran full test suite:
+- 966 passed ✅
+- 2 failed ❌
+- 12 errors (UnicodeDecodeError from test artifact file)
+### Issues to Fix:
+1. **FIXED via branch**: Deleted tests/e2e/test_results_before_branch_self_refactor.txt (caused 12 UnicodeDecodeErrors)
+2. **TODO**: Fix test_branch_self_tool_isolation - path issue: 'bots/tools/terminal_tools.py' not found
+3. **TODO**: Investigate test_buffer_size_impact - PowerShell process crash (possibly flaky)
+## Next Steps:
+1. Fix remaining 2 test failures
+2. Run linters per Claude.md (black, isort, flake8)
+3. Create new branch with appropriate name
+4. Rebase onto latest main
+5. Open new PR with full description
+## Key Files:
+- Claude.md: Contains PR submission instructions
+- Current directory: C:\Users\benbu\Code\repo_working\bots\tests\e2e
+- Test output saved to: test_output.txt
+## Git Status:
+- On branch fix-dynamic-prompts-infrastructure
+- Ahead of origin/fix-dynamic-prompts-infrastructure by 1 commit
+- Main is 1 commit ahead (4efe69b - Update quicksave.bot conversation #132)
+- Working tree clean (after deleting test artifact)
