@@ -249,7 +249,9 @@ class TestPromptHandler:
             assert "Invalid selection" in message
             assert prefill is None
 
-    def test_load_prompt_cancelled_selection(self, prompt_handler):
+    @patch("bots.dev.cli.input_with_esc")
+    @patch("builtins.print")
+    def test_load_prompt_cancelled_selection(self, mock_print, mock_input, prompt_handler):
         """Test /p command with cancelled selection."""
         # Save multiple prompts
         prompt_handler.prompt_manager.save_prompt("Content 1", name="test_1")
@@ -259,12 +261,14 @@ class TestPromptHandler:
         mock_context = MagicMock()
         args = ["test"]
 
-        with patch("builtins.input", return_value=""):
-            message, prefill = prompt_handler.load_prompt(mock_bot, mock_context, args)
+        # Mock input to search for "test" then select first result
+        mock_input.side_effect = ["1"]
 
-            # Empty input now selects the first (best match) prompt
-            assert "Loaded prompt: test_1" in message
-            assert prefill == "Content 1"
+        message, prefill = prompt_handler.load_prompt(mock_bot, mock_context, args)
+
+        # Should load the first (best match) prompt
+        assert "Loaded prompt: test_1" in message
+        assert prefill == "Content 1"
 
 
 class TestCLIIntegration:

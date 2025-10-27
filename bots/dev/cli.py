@@ -1376,11 +1376,11 @@ class SystemHandler:
                 if check_for_interrupt():
                     raise KeyboardInterrupt()
 
-                # After each iteration, if we're continuing, display metrics and next user prompt
+                # After each iteration, if we're continuing, display next user prompt
                 iteration_count[0] += 1
                 if not stop_on_no_tools(bot):
-                    # Display metrics before the next user message
-                    display_metrics(context, bot)
+                    # NOTE: Metrics are displayed by verbose_callback, not here
+                    # This prevents duplicate display and ensures correct timing (after bot response)
 
                     # Get the next prompt text
                     next_prompt = continue_prompt(bot, iteration_count[0]) if callable(continue_prompt) else continue_prompt
@@ -1821,6 +1821,9 @@ def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> s
         else:
             # Other types (int, bool, None, etc.)
             lines.append(f"{bold_key} {value}")
+
+    # Return the formatted lines joined with newlines
+    return "\n" + "\n".join(lines)
 
 
 def check_for_interrupt() -> bool:
@@ -2349,65 +2352,95 @@ class PromptHandler:
             readline.set_startup_hook(None)
 
     def load_prompt(self, bot: "Bot", context: "CLIContext", args: List[str]) -> tuple:
-        """Load a prompt with search and selection. Returns (message, prefill_text)."""
-        try:
-            # Get search query
-            if args:
-                query = " ".join(args)
+        """Load a saved prompt by name or search query.
+
+        Returns tuple of (status_message, prompt_content) for use by CLI.
+        """
+        if not args:
+            # Show recent prompts
+            recents = self.prompt_manager.get_recents()
+            if recents:
+                print("\nRecent prompts:")
+                for i, (name, _content) in enumerate(recents[:10], 1):
+                    print(f"  {i}. {name}")
+
+                try:
+                    selection = input_with_esc("\nEnter number or name to load (ESC to cancel): ").strip()
+                    if selection.isdigit():
+                        idx = int(selection) - 1
+                        if 0 <= idx < len(recents):
+                            name = recents[idx][0]
+                        else:
+                            return ("Invalid selection.", None)
+                    else:
+                        name = selection
+                except EscapeException:
+                    return ("Load cancelled.", None)
             else:
+                # No recents, prompt for search query
                 try:
-                    query = input_with_esc("Enter prompt search: ").strip()
+                    name = input_with_esc("\nEnter prompt name or search query: ").strip()
+                    if not name:
+                        return ("Load cancelled.", None)
                 except EscapeException:
-                    return ("Selection cancelled", None)
+                    return ("Load cancelled.", None)
+        else:
+            name = " ".join(args)
 
-            # Search for matching prompts
-            matches = self.prompt_manager.search_prompts(query)
+        # Try exact match first
+        try:
+            content = self.prompt_manager.load_prompt(name)
+            return (f"Loaded prompt: {name}", content)
+        except KeyError:
+            pass
 
-            if not matches:
-                return ("No prompts found matching your search.", None)
+        # Try fuzzy search
+        matches = self.prompt_manager.search_prompts(name)
 
-            if len(matches) == 1:
-                # Single match - load directly
-                name, content = matches[0]
-                self.prompt_manager.load_prompt(name)  # Update recency
-                return (f"Loaded prompt: {name}", content)
+        if not matches:
+            return ("No prompts found matching your search.", None)
 
-            # Multiple matches - show selection with best match highlighted
-            print(f"\nFound {len(matches)} matches (best match first):")
-            for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
-                # Show preview of content
-                preview = content[:80] + "..." if len(content) > 80 else content
-                preview = preview.replace("\n", " ")  # Single line preview
-                marker = "â†’" if i == 1 else " "
-                print(f"  {marker} {i}. {name}: {preview}")
+        if len(matches) == 1:
+            # Single match - load directly
+            name, content = matches[0]
+            self.prompt_manager.load_prompt(name)  # Update recency
+            return (f"Loaded prompt: {name}", content)
 
-            if len(matches) > 10:
-                print(f"  ... and {len(matches) - 10} more matches")
+        # Multiple matches - show selection with best match highlighted
+        print(f"\nFound {len(matches)} matches (best match first):")
+        for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
+            # Show preview of content
+            preview = content[:80] + "..." if len(content) > 80 else content
+            preview = preview.replace("\n", " ")  # Single line preview
+            marker = "→" if i == 1 else " "
+            print(f"  {marker} {i}. {name}: {preview}")
 
-            # Get selection (default to 1 if just Enter is pressed)
-            try:
-                try:
-                    choice = input_with_esc(f"\nSelect prompt (1-{min(len(matches), 10)}, default=1): ").strip()
-                except EscapeException:
-                    return ("Selection cancelled", None)
+        if len(matches) > 10:
+            print(f"  ... and {len(matches) - 10} more matches")
 
-                if not choice:
-                    choice_num = 0  # Default to first match
+        try:
+            selection = input_with_esc("\nEnter number or name to load (ESC to cancel): ").strip()
+            if selection.isdigit():
+                idx = int(selection) - 1
+                if 0 <= idx < len(matches):
+                    name, content = matches[idx]
                 else:
-                    choice_num = int(choice) - 1
-                    if choice_num < 0 or choice_num >= min(len(matches), 10):
-                        return (f"Invalid selection. Must be between 1 and {min(len(matches), 10)}.", None)
+                    return ("Invalid selection.", None)
+            else:
+                # Try to find by name in matches
+                name = selection
+                content = None
+                for match_name, match_content in matches:
+                    if match_name == name:
+                        content = match_content
+                        break
+                if content is None:
+                    return (f"'{name}' not in search results.", None)
 
-                name, content = matches[choice_num]
-                self.prompt_manager.load_prompt(name)  # Update recency
-
-                return (f"Loaded prompt: {name}", content)
-
-            except ValueError:
-                return ("Invalid selection. Must be a number.", None)
-
-        except Exception as e:
-            return (f"Error loading prompt: {str(e)}", None)
+            self.prompt_manager.load_prompt(name)  # Update recency
+            return (f"Loaded prompt: {name}", content)
+        except EscapeException:
+            return ("Load cancelled.", None)
 
     def save_prompt(self, bot: "Bot", context: "CLIContext", args: List[str], last_user_message: str = None) -> str:
         """Save a prompt. If args provided, save the args. Otherwise save last user message."""

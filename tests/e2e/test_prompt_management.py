@@ -209,7 +209,7 @@ class TestPromptHandler(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @patch("builtins.input")
+    @patch("bots.dev.cli.input_with_esc")
     def test_load_prompt_no_matches(self, mock_input):
         """Test loading prompt when no matches found."""
         mock_input.return_value = "nonexistent"
@@ -219,7 +219,7 @@ class TestPromptHandler(unittest.TestCase):
         self.assertEqual(message, "No prompts found matching your search.")
         self.assertIsNone(prefill)
 
-    @patch("builtins.input")
+    @patch("bots.dev.cli.input_with_esc")
     def test_load_prompt_single_match(self, mock_input):
         """Test loading prompt with single match."""
         # Setup test data
@@ -232,7 +232,7 @@ class TestPromptHandler(unittest.TestCase):
         self.assertEqual(message, "Loaded prompt: test_prompt")
         self.assertEqual(prefill, "This is a test prompt")
 
-    @patch("builtins.input")
+    @patch("bots.dev.cli.input_with_esc")
     @patch("builtins.print")
     def test_load_prompt_multiple_matches(self, mock_print, mock_input):
         """Test loading prompt with multiple matches."""
@@ -249,7 +249,7 @@ class TestPromptHandler(unittest.TestCase):
         self.assertEqual(message, "Loaded prompt: test1")
         self.assertEqual(prefill, "First test prompt")
 
-    @patch("builtins.input")
+    @patch("bots.dev.cli.input_with_esc")
     @patch("builtins.print")
     def test_load_prompt_invalid_selection(self, mock_print, mock_input):
         """Test loading prompt with invalid selection."""
