@@ -174,4 +174,3 @@ if __name__ == "__main__":
     else:
         print("All tests passed! Issue #160 is fixed.")
         print("=" * 60)
-

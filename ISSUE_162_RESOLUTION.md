@@ -59,7 +59,7 @@ The mojibake **WAS** caused by:
 3. **Pre-commit Hook**: Add mojibake detection (optional)
 4. **Developer Guidelines**: Document proper encoding practices
 ### Future Monitoring
-- Run 	est_mojibake_detection_issue162.py periodically
+- Run test_mojibake_detection_issue162.py periodically
 - The test scans all .py, .md, and .txt files for common mojibake patterns
 - Can be integrated into CI pipeline
 ## Test Results

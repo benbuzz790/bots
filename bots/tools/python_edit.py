@@ -1040,6 +1040,16 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
         if coscope_with and new_module:
             duplicate_warning = _check_for_duplicates(tree, new_module, path_elements)
 
+        # CR#9: Check for invalid combination of file-level tokens with scoped targets
+        if coscope_with in ("__FILE_START__", "__FILE_END__") and path_elements:
+            return _process_error(
+                ValueError(
+                    f"Cannot use {coscope_with} with scoped target '{target_scope}'. "
+                    f"File-level tokens (__FILE_START__, __FILE_END__) can only be used "
+                    f"with file-level targets (e.g., 'file.py')."
+                )
+            )
+
         if coscope_with == "__FILE_START__":
             result = _handle_file_start_insertion(abs_path, tree, new_module)
             if duplicate_warning:

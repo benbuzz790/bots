@@ -2359,25 +2359,31 @@ class PromptHandler:
         if not args:
             # Show recent prompts
             recents = self.prompt_manager.get_recents()
-            if not recents:
-                return ("No recent prompts found.", None)
+            if recents:
+                print("\nRecent prompts:")
+                for i, (name, _content) in enumerate(recents[:10], 1):
+                    print(f"  {i}. {name}")
 
-            print("\nRecent prompts:")
-            for i, (name, _content) in enumerate(recents[:10], 1):
-                print(f"  {i}. {name}")
-
-            try:
-                selection = input_with_esc("\nEnter number or name to load (ESC to cancel): ").strip()
-                if selection.isdigit():
-                    idx = int(selection) - 1
-                    if 0 <= idx < len(recents):
-                        name = recents[idx][0]
+                try:
+                    selection = input_with_esc("\nEnter number or name to load (ESC to cancel): ").strip()
+                    if selection.isdigit():
+                        idx = int(selection) - 1
+                        if 0 <= idx < len(recents):
+                            name = recents[idx][0]
+                        else:
+                            return ("Invalid selection.", None)
                     else:
-                        return ("Invalid selection.", None)
-                else:
-                    name = selection
-            except EscapeException:
-                return ("Load cancelled.", None)
+                        name = selection
+                except EscapeException:
+                    return ("Load cancelled.", None)
+            else:
+                # No recents, prompt for search query
+                try:
+                    name = input_with_esc("\nEnter prompt name or search query: ").strip()
+                    if not name:
+                        return ("Load cancelled.", None)
+                except EscapeException:
+                    return ("Load cancelled.", None)
         else:
             name = " ".join(args)
 
@@ -2392,7 +2398,7 @@ class PromptHandler:
         matches = self.prompt_manager.search_prompts(name)
 
         if not matches:
-            return (f"No prompts found matching '{name}'.", None)
+            return ("No prompts found matching your search.", None)
 
         if len(matches) == 1:
             # Single match - load directly
