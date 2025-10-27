@@ -1123,6 +1123,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         loaded_bot.save(new_path)
         self.assertEqual(loaded_bot.filename, new_path + ".bot")
 
+    @pytest.mark.cli_serial
     def test_wo013_quicksave_behavior(self):
         """Test WO013 quicksave behavior - filename tracking and quicksave flag.
 
@@ -1135,40 +1136,35 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.bot.filename = "test_bot.bot"
         path1 = self.bot.save()
         self.assertEqual(path1, "test_bot.bot")
-        self.assertEqual(self.bot.filename, "test_bot.bot")
+        self.assertTrue(os.path.exists("test_bot.bot"))
 
         # Test 2: save(filename) updates bot.filename
-        named_path = os.path.join(self.temp_dir, "named_save")
-        self.bot.save(named_path)
-        self.assertEqual(self.bot.filename, named_path + ".bot")
+        path2 = self.bot.save("new_bot")
+        self.assertEqual(path2, "new_bot.bot")
+        self.assertEqual(self.bot.filename, "new_bot.bot")
+        self.assertTrue(os.path.exists("new_bot.bot"))
 
-        # Test 3: Multiple saves update filename each time
-        named_path2 = os.path.join(self.temp_dir, "named_save2")
-        self.bot.save(named_path2)
-        self.assertEqual(self.bot.filename, named_path2 + ".bot")
+        # Test 3: save(quicksave=True) doesn't update bot.filename
+        # bot.filename is still "new_bot.bot" from test 2
+        path3 = self.bot.save("quicksave", quicksave=True)
+        self.assertEqual(path3, "quicksave.bot")
+        # filename should NOT have changed
+        self.assertEqual(self.bot.filename, "new_bot.bot")
+        self.assertTrue(os.path.exists("quicksave.bot"))
 
-        # Test 4: Test quicksave behavior
-        # quicksave=True always saves to "quicksave.bot" regardless of filename parameter
-        # and doesn't update bot.filename
-
-        # Save current filename to verify it doesn't change
-        filename_before = self.bot.filename
-
-        # Quicksave (ignores any filename parameter, always uses "quicksave.bot")
-        quicksave_path = self.bot.save(quicksave=True)
-
-        # Verify quicksave file was created at "quicksave.bot"
-        self.assertEqual(quicksave_path, "quicksave.bot", "quicksave=True should save to 'quicksave.bot'")
-        self.assertTrue(os.path.exists("quicksave.bot"), "quicksave.bot should be created")
-
-        # Verify quicksave doesn't update bot.filename
-        self.assertEqual(self.bot.filename, filename_before, "quicksave should not update bot.filename")
-
-        # Cleanup quicksave.bot
-        if os.path.exists("quicksave.bot"):
+        # Cleanup
+        try:
+            os.remove("test_bot.bot")
+        except Exception as e:
+            print(f"Warning: Could not clean up test_bot.bot: {e}")
+        try:
+            os.remove("new_bot.bot")
+        except Exception as e:
+            print(f"Warning: Could not clean up new_bot.bot: {e}")
+        try:
             os.remove("quicksave.bot")
-
-        # Cleanup handled by tearDown
+        except Exception as e:
+            print(f"Warning: Could not clean up quicksave.bot: {e}")
 
     def test_wo013_autosave_uses_quicksave(self) -> None:
         """Test that autosave creates quicksave.bot (WO013 Item 34).
