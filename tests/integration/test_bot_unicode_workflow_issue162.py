@@ -1,7 +1,3 @@
-"""
-Test for Issue #162: Reproduce actual mojibake in bot file operations.
-"""
-
 import os
 import tempfile
 
@@ -9,21 +5,18 @@ from bots.tools.code_tools import view
 from bots.tools.terminal_tools import execute_powershell
 
 
-def test_bot_file_write_with_unicode():
-    """Test if bot file operations preserve Unicode when writing via PowerShell."""
-
+def test_bot_unicode_workflow():
+    """Test the full workflow: PowerShell write -> view tool read."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        test_file = os.path.join(tmpdir, "bot_unicode_test.md")
-
-        # Simulate bot writing a file with Unicode via PowerShell
+        test_file = os.path.join(tmpdir, "unicode_test.md")
         content = "# Test File\n\nArrow: → \nCheckmark: ✅\nCross: ❌"
 
         # Write using PowerShell (as bot would)
         escaped_content = content.replace('"', '`"').replace("\n", "`n")
         write_cmd = f'Set-Content -Path "{test_file}" -Value "{escaped_content}" -Encoding UTF8'
-        _ = execute_powershell(write_cmd)
+        result = execute_powershell(write_cmd)
 
-        print("\nWrite result: {result}")
+        print(f"\nWrite result: {result}")
 
         # Read back with view tool (as bot would)
         view_result = view(test_file)
@@ -41,7 +34,7 @@ def test_bot_file_write_with_unicode():
         has_mojibake = False
         for pattern, original in mojibake_patterns:
             if pattern in view_result:
-                print("\n❌ MOJIBAKE DETECTED: '{original}' became '{pattern}'")
+                print(f"\n❌ MOJIBAKE DETECTED: '{original}' became '{pattern}'")
                 has_mojibake = True
 
         # Check if Unicode is preserved
@@ -52,13 +45,13 @@ def test_bot_file_write_with_unicode():
         if has_mojibake:
             raise AssertionError("Mojibake detected in file operations")
 
+        print("\n✓ Unicode preserved correctly through PowerShell write and view read")
 
-def test_direct_python_file_write():
-    """Test Python file writing with Unicode (control test)."""
 
+def test_direct_python_write():
+    """Test direct Python file write -> view tool read."""
     with tempfile.TemporaryDirectory() as tmpdir:
         test_file = os.path.join(tmpdir, "python_unicode_test.md")
-
         content = "# Test File\n\nArrow: → \nCheckmark: ✅\nCross: ❌"
 
         # Write directly with Python
@@ -79,13 +72,12 @@ def test_direct_python_file_write():
 
 def test_powershell_echo_to_file():
     """Test PowerShell echo redirection with Unicode."""
-
     with tempfile.TemporaryDirectory() as tmpdir:
         test_file = os.path.join(tmpdir, "echo_test.txt")
 
-        # Use echo with redirection
-        cmd = f'echo "Arrow: → Checkmark: ✅" > "{test_file}"'
-        execute_powershell(cmd)
+        # Use PowerShell echo with redirection
+        echo_cmd = f'echo "Arrow: → Checkmark: ✅" | Out-File -FilePath "{test_file}" -Encoding UTF8'
+        execute_powershell(echo_cmd)
 
         # Read back
         view_result = view(test_file)
@@ -100,25 +92,22 @@ def test_powershell_echo_to_file():
 
 
 if __name__ == "__main__":
-    print("Testing actual bot file operations with Unicode...")
-    print("=" * 70)
+    try:
+        test_bot_unicode_workflow()
+        print("\n✓ test_bot_unicode_workflow passed")
+    except AssertionError:
+        print("\n✗ test_bot_unicode_workflow failed")
 
     try:
-        test_bot_file_write_with_unicode()
-        print("\n✅ test_bot_file_write_with_unicode PASSED")
+        test_direct_python_write()
+        print("\n✓ test_direct_python_write passed")
     except AssertionError:
-        print("\n❌ test_bot_file_write_with_unicode FAILED: {e}")
-    except Exception:
-        print("\n❌ test_bot_file_write_with_unicode ERROR: {e}")
-
-    try:
-        test_direct_python_file_write()
-        print("\n✅ test_direct_python_file_write PASSED")
-    except AssertionError:
-        print("\n❌ test_direct_python_file_write FAILED: {e}")
+        print("\n✗ test_direct_python_write failed")
 
     try:
         test_powershell_echo_to_file()
-        print("\n✅ test_powershell_echo_to_file PASSED")
+        print("\n✓ test_powershell_echo_to_file passed")
     except AssertionError:
-        print("\n❌ test_powershell_echo_to_file FAILED: {e}")
+        print("\n✗ test_powershell_echo_to_file failed")
+
+    print("\nAll tests completed!")

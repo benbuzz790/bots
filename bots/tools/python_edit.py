@@ -127,7 +127,7 @@ def _check_for_duplicates(tree: cst.Module, new_module: cst.Module, path_element
         tree.visit(finder)
 
         if finder.target_node and isinstance(finder.target_node, cst.ClassDef):
-            # Extract existing method names from the class
+            # Extract existing method names from the class (including async methods)
             existing_methods = []
             for item in finder.target_node.body.body:
                 if isinstance(item, cst.FunctionDef):

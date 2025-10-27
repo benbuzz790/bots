@@ -2363,7 +2363,7 @@ class PromptHandler:
                 return ("No recent prompts found.", None)
 
             print("\nRecent prompts:")
-            for i, (name, timestamp) in enumerate(recents[:10], 1):
+            for i, (name, _content) in enumerate(recents[:10], 1):
                 print(f"  {i}. {name}")
 
             try:
@@ -2384,7 +2384,6 @@ class PromptHandler:
         # Try exact match first
         try:
             content = self.prompt_manager.load_prompt(name)
-            self.pending_prefill = content
             return (f"Loaded prompt: {name}", content)
         except KeyError:
             pass
@@ -2433,7 +2432,6 @@ class PromptHandler:
                     return (f"'{name}' not in search results.", None)
 
             self.prompt_manager.load_prompt(name)  # Update recency
-            self.pending_prefill = content
             return (f"Loaded prompt: {name}", content)
         except EscapeException:
             return ("Load cancelled.", None)

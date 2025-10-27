@@ -138,26 +138,40 @@ if __name__ == "__main__":
     print("Testing Issue #160 Fix: Duplicate Detection")
     print("=" * 60)
 
+    failed_tests = []
+
     try:
         test_duplicate_class_detection()
     except AssertionError as e:
         print(f"✗ FAILED: {e}")
+        failed_tests.append("test_duplicate_class_detection")
 
     try:
         test_duplicate_function_detection()
     except AssertionError as e:
         print(f"✗ FAILED: {e}")
+        failed_tests.append("test_duplicate_function_detection")
 
     try:
         test_duplicate_method_detection()
     except AssertionError as e:
         print(f"✗ FAILED: {e}")
+        failed_tests.append("test_duplicate_method_detection")
 
     try:
         test_no_warning_for_different_names()
     except AssertionError as e:
         print(f"✗ FAILED: {e}")
+        failed_tests.append("test_no_warning_for_different_names")
 
     print("\n" + "=" * 60)
-    print("All tests passed! Issue #160 is fixed.")
-    print("=" * 60)
+    if failed_tests:
+        print(f"FAILED: {len(failed_tests)} test(s) failed:")
+        for test_name in failed_tests:
+            print(f"  - {test_name}")
+        print("=" * 60)
+        exit(1)
+    else:
+        print("All tests passed! Issue #160 is fixed.")
+        print("=" * 60)
+

@@ -69,14 +69,10 @@ def test_powershell_output_encoding():
     """Test PowerShell output encoding directly."""
     # Test what encoding PowerShell actually uses
     result = execute_powershell("[System.Console]::OutputEncoding.EncodingName")
-    print("\nPowerShell Output Encoding: {result.strip()}")
+    print(f"\nPowerShell Output Encoding: {result.strip()}")
 
     result = execute_powershell("$OutputEncoding.EncodingName")
     print(f"PowerShell $OutputEncoding: {result.strip()}")
-
-    # Test chcp (code page)
-    result = execute_powershell("chcp")
-    print(f"Code page: {result.strip()}")
 
 
 if __name__ == "__main__":

@@ -184,7 +184,7 @@ def test_tool_display_real_bot_execution():
     none_outputs = [o for o in captured_output if o["string"] == "None"]
     if none_outputs:
         print(f"\n❌ Found {len(none_outputs)} 'None' outputs - BUG REPRODUCED")
-        assert False, "Bug still present: 'None' outputs found"
+        raise AssertionError("Bug still present: 'None' outputs found")
     else:
         print("\n✓ No 'None' outputs found")
 
