@@ -24,13 +24,14 @@ class MyClass:
         )
 
         # Try to add the same async method again to the class
+        # Use coscope_with to insert after the existing method (triggers duplicate detection)
         result2 = python_edit(
             f"{test_file}::MyClass",
             """
 async def my_async_method(self):
     return "duplicate"
 """,
-            coscope_with="__FILE_END__",
+            coscope_with="my_async_method",
         )
 
         # Check if warning is present
