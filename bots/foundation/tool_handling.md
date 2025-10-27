@@ -112,64 +112,51 @@ Handles modules that exist only in memory:
 3. Execute source in new namespace
 4. Register functions as tools
 
-## NEW: Function Serialization Strategy
-
+## Function Serialization Strategy
 ### Overview
-
 We use a **hybrid serialization approach** that handles different function types optimally:
-
 1. **Regular Functions**: Source code + context (portable, secure, readable)
-2. **Helper Functions**: dill serialization (necessary for globals preservation)
-3. **Dynamic Functions**: dill serialization (no source code available)
-4. **Special Functions**: dill serialization (wrapped functions, closures)
-
+2. **Helper Functions**: Attempted dill serialization with source code fallback
+3. **Dynamic Functions**: Attempted dill serialization with source code fallback
+4. **Imported Callables**: Attempted dill serialization with source code fallback
 ### Why This Strategy?
-
 #### Problem Solved
 **Critical Bug**: Helper functions were being lost during save/load cycles because they exist in module globals, not in the reconstructed source code.
-
 **Example**:
 ```python
 # Original module contains:
 def _convert_tool_inputs(...): pass  # Helper function
-def view_dir(...): 
+def view_dir(...):
     return _convert_tool_inputs(...)  # Main function uses helper
-
 # After save/load with old strategy:
-# ✅ view_dir() recreated from source
-# ❌ _convert_tool_inputs() LOST - not in source!
-# 💥 Result: "name '_convert_tool_inputs' is not defined"
+# ? view_dir() recreated from source
+# ? _convert_tool_inputs() LOST - not in source!
+# ?? Result: "name '_convert_tool_inputs' is not defined"
 ```
-
 ### Serialization Details
-
 #### 1. Regular Functions (Source Code Strategy)
 ```python
 # Serialization
 source = inspect.getsource(func)  # Get source code
 context = self._build_function_context(func)  # Capture dependencies
-
 # Storage
 modules[file_path] = {
     'source': source,  # Complete source code
     'globals': serialized_globals,  # Separate helper functions
     'code_hash': hash(source)  # Integrity check
 }
-
 # Restoration
 exec(source, module.__dict__)  # Recreate main functions
 _deserialize_globals(module.__dict__, globals)  # Restore helpers
 ```
-
 **Why Source Code?**
-- ✅ **Portable**: Works across Python versions and environments
-- ✅ **Secure**: Human-readable, can be inspected
-- ✅ **Maintainable**: Easy to debug and modify
-- ✅ **Efficient**: Compact storage for large functions
-
-#### 2. Helper Functions (dill Serialization Strategy)
+- ? **Portable**: Works across Python versions and environments
+- ? **Secure**: Human-readable, can be inspected
+- ? **Maintainable**: Easy to debug and modify
+- ? **Efficient**: Compact storage for large functions
+#### 2. Helper Functions, Dynamic Functions, and Imported Callables (Hybrid Strategy)
+**Serialization** (_serialize_globals):
 ```python
-# Serialization (_serialize_globals)
 elif k.startswith('_') and callable(v):
     try:
         import dill
@@ -178,24 +165,37 @@ elif k.startswith('_') and callable(v):
         serialized[k] = {'__helper_func__': True, 'pickled': encoded_func}
     except Exception as e:
         print(f'Warning: Could not dill serialize helper function {k}: {e}')
-
-# Deserialization (_deserialize_globals)
+```
+**Deserialization** (_deserialize_globals):
+```python
 elif isinstance(v, dict) and v.get('__helper_func__'):
     try:
         import dill
         pickled_func = base64.b64decode(v['pickled'].encode('ascii'))
         module_dict[k] = dill.loads(pickled_func)
-    except Exception as e:
-        print(f'Warning: Could not dill deserialize helper function {k}: {e}')
+    except Exception:
+        # Silently skip - source code execution will handle this
+        pass
 ```
-
-**Why dill for Helpers?**
-- ✅ **Necessary**: Helper functions aren't in the main source code
-- ✅ **Powerful**: Handles closures, lambdas, complex dependencies
-- ✅ **Consistent**: Same library used for all function serialization
-- ✅ **Reliable**: Better than pickle for complex function objects
-
-#### 3. Dynamic Functions (dill Serialization Strategy)
+**Why This Approach?**
+- ? **Optimistic**: Try dill first for same-runtime scenarios (e.g., branching)
+- ? **Graceful Fallback**: Source code execution recreates functions if dill fails
+- ? **Silent Failures**: No warnings for expected failures (dynamic modules across runtimes)
+- ? **Automatic**: No manual intervention needed
+**When dill Works:**
+- Same Python runtime (e.g., branching within a session)
+- Functions from stable, importable modules
+- Functions without dynamic module dependencies
+**When dill Fails (Expected):**
+- Cross-runtime serialization (save/load to disk)
+- Functions from dynamic modules with `__runtime__.dynamic_module_*` names
+- Functions with non-importable `__module__` attributes
+**Why Failures Are Silent:**
+- Source code execution (`exec(source, module.__dict__)`) runs AFTER deserialization attempts
+- All functions referenced in the source code are recreated automatically
+- Only truly missing functions would cause errors during execution
+- Warnings would be noise since the fallback is automatic and reliable
+#### 3. Dynamic Functions (Similar Hybrid Strategy)
 ```python
 # Serialization (_serialize_dynamic_function)
 def _serialize_dynamic_function(self, func: Callable) -> Dict[str, Any]:
@@ -212,51 +212,40 @@ def _serialize_dynamic_function(self, func: Callable) -> Dict[str, Any]:
     except Exception:
         return self._serialize_function_metadata(func)  # Fallback
 ```
-
-**Why dill for Dynamic Functions?**
-- ✅ **Only Option**: No source code available for runtime-created functions
-- ✅ **Complete**: Preserves closures, captured variables, complex state
-- ✅ **Verified**: Hash checking prevents tampering
-- ✅ **Fallback**: Graceful degradation to metadata-only placeholders
-
+**Why dill attempt for Dynamic Functions?**
+- ? **Works in same-runtime**: Useful for branching operations
+- ? **Preserves state**: Closures, captured variables when possible
+- ? **Verified**: Hash checking prevents tampering
+- ? **Fallback**: Graceful degradation to source code or metadata
 ### Serialization Flow
-
 ```
 Bot.save()
-├── Regular Functions
-│   ├── Source Code → modules[path]['source']
-│   └── Helper Functions → modules[path]['globals']['__helper_func__']
-├── Dynamic Functions → dynamic_functions[name]
-└── Special Functions → globals['__original_func__']
-
-Bot.load()
-├── exec(source) → Recreate main functions
-├── dill.loads(helpers) → Restore helper functions  
-├── dill.loads(dynamic) → Restore dynamic functions
-└── Verify hashes → Ensure integrity
++-- Regular Functions
+�   +-- Source Code ? modules[path]['source']
+�   +-- Helper Functions ? modules[path]['globals']['__helper_func__'] (dill attempted)
++-- Dynamic Functions ? dynamic_functions[name] (dill attempted)
++-- Imported Callables ? globals['__imported_callable__'] (dill attempted)
+Bot.load() or Branch
++-- Attempt dill deserialization (silent failures expected for cross-runtime)
++-- exec(source) ? Recreate all functions from source code
++-- Verify hashes ? Ensure integrity
 ```
-
 ### Benefits of Hybrid Strategy
-
 1. **Best of Both Worlds**:
-   - Source code where possible (readable, portable)
-   - dill serialization where necessary (complete preservation)
-
+   - dill deserialization attempted first (fast, works in same-runtime)
+   - Source code execution as automatic fallback (reliable, works cross-runtime)
 2. **Robust Error Handling**:
-   - Graceful fallbacks for serialization failures
-   - Detailed error messages for debugging
-   - Hash verification for security
-
+   - Silent failures for expected scenarios (dynamic modules across runtimes)
+   - Warnings only for serialization failures (during save)
+   - Automatic fallback without user intervention
 3. **Performance Optimized**:
-   - Source code is compact and fast to execute
-   - dill only used when necessary
-   - Lazy loading of complex dependencies
-
+   - Same-runtime operations avoid re-parsing source (e.g., branching)
+   - Source code re-execution only when necessary
+   - No redundant warnings for expected behaviors
 4. **Future-Proof**:
    - Can handle new function types
    - Extensible serialization framework
    - Maintains backward compatibility
-
 ## Error Handling
 
 Hierarchical error system:

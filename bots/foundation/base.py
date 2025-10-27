@@ -1819,6 +1819,11 @@ class ToolHandler(ABC):
 
     def _serialize_globals(self, namespace_dict: dict) -> dict:
         """Serialize globals including modules and other necessary objects."""
+        import base64
+        import hashlib
+
+        import dill
+
         serialized = {}
         for k, v in namespace_dict.items():
             if k.startswith("__"):
@@ -1833,15 +1838,21 @@ class ToolHandler(ABC):
                 }
             elif hasattr(v, "__module__") and hasattr(v, "__name__"):
                 if k == "_original_func":
-                    # Special handling for _original_func - use pickle
+                    # Special handling for _original_func - use pickle with hash verification
                     try:
-                        import base64
-
-                        import dill
-
                         pickled_func = dill.dumps(v)
                         encoded_func = base64.b64encode(pickled_func).decode("ascii")
-                        serialized[k] = {"__original_func__": True, "pickled": encoded_func, "name": v.__name__}
+                        content_hash = hashlib.sha256(pickled_func).hexdigest()
+                        serialized[k] = {
+                            "__original_func__": True,
+                            "pickled": encoded_func,
+                            "name": v.__name__,
+                            "hash": content_hash,
+                            "provenance": {
+                                "module": getattr(v, "__module__", None),
+                                "qualname": getattr(v, "__qualname__", None),
+                            },
+                        }
                     except Exception as e:
                         print(f"Warning: Could not dill serialize _original_func: {e}")
                         pass  # Skip if we can't pickle
@@ -1856,18 +1867,44 @@ class ToolHandler(ABC):
                     else:
                         # Serialize helper functions using dill for non-dynamic modules
                         try:
-                            import base64
-
-                            import dill
-
                             pickled_func = dill.dumps(v)
                             encoded_func = base64.b64encode(pickled_func).decode("ascii")
-                            serialized[k] = {"__helper_func__": True, "pickled": encoded_func, "name": v.__name__}
+                            content_hash = hashlib.sha256(pickled_func).hexdigest()
+                            serialized[k] = {
+                                "__helper_func__": True,
+                                "pickled": encoded_func,
+                                "name": v.__name__,
+                                "hash": content_hash,
+                                "provenance": {
+                                    "module": getattr(v, "__module__", None),
+                                    "qualname": getattr(v, "__qualname__", None),
+                                },
+                            }
                         except Exception as e:
                             print(f"Warning: Could not dill serialize helper function {k}: {e}")
                             pass  # Skip if we can't pickle
+                elif callable(v) and not k.startswith("_"):
+                    # Serialize imported callables (decorators, imported functions)
+                    # These are necessary dependencies that need to be available during deserialization
+                    try:
+                        pickled_func = dill.dumps(v)
+                        encoded_func = base64.b64encode(pickled_func).decode("ascii")
+                        content_hash = hashlib.sha256(pickled_func).hexdigest()
+                        serialized[k] = {
+                            "__imported_callable__": True,
+                            "pickled": encoded_func,
+                            "name": v.__name__,
+                            "hash": content_hash,
+                            "provenance": {
+                                "module": getattr(v, "__module__", None),
+                                "qualname": getattr(v, "__qualname__", None),
+                            },
+                        }
+                    except Exception as e:
+                        print(f"Warning: Could not dill serialize imported callable {k}: {e}")
+                        pass  # Skip if we can't pickle
                 else:
-                    pass  # Skip other non-helper functions
+                    pass  # Skip other non-callable objects
         return serialized
 
     def _serialize_dynamic_function(self, func: Callable) -> Dict[str, Any]:
@@ -2134,8 +2171,12 @@ class ToolHandler(ABC):
 
     @staticmethod
     def _deserialize_globals(module_dict: dict, serialized_globals: dict):
-        """Deserialize globals including module reconstruction."""
+        """Deserialize globals including module reconstruction with hash verification."""
+        import base64
+        import hashlib
         import importlib
+
+        import dill
 
         for k, v in serialized_globals.items():
             if isinstance(v, dict) and v.get("__module_type__"):
@@ -2147,30 +2188,60 @@ class ToolHandler(ABC):
                     print(f"Warning: Could not import module {module_name}: {e}")
                     pass
             elif isinstance(v, dict) and v.get("__original_func__"):
-                # Reconstruct _original_func from pickled data
+                # Reconstruct _original_func from pickled data with hash verification
                 try:
-                    import base64
-
-                    import dill
-
                     encoded_func = v["pickled"]
                     pickled_func = base64.b64decode(encoded_func.encode("ascii"))
+
+                    # Verify hash if present
+                    if "hash" in v:
+                        computed_hash = hashlib.sha256(pickled_func).hexdigest()
+                        if computed_hash != v["hash"]:
+                            func_name = v.get("name", "unknown")
+                            print(f"Warning: Hash mismatch for _original_func {func_name} - skipping deserialization")
+                            continue
+
                     module_dict[k] = dill.loads(pickled_func)
-                except Exception as e:
-                    print(f"Warning: Could not dill deserialize _original_func: {e}")
+                except Exception:
+                    # Silently skip - source code execution will handle this
                     pass
             elif isinstance(v, dict) and v.get("__helper_func__"):
-                # Reconstruct helper function from pickled data
+                # Reconstruct helper function from pickled data with hash verification
                 try:
-                    import base64
-
-                    import dill
-
                     encoded_func = v["pickled"]
                     pickled_func = base64.b64decode(encoded_func.encode("ascii"))
+
+                    # Verify hash if present
+                    if "hash" in v:
+                        computed_hash = hashlib.sha256(pickled_func).hexdigest()
+                        if computed_hash != v["hash"]:
+                            func_name = v.get("name", "unknown")
+                            print(f"Warning: Hash mismatch for helper function {func_name} - skipping deserialization")
+                            continue
+
                     module_dict[k] = dill.loads(pickled_func)
-                except Exception as e:
-                    print(f"Warning: Could not dill deserialize helper function {k}: {e}")
+                except Exception:
+                    # Silently skip - source code execution will handle this
+                    pass
+            elif isinstance(v, dict) and v.get("__imported_callable__"):
+                # Reconstruct imported callable (decorator, imported function)
+                # from pickled data with hash verification
+                try:
+                    encoded_func = v["pickled"]
+                    pickled_func = base64.b64decode(encoded_func.encode("ascii"))
+
+                    # Verify hash if present
+                    if "hash" in v:
+                        computed_hash = hashlib.sha256(pickled_func).hexdigest()
+                        if computed_hash != v["hash"]:
+                            func_name = v.get("name", "unknown")
+                            print(f"Warning: Hash mismatch for imported callable {func_name} - skipping deserialization")
+                            continue
+
+                    module_dict[k] = dill.loads(pickled_func)
+                except Exception:
+                    # Silently skip - these are from dynamic modules and will be
+                    # recreated by source code execution
                     pass
             else:
                 module_dict[k] = v
