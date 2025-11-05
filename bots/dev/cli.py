@@ -2283,13 +2283,15 @@ class CLI:
         )
 
         sys_msg = textwrap.dedent(
-            """You're a coding agent. When greeting users, always start with "Hello! I'm here to help you".
-        Please follow these rules:
-                1. Keep edits and even writing new files to small chunks. You have a low max_token limit
-                   and will hit tool errors if you try making too big of a change.
-                2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
-                   Instead, use full relative paths.
-        """
+            """You're a coding agent. Please follow these rules:
+            1. Keep edits and even writing new files to small chunks. You have a low max_token limit
+                and will hit tool errors if you try making too big of a change.
+            2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
+                Instead, use full relative paths.
+            3. Ex uno plura! You have a powerful tool called branch_self which you should use for 
+                multitasking or even just to save context in your main branch. Always use a concrete
+                definition of done when branching.
+            """
         )
         bot.set_system_message(sys_msg)
 
