@@ -51,7 +51,8 @@ def test_metrics_display_once_per_response_in_auto_mode():
         # Second call: no tools (stop loop)
         return [{"tool": "test"}] if call_count[0] == 1 else []
 
-    bot.tool_handler.requests = property(lambda self: mock_tool_requests())
+    # Set requests as a normal attribute that will be mutated by simulate_prompt_while
+    bot.tool_handler.requests = []
 
     # Mock metrics
     mock_metrics = {"input_tokens": 100, "output_tokens": 50, "cost": 0.001, "duration": 1.5}
@@ -92,17 +93,7 @@ def test_metrics_display_once_per_response_in_auto_mode():
     print("✓ Fix verified: metrics displayed exactly once per bot response")
 
 
-def test_metrics_not_displayed_before_user_prompts():
-    """
-    Test that metrics are NOT displayed before user prompts in auto mode.
-
-    Currently FAILS because auto_callback displays metrics before showing
-    the next user prompt.
-    """
-    # This is a conceptual test - the timing issue is harder to test directly
-    # but the fix (removing display_metrics from auto_callback) will address it
-    pass
-
+# Removed placeholder test - the behavior is already validated by test_metrics_display_once_per_response_in_auto_mode
 
 if __name__ == "__main__":
     test_metrics_display_once_per_response_in_auto_mode()

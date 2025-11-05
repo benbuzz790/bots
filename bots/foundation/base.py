@@ -1462,12 +1462,12 @@ class ToolHandler(ABC):
         for i, existing_schema in enumerate(self.tools):
             # Check the 'name' field - handle both Anthropic format (direct 'name')
             # and OpenAI format (nested in 'function')
-            if 'name' in existing_schema:
+            if "name" in existing_schema:
                 # Anthropic/Gemini format
-                schema_name = existing_schema['name']
-            elif 'function' in existing_schema and 'name' in existing_schema['function']:
+                schema_name = existing_schema["name"]
+            elif "function" in existing_schema and "name" in existing_schema["function"]:
                 # OpenAI format
-                schema_name = existing_schema['function']['name']
+                schema_name = existing_schema["function"]["name"]
             else:
                 # Unknown format, skip
                 continue

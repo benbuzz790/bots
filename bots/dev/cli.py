@@ -2261,7 +2261,6 @@ class CLI:
 
         # bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools, bots.tools.self_tools)
         from bots.tools.code_tools import view, view_dir
-        from bots.tools.invoke_namshub import invoke_namshub
         from bots.tools.python_edit import python_edit, python_view
         from bots.tools.python_execution_tool import execute_python
         from bots.tools.self_tools import branch_self, list_context, remove_context
@@ -2279,7 +2278,6 @@ class CLI:
             list_context,
             web_search,
             python_edit,
-            invoke_namshub,
         )
 
         sys_msg = textwrap.dedent(
@@ -2288,7 +2286,7 @@ class CLI:
                 and will hit tool errors if you try making too big of a change.
             2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
                 Instead, use full relative paths.
-            3. Ex uno plura! You have a powerful tool called branch_self which you should use for 
+            3. Ex uno plura! You have a powerful tool called branch_self which you should use for
                 multitasking or even just to save context in your main branch. Always use a concrete
                 definition of done when branching.
             """
