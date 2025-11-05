@@ -140,15 +140,15 @@ class TestConversationNavigation(DetailedTestCase):
 
     @patch("builtins.input")
     def test_root_command(self, mock_input: MagicMock) -> None:
-        """Test the /root command moves to conversation root."""
-        mock_input.side_effect = ["Hello bot", "/root", "/exit"]
+        """Test /root command navigation."""
+        mock_input.side_effect = ["Hello, world!", "/root", "/exit"]
         with StringIO() as buf, redirect_stdout(buf):
             with self.assertRaises(SystemExit):
                 cli_module.main("")
             output = buf.getvalue()
             print(f"\nRoot command output:\n{output}")
         # Updated expectation - the root command now shows the bot's response instead of a navigation message
-        self.assertContainsNormalized(output, "Hello! I'm here to help you")
+        self.assertContainsNormalized(output, "I'm a coding agent")
 
     @patch("builtins.input")
     def test_up_command_at_root(self, mock_input: MagicMock) -> None:
