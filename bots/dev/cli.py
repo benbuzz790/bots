@@ -917,6 +917,7 @@ class ConversationHandler:
             return "Warning: Ended up on user node with no assistant response"
         self._display_conversation_context(bot, context)
         return "Moved to root of conversation tree"
+
     def lastfork(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Move to the previous node (going up the tree) that has multiple replies."""
         current = bot.conversation
@@ -934,7 +935,7 @@ class ConversationHandler:
                 return f"Moved to previous fork ({len(current.replies)} branches)"
 
         return "No fork found going up the tree"
-    
+
     def nextfork(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Move to the next node (going down the tree) that has multiple replies."""
         # Use BFS to search down the tree for the first fork
@@ -2260,12 +2261,12 @@ class CLI:
 
         # bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools, bots.tools.self_tools)
         from bots.tools.code_tools import view, view_dir
+        from bots.tools.invoke_namshub import invoke_namshub
         from bots.tools.python_edit import python_edit, python_view
         from bots.tools.python_execution_tool import execute_python
         from bots.tools.self_tools import branch_self, list_context, remove_context
         from bots.tools.terminal_tools import execute_powershell
         from bots.tools.web_tool import web_search
-        from bots.tools.invoke_namshub import invoke_namshub
 
         bot.add_tools(
             view,

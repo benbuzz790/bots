@@ -26,13 +26,13 @@ class TestForkNavigationCommands(unittest.TestCase):
     def _create_test_conversation_tree(self):
         """Create a test conversation tree with multiple forks.
 
-    Structure:
-    root -> A -> B -> C -> E -> F
-                 |         |
-                 D         G
+        Structure:
+        root -> A -> B -> C -> E -> F
+                     |         |
+                     D         G
 
-    Forks at: B (2 branches), E (2 branches)
-    """
+        Forks at: B (2 branches), E (2 branches)
+        """
         # Root node
         root = ConversationNode("System message", "system")
 
