@@ -504,6 +504,8 @@ class CLIConfig:
         self.auto_mode_reduce_context_prompt = "trim useless context"
         self.max_tokens = 4096
         self.temperature = 1.0
+        self.auto_backup = True
+        self.auto_restore_on_error = True
         self.config_file = "cli_config.json"
         self.load_config()
 
@@ -524,6 +526,8 @@ class CLIConfig:
                     )
                     self.max_tokens = config_data.get("max_tokens", 4096)
                     self.temperature = config_data.get("temperature", 1.0)
+                    self.auto_backup = config_data.get("auto_backup", True)
+                    self.auto_restore_on_error = config_data.get("auto_restore_on_error", True)
         except Exception:
             pass  # Use defaults if config loading fails
 
@@ -540,6 +544,8 @@ class CLIConfig:
                 "auto_mode_reduce_context_prompt": self.auto_mode_reduce_context_prompt,
                 "max_tokens": self.max_tokens,
                 "temperature": self.temperature,
+                "auto_backup": self.auto_backup,
+                "auto_restore_on_error": self.auto_restore_on_error,
             }
             with open(self.config_file, "w") as f:
                 json.dump(config_data, f, indent=2)
@@ -691,6 +697,138 @@ class CLIContext:
         self.context_reduction_cooldown = 0
         # Track last message metrics (captured once per message, used by both display and auto)
         self.last_message_metrics = None
+        # Bot backup system - stores complete bot copies
+        self.bot_backup: Optional[Bot] = None
+        self.backup_metadata: Dict[str, Any] = {}
+        self.backup_in_progress: bool = False
+
+    def create_backup(self, reason: str = "manual") -> bool:
+        """Create a complete backup of the current bot.
+
+        Args:
+            reason: Description of why backup was created (e.g., "before_user_message")
+
+        Returns:
+            True if backup successful, False otherwise
+        """
+        if self.bot_instance is None:
+            return False
+
+        if self.backup_in_progress:
+            return False  # Prevent concurrent backups
+
+        try:
+            self.backup_in_progress = True
+
+            # Deep copy the entire bot
+            import copy
+            backup_bot = copy.deepcopy(self.bot_instance)
+
+            # Store metadata
+            metadata = {
+                'timestamp': time.time(),
+                'reason': reason,
+                'conversation_depth': self._get_conversation_depth(),
+                'token_count': self.last_message_metrics.get('input_tokens', 0) if self.last_message_metrics else 0
+            }
+
+            self.bot_backup = backup_bot
+            self.backup_metadata = metadata
+
+            return True
+
+        except Exception as e:
+            # Fail gracefully - don't interrupt user flow
+            if self.config.verbose:
+                print(f"Backup failed: {e}")
+            return False
+
+        finally:
+            self.backup_in_progress = False
+
+    def restore_backup(self) -> str:
+        """Restore bot from backup.
+
+        Returns:
+            Status message describing the result
+        """
+        if self.bot_backup is None:
+            return "No backup available"
+
+        try:
+            # Replace current bot with backup
+            self.bot_instance = self.bot_backup
+
+            # Re-attach callbacks (critical - callbacks reference context)
+            self.bot_instance.callbacks = RealTimeDisplayCallbacks(self)
+
+            # Clear tool handler state to prevent corruption
+            self.bot_instance.tool_handler.clear()
+
+            # Format timestamp for display
+            import datetime
+            timestamp = self.backup_metadata.get('timestamp', 0)
+            time_ago = time.time() - timestamp
+            if time_ago < 60:
+                time_str = f"{int(time_ago)} seconds ago"
+            elif time_ago < 3600:
+                time_str = f"{int(time_ago / 60)} minutes ago"
+            else:
+                time_str = f"{int(time_ago / 3600)} hours ago"
+
+            reason = self.backup_metadata.get('reason', 'unknown')
+
+            # Don't clear backup - allow multiple restores to same point
+            # User can create new backup if they want a new checkpoint
+
+            return f"Restored from backup ({reason}, {time_str})"
+
+        except Exception as e:
+            return f"Restore failed: {str(e)}"
+
+    def has_backup(self) -> bool:
+        """Check if a backup is available.
+
+        Returns:
+            True if backup exists, False otherwise
+        """
+        return self.bot_backup is not None
+
+    def get_backup_info(self) -> str:
+        """Get information about the current backup.
+
+        Returns:
+            Formatted string with backup metadata
+        """
+        if not self.has_backup():
+            return "No backup available"
+
+        import datetime
+        timestamp = self.backup_metadata.get('timestamp', 0)
+        dt = datetime.datetime.fromtimestamp(timestamp)
+        time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        reason = self.backup_metadata.get('reason', 'unknown')
+        depth = self.backup_metadata.get('conversation_depth', 0)
+        tokens = self.backup_metadata.get('token_count', 0)
+
+        return f"Backup available:\n  Created: {time_str}\n  Reason: {reason}\n  Conversation depth: {depth}\n  Token count: {tokens:,}"
+
+    def _get_conversation_depth(self) -> int:
+        """Calculate depth of current conversation tree.
+
+        Returns:
+            Number of nodes from root to current position
+        """
+        if self.bot_instance is None:
+            return 0
+
+        depth = 0
+        current = self.bot_instance.conversation
+        while current.parent:
+            depth += 1
+            current = current.parent
+        return depth
 
 
 class PromptManager:
@@ -1275,6 +1413,10 @@ class SystemHandler:
             "/config: Show or modify CLI configuration",
             "/auto_stash: Toggle auto git stash before user messages",
             "/load_stash <name_or_index>: Load a git stash by name or index",
+            "/backup: Manually create a backup of current bot state",
+            "/restore: Restore bot from backup",
+            "/backup_info: Show information about current backup",
+            "/undo: Quick restore from backup (alias for /restore)",
             "/exit: Exit the program",
             "",
             "Type your messages normally to chat.",
@@ -1327,6 +1469,8 @@ class SystemHandler:
                 f"    auto_mode_reduce_context_prompt: {context.config.auto_mode_reduce_context_prompt}",
                 f"    max_tokens: {context.config.max_tokens}",
                 f"    temperature: {context.config.temperature}",
+                f"    auto_backup: {context.config.auto_backup}",
+                f"    auto_restore_on_error: {context.config.auto_restore_on_error}",
                 "Use '/config set <setting> <value>' to modify settings.",
             ]
             return "\n".join(config_lines)
@@ -1360,6 +1504,10 @@ class SystemHandler:
                     context.config.max_tokens = int(value)
                 elif setting == "temperature":
                     context.config.temperature = float(value)
+                elif setting == "auto_backup":
+                    context.config.auto_backup = value.lower() in ("true", "1", "yes", "on")
+                elif setting == "auto_restore_on_error":
+                    context.config.auto_restore_on_error = value.lower() in ("true", "1", "yes", "on")
                 else:
                     return f"Unknown setting: {setting}"
                 context.config.save_config()
@@ -1818,6 +1966,28 @@ class DynamicFunctionalPromptHandler:
             return f"Broadcast complete with {len(responses)} responses"
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
+class BackupHandler:
+    """Handler for backup management commands."""
+
+    def backup(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Manually create a backup of current bot state."""
+        if context.create_backup("manual"):
+            return "Backup created successfully"
+        else:
+            return "Backup failed - see error message above"
+
+    def restore(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Restore bot from backup."""
+        return context.restore_backup()
+
+    def backup_info(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Show information about current backup."""
+        return context.get_backup_info()
+
+    def undo(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Quick restore from backup (alias for /restore)."""
+        return context.restore_backup()
+
 
 
 def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> str:
@@ -2069,6 +2239,7 @@ class CLI:
         self.conversation = ConversationHandler()
         self.fp = DynamicFunctionalPromptHandler(function_filter=function_filter)
         self.prompts = PromptHandler()
+        self.backup = BackupHandler()
 
         # Register commands
         self.commands = {
@@ -2098,6 +2269,10 @@ class CLI:
             "/add_tool": self.system.add_tool,
             "/d": self._handle_delete_prompt,
             "/r": self._handle_recent_prompts,
+            "/backup": self.backup.backup,
+            "/restore": self.backup.restore,
+            "/backup_info": self.backup.backup_info,
+            "/undo": self.backup.undo,
         }
 
         # Initialize metrics with verbose=False since CLI handles its own display
@@ -2312,15 +2487,28 @@ class CLI:
         else:
             command = parts[0]
             args = parts[1:]
+
+        # Commands that should trigger auto-backup (risky operations)
+        risky_commands = {"/fp", "/broadcast_fp", "/combine_leaves", "/auto", "/load"}
+
         if command in self.commands:
             try:
+                # Auto-backup before risky commands
+                if self.context.config.auto_backup and command in risky_commands:
+                    self.context.create_backup(f"before_{command[1:]}")  # Remove leading /
+
                 result = self.commands[command](bot, self.context, args)
                 if result:
                     pretty(result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
             except Exception as e:
                 pretty(f"Command error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
-                if self.context.conversation_backup and bot:
-                    # Clear tool handler state to prevent corruption from failed tool executions
+
+                # Try new backup system first, fall back to old system
+                if self.context.config.auto_restore_on_error and self.context.has_backup():
+                    result = self.context.restore_backup()
+                    pretty(result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
+                elif self.context.conversation_backup and bot:
+                    # Fallback to old conversation backup system
                     bot.tool_handler.clear()
                     bot.conversation = self.context.conversation_backup
                     pretty(
@@ -2347,6 +2535,10 @@ class CLI:
             # Track last user message for /s command
             self.last_user_message = user_input
 
+            # Auto-backup before user message (if enabled)
+            if self.context.config.auto_backup:
+                self.context.create_backup("before_user_message")
+
             # Auto-stash if enabled
             if self.context.config.auto_stash:
                 stash_result = create_auto_stash()
@@ -2356,6 +2548,7 @@ class CLI:
                     # Show errors but not "no changes" message
                     pretty(stash_result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
 
+            # Keep old conversation_backup for backward compatibility during transition
             self.context.conversation_backup = bot.conversation
             callback = self.context.callbacks.get_standard_callback()
             responses, nodes = fp.chain(bot, [user_input], callback=callback)
@@ -2372,8 +2565,13 @@ class CLI:
             # Quiet mode shows no metrics at all
         except Exception as e:
             pretty(f"Chat error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
-            if self.context.conversation_backup:
-                # Clear tool handler state to prevent corruption from failed tool executions
+
+            # Try new backup system first, fall back to old system
+            if self.context.config.auto_restore_on_error and self.context.has_backup():
+                result = self.context.restore_backup()
+                pretty(result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
+            elif self.context.conversation_backup:
+                # Fallback to old conversation backup system
                 bot.tool_handler.clear()
                 bot.conversation = self.context.conversation_backup
                 pretty(
