@@ -1410,6 +1410,7 @@ class ToolHandler(ABC):
 
         Use when you need to make an individual function available as a tool.
         Handles all necessary context preservation and function wrapping.
+        If a tool with the same name already exists, it will be replaced.
 
         Parameters:
             func (Callable): The function to add as a tool
@@ -1421,7 +1422,7 @@ class ToolHandler(ABC):
 
         Side Effects:
             - Creates module context if none exists
-            - Adds function to tool registry
+            - Adds function to tool registry (or replaces existing)
             - Updates function map
 
         Example:
@@ -1437,6 +1438,7 @@ class ToolHandler(ABC):
             - Preserves function's full context including docstring
             - Creates wrappers for built-in and dynamic functions
             - Maintains all necessary dependencies
+            - Replaces existing tool if one with same name exists
         """
         schema = self.generate_tool_schema(func)
         if not schema:
@@ -1453,7 +1455,34 @@ class ToolHandler(ABC):
                 # This is a dynamic function - store it directly without creating a wrapper
                 # The serialization/deserialization will handle it during save/load
                 pass  # Keep the original function as-is
-        self.tools.append(schema)
+
+        # Check if a tool with this name already exists and replace it
+        tool_name = func.__name__
+        existing_index = None
+        for i, existing_schema in enumerate(self.tools):
+            # Check the 'name' field - handle both Anthropic format (direct 'name')
+            # and OpenAI format (nested in 'function')
+            if 'name' in existing_schema:
+                # Anthropic/Gemini format
+                schema_name = existing_schema['name']
+            elif 'function' in existing_schema and 'name' in existing_schema['function']:
+                # OpenAI format
+                schema_name = existing_schema['function']['name']
+            else:
+                # Unknown format, skip
+                continue
+
+            if schema_name == tool_name:
+                existing_index = i
+                break
+
+        if existing_index is not None:
+            # Replace existing tool
+            self.tools[existing_index] = schema
+        else:
+            # Add new tool
+            self.tools.append(schema)
+
         self.function_map[func.__name__] = func
 
     def _prepare_function_source_and_context(self, func: Callable) -> tuple[str, dict]:

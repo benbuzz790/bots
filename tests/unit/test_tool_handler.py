@@ -184,10 +184,10 @@ class TestToolHandlerPersistence(unittest.TestCase):
         # Create module with test function
         module_code = textwrap.dedent(
             """
-            def test_func(x: int) -> int:
-                '''Test function'''
-                return x * 2
-        """
+        def test_func(x: int) -> int:
+            '''Test function'''
+            return x * 2
+    """
         ).strip()
         # Create module and execute code
         module = ModuleType("test_preserve")
@@ -210,6 +210,48 @@ class TestToolHandlerPersistence(unittest.TestCase):
         loaded_result = new_handler.function_map["test_func"](5)
         self.assertEqual(original_result, loaded_result, "Function behavior changed")
         self.assertEqual(self.handler.tools[0], new_handler.tools[0], "Tool schema changed")
+    def test_duplicate_tool_replacement(self):
+        """Test that adding a duplicate tool replaces the existing one"""
+        # Add first version of the tool
+        def my_tool(x: int) -> int:
+            """First version"""
+            return x * 2
+
+        self.handler.add_tool(my_tool)
+        self.assertEqual(len(self.handler.tools), 1, "First tool not added")
+        self.assertEqual(self.handler.tools[0]["description"], "First version")
+        self.assertEqual(self.handler.function_map["my_tool"](5), 10)
+
+        # Add second version with same name but different implementation
+        def my_tool(x: int) -> int:
+            """Second version"""
+            return x * 3
+
+        self.handler.add_tool(my_tool)
+
+        # Should still have only 1 tool (replaced, not duplicated)
+        self.assertEqual(len(self.handler.tools), 1, "Duplicate tool was not replaced")
+        self.assertEqual(self.handler.tools[0]["description"], "Second version")
+        self.assertEqual(self.handler.function_map["my_tool"](5), 15)
+    
+    def test_duplicate_tool_in_function_map(self):
+        """Test that function_map correctly updates when duplicate tool is added"""
+        def test_func() -> str:
+            """Version 1"""
+            return "v1"
+
+        self.handler.add_tool(test_func)
+        self.assertEqual(self.handler.function_map["test_func"](), "v1")
+
+        def test_func() -> str:
+            """Version 2"""
+            return "v2"
+
+        self.handler.add_tool(test_func)
+
+        # Function map should have the new version
+        self.assertEqual(len(self.handler.function_map), 1)
+        self.assertEqual(self.handler.function_map["test_func"](), "v2")
 
 
 def main():
