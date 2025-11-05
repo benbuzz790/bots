@@ -2265,6 +2265,7 @@ class CLI:
         from bots.tools.self_tools import branch_self, list_context, remove_context
         from bots.tools.terminal_tools import execute_powershell
         from bots.tools.web_tool import web_search
+        from bots.tools.invoke_namshub import invoke_namshub
 
         bot.add_tools(
             view,
@@ -2277,6 +2278,7 @@ class CLI:
             list_context,
             web_search,
             python_edit,
+            invoke_namshub,
         )
 
         sys_msg = textwrap.dedent(
