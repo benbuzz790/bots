@@ -1,3 +1,4 @@
+import os
 import tempfile
 
 from bots.tools.code_tools import view
@@ -33,8 +34,6 @@ def test_unicode_in_file_operations():
     test_char = "→"
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        import os
-
         test_file = os.path.join(tmpdir, "unicode_test.txt")
 
         # Write Unicode via PowerShell
@@ -74,8 +73,6 @@ def test_powershell_echo():
 def test_powershell_echo_to_file():
     """Test PowerShell echo redirection with Unicode."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        import os
-
         test_file = os.path.join(tmpdir, "echo_test.txt")
         test_chars = "→ ✅ ❌"
 
@@ -114,7 +111,7 @@ if __name__ == "__main__":
         test_powershell_echo()
         print("\n✓ test_powershell_echo passed")
     except AssertionError:
-        print("\n✗ test_powershell_echo FAILED")
+        print("\n✗ test_powershell_echo_to_file FAILED")
         raise
 
     try:

@@ -918,6 +918,54 @@ class ConversationHandler:
         self._display_conversation_context(bot, context)
         return "Moved to root of conversation tree"
 
+    def lastfork(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Move to the previous node (going up the tree) that has multiple replies."""
+        current = bot.conversation
+
+        # Traverse up the tree looking for a fork
+        while current.parent:
+            current = current.parent
+            # Check if this node has multiple replies (is a fork)
+            if len(current.replies) > 1:
+                context.conversation_backup = bot.conversation
+                bot.conversation = current
+                if not self._ensure_assistant_node(bot):
+                    return "Warning: Moved to fork but ended up on user node with no assistant response"
+                self._display_conversation_context(bot, context)
+                return f"Moved to previous fork ({len(current.replies)} branches)"
+
+        return "No fork found going up the tree"
+
+    def nextfork(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Move to the next node (going down the tree) that has multiple replies."""
+        # Use BFS to search down the tree for the first fork
+        from collections import deque
+
+        queue = deque([bot.conversation])
+        visited = {bot.conversation}
+
+        while queue:
+            current = queue.popleft()
+
+            # Check all replies of the current node
+            for reply in current.replies:
+                if reply not in visited:
+                    visited.add(reply)
+
+                    # Check if this reply has multiple replies (is a fork)
+                    if len(reply.replies) > 1:
+                        context.conversation_backup = bot.conversation
+                        bot.conversation = reply
+                        if not self._ensure_assistant_node(bot):
+                            return "Warning: Moved to fork but ended up on user node with no assistant response"
+                        self._display_conversation_context(bot, context)
+                        return f"Moved to next fork ({len(reply.replies)} branches)"
+
+                    # Add to queue to continue searching
+                    queue.append(reply)
+
+        return "No fork found going down the tree"
+
     def label(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Show all labels and create new label or jump to existing one."""
         # First, show all existing labels (like showlabels)
@@ -1212,6 +1260,8 @@ class SystemHandler:
             "/right: Move to this conversation node's right sibling",
             "/auto: Let the bot work autonomously until it sends a response that doesn't use tools (esc to quit)",
             "/root: Move to the root node of the conversation tree",
+            "/lastfork: Move to the previous node (going up) that has multiple replies",
+            "/nextfork: Move to the next node (going down) that has multiple replies",
             "/label: Show all labels, create new label, or jump to existing label",
             "/leaf [number]: Show all conversation endpoints (leaves) and optionally jump to one",
             "/fp: Execute functional prompts with dynamic parameter collection",
@@ -2035,6 +2085,8 @@ class CLI:
             "/left": self.conversation.left,
             "/right": self.conversation.right,
             "/root": self.conversation.root,
+            "/lastfork": self.conversation.lastfork,
+            "/nextfork": self.conversation.nextfork,
             "/label": self.conversation.label,
             "/leaf": self.conversation.leaf,
             "/combine_leaves": self.conversation.combine_leaves,
@@ -2229,13 +2281,15 @@ class CLI:
         )
 
         sys_msg = textwrap.dedent(
-            """You're a coding agent. When greeting users, always start with "Hello! I'm here to help you".
-        Please follow these rules:
-                1. Keep edits and even writing new files to small chunks. You have a low max_token limit
-                   and will hit tool errors if you try making too big of a change.
-                2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
-                   Instead, use full relative paths.
-        """
+            """You're a coding agent. Please follow these rules:
+            1. Keep edits and even writing new files to small chunks. You have a low max_token limit
+                and will hit tool errors if you try making too big of a change.
+            2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
+                Instead, use full relative paths.
+            3. Ex uno plura! You have a powerful tool called branch_self which you should use for
+                multitasking or even just to save context in your main branch. Always use a concrete
+                definition of done when branching.
+            """
         )
         bot.set_system_message(sys_msg)
 
