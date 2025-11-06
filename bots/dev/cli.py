@@ -495,16 +495,17 @@ class CLIConfig:
     """Configuration management for CLI settings."""
 
     def __init__(self):
-        """Initialize with default configuration."""
-        self.model = "claude-3-5-sonnet-20241022"
-        self.verbose = False
-        self.quiet = False
-        self.width = 100
+        self.verbose = True
+        self.width = 160
         self.indent = 4
+        self.auto_stash = False
+        self.remove_context_threshold = 40000
+        self.auto_mode_neutral_prompt = "ok"
+        self.auto_mode_reduce_context_prompt = "trim useless context"
         self.max_tokens = 4096
         self.temperature = 1.0
-        self.auto_backup = False  # Opt-in feature, not enabled by default
-        self.auto_restore_on_error = False  # Opt-in feature, not enabled by default
+        self.auto_backup = True
+        self.auto_restore_on_error = True
         self.config_file = "cli_config.json"
         self.load_config()
 
@@ -514,21 +515,19 @@ class CLIConfig:
             if os.path.exists(self.config_file):
                 with open(self.config_file, "r") as f:
                     config_data = json.load(f)
-                    self.model = config_data.get("model", "claude-3-5-sonnet-20241022")
-                    self.verbose = config_data.get("verbose", False)
-                    self.quiet = config_data.get("quiet", False)
-                    self.width = config_data.get(
-                        "width", 100
-                    )  # Default to 100 if not in config
-                    self.indent = config_data.get(
-                        "indent", 4
-                    )  # Default to 4 if not in config
+                    self.verbose = config_data.get("verbose", True)
+                    self.width = config_data.get("width", 160)
+                    self.indent = config_data.get("indent", 4)
+                    self.auto_stash = config_data.get("auto_stash", False)
+                    self.remove_context_threshold = config_data.get("remove_context_threshold", 40000)
+                    self.auto_mode_neutral_prompt = config_data.get("auto_mode_neutral_prompt", "ok")
+                    self.auto_mode_reduce_context_prompt = config_data.get(
+                        "auto_mode_reduce_context_prompt", "trim useless context"
+                    )
                     self.max_tokens = config_data.get("max_tokens", 4096)
                     self.temperature = config_data.get("temperature", 1.0)
-                    self.auto_backup = config_data.get("auto_backup", False)
-                    self.auto_restore_on_error = config_data.get(
-                        "auto_restore_on_error", False
-                    )
+                    self.auto_backup = config_data.get("auto_backup", True)
+                    self.auto_restore_on_error = config_data.get("auto_restore_on_error", True)
         except Exception:
             pass  # Use defaults if config loading fails
 
