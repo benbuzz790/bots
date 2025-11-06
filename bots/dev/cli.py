@@ -722,14 +722,15 @@ class CLIContext:
 
             # Deep copy the entire bot
             import copy
+
             backup_bot = copy.deepcopy(self.bot_instance)
 
             # Store metadata
             metadata = {
-                'timestamp': time.time(),
-                'reason': reason,
-                'conversation_depth': self._get_conversation_depth(),
-                'token_count': self.last_message_metrics.get('input_tokens', 0) if self.last_message_metrics else 0
+                "timestamp": time.time(),
+                "reason": reason,
+                "conversation_depth": self._get_conversation_depth(),
+                "token_count": self.last_message_metrics.get("input_tokens", 0) if self.last_message_metrics else 0,
             }
 
             self.bot_backup = backup_bot
@@ -756,8 +757,14 @@ class CLIContext:
             return "No backup available"
 
         try:
-            # Replace current bot with backup
-            self.bot_instance = self.bot_backup
+            # Import copy for deepcopy
+            import copy
+
+            # Create a deep copy of the backup to preserve the original
+            restored_bot = copy.deepcopy(self.bot_backup)
+
+            # Replace current bot with the restored copy
+            self.bot_instance = restored_bot
 
             # Re-attach callbacks (critical - callbacks reference context)
             self.bot_instance.callbacks = RealTimeDisplayCallbacks(self)
@@ -767,7 +774,8 @@ class CLIContext:
 
             # Format timestamp for display
             import datetime
-            timestamp = self.backup_metadata.get('timestamp', 0)
+
+            timestamp = self.backup_metadata.get("timestamp", 0)
             time_ago = time.time() - timestamp
             if time_ago < 60:
                 time_str = f"{int(time_ago)} seconds ago"
@@ -776,7 +784,7 @@ class CLIContext:
             else:
                 time_str = f"{int(time_ago / 3600)} hours ago"
 
-            reason = self.backup_metadata.get('reason', 'unknown')
+            reason = self.backup_metadata.get("reason", "unknown")
 
             # Don't clear backup - allow multiple restores to same point
             # User can create new backup if they want a new checkpoint
@@ -804,13 +812,14 @@ class CLIContext:
             return "No backup available"
 
         import datetime
-        timestamp = self.backup_metadata.get('timestamp', 0)
+
+        timestamp = self.backup_metadata.get("timestamp", 0)
         dt = datetime.datetime.fromtimestamp(timestamp)
         time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
 
-        reason = self.backup_metadata.get('reason', 'unknown')
-        depth = self.backup_metadata.get('conversation_depth', 0)
-        tokens = self.backup_metadata.get('token_count', 0)
+        reason = self.backup_metadata.get("reason", "unknown")
+        depth = self.backup_metadata.get("conversation_depth", 0)
+        tokens = self.backup_metadata.get("token_count", 0)
 
         return f"Backup available:\n  Created: {time_str}\n  Reason: {reason}\n  Conversation depth: {depth}\n  Token count: {tokens:,}"
 
@@ -1978,6 +1987,8 @@ class DynamicFunctionalPromptHandler:
             return f"Broadcast complete with {len(responses)} responses"
         except Exception as e:
             return f"Error in broadcast_fp: {str(e)}"
+
+
 class BackupHandler:
     """Handler for backup management commands."""
 
@@ -1999,7 +2010,6 @@ class BackupHandler:
     def undo(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Quick restore from backup (alias for /restore)."""
         return context.restore_backup()
-
 
 
 def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> str:

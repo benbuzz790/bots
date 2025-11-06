@@ -1,9 +1,12 @@
 """
 End-to-end tests for CLI backup system.
 """
-import pytest
+
 from unittest.mock import Mock, patch
-from bots.dev.cli import CLIContext, BackupHandler
+
+import pytest
+
+from bots.dev.cli import BackupHandler, CLIContext
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 
@@ -21,7 +24,7 @@ class TestCLIBackupSystem:
 
         assert result is True
         assert context.has_backup() is True
-        assert context.backup_metadata['reason'] == "test_backup"
+        assert context.backup_metadata["reason"] == "test_backup"
         assert context.bot_backup is not None
         assert context.bot_backup is not context.bot_instance  # Should be a copy
 
