@@ -1,5 +1,6 @@
 from . import (
     code_tools,
+    invoke_namshub,
     meta_tools,
     python_edit,
     python_editing_tools,
@@ -16,4 +17,5 @@ __all__ = [
     "self_tools",
     "code_tools",
     "python_edit",
+    "invoke_namshub",
 ]

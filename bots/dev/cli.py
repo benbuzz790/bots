@@ -751,30 +751,32 @@ class CLIContext:
         """Restore bot from backup.
 
         Returns:
-            Status message describing the result
+            Status message
         """
-        if self.bot_backup is None:
+        if not self.has_backup():
             return "No backup available"
 
         try:
-            # Import copy for deepcopy
             import copy
 
-            # Create a deep copy of the backup to preserve the original
+            # Create a deep copy of the backup to avoid mutations
             restored_bot = copy.deepcopy(self.bot_backup)
 
-            # Replace current bot with the restored copy
+            # Assign the restored copy to the live instance
             self.bot_instance = restored_bot
 
-            # Re-attach callbacks (critical - callbacks reference context)
+            # Re-attach callbacks on the restored instance
             self.bot_instance.callbacks = RealTimeDisplayCallbacks(self)
 
             # Clear tool handler state to prevent corruption
             self.bot_instance.tool_handler.clear()
 
-            # Format timestamp for display
-            import datetime
+            # Reset conversation-related caches to avoid stale references
+            self.labeled_nodes = {}
+            self.conversation_backup = None
+            self.cached_leaves = []
 
+            # Format timestamp for display
             timestamp = self.backup_metadata.get("timestamp", 0)
             time_ago = time.time() - timestamp
             if time_ago < 60:
@@ -811,17 +813,20 @@ class CLIContext:
         if not self.has_backup():
             return "No backup available"
 
-        import datetime
+        from datetime import datetime
 
         timestamp = self.backup_metadata.get("timestamp", 0)
-        dt = datetime.datetime.fromtimestamp(timestamp)
+        dt = datetime.fromtimestamp(timestamp)
         time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
 
         reason = self.backup_metadata.get("reason", "unknown")
         depth = self.backup_metadata.get("conversation_depth", 0)
         tokens = self.backup_metadata.get("token_count", 0)
 
-        return f"Backup available:\n  Created: {time_str}\n  Reason: {reason}\n  Conversation depth: {depth}\n  Token count: {tokens:,}"
+        return (
+            f"Backup available:\n  Created: {time_str}\n  Reason: {reason}\n"
+            f"  Conversation depth: {depth}\n  Token count: {tokens:,}"
+        )
 
     def _get_conversation_depth(self) -> int:
         """Calculate depth of current conversation tree.
