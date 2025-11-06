@@ -210,8 +210,10 @@ class TestToolHandlerPersistence(unittest.TestCase):
         loaded_result = new_handler.function_map["test_func"](5)
         self.assertEqual(original_result, loaded_result, "Function behavior changed")
         self.assertEqual(self.handler.tools[0], new_handler.tools[0], "Tool schema changed")
+
     def test_duplicate_tool_replacement(self):
         """Test that adding a duplicate tool replaces the existing one"""
+
         # Add first version of the tool
         def my_tool(x: int) -> int:
             """First version"""
@@ -233,9 +235,10 @@ class TestToolHandlerPersistence(unittest.TestCase):
         self.assertEqual(len(self.handler.tools), 1, "Duplicate tool was not replaced")
         self.assertEqual(self.handler.tools[0]["description"], "Second version")
         self.assertEqual(self.handler.function_map["my_tool"](5), 15)
-    
+
     def test_duplicate_tool_in_function_map(self):
         """Test that function_map correctly updates when duplicate tool is added"""
+
         def test_func() -> str:
             """Version 1"""
             return "v1"
