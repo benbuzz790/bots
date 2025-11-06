@@ -918,6 +918,54 @@ class ConversationHandler:
         self._display_conversation_context(bot, context)
         return "Moved to root of conversation tree"
 
+    def lastfork(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Move to the previous node (going up the tree) that has multiple replies."""
+        current = bot.conversation
+
+        # Traverse up the tree looking for a fork
+        while current.parent:
+            current = current.parent
+            # Check if this node has multiple replies (is a fork)
+            if len(current.replies) > 1:
+                context.conversation_backup = bot.conversation
+                bot.conversation = current
+                if not self._ensure_assistant_node(bot):
+                    return "Warning: Moved to fork but ended up on user node with no assistant response"
+                self._display_conversation_context(bot, context)
+                return f"Moved to previous fork ({len(current.replies)} branches)"
+
+        return "No fork found going up the tree"
+
+    def nextfork(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Move to the next node (going down the tree) that has multiple replies."""
+        # Use BFS to search down the tree for the first fork
+        from collections import deque
+
+        queue = deque([bot.conversation])
+        visited = {bot.conversation}
+
+        while queue:
+            current = queue.popleft()
+
+            # Check all replies of the current node
+            for reply in current.replies:
+                if reply not in visited:
+                    visited.add(reply)
+
+                    # Check if this reply has multiple replies (is a fork)
+                    if len(reply.replies) > 1:
+                        context.conversation_backup = bot.conversation
+                        bot.conversation = reply
+                        if not self._ensure_assistant_node(bot):
+                            return "Warning: Moved to fork but ended up on user node with no assistant response"
+                        self._display_conversation_context(bot, context)
+                        return f"Moved to next fork ({len(reply.replies)} branches)"
+
+                    # Add to queue to continue searching
+                    queue.append(reply)
+
+        return "No fork found going down the tree"
+
     def label(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Show all labels and create new label or jump to existing one."""
         # First, show all existing labels (like showlabels)
@@ -1212,6 +1260,8 @@ class SystemHandler:
             "/right: Move to this conversation node's right sibling",
             "/auto: Let the bot work autonomously until it sends a response that doesn't use tools (esc to quit)",
             "/root: Move to the root node of the conversation tree",
+            "/lastfork: Move to the previous node (going up) that has multiple replies",
+            "/nextfork: Move to the next node (going down) that has multiple replies",
             "/label: Show all labels, create new label, or jump to existing label",
             "/leaf [number]: Show all conversation endpoints (leaves) and optionally jump to one",
             "/fp: Execute functional prompts with dynamic parameter collection",
@@ -1376,11 +1426,11 @@ class SystemHandler:
                 if check_for_interrupt():
                     raise KeyboardInterrupt()
 
-                # After each iteration, if we're continuing, display metrics and next user prompt
+                # After each iteration, if we're continuing, display next user prompt
                 iteration_count[0] += 1
                 if not stop_on_no_tools(bot):
-                    # Display metrics before the next user message
-                    display_metrics(context, bot)
+                    # NOTE: Metrics are displayed by verbose_callback, not here
+                    # This prevents duplicate display and ensures correct timing (after bot response)
 
                     # Get the next prompt text
                     next_prompt = continue_prompt(bot, iteration_count[0]) if callable(continue_prompt) else continue_prompt
@@ -1822,6 +1872,9 @@ def format_tool_data(data: dict, indent: int = 4, color: str = COLOR_RESET) -> s
             # Other types (int, bool, None, etc.)
             lines.append(f"{bold_key} {value}")
 
+    # Return the formatted lines joined with newlines
+    return "\n" + "\n".join(lines)
+
 
 def check_for_interrupt() -> bool:
     """Check if user pressed Escape without blocking execution."""
@@ -2032,6 +2085,8 @@ class CLI:
             "/left": self.conversation.left,
             "/right": self.conversation.right,
             "/root": self.conversation.root,
+            "/lastfork": self.conversation.lastfork,
+            "/nextfork": self.conversation.nextfork,
             "/label": self.conversation.label,
             "/leaf": self.conversation.leaf,
             "/combine_leaves": self.conversation.combine_leaves,
@@ -2226,13 +2281,15 @@ class CLI:
         )
 
         sys_msg = textwrap.dedent(
-            """You're a coding agent. When greeting users, always start with "Hello! I'm here to help you".
-        Please follow these rules:
-                1. Keep edits and even writing new files to small chunks. You have a low max_token limit
-                   and will hit tool errors if you try making too big of a change.
-                2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
-                   Instead, use full relative paths.
-        """
+            """You're a coding agent. Please follow these rules:
+            1. Keep edits and even writing new files to small chunks. You have a low max_token limit
+                and will hit tool errors if you try making too big of a change.
+            2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
+                Instead, use full relative paths.
+            3. Ex uno plura! You have a powerful tool called branch_self which you should use for
+                multitasking or even just to save context in your main branch. Always use a concrete
+                definition of done when branching.
+            """
         )
         bot.set_system_message(sys_msg)
 
@@ -2349,65 +2406,95 @@ class PromptHandler:
             readline.set_startup_hook(None)
 
     def load_prompt(self, bot: "Bot", context: "CLIContext", args: List[str]) -> tuple:
-        """Load a prompt with search and selection. Returns (message, prefill_text)."""
-        try:
-            # Get search query
-            if args:
-                query = " ".join(args)
+        """Load a saved prompt by name or search query.
+
+        Returns tuple of (status_message, prompt_content) for use by CLI.
+        """
+        if not args:
+            # Show recent prompts
+            recents = self.prompt_manager.get_recents()
+            if recents:
+                print("\nRecent prompts:")
+                for i, (name, _content) in enumerate(recents[:10], 1):
+                    print(f"  {i}. {name}")
+
+                try:
+                    selection = input_with_esc("\nEnter number or name to load (ESC to cancel): ").strip()
+                    if selection.isdigit():
+                        idx = int(selection) - 1
+                        if 0 <= idx < len(recents):
+                            name = recents[idx][0]
+                        else:
+                            return ("Invalid selection.", None)
+                    else:
+                        name = selection
+                except EscapeException:
+                    return ("Load cancelled.", None)
             else:
+                # No recents, prompt for search query
                 try:
-                    query = input_with_esc("Enter prompt search: ").strip()
+                    name = input_with_esc("\nEnter prompt name or search query: ").strip()
+                    if not name:
+                        return ("Load cancelled.", None)
                 except EscapeException:
-                    return ("Selection cancelled", None)
+                    return ("Load cancelled.", None)
+        else:
+            name = " ".join(args)
 
-            # Search for matching prompts
-            matches = self.prompt_manager.search_prompts(query)
+        # Try exact match first
+        try:
+            content = self.prompt_manager.load_prompt(name)
+            return (f"Loaded prompt: {name}", content)
+        except KeyError:
+            pass
 
-            if not matches:
-                return ("No prompts found matching your search.", None)
+        # Try fuzzy search
+        matches = self.prompt_manager.search_prompts(name)
 
-            if len(matches) == 1:
-                # Single match - load directly
-                name, content = matches[0]
-                self.prompt_manager.load_prompt(name)  # Update recency
-                return (f"Loaded prompt: {name}", content)
+        if not matches:
+            return ("No prompts found matching your search.", None)
 
-            # Multiple matches - show selection with best match highlighted
-            print(f"\nFound {len(matches)} matches (best match first):")
-            for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
-                # Show preview of content
-                preview = content[:80] + "..." if len(content) > 80 else content
-                preview = preview.replace("\n", " ")  # Single line preview
-                marker = "â†’" if i == 1 else " "
-                print(f"  {marker} {i}. {name}: {preview}")
+        if len(matches) == 1:
+            # Single match - load directly
+            name, content = matches[0]
+            self.prompt_manager.load_prompt(name)  # Update recency
+            return (f"Loaded prompt: {name}", content)
 
-            if len(matches) > 10:
-                print(f"  ... and {len(matches) - 10} more matches")
+        # Multiple matches - show selection with best match highlighted
+        print(f"\nFound {len(matches)} matches (best match first):")
+        for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
+            # Show preview of content
+            preview = content[:80] + "..." if len(content) > 80 else content
+            preview = preview.replace("\n", " ")  # Single line preview
+            marker = "→" if i == 1 else " "
+            print(f"  {marker} {i}. {name}: {preview}")
 
-            # Get selection (default to 1 if just Enter is pressed)
-            try:
-                try:
-                    choice = input_with_esc(f"\nSelect prompt (1-{min(len(matches), 10)}, default=1): ").strip()
-                except EscapeException:
-                    return ("Selection cancelled", None)
+        if len(matches) > 10:
+            print(f"  ... and {len(matches) - 10} more matches")
 
-                if not choice:
-                    choice_num = 0  # Default to first match
+        try:
+            selection = input_with_esc("\nEnter number or name to load (ESC to cancel): ").strip()
+            if selection.isdigit():
+                idx = int(selection) - 1
+                if 0 <= idx < len(matches):
+                    name, content = matches[idx]
                 else:
-                    choice_num = int(choice) - 1
-                    if choice_num < 0 or choice_num >= min(len(matches), 10):
-                        return (f"Invalid selection. Must be between 1 and {min(len(matches), 10)}.", None)
+                    return ("Invalid selection.", None)
+            else:
+                # Try to find by name in matches
+                name = selection
+                content = None
+                for match_name, match_content in matches:
+                    if match_name == name:
+                        content = match_content
+                        break
+                if content is None:
+                    return (f"'{name}' not in search results.", None)
 
-                name, content = matches[choice_num]
-                self.prompt_manager.load_prompt(name)  # Update recency
-
-                return (f"Loaded prompt: {name}", content)
-
-            except ValueError:
-                return ("Invalid selection. Must be a number.", None)
-
-        except Exception as e:
-            return (f"Error loading prompt: {str(e)}", None)
+            self.prompt_manager.load_prompt(name)  # Update recency
+            return (f"Loaded prompt: {name}", content)
+        except EscapeException:
+            return ("Load cancelled.", None)
 
     def save_prompt(self, bot: "Bot", context: "CLIContext", args: List[str], last_user_message: str = None) -> str:
         """Save a prompt. If args provided, save the args. Otherwise save last user message."""

@@ -87,6 +87,64 @@ def _count_lines_to_be_deleted(original_content: str, new_content: str) -> int:
     return max(0, original_lines - new_lines)
 
 
+def _extract_definition_names(module: cst.Module) -> List[str]:
+    """Extract all top-level class and function names from a CST module."""
+    names = []
+    for statement in module.body:
+        if isinstance(statement, cst.SimpleStatementLine):
+            continue
+        if isinstance(statement, (cst.FunctionDef, cst.ClassDef)):
+            names.append(statement.name.value)
+    return names
+
+
+def _check_for_duplicates(tree: cst.Module, new_module: cst.Module, path_elements: List[str]) -> Optional[str]:
+    """
+    Check if new code would create duplicate definitions.
+
+    Returns:
+        Optional[str]: Warning message if duplicates found, None otherwise
+    """
+    # Extract names from new code
+    new_names = _extract_definition_names(new_module)
+    if not new_names:
+        return None
+
+    # If we're at file level (no path elements), check file-level definitions
+    if not path_elements:
+        existing_names = _extract_definition_names(tree)
+        duplicates = set(new_names) & set(existing_names)
+        if duplicates:
+            dup_list = ", ".join(sorted(duplicates))
+            return (
+                f"Warning: Adding duplicate definition(s): {dup_list}. "
+                f"This will create multiple definitions with the same name."
+            )
+    else:
+        # If we're in a class scope, check for duplicate methods
+        # Find the target class using the visitor pattern
+        finder = ScopeFinder(path_elements)
+        tree.visit(finder)
+
+        if finder.target_node and isinstance(finder.target_node, cst.ClassDef):
+            # Extract existing method names from the class (including async methods)
+            existing_methods = []
+            for item in finder.target_node.body.body:
+                if isinstance(item, cst.FunctionDef):
+                    existing_methods.append(item.name.value)
+
+            duplicates = set(new_names) & set(existing_methods)
+            if duplicates:
+                dup_list = ", ".join(sorted(duplicates))
+                class_name = finder.target_node.name.value
+                return (
+                    f"Warning: Adding duplicate method(s) to class '{class_name}': {dup_list}. "
+                    f"This will create multiple methods with the same name."
+                )
+
+    return None
+
+
 class ScopeViewer(ast.NodeVisitor):
     """AST visitor that finds and extracts specific scopes from Python code."""
 
@@ -977,13 +1035,37 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
                 return _process_error(ValueError("__FIRST__ cannot be combined with other path elements"))
             return _handle_first_definition(abs_path, tree, new_module, coscope_with)
 
+        # Check for duplicates when inserting code (not replacing)
+        duplicate_warning = None
+        if coscope_with and new_module:
+            duplicate_warning = _check_for_duplicates(tree, new_module, path_elements)
+
+        # CR#9: Check for invalid combination of file-level tokens with scoped targets
+        if coscope_with in ("__FILE_START__", "__FILE_END__") and path_elements:
+            return _process_error(
+                ValueError(
+                    f"Cannot use {coscope_with} with scoped target '{target_scope}'. "
+                    f"File-level tokens (__FILE_START__, __FILE_END__) can only be used "
+                    f"with file-level targets (e.g., 'file.py')."
+                )
+            )
+
         if coscope_with == "__FILE_START__":
-            return _handle_file_start_insertion(abs_path, tree, new_module)
+            result = _handle_file_start_insertion(abs_path, tree, new_module)
+            if duplicate_warning:
+                result = duplicate_warning + " " + result
+            return result
         elif coscope_with == "__FILE_END__":
-            return _handle_file_end_insertion(abs_path, tree, new_module)
+            result = _handle_file_end_insertion(abs_path, tree, new_module)
+            if duplicate_warning:
+                result = duplicate_warning + " " + result
+            return result
         elif not path_elements:
             if coscope_with:
-                return _handle_file_level_insertion(abs_path, tree, new_module, coscope_with)
+                result = _handle_file_level_insertion(abs_path, tree, new_module, coscope_with)
+                if duplicate_warning:
+                    result = duplicate_warning + " " + result
+                return result
             else:
                 # Safety check for file-level replacements
                 lines_to_delete = _count_lines_to_be_deleted(original_content, cleaned_code)
@@ -1007,7 +1089,10 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
                     return _process_error(ValueError(f"Target scope not found: {target_scope}"))
             _write_file_bom_safe(abs_path, modified_tree.code)
             if coscope_with:
-                return f"Code inserted after '{coscope_with}' in '{abs_path}'."
+                result = f"Code inserted after '{coscope_with}' in '{abs_path}'."
+                if duplicate_warning:
+                    result = duplicate_warning + " " + result
+                return result
             else:
                 return f"Code replaced at '{target_scope}'."
     except Exception as e:

@@ -1,0 +1,37 @@
+## Summary
+This PR resolves 5 GitHub issues with comprehensive fixes and test coverage.
+## Issues Fixed
+### Issue #158 - clean_unicode_string not defined after bot load
+- **Status:** Already fixed, verified with tests
+- **Test:** tests/e2e/test_issue_158_clean_unicode_string.py
+- **Result:** Helper function preservation system works correctly
+### Issue #160 - python_edit should warn when adding duplicates
+- **Fix:** Added duplicate detection for classes, functions, and methods
+- **Implementation:** New _extract_definition_names() and _check_for_duplicates() functions
+- **Test:** tests/integration/test_python_edit/test_duplicate_detection_issue160.py (4 tests)
+- **Example:** Warning: Adding duplicate definition(s): MyClass. This will create multiple definitions with the same name.
+### Issue #162 - Mojibake and control character issues
+- **Root Cause:** Pre-existing mojibake in source files, NOT tool issues
+- **Fix:** Corrected arrow character in cli.py line 2410
+- **Verification:** 4 comprehensive tests confirm Unicode handling works correctly
+### Issue #163 - Tool requests display None in CLI
+- **Root Cause:** Missing return statement in format_tool_data() function
+- **Fix:** Added return statement at end of function
+- **Test:** tests/e2e/test_cli_tool_display_bug.py (3 tests)
+- **Result:** Tool parameters now display correctly
+### Issue #164 - Metrics display inconsistently
+- **Root Cause:** Duplicate display_metrics() call in auto mode
+- **Fix:** Removed duplicate from auto_callback in SystemHandler.auto()
+- **Test:** tests/e2e/test_cli_metrics_display.py
+- **Result:** Metrics now display once per bot response
+## Changes
+### Modified Files
+- bots/dev/cli.py: Fixed format_tool_data() missing return, removed duplicate display_metrics() call, fixed mojibake
+- bots/tools/python_edit.py: Added duplicate detection functions
+### New Test Files (9)
+All new tests pass with comprehensive coverage for each issue.
+## Testing
+- All new tests pass
+- All linters pass (black, isort, flake8)
+- No regressions
+Closes #158, #160, #162, #163, #164
