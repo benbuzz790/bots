@@ -2451,14 +2451,14 @@ class CLI:
 
         # bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools, bots.tools.self_tools)
         from bots.tools.code_tools import view, view_dir
-        from bots.tools.invoke_namshub import invoke_namshub
         from bots.tools.python_edit import python_edit, python_view
         from bots.tools.python_execution_tool import execute_python
         from bots.tools.self_tools import branch_self, list_context, remove_context
         from bots.tools.terminal_tools import execute_powershell
         from bots.tools.web_tool import web_search
 
-        bot.add_tools(
+        # Optional: import invoke_namshub if available (not released yet)
+        tools_to_add = [
             view,
             view_dir,
             python_view,
@@ -2469,24 +2469,29 @@ class CLI:
             list_context,
             web_search,
             python_edit,
-            invoke_namshub,
-        )
+        ]
+
+        try:
+            from bots.tools.invoke_namshub import invoke_namshub
+
+            tools_to_add.append(invoke_namshub)
+        except ImportError:
+            pass  # invoke_namshub not available, skip it
+
+        bot.add_tools(*tools_to_add)
 
         sys_msg = textwrap.dedent(
             """You're a coding agent. Please follow these rules:
-            1. Keep edits and even writing new files to small chunks. You have a low max_token limit
-                and will hit tool errors if you try making too big of a change.
-            2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
-                Instead, use full relative paths.
-            3. Ex uno plura! You have a powerful tool called branch_self which you should use for
-                multitasking or even just to save context in your main branch. Always use a concrete
-                definition of done when branching.
-            """
+        1. Keep edits and even writing new files to small chunks. You have a low max_token limit
+            and will hit tool errors if you try making too big of a change.
+        2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
+            Instead, use full relative paths.
+        3. Ex uno plura! You have a powerful tool called branch_self which you should use for 
+            multitasking or even just to save context in your main branch. Always use a concrete
+            definition of done when branching.
+    """
         )
         bot.set_system_message(sys_msg)
-
-        # This works well as a fallback:
-        # bot.add_tools(bots.tools.terminal_tools, view, view_dir)
 
     def _handle_command(self, bot: Bot, user_input: str):
         """Handle command input."""
