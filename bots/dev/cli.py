@@ -495,16 +495,17 @@ class CLIConfig:
     """Configuration management for CLI settings."""
 
     def __init__(self):
-        """Initialize with default configuration."""
-        self.model = "claude-3-5-sonnet-20241022"
-        self.verbose = False
-        self.quiet = False
-        self.width = 100
+        self.verbose = True
+        self.width = 160
         self.indent = 4
+        self.auto_stash = False
+        self.remove_context_threshold = 40000
+        self.auto_mode_neutral_prompt = "ok"
+        self.auto_mode_reduce_context_prompt = "trim useless context"
         self.max_tokens = 4096
         self.temperature = 1.0
-        self.auto_backup = False  # Opt-in feature, not enabled by default
-        self.auto_restore_on_error = False  # Opt-in feature, not enabled by default
+        self.auto_backup = True
+        self.auto_restore_on_error = True
         self.config_file = "cli_config.json"
         self.load_config()
 
@@ -514,21 +515,19 @@ class CLIConfig:
             if os.path.exists(self.config_file):
                 with open(self.config_file, "r") as f:
                     config_data = json.load(f)
-                    self.model = config_data.get("model", "claude-3-5-sonnet-20241022")
-                    self.verbose = config_data.get("verbose", False)
-                    self.quiet = config_data.get("quiet", False)
-                    self.width = config_data.get(
-                        "width", 100
-                    )  # Default to 100 if not in config
-                    self.indent = config_data.get(
-                        "indent", 4
-                    )  # Default to 4 if not in config
+                    self.verbose = config_data.get("verbose", True)
+                    self.width = config_data.get("width", 160)
+                    self.indent = config_data.get("indent", 4)
+                    self.auto_stash = config_data.get("auto_stash", False)
+                    self.remove_context_threshold = config_data.get("remove_context_threshold", 40000)
+                    self.auto_mode_neutral_prompt = config_data.get("auto_mode_neutral_prompt", "ok")
+                    self.auto_mode_reduce_context_prompt = config_data.get(
+                        "auto_mode_reduce_context_prompt", "trim useless context"
+                    )
                     self.max_tokens = config_data.get("max_tokens", 4096)
                     self.temperature = config_data.get("temperature", 1.0)
-                    self.auto_backup = config_data.get("auto_backup", False)
-                    self.auto_restore_on_error = config_data.get(
-                        "auto_restore_on_error", False
-                    )
+                    self.auto_backup = config_data.get("auto_backup", True)
+                    self.auto_restore_on_error = config_data.get("auto_restore_on_error", True)
         except Exception:
             pass  # Use defaults if config loading fails
 
@@ -721,18 +720,9 @@ class CLIContext:
         try:
             self.backup_in_progress = True
 
-            # Deep copy the entire bot
-            import copy
-
-            # Temporarily remove callbacks to avoid circular reference during deepcopy
-            original_callbacks = self.bot_instance.callbacks
-            self.bot_instance.callbacks = None
-
-            try:
-                backup_bot = copy.deepcopy(self.bot_instance)
-            finally:
-                # Always restore callbacks, even if deepcopy fails
-                self.bot_instance.callbacks = original_callbacks
+            # Use bot's built-in copy mechanism (bot * 1) which properly handles
+            # callbacks, api_key, and other bot-specific concerns
+            backup_bot = (self.bot_instance * 1)[0]
 
             # Store metadata
             metadata = {
@@ -763,31 +753,31 @@ class CLIContext:
     def restore_backup(self) -> str:
         """Restore bot from backup.
 
-        Returns:
-            Status message describing the result
-        """
-        if self.bot_backup is None:
+    Returns:
+        Status message
+    """
+        if not self.has_backup():
             return "No backup available"
 
         try:
-            # Import copy for deepcopy
-            import copy
+            # Use bot's built-in copy mechanism to create a fresh copy from backup
+            restored_bot = (self.bot_backup * 1)[0]
 
-            # Create a deep copy of the backup to preserve the original
-            restored_bot = copy.deepcopy(self.bot_backup)
-
-            # Replace current bot with the restored copy
+            # Assign the restored copy to the live instance
             self.bot_instance = restored_bot
 
-            # Re-attach callbacks (critical - callbacks reference context)
+            # Re-attach callbacks on the restored instance (pointing to current context)
             self.bot_instance.callbacks = RealTimeDisplayCallbacks(self)
 
             # Clear tool handler state to prevent corruption
             self.bot_instance.tool_handler.clear()
 
-            # Format timestamp for display
-            import datetime
+            # Reset conversation-related caches to avoid stale references
+            self.labeled_nodes = {}
+            self.conversation_backup = None
+            self.cached_leaves = []
 
+            # Format timestamp for display
             timestamp = self.backup_metadata.get("timestamp", 0)
             time_ago = time.time() - timestamp
             if time_ago < 60:
@@ -824,17 +814,20 @@ class CLIContext:
         if not self.has_backup():
             return "No backup available"
 
-        import datetime
+        from datetime import datetime
 
         timestamp = self.backup_metadata.get("timestamp", 0)
-        dt = datetime.datetime.fromtimestamp(timestamp)
+        dt = datetime.fromtimestamp(timestamp)
         time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
 
         reason = self.backup_metadata.get("reason", "unknown")
         depth = self.backup_metadata.get("conversation_depth", 0)
         tokens = self.backup_metadata.get("token_count", 0)
 
-        return f"Backup available:\n  Created: {time_str}\n  Reason: {reason}\n  Conversation depth: {depth}\n  Token count: {tokens:,}"
+        return (
+            f"Backup available:\n  Created: {time_str}\n  Reason: {reason}\n"
+            f"  Conversation depth: {depth}\n  Token count: {tokens:,}"
+        )
 
     def _get_conversation_depth(self) -> int:
         """Calculate depth of current conversation tree.
@@ -1722,14 +1715,6 @@ class SystemHandler:
         from bots.tools.terminal_tools import execute_powershell
         from bots.tools.web_tool import web_search
 
-        # Try to import invoke_namshub (optional)
-        try:
-            from bots.tools.invoke_namshub import invoke_namshub
-
-            has_invoke_namshub = True
-        except ImportError:
-            has_invoke_namshub = False
-
         # Map of available tools
         available_tools = {
             "view": view,
@@ -1743,10 +1728,6 @@ class SystemHandler:
             "remove_context": remove_context,
             "web_search": web_search,
         }
-
-        # Add invoke_namshub if available
-        if has_invoke_namshub:
-            available_tools["invoke_namshub"] = invoke_namshub
 
         # If no args, show view_dir of python files and allow choice
         if not args:
@@ -2477,15 +2458,7 @@ class CLI:
         from bots.tools.terminal_tools import execute_powershell
         from bots.tools.web_tool import web_search
 
-        # Try to import invoke_namshub (optional)
-        try:
-            from bots.tools.invoke_namshub import invoke_namshub
-
-            has_invoke_namshub = True
-        except ImportError:
-            has_invoke_namshub = False
-
-        # Build tools list
+        # Optional: import invoke_namshub if available (not released yet)
         tools_to_add = [
             view,
             view_dir,
@@ -2499,27 +2472,28 @@ class CLI:
             python_edit,
         ]
 
-        # Add invoke_namshub if available
-        if has_invoke_namshub:
+        try:
+            from bots.tools.invoke_namshub import invoke_namshub
+
             tools_to_add.append(invoke_namshub)
+        except ImportError:
+            pass  # invoke_namshub not available, skip it
 
         bot.add_tools(*tools_to_add)
 
         sys_msg = textwrap.dedent(
             """You're a coding agent. Please follow these rules:
-        1. Keep edits and even writing new files to small chunks. You have a low max_token limit
-            and will hit tool errors if you try making too big of a change.
-        2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
-            Instead, use full relative paths.
-        3. Ex uno plura! You have a powerful tool called branch_self which you should use for
-            multitasking or even just to save context in your main branch. Always use a concrete
-            definition of done when branching.
-        """
+    1. Keep edits and even writing new files to small chunks. You have a low max_token limit
+        and will hit tool errors if you try making too big of a change.
+    2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
+        Instead, use full relative paths.
+    3. Ex uno plura! You have a powerful tool called branch_self which you should use for
+        multitasking or even just to save context in your main branch. Always use a concrete
+        definition of done when branching.
+    4. When debugging issues, find the root cause rather than working around symptoms.
+"""
         )
         bot.set_system_message(sys_msg)
-
-        # This works well as a fallback:
-        # bot.add_tools(bots.tools.terminal_tools, view, view_dir)
 
     def _handle_command(self, bot: Bot, user_input: str):
         """Handle command input."""
