@@ -705,12 +705,12 @@ class CLIContext:
     def create_backup(self, reason: str = "manual") -> bool:
         """Create a complete backup of the current bot.
 
-        Args:
-            reason: Description of why backup was created (e.g., "before_user_message")
+    Args:
+        reason: Description of why backup was created (e.g., "before_user_message")
 
-        Returns:
-            True if backup successful, False otherwise
-        """
+    Returns:
+        True if backup successful, False otherwise
+    """
         if self.bot_instance is None:
             return False
 
@@ -723,14 +723,26 @@ class CLIContext:
             # Deep copy the entire bot
             import copy
 
-            backup_bot = copy.deepcopy(self.bot_instance)
+            # Temporarily remove callbacks to avoid circular reference during deepcopy
+            original_callbacks = self.bot_instance.callbacks
+            self.bot_instance.callbacks = None
+
+            try:
+                backup_bot = copy.deepcopy(self.bot_instance)
+            finally:
+                # Always restore callbacks, even if deepcopy fails
+                self.bot_instance.callbacks = original_callbacks
 
             # Store metadata
             metadata = {
                 "timestamp": time.time(),
                 "reason": reason,
                 "conversation_depth": self._get_conversation_depth(),
-                "token_count": self.last_message_metrics.get("input_tokens", 0) if self.last_message_metrics else 0,
+                "token_count": (
+                    self.last_message_metrics.get("input_tokens", 0)
+                    if self.last_message_metrics
+                    else 0
+                ),
             }
 
             self.bot_backup = backup_bot
