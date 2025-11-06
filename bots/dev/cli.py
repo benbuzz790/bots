@@ -720,18 +720,9 @@ class CLIContext:
         try:
             self.backup_in_progress = True
 
-            # Deep copy the entire bot
-            import copy
-
-            # Temporarily remove callbacks to avoid circular reference during deepcopy
-            original_callbacks = self.bot_instance.callbacks
-            self.bot_instance.callbacks = None
-
-            try:
-                backup_bot = copy.deepcopy(self.bot_instance)
-            finally:
-                # Always restore callbacks, even if deepcopy fails
-                self.bot_instance.callbacks = original_callbacks
+            # Use bot's built-in copy mechanism (bot * 1) which properly handles
+            # callbacks, api_key, and other bot-specific concerns
+            backup_bot = (self.bot_instance * 1)[0]
 
             # Store metadata
             metadata = {
@@ -762,22 +753,20 @@ class CLIContext:
     def restore_backup(self) -> str:
         """Restore bot from backup.
 
-        Returns:
-            Status message
-        """
+    Returns:
+        Status message
+    """
         if not self.has_backup():
             return "No backup available"
 
         try:
-            import copy
-
-            # Create a deep copy of the backup to avoid mutations
-            restored_bot = copy.deepcopy(self.bot_backup)
+            # Use bot's built-in copy mechanism to create a fresh copy from backup
+            restored_bot = (self.bot_backup * 1)[0]
 
             # Assign the restored copy to the live instance
             self.bot_instance = restored_bot
 
-            # Re-attach callbacks on the restored instance
+            # Re-attach callbacks on the restored instance (pointing to current context)
             self.bot_instance.callbacks = RealTimeDisplayCallbacks(self)
 
             # Clear tool handler state to prevent corruption
@@ -2494,14 +2483,15 @@ class CLI:
 
         sys_msg = textwrap.dedent(
             """You're a coding agent. Please follow these rules:
-        1. Keep edits and even writing new files to small chunks. You have a low max_token limit
-            and will hit tool errors if you try making too big of a change.
-        2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
-            Instead, use full relative paths.
-        3. Ex uno plura! You have a powerful tool called branch_self which you should use for
-            multitasking or even just to save context in your main branch. Always use a concrete
-            definition of done when branching.
-    """
+    1. Keep edits and even writing new files to small chunks. You have a low max_token limit
+        and will hit tool errors if you try making too big of a change.
+    2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
+        Instead, use full relative paths.
+    3. Ex uno plura! You have a powerful tool called branch_self which you should use for
+        multitasking or even just to save context in your main branch. Always use a concrete
+        definition of done when branching.
+    4. When debugging issues, find the root cause rather than working around symptoms.
+"""
         )
         bot.set_system_message(sys_msg)
 
