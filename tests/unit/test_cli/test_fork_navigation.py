@@ -1,8 +1,6 @@
 import unittest
 from unittest.mock import MagicMock
 
-import pytest
-
 import bots.dev.cli as cli_module
 from bots.foundation.base import ConversationNode
 
