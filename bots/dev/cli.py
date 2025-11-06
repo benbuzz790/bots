@@ -2486,7 +2486,7 @@ class CLI:
             and will hit tool errors if you try making too big of a change.
         2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
             Instead, use full relative paths.
-        3. Ex uno plura! You have a powerful tool called branch_self which you should use for 
+        3. Ex uno plura! You have a powerful tool called branch_self which you should use for
             multitasking or even just to save context in your main branch. Always use a concrete
             definition of done when branching.
     """
