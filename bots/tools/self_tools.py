@@ -2,8 +2,8 @@ import ast
 import inspect
 from typing import List, Optional
 
+from bots.dev.decorators import toolify
 from bots.foundation.base import Bot
-from bots.foundation.tool_handling import toolify
 
 
 def _get_calling_bot() -> Optional[Bot]:
