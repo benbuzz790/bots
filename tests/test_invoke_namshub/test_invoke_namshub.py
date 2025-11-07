@@ -17,6 +17,8 @@ def mock_bot():
     bot.system_message = "Original system message"
     bot.tool_handler = MagicMock()
     bot.set_system_message = MagicMock()
+    bot.conversation = MagicMock()
+    bot.conversation.tool_calls = []
     return bot
 
 
@@ -44,7 +46,7 @@ def invoke(bot, test_param=None, **kwargs):
 def test_invoke_namshub_with_filepath(mock_bot, temp_namshub_file):
     """Test that invoke_namshub works with a filepath."""
     with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=mock_bot):
-        result = invoke_namshub(temp_namshub_file, test_param="hello")
+        result = invoke_namshub(temp_namshub_file, kwargs='{"test_param": "hello"}')
 
     assert "Test namshub executed with param: hello" in result
     assert "Error" not in result
@@ -90,7 +92,7 @@ def test_invoke_namshub_restores_bot_state(mock_bot, temp_namshub_file):
     original_handler = mock_bot.tool_handler
 
     with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=mock_bot):
-        invoke_namshub(temp_namshub_file, test_param="test")
+        invoke_namshub(temp_namshub_file, kwargs='{"test_param": "test"}')
 
     # Bot state should be restored
     assert mock_bot.tool_handler == original_handler
