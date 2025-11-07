@@ -155,23 +155,29 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
 
         # Handle tool_use without tool_result issue
         # If the current node has tool_calls (the branch_self call itself),
-        # we need to add a dummy result before copying to avoid API errors
-        dummy_results_added = False
-        original_results = None
+        # we need to add a USER message with tool_results before copying
+        dummy_node_added = False
+        dummy_node = None
 
         if original_node.tool_calls:
-            dummy_results = []
+            # Check if this is the branch_self call
             for tool_call in original_node.tool_calls:
                 if tool_call.get("name") == "branch_self":
-                    # Use bot's tool_handler to generate provider-appropriate format
+                    # Create a dummy USER message with tool_result
                     dummy_result = bot.tool_handler.generate_response_schema(tool_call, "Branching in progress...")
-                    dummy_results.append(dummy_result)
 
-            if dummy_results:
-                # Temporarily add dummy results for copying
-                original_results = list(getattr(original_node, "tool_results", []))
-                original_node._add_tool_results(dummy_results)
-                dummy_results_added = True
+                    # Add a user message node with the tool result
+                    # Use a placeholder content since Anthropic requires non-empty text
+                    dummy_node = original_node._add_reply(
+                        role="user",
+                        content="[Tool execution in progress]",
+                        tool_results=[dummy_result]
+                    )
+                    dummy_node_added = True
+
+                    # Update bot's conversation pointer to this new node
+                    bot.conversation = dummy_node
+                    break
 
         # Create lock for thread-safe mutations
         replies_lock = threading.Lock()
@@ -223,7 +229,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         if parallel:
             # Parallel execution
             with ThreadPoolExecutor() as executor:
-                futures = [executor.submit(execute_branch, prompt, original_node) for prompt in prefixed_prompts]
+                futures = {executor.submit(execute_branch, prompt, bot.conversation): prompt for prompt in prefixed_prompts}
                 for future in as_completed(futures):
                     response, node = future.result()
                     responses.append(response)
@@ -231,13 +237,16 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         else:
             # Sequential execution
             for prompt in prefixed_prompts:
-                response, node = execute_branch(prompt, original_node)
+                response, node = execute_branch(prompt, bot.conversation)
                 responses.append(response)
                 branch_nodes.append(node)
 
-        # Remove dummy results if we added them
-        if dummy_results_added:
-            original_node.tool_results = original_results
+        # Remove dummy node if we added it
+        if dummy_node_added and dummy_node:
+            # Remove the dummy node from the conversation tree
+            original_node.replies.remove(dummy_node)
+            # Restore bot's conversation pointer
+            bot.conversation = original_node
 
         # Restore original bot settings
         bot.autosave = original_autosave

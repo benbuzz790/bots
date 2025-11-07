@@ -86,9 +86,6 @@ def test_nested_function(test_file):
 # Removed test_insert_after_line - line-based insertion descoped
 
 
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true", reason="Flaky in CI due to temp directory race conditions - see issue #XXX"
-)
 def test_insert_after_scope(test_file):
     """Test inserting after a scope using coscope_with"""
     result = python_edit(
@@ -102,9 +99,6 @@ def test_insert_after_scope(test_file):
     assert "def inserted_method" in content
 
 
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true", reason="Flaky in CI due to temp directory race conditions - see issue #XXX"
-)
 def test_import_handling(test_file):
     """Test that imports are preserved when editing"""
     result = python_edit(f"{test_file}::OuterClass::method", "    def method(self):\n        return 42")
@@ -578,9 +572,6 @@ def test_function_added_by_integration_test():
 
 
 # Tests for AST-based insert_after expression functionality
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true", reason="Flaky in CI due to temp directory race conditions - see issue #XXX"
-)
 def test_insert_after_quoted_single_line_expression(tmp_path):
     """Test inserting after a quoted single-line expression"""
     content = """
@@ -657,10 +648,6 @@ def test_insert_after_quoted_expression_no_match(tmp_path):
     assert "not found" in result.lower() or "error" in result.lower()
 
 
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true",
-    reason="Flaky in CI due to temp directory race conditions - see issue #XXX",
-)
 def test_insert_after_scope_path_syntax(tmp_path):
     """Test inserting after a scope using path syntax in coscope_with"""
     content = """
@@ -687,10 +674,6 @@ class MyClass:
     assert method1_idx < inserted_idx < method2_idx
 
 
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true",
-    reason="Flaky in CI due to temp directory race conditions - see issue #XXX",
-)
 def test_insert_after_nested_scope_path(tmp_path):
     """Test inserting after a nested scope using path syntax"""
     content = """
@@ -915,10 +898,6 @@ def test_insert_after_ambiguous_multiline_expression(tmp_path):
     print(f"DEBUG - Ambiguity result: {result}")
 
 
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true",
-    reason="Flaky in CI due to temp directory race conditions - see issue #XXX",
-)
 def test_newline_preservation_after_scope_replacement(tmp_path):
     """Test that newlines are preserved when replacing a scope"""
     content = """

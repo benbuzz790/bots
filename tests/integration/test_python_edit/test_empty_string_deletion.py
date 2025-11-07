@@ -240,9 +240,6 @@ def test_empty_string_nonexistent_scope_fails(tmp_path):
     assert "def existing_function():" in content
 
 
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true", reason="Flaky in CI due to temp directory race conditions - see issue #XXX"
-)
 def test_empty_string_preserves_file_structure(tmp_path):
     """Test that deletion preserves overall file structure"""
     content = """

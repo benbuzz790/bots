@@ -2,6 +2,7 @@ import atexit
 import os
 import shutil
 import tempfile
+import time
 import uuid
 from pathlib import Path
 from typing import Set
@@ -19,19 +20,15 @@ def pytest_configure(config):
     This avoids Windows permission issues with the default system temp directory,
     especially when using pytest-xdist for parallel test execution.
     """
-    # Set custom basetemp in project root to avoid Windows permission issues
-    project_root = Path(__file__).parent
-    custom_temp = project_root / ".pytest_tmp"
+    # Only set basetemp if not already set (e.g., by command line)
+    if config.option.basetemp is None:
+        # Set custom basetemp in project root to avoid Windows permission issues
+        project_root = Path(__file__).parent
+        custom_temp = project_root / ".pytest_tmp"
 
-    # Create the directory if it doesn't exist, handling race conditions
-    try:
-        custom_temp.mkdir(exist_ok=True, parents=True)
-    except FileExistsError:
-        # Another worker already created it, that's fine
-        pass
-
-    # Configure pytest to use this directory
-    config.option.basetemp = str(custom_temp)
+        # Just set the path - let pytest handle the actual directory creation
+        # This avoids race conditions with pytest-xdist workers
+        config.option.basetemp = str(custom_temp)
 
 
 def register_test_file(filepath: str) -> str:
@@ -177,6 +174,9 @@ def pytest_sessionfinish(session, exitstatus):
     """Clean up at the end of the test session."""
     cleanup_test_artifacts()
 
+    # Give Windows a moment to release file handles
+    time.sleep(0.1)
+
     # Note: We don't clean up .pytest_tmp here because with pytest-xdist,
     # multiple workers share this directory. Cleaning it up when one worker
     # finishes would break other workers that are still running.
@@ -221,3 +221,38 @@ def clean_otel_env(monkeypatch):
     yield
 
     # Cleanup happens automatically via monkeypatch
+
+
+def get_unique_filename(prefix="test", extension="py"):
+    """Generate a unique filename for testing."""
+    unique_id = str(uuid.uuid4())[:8]
+    return f"{prefix}_{unique_id}.{extension}"
+
+
+def create_safe_test_file(content, prefix="test", extension="py", directory=None):
+    """Create a safe test file with given content in specified or temp directory."""
+    if directory is None:
+        # Create in temp directory
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=f".{extension}", prefix=f"{prefix}_", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(content)
+            return f.name
+    else:
+        # Create in specified directory
+        if directory == "tmp":
+            # Use system temp directory
+            directory = tempfile.gettempdir()
+
+        # Ensure directory exists
+        os.makedirs(directory, exist_ok=True)
+
+        # Generate unique filename
+        filename = get_unique_filename(prefix, extension)
+        filepath = os.path.join(directory, filename)
+
+        # Write content to file
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        return filepath
