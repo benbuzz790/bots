@@ -3,8 +3,8 @@ import os
 import shutil
 import tempfile
 import uuid
-from typing import Set
 from pathlib import Path
+from typing import Set
 
 import pytest
 
