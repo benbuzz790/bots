@@ -34,12 +34,14 @@ def get_own_info() -> str:
         return "Error: Could not find calling bot"
 
     info = []
-    info.append(f"Model: {bot.model}")
+    if hasattr(bot, "name") and bot.name:
+        info.append(f"Name: {bot.name}")
+    info.append(f"Model: {bot.model_engine}")
     info.append(f"Temperature: {bot.temperature}")
     info.append(f"Max tokens: {bot.max_tokens}")
 
-    if bot.tools:
-        tool_names = [t.__name__ if hasattr(t, "__name__") else str(t) for t in bot.tools]
+    if hasattr(bot, "tool_handler") and bot.tool_handler.tools:
+        tool_names = [t.__name__ if hasattr(t, "__name__") else str(t) for t in bot.tool_handler.tools]
         info.append(f"Available tools: {', '.join(tool_names)}")
     else:
         info.append("No tools available")
