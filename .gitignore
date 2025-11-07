@@ -101,3 +101,6 @@ sorting_algorithms.py
 
 # Unreleased features
 **namshub**
+
+# Pytest temp directory
+.pytest_tmp/

@@ -4,12 +4,28 @@ import shutil
 import tempfile
 import uuid
 from typing import Set
+from pathlib import Path
 
 import pytest
 
 # Global set to track all test-created files and directories
 _test_created_files: Set[str] = set()
 _test_created_dirs: Set[str] = set()
+def pytest_configure(config):
+    """Configure pytest to use a custom temp directory in the project root.
+
+    This avoids Windows permission issues with the default system temp directory,
+    especially when using pytest-xdist for parallel test execution.
+    """
+    # Set custom basetemp in project root to avoid Windows permission issues
+    project_root = Path(__file__).parent
+    custom_temp = project_root / ".pytest_tmp"
+
+    # Create the directory if it doesn't exist
+    custom_temp.mkdir(exist_ok=True)
+
+    # Configure pytest to use this directory
+    config.option.basetemp = str(custom_temp)
 
 
 def register_test_file(filepath: str) -> str:
@@ -154,6 +170,17 @@ def pytest_runtest_teardown(item, nextitem):
 def pytest_sessionfinish(session, exitstatus):
     """Clean up at the end of the test session."""
     cleanup_test_artifacts()
+
+    # Clean up the custom pytest temp directory
+    project_root = Path(__file__).parent
+    custom_temp = project_root / ".pytest_tmp"
+
+    if custom_temp.exists():
+        try:
+            shutil.rmtree(custom_temp)
+            print(f"\nCleaned up pytest temp directory: {custom_temp}")
+        except Exception as e:
+            print(f"\nWarning: Could not clean up pytest temp directory {custom_temp}: {e}")
 
 
 @pytest.fixture
