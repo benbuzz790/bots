@@ -86,9 +86,6 @@ def test_nested_function(test_file):
 # Removed test_insert_after_line - line-based insertion descoped
 
 
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true", reason="Flaky in CI due to temp directory race conditions - see issue #XXX"
-)
 def test_insert_after_scope(test_file):
     """Test inserting after a scope using coscope_with"""
     result = python_edit(
@@ -102,9 +99,6 @@ def test_insert_after_scope(test_file):
     assert "def inserted_method" in content
 
 
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true", reason="Flaky in CI due to temp directory race conditions - see issue #XXX"
-)
 def test_import_handling(test_file):
     """Test that imports are preserved when editing"""
     result = python_edit(f"{test_file}::OuterClass::method", "    def method(self):\n        return 42")
@@ -578,9 +572,6 @@ def test_function_added_by_integration_test():
 
 
 # Tests for AST-based insert_after expression functionality
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true", reason="Flaky in CI due to temp directory race conditions - see issue #XXX"
-)
 def test_insert_after_quoted_single_line_expression(tmp_path):
     """Test inserting after a quoted single-line expression"""
     content = """
@@ -657,10 +648,6 @@ def test_insert_after_quoted_expression_no_match(tmp_path):
     assert "not found" in result.lower() or "error" in result.lower()
 
 
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true",
-    reason="Flaky in CI due to temp directory race conditions - see issue #XXX",
-)
 def test_insert_after_scope_path_syntax(tmp_path):
     """Test inserting after a scope using path syntax in coscope_with"""
     content = """
@@ -687,10 +674,6 @@ class MyClass:
     assert method1_idx < inserted_idx < method2_idx
 
 
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true",
-    reason="Flaky in CI due to temp directory race conditions - see issue #XXX",
-)
 def test_insert_after_nested_scope_path(tmp_path):
     """Test inserting after a nested scope using path syntax"""
     content = """
@@ -915,10 +898,6 @@ def test_insert_after_ambiguous_multiline_expression(tmp_path):
     print(f"DEBUG - Ambiguity result: {result}")
 
 
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true",
-    reason="Flaky in CI due to temp directory race conditions - see issue #XXX",
-)
 def test_newline_preservation_after_scope_replacement(tmp_path):
     """Test that newlines are preserved when replacing a scope"""
     content = """
@@ -930,8 +909,31 @@ def func2():
     pass
 """
     test_file = setup_test_file(tmp_path, content)
+
+    # Count original blank lines between func1 and func2
+    with open(test_file, "r") as f:
+        original_content = f.read()
+
+    # Find the section between "pass" (end of func1) and "def func2"
+    func1_end = original_content.find("pass")
+    func2_start = original_content.find("def func2")
+    between_section = original_content[func1_end + 4 : func2_start]  # +4 to skip "pass"
+    original_blank_lines = between_section.count("\n") - 1  # -1 because one newline is part of func1
+
+    # Perform the edit
     result = python_edit(f"{test_file}::func1", "def func1():\n    return 42")
     assert "success" in result.lower() or "replaced" in result.lower()
+
+    # Count new blank lines between func1 and func2
     with open(test_file, "r") as f:
         new_content = f.read()
-    assert "\n\n\ndef func2" in new_content or "\n\n\n\ndef func2" in new_content
+
+    func1_end_new = new_content.find("return 42")
+    func2_start_new = new_content.find("def func2")
+    between_section_new = new_content[func1_end_new + 9 : func2_start_new]  # +9 to skip "return 42"
+    new_blank_lines = between_section_new.count("\n") - 1
+
+    # Assert that the blank line count is preserved
+    assert (
+        new_blank_lines == original_blank_lines
+    ), f"Expected {original_blank_lines} blank lines between functions, but got {new_blank_lines}"
