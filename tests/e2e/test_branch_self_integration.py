@@ -46,6 +46,8 @@ class TestBranchSelfIntegration(DetailedTestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.flaky
+    @pytest.mark.api
     def test_branch_self_basic_functionality(self):
         """Test basic branch_self functionality with file creation."""
         print("\n" + "=" * 50)
@@ -88,6 +90,8 @@ class TestBranchSelfIntegration(DetailedTestCase):
         if len(files_created) > 0:
             print("✅ Basic branch_self file creation successful")
 
+    @pytest.mark.flaky
+    @pytest.mark.api
     def test_branch_self_error_handling(self):
         """Test branch_self error handling with invalid input."""
         print("\n" + "=" * 50)
