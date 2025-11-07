@@ -11,6 +11,8 @@ import pytest
 # Global set to track all test-created files and directories
 _test_created_files: Set[str] = set()
 _test_created_dirs: Set[str] = set()
+
+
 def pytest_configure(config):
     """Configure pytest to use a custom temp directory in the project root.
 

@@ -81,13 +81,9 @@ class TestBranchSelfIntegration(DetailedTestCase):
         print("\n=== BRANCH_SELF BASIC FUNCTIONALITY TEST ===")
         print(f"Duration: {duration:.2f} seconds")
         print(f"Output preview:\n{output[-500:]}")
-        self.assertLess(
-            duration, 120, "Basic branch_self should complete within 2 minutes"
-        )
+        self.assertLess(duration, 120, "Basic branch_self should complete within 2 minutes")
         self.assertContainsNormalized(output, "branch_self")
-        files_created = [
-            f for f in os.listdir(".") if os.path.isfile(f) and f.endswith(".txt")
-        ]
+        files_created = [f for f in os.listdir(".") if os.path.isfile(f) and f.endswith(".txt")]
         print(f"Text files created: {files_created}")
         if len(files_created) > 0:
             print("✅ Basic branch_self file creation successful")
@@ -107,10 +103,7 @@ class TestBranchSelfIntegration(DetailedTestCase):
         with io.StringIO() as buf:
             sys.stdout = buf
             try:
-                bot.respond(
-                    'Call branch_self with self_prompts="invalid" '
-                    "(should be a list)"
-                )
+                bot.respond('Call branch_self with self_prompts="invalid" ' "(should be a list)")
             finally:
                 sys.stdout = sys.__stdout__
                 output = buf.getvalue()
@@ -120,9 +113,7 @@ class TestBranchSelfIntegration(DetailedTestCase):
         print("=" * 50)
         print(f"Duration: {duration:.2f} seconds")
         print(f"Output length: {len(output)} characters")
-        self.assertLess(
-            duration, 60, "Error handling should complete within 1 minute"
-        )
+        self.assertLess(duration, 60, "Error handling should complete within 1 minute")
         self.assertGreater(len(output), 100, "Should produce some output")
         # Test passes as long as it completes without crashing
 
@@ -135,9 +126,7 @@ class TestBranchSelfIntegration(DetailedTestCase):
         )
         bot.add_tools(branch_self)
         tool_names = list(bot.tool_handler.function_map.keys())
-        self.assertIn(
-            "branch_self", tool_names, "branch_self should be available as a tool"
-        )
+        self.assertIn("branch_self", tool_names, "branch_self should be available as a tool")
         print(f"✅ branch_self tool is available. All tools: {tool_names}")
 
     def test_branch_self_nested_directory_and_file_creation(self):
