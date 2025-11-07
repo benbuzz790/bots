@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -11,14 +11,23 @@ def test_unit_testing_namshub_workflow():
     mock_bot = Mock()
     mock_bot.conversation = Mock()
     mock_bot.conversation.parent = None
+    mock_bot.conversation._add_reply = Mock(return_value=mock_bot.conversation)
 
-    # Mock the chain_workflow to return success
-    with pytest.raises(AttributeError):
-        # This will fail because we haven't set up all the mocks properly,
-        # but it verifies the function signature and basic structure
-        namshub_of_unit_testing.invoke(
-            mock_bot, target_file="app.py", test_file="test_app.py"
+    # Mock the chain_workflow to avoid actual execution
+    with patch("bots.namshubs.namshub_of_unit_testing.chain_workflow") as mock_chain:
+        mock_chain.return_value = (
+            ["Context gathered", "Plan complete", "Tests generated", "Verification complete", "Summary"],
+            [mock_bot.conversation] * 5
         )
+
+        # This should now complete without hanging
+        result, node = namshub_of_unit_testing.invoke(
+            mock_bot, target_file="app.py"
+        )
+
+        # Verify the workflow was called
+        assert mock_chain.called
+        assert "app.py" in result or "Unit Testing" in result
 
 
 def test_unit_testing_validates_missing_target_file():
@@ -73,7 +82,6 @@ def test_unit_testing_workflow_prompts():
 
     assert "bot" in params
     assert "target_file" in params
-    assert "test_file" in params
 
 
 def test_unit_testing_final_summary():
@@ -81,19 +89,21 @@ def test_unit_testing_final_summary():
     mock_bot = Mock()
     mock_bot.conversation = Mock()
     mock_bot.conversation.parent = None
+    mock_bot.conversation._add_reply = Mock(return_value=mock_bot.conversation)
 
-    # Call with minimal valid parameters
-    try:
+    # Mock chain_workflow to avoid hanging
+    with patch("bots.namshubs.namshub_of_unit_testing.chain_workflow") as mock_chain:
+        mock_chain.return_value = (
+            ["Summary of work"],
+            [mock_bot.conversation]
+        )
+
         result, _ = namshub_of_unit_testing.invoke(
-            mock_bot, target_file="app.py", test_file="test_app.py"
+            mock_bot, target_file="app.py"
         )
 
         # Verify the result contains key information
-        assert "app.py" in result or "test" in result.lower()
-    except Exception:
-        # If it fails due to missing mocks, that's okay for this test
-        # We're just verifying the structure
-        pass
+        assert "app.py" in result or "Unit Testing" in result
 
 
 if __name__ == "__main__":
