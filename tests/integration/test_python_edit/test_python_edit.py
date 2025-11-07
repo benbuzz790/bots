@@ -87,8 +87,7 @@ def test_nested_function(test_file):
 
 
 @pytest.mark.skipif(
-    os.environ.get("CI") == "true",
-    reason="Flaky in CI due to temp directory race conditions - see issue #XXX"
+    os.environ.get("CI") == "true", reason="Flaky in CI due to temp directory race conditions - see issue #XXX"
 )
 def test_insert_after_scope(test_file):
     """Test inserting after a scope using coscope_with"""
@@ -104,8 +103,7 @@ def test_insert_after_scope(test_file):
 
 
 @pytest.mark.skipif(
-    os.environ.get("CI") == "true",
-    reason="Flaky in CI due to temp directory race conditions - see issue #XXX"
+    os.environ.get("CI") == "true", reason="Flaky in CI due to temp directory race conditions - see issue #XXX"
 )
 def test_import_handling(test_file):
     """Test that imports are preserved when editing"""
@@ -581,8 +579,7 @@ def test_function_added_by_integration_test():
 
 # Tests for AST-based insert_after expression functionality
 @pytest.mark.skipif(
-    os.environ.get("CI") == "true",
-    reason="Flaky in CI due to temp directory race conditions - see issue #XXX"
+    os.environ.get("CI") == "true", reason="Flaky in CI due to temp directory race conditions - see issue #XXX"
 )
 def test_insert_after_quoted_single_line_expression(tmp_path):
     """Test inserting after a quoted single-line expression"""
@@ -594,9 +591,7 @@ def func2():
     pass
 """
     test_file = setup_test_file(tmp_path, content)
-    result = python_edit(
-        test_file, 'def func3():\n    pass', coscope_with='"def func1():"'
-    )
+    result = python_edit(test_file, "def func3():\n    pass", coscope_with='"def func1():"')
     assert "inserted" in result.lower() or "added" in result.lower()
     with open(test_file, "r") as f:
         new_content = f.read()
