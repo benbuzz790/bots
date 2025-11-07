@@ -1,96 +1,94 @@
 import ast
 import inspect
-import json
 from typing import List, Optional
 
-from bots.dev.decorators import toolify
 from bots.foundation.base import Bot
+from bots.foundation.tool_handling import toolify
 
 
 def _get_calling_bot() -> Optional[Bot]:
-    """Helper function to get a reference to the calling bot.
-    Returns:
-        Optional[Bot]: Reference to the calling bot or None if not found
-    """
+    """Get the Bot instance that called the current tool."""
     frame = inspect.currentframe()
-    while frame:
-        if frame.f_code.co_name == "_cvsn_respond" and "self" in frame.f_locals:
-            potential_bot = frame.f_locals["self"]
-            if isinstance(potential_bot, Bot):
-                return potential_bot
-        frame = frame.f_back
+    try:
+        # Walk up the call stack to find the Bot instance
+        while frame:
+            frame = frame.f_back
+            if frame and "self" in frame.f_locals:
+                obj = frame.f_locals["self"]
+                if isinstance(obj, Bot):
+                    return obj
+    finally:
+        del frame
     return None
 
 
 @toolify()
 def get_own_info() -> str:
-    """Get information about yourself.
-    Use when you need to inspect your current configuration (not tools).
+    """Get information about the bot's current state and configuration.
+
     Returns:
-        str: JSON string containing bot information including:
-        - name: Your name
-        - role: Your role
-        - role_description: Your role description
-        - model_engine: Current model engine
-        - temperature: Current temperature setting
-        - max_tokens: Maximum tokens setting
-        - tool_count: Number of available tools
+        str: Information about model, temperature, max_tokens, and available tools
     """
     bot = _get_calling_bot()
     if not bot:
         return "Error: Could not find calling bot"
-    info = {
-        "name": bot.name,
-        "role": bot.role,
-        "role_description": bot.role_description,
-        "model_engine": bot.model_engine.value,
-        "temperature": bot.temperature,
-        "max_tokens": bot.max_tokens,
-        "tool_count": len(bot.tool_handler.tools) if bot.tool_handler else 0,
-    }
-    return json.dumps(info)
+
+    info = []
+    info.append(f"Model: {bot.model}")
+    info.append(f"Temperature: {bot.temperature}")
+    info.append(f"Max tokens: {bot.max_tokens}")
+
+    if bot.tools:
+        tool_names = [t.__name__ if hasattr(t, "__name__") else str(t) for t in bot.tools]
+        info.append(f"Available tools: {', '.join(tool_names)}")
+    else:
+        info.append("No tools available")
+
+    return "\n".join(info)
 
 
 @toolify()
 def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str:
-    """Modify your settings.
-    Use when you need to adjust your configuration parameters.
+    """Modify the bot's temperature or max_tokens settings.
+
     Parameters:
-        temperature (str, optional): New temperature value as string
-            (0.0 to 1.0)
-        max_tokens (str, optional): New maximum tokens value as string
-            (must be > 0)
+        temperature (str, optional): New temperature value (0.0-1.0)
+        max_tokens (str, optional): New max_tokens value
+
     Returns:
-        str: Description of changes made or error message
+        str: Confirmation message or error
     """
-    import inspect
-
-    from bots.foundation.base import Bot
-
-    def _get_calling_bot_local():
-        frame = inspect.currentframe()
-        while frame:
-            if frame.f_code.co_name == "_cvsn_respond" and "self" in frame.f_locals:
-                potential_bot = frame.f_locals["self"]
-                if isinstance(potential_bot, Bot):
-                    return potential_bot
-            frame = frame.f_back
-        return None
-
-    bot = _get_calling_bot_local()
+    bot = _get_calling_bot()
     if not bot:
         return "Error: Could not find calling bot"
+
+    changes = []
     if temperature is not None:
-        temp_float = float(temperature)
-        if not 0.0 <= temp_float <= 1.0:
-            return "Error: Temperature must be between 0.0 and 1.0"
-        bot.temperature = temp_float
+        try:
+            temp_val = float(temperature)
+            if 0.0 <= temp_val <= 1.0:
+                bot.temperature = temp_val
+                changes.append(f"Temperature set to {temp_val}")
+            else:
+                return "Error: Temperature must be between 0.0 and 1.0"
+        except ValueError:
+            return f"Error: Invalid temperature value: {temperature}"
+
     if max_tokens is not None:
-        tokens_int = int(max_tokens)
-        if tokens_int <= 0:
-            return "Error: Max tokens must be a positive integer"
-        bot.max_tokens = tokens_int
-    return f"Settings updated successfully. Current settings: temperature={bot.temperature}, max_tokens={bot.max_tokens}"
+        try:
+            tokens_val = int(max_tokens)
+            if tokens_val > 0:
+                bot.max_tokens = tokens_val
+                changes.append(f"Max tokens set to {tokens_val}")
+            else:
+                return "Error: Max tokens must be positive"
+        except ValueError:
+            return f"Error: Invalid max_tokens value: {max_tokens}"
+
+    if changes:
+        return "\n".join(changes)
+    else:
+        return "No changes made"
 
 
 @toolify()
@@ -169,9 +167,7 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                     # Add a user message node with the tool result
                     # Use a placeholder content since Anthropic requires non-empty text
                     dummy_node = original_node._add_reply(
-                        role="user",
-                        content="[Tool execution in progress]",
-                        tool_results=[dummy_result]
+                        role="user", content="[Tool execution in progress]", tool_results=[dummy_result]
                     )
                     dummy_node_added = True
 
@@ -243,7 +239,18 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
 
         # Remove dummy node if we added it
         if dummy_node_added and dummy_node:
-            # Remove the dummy node from the conversation tree
+            # Before removing dummy_node, preserve any branch replies that were attached to it
+            # Iterate over dummy_node's replies and move them to original_node
+            for child in list(dummy_node.replies):  # Use list() to avoid modification during iteration
+                # Update parent reference to point to original_node
+                child.parent = original_node
+                # Add child to original_node's replies
+                original_node.replies.append(child)
+
+            # Clear dummy_node's replies to avoid dangling references
+            dummy_node.replies.clear()
+
+            # Now safe to remove the dummy node from the conversation tree
             original_node.replies.remove(dummy_node)
             # Restore bot's conversation pointer
             bot.conversation = original_node
@@ -292,19 +299,51 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
 
 @toolify()
 def add_tools(filepath: str) -> str:
-    """Adds a new set of tools (python functions) to your toolkit
-    All top-level, non-private functions in filepath will be uploaded
-    to your toolkit. Use when you need to create a new tool or kit for
-    yourself to use in the future. Tool format is strict: string in,
-    string out, with error catching wrapping (typically) all code in
-    the function.
+    """Add tools from a Python file to the bot's toolkit.
+
     Parameters:
-        filepath: location of python tool file
+        filepath (str): Path to Python file containing tool functions
+
     Returns:
-        str: success or error message
+        str: Success message with tool names, or error message
     """
     bot = _get_calling_bot()
-    bot.add_tools(filepath)
+    if not bot:
+        return "Error: Could not find calling bot"
+
+    try:
+        import importlib.util
+        import os
+
+        if not os.path.exists(filepath):
+            return f"Error: File not found: {filepath}"
+
+        # Load the module
+        spec = importlib.util.spec_from_file_location("custom_tools", filepath)
+        if spec is None or spec.loader is None:
+            return f"Error: Could not load module from {filepath}"
+
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        # Find all callable functions in the module
+        tools = []
+        for name in dir(module):
+            obj = getattr(module, name)
+            if callable(obj) and not name.startswith("_"):
+                tools.append(obj)
+
+        if not tools:
+            return f"No tools found in {filepath}"
+
+        # Add tools to bot
+        bot.add_tools(*tools)
+
+        tool_names = [t.__name__ for t in tools]
+        return f"Added {len(tools)} tools: {', '.join(tool_names)}"
+
+    except Exception as e:
+        return f"Error loading tools: {str(e)}"
 
 
 @toolify()
@@ -328,80 +367,54 @@ def list_context() -> str:
     if not bot:
         return "Error: Could not find calling bot"
 
-    # Collect all bot nodes from root
-    root = bot.conversation._find_root()
-    bot_nodes = []
+    try:
+        # Walk back through conversation to root
+        messages = []
+        current = bot.conversation
+        while current:
+            if current.role == "assistant":
+                messages.append(current)
+            current = current.parent
 
-    def collect_bot_nodes(node):
-        """Recursively collect all bot (assistant) nodes in order."""
-        if hasattr(node, "role") and node.role == "assistant":
-            bot_nodes.append(node)
-        for reply in node.replies:
-            collect_bot_nodes(reply)
+        # Reverse to get chronological order
+        messages.reverse()
 
-    collect_bot_nodes(root)
+        if not messages:
+            return "No bot messages in conversation history"
 
-    if not bot_nodes:
-        return "No bot messages found in conversation"
+        # Format with labels
+        lines = []
+        for i, msg in enumerate(messages):
+            label = chr(65 + i)  # A, B, C, ...
+            if i >= 26:
+                label = f"A{chr(65 + (i - 26))}"  # AA, AB, AC, ... after Z
 
-    # Generate labels A, B, C, ... Z, AA, AB, etc.
-    def generate_label(index):
-        """Generate Excel-style column labels: A, B, ..., Z, AA, AB, ..."""
-        label = ""
-        index += 1  # Make it 1-indexed for the algorithm
-        while index > 0:
-            index -= 1
-            label = chr(65 + (index % 26)) + label
-            index //= 26
-        return label
+            # Format tool calls if present
+            tool_str = ""
+            if msg.tool_calls:
+                tool_parts = []
+                for tc in msg.tool_calls[:2]:  # Show first 2 tool calls
+                    name = tc.get("name", "unknown")
+                    # Truncate parameters
+                    params_str = str(tc.get("input", {}))[:50]
+                    if len(str(tc.get("input", {}))) > 50:
+                        params_str += "..."
+                    tool_parts.append(f"<{name} {params_str}>")
+                if len(msg.tool_calls) > 2:
+                    tool_parts.append(f"... +{len(msg.tool_calls) - 2} more")
+                tool_str = " ".join(tool_parts) + " | "
 
-    # Build the output
-    lines = []
-    for i, node in enumerate(bot_nodes):
-        label = generate_label(i)
-        parts = []
+            # Truncate content
+            content = msg.content or ""
+            if len(content) > 100:
+                content = content[:100] + "..."
 
-        # Add tool calls if present
-        if hasattr(node, "tool_calls") and node.tool_calls:
-            tool_strs = []
-            for tool_call in node.tool_calls:
-                tool_name = tool_call.get("name", "unknown")
-                tool_input = tool_call.get("input", {})
+            lines.append(f'[{label}] Bot: {tool_str}"{content}"')
 
-                # Truncate tool parameters
-                if isinstance(tool_input, dict):
-                    param_parts = []
-                    for key, value in tool_input.items():
-                        value_str = str(value)
-                        if len(value_str) > 20:
-                            value_str = value_str[:20] + "..."
-                        param_parts.append(f"{key}={value_str}")
-                    params_str = ", ".join(param_parts)
-                else:
-                    params_str = str(tool_input)
-                    if len(params_str) > 20:
-                        params_str = params_str[:20] + "..."
+        return "\n".join(lines)
 
-                tool_strs.append(f"<{tool_name} {params_str}>")
-
-            parts.append(" ".join(tool_strs))
-
-        # Add response content
-        if hasattr(node, "content") and node.content:
-            content = node.content.replace("\n", " ")
-            if len(content) > 50:
-                content = content[:50] + "..."
-            parts.append(f'"{content}"')
-
-        # Combine parts
-        if parts:
-            message_str = " | ".join(parts)
-        else:
-            message_str = "<empty message>"
-
-        lines.append(f"[{label}] Bot: {message_str}")
-
-    return "\n".join(lines)
+    except Exception as e:
+        return f"Error listing context: {str(e)}"
 
 
 @toolify()
@@ -430,384 +443,198 @@ def remove_context(labels: str) -> str:
     if not bot:
         return "Error: Could not find calling bot"
 
-    # Parse the labels
     try:
+        # Parse labels
         label_list = _process_string_array(labels)
         if not label_list:
             return "Error: No valid labels provided"
-    except Exception as e:
-        return f"Error parsing labels: {str(e)}"
 
-    # Collect all bot nodes from root
-    root = bot.conversation._find_root()
-    bot_nodes = []
+        # Get all bot messages
+        messages = []
+        current = bot.conversation
+        while current:
+            if current.role == "assistant":
+                messages.append(current)
+            current = current.parent
+        messages.reverse()
 
-    def collect_bot_nodes(node):
-        """Recursively collect all bot (assistant) nodes in order."""
-        if hasattr(node, "role") and node.role == "assistant":
-            bot_nodes.append(node)
-        for reply in node.replies:
-            collect_bot_nodes(reply)
-
-    collect_bot_nodes(root)
-
-    if not bot_nodes:
-        return "Error: No bot messages found in conversation"
-
-    # Generate labels and create mapping
-    def generate_label(index):
-        """Generate Excel-style column labels: A, B, ..., Z, AA, AB, ..."""
-        label = ""
-        index += 1  # Make it 1-indexed for the algorithm
-        while index > 0:
-            index -= 1
-            label = chr(65 + (index % 26)) + label
-            index //= 26
-        return label
-
-    label_to_node = {}
-    for i, node in enumerate(bot_nodes):
-        label = generate_label(i)
-        label_to_node[label] = node
-
-    # Find nodes to remove
-    nodes_to_remove = []
-    missing_labels = []
-    for label in label_list:
-        if label in label_to_node:
-            nodes_to_remove.append(label_to_node[label])
-        else:
-            missing_labels.append(label)
-
-    # Report missing labels but continue with valid ones
-    if missing_labels and not nodes_to_remove:
-        return f"Error: None of the provided labels were found: {missing_labels}"
-
-    # Remove each bot node and its child user node (the pair)
-    removed_count = 0
-    errors = []
-
-    for bot_node in nodes_to_remove:
-        try:
-            # Check if bot node has a parent
-            if not bot_node.parent:
-                errors.append("Cannot remove root node")
-                continue
-
-            parent = bot_node.parent
-
-            # Check if bot node has exactly one child that is a user node
-            if len(bot_node.replies) == 0:
-                errors.append("Bot node has no child user node to remove")
-                continue
-
-            if len(bot_node.replies) > 1:
-                errors.append("Bot node has multiple children - cannot determine which to remove")
-                continue
-
-            user_node = bot_node.replies[0]
-
-            # Verify the child is actually a user node
-            if not (hasattr(user_node, "role") and user_node.role == "user"):
-                errors.append("Bot node's child is not a user node")
-                continue
-
-            # Remove the bot node from parent's replies and preserve order
-            if bot_node in parent.replies:
-                # Find the index where bot_node was located
-                original_index = parent.replies.index(bot_node)
-                parent.replies.remove(bot_node)
-
-                # Insert user_node's children at the same position to preserve order
-                insert_index = original_index
-                for child in user_node.replies:
-                    child.parent = parent
-                    parent.replies.insert(insert_index, child)
-                    insert_index += 1
+        # Map labels to indices
+        indices_to_remove = []
+        for label in label_list:
+            if len(label) == 1 and label.isalpha():
+                idx = ord(label.upper()) - 65
+            elif len(label) == 2 and label[0] == "A" and label[1].isalpha():
+                idx = 26 + (ord(label[1].upper()) - 65)
             else:
-                # If bot_node not in parent.replies, still add children and update parent
-                for child in user_node.replies:
-                    child.parent = parent
-                    parent.replies.append(child)
+                return f"Error: Invalid label format: {label}"
 
-            # If the current conversation pointer is at the bot node, user node,
-            # or a descendant of the user node, move it to the parent
-            current = bot.conversation
-            while current:
-                if current == bot_node or current == user_node:
-                    bot.conversation = parent
-                    break
-                current = current.parent
+            if 0 <= idx < len(messages):
+                indices_to_remove.append(idx)
+            else:
+                return f"Error: Label {label} out of range (only {len(messages)} messages)"
 
-            removed_count += 1
+        # Remove messages (in reverse order to maintain indices)
+        indices_to_remove.sort(reverse=True)
+        removed_count = 0
 
-        except Exception as e:
-            errors.append(f"Failed to remove node pair: {str(e)}")
-            continue
+        for idx in indices_to_remove:
+            msg_node = messages[idx]
 
-    # Build result message
-    result_parts = []
-    if removed_count > 0:
-        result_parts.append(f"Successfully removed {removed_count} message pair(s)")
-    if missing_labels:
-        result_parts.append(f"Missing labels: {missing_labels}")
-    if errors:
-        result_parts.append(f"Errors: {'; '.join(errors)}")
+            # Find the user message that precedes this bot message
+            user_node = msg_node.parent
+            if not user_node or user_node.role != "user":
+                continue
 
-    if not result_parts:
-        return "No messages were removed"
+            # Find the parent of the user message
+            grandparent = user_node.parent
 
-    return " | ".join(result_parts)
+            if grandparent:
+                # Remove user_node from grandparent's replies
+                if user_node in grandparent.replies:
+                    grandparent.replies.remove(user_node)
+
+                # If bot message has children, reconnect them to grandparent
+                for child in msg_node.replies:
+                    child.parent = grandparent
+                    grandparent.replies.append(child)
+
+                removed_count += 1
+
+                # Update bot.conversation if we removed the current node
+                if bot.conversation == msg_node or bot.conversation == user_node:
+                    bot.conversation = grandparent
+
+        return f"Removed {removed_count} message pair(s)"
+
+    except Exception as e:
+        return f"Error removing context: {str(e)}"
 
 
 def _process_string_array(input_str: str) -> List[str]:
-    """Parse a string representation of an array into a list of strings.
-    Only works with properly formatted Python list literals.
-    Args:
-        input_str (str): String representation of a Python list literal
+    """Parse a string representation of an array into a list.
+
+    Handles formats like:
+    - "['item1', 'item2']"
+    - '["item1", "item2"]'
+    - "item1, item2"
+
+    Parameters:
+        input_str (str): String to parse
+
     Returns:
-        List[str]: List of parsed strings
-    Raises:
-        ValueError: If the input is not a valid Python list literal
+        List[str]: Parsed list of strings
     """
-    result = ast.literal_eval(input_str)
-    if not isinstance(result, list) or not all((isinstance(x, str) for x in result)):
-        raise ValueError("Input must evaluate to a list of strings")
-    return result
+    try:
+        # Try JSON parsing first
+        import json
+
+        result = json.loads(input_str)
+        if isinstance(result, list):
+            return [str(item) for item in result]
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    try:
+        # Try ast.literal_eval
+        result = ast.literal_eval(input_str)
+        if isinstance(result, (list, tuple)):
+            return [str(item) for item in result]
+    except (ValueError, SyntaxError):
+        pass
+
+    # Fall back to comma-separated
+    if "," in input_str:
+        return [item.strip().strip("'\"") for item in input_str.split(",")]
+
+    # Single item
+    return [input_str.strip().strip("'\"")]
 
 
 def _verbose_callback(responses, nodes):
-    from bots.dev.cli import clean_dict, pretty
-
-    if responses and responses[-1]:
-        pretty(responses[-1])
-    requests = nodes[-1].requests
-    results = nodes[-1].results
-    pending_results = nodes[-1].pending_results
-    if requests:
-        request_str = "".join((clean_dict(r) for r in requests))
-        pretty(f"Tool Requests\n\n{request_str}", "System")
-    else:
-        pretty("No requests")
-    if results:
-        result_str = "".join((clean_dict(r) for r in results))
-        if result_str.strip():
-            pretty(f"Tool Results\n\n{result_str}", "System")
-    else:
-        pretty("No results")
-    if pending_results:
-        result_str = "".join((clean_dict(r) for r in pending_results))
-        if result_str.strip():
-            pretty(f"Pending Results\n\n{result_str}", "System")
-    else:
-        pretty("No pending results")
+    """Callback for verbose branch_self output."""
+    print("\n=== Branch completed ===")
+    print(f"Response: {responses[-1][:200]}..." if len(responses[-1]) > 200 else f"Response: {responses[-1]}")
+    print(f"Node: {nodes[-1]}")
 
 
 def _remove_dummy_from_tree(node, dummy_content):
-    if hasattr(node, "pending_tool_results"):
-        node.pending_tool_results = [result for result in node.pending_tool_results if result.get("content") != dummy_content]
+    """Remove dummy nodes from conversation tree.
 
-    if hasattr(node, "tool_results"):
-        node.tool_results = [result for result in node.tool_results if result.get("content") != dummy_content]
+    Parameters:
+        node: Current node to check
+        dummy_content: Content string to identify dummy nodes
+    """
+    if not node:
+        return
 
-    if hasattr(node, "replies"):
-        for child in node.replies:
+    # Check children
+    for child in list(node.replies):  # Use list() to avoid modification during iteration
+        if child.content == dummy_content:
+            # Remove this child and promote its children
+            node.replies.remove(child)
+            for grandchild in child.replies:
+                grandchild.parent = node
+                node.replies.append(grandchild)
+        else:
+            # Recursively check this child
             _remove_dummy_from_tree(child, dummy_content)
 
 
 @toolify()
 def subagent(tasks: str, max_iterations: str = "20") -> str:
-    """Create subagent bots to work on tasks autonomously with dynamic prompts.
+    """Create a subagent that works on a list of tasks iteratively.
 
-    Each subagent works in a loop with the same dynamic prompt system as CLI auto mode:
-    - Continues with neutral prompt ("ok") by default
-    - Prompted to trim context when token count is high
-    - Stops when it doesn't use tools
-    - On first no-tool response, prompted to write a summary
+    The subagent will work through the tasks one by one, using tools as needed.
+    Unlike branch_self, this creates a single linear conversation path.
 
-    Args:
-        tasks (str): List of tasks as a string array, like ['task 1', 'task 2', 'task 3']
-                    Each task gets its own subagent
-        max_iterations (str): Maximum number of iterations per subagent (default: "20")
+    Parameters:
+        tasks (str): List of tasks as a string array, like ['task 1', 'task 2']
+        max_iterations (str): Maximum number of iterations (default: "20")
 
     Returns:
-        str: Combined results from all subagents
+        str: Summary of completed tasks and final response
     """
-    import copy
-    import threading
-    import uuid
-
-    from bots.flows import functional_prompts as fp
-    from bots.foundation.base import Bot
-
     bot = _get_calling_bot()
     if not bot:
         return "Error: Could not find calling bot"
 
-    # Parse parameters
-    try:
-        max_iter = int(max_iterations)
-    except ValueError:
-        return f"Error: max_iterations must be a number, got '{max_iterations}'"
-
-    # Process the tasks
     try:
         task_list = _process_string_array(tasks)
         if not task_list:
             return "Error: No valid tasks provided"
+
+        max_iter = int(max_iterations)
     except Exception as e:
-        return f"Error parsing tasks: {str(e)}"
+        return f"Error parsing parameters: {str(e)}"
 
     try:
-        # Store original conversation point and bot settings
-        original_node = bot.conversation
-        original_autosave = bot.autosave
-        bot.autosave = False
+        import copy
 
-        # Add dummy tool results if needed (to prevent serialization errors)
-        dummy_results_added = False
-        if original_node.tool_calls:
-            dummy_results = []
-            for tool_call in original_node.tool_calls:
-                if tool_call.get("name") == "subagent":
-                    # Use bot's tool_handler to generate provider-appropriate format
-                    dummy_result = bot.tool_handler.generate_response_schema(tool_call, "Subagent working...")
-                    dummy_results.append(dummy_result)
+        from bots.flows import functional_prompts as fp
 
-            if dummy_results:
-                # Temporarily add dummy results for copying (use list() to make a copy)
-                original_results = list(getattr(original_node, "tool_results", []))
-                original_node._add_tool_results(dummy_results)
-                dummy_results_added = True
+        # Create a copy of the bot for the subagent
+        subagent_bot = copy.deepcopy(bot)
+        subagent_bot.autosave = False
 
-        # Create lock for thread-safe mutations
-        replies_lock = threading.Lock()
-
-        def execute_subagent(task, parent_bot_node):
-            """Execute a single subagent with the given task."""
-            try:
-                # Create a fresh bot copy using deepcopy
-                subagent = copy.deepcopy(bot)
-                subagent.autosave = False
-                subagent.name = f"subagent_{uuid.uuid4().hex[:6]}"
-
-                # Position at the original node
-                branching_node = subagent.conversation
-
-                # Ensure clean tool handler state for subagent
-                if hasattr(subagent, "tool_handler") and subagent.tool_handler:
-                    subagent.tool_handler.clear()
-
-                # Track metrics for context management
-                last_input_tokens = [0]
-                context_reduction_cooldown = [0]
-                remove_context_threshold = 40000
-
-                # Track if we've already asked for summary
-                summary_requested = [False]
-
-                # Create dynamic continue prompt using policy (same as CLI auto mode)
-                def continue_prompt_func(bot: Bot, iteration: int) -> str:
-                    # Check if bot used tools in last response
-                    used_tools = bool(bot.tool_handler.requests)
-
-                    # If no tools used and haven't requested summary yet, ask for one
-                    if not used_tools and not summary_requested[0]:
-                        summary_requested[0] = True
-                        return "Please write a summary of your work in your text response."
-
-                    # High token count with cooldown expired -> request context reduction
-                    if last_input_tokens[0] > remove_context_threshold and context_reduction_cooldown[0] <= 0:
-                        context_reduction_cooldown[0] = 3
-                        return "trim useless context"
-
-                    # Decrement cooldown
-                    if context_reduction_cooldown[0] > 0:
-                        context_reduction_cooldown[0] -= 1
-
-                    return "ok"
-
-                # Callback to update metrics
-                iteration_count = [0]
-
-                def metrics_callback(responses, nodes):
-                    iteration_count[0] += 1
-
-                    # Try to get token metrics (may not be available in all contexts)
-                    try:
-                        from bots.observability import metrics
-
-                        last_metrics = metrics.get_and_clear_last_metrics()
-                        last_input_tokens[0] = last_metrics.get("input_tokens", 0)
-                    except Exception:
-                        pass
-
-                # Stop condition: no tools used AND summary has been requested, OR max iterations reached
-                def stop_on_no_tools(bot: Bot) -> bool:
-                    # Stop if max iterations reached
-                    if iteration_count[0] >= max_iter:
-                        return True
-                    # Stop if no tools used AND summary has already been requested
-                    return not bot.tool_handler.requests and summary_requested[0]
-
-                # Run the subagent with dynamic prompts
-                fp.prompt_while(
-                    bot=subagent,
-                    first_prompt=f"(subagent task): {task}",
-                    continue_prompt=continue_prompt_func,
-                    stop_condition=stop_on_no_tools,
-                    callback=metrics_callback,
-                )
-
-                # Stitch completed conversation back onto bot conversation
-                # Thread-safe mutation with lock
-                with replies_lock:
-                    parent_bot_node.replies.extend(branching_node.replies)
-                    for node in branching_node.replies:
-                        node.parent = parent_bot_node
-
-                # Return the final response
-                final_response = subagent.conversation.content
-                return final_response, subagent.conversation
-
-            except StopIteration as e:
-                # Max iterations reached, return what we have
-                return (
-                    f"Subagent stopped: {str(e)}\n\nLast response:\n{subagent.conversation.content}",
-                    subagent.conversation,
-                )
-            except Exception as e:
-                import traceback
-
-                traceback.print_exc()
-                return f"Error running subagent: {str(e)}", None
-
-        # Execute subagents sequentially
         responses = []
-        subagent_nodes = []
-
-        for task in task_list:
-            response, node = execute_subagent(task, original_node)
+        for i, task in enumerate(task_list, 1):
+            # Execute task
+            response = subagent_bot.respond(f"Task {i}/{len(task_list)}: {task}")
             responses.append(response)
-            subagent_nodes.append(node)
 
-        # Remove dummy results if we added them
-        if dummy_results_added:
-            original_node.tool_results = original_results
+            # Allow tool use
+            iterations = 0
+            while not fp.conditions.tool_not_used(subagent_bot) and iterations < max_iter:
+                response = subagent_bot.respond("ok")
+                responses.append(response)
+                iterations += 1
 
-        # Restore original bot settings
-        bot.autosave = original_autosave
+        # Stitch subagent conversation back to main bot
+        bot.conversation.replies.extend(subagent_bot.conversation.replies)
+        for node in subagent_bot.conversation.replies:
+            node.parent = bot.conversation
 
-        # Count successful subagents
-        success_count = sum(1 for r in responses if r and not r.startswith("Error"))
-
-        # Format results
-        result_parts = [f"Successfully completed {success_count}/{len(task_list)} subagent tasks.\n"]
-        for i, (task, response) in enumerate(zip(task_list, responses), 1):
-            result_parts.append(f"\n--- Subagent {i}: {task[:50]}{'...' if len(task) > 50 else ''} ---")
-            result_parts.append(response)
-
-        return "\n".join(result_parts)
+        return f"Completed {len(task_list)} tasks. Final response:\n\n{responses[-1]}"
 
     except Exception as e:
         import traceback
