@@ -23,8 +23,12 @@ def pytest_configure(config):
     project_root = Path(__file__).parent
     custom_temp = project_root / ".pytest_tmp"
 
-    # Create the directory if it doesn't exist
-    custom_temp.mkdir(exist_ok=True)
+    # Create the directory if it doesn't exist, handling race conditions
+    try:
+        custom_temp.mkdir(exist_ok=True, parents=True)
+    except FileExistsError:
+        # Another worker already created it, that's fine
+        pass
 
     # Configure pytest to use this directory
     config.option.basetemp = str(custom_temp)
