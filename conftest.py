@@ -3,6 +3,7 @@ import os
 import shutil
 import tempfile
 import uuid
+from pathlib import Path
 from typing import Set
 
 import pytest
@@ -10,6 +11,27 @@ import pytest
 # Global set to track all test-created files and directories
 _test_created_files: Set[str] = set()
 _test_created_dirs: Set[str] = set()
+
+
+def pytest_configure(config):
+    """Configure pytest to use a custom temp directory in the project root.
+
+    This avoids Windows permission issues with the default system temp directory,
+    especially when using pytest-xdist for parallel test execution.
+    """
+    # Set custom basetemp in project root to avoid Windows permission issues
+    project_root = Path(__file__).parent
+    custom_temp = project_root / ".pytest_tmp"
+
+    # Create the directory if it doesn't exist, handling race conditions
+    try:
+        custom_temp.mkdir(exist_ok=True, parents=True)
+    except FileExistsError:
+        # Another worker already created it, that's fine
+        pass
+
+    # Configure pytest to use this directory
+    config.option.basetemp = str(custom_temp)
 
 
 def register_test_file(filepath: str) -> str:
@@ -154,6 +176,12 @@ def pytest_runtest_teardown(item, nextitem):
 def pytest_sessionfinish(session, exitstatus):
     """Clean up at the end of the test session."""
     cleanup_test_artifacts()
+
+    # Note: We don't clean up .pytest_tmp here because with pytest-xdist,
+    # multiple workers share this directory. Cleaning it up when one worker
+    # finishes would break other workers that are still running.
+    # The directory will be cleaned up on the next pytest run when
+    # pytest_configure creates a fresh one.
 
 
 @pytest.fixture
