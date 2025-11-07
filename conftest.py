@@ -177,16 +177,11 @@ def pytest_sessionfinish(session, exitstatus):
     """Clean up at the end of the test session."""
     cleanup_test_artifacts()
 
-    # Clean up the custom pytest temp directory
-    project_root = Path(__file__).parent
-    custom_temp = project_root / ".pytest_tmp"
-
-    if custom_temp.exists():
-        try:
-            shutil.rmtree(custom_temp)
-            print(f"\nCleaned up pytest temp directory: {custom_temp}")
-        except Exception as e:
-            print(f"\nWarning: Could not clean up pytest temp directory {custom_temp}: {e}")
+    # Note: We don't clean up .pytest_tmp here because with pytest-xdist,
+    # multiple workers share this directory. Cleaning it up when one worker
+    # finishes would break other workers that are still running.
+    # The directory will be cleaned up on the next pytest run when
+    # pytest_configure creates a fresh one.
 
 
 @pytest.fixture
