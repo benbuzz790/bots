@@ -32,7 +32,7 @@ def multiply(a, b):
     cleanup_temp_files.append(test_file.name)
 
     # Initialize bot with the unit testing namshub
-    bot = AnthropicBot()
+    bot = AnthropicBot(autosave=False)
 
     # Invoke the namshub with the test file
     prompt = f"Please create unit tests for {test_file.name}"
@@ -45,12 +45,8 @@ def multiply(a, b):
         # 4. Verify tests can run
         response = bot.respond(prompt)
 
-        # Verify the response indicates completion
+        # Verify completion
         assert response is not None
-        assert len(response) > 0
-
-        # The namshub should have created a test file
-        # Check if test file was mentioned in response
         assert "test" in response.lower()
 
     finally:
@@ -84,7 +80,7 @@ class Calculator:
     cleanup_temp_files = []
     cleanup_temp_files.append(test_file.name)
 
-    bot = AnthropicBot()
+    bot = AnthropicBot(autosave=False)
     prompt = f"Create comprehensive unit tests for {test_file.name}"
 
     try:
