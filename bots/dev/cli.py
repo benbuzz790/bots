@@ -1555,6 +1555,7 @@ class SystemHandler:
         # Try to import invoke_namshub (optional)
         try:
             from bots.tools.invoke_namshub import invoke_namshub
+
             has_invoke_namshub = True
         except ImportError:
             has_invoke_namshub = False
@@ -2281,6 +2282,7 @@ class CLI:
         # Try to import invoke_namshub (optional)
         try:
             from bots.tools.invoke_namshub import invoke_namshub
+
             has_invoke_namshub = True
         except ImportError:
             has_invoke_namshub = False
