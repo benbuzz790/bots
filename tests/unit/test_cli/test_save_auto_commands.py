@@ -8,6 +8,8 @@ from unittest.mock import patch
 import pytest
 
 import bots.dev.cli as cli_module
+from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.base import Engines
 
 """Tests for /save and /auto commands."""
 
@@ -89,7 +91,7 @@ class TestAutoCommand(unittest.TestCase):
 
         try:
             # Create a bot and save it
-            bot = AnthropicBot(model="claude-3-5-sonnet-20241022")
+            bot = AnthropicBot(model_engine=Engines.CLAUDE37_SONNET_20250219)
             bot.save(bot_file)
 
             # Simulate CLI with /auto command
@@ -98,7 +100,7 @@ class TestAutoCommand(unittest.TestCase):
                 buf = StringIO()
                 with redirect_stdout(buf):
                     with self.assertRaises(SystemExit):
-                        cli_module.main("")
+                        cli_module.main(bot_file)
                 output = buf.getvalue()
                 print(f"\nAuto command stops output:\n{output}")
 

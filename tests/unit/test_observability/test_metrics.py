@@ -715,6 +715,7 @@ class TestGetTotalTokens:
 
         metrics.reset_metrics()
         timestamp = time.time()
+        time.sleep(0.01)  # Ensure all recordings happen after timestamp
 
         def record_tokens_thread():
             for _ in range(10):
@@ -731,11 +732,9 @@ class TestGetTotalTokens:
         result = metrics.get_total_tokens(timestamp)
 
         # Should have recorded 30 times (3 threads * 10 recordings)
-        # Use >= to account for potential timing issues in parallel execution
-        assert result["input"] >= 2900  # Should be close to 3000 (30 * 100)
-        assert result["output"] >= 1450  # Should be close to 1500 (30 * 50)
-        assert result["input"] <= 3000  # Should not exceed expected
-        assert result["output"] <= 1500  # Should not exceed expected
+        # All recordings should be counted since we slept after timestamp
+        assert result["input"] == 3000  # 30 * 100
+        assert result["output"] == 1500  # 30 * 50
 
 
 class TestGetTotalCost:
