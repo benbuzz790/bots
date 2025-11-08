@@ -39,6 +39,9 @@ def pytest_configure(config):
     # Create fresh temp directory
     temp_dir.mkdir(exist_ok=True)
 
+    # Configure pytest to use this directory - THIS IS THE KEY LINE!
+    config.option.basetemp = str(temp_dir)
+
     # Set PYTEST_TEMP_DIR for tests to use
     os.environ["PYTEST_TEMP_DIR"] = str(temp_dir)
 
