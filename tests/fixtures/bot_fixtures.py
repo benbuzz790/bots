@@ -47,10 +47,12 @@ def real_anthropic_bot():
 
     Creates an actual bot instance that makes real API calls.
     Use sparingly and only in integration tests.
+
+    Note: autosave is disabled to prevent file pollution during tests.
     """
     from bots import AnthropicBot
 
-    return AnthropicBot()
+    return AnthropicBot(autosave=False)
 
 
 @pytest.fixture
@@ -59,10 +61,12 @@ def real_openai_bot():
 
     Creates an actual bot instance that makes real API calls.
     Use sparingly and only in integration tests.
+
+    Note: autosave is disabled to prevent file pollution during tests.
     """
     from bots import OpenAIBot
 
-    return OpenAIBot()
+    return OpenAIBot(autosave=False)
 
 
 @pytest.fixture
@@ -71,10 +75,12 @@ def real_gemini_bot():
 
     Creates an actual bot instance that makes real API calls.
     Use sparingly and only in integration tests.
+
+    Note: autosave is disabled to prevent file pollution during tests.
     """
     from bots import GeminiBot
 
-    return GeminiBot()
+    return GeminiBot(autosave=False)
 
 
 # OpenTelemetry / Observability Fixtures

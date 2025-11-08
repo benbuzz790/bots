@@ -103,3 +103,4 @@ sorting_algorithms.py
 
 # Pytest temp directory
 .pytest_tmp/
+.pytest_tmp_locked_*/

@@ -19,6 +19,8 @@ def pytest_configure(config):
 
     This avoids Windows permission issues with the default system temp directory,
     especially when using pytest-xdist for parallel test execution.
+
+    Handles locked directories by renaming them and creating fresh ones.
     """
     # Only set basetemp if not already set (e.g., by command line)
     if config.option.basetemp is None:
@@ -26,9 +28,75 @@ def pytest_configure(config):
         project_root = Path(__file__).parent
         custom_temp = project_root / ".pytest_tmp"
 
-        # Just set the path - let pytest handle the actual directory creation
-        # This avoids race conditions with pytest-xdist workers
+        # Try to handle existing directory that might be locked
+        if custom_temp.exists():
+            try:
+                # Try to remove it cleanly
+                shutil.rmtree(custom_temp)
+            except (PermissionError, OSError):
+                # Directory is locked - rename it and create a fresh one
+                import datetime
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                backup_name = f".pytest_tmp_locked_{timestamp}"
+                backup_path = project_root / backup_name
+                try:
+                    custom_temp.rename(backup_path)
+                    print(f"Warning: Renamed locked .pytest_tmp to {backup_name}")
+                except Exception as e:
+                    # If even rename fails, try with a unique suffix
+                    import uuid
+                    backup_name = f".pytest_tmp_locked_{uuid.uuid4().hex[:8]}"
+                    backup_path = project_root / backup_name
+                    try:
+                        custom_temp.rename(backup_path)
+                        print(f"Warning: Renamed locked .pytest_tmp to {backup_name}")
+                    except Exception:
+                        # Last resort: use a different directory name
+                        custom_temp = project_root / f".pytest_tmp_{uuid.uuid4().hex[:8]}"
+                        print(f"Warning: Using alternate temp directory: {custom_temp.name}")
+
+        # Create the directory
+        try:
+            custom_temp.mkdir(exist_ok=True, parents=True)
+        except FileExistsError:
+            # Another worker already created it during the race, that's fine
+            pass
+
+        # Configure pytest to use this directory
         config.option.basetemp = str(custom_temp)
+
+        # Register cleanup function to run when Python exits (after all workers finish)
+        # Only register in the main process, not in workers
+        if not hasattr(config, 'workerinput'):
+            def cleanup_temp_on_exit():
+                """Clean up temp directory when Python exits."""
+                try:
+                    # Give a moment for any lingering file handles to close
+                    time.sleep(0.2)
+                    if custom_temp.exists():
+                        shutil.rmtree(custom_temp)
+                except Exception:
+                    # If cleanup fails, it will be handled on next run
+                    pass
+
+            atexit.register(cleanup_temp_on_exit)
+
+        # Clean up old locked directories (best effort, don't fail if we can't)
+        try:
+            for old_dir in project_root.glob(".pytest_tmp_locked_*"):
+                try:
+                    if old_dir.is_dir():
+                        # Only try to remove if it's older than 1 hour
+                        import time
+                        dir_age = time.time() - old_dir.stat().st_mtime
+                        if dir_age > 3600:  # 1 hour
+                            shutil.rmtree(old_dir)
+                except Exception:
+                    # Ignore cleanup failures
+                    pass
+        except Exception:
+            # Ignore any errors in cleanup
+            pass
 
 
 def register_test_file(filepath: str) -> str:
@@ -178,10 +246,13 @@ def pytest_sessionfinish(session, exitstatus):
     time.sleep(0.1)
 
     # Note: We don't clean up .pytest_tmp here because with pytest-xdist,
-    # multiple workers share this directory. Cleaning it up when one worker
-    # finishes would break other workers that are still running.
+    # multiple workers share this directory. Even in the main process,
+    # workers may not have fully released their file handles yet.
     # The directory will be cleaned up on the next pytest run when
-    # pytest_configure creates a fresh one.
+    # pytest_configure detects it and either:
+    # 1. Successfully removes it (if unlocked)
+    # 2. Renames it and creates a fresh one (if still locked)
+    # Old locked directories are cleaned up after 1 hour.
 
 
 @pytest.fixture
