@@ -175,7 +175,7 @@ def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, Conversation
         "Update ITEM_INDEX.md counts and dates. Update the total counts (completed, partial, active), "
         "update status tables, and set 'Last Updated' to today's date.",
         f"Commit the changes. Stage files with: git add roadmap/ "
-        f"Then commit with: git commit -m \"docs: Update roadmap for PR # - [list item titles]\" "
+        f'Then commit with: git commit -m "docs: Update roadmap for PR # - [list item titles]" '
         "Provide a summary of all updates made.",
     ]
 
