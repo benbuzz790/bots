@@ -99,8 +99,8 @@ pytest_output.txt
 quicksave.bot
 sorting_algorithms.py
 
-# Unreleased features
-**namshub**
+# Unreleased features (placeholder for future use)
 
 # Pytest temp directory
 .pytest_tmp/
+.pytest_tmp_locked_*/

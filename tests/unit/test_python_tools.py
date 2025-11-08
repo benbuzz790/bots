@@ -16,7 +16,7 @@ import pytest
 from bots.tools import python_editing_tools, python_execution_tool
 from tests.conftest import get_unique_filename
 
-pytestmark = pytest.mark.unit
+pytestmark = [pytest.mark.unit, pytest.mark.serial]
 
 
 def ast_normalize(code):

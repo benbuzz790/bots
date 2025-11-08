@@ -8,7 +8,7 @@ import pytest
 from bots.tools.terminal_tools import PowerShellSession, execute_powershell
 from tests.conftest import get_unique_filename
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.serial]
 
 
 class TestTerminalTools(unittest.TestCase):
