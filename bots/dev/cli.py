@@ -1552,6 +1552,13 @@ class SystemHandler:
         from bots.tools.terminal_tools import execute_powershell
         from bots.tools.web_tool import web_search
 
+        # Try to import invoke_namshub (optional)
+        try:
+            from bots.tools.invoke_namshub import invoke_namshub
+            has_invoke_namshub = True
+        except ImportError:
+            has_invoke_namshub = False
+
         # Map of available tools
         available_tools = {
             "view": view,
@@ -1565,6 +1572,10 @@ class SystemHandler:
             "remove_context": remove_context,
             "web_search": web_search,
         }
+
+        # Add invoke_namshub if available
+        if has_invoke_namshub:
+            available_tools["invoke_namshub"] = invoke_namshub
 
         # If no args, show view_dir of python files and allow choice
         if not args:
@@ -2267,7 +2278,15 @@ class CLI:
         from bots.tools.terminal_tools import execute_powershell
         from bots.tools.web_tool import web_search
 
-        bot.add_tools(
+        # Try to import invoke_namshub (optional)
+        try:
+            from bots.tools.invoke_namshub import invoke_namshub
+            has_invoke_namshub = True
+        except ImportError:
+            has_invoke_namshub = False
+
+        # Build tools list
+        tools_to_add = [
             view,
             view_dir,
             python_view,
@@ -2278,18 +2297,24 @@ class CLI:
             list_context,
             web_search,
             python_edit,
-        )
+        ]
+
+        # Add invoke_namshub if available
+        if has_invoke_namshub:
+            tools_to_add.append(invoke_namshub)
+
+        bot.add_tools(*tools_to_add)
 
         sys_msg = textwrap.dedent(
             """You're a coding agent. Please follow these rules:
-            1. Keep edits and even writing new files to small chunks. You have a low max_token limit
-                and will hit tool errors if you try making too big of a change.
-            2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
-                Instead, use full relative paths.
-            3. Ex uno plura! You have a powerful tool called branch_self which you should use for
-                multitasking or even just to save context in your main branch. Always use a concrete
-                definition of done when branching.
-            """
+        1. Keep edits and even writing new files to small chunks. You have a low max_token limit
+            and will hit tool errors if you try making too big of a change.
+        2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
+            Instead, use full relative paths.
+        3. Ex uno plura! You have a powerful tool called branch_self which you should use for
+            multitasking or even just to save context in your main branch. Always use a concrete
+            definition of done when branching.
+        """
         )
         bot.set_system_message(sys_msg)
 

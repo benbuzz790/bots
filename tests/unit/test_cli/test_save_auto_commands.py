@@ -98,8 +98,27 @@ class TestAutoCommand(unittest.TestCase):
             print(f"\nAuto command stops output:\n{output}")
 
         # The bot responds without using tools, so /auto completes immediately
-        # Check that bot responded to the /auto command
-        self.assertIn("I'm ready to help", output)
+        # Check that:
+        # 1. Bot responded (check for bot name in output)
+        self.assertTrue(
+            "Claude:" in output or "Bot:" in output,
+            "Bot should have responded to the message"
+        )
+        # 2. /auto command was executed and bot responded to "ok" prompt
+        # The output contains ANSI codes, so check for the pattern with color codes
+        self.assertTrue(
+            "You:" in output and "ok" in output,
+            "Auto command should show 'You: ok' prompt"
+        )
+        # 3. Bot provided a second response after the auto command
+        # Count occurrences of "Claude:" - should be at least 2 (initial + auto response)
+        claude_count = output.count("Claude:")
+        self.assertGreaterEqual(claude_count, 2, "Bot should respond at least twice (initial + auto)")
+        # 4. No error messages
+        self.assertNotIn("Error in autonomous mode", output)
+        self.assertNotIn("Chat error", output)
+        # 5. Should complete successfully (reach "Goodbye!")
+        self.assertIn("Goodbye!", output)
 
     @patch("builtins.input")
     @patch("bots.dev.cli.check_for_interrupt")
