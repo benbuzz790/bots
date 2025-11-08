@@ -26,15 +26,17 @@ from bots.tools.python_execution_tool import execute_python
 from bots.tools.self_tools import branch_self
 
 
-def _set_roadmap_system_message(bot: Bot) -> None:
+def _set_roadmap_system_message(bot: Bot, pr_number: str = None) -> None:
     """Set specialized system message for roadmap update workflow.
 
     Parameters:
         bot (Bot): The bot to configure
+        pr_number (str, optional): The PR number being analyzed
     """
+    pr_context = f" for PR #{pr_number}" if pr_number else ""
     system_message = f"""You are a roadmap maintenance specialist for the bots project.
 
-Your task: Update the roadmap after the most recent pull reqeusts were merged.
+Your task: Update the roadmap after the most recent pull reqeusts were merged{pr_context}.
 
 ROADMAP STRUCTURE:
 
