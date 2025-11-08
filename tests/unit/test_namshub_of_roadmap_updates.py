@@ -1,7 +1,5 @@
 """Tests for namshub_of_roadmap_updates.py"""
 
-import pytest
-
 from bots.namshubs import namshub_of_roadmap_updates
 
 
