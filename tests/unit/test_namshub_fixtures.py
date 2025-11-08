@@ -32,12 +32,7 @@ class TestNamshubOfNoOp:
         from tests.fixtures import namshub_of_no_op
 
         bot = MockBot(autosave=False)
-        result, node = namshub_of_no_op.invoke(
-            bot,
-            random_param="value",
-            another_param=123,
-            yet_another=True
-        )
+        result, node = namshub_of_no_op.invoke(bot, random_param="value", another_param=123, yet_another=True)
 
         assert "success" in result.lower()
 
@@ -189,7 +184,6 @@ class TestNamshubOfToolUse:
         from tests.fixtures import namshub_of_tool_use
 
         bot = MockBot(autosave=False)
-        original_tools = len(bot.tool_handler.tools) if hasattr(bot.tool_handler, 'tools') else 0
 
         namshub_of_tool_use.invoke(bot)
 
@@ -312,12 +306,12 @@ class TestNamshubProgression:
     def test_all_namshubs_have_invoke_function(self):
         """Test that all fixture namshubs have an invoke function."""
         from tests.fixtures import (
-            namshub_of_no_op,
             namshub_of_echo,
+            namshub_of_error,
+            namshub_of_no_op,
+            namshub_of_simple_workflow,
             namshub_of_state_change,
             namshub_of_tool_use,
-            namshub_of_simple_workflow,
-            namshub_of_error,
         )
 
         namshubs = [
@@ -336,11 +330,11 @@ class TestNamshubProgression:
     def test_all_namshubs_accept_bot_parameter(self):
         """Test that all namshubs accept a bot as first parameter."""
         from tests.fixtures import (
-            namshub_of_no_op,
             namshub_of_echo,
+            namshub_of_no_op,
+            namshub_of_simple_workflow,
             namshub_of_state_change,
             namshub_of_tool_use,
-            namshub_of_simple_workflow,
         )
 
         bot = MockBot(autosave=False)
@@ -355,11 +349,11 @@ class TestNamshubProgression:
     def test_all_namshubs_return_tuple(self):
         """Test that all namshubs return (str, ConversationNode) tuple."""
         from tests.fixtures import (
-            namshub_of_no_op,
             namshub_of_echo,
+            namshub_of_no_op,
+            namshub_of_simple_workflow,
             namshub_of_state_change,
             namshub_of_tool_use,
-            namshub_of_simple_workflow,
         )
 
         bot = MockBot(autosave=False)
@@ -384,32 +378,38 @@ class TestNamshubProgression:
 
         # 1. No-op: simplest, no parameters needed
         from tests.fixtures import namshub_of_no_op
+
         result1, _ = namshub_of_no_op.invoke(bot)
         assert result1  # Just needs to return something
 
         # 2. Echo: requires parameter
         from tests.fixtures import namshub_of_echo
+
         result2, _ = namshub_of_echo.invoke(bot, message="test")
         assert "test" in result2
 
         # 3. State change: modifies bot
         from tests.fixtures import namshub_of_state_change
+
         original_msg = bot.system_message
         namshub_of_state_change.invoke(bot)
         assert bot.system_message != original_msg
 
         # 4. Tool use: swaps toolkit and uses tools
         from tests.fixtures import namshub_of_tool_use
+
         result4, _ = namshub_of_tool_use.invoke(bot)
         assert "4" in result4  # 2 + 2 = 4
 
         # 5. Simple workflow: uses functional prompts
         from tests.fixtures import namshub_of_simple_workflow
+
         result5, _ = namshub_of_simple_workflow.invoke(bot)
         assert "completed" in result5.lower()
 
         # 6. Error: tests error handling
         from tests.fixtures import namshub_of_error
+
         with pytest.raises(Exception):
             namshub_of_error.invoke(bot)
 

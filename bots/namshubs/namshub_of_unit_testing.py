@@ -23,6 +23,7 @@ from bots.namshubs.helpers import (
 from bots.tools.code_tools import view, view_dir
 from bots.tools.python_edit import python_edit, python_view
 from bots.tools.python_execution_tool import execute_python
+from bots.tools.self_tools import branch_self
 from bots.tools.terminal_tools import execute_powershell
 
 
@@ -100,11 +101,7 @@ IMPORTANT NOTES:
     bot.set_system_message(system_message.strip())
 
 
-def invoke(
-    bot: Bot,
-    target_file: str = None,
-    **kwargs
-) -> Tuple[str, ConversationNode]:
+def invoke(bot: Bot, target_file: str = None, **kwargs) -> Tuple[str, ConversationNode]:
     """Execute the unit testing workflow to create comprehensive tests.
 
     This function is called by invoke_namshub tool.
@@ -122,18 +119,17 @@ def invoke(
     if not valid:
         return (
             error + "\nUsage: invoke_namshub('namshub_of_unit_testing', target_file='bots/module/file.py')",
-            bot.conversation
+            bot.conversation,
         )
 
     # BRANCH FIRST to preserve calling context
     original_conversation = bot.conversation
     bot.conversation = original_conversation._add_reply(
-        content=f"Starting unit testing workflow for: {target_file}",
-        role="assistant"
+        content=f"Starting unit testing workflow for: {target_file}", role="assistant"
     )
 
     # Configure the bot for test generation
-    create_toolkit(bot, view, view_dir, python_view, python_edit, execute_powershell, execute_python)
+    create_toolkit(bot, branch_self, view, view_dir, python_view, python_edit, execute_powershell, execute_python)
     _set_unit_testing_system_message(bot, target_file)
 
     # Define the unit testing workflow (without INSTRUCTION prefix - chain_workflow adds it)
@@ -152,7 +148,6 @@ Use branch_self to create a context-gathering branch that will:
 The branch should report findings in a clear summary format.
 
 When the branch reports back, say CONTEXT_GATHERED.""",
-
         """Plan the test files and fixtures to create/modify.
 
 Based on the context gathered, create a plan:
@@ -167,7 +162,6 @@ Format your plan as a clear list:
   Fixtures needed: mock_a, mock_b
 
 When plan is complete, say PLAN_COMPLETE.""",
-
         """Generate tests in parallel.
 
 Use branch_self to create tests in parallel, one branch per file from your plan.
@@ -183,7 +177,6 @@ Include happy path and error cases. Use existing mock fixtures. Verify tests col
 Report: file path and test count."
 
 After all branches complete, say TESTS_GENERATED.""",
-
         f"""Verify all tests collect and run.
 
 For each test file that was created/modified:
@@ -201,7 +194,6 @@ Report:
 - Any collection errors that need fixing
 
 When verification is complete, say VERIFICATION_COMPLETE.""",
-
         f"""Final summary and coverage report.
 
 Provide a comprehensive summary:
@@ -214,17 +206,13 @@ Provide a comprehensive summary:
 
 Format as a clear report.
 
-Say TESTING_COMPLETE when done."""
+Say TESTING_COMPLETE when done.""",
     ]
 
     # Execute the workflow using chain_workflow with INSTRUCTION pattern
     responses, nodes = chain_workflow(bot, workflow_prompts)
 
     # Return the final response
-    final_summary = format_final_summary(
-        f"Unit Testing: {target_file}",
-        len(responses),
-        responses[-1]
-    )
+    final_summary = format_final_summary(f"Unit Testing: {target_file}", len(responses), responses[-1])
 
     return final_summary, nodes[-1]

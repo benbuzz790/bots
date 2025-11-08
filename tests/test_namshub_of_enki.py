@@ -23,17 +23,11 @@ def test_enki_creates_simple_namshub():
 
     # Mock the chain_workflow to avoid actual execution
     with patch("bots.namshubs.namshub_of_enki.chain_workflow") as mock_chain:
-        mock_chain.return_value = (
-            ["Created namshub", "Added tests", "Verified functionality"],
-            [bot.conversation] * 3
-        )
+        mock_chain.return_value = (["Created namshub", "Added tests", "Verified functionality"], [bot.conversation] * 3)
 
         from bots.namshubs import namshub_of_enki
 
-        result, node = namshub_of_enki.invoke(
-            bot,
-            task_description="Create a namshub that counts lines in a file"
-        )
+        result, node = namshub_of_enki.invoke(bot, task_description="Create a namshub that counts lines in a file")
 
         # Verify the workflow was executed
         assert mock_chain.called
@@ -75,6 +69,7 @@ def test_enki_toolkit_creation():
     bot.conversation = Mock()
 
     from unittest.mock import patch
+
     with patch("bots.namshubs.namshub_of_enki.create_toolkit") as mock_toolkit:
         with patch("bots.namshubs.namshub_of_enki.chain_workflow") as mock_chain:
             mock_chain.return_value = (["Response"], [bot.conversation])
@@ -95,6 +90,7 @@ def test_enki_workflow_structure():
     bot.conversation = Mock()
 
     from unittest.mock import patch
+
     with patch("bots.namshubs.namshub_of_enki.chain_workflow") as mock_chain:
         mock_chain.return_value = (["Response"] * 5, [bot.conversation] * 5)
 
@@ -121,6 +117,7 @@ def test_enki_final_summary():
     bot.conversation = Mock()
 
     from unittest.mock import patch
+
     with patch("bots.namshubs.namshub_of_enki.chain_workflow") as mock_chain:
         mock_responses = ["Designed namshub", "Implemented code", "Created tests"]
         mock_chain.return_value = (mock_responses, [bot.conversation] * 3)

@@ -41,11 +41,7 @@ def invoke(bot: Bot, task: str = None, **kwargs) -> Tuple[str, ConversationNode]
     _set_system_message(bot, task)
 
     # Define simple workflow
-    prompts = [
-        "Step 1: Acknowledge the task",
-        "Step 2: Confirm understanding",
-        "Step 3: Report completion"
-    ]
+    prompts = ["Step 1: Acknowledge the task", "Step 2: Confirm understanding", "Step 3: Report completion"]
 
     # Execute workflow
     responses, nodes = fp.chain(bot, prompts)

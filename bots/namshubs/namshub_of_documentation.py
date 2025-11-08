@@ -92,17 +92,15 @@ def invoke(bot: Bot, target_file: str = None, **kwargs) -> Tuple[str, Conversati
         if bot.conversation.parent and bot.conversation.parent.content:
             content = bot.conversation.parent.content
             import re
-            py_files = re.findall(r'[\w/\\.-]+\.py', content)
+
+            py_files = re.findall(r"[\w/\\.-]+\.py", content)
             if py_files:
                 target_file = py_files[0]
 
     # Validate required parameters
     valid, error = validate_required_params(target_file=target_file)
     if not valid:
-        return (
-            error + "\nUsage: invoke_namshub('namshub_of_documentation', target_file='path/to/file.py')",
-            bot.conversation
-        )
+        return (error + "\nUsage: invoke_namshub('namshub_of_documentation', target_file='path/to/file.py')", bot.conversation)
 
     # Configure the bot for documentation
     create_toolkit(bot, view, view_dir, python_view, python_edit)
@@ -112,31 +110,22 @@ def invoke(bot: Bot, target_file: str = None, **kwargs) -> Tuple[str, Conversati
     workflow_prompts = [
         f"Read and analyze the target file: {target_file}. Use python_view to understand "
         "its structure, purpose, and existing documentation.",
-
         "Check the module-level docstring. If missing or inadequate, add or improve it. "
         "Include a clear summary and description of the module's purpose.",
-
         "Review all classes in the file. For each class, ensure it has a comprehensive "
         "docstring explaining its purpose, key attributes, and usage. Add or improve as needed.",
-
         "Review all functions and methods. Ensure each has a docstring with description, "
         "parameters, return value, and exceptions. Add type hints if missing.",
-
         "Do a final review of the documentation. Ensure consistency, clarity, and completeness. "
         "Check that all docstrings follow PEP 257 conventions.",
-
         f"Verify your changes. Use python_view to review the updated {target_file} and "
-        "confirm all documentation is in place."
+        "confirm all documentation is in place.",
     ]
 
     # Execute the workflow using chain_workflow with INSTRUCTION pattern
     responses, nodes = chain_workflow(bot, workflow_prompts)
 
     # Return the final response
-    final_summary = format_final_summary(
-        "Documentation",
-        len(responses),
-        responses[-1]
-    )
+    final_summary = format_final_summary("Documentation", len(responses), responses[-1])
 
     return final_summary, nodes[-1]

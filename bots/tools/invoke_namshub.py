@@ -76,17 +76,14 @@ def invoke_namshub(namshub_name: str, kwargs: str = "{}") -> str:
     # Determine if namshub_name is a directory or filepath
     if os.path.isdir(namshub_name):
         # It's a directory, list available namshubs
-        namshub_files = [
-            f for f in os.listdir(namshub_name)
-            if f.endswith(".py") and not f.startswith("_")
-        ]
+        namshub_files = [f for f in os.listdir(namshub_name) if f.endswith(".py") and not f.startswith("_")]
         if not namshub_files:
             return f"Error: No namshub files found in directory '{namshub_name}'"
 
         return (
-            f"Directory '{namshub_name}' contains the following namshubs:\n" +
-            "\n".join(f"- {f}" for f in sorted(namshub_files)) +
-            "\n\nPlease specify the full path to the namshub file you want to invoke."
+            f"Directory '{namshub_name}' contains the following namshubs:\n"
+            + "\n".join(f"- {f}" for f in sorted(namshub_files))
+            + "\n\nPlease specify the full path to the namshub file you want to invoke."
         )
 
     # It's a filepath
@@ -114,10 +111,7 @@ def invoke_namshub(namshub_name: str, kwargs: str = "{}") -> str:
                 break
 
         if invoke_func is None:
-            return (
-                f"Error: Namshub '{namshub_name}' does not have an 'invoke', 'run', "
-                f"or 'execute' function"
-            )
+            return f"Error: Namshub '{namshub_name}' does not have an 'invoke', 'run', " f"or 'execute' function"
 
         # Handle tool_use without tool_result issue
         # If the current node has tool_calls (the invoke_namshub call itself),
@@ -132,9 +126,7 @@ def invoke_namshub(namshub_name: str, kwargs: str = "{}") -> str:
             for tool_call in current_node.tool_calls:
                 if tool_call.get("name") == "invoke_namshub":
                     # Use bot's tool_handler to generate provider-appropriate format
-                    dummy_result = bot.tool_handler.generate_response_schema(
-                        tool_call, "Namshub invocation in progress..."
-                    )
+                    dummy_result = bot.tool_handler.generate_response_schema(tool_call, "Namshub invocation in progress...")
                     dummy_results.append(dummy_result)
 
             if dummy_results:
@@ -145,7 +137,7 @@ def invoke_namshub(namshub_name: str, kwargs: str = "{}") -> str:
 
         # Save the original bot state
         original_tool_handler = bot.tool_handler
-        original_system_message = bot.system_message if hasattr(bot, 'system_message') else None
+        original_system_message = bot.system_message if hasattr(bot, "system_message") else None
 
         try:
             # Execute the namshub with kwargs
@@ -170,8 +162,6 @@ def invoke_namshub(namshub_name: str, kwargs: str = "{}") -> str:
 
     except Exception as e:
         import traceback
+
         error_trace = traceback.format_exc()
-        return (
-            f"Error executing namshub '{namshub_name}':\n{str(e)}\n\n"
-            f"Traceback:\n{error_trace}"
-        )
+        return f"Error executing namshub '{namshub_name}':\n{str(e)}\n\n" f"Traceback:\n{error_trace}"

@@ -100,10 +100,11 @@ def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, Conversation
         if bot.conversation.parent and bot.conversation.parent.content:
             content = bot.conversation.parent.content
             import re
+
             pr_patterns = [
-                r'#(\d+)',
-                r'PR\s*#?(\d+)',
-                r'pull request\s*#?(\d+)',
+                r"#(\d+)",
+                r"PR\s*#?(\d+)",
+                r"pull request\s*#?(\d+)",
             ]
             for pattern in pr_patterns:
                 match = re.search(pattern, content, re.IGNORECASE)
@@ -114,10 +115,7 @@ def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, Conversation
     # Validate required parameters
     valid, error = validate_required_params(pr_number=pr_number)
     if not valid:
-        return (
-            error + "\nUsage: invoke_namshub('namshub_of_pull_requests', pr_number='123')",
-            bot.conversation
-        )
+        return (error + "\nUsage: invoke_namshub('namshub_of_pull_requests', pr_number='123')", bot.conversation)
 
     # Configure the bot for PR workflow
     create_toolkit(bot, branch_self, execute_powershell, execute_python, view, view_dir, python_view, python_edit)
@@ -126,20 +124,16 @@ def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, Conversation
     # Define the PR workflow
     workflow_prompts = [
         f"Check the status of PR #{pr_number}. Run 'gh pr checks {pr_number}' to see the CI/CD status.",
-
         "Extract the RUN_ID from the URL in the output. Check if the actions are still running. "
         "If they are still running, sleep for 5 minutes using either: "
         "execute_python with code 'import time; time.sleep(300)' OR "
         "execute_powershell with 'Start-Sleep -Seconds 300'. "
         "Then run 'gh run view <RUN_ID> --log-failed' to see what failed.",
-
         "View the failures. Use Select-String to filter for errors: "
         "gh run view <RUN_ID> --log | Select-String -Pattern "
-        "\"error|FAILED|would reformat|AssertionError|E[0-9]{3}|F[0-9]{3}\" -Context 2,2",
-
+        '"error|FAILED|would reformat|AssertionError|E[0-9]{3}|F[0-9]{3}" -Context 2,2',
         "Try to extract any coderabbit comments: python -m bots.dev.pr_comment_parser <REPO> "
         f"{pr_number}. Read and understand the AI prompts.",
-
         "Use branch_self to fix the identified issues. For linting: run black, isort, and remove_boms. "
         "For test failures: read the test file, understand the issue, and fix it. For coderabbit comments, "
         "make the suggested change unless it seems at odds with the code intent. You should branch "
@@ -149,24 +143,17 @@ def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, Conversation
         "'bubbles up' to you. Note that each branch is a copy of you with all your context, so you do not need "
         "to be too specific with your task description - but you do with def of done and reporting reqs. Take "
         "your time and work step by step. Be sure to gather sufficient context before implementing a fix.",
-
         "Verify your fixes, then run the linters again to confirm: black --check --diff . && "
         "isort --check-only --diff . && flake8 . --count --statistics --show-source",
-
         f"Post an update comment to PR #{pr_number} summarizing what you fixed: "
-        f"gh pr comment {pr_number} --body \"## Update: [your summary here]\".",
-
-        "Finally, push. Thanks for your hard work."
+        f'gh pr comment {pr_number} --body "## Update: [your summary here]".',
+        "Finally, push. Thanks for your hard work.",
     ]
 
     # Execute the workflow using chain_workflow with INSTRUCTION pattern
     responses, nodes = chain_workflow(bot, workflow_prompts)
 
     # Return the final response
-    final_summary = format_final_summary(
-        f"PR #{pr_number}",
-        len(responses),
-        responses[-1]
-    )
+    final_summary = format_final_summary(f"PR #{pr_number}", len(responses), responses[-1])
 
     return final_summary, nodes[-1]

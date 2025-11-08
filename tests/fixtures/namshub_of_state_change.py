@@ -26,7 +26,4 @@ def invoke(bot: Bot, new_message: str = None, **kwargs) -> Tuple[str, Conversati
     original_message = bot.system_message
     bot.set_system_message(new_message)
 
-    return (
-        f"System message changed from '{original_message}' to '{new_message}'",
-        bot.conversation
-    )
+    return (f"System message changed from '{original_message}' to '{new_message}'", bot.conversation)

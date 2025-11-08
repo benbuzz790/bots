@@ -17,13 +17,11 @@ def test_unit_testing_namshub_workflow():
     with patch("bots.namshubs.namshub_of_unit_testing.chain_workflow") as mock_chain:
         mock_chain.return_value = (
             ["Context gathered", "Plan complete", "Tests generated", "Verification complete", "Summary"],
-            [mock_bot.conversation] * 5
+            [mock_bot.conversation] * 5,
         )
 
         # This should now complete without hanging
-        result, node = namshub_of_unit_testing.invoke(
-            mock_bot, target_file="app.py"
-        )
+        result, node = namshub_of_unit_testing.invoke(mock_bot, target_file="app.py")
 
         # Verify the workflow was called
         assert mock_chain.called
@@ -93,14 +91,9 @@ def test_unit_testing_final_summary():
 
     # Mock chain_workflow to avoid hanging
     with patch("bots.namshubs.namshub_of_unit_testing.chain_workflow") as mock_chain:
-        mock_chain.return_value = (
-            ["Summary of work"],
-            [mock_bot.conversation]
-        )
+        mock_chain.return_value = (["Summary of work"], [mock_bot.conversation])
 
-        result, _ = namshub_of_unit_testing.invoke(
-            mock_bot, target_file="app.py"
-        )
+        result, _ = namshub_of_unit_testing.invoke(mock_bot, target_file="app.py")
 
         # Verify the result contains key information
         assert "app.py" in result or "Unit Testing" in result

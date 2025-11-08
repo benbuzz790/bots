@@ -12,21 +12,20 @@ import pytest
 from bots.foundation.anthropic_bots import AnthropicBot
 
 
-@pytest.mark.skipif(
-    not os.environ.get("ANTHROPIC_API_KEY"),
-    reason="Requires ANTHROPIC_API_KEY environment variable"
-)
+@pytest.mark.skipif(not os.environ.get("ANTHROPIC_API_KEY"), reason="Requires ANTHROPIC_API_KEY environment variable")
 def test_unit_testing_namshub_completes_workflow():
     """Test that the unit testing namshub can complete a full workflow."""
     # Create a simple test file
-    test_file = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
-    test_file.write("""
+    test_file = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+    test_file.write(
+        """
 def add(a, b):
     return a + b
 
 def multiply(a, b):
     return a * b
-""")
+"""
+    )
     test_file.close()
 
     cleanup_temp_files = []
@@ -61,15 +60,13 @@ def multiply(a, b):
                 os.unlink(f)
 
 
-@pytest.mark.skipif(
-    not os.environ.get("ANTHROPIC_API_KEY"),
-    reason="Requires ANTHROPIC_API_KEY environment variable"
-)
+@pytest.mark.skipif(not os.environ.get("ANTHROPIC_API_KEY"), reason="Requires ANTHROPIC_API_KEY environment variable")
 def test_unit_testing_namshub_handles_complex_code():
     """Test that the namshub can handle more complex code structures."""
     # Create a more complex test file with classes
-    test_file = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
-    test_file.write("""
+    test_file = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+    test_file.write(
+        """
 class Calculator:
     def __init__(self):
         self.result = 0
@@ -80,7 +77,8 @@ class Calculator:
 
     def reset(self):
         self.result = 0
-""")
+"""
+    )
     test_file.close()
 
     cleanup_temp_files = []

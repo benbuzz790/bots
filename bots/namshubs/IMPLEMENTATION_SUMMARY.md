@@ -6,7 +6,6 @@ A complete namshub system for the bots framework that allows bots to invoke spec
 Location: `bots/tools/invoke_namshub.py`
 Features:
 - `invoke_namshub(namshub_name, **kwargs)` - Main invocation tool
-- `list_namshubs()` - List available namshubs
 - Automatic state management (saves/restores toolkit and system message)
 - Dynamic module loading
 - Error handling with detailed tracebacks

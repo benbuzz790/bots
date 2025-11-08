@@ -5,8 +5,9 @@ using test fixture namshubs. No API calls - uses MockBot only.
 """
 
 import os
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from bots.testing.mock_bot import MockBot
 from bots.tools.invoke_namshub import invoke_namshub
@@ -66,7 +67,7 @@ class TestInvokeNamshubStateManagement:
         bot.add_tools(invoke_namshub)
 
         original_system_message = bot.system_message
-        original_tool_count = len(bot.tool_handler.tools) if hasattr(bot.tool_handler, 'tools') else 0
+        original_tool_count = len(bot.tool_handler.tools) if hasattr(bot.tool_handler, "tools") else 0
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_no_op.py")
 
@@ -75,7 +76,7 @@ class TestInvokeNamshubStateManagement:
 
         # State should be restored
         assert bot.system_message == original_system_message
-        current_tool_count = len(bot.tool_handler.tools) if hasattr(bot.tool_handler, 'tools') else 0
+        current_tool_count = len(bot.tool_handler.tools) if hasattr(bot.tool_handler, "tools") else 0
         assert current_tool_count == original_tool_count
 
     def test_state_restored_after_state_change_namshub(self):
@@ -307,16 +308,12 @@ class TestInvokeNamshubMultipleInvocations:
             assert "success" in result1.lower()
 
             # Invoke echo
-            result2 = invoke_namshub(
-                os.path.join("tests", "fixtures", "namshub_of_echo.py"),
-                kwargs='{"message": "test"}'
-            )
+            result2 = invoke_namshub(os.path.join("tests", "fixtures", "namshub_of_echo.py"), kwargs='{"message": "test"}')
             assert "Echo: test" in result2
 
             # Invoke tool_use
             result3 = invoke_namshub(
-                os.path.join("tests", "fixtures", "namshub_of_tool_use.py"),
-                kwargs='{"expression": "3 + 3"}'
+                os.path.join("tests", "fixtures", "namshub_of_tool_use.py"), kwargs='{"expression": "3 + 3"}'
             )
             assert "6" in result3
 
@@ -367,6 +364,7 @@ class TestInvokeNamshubDirectoryListing:
 
         # Create a temp empty directory
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
                 result = invoke_namshub(tmpdir)
@@ -385,7 +383,7 @@ class TestInvokeNamshubEdgeCases:
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_no_op.py")
 
         with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs='{}')
+            result = invoke_namshub(fixture_path, kwargs="{}")
 
         assert "success" in result.lower()
 

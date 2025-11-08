@@ -1,8 +1,8 @@
-"""Tool use namshub for testing toolkit swapping.
+"""Tool use namshub for testing toolkit modification.
 
-This namshub swaps the toolkit to include only execute_python,
+This namshub adds execute_python to the toolkit,
 then uses it to execute a simple calculation.
-Tests that toolkit swapping works correctly.
+Tests that adding tools to the toolkit works correctly.
 """
 
 from typing import Tuple
@@ -26,7 +26,7 @@ def invoke(bot: Bot, expression: str = None, **kwargs) -> Tuple[str, Conversatio
     if expression is None:
         expression = "2 + 2"
 
-    # Swap toolkit to only include execute_python
+    # Add execute_python to toolkit
     create_toolkit(bot, execute_python)
 
     # Execute the expression

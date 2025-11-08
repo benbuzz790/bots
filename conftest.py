@@ -15,88 +15,67 @@ _test_created_dirs: Set[str] = set()
 
 
 def pytest_configure(config):
-    """Configure pytest to use a custom temp directory in the project root.
+    """Configure pytest with custom temp directory handling."""
+    # Get the project root (where conftest.py is located)
+    project_root = Path(__file__).parent
 
-    This avoids Windows permission issues with the default system temp directory,
-    especially when using pytest-xdist for parallel test execution.
+    # Define temp directory path
+    temp_dir = project_root / ".pytest_tmp"
 
-    Handles locked directories by renaming them and creating fresh ones.
-    """
-    # Only set basetemp if not already set (e.g., by command line)
-    if config.option.basetemp is None:
-        # Set custom basetemp in project root to avoid Windows permission issues
-        project_root = Path(__file__).parent
-        custom_temp = project_root / ".pytest_tmp"
-
-        # Try to handle existing directory that might be locked
-        if custom_temp.exists():
+    # Try to handle existing directory
+    if temp_dir.exists():
+        try:
+            # Try to remove it
+            shutil.rmtree(temp_dir)
+        except (PermissionError, OSError):
+            # If locked, rename it with timestamp
+            timestamp = int(time.time())
+            locked_dir = project_root / f".pytest_tmp_locked_{timestamp}"
             try:
-                # Try to remove it cleanly
-                shutil.rmtree(custom_temp)
+                temp_dir.rename(locked_dir)
             except (PermissionError, OSError):
-                # Directory is locked - rename it and create a fresh one
-                import datetime
-                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                backup_name = f".pytest_tmp_locked_{timestamp}"
-                backup_path = project_root / backup_name
-                try:
-                    custom_temp.rename(backup_path)
-                    print(f"Warning: Renamed locked .pytest_tmp to {backup_name}")
-                except Exception as e:
-                    # If even rename fails, try with a unique suffix
-                    import uuid
-                    backup_name = f".pytest_tmp_locked_{uuid.uuid4().hex[:8]}"
-                    backup_path = project_root / backup_name
-                    try:
-                        custom_temp.rename(backup_path)
-                        print(f"Warning: Renamed locked .pytest_tmp to {backup_name}")
-                    except Exception:
-                        # Last resort: use a different directory name
-                        custom_temp = project_root / f".pytest_tmp_{uuid.uuid4().hex[:8]}"
-                        print(f"Warning: Using alternate temp directory: {custom_temp.name}")
+                pass  # If rename fails, pytest will handle directory creation
 
-        # Create the directory
-        try:
-            custom_temp.mkdir(exist_ok=True, parents=True)
-        except FileExistsError:
-            # Another worker already created it during the race, that's fine
-            pass
+    # Create fresh temp directory
+    temp_dir.mkdir(exist_ok=True)
 
-        # Configure pytest to use this directory
-        config.option.basetemp = str(custom_temp)
+    # Set PYTEST_TEMP_DIR for tests to use
+    os.environ["PYTEST_TEMP_DIR"] = str(temp_dir)
 
-        # Register cleanup function to run when Python exits (after all workers finish)
-        # Only register in the main process, not in workers
-        if not hasattr(config, 'workerinput'):
-            def cleanup_temp_on_exit():
-                """Clean up temp directory when Python exits."""
-                try:
-                    # Give a moment for any lingering file handles to close
-                    time.sleep(0.2)
-                    if custom_temp.exists():
-                        shutil.rmtree(custom_temp)
-                except Exception:
-                    # If cleanup fails, it will be handled on next run
-                    pass
+    # Only register cleanup in main process (not in xdist workers)
+    if not hasattr(config, "workerinput"):
 
-            atexit.register(cleanup_temp_on_exit)
+        def cleanup_temp_on_exit():
+            """Clean up temp directory when Python exits."""
+            try:
+                # Give a moment for any lingering file handles to close
+                time.sleep(0.2)
 
-        # Clean up old locked directories (best effort, don't fail if we can't)
-        try:
-            for old_dir in project_root.glob(".pytest_tmp_locked_*"):
-                try:
-                    if old_dir.is_dir():
-                        # Only try to remove if it's older than 1 hour
-                        import time
-                        dir_age = time.time() - old_dir.stat().st_mtime
-                        if dir_age > 3600:  # 1 hour
-                            shutil.rmtree(old_dir)
-                except Exception:
-                    # Ignore cleanup failures
-                    pass
-        except Exception:
-            # Ignore any errors in cleanup
-            pass
+                # Remove all worker subdirectories
+                if temp_dir.exists():
+                    for item in temp_dir.iterdir():
+                        if item.is_dir():
+                            try:
+                                shutil.rmtree(item)
+                            except (PermissionError, OSError):
+                                pass  # Ignore if still locked
+            except (PermissionError, OSError):
+                pass  # Ignore cleanup failures
+
+        atexit.register(cleanup_temp_on_exit)
+
+    # Clean up old locked directories (older than 1 hour)
+    if not hasattr(config, "workerinput"):
+        for old_dir in project_root.glob(".pytest_tmp_locked_*"):
+            try:
+                if old_dir.is_dir():
+                    # Only try to remove if it's older than 1 hour
+                    dir_age = time.time() - old_dir.stat().st_mtime
+                    if dir_age > 3600:  # 1 hour
+                        shutil.rmtree(old_dir)
+            except Exception:
+                # Ignore cleanup failures
+                pass
 
 
 def register_test_file(filepath: str) -> str:

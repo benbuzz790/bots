@@ -93,7 +93,7 @@ def chain_workflow(
     prompts: List[str],
     use_instruction_pattern: bool = True,
     stop_condition: Callable[[Bot], bool] = None,
-    callback: Callable = None
+    callback: Callable = None,
 ) -> Tuple[List[str], List[ConversationNode]]:
     """Execute a chain_while workflow with sensible defaults.
 
@@ -128,20 +128,10 @@ def chain_workflow(
     else:
         continue_prompt = "ok"
 
-    return fp.chain_while(
-        bot,
-        prompts,
-        stop_condition=stop_condition,
-        continue_prompt=continue_prompt,
-        callback=callback
-    )
+    return fp.chain_while(bot, prompts, stop_condition=stop_condition, continue_prompt=continue_prompt, callback=callback)
 
 
-def simple_workflow(
-    bot: Bot,
-    prompts: List[str],
-    callback: Callable = None
-) -> Tuple[List[str], List[ConversationNode]]:
+def simple_workflow(bot: Bot, prompts: List[str], callback: Callable = None) -> Tuple[List[str], List[ConversationNode]]:
     """Execute a simple chain workflow without iteration.
 
     Use this when you want a straightforward sequence of prompts
@@ -169,7 +159,7 @@ def iterative_workflow(
     initial_prompt: str,
     continue_prompt: str = "ok",
     stop_condition: Callable[[Bot], bool] = None,
-    callback: Callable = None
+    callback: Callable = None,
 ) -> Tuple[List[str], List[ConversationNode]]:
     """Execute an iterative workflow with a single prompt.
 
@@ -198,11 +188,7 @@ def iterative_workflow(
         stop_condition = fp.conditions.tool_not_used
 
     return fp.prompt_while(
-        bot,
-        initial_prompt,
-        continue_prompt=continue_prompt,
-        stop_condition=stop_condition,
-        callback=callback
+        bot, initial_prompt, continue_prompt=continue_prompt, stop_condition=stop_condition, callback=callback
     )
 
 
@@ -236,12 +222,7 @@ def validate_required_params(**params) -> Tuple[bool, str]:
     return True, ""
 
 
-def format_final_summary(
-    workflow_name: str,
-    step_count: int,
-    final_response: str,
-    max_length: int = 200
-) -> str:
+def format_final_summary(workflow_name: str, step_count: int, final_response: str, max_length: int = 200) -> str:
     """Format a standard final summary for namshub completion.
 
     Parameters:
@@ -264,8 +245,4 @@ def format_final_summary(
     if len(final_response) > max_length:
         excerpt += "..."
 
-    return (
-        f"{workflow_name} workflow completed.\n"
-        f"Processed {step_count} steps.\n"
-        f"Final status: {excerpt}"
-    )
+    return f"{workflow_name} workflow completed.\n" f"Processed {step_count} steps.\n" f"Final status: {excerpt}"
