@@ -106,3 +106,5 @@ sorting_algorithms.py
 .pytest_tmp_locked_*/
 
 ROADMAP_BACKUP_*.md
+
+bots/minimal.py
