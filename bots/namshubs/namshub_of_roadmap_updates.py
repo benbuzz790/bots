@@ -20,10 +20,10 @@ from bots.namshubs.helpers import (
     format_final_summary,
     validate_required_params,
 )
-from bots.tools.code_tools import view, view_dir, patch_edit
-from bots.tools.terminal_tools import execute_powershell
+from bots.tools.code_tools import patch_edit, view, view_dir
 from bots.tools.python_execution_tool import execute_python
 from bots.tools.self_tools import branch_self
+from bots.tools.terminal_tools import execute_powershell
 
 
 def _set_roadmap_system_message(bot: Bot, pr_number: str = None) -> None:
