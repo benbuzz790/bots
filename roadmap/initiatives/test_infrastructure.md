@@ -18,7 +18,7 @@ See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-9)
 - Fixed test parallelism issues
 - Uniform tempfile handling implemented
 **Test Structure:**
-`
+```text
 tests/
 ├── unit/              # Fast, isolated tests (no API calls)
 ├── integration/       # Tests with real dependencies
@@ -30,17 +30,18 @@ tests/
 │   ├── mock_fixtures.py
 │   └── tool_fixtures.py
 └── conftest.py       # Global pytest configuration
-`
+
+```
 **Pytest Markers:**
-`python
+```python
 @pytest.mark.unit          # Fast, isolated tests
 @pytest.mark.integration   # Tests with dependencies
 @pytest.mark.e2e          # End-to-end tests
 @pytest.mark.api          # Tests requiring API calls
 @pytest.mark.serial       # Tests that must run serially
-`
+```
 **AAA Pattern:**
-`python
+```python
 def test_something():
     # Arrange
     bot = MockBot()
@@ -49,7 +50,7 @@ def test_something():
     result = bot.process(input_data)
     # Assert
     assert result == expected_output
-`
+```
 ### Item 24: Test Parallelism (PR #112, Oct 5, 2025)
 **Problem:**
 - Tests running serially (slow)
@@ -71,11 +72,11 @@ def test_something():
 - Inconsistent tempfile usage across tests
 - Cleanup failures leaving artifacts
 **Solution:**
-- Fixed 	est_patch_edit.py, 	est_class_replace.py, 	est_python_edit_edge_cases.py to use temp directories
+- Fixed test_patch_edit.py, test_class_replace.py, test_python_edit_edge_cases.py to use temp directories
 - All test artifacts now properly isolated and cleaned up
 - Centralized tempfile fixtures in ixtures/file_fixtures.py
 **Tempfile Fixtures:**
-`python
+```python
 @pytest.fixture
 def temp_dir(tmp_path):
     """Provide a temporary directory that's automatically cleaned up."""
@@ -86,7 +87,7 @@ def temp_file(tmp_path):
     file_path = tmp_path / "test_file.txt"
     file_path.write_text("test content")
     return file_path
-`
+```
 **Results:**
 - No test artifacts left in repository
 - Clean test environment after each run
@@ -153,9 +154,12 @@ timeout = 600
 ### 2. Centralized Fixtures
 **fixtures/bot_fixtures.py:**
 - mock_bot - MockBot for unit tests
-- eal_anthropic_bot - Real AnthropicBot for integration tests
-- eal_openai_bot - Real OpenAIBot for integration tests
-- eal_gemini_bot - Real GeminiBot for integration tests
+- 
+eal_anthropic_bot - Real AnthropicBot for integration tests
+- 
+eal_openai_bot - Real OpenAIBot for integration tests
+- 
+eal_gemini_bot - Real GeminiBot for integration tests
 **fixtures/file_fixtures.py:**
 - 	emp_dir - Temporary directory with auto-cleanup
 - 	emp_file - Temporary file with auto-cleanup

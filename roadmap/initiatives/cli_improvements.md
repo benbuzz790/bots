@@ -49,7 +49,7 @@ See also: [Phase 2: Features](../active/phase2_features.md#item-6), [Phase 3: En
 - **Visual conversation tree** display
 ### Implementation Ideas
 **Color Coding:**
-`python
+```python
 from colorama import Fore, Style
 # User messages: Blue
 print(f"{Fore.BLUE}User: {message}{Style.RESET_ALL}")
@@ -59,23 +59,23 @@ print(f"{Fore.GREEN}Bot: {message}{Style.RESET_ALL}")
 print(f"{Fore.YELLOW}Tool: {tool_name}{Style.RESET_ALL}")
 # Errors: Red
 print(f"{Fore.RED}Error: {error}{Style.RESET_ALL}")
-`
+```
 **Syntax Highlighting:**
-`python
+```python
 from pygments import highlight
 from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalFormatter
 # Highlight code in tool results
 highlighted = highlight(code, PythonLexer(), TerminalFormatter())
 print(highlighted)
-`
+```
 **Progress Indicators:**
-`python
+```python
 from rich.progress import Progress
 with Progress() as progress:
     task = progress.add_task("[cyan]Generating response...", total=100)
     # Update progress as bot works
-`
+```
 ## Item 5: CLI Haiku Bots Match Provider (? NOT STARTED)
 **Goal:** Initialize utility bots from same provider as main CLI bot
 **Current Issue:**
@@ -87,7 +87,7 @@ with Progress() as progress:
 - **OpenAI:** GPT-4 Turbo (flagship) / GPT-4o-mini (fast)
 - **Google:** Gemini Pro (flagship) / Gemini Flash (fast)
 **Implementation:**
-`python
+```python
 # Detect main bot's provider
 if isinstance(main_bot, AnthropicBot):
     utility_bot = AnthropicBot(model="claude-3-5-haiku-20241022")
@@ -95,7 +95,7 @@ elif isinstance(main_bot, OpenAIBot):
     utility_bot = OpenAIBot(model="gpt-4o-mini")
 elif isinstance(main_bot, GeminiBot):
     utility_bot = GeminiBot(model="gemini-1.5-flash")
-`
+```
 **Benefits:**
 - Consistent provider experience
 - Single API key needed
@@ -127,7 +127,7 @@ elif isinstance(main_bot, GeminiBot):
 - Load custom callbacks
 - Plugin discovery and management
 **Configuration File Format:**
-`yaml
+```yaml
 # ~/.bots/config.yaml
 display:
   colors: true
@@ -149,7 +149,7 @@ plugins:
   tools_dir: "~/.bots/plugins/tools"
   namshubs_dir: "~/.bots/plugins/namshubs"
   auto_load: true
-`
+```
 **CLI Commands:**
 `ash
 # View configuration
@@ -183,8 +183,7 @@ setup(
 Creates ots-cli command available system-wide.
 ### Phase 2: Platform-Specific File Associations
 **Windows:**
-`
-eg
+```reg
 ; bots-file-association.reg
 Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\.bot]
@@ -193,9 +192,9 @@ Windows Registry Editor Version 5.00
 @="Bots Conversation File"
 [HKEY_CLASSES_ROOT\BotsFile\shell\open\command]
 @="cmd.exe /k bots-cli \"%1\""
-`
+```
 **macOS:**
-`xml
+```xml
 <!-- Info.plist -->
 <key>CFBundleDocumentTypes</key>
 <array>
@@ -210,18 +209,18 @@ Windows Registry Editor Version 5.00
         <string>Editor</string>
     </dict>
 </array>
-`
+```
 **Linux:**
-`desktop
+```desktop
 # bots.desktop
 [Desktop Entry]
 Name=Bots CLI
 Exec=x-terminal-emulator -e bots-cli %f
 Type=Application
 MimeType=application/x-bot
-`
+```
 ### Phase 3: Automated Installer
-`python
+```python
 # install_file_associations.py
 import platform
 import subprocess
@@ -233,7 +232,7 @@ def install_associations():
         install_macos_association()
     elif system == "Linux":
         install_linux_association()
-`
+```
 **Benefits:**
 - Better user experience
 - Faster workflow (double-click vs typing command)

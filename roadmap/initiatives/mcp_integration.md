@@ -23,14 +23,14 @@ See also: [Phase 2: Features](../active/phase2_features.md#item-13)
 ## Phase 1: MCP Client (Priority 1)
 **Goal:** Connect to existing MCP servers to access their tools
 ### Implementation
-`python
+```python
 # Bot gains access to all MCP server tools
 bot = AnthropicBot()
 bot.add_mcp_server("filesystem", "npx @modelcontextprotocol/server-filesystem /path")
-bot.add_mcp_server("github", "npx @modelcontextprotocol/server-github")
+bot.add_mcp_server("GitHub", "npx @modelcontextprotocol/server-github")
 bot.add_mcp_server("postgres", "npx @modelcontextprotocol/server-postgres")
 # Now bot can use filesystem, GitHub, and PostgreSQL tools via MCP
-`
+```
 ### Benefits
 - **Instant Ecosystem Access:** Connect to hundreds of existing MCP servers
 - **No Custom Integrations:** Use standardized protocol instead of building each integration
@@ -63,14 +63,14 @@ bot.add_mcp_server("postgres", "npx @modelcontextprotocol/server-postgres")
 ## Phase 2: MCP Server (Priority 2)
 **Goal:** Expose our bot's tools as MCP server for other applications
 ### Implementation
-`python
+```python
 # Your code_tools become available to Claude Desktop, Cursor, etc.
 from bots.mcp import MCPServer
 mcp_server = MCPServer()
 mcp_server.expose_tools(code_tools)
-mcp_server.expose_tools([python_edit, python_view, bbranch_self])
+mcp_server.expose_tools([python_edit, python_view, branch_self])
 mcp_server.start()
-`
+```
 ### Benefits
 - **Share Our Tools:** Make our excellent tools available to entire MCP ecosystem
 - **Increase Visibility:** Other developers discover and use our tools
@@ -87,7 +87,7 @@ mcp_server.start()
 **Tool Categories:**
 1. **Code Tools:** view, view_dir, python_view, python_edit
 2. **Execution Tools:** execute_python, execute_shell
-3. **Self Tools:** bbranch_self, list_context, remove_context
+3. **Self Tools:** branch_self, list_context, remove_context
 4. **Meta Tools:** invoke_namshub
 ### Technical Approach
 1. **Implement MCP Server Protocol:**
@@ -130,50 +130,50 @@ mcp_server.start()
 - May integrate with MCP in future
 ## Implementation Plan
 ### Phase 1: MCP Client (8-10 weeks)
-**Week 1-2: Research & Design**
+#### Week 1-2: Research & Design
 - Study MCP protocol specification
 - Design MCPToolWrapper architecture
 - Plan async/sync bridge
 - Identify test servers
-**Week 3-4: Core Implementation**
+#### Week 3-4: Core Implementation
 - Install MCP SDK
 - Create MCPToolWrapper class
 - Implement tool discovery
 - Handle async communication
-**Week 5-6: Bot Integration**
+#### Week 5-6: Bot Integration
 - Add ot.add_mcp_server() method
 - Integrate with existing tool system
 - Handle tool conflicts and namespacing
 - Error handling and logging
-**Week 7-8: Testing & Validation**
+#### Week 7-8: Testing & Validation
 - Test with filesystem server
 - Test with GitHub server
 - Test with database servers
 - Integration tests
 - Documentation
-**Week 9-10: Polish & Release**
+#### Week 9-10: Polish & Release
 - Performance optimization
 - Error message improvements
 - User documentation
 - Example notebooks
 - Blog post / announcement
 ### Phase 2: MCP Server (6-8 weeks)
-**Week 1-2: Server Implementation**
+#### Week 1-2: Server Implementation
 - Implement MCP server protocol
 - Tool discovery endpoint
 - Tool invocation endpoint
 - Schema generation
-**Week 3-4: Tool Adapters**
+#### Week 3-4: Tool Adapters
 - Convert bot tools to MCP format
 - Parameter mapping
 - Result formatting
 - Error handling
-**Week 5-6: Testing & Validation**
+#### Week 5-6: Testing & Validation
 - Test with Claude Desktop
 - Test with Cursor
 - Test with other MCP clients
 - Integration tests
-**Week 7-8: Documentation & Release**
+#### Week 7-8: Documentation & Release
 - Server configuration guide
 - Tool catalog documentation
 - Usage examples
@@ -195,13 +195,13 @@ mcp_server.start()
 - None for Phase 1 (can start immediately)
 - Phase 2 depends on Phase 1 completion
 ## Risks
-**Risk 1: MCP Protocol Changes**
+#### Risk 1: MCP Protocol Changes
 - Mitigation: MCP is stabilizing, major changes unlikely
 - Contingency: Stay engaged with MCP community, update as needed
-**Risk 2: Async/Sync Bridge Complexity**
+#### Risk 2: Async/Sync Bridge Complexity
 - Mitigation: Use proven patterns from other projects
 - Contingency: Consider making bot async-native (larger refactor)
-**Risk 3: Tool Compatibility Issues**
+#### Risk 3: Tool Compatibility Issues
 - Mitigation: Thorough testing with multiple MCP servers
 - Contingency: Document known limitations, provide workarounds
 ## Next Steps

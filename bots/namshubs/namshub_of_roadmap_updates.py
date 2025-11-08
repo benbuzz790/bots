@@ -11,7 +11,7 @@ The bot is equipped with terminal tools, code viewing, and file editing
 capabilities to analyze PRs and update roadmap documentation.
 """
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 from bots.foundation.base import Bot, ConversationNode
 from bots.namshubs.helpers import (
@@ -21,12 +21,13 @@ from bots.namshubs.helpers import (
     validate_required_params,
 )
 from bots.tools.code_tools import patch_edit, view, view_dir
+from bots.tools.python_edit import python_view
 from bots.tools.python_execution_tool import execute_python
 from bots.tools.self_tools import branch_self
 from bots.tools.terminal_tools import execute_powershell
 
 
-def _set_roadmap_system_message(bot: Bot, pr_number: str = None) -> None:
+def _set_roadmap_system_message(bot: Bot, pr_number: Optional[str] = None) -> None:
     """Set specialized system message for roadmap update workflow.
 
     Parameters:
@@ -113,7 +114,7 @@ IMPORTANT:
     bot.set_system_message(system_message.strip())
 
 
-def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, ConversationNode]:
+def invoke(bot: Bot, pr_number: Optional[str] = None, **_kwargs) -> Tuple[str, ConversationNode]:
     """Execute the roadmap update workflow.
 
     This function is called by invoke_namshub tool.
@@ -122,7 +123,7 @@ def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, Conversation
         bot (Bot): The bot to execute the workflow on
         pr_number (str, optional): The PR number that was merged.
                                    If not provided, attempts to extract from conversation.
-        **kwargs: Additional parameters (unused, for compatibility)
+        **_kwargs: Additional parameters (unused, for compatibility)
 
     Returns:
         Tuple[str, ConversationNode]: Final response and conversation node
@@ -153,7 +154,7 @@ def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, Conversation
         )
 
     # Configure the bot for roadmap updates
-    create_toolkit(bot, execute_powershell, view, view_dir, execute_python, patch_edit, branch_self)
+    create_toolkit(bot, execute_powershell, view, view_dir, python_view, execute_python, patch_edit, branch_self)
     _set_roadmap_system_message(bot, pr_number)
 
     # Define the roadmap update workflow

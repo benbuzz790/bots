@@ -1,4 +1,4 @@
-# Phase 3: Enhancement & User Experience
+﻿# Phase 3: Enhancement & User Experience
 
 **Status:** 1/6 Done, 1/6 Partial (25%)  
 **Priority:** Medium-Low  
@@ -12,30 +12,29 @@ Phase 3 focuses on user experience improvements, onboarding enhancements, and qu
 
 ---
 
-## Completed Items ✅
+## Completed Items âœ…
 
 ### Item 20: python_edit Feedback Improvements
-**Status:** ✅ DONE (PR #167, Oct 27, 2025)
+**Status:** âœ… DONE (PR #167, Oct 27, 2025)
 
 **Deliverables:**
 - Added duplicate detection for classes, functions, and methods
 - New functions: `_extract_definition_names()` and `_check_for_duplicates()`
 - Warning messages when adding duplicate definitions
 - All 100 python_edit tests passing
-
 **Example Warning:**
-```
+```text
 Warning: Adding duplicate definition(s): MyClass. This will create multiple definitions with the same name.
 ```
-
 **Impact:** Better feedback prevents accidental code duplication.
-
+---
+## Partial Items ⚠️
 ---
 
-## Partial Items ⚠️
+## Partial Items âš ï¸
 
 ### Item 2: Make CLI Prettier
-**Status:** ⚠️ PARTIAL (PR #125, Oct 13, 2025)
+**Status:** âš ï¸ PARTIAL (PR #125, Oct 13, 2025)
 
 **Delivered:**
 - Session-wide metrics display (tokens, cost, response time)
@@ -58,10 +57,10 @@ Warning: Adding duplicate definition(s): MyClass. This will create multiple defi
 
 ---
 
-## Not Started ❌
+## Not Started âŒ
 
 ### Item 36: Tutorial Expansion
-**Status:** ❌ NOT STARTED
+**Status:** âŒ NOT STARTED
 
 **Goal:** Create comprehensive tutorial series covering all major features
 
@@ -100,7 +99,7 @@ Warning: Adding duplicate definition(s): MyClass. This will create multiple defi
 ---
 
 ### Item 37: CHATME.bot - Interactive Welcome Bot
-**Status:** ❌ NOT STARTED
+**Status:** âŒ NOT STARTED
 
 **Goal:** Create welcoming introduction bot demonstrating key features
 
@@ -141,7 +140,7 @@ Warning: Adding duplicate definition(s): MyClass. This will create multiple defi
 ---
 
 ### Item 40: .bot File Association - Open in Terminal
-**Status:** ❌ NOT STARTED
+**Status:** âŒ NOT STARTED
 
 **Goal:** Double-click .bot files to open in terminal with CLI loaded
 
@@ -197,7 +196,7 @@ Warning: Adding duplicate definition(s): MyClass. This will create multiple defi
 ---
 
 ### Item 4: Rename auto_stash to 'mustache'
-**Status:** ❌ NOT STARTED
+**Status:** âŒ NOT STARTED
 
 **Goal:** Rename for better branding/memorability
 
@@ -214,7 +213,7 @@ Warning: Adding duplicate definition(s): MyClass. This will create multiple defi
 ---
 
 ### Item 17: Tool Requirements Decorator
-**Status:** ❌ NOT STARTED (Partially complete - bots.dev.decorators 'toolify')
+**Status:** âŒ NOT STARTED (Partially complete - bots.dev.decorators 'toolify')
 
 **Goal:** Decorator that applies tool requirements to functions
 
@@ -225,7 +224,7 @@ Warning: Adding duplicate definition(s): MyClass. This will create multiple defi
 ---
 
 ### Item 21: Autosave Behavior Improvements
-**Status:** ❌ NOT STARTED
+**Status:** âŒ NOT STARTED
 
 **Goal:** More intuitive autosave (save over loaded filename)
 

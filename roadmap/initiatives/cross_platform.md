@@ -45,12 +45,12 @@ See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-38)
 **Goal:** Test on Windows, Linux, and macOS with multiple Python versions
 **Implementation:**
 1. Update .github/workflows/pr-checks.yml with OS matrix:
-   `yaml
+   ```yaml
    strategy:
      matrix:
        os: [ubuntu-latest, windows-latest, macos-latest]
        python-version: ['3.10', '3.11', '3.12']
-   `
+   ```
 2. Add OS-specific test fixtures
 3. Implement conditional test skipping for OS-specific features
 4. Platform-specific mocking strategies
