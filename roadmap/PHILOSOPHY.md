@@ -1,4 +1,4 @@
-﻿# Development Philosophy & Strategic Direction
+# Development Philosophy & Strategic Direction
 ## The Core Principle: Standards Over Frameworks
 The bots project has reached a critical inflection point. After successfully implementing multi-provider support and achieving a robust 97%+ test pass rate, we're now positioned to make a fundamental choice about our future direction. The landscape of AI development tools has matured significantly, and a clear pattern has emerged: **universal standards are winning over proprietary frameworks**.
 This isn't about chasing trends--it's about recognizing that the industry has spoken. Model Context Protocol (MCP) is projected to reach 90% organizational adoption by the end of 2025. Microsoft, OpenAI, and Google have all committed to it. OpenTelemetry has become the de facto standard for observability. These aren't just popular tools; they're becoming the *lingua franca* of AI development.

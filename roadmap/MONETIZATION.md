@@ -1,4 +1,4 @@
-﻿# Monetization Strategy
+# Monetization Strategy
 **Strategic Direction**: Documentation-First Revenue Path
 ## Overview
 The bots project has unique competitive advantages that position it for commercial success:

@@ -1,4 +1,4 @@
-﻿# Test Infrastructure Initiative
+# Test Infrastructure Initiative
 **Status:** Complete ✅  
 **Last Updated:** November 8, 2025
 ## Overview

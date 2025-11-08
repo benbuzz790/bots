@@ -1,15 +1,15 @@
-﻿# CLI Improvements Initiative
-**Status:** Ongoing 🚧  
+# CLI Improvements Initiative
+**Status:** Ongoing ??  
 **Last Updated:** November 8, 2025
 ## Overview
 Continuous enhancement of the CLI user experience through better visual presentation, new commands, configuration options, and quality-of-life improvements. The CLI is the primary interface for most users, making these improvements critical for adoption and satisfaction.
 ## Related Items
-- **Item 2:** Make CLI Prettier - ⚠️ PARTIAL (Metrics added, more work remains)
-- **Item 5:** Ensure CLI Haiku Bots Match Provider - ❌ NOT STARTED
-- **Item 6:** Configure CLI More Thoroughly - ❌ NOT STARTED
-- **Item 40:** .bot File Association - ❌ NOT STARTED
+- **Item 2:** Make CLI Prettier - ?? PARTIAL (Metrics added, more work remains)
+- **Item 5:** Ensure CLI Haiku Bots Match Provider - ? NOT STARTED
+- **Item 6:** Configure CLI More Thoroughly - ? NOT STARTED
+- **Item 40:** .bot File Association - ? NOT STARTED
 See also: [Phase 2: Features](../active/phase2_features.md#item-6), [Phase 3: Enhancement](../active/phase3_enhancement.md#item-2)
-## Recent Improvements ✅
+## Recent Improvements ?
 ### Context Management Tools (PR #125, Oct 2025)
 - **list_context:** Display bot messages with labels for removal
 - **remove_context:** Remove bot-user message pairs by label
@@ -34,17 +34,17 @@ See also: [Phase 2: Features](../active/phase2_features.md#item-6), [Phase 3: En
 - **Clean metrics summary:** Tokens, cost, response time (no verbose traces)
 - **Session-wide totals:** Track cumulative usage across conversation
 - **Default exporter:** Changed from 'console' to 'none' for cleaner output
-## Item 2: Make CLI Prettier (⚠️ PARTIAL)
+## Item 2: Make CLI Prettier (?? PARTIAL)
 **Status:** Metrics and session tracking delivered, visual improvements remain
-### Completed ✅
+### Completed ?
 - Session-wide metrics display (tokens, cost, response time)
 - Auto-prompt for context reduction when threshold exceeded
 - Clean metrics summary (no verbose traces)
-### Remaining Work ❌
+### Remaining Work ?
 - **Color coding** for different message types
 - **Syntax highlighting** for code in tool results
 - **Progress indicators** for long-running operations (see Item 12 - Callbacks)
-- **Rich text formatting** (using ich or 	extual library)
+- **Rich text formatting** (using rich or textual library)
 - **Better error message formatting**
 - **Visual conversation tree** display
 ### Implementation Ideas
@@ -76,7 +76,7 @@ with Progress() as progress:
     task = progress.add_task("[cyan]Generating response...", total=100)
     # Update progress as bot works
 `
-## Item 5: CLI Haiku Bots Match Provider (❌ NOT STARTED)
+## Item 5: CLI Haiku Bots Match Provider (? NOT STARTED)
 **Goal:** Initialize utility bots from same provider as main CLI bot
 **Current Issue:**
 - CLI uses one provider (e.g., Anthropic)
@@ -100,7 +100,7 @@ elif isinstance(main_bot, GeminiBot):
 - Consistent provider experience
 - Single API key needed
 - Cost optimization (use fast models for utility tasks)
-## Item 6: Configure CLI More Thoroughly (❌ NOT STARTED)
+## Item 6: Configure CLI More Thoroughly (? NOT STARTED)
 **Goal:** Comprehensive configuration system with plugin support
 **Configuration Categories:**
 ### 1. Display Settings
@@ -161,7 +161,7 @@ bots config reset
 # Load plugin
 bots plugin load my_custom_tools.py
 `
-## Item 40: .bot File Association (❌ NOT STARTED)
+## Item 40: .bot File Association (? NOT STARTED)
 **Goal:** Double-click .bot files to open in terminal with CLI loaded
 **Current State:**
 - CLI supports loading: python -m bots.dev.cli [filepath]
@@ -183,7 +183,8 @@ setup(
 Creates ots-cli command available system-wide.
 ### Phase 2: Platform-Specific File Associations
 **Windows:**
-`eg
+`
+eg
 ; bots-file-association.reg
 Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\.bot]
@@ -239,26 +240,26 @@ def install_associations():
 - More "native" application feel
 ## Success Metrics
 ### Item 2 (CLI Prettier)
-- ✅ Metrics display implemented
-- ✅ Session tracking implemented
-- ❌ Color coding implemented
-- ❌ Syntax highlighting implemented
-- ❌ Progress indicators implemented
-- ❌ Rich text formatting implemented
+- ? Metrics display implemented
+- ? Session tracking implemented
+- ? Color coding implemented
+- ? Syntax highlighting implemented
+- ? Progress indicators implemented
+- ? Rich text formatting implemented
 ### Item 5 (Haiku Bots)
-- ❌ Utility bots match main bot provider
-- ❌ Cost optimization achieved
-- ❌ Single API key workflow
+- ? Utility bots match main bot provider
+- ? Cost optimization achieved
+- ? Single API key workflow
 ### Item 6 (Configuration)
-- ❌ Configuration file format defined
-- ❌ Configuration loading/saving implemented
-- ❌ CLI config commands implemented
-- ❌ Plugin system implemented
+- ? Configuration file format defined
+- ? Configuration loading/saving implemented
+- ? CLI config commands implemented
+- ? Plugin system implemented
 ### Item 40 (File Association)
-- ❌ Console entry point created
-- ❌ Windows association working
-- ❌ macOS association working
-- ❌ Linux association working
+- ? Console entry point created
+- ? Windows association working
+- ? macOS association working
+- ? Linux association working
 ## Next Steps
 1. **Complete Item 2 (CLI Prettier):**
    - Add color coding with colorama

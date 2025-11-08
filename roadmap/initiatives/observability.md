@@ -1,4 +1,4 @@
-﻿# Observability Initiative
+# Observability Initiative
 **Status:** Phases 1-3 Complete ✅ | Phase 4 Pending ⚠️  
 **Last Updated:** November 8, 2025
 ## Overview

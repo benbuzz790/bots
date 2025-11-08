@@ -1,4 +1,4 @@
-﻿# November 2025 Completions
+# November 2025 Completions
 **Month:** November 2025  
 **Focus:** Infrastructure & New Features
 ---

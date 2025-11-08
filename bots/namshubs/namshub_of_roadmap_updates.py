@@ -36,7 +36,7 @@ def _set_roadmap_system_message(bot: Bot, pr_number: str = None) -> None:
     pr_context = f" for PR #{pr_number}" if pr_number else ""
     system_message = f"""You are a roadmap maintenance specialist for the bots project.
 
-Your task: Update the roadmap after the most recent pull reqeusts were merged{pr_context}.
+Your task: Update the roadmap after the most recent pull requests were merged{pr_context}.
 
 ROADMAP STRUCTURE:
 
@@ -158,7 +158,7 @@ def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, Conversation
 
     # Define the roadmap update workflow
     workflow_prompts = [
-        f"Find recent PRs, then analyze each PR. Run: gh pr view # --json title,body,mergedAt,files "
+        f"Find recent PRs, then analyze PR #{pr_number}. Run: gh pr view {pr_number} --json title,body,mergedAt,files "
         "to get the PR details. Summarize: What was the main goal? What specific features/fixes "
         "were delivered? What tests were added? Any remaining work mentioned?",
         "Identify related roadmap items. Read roadmap/ITEM_INDEX.md to see all items, then read "
@@ -175,7 +175,7 @@ def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, Conversation
         "Update ITEM_INDEX.md counts and dates. Update the total counts (completed, partial, active), "
         "update status tables, and set 'Last Updated' to today's date.",
         f"Commit the changes. Stage files with: git add roadmap/ "
-        f'Then commit with: git commit -m "docs: Update roadmap for PR # - [list item titles]" '
+        f'Then commit with: git commit -m "docs: Update roadmap for PR #{pr_number} - [list item titles]" '
         "Provide a summary of all updates made.",
     ]
 
@@ -183,6 +183,6 @@ def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, Conversation
     responses, nodes = chain_workflow(bot, workflow_prompts)
 
     # Return the final response
-    final_summary = format_final_summary(f"Roadmap Update for PR #", len(responses), responses[-1])
+    final_summary = format_final_summary(f"Roadmap Update for PR #{pr_number}", len(responses), responses[-1])
 
     return final_summary, nodes[-1]

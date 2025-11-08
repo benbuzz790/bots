@@ -1,4 +1,4 @@
-﻿# Bots Project Roadmap
+# Bots Project Roadmap
 **Last Updated:** November 8, 2025
 ---
 ## Quick Status

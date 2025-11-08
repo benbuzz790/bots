@@ -1,4 +1,4 @@
-﻿# Cross-Platform Support Initiative
+# Cross-Platform Support Initiative
 **Status:** Not Started ❌  
 **Last Updated:** November 8, 2025
 ## Overview

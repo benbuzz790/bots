@@ -1,4 +1,4 @@
-﻿# Bots Project - Strategic Roadmap
+# Bots Project - Strategic Roadmap
 **Last Updated:** November 8, 2025  
 **Vision:** Build the best agentic AI system on industry standards  
 **Mission:** Conversation trees + functional prompts + standards integration
