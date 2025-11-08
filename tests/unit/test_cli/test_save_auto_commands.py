@@ -8,6 +8,8 @@ from unittest.mock import patch
 import pytest
 
 import bots.dev.cli as cli_module
+from bots.foundation.anthropic_bots import AnthropicBot
+from bots.foundation.base import Engines
 
 """Tests for /save and /auto commands."""
 
@@ -82,24 +84,45 @@ class TestSaveCommand(unittest.TestCase):
 class TestAutoCommand(unittest.TestCase):
     """Test suite for /auto command functionality."""
 
-    @patch("builtins.input")
-    @patch("bots.dev.cli.check_for_interrupt")
-    def test_auto_command_stops_when_no_tools_used(self, mock_check_interrupt, mock_input):
-        """Test /auto command stops when bot doesn't use tools."""
-        # Mock that interrupt is never pressed
-        mock_check_interrupt.return_value = False
+    def test_auto_command_stops_when_no_tools_used(self):
+        """Test that /auto command stops when bot doesn't use tools"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".bot", delete=False) as f:
+            bot_file = f.name
 
-        mock_input.side_effect = ["Hello bot", "/auto", "/exit"]  # Initial chat  # Start autonomous mode
+        try:
+            # Create a bot and save it
+            bot = AnthropicBot(model_engine=Engines.CLAUDE37_SONNET_20250219)
+            bot.save(bot_file)
 
-        with StringIO() as buf, redirect_stdout(buf):
-            with self.assertRaises(SystemExit):
-                cli_module.main("")
-            output = buf.getvalue()
-            print(f"\nAuto command stops output:\n{output}")
+            # Simulate CLI with /auto command
+            # The bot will respond without using tools, so /auto should complete
+            with patch("sys.stdin", StringIO("Hello\n/auto\n/exit\n")):
+                buf = StringIO()
+                with redirect_stdout(buf):
+                    with self.assertRaises(SystemExit):
+                        cli_module.main(bot_file)
+                output = buf.getvalue()
+                print(f"\nAuto command stops output:\n{output}")
 
-        # The bot responds without using tools, so /auto completes immediately
-        # Check that bot responded to the /auto command
-        self.assertIn("I'm ready to help", output)
+            # The bot responds without using tools, so /auto completes immediately
+            # Check that:
+            # 1. Bot responded (check for bot name in output)
+            self.assertTrue("Claude:" in output or "Bot:" in output, "Bot should have responded to the message")
+            # 2. /auto command was executed and bot responded to "ok" prompt
+            # The output contains ANSI codes, so check for the pattern with color codes
+            self.assertTrue("You:" in output and "ok" in output, "Auto command should show 'You: ok' prompt")
+            # 3. Bot provided a second response after the auto command
+            # Count occurrences of "Claude:" - should be at least 2 (initial + auto response)
+            claude_count = output.count("Claude:")
+            self.assertGreaterEqual(claude_count, 2, "Bot should respond at least twice (initial + auto)")
+            # 4. No error messages
+            self.assertNotIn("error", output.lower())
+            self.assertNotIn("exception", output.lower())
+
+        finally:
+            # Clean up
+            if os.path.exists(bot_file):
+                os.remove(bot_file)
 
     @patch("builtins.input")
     @patch("bots.dev.cli.check_for_interrupt")
