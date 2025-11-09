@@ -1,4 +1,4 @@
-# Contributing to bots
+﻿# Contributing to bots
 We welcome contributions to the bots project! Here are some guidelines to help you get started.
 ## Development Setup
 ### 1. Install Dependencies
@@ -10,9 +10,10 @@ pip install -r requirements-dev.txt
 # Install the package in editable mode
 pip install -e .[dev]
 ```
-Or use the Makefile:
+Or use the Makefile (Linux/Mac) or make.ps1 (Windows):
 ```bash
-make install-dev
+make install-dev    # Linux/Mac
+.\make.ps1 install-dev  # Windows
 ```
 ### 2. Set Up Pre-commit Hooks (Recommended)
 Pre-commit hooks automatically format and check your code before each commit:
@@ -26,7 +27,8 @@ This ensures your code matches CI requirements before you push.
 ## Development Commands
 We provide a `Makefile` with common development tasks:
 ```bash
-make help         # Show all available commands
+make help           # Linux/Mac
+.\make.ps1 help      # Windows         # Show all available commands
 make format       # Format code (black, isort, remove BOMs)
 make check        # Check formatting (what CI runs)
 make lint         # Run all linters
