@@ -126,10 +126,10 @@ def test_error_invalid_scope(test_file):
     assert "not found" in result.lower()
 
 
-def test_error_ambiguous_insert(test_file):
+def test_error_ambiguous_insert(tmp_path):
     """Test error handling for ambiguous insert point"""
     content = "\n    def func():\n        # Insert here\n        x = 1\n        # Insert here\n        y = 2\n    "
-    test_file = setup_test_file(os.path.dirname(test_file), content)
+    test_file = setup_test_file(tmp_path, content)
     result = python_edit(test_file, "z = 3", coscope_with="# Insert here")
     assert "ambiguous" in result.lower() or "multiple matches" in result.lower()
 

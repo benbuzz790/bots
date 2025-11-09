@@ -4,9 +4,12 @@ import tempfile
 import time
 import unittest
 
+import pytest
+
 from bots.tools.terminal_tools import PowerShellSession
 
 
+@pytest.mark.serial
 class TestPowerShellTimeoutDebug(unittest.TestCase):
     """Test suite specifically for debugging PowerShell timeout issues"""
 
@@ -438,6 +441,10 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
         print("\n=== Testing Process Communication Health ===")
         session = PowerShellSession()
         with session:
+            # Check if process was initialized
+            if session._process is None:
+                self.fail("PowerShell process was not initialized in __enter__")
+
             # Check if process is alive
             print(f"Process alive: {session._process.poll() is None}")
             print(f"Process PID: {session._process.pid}")

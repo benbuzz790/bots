@@ -1,5 +1,6 @@
 import os
 import tempfile
+from pathlib import Path
 from textwrap import dedent
 
 import pytest
@@ -9,14 +10,27 @@ from bots.tools.python_edit import python_edit
 
 def setup_test_file(tmp_path, content):
     """Helper to create a test file with given content"""
+    # Convert to Path if it's a string
     if isinstance(tmp_path, str):
-        os.makedirs(tmp_path, exist_ok=True)
-        test_file = os.path.join(tmp_path, "test_file.py")
-    else:
-        test_file = os.path.join(str(tmp_path), "test_file.py")
+        tmp_path = Path(tmp_path)
+
+    # pytest's tmp_path fixture already creates the directory
+    # We should NEVER need to create it in tests
+    # Only create if it truly doesn't exist (e.g., __main__ with string path)
+    if not tmp_path.exists():
+        # This should only happen when running from __main__
+        tmp_path.mkdir(parents=True, exist_ok=True)
+
+    # At this point, tmp_path must exist
+    assert tmp_path.is_dir(), f"tmp_path {tmp_path} is not a directory"
+
+    # Create the test file inside the directory
+    test_file = tmp_path / "test_file.py"
+
     with open(test_file, "w", encoding="utf-8") as f:
         f.write(dedent(content))
-    return test_file
+
+    return str(test_file)
 
 
 pytestmark = pytest.mark.integration
