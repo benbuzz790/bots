@@ -13,11 +13,22 @@ def setup_test_file(tmp_path, content):
     # Convert to Path if it's a string
     if isinstance(tmp_path, str):
         tmp_path = Path(tmp_path)
-        # Only create directory if tmp_path was a string (not from pytest fixture)
-        os.makedirs(tmp_path, exist_ok=True)
 
-    # If tmp_path is from pytest fixture, it should already exist
-    # Don't try to create it - just use it directly
+    # Ensure the directory exists, handling race conditions
+    # Use os.makedirs which is more robust in parallel execution
+    try:
+        os.makedirs(tmp_path, exist_ok=True)
+    except (FileExistsError, OSError):
+        # Race condition - another process created it
+        pass
+
+    # Verify the directory exists before creating the file
+    if not tmp_path.exists():
+        # Last resort - try one more time
+        try:
+            os.makedirs(tmp_path, exist_ok=True)
+        except (FileExistsError, OSError):
+            pass
 
     # Create the test file inside the directory
     test_file = tmp_path / "test_file.py"
