@@ -28,4 +28,4 @@ def test_invoke_signature():
     params = list(sig.parameters.keys())
     assert "bot" in params
     assert "pr_number" in params
-    assert "kwargs" in params
+    assert "_kwargs" in params
