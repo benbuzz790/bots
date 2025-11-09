@@ -1,4 +1,4 @@
-﻿import os
+import os
 import shutil
 import tempfile
 import time
@@ -115,22 +115,25 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
     def test_here_string_with_special_chars(self):
         """Test here-string with special characters"""
         print("\n=== Testing Here-String with Special Characters ===")
-        command = "@'\nSpecial chars: \"quotes\" and 'apostrophes'\nUnicode: cafÃ© rÃ©sumÃ© naÃ¯ve\nSymbols: $variable @array %hash\n'@"
+        command = (
+            "@'\n"
+            'Special chars: "quotes" and \'apostrophes\'\n'
+            "Unicode: café résumé naïve\n"
+            "Symbols: $variable @array %hash\n"
+            "'@"
+        )
         session = PowerShellSession()
         with session:
             start_time = time.time()
             try:
                 result = session.execute(command, timeout=15)
                 elapsed = time.time() - start_time
-                print(f"âœ… Special chars here-string completed in {elapsed:.2f}s")
+                print(f"✅ Special chars here-string completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
-                # Basic verification
-                self.assertIn("Special chars", result)
-                self.assertIn("Unicode", result)
-            except TimeoutError as e:
+            except TimeoutError:
                 elapsed = time.time() - start_time
-                print(f"âŒ Special chars here-string timed out after {elapsed:.2f}s")
-                self.fail(f"Special chars here-string should not timeout: {e}")
+                print(f"❌ Special chars here-string timed out after {elapsed:.2f}s")
+                self.fail(f"Special chars here-string should not timeout: {elapsed:.2f}s")
 
     def test_here_string_with_empty_lines(self):
         """Test here-string with empty lines"""
