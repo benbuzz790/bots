@@ -1,3 +1,4 @@
+from pathlib import Path
 import os
 import tempfile
 from textwrap import dedent
@@ -9,9 +10,6 @@ from bots.tools.python_edit import python_edit
 
 def setup_test_file(tmp_path, content):
     """Helper to create a test file with given content"""
-    from pathlib import Path
-    import os
-
     # Convert to Path if it's a string
     if isinstance(tmp_path, str):
         tmp_path = Path(tmp_path)
