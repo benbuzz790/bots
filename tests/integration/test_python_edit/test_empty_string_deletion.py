@@ -14,12 +14,8 @@ def setup_test_file(tmp_path, content):
     if isinstance(tmp_path, str):
         tmp_path = Path(tmp_path)
 
-    # pytest's tmp_path fixture already creates the directory
-    # We should NEVER need to create it in tests
-    # Only create if it truly doesn't exist (e.g., __main__ with string path)
-    if not tmp_path.exists():
-        # This should only happen when running from __main__
-        tmp_path.mkdir(parents=True, exist_ok=True)
+    # Ensure the directory exists (handles race conditions in parallel tests)
+    tmp_path.mkdir(parents=True, exist_ok=True)
 
     # At this point, tmp_path must exist
     assert tmp_path.is_dir(), f"tmp_path {tmp_path} is not a directory"

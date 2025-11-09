@@ -457,6 +457,10 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                     print(f"❌ Command {i} failed: {e}")
             # Check process state after tests
             print(f"Process still alive: {session._process.poll() is None}")
+if session._process is not None:
+    print(f"Process still alive: {session._process.poll() is None}")
+else:
+    print("Process is None (session was closed or never started)")
 
 
 if __name__ == "__main__":
