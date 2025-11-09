@@ -1,0 +1,9 @@
+﻿node_modules/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+__progress_reports/
+__vision/
+_work_orders/
+*.egg-info/
+.git/

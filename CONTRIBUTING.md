@@ -56,8 +56,7 @@ make clean        # Remove temporary files
 make format
 make check
 make test
-```
-## Markdown Linting
+`\n\n## Markdown Linting
 
 We use markdownlint to ensure consistent markdown formatting. The configuration is in `.markdownlint.json`.
 
