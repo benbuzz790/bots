@@ -129,6 +129,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
             except Exception as e:
                 pytest.fail(f"Unexpected error: {type(e).__name__}: {e}")
 
+    @pytest.mark.serial
     def test_whitespace_impact(self):
         """Test if leading whitespace affects here-strings"""
         print("\n=== Testing Whitespace Impact ===")
