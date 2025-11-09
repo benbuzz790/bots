@@ -34,6 +34,7 @@ class ModuleContext:
 ```
 
 Each field serves a specific purpose:
+
 - `name`: Identifies the module uniquely in the runtime
 - `source`: Enables recreation of functions when loading
 - `file_path`: Used for both real files and dynamic modules
@@ -49,6 +50,7 @@ def add_tool(self, func: Callable) -> None:
 ```
 
 Process:
+
 1. Generate tool schema (for LLM)
 2. Check for existing module context
 3. Handle different function types:
@@ -61,15 +63,18 @@ Process:
 #### Function Type Handling
 
 a) Built-in Functions:
+
 ```python
 if inspect.isbuiltin(func) or inspect.ismethoddescriptor(func):
     source = self._create_builtin_wrapper(func)
     context = {}
 ```
+
 - Creates wrapper to handle built-in function limitations
 - Empty context as built-ins have global availability
 
 b) Regular Functions:
+
 ```python
 try:
     source = inspect.getsource(func)
@@ -80,6 +85,7 @@ try:
                   for name in names
                   if name in func.__globals__}
 ```
+
 - Captures source code
 - Preserves necessary global variables
 - Maintains imports and dependencies
@@ -87,6 +93,7 @@ try:
 ### 2. Module Addition (`_add_tools_from_file`)
 
 Process:
+
 1. Read file content
 2. Parse AST for function definitions
 3. Create module namespace
@@ -94,11 +101,13 @@ Process:
 5. Add individual functions
 
 #### AST Parsing Purpose
+
 ```python
 tree = ast.parse(source)
 function_nodes = [node for node in ast.walk(tree)
                  if isinstance(node, ast.FunctionDef)]
 ```
+
 - Identifies top-level functions before execution
 - Ensures consistent order of tool addition
 - Provides safety check before execution
@@ -107,22 +116,30 @@ function_nodes = [node for node in ast.walk(tree)
 ### 3. Dynamic Module Handling (`_add_tools_from_module`)
 
 Handles modules that exist only in memory:
+
 1. Check for file path or source attribute
 2. Create dynamic module name
 3. Execute source in new namespace
 4. Register functions as tools
 
 ## Function Serialization Strategy
+
 ### Overview
+
 We use a **hybrid serialization approach** that handles different function types optimally:
+
 1. **Regular Functions**: Source code + context (portable, secure, readable)
 2. **Helper Functions**: Attempted dill serialization with source code fallback
 3. **Dynamic Functions**: Attempted dill serialization with source code fallback
 4. **Imported Callables**: Attempted dill serialization with source code fallback
+
 ### Why This Strategy?
+
 #### Problem Solved
+
 **Critical Bug**: Helper functions were being lost during save/load cycles because they exist in module globals, not in the reconstructed source code.
 **Example**:
+
 ```python
 # Original module contains:
 def _convert_tool_inputs(...): pass  # Helper function
@@ -133,8 +150,11 @@ def view_dir(...):
 # ? _convert_tool_inputs() LOST - not in source!
 # ?? Result: "name '_convert_tool_inputs' is not defined"
 ```
+
 ### Serialization Details
+
 #### 1. Regular Functions (Source Code Strategy)
+
 ```python
 # Serialization
 source = inspect.getsource(func)  # Get source code
@@ -149,13 +169,18 @@ modules[file_path] = {
 exec(source, module.__dict__)  # Recreate main functions
 _deserialize_globals(module.__dict__, globals)  # Restore helpers
 ```
+
 **Why Source Code?**
+
 - ? **Portable**: Works across Python versions and environments
 - ? **Secure**: Human-readable, can be inspected
 - ? **Maintainable**: Easy to debug and modify
 - ? **Efficient**: Compact storage for large functions
+
 #### 2. Helper Functions, Dynamic Functions, and Imported Callables (Hybrid Strategy)
+
 **Serialization** (_serialize_globals):
+
 ```python
 elif k.startswith('_') and callable(v):
     try:
@@ -166,7 +191,9 @@ elif k.startswith('_') and callable(v):
     except Exception as e:
         print(f'Warning: Could not dill serialize helper function {k}: {e}')
 ```
+
 **Deserialization** (_deserialize_globals):
+
 ```python
 elif isinstance(v, dict) and v.get('__helper_func__'):
     try:
@@ -177,7 +204,9 @@ elif isinstance(v, dict) and v.get('__helper_func__'):
         # Silently skip - source code execution will handle this
         pass
 ```
+
 **Why This Approach?**
+
 - ? **Optimistic**: Try dill first for same-runtime scenarios (e.g., branching)
 - ? **Graceful Fallback**: Source code execution recreates functions if dill fails
 - ? **Silent Failures**: No warnings for expected failures (dynamic modules across runtimes)
@@ -195,7 +224,9 @@ elif isinstance(v, dict) and v.get('__helper_func__'):
 - All functions referenced in the source code are recreated automatically
 - Only truly missing functions would cause errors during execution
 - Warnings would be noise since the fallback is automatic and reliable
+
 #### 3. Dynamic Functions (Similar Hybrid Strategy)
+
 ```python
 # Serialization (_serialize_dynamic_function)
 def _serialize_dynamic_function(self, func: Callable) -> Dict[str, Any]:
@@ -212,12 +243,16 @@ def _serialize_dynamic_function(self, func: Callable) -> Dict[str, Any]:
     except Exception:
         return self._serialize_function_metadata(func)  # Fallback
 ```
+
 **Why dill attempt for Dynamic Functions?**
+
 - ? **Works in same-runtime**: Useful for branching operations
 - ? **Preserves state**: Closures, captured variables when possible
 - ? **Verified**: Hash checking prevents tampering
 - ? **Fallback**: Graceful degradation to source code or metadata
+
 ### Serialization Flow
+
 ```
 Bot.save()
 +-- Regular Functions
@@ -230,7 +265,9 @@ Bot.load() or Branch
 +-- exec(source) ? Recreate all functions from source code
 +-- Verify hashes ? Ensure integrity
 ```
+
 ### Benefits of Hybrid Strategy
+
 1. **Best of Both Worlds**:
    - dill deserialization attempted first (fast, works in same-runtime)
    - Source code execution as automatic fallback (reliable, works cross-runtime)
@@ -246,9 +283,11 @@ Bot.load() or Branch
    - Can handle new function types
    - Extensible serialization framework
    - Maintains backward compatibility
+
 ## Error Handling
 
 Hierarchical error system:
+
 ```python
 class ToolHandlerError(Exception):
     """Base exception class for ToolHandler errors"""
@@ -264,11 +303,13 @@ class ModuleLoadError(ToolHandlerError):
 ```
 
 Purpose:
+
 - `ToolHandlerError`: Base class for categorizing errors
 - `ToolNotFoundError`: Specific to missing tools
 - `ModuleLoadError`: Handles module loading failures
 
 Benefits:
+
 - Enables specific error handling
 - Facilitates debugging
 - Maintains API consistency

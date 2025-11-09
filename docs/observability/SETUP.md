@@ -214,7 +214,7 @@ export BOTS_OTEL_ENDPOINT=http://localhost:4317
 
 **4. Run your bot and view traces:**
 
-Open http://localhost:16686 in your browser.
+Open <http://localhost:16686> in your browser.
 
 ### Using Jaeger Exporter Directly
 
@@ -343,8 +343,8 @@ export BOTS_OTEL_ENDPOINT=http://localhost:4317
 
 **6. Access dashboards:**
 
-- Grafana: http://localhost:3000 (admin/admin)
-- Prometheus: http://localhost:9090
+- Grafana: <http://localhost:3000> (admin/admin)
+- Prometheus: <http://localhost:9090>
 
 ### Grafana Dashboard Setup
 
@@ -360,6 +360,7 @@ export BOTS_OTEL_ENDPOINT=http://localhost:4317
 Create a new dashboard with these panels:
 
 **API Call Duration:**
+
 ```promql
 histogram_quantile(0.95, 
   rate(bot_api_call_duration_bucket[5m])
@@ -367,16 +368,19 @@ histogram_quantile(0.95,
 ```
 
 **Total Cost:**
+
 ```promql
 sum(rate(bot_cost_total_usd[5m])) * 60
 ```
 
 **Error Rate:**
+
 ```promql
 rate(bot_errors_total[5m])
 ```
 
 **Token Usage:**
+
 ```promql
 rate(bot_tokens_used[5m])
 ```
@@ -637,12 +641,14 @@ receivers:
 #### Alert Severity Levels
 
 **Critical** (Immediate action required):
+
 - Cost rate > $0.50/min
 - Error rate > 1.0/sec
 - P95 latency > 60s
 - Success rate < 90%
 
 **Warning** (Investigation needed):
+
 - Cost rate > $0.10/min
 - Daily budget exceeded
 - Error rate > 0.1/sec
@@ -650,6 +656,7 @@ receivers:
 - Success rate < 95%
 
 **Info** (Awareness only):
+
 - No recent API calls
 - Unusual patterns detected
 
@@ -663,9 +670,11 @@ Grafana also supports alerting directly from dashboards:
 - Go to Alert tab
 - Click "Create Alert"
 - Set conditions:
+
   ```
   WHEN avg() OF query(A, 5m, now) IS ABOVE 30
   ```
+
 - Configure notifications
 
 **2. Set up notification channels:**
@@ -715,23 +724,27 @@ Grafana also supports alerting directly from dashboards:
 #### Alert Best Practices
 
 **1. Tune thresholds based on your usage:**
+
 - Start with conservative thresholds
 - Monitor false positive rate
 - Adjust based on actual patterns
 - Document threshold rationale
 
 **2. Use appropriate time windows:**
+
 - Short windows (2-5m) for critical alerts
 - Longer windows (5-15m) for warnings
 - Consider business hours vs. off-hours
 
 **3. Implement alert fatigue prevention:**
+
 - Group related alerts
 - Use appropriate repeat intervals
 - Implement alert dependencies
 - Auto-resolve when conditions clear
 
 **4. Test your alerts:**
+
 ```bash
 # Simulate high cost rate
 for i in {1..100}; do
@@ -743,6 +756,7 @@ curl http://localhost:9090/api/v1/alerts
 ```
 
 **5. Document alert response procedures:**
+
 - What does each alert mean?
 - Who should respond?
 - What are the troubleshooting steps?
@@ -835,6 +849,7 @@ receivers:
         headers:
           Subject: '[{{ .Status | toUpper }}] {{ .CommonAnnotations.summary }}'
 ```
+
 ---
 
 ## Cloud Provider Integration
@@ -1008,6 +1023,7 @@ pip list | grep opentelemetry
 ```
 
 **Expected packages:**
+
 - opentelemetry-api
 - opentelemetry-sdk
 - opentelemetry-exporter-otlp-proto-grpc (for OTLP)

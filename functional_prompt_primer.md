@@ -29,14 +29,17 @@ Functional prompts are higher-level functions that orchestrate bot interactions 
 ### 1. Sequential Processing
 
 #### `chain(bot, prompts)`
+
 Executes prompts in sequence, where each step builds on previous context.
 
 **Use when you need to:**
+
 - Guide through structured steps
 - Build complex reasoning progressively
 - Maintain context between related prompts
 
 **Example:**
+
 ```python
 responses, nodes = chain(bot, [
     "Find and read cli.py",
@@ -46,14 +49,17 @@ responses, nodes = chain(bot, [
 ```
 
 #### `prompt_while(bot, first_prompt, continue_prompt, stop_condition)`
+
 Repeats a prompt until a condition is met.
 
 **Use when you need to:**
+
 - Work iteratively on a task
 - Continue until specific criteria are met
 - Handle tasks with unknown completion time
 
 **Example:**
+
 ```python
 responses, nodes = prompt_while(
     bot,
@@ -66,14 +72,17 @@ responses, nodes = prompt_while(
 ### 2. Parallel Exploration
 
 #### `branch(bot, prompts)`
+
 Creates independent conversation paths from the current state.
 
 **Use when you need to:**
+
 - Work on multiple related files or tasks
 - Reset context to a certain point in the conversation, creating a single new branch to work from.
 - Generate diverse solutions without cross-influence
 
 **Example:**
+
 ```python
 responses, nodes = branch(bot, [
     "Analyze from a security perspective...",
@@ -83,22 +92,27 @@ responses, nodes = branch(bot, [
 ```
 
 #### `par_branch(bot, prompts)`
+
 Parallel version of branch().
 
 **Use when you need:**
+
 - Faster processing of multiple prompts
 
 ### 3. Advanced Reasoning
 
 #### `tree_of_thought(bot, prompts, recombinator_function)`
+
 Implements tree-of-thought reasoning: branch, explore, then synthesize.
 
 **Use when you need to:**
+
 - Break down complex problems into multiple perspectives, then merge those perspectives
 - Synthesize insights from parallel explorations
 - Make decisions requiring multiple factors
 
 **Example:**
+
 ```python
 def combine_analysis(responses, nodes):
     # Simple concatenation
@@ -127,6 +141,7 @@ Functional prompts use condition functions to control iteration:
 - `conditions.said_DONE` - Stop when response contains "DONE"
 
 **Custom conditions:**
+
 ```python
 def quality_threshold(bot):
     return "i am done" in bot.conversation.content.lower()
@@ -144,9 +159,11 @@ responses, nodes = prompt_while(
 ### Dynamic Prompts
 
 #### `prompt_for(bot, items, dynamic_prompt, should_branch)`
+
 Generates prompts dynamically from data.
 
 **Example:**
+
 ```python
 def review_prompt(filename):
     return f"Review {filename} for security issues."
@@ -162,14 +179,17 @@ responses, nodes = prompt_for(
 ### Multi-Bot dispatch
 
 #### `par_dispatch(bot_list, functional_prompt, **kwargs)`
+
 Execute any functional prompt across multiple bots in parallel.
 
 **Use when you need to:**
+
 - Run a flow on each of a number of 'primed' bots.
 - Compare different LLM providers
 - Test multiple configurations
 
 **Example:**
+
 ```python
 
 bot = AnthropicBot()
@@ -195,9 +215,11 @@ results = par_dispatch(
 ### Conversation Tree Operations
 
 #### `broadcast_to_leaves(bot, prompt, skip, continue_prompt, stop_condition)`
+
 Send prompts to all leaf nodes (conversation endpoints) in parallel.
 
 **Use when you need to:**
+
 - Continue multiple conversation branches
 - Apply operations to all endpoints
 - E.g. After making a set of files, broadcast an instruction to write tests.
@@ -280,6 +302,7 @@ responses, nodes = prompt_for(
 - **Custom conditions**: Tailor to specific completion criteria
 
 ### 3. Continue Prompt
+
 - **'ok'** is the best general purpose continue prompt. It does not anchor toward action (like 'continue' does) or stopping (like 'stop if <condition>' does).
 
 ### 4. Performance Considerations
@@ -299,13 +322,16 @@ The functional prompts integrate seamlessly with the CLI system:
 ```
 
 The CLI provides:
+
 - Interactive parameter collection
 - Real-time tool result display
 - Conversation tree navigation
 - Error recovery with backups
 
 ## Common Patterns and Recipes
+
 ### 1. Single Agentic Task (Most Common)
+
 ```python
 # The most common functional prompt pattern - let the bot work autonomously
 responses, nodes = prompt_while(
@@ -317,12 +343,14 @@ responses, nodes = prompt_while(
 ```
 
 This is the bread-and-butter pattern for all agentic tasks. The bot will:
+
 - Start working on the initial task
 - Continue iterating with "ok" prompts until it stops using tools
 - (Current SOTA LLMs will) Give a summary without using a tool when complete.
 - Handle complex multi-step processes autonomously
 
 ### 2. List and Execute Pattern
+
 ```python
 # First, get a list of tasks
 task_response = bot.respond("Break down this project into 5-7 specific, parallelizable, actionable tasks. List them clearly with numbers and periods: 1. task, 2. task, 3. task, etc.")
@@ -348,11 +376,13 @@ responses, nodes = par_branch_while(
 ```
 
 This pattern is excellent for:
+
 - Breaking down complex tasks into parallel work
 - Ensuring all subtasks reference the same master list
 - Maximizing parallelization while maintaining context
 
 ### 3. List and Execute (Simplified)
+
 ```python
 # Alternative approach using prompt_for with dynamic prompts
 def task_prompt(task_number):
@@ -370,8 +400,8 @@ responses, nodes = prompt_for(
 )
 ```
 
-
 ### Iterative Refinement
+
 ```python
 # Keep improving until quality threshold is met
 def quality_check(bot):

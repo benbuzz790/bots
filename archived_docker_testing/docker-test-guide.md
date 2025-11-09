@@ -4,11 +4,12 @@ This guide shows you how to run your pytest suite in a Docker container to preve
 
 ## Step 1: Install Docker Desktop (Windows)
 
-1. Download Docker Desktop from: https://www.docker.com/products/docker-desktop/
+1. Download Docker Desktop from: <https://www.docker.com/products/docker-desktop/>
 2. Run the installer and follow the setup wizard
 3. Restart your computer when prompted
 4. Launch Docker Desktop and wait for it to start
 5. Verify installation by opening PowerShell and running:
+
    ```powershell
    docker --version
    ```
@@ -20,7 +21,6 @@ Your project now has these Docker-related files:
 - **`Dockerfile`** - Defines the container environment
 - **`run_tests_docker.bat`** - Windows batch script to run tests
 - **`run_tests_docker.sh`** - Linux/Mac script (for reference)
-
 
 ## Step 3: Running Tests in Docker
 
@@ -75,18 +75,22 @@ docker system prune
 ## Troubleshooting
 
 **"docker: command not found"**
+
 - Docker Desktop isn't installed or running
 - Restart Docker Desktop and wait for it to fully start
 
 **"Cannot connect to Docker daemon"**
+
 - Docker Desktop isn't running
 - Check the system tray for Docker icon
 
 **Tests fail in container but work locally**
+
 - Check if you have local environment variables or files not copied to container
 - Add any missing files to the Dockerfile COPY commands
 
 **Container builds slowly**
+
 - First build takes time to download Python image
 - Subsequent builds are much faster due to Docker caching
 
@@ -95,6 +99,7 @@ docker system prune
 Your tests may need API keys or other environment variables. Here's how to set them up:
 
 1. **Edit the `.env` file** in your project root:
+
    ```
    ANTHROPIC_API_KEY=your_actual_anthropic_key_here
    OPENAI_API_KEY=your_actual_openai_key_here
