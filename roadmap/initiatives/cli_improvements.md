@@ -169,7 +169,7 @@ bots plugin load my_custom_tools.py
 - Double-clicking .bot files doesn't work
 **Implementation Approach:**
 ### Phase 1: Console Entry Point
-`python
+```python
 # setup.py
 setup(
     ...
@@ -179,7 +179,7 @@ setup(
         ],
     },
 )
-`
+```
 Creates ots-cli command available system-wide.
 ### Phase 2: Platform-Specific File Associations
 **Windows:**

@@ -150,19 +150,19 @@ markers =
     serial: Tests that must run serially
 addopts = -v --strict-markers
 timeout = 600
-`
+```
 ### 2. Centralized Fixtures
 **fixtures/bot_fixtures.py:**
 - mock_bot - MockBot for unit tests
 - 
-eal_anthropic_bot - Real AnthropicBot for integration tests
+real_anthropic_bot - Real AnthropicBot for integration tests
 - 
-eal_openai_bot - Real OpenAIBot for integration tests
+real_openai_bot - Real OpenAIBot for integration tests
 - 
-eal_gemini_bot - Real GeminiBot for integration tests
+real_gemini_bot - Real GeminiBot for integration tests
 **fixtures/file_fixtures.py:**
-- 	emp_dir - Temporary directory with auto-cleanup
-- 	emp_file - Temporary file with auto-cleanup
+- temp_dir - Temporary directory with auto-cleanup
+- temp_file - Temporary file with auto-cleanup
 - sample_python_file - Sample Python file for testing
 **fixtures/tool_fixtures.py:**
 - Tool mocks and fixtures for testing tool execution
