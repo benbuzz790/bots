@@ -57,9 +57,9 @@ Your workflow:
 
 4. FIX ISSUES
    Linting issues:
-   - Run formatters: black . && isort . && python -m bots.dev.remove_boms
+   - Run formatters: black . && isort . && markdownlint --fix . && python -m bots.dev.remove_boms
    - Check: black --check --diff . && isort --check-only --diff . &&
-     flake8 . --count --statistics --show-source
+     flake8 . --count --statistics --show-source && markdownlint .
 
    Test failures:
    - Read the failing test file
@@ -77,6 +77,7 @@ IMPORTANT NOTES:
 - Always post an update comment when done
 - Version mismatch: CI may have different linter versions, update local:
   pip install --upgrade black isort flake8
+  npm install -g markdownlint-cli
 """
     bot.set_system_message(system_message.strip())
 
@@ -134,7 +135,7 @@ def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, Conversation
         '"error|FAILED|would reformat|AssertionError|E[0-9]{3}|F[0-9]{3}" -Context 2,2',
         "Try to extract any coderabbit comments: python -m bots.dev.pr_comment_parser <REPO> "
         f"{pr_number}. Read and understand the AI prompts.",
-        "Use branch_self to fix the identified issues. For linting: run black, isort, and remove_boms. "
+        "Use branch_self to fix the identified issues. For linting: run black, isort, markdownlint, and remove_boms. "
         "For test failures: read the test file, understand the issue, and fix it. For coderabbit comments, "
         "make the suggested change unless it seems at odds with the code intent. You should branch "
         "for each task or related group of tasks and clear everything up in parallel. You branch_self tool "
@@ -144,7 +145,7 @@ def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, Conversation
         "to be too specific with your task description - but you do with def of done and reporting reqs. Take "
         "your time and work step by step. Be sure to gather sufficient context before implementing a fix.",
         "Verify your fixes, then run the linters again to confirm: black --check --diff . && "
-        "isort --check-only --diff . && flake8 . --count --statistics --show-source",
+        "isort --check-only --diff . && flake8 . --count --statistics --show-source && markdownlint .",
         f"Post an update comment to PR #{pr_number} summarizing what you fixed: "
         f'gh pr comment {pr_number} --body "## Update: [your summary here]".',
         "Finally, push. Thanks for your hard work.",
