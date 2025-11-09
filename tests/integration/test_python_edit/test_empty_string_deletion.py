@@ -1,6 +1,6 @@
-from pathlib import Path
 import os
 import tempfile
+from pathlib import Path
 from textwrap import dedent
 
 import pytest
