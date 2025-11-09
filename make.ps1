@@ -30,13 +30,13 @@ function Format-Code {
     black .
     isort .
     python -m bots.dev.remove_boms
-    markdownlint --fix "**/*.md" --ignore node_modules
+    markdownlint --fix "**/*.md" --ignore node_modules --ignore __pycache__ --ignore .mypy_cache --ignore .pytest_cache
 }
 function Check-Format {
     black --check --diff .
     isort --check-only --diff .
     flake8 . --count --statistics --show-source
-    markdownlint "**/*.md" --ignore node_modules
+    markdownlint "**/*.md" --ignore node_modules --ignore __pycache__ --ignore .mypy_cache --ignore .pytest_cache
 }
 function Run-Tests {
     pytest tests/ -v --cov=bots --cov-report=term-missing --cov-report=xml

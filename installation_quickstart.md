@@ -6,14 +6,14 @@
 
 ```bash
 pip install git+https://github.com/benbuzz790/bots.git
-```n
+```
 ### Development Installation
 
 ```bash
 git clone https://github.com/benbuzz790/bots.git
 cd bots
 pip install -e .[dev]
-```n
+```
 ### Requirements
 
 - Python 3.12+
@@ -27,7 +27,7 @@ Set your API key as an environment variable:
 `powershell
 $env:ANTHROPIC_API_KEY="your-api-key-here"
 $env:OPENAI_API_KEY="your-api-key-here"
-```n
+```
 ## Usage Patterns: From Basic to Advanced
 
 ### Level 1: Basic Bot Interaction
@@ -217,7 +217,7 @@ responses, nodes = fp.prompt_for(
     review_prompt,
     should_branch=True  # Parallel processing
 )
-```n
+```
 ### Level 5: CLI Integration and Advanced Navigation
 
 #### Advanced CLI Usage

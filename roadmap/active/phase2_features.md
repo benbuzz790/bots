@@ -1,4 +1,4 @@
-# Phase 2: Core Features & Expansion
+﻿# Phase 2: Core Features & Expansion
 
 **Status:** 1/8 Partial (12.5%)  
 **Priority:** Medium  
@@ -12,11 +12,11 @@ Phase 2 focuses on expanding core capabilities through industry standards integr
 
 ---
 
-## Partial Items ⚠️
+## Partial Items âš ï¸
 
 ### Item 10: Expand self_tools Beyond branch_self
 
-**Status:** ⚠️ PARTIAL (PR #125, Oct 13, 2025)
+**Status:** âš ï¸ PARTIAL (PR #125, Oct 13, 2025)
 
 **Delivered:**
 
@@ -47,11 +47,11 @@ Phase 2 focuses on expanding core capabilities through industry standards integr
 
 ---
 
-## Not Started ❌
+## Not Started âŒ
 
 ### Item 13: MCP Integration (Model Context Protocol)
 
-**Status:** ❌ NOT STARTED
+**Status:** âŒ NOT STARTED
 
 **Goal:** Integrate MCP as both client and server
 
@@ -125,7 +125,7 @@ Phase 2 focuses on expanding core capabilities through industry standards integr
 
 ### Item 15: LiteLLM Integration for Provider Expansion
 
-**Status:** ❌ NOT STARTED
+**Status:** âŒ NOT STARTED
 
 **Goal:** Use LiteLLM as unified API layer for 100+ LLM providers
 
@@ -188,7 +188,7 @@ Create LiteLLMBot class that uses litellm.completion() for all providers
 
 ### Item 48: Functional Prompts on Specific Branches
 
-**Status:** ❌ NOT STARTED
+**Status:** âŒ NOT STARTED
 
 **Goal:** Enable applying any functional prompt to specific nodes in conversation tree
 
@@ -235,7 +235,7 @@ Create context manager for cleaner syntax when working with specific nodes.
 
 ### Item 41: Repository-Level Tools
 
-**Status:** ❌ NOT STARTED
+**Status:** âŒ NOT STARTED
 
 **Goal:** Tools that operate on entire codebase rather than individual files
 
@@ -310,7 +310,7 @@ Create context manager for cleaner syntax when working with specific nodes.
 
 ### Item 6: Configure CLI More Thoroughly
 
-**Status:** ❌ NOT STARTED
+**Status:** âŒ NOT STARTED
 
 **Goal:** Comprehensive configuration system with plugin support
 
@@ -333,7 +333,7 @@ Create context manager for cleaner syntax when working with specific nodes.
 
 ### Item 16: Centralized File-Writing Wrapper
 
-**Status:** ❌ NOT STARTED
+**Status:** âŒ NOT STARTED
 
 **Goal:** Wrapper with BOM removal logic (for all tools using toolify decorator?)
 
@@ -345,7 +345,7 @@ Create context manager for cleaner syntax when working with specific nodes.
 
 ### Item 18: Bot Requirements System
 
-**Status:** ❌ NOT STARTED
+**Status:** âŒ NOT STARTED
 
 **Goal:** bot.requirements parameter for tool dependencies
 
