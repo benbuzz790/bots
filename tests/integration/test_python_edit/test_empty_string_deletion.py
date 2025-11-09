@@ -125,7 +125,7 @@ def test_empty_string_deletes_class(tmp_path):
     assert "method3" in content
 
 
-@pytest.mark.serial
+@pytest.mark.xdist_group("serial")
 def test_empty_string_deletes_method(tmp_path):
     """Test that empty string deletes specific method from class"""
     content = """

@@ -4,18 +4,16 @@
 
 ### Basic Installation
 
-`bash
+```bash
 pip install git+https://github.com/benbuzz790/bots.git
-`
-
+```n
 ### Development Installation
 
-`bash
+```bash
 git clone https://github.com/benbuzz790/bots.git
 cd bots
 pip install -e .[dev]
-`
-
+```n
 ### Requirements
 
 - Python 3.12+
@@ -29,15 +27,14 @@ Set your API key as an environment variable:
 `powershell
 $env:ANTHROPIC_API_KEY="your-api-key-here"
 $env:OPENAI_API_KEY="your-api-key-here"
-`
-
+```n
 ## Usage Patterns: From Basic to Advanced
 
 ### Level 1: Basic Bot Interaction
 
 #### Simple Tool Creation and Usage
 
-```python
+`````python
 import bots
 def read_file(file_path: str) -> str:
     """Read and return file contents.
@@ -64,7 +61,7 @@ print(response)
 
 #### Interactive Chat
 
-```python
+`````python
 # Start interactive terminal chat
 bot.chat()
 ```
@@ -73,7 +70,7 @@ bot.chat()
 
 #### Using Built-in Tool Modules
 
-```python
+`````python
 import bots
 import bots.tools.code_tools as code_tools
 bot = bots.AnthropicBot()
@@ -87,7 +84,7 @@ response = bot.respond("Create a Flask app in app.py with basic routing")
 
 #### Bot State Persistence
 
-```python
+`````python
 import bots
 import bots.tools.code_tools as code_tools
 
@@ -111,7 +108,7 @@ expert_bot.respond("Create comprehensive tests for the main module")
 
 #### Sequential Processing (Chain)
 
-```python
+`````python
 import bots.flows.functional_prompts as fp
 bot = bots.AnthropicBot()
 bot.add_tools(code_tools)
@@ -129,7 +126,7 @@ for i, response in enumerate(responses):
 
 #### Parallel Exploration (Branch)
 
-```python
+`````python
 # Explore multiple approaches without cross-contamination
 responses, nodes = fp.branch(bot, [
     "Analyze the code for security issues",
@@ -144,7 +141,7 @@ for analysis_type, response in zip(['Security', 'Performance', 'Maintainability'
 
 #### Iterative Refinement (Autonomous Mode)
 
-```python
+`````python
 # Let the bot work autonomously until completion
 responses, nodes = fp.prompt_while(
     bot,
@@ -159,7 +156,7 @@ print(f"Completed in {len(responses)} iterations")
 
 #### Tree-of-Thought Reasoning
 
-```python
+`````python
 def combine_analyses(responses, nodes):
     """Synthesize multiple analysis perspectives"""
     combined = "\\n".join(f"{r}" for r in responses)
@@ -179,7 +176,7 @@ response, node = fp.tree_of_thought(
 
 #### Multi-Bot Parallel Dispatch
 
-```python
+`````python
 # Create specialized bots for different tasks
 base_bot = bots.AnthropicBot()
 base_bot.add_tools(code_tools)
@@ -208,7 +205,7 @@ results = fp.par_dispatch(
 
 #### Dynamic Prompt Generation
 
-```python
+`````python
 # Generate prompts from data
 files = ["auth.py", "api.py", "models.py", "utils.py"]
 def review_prompt(filename):
@@ -220,8 +217,7 @@ responses, nodes = fp.prompt_for(
     review_prompt,
     should_branch=True  # Parallel processing
 )
-`
-
+```n
 ### Level 5: CLI Integration and Advanced Navigation
 
 #### Advanced CLI Usage
@@ -267,7 +263,7 @@ Select stop condition:
 
 #### Basic Lazy Functions
 
-```python
+`````python
 from bots import lazy
 @lazy("Implement quicksort with detailed comments")
 def quicksort(arr: list[int]) -> list[int]:
@@ -279,7 +275,7 @@ print(result)  # [1, 1, 2, 3, 4, 5, 6, 9]
 
 #### Advanced Lazy with Context
 
-```python
+`````python
 @lazy(
     "Implement a thread-safe LRU cache with TTL support",
     context='high',  # Include full codebase context
@@ -296,7 +292,7 @@ cache.put("key", "value")
 
 #### Complete Project Analysis Pipeline
 
-```python
+`````python
 import bots
 import bots.flows.functional_prompts as fp
 import bots.tools.code_tools as code_tools
@@ -331,7 +327,7 @@ print(f"Generated {len(analyses)} comprehensive reports")
 
 #### Continuous Integration Workflow
 
-```python
+`````python
 # CI/CD bot that can be triggered by webhooks
 ci_bot = bots.AnthropicBot(name="ci_assistant")
 ci_bot.add_tools([code_tools, testing_tools, deployment_tools])

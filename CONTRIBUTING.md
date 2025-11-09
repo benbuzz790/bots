@@ -57,6 +57,27 @@ make format
 make check
 make test
 ```
+## Markdown Linting
+
+We use markdownlint to ensure consistent markdown formatting. The configuration is in `.markdownlint.json`.
+
+### Disabled Rules
+
+The following markdownlint rules are intentionally disabled for this project:
+
+- **MD013** (line-length): Disabled to allow long lines in narrative-style documentation for better readability
+- **MD036** (no-emphasis-as-heading): Disabled to allow emphasis like "**bots built bots**" without treating it as a heading
+- **MD024** (no-duplicate-heading): Disabled because documentation naturally has repeated section headings (e.g., "Overview", "Benefits")
+- **MD040** (fenced-code-language): Disabled to allow code blocks without language specification for generic examples
+- **MD003** (heading-style): Disabled to allow both ATX (#) and Setext (underline) heading styles
+- **MD025** (single-title/single-h1): Disabled to allow multiple H1 headings in long documentation files
+- **MD029** (ol-prefix): Disabled to allow flexible ordered list numbering
+- **MD001** (heading-increment): Disabled to allow skipping heading levels when appropriate for document structure
+- **MD033** (no-inline-html): Disabled to allow inline HTML when needed for formatting
+- **MD051** (link-fragments): Disabled because some internal links may not validate correctly
+
+These rules can be re-enabled if the project style guide changes. To modify the rules, edit `.markdownlint.json`.
+
 
 ## Reporting Issues
 

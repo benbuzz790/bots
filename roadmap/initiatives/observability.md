@@ -1,6 +1,6 @@
-# Observability Initiative
+﻿# Observability Initiative
 
-**Status:** Phases 1-3 Complete ✅ | Phase 4 Pending ⚠️  
+**Status:** Phases 1-3 Complete âœ… | Phase 4 Pending âš ï¸  
 **Last Updated:** November 8, 2025
 
 ## Overview
@@ -9,14 +9,14 @@ Complete OpenTelemetry integration for production-ready observability across all
 
 ## Related Items
 
-- **Item 11:** Remove print statements - ✅ DONE (PR #114, Oct 6, 2025)
-- **Item 12:** Callbacks - ✅ DONE (WO015, Oct 10, 2025)
-- **Item 14:** OpenTelemetry Integration - ⚠️ PARTIAL (Phases 1-3 complete, Phase 4 pending)
+- **Item 11:** Remove print statements - âœ… DONE (PR #114, Oct 6, 2025)
+- **Item 12:** Callbacks - âœ… DONE (WO015, Oct 10, 2025)
+- **Item 14:** OpenTelemetry Integration - âš ï¸ PARTIAL (Phases 1-3 complete, Phase 4 pending)
 See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-14)
 
 ## Status Summary
 
-### Completed ✅
+### Completed âœ…
 
 **Phase 1: Basic Tracing** (PR #114)
 
@@ -42,7 +42,7 @@ See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-14)
 - ProgressCallbacks for user-facing indicators
 - Full integration with all bot providers
 
-### Pending ⚠️
+### Pending âš ï¸
 
 **Phase 4: Production Observability**
 
@@ -75,12 +75,12 @@ See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-14)
 
 ### Architecture
 
-`
+```text
 Bot Operation
-    ├─ Tracing (spans for each operation)
-    ├─ Logging (structured logs with context)
-    ├─ Metrics (performance, usage, cost)
-    └─ Callbacks (progress indicators, custom hooks)
+    â”œâ”€ Tracing (spans for each operation)
+    â”œâ”€ Logging (structured logs with context)
+    â”œâ”€ Metrics (performance, usage, cost)
+    â””â”€ Callbacks (progress indicators, custom hooks)
 `
 
 ### Key Components
@@ -126,13 +126,13 @@ Bot Operation
 
 ## Success Metrics
 
-- ✅ All print statements removed (Item 11)
-- ✅ Callback system implemented (Item 12)
-- ✅ Tracing infrastructure complete (Phase 1)
-- ✅ Structured logging complete (Phase 2)
-- ✅ Metrics collection complete (Phase 3)
-- ⚠️ Production observability pending (Phase 4)
-- ✅ 98.3% test pass rate (173/176 tests)
+- âœ… All print statements removed (Item 11)
+- âœ… Callback system implemented (Item 12)
+- âœ… Tracing infrastructure complete (Phase 1)
+- âœ… Structured logging complete (Phase 2)
+- âœ… Metrics collection complete (Phase 3)
+- âš ï¸ Production observability pending (Phase 4)
+- âœ… 98.3% test pass rate (173/176 tests)
 
 ## Next Steps
 

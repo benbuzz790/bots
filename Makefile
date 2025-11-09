@@ -1,4 +1,4 @@
-﻿.PHONY: help install install-dev format check lint test test-fast clean
+.PHONY: help install install-dev format check lint test test-fast clean
 help:
 	@echo "Bots Development Commands"
 	@echo "========================="
@@ -21,12 +21,12 @@ format:
 	black .
 	isort .
 	python -m bots.dev.remove_boms
-	markdownlint --fix **/*.md --ignore node_modules
+	markdownlint --fix **/*.md --ignore node_modules --ignore __pycache__ --ignore .mypy_cache --ignore .pytest_cache
 check:
 	black --check --diff .
 	isort --check-only --diff .
 	flake8 . --count --statistics --show-source
-	markdownlint **/*.md --ignore node_modules
+	markdownlint **/*.md --ignore node_modules --ignore __pycache__ --ignore .mypy_cache --ignore .pytest_cache
 lint: check
 test:
 	pytest tests/ -v --cov=bots --cov-report=term-missing --cov-report=xml
