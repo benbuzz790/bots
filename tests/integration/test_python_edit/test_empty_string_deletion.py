@@ -9,14 +9,25 @@ from bots.tools.python_edit import python_edit
 
 def setup_test_file(tmp_path, content):
     """Helper to create a test file with given content"""
+    from pathlib import Path
+    import os
+
+    # Convert to Path if it's a string
     if isinstance(tmp_path, str):
+        tmp_path = Path(tmp_path)
+        # Only create directory if tmp_path was a string (not from pytest fixture)
         os.makedirs(tmp_path, exist_ok=True)
-        test_file = os.path.join(tmp_path, "test_file.py")
-    else:
-        test_file = os.path.join(str(tmp_path), "test_file.py")
+
+    # If tmp_path is from pytest fixture, it should already exist
+    # Don't try to create it - just use it directly
+
+    # Create the test file inside the directory
+    test_file = tmp_path / "test_file.py"
+
     with open(test_file, "w", encoding="utf-8") as f:
         f.write(dedent(content))
-    return test_file
+
+    return str(test_file)
 
 
 pytestmark = pytest.mark.integration
