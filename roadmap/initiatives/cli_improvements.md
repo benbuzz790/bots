@@ -1,4 +1,4 @@
-﻿# CLI Improvements Initiative
+# CLI Improvements Initiative
 
 **Status:** Ongoing ??  
 **Last Updated:** November 8, 2025

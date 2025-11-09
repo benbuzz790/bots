@@ -1,4 +1,4 @@
-﻿# Phase 2: Core Features & Expansion
+# Phase 2: Core Features & Expansion
 
 **Status:** 1/8 Partial (12.5%)  
 **Priority:** Medium  

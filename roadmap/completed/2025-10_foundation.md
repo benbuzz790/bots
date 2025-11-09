@@ -1,4 +1,4 @@
-﻿# October 2025 Completions
+# October 2025 Completions
 
 **Month:** October 2025  
 **Focus:** Foundation & Critical Fixes
