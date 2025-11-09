@@ -1,4 +1,4 @@
-import os
+﻿import os
 import shutil
 import tempfile
 import time
@@ -58,12 +58,12 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             try:
                 result = session.execute(command, timeout=15)
                 elapsed = time.time() - start_time
-                print(f"✅ Basic here-string completed in {elapsed:.2f}s")
+                print(f"âœ… Basic here-string completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
                 self.assertIn("Hello World", result)
             except TimeoutError as e:
                 elapsed = time.time() - start_time
-                print(f"❌ Basic here-string timed out after {elapsed:.2f}s")
+                print(f"âŒ Basic here-string timed out after {elapsed:.2f}s")
                 self.fail(f"Basic here-string should not timeout: {e}")
 
     def test_here_string_with_pipe(self):
@@ -76,19 +76,19 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             try:
                 result = session.execute(command, timeout=15)
                 elapsed = time.time() - start_time
-                print(f"✅ Here-string with pipe completed in {elapsed:.2f}s")
+                print(f"âœ… Here-string with pipe completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
                 # Check if file was created
                 if os.path.exists("test.txt"):
-                    print("✅ File created successfully")
+                    print("âœ… File created successfully")
                     with open("test.txt", "r", encoding="utf-8") as f:
                         content = f.read()
                     print(f"File content: {repr(content)}")
                 else:
-                    print("❌ File was not created")
+                    print("âŒ File was not created")
             except TimeoutError as e:
                 elapsed = time.time() - start_time
-                print(f"❌ Here-string with pipe timed out after {elapsed:.2f}s")
+                print(f"âŒ Here-string with pipe timed out after {elapsed:.2f}s")
                 self.fail(f"Here-string with pipe should not timeout: {e}")
 
     def test_here_string_multiline(self):
@@ -101,7 +101,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             try:
                 result = session.execute(command, timeout=15)
                 elapsed = time.time() - start_time
-                print(f"✅ Multiline here-string completed in {elapsed:.2f}s")
+                print(f"âœ… Multiline here-string completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
                 # Verify all lines are present
                 self.assertIn("Line 1", result)
@@ -109,14 +109,14 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 self.assertIn("Line 3", result)
             except TimeoutError as e:
                 elapsed = time.time() - start_time
-                print(f"❌ Multiline here-string timed out after {elapsed:.2f}s")
+                print(f"âŒ Multiline here-string timed out after {elapsed:.2f}s")
                 self.fail(f"Multiline here-string should not timeout: {e}")
 
     def test_here_string_with_special_chars(self):
         """Test here-string with special characters"""
         print("\n=== Testing Here-String with Special Characters ===")
         command = (
-            "@'\nSpecial chars: \"quotes\" and 'apostrophes'\nUnicode: café résumé naïve\nSymbols: $variable @array %hash\n'@"
+            "@'\nSpecial chars: \"quotes\" and 'apostrophes'\nUnicode: cafÃ© rÃ©sumÃ© naÃ¯ve\nSymbols: $variable @array %hash\n'@"
         )
         session = PowerShellSession()
         with session:
@@ -124,14 +124,14 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             try:
                 result = session.execute(command, timeout=15)
                 elapsed = time.time() - start_time
-                print(f"✅ Special chars here-string completed in {elapsed:.2f}s")
+                print(f"âœ… Special chars here-string completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
                 # Basic verification
                 self.assertIn("Special chars", result)
                 self.assertIn("Unicode", result)
             except TimeoutError as e:
                 elapsed = time.time() - start_time
-                print(f"❌ Special chars here-string timed out after {elapsed:.2f}s")
+                print(f"âŒ Special chars here-string timed out after {elapsed:.2f}s")
                 self.fail(f"Special chars here-string should not timeout: {e}")
 
     def test_here_string_with_empty_lines(self):
@@ -144,14 +144,14 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             try:
                 result = session.execute(command, timeout=15)
                 elapsed = time.time() - start_time
-                print(f"✅ Empty lines here-string completed in {elapsed:.2f}s")
+                print(f"âœ… Empty lines here-string completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
                 # Count newlines to verify empty lines were preserved
                 result_lines = result.split("\n")
                 print(f"Number of lines in result: {len(result_lines)}")
             except TimeoutError as e:
                 elapsed = time.time() - start_time
-                print(f"❌ Empty lines here-string timed out after {elapsed:.2f}s")
+                print(f"âŒ Empty lines here-string timed out after {elapsed:.2f}s")
                 self.fail(f"Empty lines here-string should not timeout: {e}")
 
     def test_problematic_python_code_here_string(self):
@@ -181,11 +181,11 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             try:
                 result = session.execute(command, timeout=30)
                 elapsed = time.time() - start_time
-                print(f"✅ Complex here-string completed in {elapsed:.2f}s")
+                print(f"âœ… Complex here-string completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
             except TimeoutError:
                 elapsed = time.time() - start_time
-                print(f"❌ Complex here-string timed out after {elapsed:.2f}s")
+                print(f"âŒ Complex here-string timed out after {elapsed:.2f}s")
                 print("This confirms the timeout issue with complex here-strings")
 
     def test_delimiter_detection(self):
@@ -221,19 +221,19 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             command = "Write-Output 'Test'"
             try:
                 session.execute(command, timeout=15)
-                print("✅ Command completed")
+                print("âœ… Command completed")
                 print(f"Items received: {len(received_items)}")
                 # Check if delimiter was received
                 delimiter_found = any(
                     ("COMMAND_" in str(item) and "_COMPLETE" in str(item) for item in received_items if item)
                 )
                 if delimiter_found:
-                    print("✅ Delimiter was properly received")
+                    print("âœ… Delimiter was properly received")
                 else:
-                    print("❌ Delimiter was NOT received")
+                    print("âŒ Delimiter was NOT received")
                     print(f"All items: {received_items}")
             except TimeoutError:
-                print("❌ Command timed out")
+                print("âŒ Command timed out")
                 print(f"Items received before timeout: {received_items}")
 
     def test_wrap_code_safely_output(self):
@@ -253,14 +253,14 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             print("\n" + "=" * 50)
             # Check for potential issues
             if "$LASTOUTPUT" in wrapped:
-                print("⚠️  Warning: $LASTOUTPUT is not a standard PowerShell variable")
+                print("âš ï¸  Warning: $LASTOUTPUT is not a standard PowerShell variable")
             # Test if the wrapped code is valid PowerShell
             try:
                 # Execute just the wrapped code to see what happens
                 session.execute(wrapped.replace(delimiter, "TEST_DELIMITER"), timeout=15)
-                print("✅ Wrapped code executed successfully")
+                print("âœ… Wrapped code executed successfully")
             except Exception as e:
-                print(f"❌ Wrapped code failed: {e}")
+                print(f"âŒ Wrapped code failed: {e}")
 
     def test_simple_vs_complex_wrapping(self):
         """Compare simple vs complex command wrapping"""
@@ -285,11 +285,11 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                         break
                     output_lines.append(line)
                 elapsed = time.time() - start_time
-                print(f"✅ Minimal wrapping completed in {elapsed:.2f}s")
+                print(f"âœ… Minimal wrapping completed in {elapsed:.2f}s")
                 print(f"Output: {output_lines}")
             except Exception as e:
                 elapsed = time.time() - start_time
-                print(f"❌ Minimal wrapping failed after {elapsed:.2f}s: {e}")
+                print(f"âŒ Minimal wrapping failed after {elapsed:.2f}s: {e}")
 
     def test_stdin_write_behavior(self):
         """Test stdin write behavior with different content"""
@@ -327,13 +327,13 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                             continue
                     elapsed = time.time() - start_time
                     if found_delimiter:
-                        print(f"✅ Completed in {elapsed:.2f}s")
+                        print(f"âœ… Completed in {elapsed:.2f}s")
                         print(f"Output: {output}")
                     else:
-                        print(f"❌ No delimiter after {elapsed:.2f}s")
+                        print(f"âŒ No delimiter after {elapsed:.2f}s")
                         print(f"Partial output: {output}")
                 except Exception as e:
-                    print(f"❌ Exception: {e}")
+                    print(f"âŒ Exception: {e}")
 
     def test_here_string_terminal_behavior(self):
         """Test how here-strings behave in interactive terminal"""
@@ -352,13 +352,13 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 try:
                     line = session._output_queue.get(timeout=0.1)
                     if line == "<<<DONE1>>>":
-                        print("✅ Method 1 completed")
+                        print("âœ… Method 1 completed")
                         break
                     output1.append(line)
                 except Exception:
                     continue
             else:
-                print("❌ Method 1 timed out")
+                print("âŒ Method 1 timed out")
             print(f"Output: {output1}")
             # Method 2: Send line by line
             print("\n--- Method 2: Line by Line ---")
@@ -373,13 +373,13 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 try:
                     line = session._output_queue.get(timeout=0.1)
                     if line == "<<<DONE2>>>":
-                        print("✅ Method 2 completed")
+                        print("âœ… Method 2 completed")
                         break
                     output2.append(line)
                 except Exception:
                     continue
             else:
-                print("❌ Method 2 timed out")
+                print("âŒ Method 2 timed out")
             print(f"Output: {output2}")
 
     def test_error_in_wrapped_code(self):
@@ -395,9 +395,9 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 result = session.execute(test_command, timeout=15)
                 print(f"Result: {repr(result)}")
                 if "errors" in result.lower():
-                    print("⚠️  $LASTOUTPUT causes an error - this might be the issue!")
+                    print("âš ï¸  $LASTOUTPUT causes an error - this might be the issue!")
             except Exception as e:
-                print(f"❌ Error accessing $LASTOUTPUT: {e}")
+                print(f"âŒ Error accessing $LASTOUTPUT: {e}")
 
     def test_alternative_wrapping_approach(self):
         """Test alternative wrapping approach without $LASTOUTPUT"""
@@ -427,13 +427,13 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             try:
                 result = session.execute(command, timeout=15)
                 elapsed = time.time() - start_time
-                print(f"✅ Alternative wrapper completed in {elapsed:.2f}s")
+                print(f"âœ… Alternative wrapper completed in {elapsed:.2f}s")
                 print(f"Result: {repr(result)}")
                 if os.path.exists("test_alt.txt"):
-                    print("✅ File created successfully with alternative wrapper")
+                    print("âœ… File created successfully with alternative wrapper")
             except TimeoutError:
                 elapsed = time.time() - start_time
-                print(f"❌ Alternative wrapper timed out after {elapsed:.2f}s")
+                print(f"âŒ Alternative wrapper timed out after {elapsed:.2f}s")
                 print("Issue might not be with $LASTOUTPUT")
 
     def test_process_communication_health(self):
@@ -452,22 +452,14 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             for i in range(5):
                 try:
                     session.execute(f"Write-Output 'Test {i}'", timeout=6)
-                    print(f"✅ Command {i} succeeded")
+                    print(f"âœ… Command {i} succeeded")
                 except Exception as e:
-                    print(f"❌ Command {i} failed: {e}")
+                    print(f"âŒ Command {i} failed: {e}")
             # Check process state after tests
             if session._process is not None:
                 print(f"Process still alive: {session._process.poll() is None}")
             else:
                 print("Process is None (session was closed or never started)")
-if session._process is not None:
-    print(f"Process still alive: {session._process.poll() is None}")
-else:
-    print("Process is None (session was closed or never started)")
-if session._process is not None:
-    print(f"Process still alive: {session._process.poll() is None}")
-else:
-    print("Process is None (session was closed or never started)")
 
 
 if __name__ == "__main__":
