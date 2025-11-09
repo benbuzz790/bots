@@ -1,20 +1,28 @@
 # Installation and Quick Start
+
 ## Installation
+
 ### Basic Installation
+
 `bash
 pip install git+https://github.com/benbuzz790/bots.git
 `
+
 ### Development Installation
+
 `bash
 git clone https://github.com/benbuzz790/bots.git
 cd bots
 pip install -e .[dev]
 `
+
 ### Requirements
+
 - Python 3.12+
 - API key from OpenAI or Anthropic
 
 ## API Key Setup
+
 Set your API key as an environment variable:
 
 **Windows PowerShell:**
@@ -64,6 +72,7 @@ bot.chat()
 ### Level 2: Tool Modules and State Management
 
 #### Using Built-in Tool Modules
+
 ```python
 import bots
 import bots.tools.code_tools as code_tools
@@ -77,6 +86,7 @@ response = bot.respond("Create a Flask app in app.py with basic routing")
 ```
 
 #### Bot State Persistence
+
 ```python
 import bots
 import bots.tools.code_tools as code_tools
@@ -96,6 +106,7 @@ bot.save("codebase_expert.bot")
 expert_bot = bots.load("codebase_expert.bot")
 expert_bot.respond("Create comprehensive tests for the main module")
 ```
+
 ### Level 3: Functional Prompts - Structured Workflows
 
 #### Sequential Processing (Chain)
@@ -143,8 +154,11 @@ responses, nodes = fp.prompt_while(
 )
 print(f"Completed in {len(responses)} iterations")
 ```
+
 ### Level 4: Advanced Patterns and Parallel Processing
+
 #### Tree-of-Thought Reasoning
+
 ```python
 def combine_analyses(responses, nodes):
     """Synthesize multiple analysis perspectives"""
@@ -193,6 +207,7 @@ results = fp.par_dispatch(
 ```
 
 #### Dynamic Prompt Generation
+
 ```python
 # Generate prompts from data
 files = ["auth.py", "api.py", "models.py", "utils.py"]
@@ -228,6 +243,7 @@ python -m bots.dev.cli my_expert.bot
 ```
 
 #### CLI Functional Prompt Integration
+
 ```ps
 # In CLI session
 >>> /fp
@@ -248,7 +264,9 @@ Select stop condition:
 ```
 
 ### Level 6: Runtime Code Generation with @lazy
+
 #### Basic Lazy Functions
+
 ```python
 from bots import lazy
 @lazy("Implement quicksort with detailed comments")
@@ -260,6 +278,7 @@ print(result)  # [1, 1, 2, 3, 4, 5, 6, 9]
 ```
 
 #### Advanced Lazy with Context
+
 ```python
 @lazy(
     "Implement a thread-safe LRU cache with TTL support",
@@ -276,6 +295,7 @@ cache.put("key", "value")
 ### Level 7: Production Workflows
 
 #### Complete Project Analysis Pipeline
+
 ```python
 import bots
 import bots.flows.functional_prompts as fp
@@ -310,6 +330,7 @@ print(f"Generated {len(analyses)} comprehensive reports")
 ```
 
 #### Continuous Integration Workflow
+
 ```python
 # CI/CD bot that can be triggered by webhooks
 ci_bot = bots.AnthropicBot(name="ci_assistant")
@@ -324,6 +345,7 @@ fp.prompt_while(
 ```
 
 ## Key Concepts Progression
+
 1. **Basic**: Single bot, simple tools, direct interaction
 2. **Intermediate**: Tool modules, state persistence, conversation management  
 3. **Advanced**: Functional prompts, structured workflows, parallel processing

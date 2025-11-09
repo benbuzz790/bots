@@ -141,10 +141,12 @@ Callbacks are invoked in the following order during a typical `bot.respond()` ca
 Most callbacks receive an optional `metadata` dictionary with contextual information:
 
 **on_respond_start metadata:**
+
 - `bot_name`: Name of the bot
 - `model`: Model engine being used
 
 **on_api_call_complete metadata:**
+
 - `provider`: API provider (anthropic, openai, google)
 - `model`: Model name
 - `input_tokens`: Number of input tokens
@@ -153,6 +155,7 @@ Most callbacks receive an optional `metadata` dictionary with contextual informa
 - `duration`: API call duration in seconds
 
 **on_tool_complete metadata:**
+
 - `duration`: Tool execution duration in seconds
 - `result_length`: Length of result string (if applicable)
 
@@ -165,6 +168,7 @@ Most callbacks receive an optional `metadata` dictionary with contextual informa
 Displays progress indicators in the CLI for user feedback.
 
 **Features:**
+
 - Simple dots (`.`) or verbose step names
 - Real-time feedback during long operations
 - Configurable output stream
@@ -204,6 +208,7 @@ bot = AnthropicBot(callbacks=callbacks)
 Integrates with OpenTelemetry tracing for comprehensive observability.
 
 **Features:**
+
 - Adds events to current OpenTelemetry span
 - Records important attributes (tokens, cost, duration)
 - Graceful degradation if OpenTelemetry not available
@@ -224,12 +229,14 @@ response = bot.respond("Hello!")
 ```
 
 **Events Recorded:**
+
 - `respond.start` / `respond.complete`
 - `api_call.start` / `api_call.complete`
 - `tool.start` / `tool.complete`
 - `step.{name}.start` / `step.{name}.complete`
 
 **Attributes Set:**
+
 - `api.input_tokens`
 - `api.output_tokens`
 - `api.cost_usd`

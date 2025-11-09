@@ -1,9 +1,11 @@
 # Getting Started with Bots Framework
 
 ## Introduction
+
 Welcome to the Bots Framework! This tutorial will guide you through the basics of creating and using bots.
 
 ## Prerequisites
+
 - Python 3.8 or higher
 - Basic understanding of Python programming
 - Familiarity with command line interfaces
@@ -11,11 +13,13 @@ Welcome to the Bots Framework! This tutorial will guide you through the basics o
 ## Your First Bot
 
 ### Step 1: Installation
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### Step 2: Create a Simple Bot
+
 ```python
 from bots import AnthropicBot
 
@@ -36,7 +40,9 @@ if __name__ == "__main__":
 ```
 
 ### Step 3: Test Your Bot
+
 Save the code above as `hello_bot.py` and run:
+
 ```bash
 python hello_bot.py
 > Hello, Ben! Welcome to the Bots Framework.
@@ -44,4 +50,5 @@ python hello_bot.py
 ```
 
 ## Next Steps
+
 - Explore the examples in the `examples/` directory

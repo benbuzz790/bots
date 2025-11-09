@@ -2,84 +2,131 @@
 
 **bots built bots**
 
-## Overview
+## What This Is
 
-**bots** is yet another agent framework. What sets bots apart is that it represents conversations as graphs. Messages are nodes, and the conversation is a tree.
+Most agent frameworks treat conversations as lists of messages. This one treats them as trees.
+Why? Because when you're working with an agent, you need to explore. Try different approaches. Backtrack when something doesn't work. Branch to test ideas in parallel. A linear conversation forces you to either lose context or pollute it with failed attempts.
+Trees let you explore without losing your place. Every message is a node. Every response creates a branch. You can navigate back to any point and try something different. The agent only sees the path from root to your current position, so context stays clean.
+This structure enables something more interesting: agents that manage their own context. An agent can branch itself to explore multiple approaches in parallel. It can navigate its own conversation tree. It can save its stateâ€”complete with tools and contextâ€”and resume later.
+The framework emerged from building with it. Every feature exists because it solved a real problem during development. `respond()` wraps API complexity. `save/load` eliminates context repetition. `add_tools()` makes tool creation trivialâ€”just write a Python function. Functional prompts automate common agent workflows. The CLI grew from `chat()` when interactions got complex enough to need dedicated commands. Namshubs package complete workflows because even with the CLI, certain patterns kept repeating.
+This is a tool for programming with agents, not just prompting them.
 
-This structure facilitates the development of tools which allow bots to manage their own context in various ways, including agentic context removal and agentic branching.
+## Getting Started
 
-A cli is built on top of this architecture, allowing the user to command a bot which can self-branch and self-prune.
+The simplest entry point:
 
-The conversation trees are packaged with python functions and llm model metadata as a "bot". The specified llm will be allowed and able to call those python functions on your system. Agentic branching and pruning are implemented as tools this way. 
+```python
+from bots import AnthropicBot
+bot = AnthropicBot()
+response = bot.respond("What's the time complexity of quicksort?")
+print(response)
+```
 
-**bots** also supports saving and loading. Tools, conversation, and metadata are preserved in a single .bot (json) file.
+That's it. `respond()` sends a message and returns the text response. Everything else builds from here.
+Add tools by passing Python functions or modules:
 
-The bots library also provides a structured interface for programming with such agents, aiming to make agents with dynamic context accessible and sharable for researchers and other sentients. 
+```python
+import bots.tools.code_tools as code_tools
+bot = AnthropicBot()
+bot.add_tools(code_tools)
+response = bot.respond("Create a Flask app in app.py")
+```
 
-## Foundation (bots.foundation)
+The agent can now call those tools. You don't write schemas or wrappersâ€”just pass the functions.
+Save the bot's state when you want to preserve context:
 
-The core of the Bots library is built on a robust foundation:
+```python
+bot.save("my_bot.bot")
+```
 
-- Tool handling capabilities - any well-structured Python function can be used by a bot
-- Simple primary interface: `bot.respond()`, with supporting operations `add_tool(s)`, `save()`, `load()`, and `chat()`
-- Tree-based conversation management:
-  - Implements a linked tree structure for conversation histories
-  - Allows branching conversations and exploring multiple dialogue paths
-  - Efficiently manages context by only sending path to root
-  - Enables saving and loading specific conversation states
-- Abstract base classes for wrapping LLM API interfaces into a unified 'bot' interface
-- Pre-built implementations for ChatGPT and Anthropic bots
-- Complete bot portability - save and share bots with their full context and tools
+Load it later:
 
-## Key Features
+```python
+import bots
+bot = bots.load("my_bot.bot")
+bot.respond("Continue where we left off")
+```
 
-1. **Auto Terminal (bots.dev.cli)**
-   ```bash
-   python -m bots.dev.cli [filename.bot]
-   ```
-This cli is similar to claude code. Use /help to see all commands.
+The saved bot includes its conversation tree, tools, and configuration. It's completely portable.
 
-2. **Tool System (bots.tools)**
-   - Supports parallel tool calls
-   - Built-in tools for:
-     - Reliable python editing
-     - Powershell operations
-     - Agentic context manipulation
-     - General textfile editing
+## The CLI
 
-3. **Functional Prompts (bots.flows.functional_prompts)**
-   - Core operations: 
-      - prompt_while(bot, task_prompt, continue_prompt, condition): bot works in an agentic loop
-   - Parallel execution functions:
-     - par_branch_while() - processes multiple branches from the current conversation node in parallel
+For interactive work, use the CLI:
 
-   ```python
-   from bots.flows import functional_prompts as fp
+```bash
+python -m bots.dev.cli
+```
 
-   # Example: after discussing a task, execute on multiple files:
-   responses, nodes = fp.par_branch_while(bot, [
-       "Execute on file one",
-       "Execute on file two",
-       "Execute on file three"
-   ])
+This gives you a terminal interface similar to Claude Code, but with tree navigation built in. The agent has tools for code editing, file operations, and context management.
+Try these commands:
 
-   # Example: Parallel dispatch across multiple bots
-   results = fp.par_dispatch(
-       bot_list=[bot1, bot2, bot3],
-       functional_prompt=fp.chain_while,
-       prompts=["Commit your changes", "Push to a new PR"]
-   )
-   ```
+- `/help` - see all commands
+- `/save filename` - save current state
+- `/load filename` - load a saved bot
+- `/up`, `/down`, `/left`, `/right` - navigate the conversation tree
+- `/label name` - mark the current node for later reference
+- `/leaf` - jump to a leaf node and continue from there
+The CLI lets you work with the tree structure directly. Branch to explore different approaches, then navigate back to compare results.
 
-4. **Lazy Decorator (bots.lazy)**
-   - An experiment
-   - Runtime code generation via LLM
-   ```python
-   @lazy("Sort using a funny algorithm. Name variables as though you're a clown.")
-   def sort(arr: list[int]) -> list[int]:
-       pass
-   # Source code is filled out (and executes) the first time the function is called.
-   ```
+## Functional Prompts
+
+When you're programming with agents (not just chatting), you need patterns for structured reasoning. Functional prompts provide these.
+The most important pattern is `prompt_while`â€”it lets an agent work iteratively until a task is complete:
+
+```python
+from bots.flows import functional_prompts as fp
+# Agent works in a loop until it stops using tools
+responses, nodes = fp.prompt_while(
+    bot,
+    "Fix all the bugs in main.py",
+    continue_prompt="Keep going",
+    stop_condition=fp.conditions.tool_not_used
+)
+```
+
+This is the core agentic workflow. The agent keeps working, using tools as needed, until the condition is met.
+For sequential reasoning, use `chain`:
+
+```python
+# Execute prompts in sequence, building context
+responses, nodes = fp.chain(bot, [
+    "Analyze the codebase structure",
+    "Identify the main entry points",
+    "Suggest improvements to the architecture"
+])
+```
+
+These patterns compose. You can chain multiple `prompt_while` calls, branch to explore different approaches, or run the same workflow across multiple files in parallel:
+
+```python
+# Run the same workflow on multiple files in parallel
+responses, nodes = fp.par_branch_while(bot, [
+    "Refactor auth.py until it's clean",
+    "Refactor api.py until it's clean",
+    "Refactor data.py until it's clean"
+], stop_condition=fp.conditions.said_DONE)
+```
+
+Functional prompts separate "what to think about" from "how to think about it." The patterns are language-agnosticâ€”they work the same way regardless of what you're asking the agent to do.
+
+## Namshubs
+
+When you find yourself writing the same functional prompt sequences repeatedly, package them as a namshub. A namshub is a complete workflow: system message, tools, and functional prompts bundled together.
+From the CLI:
+
+```text\n>>> Please invoke the namshub of pull requests for PR #123
+```
+
+The agent loads the PR review workflow, executes it, then returns control to the main conversation. Namshubs are pre-written tasks that any agent can invoke.
+The name comes from Snow Crashâ€”namshubs "reprogram" the agent temporarily for a specific task, then restore its original state.
+
+## Why Trees Matter
+
+The tree structure isn't just an implementation detailâ€”it's the primary interface for working with agents.
+When you branch, you're not just creating parallel conversations. You're exploring a decision space. Each branch represents a different approach, a different set of assumptions, a different line of reasoning.
+When you navigate, you're not just moving through history. You're choosing which context to build on. The agent only sees the path from root to your current position, so you control exactly what it knows.
+When you save, you're not just preserving a conversation. You're capturing a complete agent stateâ€”tools, context, and position in the exploration space. You can share it, resume it, or fork it.
+This makes agents more like development tools than chat interfaces. You explore with them, backtrack when needed, and build up context incrementally.
 
 ## Installation
 
@@ -87,55 +134,48 @@ This cli is similar to claude code. Use /help to see all commands.
 pip install git+https://github.com/benbuzz790/bots.git
 ```
 
-## Quick Start
+Set up your API key:
 
-1. Set up your API key as an environment variable:
-   - [OpenAI](https://platform.openai.com/docs/quickstart) or
-   - [Anthropic](https://docs.anthropic.com/en/docs/initial-setup#set-your-api-key)
+- [OpenAI](https://platform.openai.com/docs/quickstart)
+- [Anthropic](https://docs.anthropic.com/en/docs/initial-setup#set-your-api-key)
 
-2. Basic Usage:
-```python
-from bots import AnthropicBot
-import bots.tools.code_tools as code_tools
+## Architecture
 
-# Initialize and equip bot
-bot = AnthropicBot()
-bot.add_tools(code_tools)
+The framework has three layers:
+**Foundation** (`bots.foundation`): Core abstractions for bots, tools, and conversations. Provider-agnostic interface with implementations for OpenAI, Anthropic, and Gemini.
+**Flows** (`bots.flows`): Functional prompts for structured reasoning. Patterns like chain, branch, iterate, and parallel dispatch.
+**Development** (`bots.dev`): CLI for interactive work with tree navigation, state management, and real-time tool display.
 
-# Single response
-response = bot.respond("Please write a basic Flask app in app.py")
+## Documentation
 
-# Interactive mode
-bot.chat()
-```
+- [Installation Guide](installation_quickstart.md) - Detailed setup instructions
+- [CLI Primer](CLI_PRIMER.md) - Complete guide to CLI commands and workflows
+- [Functional Prompts Primer](functional_prompt_primer.md) - Deep dive into functional prompt patterns
+- [Contributing Guide](CONTRIBUTING.md) - How to contribute to the project
+- [Testing Guide](TESTING.md) - Running and writing tests
 
-3. Save/Load Bot States:
-```python
-# Create a bot with repository context
-bot = AnthropicBot()
-bot.add_tools(code_tools)
-bot.chat()
-  ...
-  "Read and understand our repository structure"
-  ...
-  Tools used...
-  ...
-  /save
+### Component Documentation
 
-# Later use
-import bots
-review_bot = bots.load("repo_context.bot", autosave=False)
-review_bot.respond("Review PR #123")
-```
+- [Tool Handling](bots/foundation/tool_handling.md) - How tool serialization works
+- [Python Edit Tool](bots/tools/python_edit.md) - Reliable Python code editing
+- [Branch Self Tool](bots/tools/branch_self.md) - Agent self-branching capabilities
+- [Namshubs Guide](bots/namshubs/README.md) - Creating and using namshubs
+- [Namshubs Quickstart](bots/namshubs/QUICKSTART.md) - Getting started with namshubs
+
+### Observability
+
+- [Observability Setup](docs/observability/SETUP.md) - Configuring metrics and tracing
+- [Cost Tracking](docs/observability/COST_TRACKING.md) - Monitoring API costs
+- [Callbacks](docs/observability/CALLBACKS.md) - Using callback hooks
 
 ## Contributing
 
-We welcome contributions! Read [CONTRIBUTING.md](CONTRIBUTING.md)
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+MIT License - see [LICENSE.md](LICENSE.md)
 
-## Disclaimer
+## Status
 
-This library is under active development. While it's being used successfully in various projects, please test thoroughly before using in production environments.
+This framework is under active development. While it's being used successfully for real projects, expect changes and bugs.

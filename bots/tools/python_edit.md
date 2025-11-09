@@ -25,6 +25,7 @@ This hierarchical addressing system allows precise targeting without relying on 
 ## Core Functionality
 
 ### 1. Scope Replacement
+
 The primary operation replaces an entire scope (function, class, or method) with new code:
 
 ```python
@@ -34,26 +35,32 @@ python_edit("myfile.py::MyClass::method", "def method(self):\n    return 'new im
 This completely replaces the target method while preserving the surrounding class structure.
 
 ### 2. Insertion Operations
+
 The tool supports several insertion modes using the `coscope_with` parameter:
 
 #### File-level Insertions
+
 - `__FILE_START__`: Inserts code at the beginning of the file
 - `__FILE_END__`: Inserts code at the end of the file
 
 #### Scope-relative Insertions
+
 - `"ClassName::method_name"`: Inserts after the specified method within the current scope
 - `"method_name"`: Inserts after a method using simple name matching
 
 #### Expression-based Insertions
+
 - `'"x = 1"'`: Inserts after the first line that starts with the quoted expression
 - `'"if condition:"'`: Can match multi-line constructs for complex insertion points
 
 ### 3. Import Handling
+
 The tool automatically manages imports when editing files. When new code contains import statements, they are intelligently placed at the appropriate location in the file's import section, maintaining Python's conventional import organization.
 
 ## Technical Architecture
 
 ### AST vs CST Approach
+
 The tool primarily uses LibCST (Concrete Syntax Tree) rather than Python's built-in AST (Abstract Syntax Tree). This choice is crucial because:
 
 - **CST preserves formatting**: Comments, whitespace, and code style are maintained
@@ -61,6 +68,7 @@ The tool primarily uses LibCST (Concrete Syntax Tree) rather than Python's built
 - **Comment handling**: Unlike AST, CST can represent and manipulate comments as first-class constructs
 
 ### Scope Resolution
+
 The tool implements a sophisticated scope resolution system:
 
 1. **Path Parsing**: Scope paths are split into components and validated
@@ -68,6 +76,7 @@ The tool implements a sophisticated scope resolution system:
 3. **Context Preservation**: Surrounding code structure is maintained during modifications
 
 ### Comment Processing
+
 One of the most complex aspects of the tool is handling standalone comments, particularly for `__FILE_END__` insertions. When a user provides a comment like `"# End of file comment"`, the tool must:
 
 1. Detect that the input is a comment-only construct
@@ -77,6 +86,7 @@ One of the most complex aspects of the tool is handling standalone comments, par
 This is necessary because LibCST requires valid Python statements, but users often want to insert pure comments.
 
 ### Unicode and Encoding Safety
+
 The tool includes robust Unicode handling through the `clean_unicode_string` utility, which:
 
 - Removes byte-order marks (BOMs) that can cause parsing issues
@@ -88,9 +98,11 @@ However, this cleaning process initially caused issues with trailing newlines, r
 ## Error Handling and Safety
 
 ### Syntax Validation
+
 All code modifications are validated through CST parsing before being written to files. This ensures that edits never produce syntactically invalid Python code.
 
 ### Safety Checks
+
 The tool includes several safety mechanisms:
 
 - **Large deletion protection**: Operations that would delete more than 100 lines require explicit confirmation via `delete_a_lot=True`
@@ -98,21 +110,25 @@ The tool includes several safety mechanisms:
 - **Ambiguity detection**: When insertion points are ambiguous, the tool reports errors rather than making assumptions
 
 ### Graceful Degradation
+
 When operations fail, the tool provides detailed error messages that help users understand what went wrong and how to correct their requests.
 
 ## Implementation Challenges and Solutions
 
 ### Challenge 1: Comment-Only Modules
+
 **Problem**: When users want to insert standalone comments (like `"# TODO: implement this"`), LibCST parses these as modules with zero statements in the body, causing insertion operations to fail silently.
 
 **Solution**: The tool detects comment-only modules and converts them to `pass` statements with trailing comments, which are valid Python constructs that LibCST can manipulate.
 
 ### Challenge 2: Newline Preservation
+
 **Problem**: The Unicode cleaning process strips trailing newlines, causing test failures and formatting issues.
 
 **Solution**: Implemented newline preservation logic that detects when content originally ended with newlines and restores them after cleaning.
 
 ### Challenge 3: Logic Flow Complexity
+
 **Problem**: The main editing function had complex conditional logic that could skip important operations (like `__FILE_END__` handling) due to incorrect ordering.
 
 **Solution**: Restructured the conditional flow to prioritize special operations (`__FILE_START__`, `__FILE_END__`) before general scope-based operations.
@@ -120,6 +136,7 @@ When operations fail, the tool provides detailed error messages that help users 
 ## Usage Patterns
 
 ### Basic File Editing
+
 ```python
 # Replace entire file content
 python_edit("script.py", "print('Hello, World!')")
@@ -129,6 +146,7 @@ python_edit("script.py", "# End marker", coscope_with="__FILE_END__")
 ```
 
 ### Class and Method Manipulation
+
 ```python
 # Replace a method
 python_edit("myfile.py::MyClass::old_method", '''
@@ -145,6 +163,7 @@ def helper_method(self):
 ```
 
 ### Complex Insertions
+
 ```python
 # Insert after specific code pattern
 python_edit("myfile.py::function", "# Added comment", coscope_with='"x = calculate()"')

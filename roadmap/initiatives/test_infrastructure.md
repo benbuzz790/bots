@@ -1,16 +1,25 @@
 # Test Infrastructure Initiative
+
 **Status:** Complete ✅  
 **Last Updated:** November 8, 2025
+
 ## Overview
+
 Comprehensive overhaul of the test infrastructure to achieve reliable, fast, and maintainable testing. This initiative transformed the test suite from flaky and disorganized to robust and well-structured, achieving 965+ passing tests with proper organization and parallelism.
+
 ## Related Items
+
 - **Item 9:** Organize Tests Better - ✅ DONE (WO012, Oct 9, 2025)
 - **Item 24:** Test Parallelism - ✅ DONE (PR #112, Oct 5, 2025)
 - **Item 25:** Uniform Tempfile Handling - ✅ DONE (PR #112, Oct 5, 2025)
 See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-9)
+
 ## Completed Work ✅
+
 ### Item 9: Organize Tests Better (WO012, Oct 9, 2025)
+
 **Delivered:**
+
 - Reorganized tests into unit/, integration/, e2e/ structure
 - Created centralized ixtures/ directory
 - Implemented proper pytest fixtures and markers
@@ -18,6 +27,7 @@ See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-9)
 - Fixed test parallelism issues
 - Uniform tempfile handling implemented
 **Test Structure:**
+
 ```text
 tests/
 ├── unit/              # Fast, isolated tests (no API calls)
@@ -32,7 +42,9 @@ tests/
 └── conftest.py       # Global pytest configuration
 
 ```
+
 **Pytest Markers:**
+
 ```python
 @pytest.mark.unit          # Fast, isolated tests
 @pytest.mark.integration   # Tests with dependencies
@@ -40,7 +52,9 @@ tests/
 @pytest.mark.api          # Tests requiring API calls
 @pytest.mark.serial       # Tests that must run serially
 ```
+
 **AAA Pattern:**
+
 ```python
 def test_something():
     # Arrange
@@ -51,8 +65,11 @@ def test_something():
     # Assert
     assert result == expected_output
 ```
+
 ### Item 24: Test Parallelism (PR #112, Oct 5, 2025)
+
 **Problem:**
+
 - Tests running serially (slow)
 - pytest-xdist parallelism causing file conflicts
 - Flaky tests due to shared resources
@@ -66,8 +83,11 @@ def test_something():
 - Significantly faster test runs
 - No file conflicts
 - Reliable parallel execution
+
 ### Item 25: Uniform Tempfile Handling (PR #112, Oct 5, 2025)
+
 **Problem:**
+
 - Tests polluting repository with extraneous files
 - Inconsistent tempfile usage across tests
 - Cleanup failures leaving artifacts
@@ -76,6 +96,7 @@ def test_something():
 - All test artifacts now properly isolated and cleaned up
 - Centralized tempfile fixtures in ixtures/file_fixtures.py
 **Tempfile Fixtures:**
+
 ```python
 @pytest.fixture
 def temp_dir(tmp_path):
@@ -88,13 +109,19 @@ def temp_file(tmp_path):
     file_path.write_text("test content")
     return file_path
 ```
+
 **Results:**
+
 - No test artifacts left in repository
 - Clean test environment after each run
 - Proper isolation between tests
+
 ## Recent Improvements (Nov 2025)
+
 ### Pytest Temp Directory Fix (PRs #173, #175)
+
 **Problem:**
+
 - Windows permission errors: PermissionError: [WinError 5] Access is denied
 - pytest-xdist workers trying to create .pytest_tmp subdirectories
 - Race conditions with directory creation
@@ -114,9 +141,12 @@ def temp_file(tmp_path):
 - Worker subdirectories cleaned up after every run
 - No accumulation of temp files
 - Self-healing cleanup strategy
+
 ### Test Fixes (PR #175)
+
 **Fixed 9 Previously Skipped Tests:**
 **Python_edit Tests (7 tests):**
+
 - Root cause: Race condition with pytest-xdist workers
 - Solution: Let pytest handle directory creation
 - Tests fixed:
@@ -133,8 +163,11 @@ def temp_file(tmp_path):
 - Tests fixed:
   1. test_branch_self_basic_functionality
   2. test_branch_self_error_handling
+
 ## Test Infrastructure Components
+
 ### 1. Pytest Configuration
+
 **pytest.ini:**
 `ini
 [pytest]
@@ -150,6 +183,7 @@ markers =
     serial: Tests that must run serially
 addopts = -v --strict-markers
 timeout = 600
+
 ```
 ### 2. Centralized Fixtures
 **fixtures/bot_fixtures.py:**

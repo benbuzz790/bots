@@ -18,6 +18,7 @@ tests/
 ### Test Categories
 
 #### Unit Tests (`tests/unit/`)
+
 - **Purpose**: Test individual functions/classes in isolation
 - **Characteristics**:
   - No external API calls (use mocks)
@@ -28,6 +29,7 @@ tests/
 - **Run with**: `pytest tests/unit/ -v`
 
 #### Integration Tests (`tests/integration/`)
+
 - **Purpose**: Test interactions between components
 - **Characteristics**:
   - Real API calls (with rate limiting/retry)
@@ -38,6 +40,7 @@ tests/
 - **Run with**: `pytest tests/integration/ -v`
 
 #### E2E Tests (`tests/e2e/`)
+
 - **Purpose**: Test complete user workflows
 - **Characteristics**:
   - Multiple components working together
@@ -107,6 +110,7 @@ pytest -m "unit or integration"
 Common fixtures are available in `tests/fixtures/`:
 
 #### Bot Fixtures (`bot_fixtures.py`)
+
 ```python
 def test_with_mock_bot(mock_bot_class):
     """Use a mocked bot for unit testing."""
@@ -121,6 +125,7 @@ def test_with_real_bot(real_anthropic_bot):
 ```
 
 #### File Fixtures (`file_fixtures.py`)
+
 ```python
 def test_with_temp_file(temp_test_file):
     """Automatically cleaned up temp file."""
@@ -130,6 +135,7 @@ def test_with_temp_file(temp_test_file):
 ```
 
 #### Mock Fixtures (`mock_fixtures.py`)
+
 ```python
 def test_with_mock_input(mock_input):
     """Mock user input for CLI tests."""
@@ -242,16 +248,19 @@ All tests must pass before merging.
 ### Common Issues
 
 **Tests fail locally but pass in CI:**
+
 - Check for environment-specific issues
 - Ensure all dependencies are installed
 - Check for file path differences (Windows vs Linux)
 
 **Flaky tests:**
+
 - Add `@pytest.mark.flaky(reruns=3)` marker
 - Investigate race conditions
 - Add appropriate waits/timeouts
 
 **Slow tests:**
+
 - Consider moving to integration or e2e category
 - Add `@pytest.mark.slow` marker
 - Optimize test setup/teardown
