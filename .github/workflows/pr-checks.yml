@@ -149,6 +149,8 @@ jobs:
         run: |
           markdownlint **/*.md --ignore node_modules --ignore __pycache__ --ignore .mypy_cache --ignore .pytest_cache
 
+
+  security:
     name: Security Scan
     runs-on: windows-latest
     timeout-minutes: 75
