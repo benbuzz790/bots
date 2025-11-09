@@ -1,6 +1,6 @@
 # Observability Initiative
 
-**Status:** Phases 1-3 Complete Ã¢Å“â€¦ | Phase 4 Pending Ã¢Å¡Â Ã¯Â¸Â  
+**Status:** Phases 1-3 Complete [DONE] | Phase 4 Pending [DONE] [DONE] 
 **Last Updated:** November 8, 2025
 
 ## Overview
@@ -9,14 +9,14 @@ Complete OpenTelemetry integration for production-ready observability across all
 
 ## Related Items
 
-- **Item 11:** Remove print statements - Ã¢Å“â€¦ DONE (PR #114, Oct 6, 2025)
-- **Item 12:** Callbacks - Ã¢Å“â€¦ DONE (WO015, Oct 10, 2025)
-- **Item 14:** OpenTelemetry Integration - Ã¢Å¡Â Ã¯Â¸Â PARTIAL (Phases 1-3 complete, Phase 4 pending)
+- **Item 11:** Remove print statements - [DONE] DONE (PR #114, Oct 6, 2025)
+- **Item 12:** Callbacks - [DONE] DONE (WO015, Oct 10, 2025)
+- **Item 14:** OpenTelemetry Integration - [DONE] [DONE] PARTIAL (Phases 1-3 complete, Phase 4 pending)
 See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-14)
 
 ## Status Summary
 
-### Completed Ã¢Å“â€¦
+### Completed [DONE]
 
 **Phase 1: Basic Tracing** (PR #114)
 
@@ -42,7 +42,7 @@ See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-14)
 - ProgressCallbacks for user-facing indicators
 - Full integration with all bot providers
 
-### Pending Ã¢Å¡Â Ã¯Â¸Â
+### Pending [DONE] [DONE]
 
 **Phase 4: Production Observability**
 
@@ -77,10 +77,10 @@ See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-14)
 
 ```text
 Bot Operation
-    Ã¢â€Å“Ã¢â€â‚¬ Tracing (spans for each operation)
-    Ã¢â€Å“Ã¢â€â‚¬ Logging (structured logs with context)
-    Ã¢â€Å“Ã¢â€â‚¬ Metrics (performance, usage, cost)
-    Ã¢â€â€Ã¢â€â‚¬ Callbacks (progress indicators, custom hooks)
+ [DONE] Tracing (spans for each operation)
+ [DONE] Logging (structured logs with context)
+ [DONE] Metrics (performance, usage, cost)
+ [DONE] Callbacks (progress indicators, custom hooks)
 `
 
 ### Key Components
@@ -126,13 +126,13 @@ Bot Operation
 
 ## Success Metrics
 
-- Ã¢Å“â€¦ All print statements removed (Item 11)
-- Ã¢Å“â€¦ Callback system implemented (Item 12)
-- Ã¢Å“â€¦ Tracing infrastructure complete (Phase 1)
-- Ã¢Å“â€¦ Structured logging complete (Phase 2)
-- Ã¢Å“â€¦ Metrics collection complete (Phase 3)
-- Ã¢Å¡Â Ã¯Â¸Â Production observability pending (Phase 4)
-- Ã¢Å“â€¦ 98.3% test pass rate (173/176 tests)
+- [DONE] All print statements removed (Item 11)
+- [DONE] Callback system implemented (Item 12)
+- [DONE] Tracing infrastructure complete (Phase 1)
+- [DONE] Structured logging complete (Phase 2)
+- [DONE] Metrics collection complete (Phase 3)
+- [DONE] [DONE] Production observability pending (Phase 4)
+- [DONE] 98.3% test pass rate (173/176 tests)
 
 ## Next Steps
 
@@ -143,6 +143,6 @@ Bot Operation
 5. Implement cost budgets and tracking
 
 ---
-**Initiative Owner:** Core Team  
-**Priority:** HIGH (Phase 4)  
+**Initiative Owner:** Core Team 
+**Priority:** HIGH (Phase 4) 
 **Related Initiatives:** [CLI Improvements](cli_improvements.md)
