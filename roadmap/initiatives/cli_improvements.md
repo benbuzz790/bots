@@ -235,13 +235,13 @@ setup(
     ...
     entry_points={
         'console_scripts': [
-            'bots-cli=bots.dev.cli:main',
+            'bbots-cli=bots.dev.cli:main',
         ],
     },
 )
 ```
 
-Creates ots-cli command available system-wide.
+Creates bots-cli command available system-wide.
 
 ### Phase 2: Platform-Specific File Associations
 
@@ -255,7 +255,7 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\BotsFile]
 @="Bots Conversation File"
 [HKEY_CLASSES_ROOT\BotsFile\shell\open\command]
-@="cmd.exe /k bots-cli \"%1\""
+@="cmd.exe /k bbots-cli \"%1\""
 ```
 
 **macOS:**
@@ -283,7 +283,7 @@ Windows Registry Editor Version 5.00
 # bots.desktop
 [Desktop Entry]
 Name=Bots CLI
-Exec=x-terminal-emulator -e bots-cli %f
+Exec=x-terminal-emulator -e bbots-cli %f
 Type=Application
 MimeType=application/x-bot
 ```

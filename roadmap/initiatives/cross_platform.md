@@ -1,6 +1,6 @@
-# Cross-Platform Support Initiative
+﻿# Cross-Platform Support Initiative
 
-**Status:** Not Started âŒ  
+**Status:** Not Started Ã¢ÂÅ’  
 **Last Updated:** November 8, 2025
 
 ## Overview
@@ -9,8 +9,8 @@ Enable full cross-platform compatibility for Windows, Linux, and macOS. Currentl
 
 ## Related Items
 
-- **Item 38:** Unix/Mac Compatibility - âŒ NOT STARTED
-- **Item 39:** Multi-OS Testing Infrastructure - âŒ NOT STARTED
+- **Item 38:** Unix/Mac Compatibility - Ã¢ÂÅ’ NOT STARTED
+- **Item 39:** Multi-OS Testing Infrastructure - Ã¢ÂÅ’ NOT STARTED
 See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-38)
 
 ## Current State
@@ -39,7 +39,7 @@ See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-38)
 4. Route to execute_powershell() on Windows, execute_bash() on Unix/Mac
 **Files to Modify:**
 
-- bots/tools/terminal_tools.py - Add bash support
+- bbots/tools/terminal_tools.py - Add bash support
 - CLI help text - Change "execute powershell" to "execute shell commands"
 
 ### Phase 2: Unix Shell Support
@@ -116,7 +116,7 @@ See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-38)
 ### Testing Challenges
 
 1. **CI/CD Complexity:**
-   - 3 OS Ã— 3 Python versions = 9 test matrix combinations
+   - 3 OS Ãƒâ€” 3 Python versions = 9 test matrix combinations
    - Longer CI/CD run times
    - More complex failure diagnosis
 2. **Environment Differences:**
@@ -142,12 +142,12 @@ See also: [Phase 1: Foundation](../active/phase1_foundation.md#item-38)
 
 ## Success Metrics
 
-- âœ… Shell abstraction layer implemented
-- âœ… Bash support complete with feature parity
-- âœ… CI/CD matrix testing on 3 OS Ã— 3 Python versions
-- âœ… All tests pass on Windows, Linux, macOS
-- âœ… Terminal tools work on all platforms
-- âœ… Documentation updated for cross-platform usage
+- Ã¢Å“â€¦ Shell abstraction layer implemented
+- Ã¢Å“â€¦ Bash support complete with feature parity
+- Ã¢Å“â€¦ CI/CD matrix testing on 3 OS Ãƒâ€” 3 Python versions
+- Ã¢Å“â€¦ All tests pass on Windows, Linux, macOS
+- Ã¢Å“â€¦ Terminal tools work on all platforms
+- Ã¢Å“â€¦ Documentation updated for cross-platform usage
 
 ## Implementation Plan
 
