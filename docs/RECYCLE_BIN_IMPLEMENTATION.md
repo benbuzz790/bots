@@ -6,7 +6,7 @@ Added safe file deletion functionality to the PowerShell session initialization 
 
 ### Changes Made
 
-**File Modified:** bots/tools/terminal_tools.py::PowerShellSession::__enter__
+**File Modified:** bots/tools/terminal_tools.py::PowerShellSession::**enter**
 **Functionality Added:**
 
 1. **Remove-ItemSafely function** - A PowerShell function that intercepts file/folder deletions and sends items to the Recycle Bin instead of permanent deletion
