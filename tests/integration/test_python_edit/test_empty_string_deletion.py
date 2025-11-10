@@ -10,13 +10,15 @@ from bots.tools.python_edit import python_edit
 
 def setup_test_file(tmp_path, content):
     """Helper to create a test file with given content"""
+    import uuid
+
     # Convert to Path if it's a string
     if isinstance(tmp_path, str):
         tmp_path = Path(tmp_path)
 
-    # pytest's tmp_path fixture already creates the directory
-    # We should NEVER need to create it in tests
-    # Only create if it truly doesn't exist (e.g., __main__ with string path or xdist race condition)
+    # pytest's tmp_path fixture creates the directory automatically
+    # With xdist, each worker gets its own isolated tmp_path (e.g., basetemp/gw0/test_name/)
+    # We should rarely need to create it manually
     if not tmp_path.exists():
         try:
             tmp_path.mkdir(parents=True, exist_ok=True)
@@ -24,17 +26,14 @@ def setup_test_file(tmp_path, content):
             # Another worker created it, that's fine
             pass
 
-    # At this point, tmp_path should exist
-    # But with xdist, there can still be race conditions, so check again
+    # Verify directory exists
     if not tmp_path.is_dir():
-        # Wait a moment and retry
-        import time
-        time.sleep(0.01)
-        if not tmp_path.is_dir():
-            raise RuntimeError(f"tmp_path {tmp_path} is not a directory after creation attempt")
+        raise RuntimeError(f"tmp_path {tmp_path} is not a directory")
 
-    # Create the test file inside the directory
-    test_file = tmp_path / "test_file.py"
+    # Create the test file with a unique name to avoid collisions
+    # Even with worker isolation, unique names are good practice
+    unique_id = uuid.uuid4().hex[:8]
+    test_file = tmp_path / f"test_file_{unique_id}.py"
 
     with open(test_file, "w", encoding="utf-8") as f:
         f.write(dedent(content))

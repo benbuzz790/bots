@@ -15,112 +15,46 @@ _test_created_dirs: Set[str] = set()
 
 
 def pytest_configure(config):
-    """Configure pytest with custom temp directory handling.
+    """Configure pytest with custom basetemp for Windows compatibility.
 
-    This function sets up a custom basetemp directory that works correctly
-    with pytest-xdist parallel execution. We monkey-patch Path.mkdir and
-    Path.iterdir to handle race conditions when multiple workers try to
-    access the same directory.
+    We set a custom basetemp in the project root to avoid Windows permission
+    issues with the system temp directory. We let pytest-xdist handle worker
+    isolation automatically - it will create gw0/, gw1/, etc. subdirectories.
+
+    We use the standard .pytest_tmp name and let pytest handle any cleanup issues.
     """
-    from pathlib import Path as PathlibPath
-
-    # Store the original methods
-    original_mkdir = PathlibPath.mkdir
-    original_iterdir = PathlibPath.iterdir
-
     # Get the project root (where conftest.py is located)
     project_root = Path(__file__).parent
     temp_dir = project_root / ".pytest_tmp"
-    temp_dir_str = str(temp_dir.resolve())
 
-    def mkdir_with_race_condition_handling(self, mode=0o777, parents=False, exist_ok=False):
-        """Wrapper around Path.mkdir that handles race conditions for .pytest_tmp."""
-        # Check if this is the .pytest_tmp directory
-        if str(self.resolve()) == temp_dir_str:
-            # Force exist_ok=True for the .pytest_tmp directory
-            exist_ok = True
+    # Set basetemp for both main process and workers
+    # Pytest-xdist will handle worker subdirectories (gw0/, gw1/, etc.)
+    config.option.basetemp = str(temp_dir)
 
-        try:
-            return original_mkdir(self, mode=mode, parents=parents, exist_ok=exist_ok)
-        except FileExistsError:
-            # If exist_ok was False and we got FileExistsError, re-raise
-            if not exist_ok:
-                raise
-
-    def iterdir_with_race_condition_handling(self):
-        """Wrapper around Path.iterdir that handles race conditions for .pytest_tmp."""
-        # Check if this is the .pytest_tmp directory
-        if str(self.resolve()) == temp_dir_str:
-            # If the directory doesn't exist, create it first
-            if not self.exists():
-                try:
-                    self.mkdir(exist_ok=True)
-                except FileExistsError:
-                    pass  # Another worker created it
-
-        return original_iterdir(self)
-
-    # Apply the monkey-patches
-    PathlibPath.mkdir = mkdir_with_race_condition_handling
-    PathlibPath.iterdir = iterdir_with_race_condition_handling
-
-    # Only the main process (not xdist workers) should manage the base temp directory
+    # Only the main process should do cleanup
     if not hasattr(config, "workerinput"):
         # This is the main process
-
-        # Try to handle existing directory
-        if temp_dir.exists():
-            try:
-                # Try to remove it
-                shutil.rmtree(temp_dir)
-            except (PermissionError, OSError):
-                # If locked, rename it with timestamp
-                timestamp = int(time.time())
-                locked_dir = project_root / f".pytest_tmp_locked_{timestamp}"
-                try:
-                    temp_dir.rename(locked_dir)
-                except (PermissionError, OSError):
-                    pass  # If rename fails, we'll create with exist_ok below
-
-        # Create fresh temp directory
-        temp_dir.mkdir(exist_ok=True)
-
-        # Set basetemp
-        config.option.basetemp = str(temp_dir)
-        os.environ["PYTEST_TEMP_DIR"] = str(temp_dir)
-
-        def cleanup_temp_on_exit():
-            """Clean up temp directory when Python exits."""
-            try:
-                time.sleep(0.2)
-                if temp_dir.exists():
-                    for item in temp_dir.iterdir():
-                        if item.is_dir():
-                            try:
-                                shutil.rmtree(item)
-                            except (PermissionError, OSError):
-                                pass
-            except (PermissionError, OSError):
-                pass
-
-        atexit.register(cleanup_temp_on_exit)
 
         # Clean up old locked directories (older than 1 hour)
         for old_dir in project_root.glob(".pytest_tmp_locked_*"):
             try:
                 if old_dir.is_dir():
                     dir_age = time.time() - old_dir.stat().st_mtime
-                    if dir_age > 3600:
-                        shutil.rmtree(old_dir)
+                    if dir_age > 3600:  # 1 hour
+                        shutil.rmtree(old_dir, ignore_errors=True)
             except Exception:
                 pass
-    else:
-        # This is an xdist worker process
-        if not temp_dir.exists():
-            temp_dir.mkdir(exist_ok=True)
 
-        config.option.basetemp = str(temp_dir)
-        os.environ["PYTEST_TEMP_DIR"] = str(temp_dir)
+        # Clean up old session-specific directories
+        for old_dir in project_root.glob(".pytest_tmp_*"):
+            if old_dir.name != ".pytest_tmp":
+                try:
+                    if old_dir.is_dir():
+                        dir_age = time.time() - old_dir.stat().st_mtime
+                        if dir_age > 3600:  # 1 hour
+                            shutil.rmtree(old_dir, ignore_errors=True)
+                except Exception:
+                    pass
 
 
 def register_test_file(filepath: str) -> str:

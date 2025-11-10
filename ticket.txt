@@ -1,0 +1,36 @@
+# TICKET: Manual Cleanup Required
+## Action Required
+Please manually delete the following directories when convenient (after closing this session):
+1. .pytest_tmp - Currently locked by a process
+2. All .pytest_tmp_* directories (session-specific temp dirs from testing)
+## How to Delete
+### Option 1: After Reboot
+1. Restart your computer
+2. Delete the directories
+### Option 2: Using Command Prompt as Admin
+1. Open Command Prompt as Administrator
+2. Navigate to: C:\Users\benbu\Code\repo_working\bots
+3. Run: mdir /s /q .pytest_tmp
+4. Run: or /d %i in (.pytest_tmp_*) do rmdir /s /q "%i"
+### Option 3: Using PowerShell as Admin
+1. Open PowerShell as Administrator
+2. Navigate to: C:\Users\benbu\Code\repo_working\bots
+3. Run: Remove-Item .pytest_tmp -Recurse -Force
+4. Run: Get-ChildItem .pytest_tmp_* | Remove-Item -Recurse -Force
+### Option 4: Safe Mode
+1. Boot into Safe Mode
+2. Delete the directories manually
+## Why This Is Needed
+The .pytest_tmp directory is locked by a Windows process (likely a zombie pytest worker).
+We've simplified the test infrastructure to not need monkey-patching, but we need a
+clean slate to test the improvements.
+## After Cleanup
+Once deleted, the new test infrastructure will:
+- Use pytest-xdist's native worker isolation
+- Create per-worker directories (gw0/, gw1/, etc.) automatically
+- Have no race conditions on directory creation
+- Be ready for Phase 2: fixing file naming in setup_test_file
+## Status
+- Phase 1: Completed (removed monkey-patching) ✅
+- Phase 2: Ready to implement (fix file naming) ⏸️
+- Testing: Blocked until cleanup ❌
