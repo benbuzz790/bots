@@ -1,8 +1,11 @@
 ﻿"""
 Test for Issue #186: Verify mojibake fix with chcp 65001
 """
+
 import pytest
 from bots.tools.terminal_tools import execute_powershell
+
+
 def test_unicode_checkmark_no_mojibake():
     """Test that Unicode checkmark is preserved (not mojibake)."""
     result = execute_powershell('Write-Output "Γ£ô"')
@@ -11,6 +14,8 @@ def test_unicode_checkmark_no_mojibake():
     # Should NOT contain mojibake version
     assert "╬ô┬ú├┤" not in result, f"Mojibake detected! Got: {result}"
     print(f"Γ£ô Test passed. Output: {result}")
+
+
 def test_unicode_various_characters():
     """Test various Unicode characters that commonly cause mojibake."""
     test_cases = [
@@ -27,15 +32,17 @@ def test_unicode_various_characters():
         # Check mojibake is NOT present
         assert mojibake not in result, f"Mojibake for {description} detected! Got: {result}"
         print(f"Γ£ô {description} ({char}) preserved correctly")
+
+
 def test_unicode_in_multiline_output():
     """Test Unicode in more complex output scenarios."""
-    script = '''
+    script = """
     Write-Output "Test Results:"
     Write-Output "  Γ£ô All tests passed"
     Write-Output "  ΓåÆ Next steps"
     Write-Output "  ΓÇó Item 1"
     Write-Output "  ΓÇó Item 2"
-    '''
+    """
     result = execute_powershell(script)
     # Check all Unicode characters are preserved
     assert "Γ£ô" in result, "Checkmark missing"
@@ -46,10 +53,13 @@ def test_unicode_in_multiline_output():
     assert "╬ô┬ó├óΓé¼ " not in result, "Arrow mojibake detected"
     assert "╬ô┬ó├óΓÇÜ┬¼├é┬ó" not in result, "Bullet mojibake detected"
     print(f"Γ£ô Multiline output test passed")
+
+
 def test_unicode_in_file_write_and_read():
     """Test Unicode preservation through file operations."""
     import tempfile
     import os
+
     with tempfile.TemporaryDirectory() as tmpdir:
         test_file = os.path.join(tmpdir, "unicode_test.txt")
         # Write Unicode via PowerShell
@@ -62,6 +72,8 @@ def test_unicode_in_file_write_and_read():
         assert "Γ£ô" in result, f"Checkmark not preserved through file. Got: {result}"
         assert "╬ô┬ú├┤" not in result, f"Mojibake in file operations! Got: {result}"
         print(f"Γ£ô File write/read test passed")
+
+
 if __name__ == "__main__":
     print("Running Issue #186 mojibake fix tests...\n")
     test_unicode_checkmark_no_mojibake()
