@@ -10,22 +10,30 @@ from bots.tools.python_edit import python_edit
 
 def setup_test_file(tmp_path, content):
     """Helper to create a test file with given content"""
+    import uuid
+
     # Convert to Path if it's a string
     if isinstance(tmp_path, str):
         tmp_path = Path(tmp_path)
 
-    # pytest's tmp_path fixture already creates the directory
-    # We should NEVER need to create it in tests
-    # Only create if it truly doesn't exist (e.g., __main__ with string path)
+    # pytest's tmp_path fixture creates the directory automatically
+    # With xdist, each worker gets its own isolated tmp_path (e.g., basetemp/gw0/test_name/)
+    # We should rarely need to create it manually
     if not tmp_path.exists():
-        # This should only happen when running from __main__
-        tmp_path.mkdir(parents=True, exist_ok=True)
+        try:
+            tmp_path.mkdir(parents=True, exist_ok=True)
+        except FileExistsError:
+            # Another worker created it, that's fine
+            pass
 
-    # At this point, tmp_path must exist
-    assert tmp_path.is_dir(), f"tmp_path {tmp_path} is not a directory"
+    # Verify directory exists
+    if not tmp_path.is_dir():
+        raise RuntimeError(f"tmp_path {tmp_path} is not a directory")
 
-    # Create the test file inside the directory
-    test_file = tmp_path / "test_file.py"
+    # Create the test file with a unique name to avoid collisions
+    # Even with worker isolation, unique names are good practice
+    unique_id = uuid.uuid4().hex[:8]
+    test_file = tmp_path / f"test_file_{unique_id}.py"
 
     with open(test_file, "w", encoding="utf-8") as f:
         f.write(dedent(content))
@@ -155,7 +163,7 @@ def test_empty_string_deletes_method(tmp_path):
     assert "will be kept" in content
 
 
-def test_empty_string_deletes_nested_class(tmp_path):
+def test_empty_string_deletes_inner_class(tmp_path):
     """Test that empty string deletes nested class"""
     content = """
     class OuterClass:
@@ -186,7 +194,7 @@ def test_empty_string_deletes_nested_class(tmp_path):
     assert "inner" not in content
 
 
-def test_empty_string_deletes_nested_function(tmp_path):
+def test_empty_string_deletes_helper_func(tmp_path):
     """Test that empty string deletes nested function"""
     content = """
     def outer_function():
