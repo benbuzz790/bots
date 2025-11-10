@@ -1,4 +1,5 @@
 # Contributing to bots
+
 We welcome contributions to the bots project! Here are some guidelines to help you get started.
 
 ## Development Setup

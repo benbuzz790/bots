@@ -44,6 +44,12 @@ class TestCLIBackupSystem:
 
         assert "Restored from backup" in result
         assert context.bot_instance.conversation is not None
+        # Verify restored conversation matches original structure
+        # Since restore creates a copy, we check structural properties
+        assert hasattr(context.bot_instance.conversation, "content")
+        assert hasattr(context.bot_instance.conversation, "role")
+        # Verify it's not the Mock object we set
+        assert not isinstance(context.bot_instance.conversation, Mock)
 
     def test_no_backup_available(self):
         """Test behavior when no backup is available."""
@@ -113,38 +119,57 @@ class TestCLIBackupSystem:
         bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
         context.bot_instance = bot
 
-        # Simulate conversation changes by directly manipulating the conversation tree
-        # instead of making actual API calls
-        original_conversation = bot.conversation
+        # Get the initial conversation state
+        initial_conversation = bot.conversation
 
-        # Add a mock reply to simulate a conversation change
-        mock_reply = Mock()
-        mock_reply.content = "test message"
-        mock_reply.role = "assistant"
-        mock_reply.parent = original_conversation
-        mock_reply.replies = []
-        original_conversation.replies.append(mock_reply)
-        bot.conversation = mock_reply
+        # Helper function to calculate depth
+        def get_depth(node):
+            depth = 0
+            current = node
+            while current.parent is not None:
+                depth += 1
+                current = current.parent
+            return depth
+
+        # Simulate a conversation change by adding a user message using the bot's node type
+        # (without making an actual API call)
+        from bots.foundation.anthropic_bots import AnthropicNode
+
+        user_node = AnthropicNode(content="test user message", role="user", parent=initial_conversation)
+        initial_conversation.replies.append(user_node)
+        bot.conversation = user_node
+
+        # Capture the conversation state at backup time
+        backup_depth = get_depth(bot.conversation)
+        original_content = bot.conversation.content
 
         # Create backup
-        context.create_backup("before_more_changes")
+        result = context.create_backup("before_more_changes")
+        assert result is True, "Backup creation should succeed"
 
-        # Make more changes - add another mock reply
-        another_reply = Mock()
-        another_reply.content = "another message"
-        another_reply.role = "assistant"
-        another_reply.parent = mock_reply
-        another_reply.replies = []
-        mock_reply.replies.append(another_reply)
-        bot.conversation = another_reply
+        # Make more changes - add another message
+        assistant_node = AnthropicNode(content="test assistant message", role="assistant", parent=user_node)
+        user_node.replies.append(assistant_node)
+        bot.conversation = assistant_node
+
+        # Verify content changed after modification
+        intermediate_content = bot.conversation.content
+        intermediate_depth = get_depth(bot.conversation)
+        assert intermediate_content != original_content, "Content should have changed before restore"
+        assert intermediate_depth > backup_depth, "Conversation should be deeper after changes"
 
         # Restore
-        context.restore_backup()
+        restore_result = context.restore_backup()
+        assert "Restored from backup" in restore_result, f"Expected restore success, got: {restore_result}"
 
         # Check that we're back to the backed up state
         assert context.bot_instance is not None
-        # The restored bot should have the conversation state from when backup was created
         assert context.bot_instance.conversation is not None
+
+        # Verify the conversation was reverted to the backup state
+        restored_depth = get_depth(context.bot_instance.conversation)
+        assert restored_depth == backup_depth, f"Conversation depth should be {backup_depth}, got {restored_depth}"
+        assert context.bot_instance.conversation.content == original_content, "Conversation content should match backup state"
 
 
 if __name__ == "__main__":

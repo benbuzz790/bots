@@ -1,4 +1,4 @@
-﻿"""
+"""
 Test for Issue #186: Verify mojibake fix with chcp 65001
 """
 

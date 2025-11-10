@@ -1,4 +1,4 @@
-﻿repos:
+repos:
   - repo: https://github.com/psf/black
     rev: 25.9.0
     hooks:
@@ -15,7 +15,7 @@
       - id: flake8
         args: ["--max-line-length=120", "--extend-ignore=E203,W503"]
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.39.0
+    rev: v0.45.0
     hooks:
       - id: markdownlint
         args: ["--fix"]

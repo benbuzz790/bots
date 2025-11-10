@@ -7,8 +7,8 @@
 Most agent frameworks treat conversations as lists of messages. This one treats them as trees.
 Why? Because when you're working with an agent, you need to explore. Try different approaches. Backtrack when something doesn't work. Branch to test ideas in parallel. A linear conversation forces you to either lose context or pollute it with failed attempts.
 Trees let you explore without losing your place. Every message is a node. Every response creates a branch. You can navigate back to any point and try something different. The agent only sees the path from root to your current position, so context stays clean.
-This structure enables something more interesting: agents that manage their own context. An agent can branch itself to explore multiple approaches in parallel. It can navigate its own conversation tree. It can save its stateâ€”complete with tools and contextâ€”and resume later.
-The framework emerged from building with it. Every feature exists because it solved a real problem during development. `respond()` wraps API complexity. `save/load` eliminates context repetition. `add_tools()` makes tool creation trivialâ€”just write a Python function. Functional prompts automate common agent workflows. The CLI grew from `chat()` when interactions got complex enough to need dedicated commands. Namshubs package complete workflows because even with the CLI, certain patterns kept repeating.
+This structure enables something more interesting: agents that manage their own context. An agent can branch itself to explore multiple approaches in parallel. It can navigate its own conversation tree. It can save its state—complete with tools and context—and resume later.
+The framework emerged from building with it. Every feature exists because it solved a real problem during development. `respond()` wraps API complexity. `save/load` eliminates context repetition. `add_tools()` makes tool creation trivial—just write a Python function. Functional prompts automate common agent workflows. The CLI grew from `chat()` when interactions got complex enough to need dedicated commands. Namshubs package complete workflows because even with the CLI, certain patterns kept repeating.
 This is a tool for programming with agents, not just prompting them.
 
 ## Getting Started
@@ -32,7 +32,7 @@ bot.add_tools(code_tools)
 response = bot.respond("Create a Flask app in app.py")
 ```
 
-The agent can now call those tools. You don't write schemas or wrappersâ€”just pass the functions.
+The agent can now call those tools. You don't write schemas or wrappers—just pass the functions.
 Save the bot's state when you want to preserve context:
 
 ```python
@@ -71,7 +71,7 @@ The CLI lets you work with the tree structure directly. Branch to explore differ
 ## Functional Prompts
 
 When you're programming with agents (not just chatting), you need patterns for structured reasoning. Functional prompts provide these.
-The most important pattern is `prompt_while`â€”it lets an agent work iteratively until a task is complete:
+The most important pattern is `prompt_while`—it lets an agent work iteratively until a task is complete:
 
 ```python
 from bots.flows import functional_prompts as fp
@@ -107,25 +107,26 @@ responses, nodes = fp.par_branch_while(bot, [
 ], stop_condition=fp.conditions.said_DONE)
 ```
 
-Functional prompts separate "what to think about" from "how to think about it." The patterns are language-agnosticâ€”they work the same way regardless of what you're asking the agent to do.
+Functional prompts separate "what to think about" from "how to think about it." The patterns are language-agnostic—they work the same way regardless of what you're asking the agent to do.
 
 ## Namshubs
 
 When you find yourself writing the same functional prompt sequences repeatedly, package them as a namshub. A namshub is a complete workflow: system message, tools, and functional prompts bundled together.
 From the CLI:
 
-```text\n>>> Please invoke the namshub of pull requests for PR #123
+```text
+>>> Please invoke the namshub of pull requests for PR #123
 ```
 
 The agent loads the PR review workflow, executes it, then returns control to the main conversation. Namshubs are pre-written tasks that any agent can invoke.
-The name comes from Snow Crashâ€”namshubs "reprogram" the agent temporarily for a specific task, then restore its original state.
+The name comes from Snow Crash—namshubs "reprogram" the agent temporarily for a specific task, then restore its original state.
 
 ## Why Trees Matter
 
-The tree structure isn't just an implementation detailâ€”it's the primary interface for working with agents.
+The tree structure isn't just an implementation detail—it's the primary interface for working with agents.
 When you branch, you're not just creating parallel conversations. You're exploring a decision space. Each branch represents a different approach, a different set of assumptions, a different line of reasoning.
 When you navigate, you're not just moving through history. You're choosing which context to build on. The agent only sees the path from root to your current position, so you control exactly what it knows.
-When you save, you're not just preserving a conversation. You're capturing a complete agent stateâ€”tools, context, and position in the exploration space. You can share it, resume it, or fork it.
+When you save, you're not just preserving a conversation. You're capturing a complete agent state—tools, context, and position in the exploration space. You can share it, resume it, or fork it.
 This makes agents more like development tools than chat interfaces. You explore with them, backtrack when needed, and build up context incrementally.
 
 ## Installation

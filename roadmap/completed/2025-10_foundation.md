@@ -104,7 +104,7 @@
 **Deliverables:**
 
 - Added duplicate detection for classes, functions, and methods
-- New _extract_definition_names() and_check_for_duplicates() functions
+- New _extract_definition_names() and _check_for_duplicates() functions
 - Warning messages when adding duplicates
 - 4 comprehensive tests (test_duplicate_detection_issue160.py)
 **Impact:** Better feedback prevents accidental code duplication

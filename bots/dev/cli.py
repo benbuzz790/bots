@@ -504,8 +504,8 @@ class CLIConfig:
         self.auto_mode_reduce_context_prompt = "trim useless context"
         self.max_tokens = 4096
         self.temperature = 1.0
-        self.auto_backup = True
-        self.auto_restore_on_error = True
+        self.auto_backup = False
+        self.auto_restore_on_error = False
         self.config_file = "cli_config.json"
         self.load_config()
 
@@ -526,8 +526,8 @@ class CLIConfig:
                     )
                     self.max_tokens = config_data.get("max_tokens", 4096)
                     self.temperature = config_data.get("temperature", 1.0)
-                    self.auto_backup = config_data.get("auto_backup", True)
-                    self.auto_restore_on_error = config_data.get("auto_restore_on_error", True)
+                    self.auto_backup = config_data.get("auto_backup", False)
+                    self.auto_restore_on_error = config_data.get("auto_restore_on_error", False)
         except Exception:
             pass  # Use defaults if config loading fails
 

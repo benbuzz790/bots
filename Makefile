@@ -1,4 +1,4 @@
-﻿.PHONY: help install install-dev format check lint test test-fast clean
+.PHONY: help install install-dev format check lint test test-fast clean
 help:
 	@echo "Bots Development Commands"
 	@echo "========================="
