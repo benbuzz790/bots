@@ -255,6 +255,7 @@ class PowerShellSession:
             )
             self._start_reader_threads()
             init_commands = [
+                "chcp 65001 > $null",  # Set console to UTF-8 code page (fixes mojibake - Issue #186)
                 "$VerbosePreference='SilentlyContinue'",
                 "$DebugPreference='SilentlyContinue'",
                 "$ProgressPreference='SilentlyContinue'",
