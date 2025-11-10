@@ -4,6 +4,7 @@ Test for Issue #186: Verify mojibake fix with chcp 65001
 
 import os
 import tempfile
+
 from bots.tools.terminal_tools import execute_powershell
 
 
