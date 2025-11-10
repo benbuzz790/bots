@@ -113,21 +113,38 @@ class TestCLIBackupSystem:
         bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
         context.bot_instance = bot
 
-        # Add a message to conversation
-        bot.respond("test message")
+        # Simulate conversation changes by directly manipulating the conversation tree
+        # instead of making actual API calls
+        original_conversation = bot.conversation
+
+        # Add a mock reply to simulate a conversation change
+        mock_reply = Mock()
+        mock_reply.content = "test message"
+        mock_reply.role = "assistant"
+        mock_reply.parent = original_conversation
+        mock_reply.replies = []
+        original_conversation.replies.append(mock_reply)
+        bot.conversation = mock_reply
 
         # Create backup
         context.create_backup("before_more_changes")
 
-        # Make more changes
-        bot.respond("another message")
+        # Make more changes - add another mock reply
+        another_reply = Mock()
+        another_reply.content = "another message"
+        another_reply.role = "assistant"
+        another_reply.parent = mock_reply
+        another_reply.replies = []
+        mock_reply.replies.append(another_reply)
+        bot.conversation = another_reply
 
         # Restore
         context.restore_backup()
 
         # Check that we're back to the backed up state
-        # Note: This is a simplified check - full verification would need deeper inspection
         assert context.bot_instance is not None
+        # The restored bot should have the conversation state from when backup was created
+        assert context.bot_instance.conversation is not None
 
 
 if __name__ == "__main__":
