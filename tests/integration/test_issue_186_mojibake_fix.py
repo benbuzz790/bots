@@ -1,31 +1,30 @@
-"""
+﻿"""
 Test for Issue #186: Verify mojibake fix with chcp 65001
 """
 
 import os
 import tempfile
-
 from bots.tools.terminal_tools import execute_powershell
 
 
 def test_unicode_checkmark_no_mojibake():
     """Test that Unicode checkmark is preserved (not mojibake)."""
-    result = execute_powershell('Write-Output "Γ£ô"')
+    result = execute_powershell('Write-Output "✓"')
     # Should contain the correct checkmark
-    assert "Γ£ô" in result, f"Checkmark not found. Got: {result}"
+    assert "✓" in result, f"Checkmark not found. Got: {result}"
     # Should NOT contain mojibake version
     assert "╬ô┬ú├┤" not in result, f"Mojibake detected! Got: {result}"
-    print(f"Γ£ô Test passed. Output: {result}")
+    print("✓ Test passed. Output: " + result)
 
 
 def test_unicode_various_characters():
     """Test various Unicode characters that commonly cause mojibake."""
     test_cases = [
-        ("Γ£ô", "checkmark", "╬ô┬ú├┤"),
-        ("Γ£à", "check mark emoji", "╬ô┬ú├┤"),
-        ("ΓåÆ", "right arrow", "╬ô┬ó├óΓé¼ "),
-        ("ΓÇó", "bullet", "╬ô┬ó├óΓÇÜ┬¼├é┬ó"),
-        ("ΓÇª", "ellipsis", "╬ô┬ó├óΓÇÜ┬¼├é┬ª"),
+        ("✓", "checkmark", "╬ô┬ú├┤"),
+        ("✔", "check mark emoji", "╬ô┬ú├┤"),
+        ("→", "right arrow", "╬ô┬ó├óΓé¼ "),
+        ("•", "bullet", "╬ô┬ó├óΓÇÜ┬¼├é┬ó"),
+        ("…", "ellipsis", "╬ô┬ó├óΓÇÜ┬¼├é┬ª"),
     ]
     for char, description, mojibake in test_cases:
         result = execute_powershell(f'Write-Output "{char}"')
@@ -33,28 +32,28 @@ def test_unicode_various_characters():
         assert char in result, f"{description} ({char}) not found. Got: {result}"
         # Check mojibake is NOT present
         assert mojibake not in result, f"Mojibake for {description} detected! Got: {result}"
-        print(f"Γ£ô {description} ({char}) preserved correctly")
+        print(f"✓ {description} ({char}) preserved correctly")
 
 
 def test_unicode_in_multiline_output():
     """Test Unicode in more complex output scenarios."""
     script = """
     Write-Output "Test Results:"
-    Write-Output "  Γ£ô All tests passed"
-    Write-Output "  ΓåÆ Next steps"
-    Write-Output "  ΓÇó Item 1"
-    Write-Output "  ΓÇó Item 2"
+    Write-Output "  ✓ All tests passed"
+    Write-Output "  → Next steps"
+    Write-Output "  • Item 1"
+    Write-Output "  • Item 2"
     """
     result = execute_powershell(script)
     # Check all Unicode characters are preserved
-    assert "Γ£ô" in result, "Checkmark missing"
-    assert "ΓåÆ" in result, "Arrow missing"
-    assert "ΓÇó" in result, "Bullet missing"
+    assert "✓" in result, "Checkmark missing"
+    assert "→" in result, "Arrow missing"
+    assert "•" in result, "Bullet missing"
     # Check no mojibake
     assert "╬ô┬ú├┤" not in result, "Checkmark mojibake detected"
     assert "╬ô┬ó├óΓé¼ " not in result, "Arrow mojibake detected"
     assert "╬ô┬ó├óΓÇÜ┬¼├é┬ó" not in result, "Bullet mojibake detected"
-    print("Γ£ô Multiline output test passed")
+    print("✓ Multiline output test passed")
 
 
 def test_unicode_in_file_write_and_read():
@@ -62,15 +61,15 @@ def test_unicode_in_file_write_and_read():
     with tempfile.TemporaryDirectory() as tmpdir:
         test_file = os.path.join(tmpdir, "unicode_test.txt")
         # Write Unicode via PowerShell
-        write_cmd = f'Set-Content -Path "{test_file}" -Value "Γ£ô Test passed" -Encoding UTF8'
+        write_cmd = f'Set-Content -Path "{test_file}" -Value "✓ Test passed" -Encoding UTF8'
         execute_powershell(write_cmd)
         # Read back via PowerShell
         read_cmd = f'Get-Content -Path "{test_file}"'
         result = execute_powershell(read_cmd)
         # Check Unicode is preserved
-        assert "Γ£ô" in result, f"Checkmark not preserved through file. Got: {result}"
+        assert "✓" in result, f"Checkmark not preserved through file. Got: {result}"
         assert "╬ô┬ú├┤" not in result, f"Mojibake in file operations! Got: {result}"
-        print("Γ£ô File write/read test passed")
+        print("✓ File write/read test passed")
 
 
 if __name__ == "__main__":
@@ -79,4 +78,4 @@ if __name__ == "__main__":
     test_unicode_various_characters()
     test_unicode_in_multiline_output()
     test_unicode_in_file_write_and_read()
-    print("\nΓ£ô All tests passed!")
+    print("\n✓ All tests passed!")
