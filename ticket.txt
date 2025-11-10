@@ -1,36 +1,68 @@
 # TICKET: Manual Cleanup Required
 ## Action Required
 Please manually delete the following directories when convenient (after closing this session):
-1. .pytest_tmp - Currently locked by a process
-2. All .pytest_tmp_* directories (session-specific temp dirs from testing)
+1. **System temp directory**: C:\Users\benbu\AppData\Local\Temp\pytest-of-benbu
+2. **Project temp directory**: C:\Users\benbu\Code\repo_working\bots\.pytest_tmp
+3. **Session-specific directories**: All .pytest_tmp_* directories in project root
+## Why Both Are Locked
+Both directories are locked by zombie pytest worker processes from previous runs.
+This is the root cause of all our test infrastructure issues.
 ## How to Delete
-### Option 1: After Reboot
+### Option 1: After Reboot (EASIEST)
 1. Restart your computer
-2. Delete the directories
+2. Delete both directories:
+   - C:\Users\benbu\AppData\Local\Temp\pytest-of-benbu
+   - C:\Users\benbu\Code\repo_working\bots\.pytest_tmp
+   - All C:\Users\benbu\Code\repo_working\bots\.pytest_tmp_*
 ### Option 2: Using Command Prompt as Admin
 1. Open Command Prompt as Administrator
-2. Navigate to: C:\Users\benbu\Code\repo_working\bots
-3. Run: mdir /s /q .pytest_tmp
-4. Run: or /d %i in (.pytest_tmp_*) do rmdir /s /q "%i"
+2. Run:
+   `cmd
+   rmdir /s /q "C:\Users\benbu\AppData\Local\Temp\pytest-of-benbu"
+   cd C:\Users\benbu\Code\repo_working\bots
+   rmdir /s /q .pytest_tmp
+   for /d %i in (.pytest_tmp_*) do rmdir /s /q "%i"
+   `
 ### Option 3: Using PowerShell as Admin
 1. Open PowerShell as Administrator
-2. Navigate to: C:\Users\benbu\Code\repo_working\bots
-3. Run: Remove-Item .pytest_tmp -Recurse -Force
-4. Run: Get-ChildItem .pytest_tmp_* | Remove-Item -Recurse -Force
-### Option 4: Safe Mode
-1. Boot into Safe Mode
-2. Delete the directories manually
-## Why This Is Needed
-The .pytest_tmp directory is locked by a Windows process (likely a zombie pytest worker).
-We've simplified the test infrastructure to not need monkey-patching, but we need a
-clean slate to test the improvements.
-## After Cleanup
-Once deleted, the new test infrastructure will:
-- Use pytest-xdist's native worker isolation
-- Create per-worker directories (gw0/, gw1/, etc.) automatically
-- Have no race conditions on directory creation
-- Be ready for Phase 2: fixing file naming in setup_test_file
+2. Run:
+   `powershell
+   Remove-Item "C:\Users\benbu\AppData\Local\Temp\pytest-of-benbu" -Recurse -Force
+   cd C:\Users\benbu\Code\repo_working\bots
+   Remove-Item .pytest_tmp -Recurse -Force
+   Get-ChildItem .pytest_tmp_* | Remove-Item -Recurse -Force
+   `
+### Option 4: Kill Python Processes First
+1. Close this CLI session (to avoid killing the bot)
+2. Open Task Manager
+3. Kill all python.exe processes
+4. Delete the directories manually
+5. Restart CLI session
+## After Cleanup - Testing Decision
+Once directories are cleaned up, we need to decide on basetemp strategy:
+### Option A: Use System Temp (Standard)
+- Pro: Industry standard, pytest handles everything
+- Con: System temp is currently locked (may happen again)
+- Test: Remove basetemp setting, let pytest use default
+### Option B: Use Custom Basetemp (Current)
+- Pro: Avoids system temp permission issues
+- Con: Custom directory can get locked too
+- Test: Keep basetemp = ".pytest_tmp"
+### Option C: Hybrid Approach
+- Use custom basetemp but with better cleanup strategy
+- Add retry logic or use different directory each run
+- More complex but might be most reliable on Windows
+## Recommendation
+After cleanup, try **Option A first** (system temp). If system temp continues to have
+permission issues, we'll need to investigate why (antivirus, security software, etc.)
+rather than working around it.
 ## Status
 - Phase 1: Completed (removed monkey-patching) ✅
-- Phase 2: Ready to implement (fix file naming) ⏸️
+- Phase 2: Completed (fixed file naming) ✅
 - Testing: Blocked until cleanup ❌
+- Root cause: Both temp directories locked by zombie processes
+## Next Steps
+1. Clean up both locked directories
+2. Test with system temp (no custom basetemp)
+3. If system temp fails again, investigate root cause
+4. Consider Option C if needed

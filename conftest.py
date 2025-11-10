@@ -17,11 +17,16 @@ _test_created_dirs: Set[str] = set()
 def pytest_configure(config):
     """Configure pytest with custom basetemp for Windows compatibility.
 
-    We set a custom basetemp in the project root to avoid Windows permission
-    issues with the system temp directory. We let pytest-xdist handle worker
-    isolation automatically - it will create gw0/, gw1/, etc. subdirectories.
+    We use custom basetemp because the system temp directory can also get locked
+    by zombie pytest worker processes. This is a Windows-specific issue where
+    processes that don't exit cleanly leave file handles open, locking directories.
 
-    We use the standard .pytest_tmp name and let pytest handle any cleanup issues.
+    The real solution is to prevent zombie processes, but as a workaround we:
+    1. Use custom basetemp in project root
+    2. Let pytest-xdist handle worker isolation (gw0/, gw1/, etc.)
+    3. Clean up old directories that are no longer locked
+
+    Note: If .pytest_tmp is locked, manual cleanup is required (see ticket.txt)
     """
     # Get the project root (where conftest.py is located)
     project_root = Path(__file__).parent
