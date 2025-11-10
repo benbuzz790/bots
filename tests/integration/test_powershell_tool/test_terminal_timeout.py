@@ -117,7 +117,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
         print("\n=== Testing Here-String with Special Characters ===")
         command = (
             "@'\n"
-            'Special chars: "quotes" and \'apostrophes\'\n'
+            "Special chars: \"quotes\" and 'apostrophes'\n"
             "Unicode: café résumé naïve\n"
             "Symbols: $variable @array %hash\n"
             "'@"
