@@ -22,7 +22,7 @@ def pytest_configure(config):
     processes that don't exit cleanly leave file handles open, locking directories.
 
     The real solution is to prevent zombie processes, but as a workaround we:
-    1. Use custom basetemp in project root
+    1. Use custom basetemp in project root (if not already set via CLI)
     2. Let pytest-xdist handle worker isolation (gw0/, gw1/, etc.)
     3. Clean up old directories that are no longer locked
 
@@ -30,11 +30,11 @@ def pytest_configure(config):
     """
     # Get the project root (where conftest.py is located)
     project_root = Path(__file__).parent
-    temp_dir = project_root / ".pytest_tmp"
 
-    # Set basetemp for both main process and workers
-    # Pytest-xdist will handle worker subdirectories (gw0/, gw1/, etc.)
-    config.option.basetemp = str(temp_dir)
+    # Only set basetemp if it wasn't already set via command line
+    if config.option.basetemp is None:
+        temp_dir = project_root / ".pytest_tmp"
+        config.option.basetemp = str(temp_dir)
 
     # Only the main process should do cleanup
     if not hasattr(config, "workerinput"):
