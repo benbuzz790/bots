@@ -16,13 +16,22 @@ def setup_test_file(tmp_path, content):
 
     # pytest's tmp_path fixture already creates the directory
     # We should NEVER need to create it in tests
-    # Only create if it truly doesn't exist (e.g., __main__ with string path)
+    # Only create if it truly doesn't exist (e.g., __main__ with string path or xdist race condition)
     if not tmp_path.exists():
-        # This should only happen when running from __main__
-        tmp_path.mkdir(parents=True, exist_ok=True)
+        try:
+            tmp_path.mkdir(parents=True, exist_ok=True)
+        except FileExistsError:
+            # Another worker created it, that's fine
+            pass
 
-    # At this point, tmp_path must exist
-    assert tmp_path.is_dir(), f"tmp_path {tmp_path} is not a directory"
+    # At this point, tmp_path should exist
+    # But with xdist, there can still be race conditions, so check again
+    if not tmp_path.is_dir():
+        # Wait a moment and retry
+        import time
+        time.sleep(0.01)
+        if not tmp_path.is_dir():
+            raise RuntimeError(f"tmp_path {tmp_path} is not a directory after creation attempt")
 
     # Create the test file inside the directory
     test_file = tmp_path / "test_file.py"
@@ -155,7 +164,7 @@ def test_empty_string_deletes_method(tmp_path):
     assert "will be kept" in content
 
 
-def test_empty_string_deletes_nested_class(tmp_path):
+def test_empty_string_deletes_inner_class(tmp_path):
     """Test that empty string deletes nested class"""
     content = """
     class OuterClass:
@@ -186,7 +195,7 @@ def test_empty_string_deletes_nested_class(tmp_path):
     assert "inner" not in content
 
 
-def test_empty_string_deletes_nested_function(tmp_path):
+def test_empty_string_deletes_helper_func(tmp_path):
     """Test that empty string deletes nested function"""
     content = """
     def outer_function():
