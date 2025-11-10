@@ -12,8 +12,12 @@ class TestPythonView(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
+        import uuid
+
         self.test_dir = tempfile.mkdtemp()
-        self.test_file = os.path.join(self.test_dir, "test_file.py")
+        # Use unique filename to avoid collisions in parallel execution
+        unique_id = uuid.uuid4().hex[:8]
+        self.test_file = os.path.join(self.test_dir, f"test_file_{unique_id}.py")
 
         # Sample Python code for testing
         self.sample_code = '''# Top-level comment

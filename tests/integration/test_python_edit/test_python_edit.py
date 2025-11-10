@@ -17,6 +17,14 @@ def setup_test_file(tmp_path, content):
         return create_safe_test_file(dedent(content), "test_file", "py", tmp_path)
     else:
         # For pytest tmp_path fixture, use the standard approach (it auto-cleans)
+        # Ensure the tmp_path directory exists (handle xdist race conditions)
+        if not tmp_path.exists():
+            try:
+                tmp_path.mkdir(parents=True, exist_ok=True)
+            except FileExistsError:
+                # Another worker created it, that's fine
+                pass
+
         test_file = os.path.join(str(tmp_path), get_unique_filename("test_file", "py"))
         with open(test_file, "w", encoding="utf-8") as f:
             f.write(dedent(content))
