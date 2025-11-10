@@ -705,12 +705,12 @@ class CLIContext:
     def create_backup(self, reason: str = "manual") -> bool:
         """Create a complete backup of the current bot.
 
-    Args:
-        reason: Description of why backup was created (e.g., "before_user_message")
+        Args:
+            reason: Description of why backup was created (e.g., "before_user_message")
 
-    Returns:
-        True if backup successful, False otherwise
-    """
+        Returns:
+            True if backup successful, False otherwise
+        """
         if self.bot_instance is None:
             return False
 
@@ -729,11 +729,7 @@ class CLIContext:
                 "timestamp": time.time(),
                 "reason": reason,
                 "conversation_depth": self._get_conversation_depth(),
-                "token_count": (
-                    self.last_message_metrics.get("input_tokens", 0)
-                    if self.last_message_metrics
-                    else 0
-                ),
+                "token_count": (self.last_message_metrics.get("input_tokens", 0) if self.last_message_metrics else 0),
             }
 
             self.bot_backup = backup_bot
@@ -753,9 +749,9 @@ class CLIContext:
     def restore_backup(self) -> str:
         """Restore bot from backup.
 
-    Returns:
-        Status message
-    """
+        Returns:
+            Status message
+        """
         if not self.has_backup():
             return "No backup available"
 

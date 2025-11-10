@@ -2,7 +2,7 @@
 End-to-end tests for CLI backup system.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -32,9 +32,6 @@ class TestCLIBackupSystem:
         """Test that backups can be restored."""
         context = CLIContext()
         context.bot_instance = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
-
-        # Store original conversation
-        original_conversation = context.bot_instance.conversation
 
         # Create a backup
         context.create_backup("before_change")
@@ -118,7 +115,6 @@ class TestCLIBackupSystem:
 
         # Add a message to conversation
         bot.respond("test message")
-        original_content = bot.conversation.content
 
         # Create backup
         context.create_backup("before_more_changes")
