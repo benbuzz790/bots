@@ -1,8 +1,10 @@
-﻿"""
+"""
 Test for Issue #186: Verify mojibake fix with chcp 65001
 """
 
-import pytest
+import os
+import tempfile
+
 from bots.tools.terminal_tools import execute_powershell
 
 
@@ -52,14 +54,11 @@ def test_unicode_in_multiline_output():
     assert "╬ô┬ú├┤" not in result, "Checkmark mojibake detected"
     assert "╬ô┬ó├óΓé¼ " not in result, "Arrow mojibake detected"
     assert "╬ô┬ó├óΓÇÜ┬¼├é┬ó" not in result, "Bullet mojibake detected"
-    print(f"Γ£ô Multiline output test passed")
+    print("Γ£ô Multiline output test passed")
 
 
 def test_unicode_in_file_write_and_read():
     """Test Unicode preservation through file operations."""
-    import tempfile
-    import os
-
     with tempfile.TemporaryDirectory() as tmpdir:
         test_file = os.path.join(tmpdir, "unicode_test.txt")
         # Write Unicode via PowerShell
@@ -71,7 +70,7 @@ def test_unicode_in_file_write_and_read():
         # Check Unicode is preserved
         assert "Γ£ô" in result, f"Checkmark not preserved through file. Got: {result}"
         assert "╬ô┬ú├┤" not in result, f"Mojibake in file operations! Got: {result}"
-        print(f"Γ£ô File write/read test passed")
+        print("Γ£ô File write/read test passed")
 
 
 if __name__ == "__main__":
