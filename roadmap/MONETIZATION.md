@@ -1,13 +1,20 @@
 # Monetization Strategy
+
 **Strategic Direction**: Documentation-First Revenue Path
+
 ## Overview
+
 The bots project has unique competitive advantages that position it for commercial success:
+
 1. **Conversation trees** - Explore multiple documentation angles simultaneously
 2. **branch_self** - Parallel exploration with n*log(n) scaling vs competitors' n^2
 3. **Self-context management** - Handle large codebases efficiently
 4. **Functional prompts** - Composable patterns for complex documentation workflows
+
 ## Primary Monetization Target: Automated Technical Documentation Generator
+
 **Why Documentation First:**
+
 - Real pain point with proven willingness to pay
 - Does NOT require GUI (faster time to revenue)
 - Leverages our core strengths (branching, trees, parallel exploration)
@@ -26,8 +33,11 @@ The bots project has unique competitive advantages that position it for commerci
 - Multi-perspective documentation (explore architecture, API, deployment simultaneously)
 - Incremental updates (only regenerate changed sections)
 - Conversation tree audit trail (show reasoning process)
+
 ## Secondary Targets (Revenue-Funded)
+
 **AI Code Review Service** (Item 1 synergy):
+
 - Leverage same GitHub integration infrastructure
 - Use branching to explore multiple review angles
 - Show exploration paths in review comments
@@ -40,8 +50,11 @@ The bots project has unique competitive advantages that position it for commerci
 - Sell pre-trained specialized bots
 - Documentation bots, review bots, domain experts
 - $20-100 per bot or $10-30/month subscription
+
 ## Revenue Timeline
+
 **Months 1-2**: Complete Phase 1 (foundation)
+
 - OpenTelemetry cost tracking (essential for pricing)
 - Callback system (progress indicators)
 - Build messages refactor (clean architecture)
@@ -60,8 +73,11 @@ The bots project has unique competitive advantages that position it for commerci
 - Add code review service
 - Build API offering
 - Target: $10k+ MRR
+
 ## Success Metrics
+
 **Technical:**
+
 - Prove n*log(n) scaling advantage with OpenTelemetry metrics
 - Document generation time < 5 minutes for typical repo
 - Cost per documentation run < $2 (maintain 80%+ margin at $10/run) (???)
@@ -74,8 +90,11 @@ The bots project has unique competitive advantages that position it for commerci
 - GUI development funded by Month 6
 - Code review service launched by Month 8
 - API service beta by Month 10
+
 ---
+
 ## Navigation
+
 - [Back to Roadmap Overview](README.md)
 - [Strategic Roadmap](ROADMAP.md)
 - [Development Philosophy](PHILOSOPHY.md)

@@ -1,12 +1,18 @@
 # Namshub Quick Start Guide
+
 ## Creating Your First Namshub
+
 ### 1. Choose a Name
+
 Use the pattern: `namshub_of_<purpose>.py`
 Examples:
+
 - `namshub_of_code_review.py`
 - `namshub_of_refactoring.py`
 - `namshub_of_security_audit.py`
+
 ### 2. Basic Template
+
 ```python
 """Brief description of what this namshub does.
 Detailed explanation of:
@@ -64,16 +70,23 @@ def invoke(bot: Bot, param1: str = None, **kwargs) -> Tuple[str, ConversationNod
     # Return result
     return responses[-1], nodes[-1]
 ```
+
 ### 3. Helper Functions Reference
+
 #### create_toolkit(bot, *tools)
+
 Replace bot's toolkit with specific tools.
+
 ```python
 from bots.tools.code_tools import view, view_dir
 from bots.tools.python_edit import python_view, python_edit
 create_toolkit(bot, view, view_dir, python_view, python_edit)
 ```
+
 #### validate_required_params(**params)
+
 Check that required parameters are provided.
+
 ```python
 valid, error = validate_required_params(
     target_file=target_file,
@@ -82,8 +95,11 @@ valid, error = validate_required_params(
 if not valid:
     return (error, bot.conversation)
 ```
+
 #### chain_workflow(bot, prompts, ...)
+
 Execute a chain_while workflow with INSTRUCTION pattern.
+
 ```python
 responses, nodes = chain_workflow(bot, [
     "Read the file",
@@ -91,7 +107,9 @@ responses, nodes = chain_workflow(bot, [
     "Write summary"
 ])
 ```
+
 ### 4. Best Practices
+
 1. **Single Purpose**: Each namshub should do one thing well
 2. **Clear Documentation**: Explain what it does and when to use it
 3. **Minimal Tools**: Only include tools needed for the task
@@ -99,8 +117,11 @@ responses, nodes = chain_workflow(bot, [
 5. **INSTRUCTION Pattern**: Use for multi-step workflows that need iteration
 6. **Error Messages**: Provide clear usage examples in error messages
 7. **Final Summary**: Return a clear summary of what was accomplished
+
 ### 5. Example: Complete Namshub
+
 See the existing namshubs for complete examples:
+
 - `namshub_of_code_review.py` - Simple sequential workflow
 - `namshub_of_pull_requests.py` - Complex workflow with INSTRUCTION pattern
 - `namshub_of_test_generation.py` - File generation workflow

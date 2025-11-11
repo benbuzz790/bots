@@ -1,8 +1,10 @@
 # Project Ideas and Future Development Notes
+
 **Date**: 09-Oct-2025
 **Project**: bots - Agentic Programming Framework
 
 ## Overview
+
 This document tracks development ideas, feature requests, and architectural improvements for the bots project. Each item includes context, rationale, and implementation considerations.
 
 ---
@@ -81,8 +83,6 @@ Every item in this document, from MCP integration to GUI development, flows from
 
 The future of AI development isn't about building walled gardens--it's about building excellent tools that work seamlessly in a standardized ecosystem. That's the future we're building toward.
 
-
-
 ## Monetization Strategy
 
 **Strategic Direction**: Documentation-First Revenue Path
@@ -90,6 +90,7 @@ The future of AI development isn't about building walled gardens--it's about bui
 ### Overview
 
 The bots project has unique competitive advantages that position it for commercial success:
+
 1. **Conversation trees** - Explore multiple documentation angles simultaneously
 2. **branch_self** - Parallel exploration with n*log(n) scaling vs competitors' n^2
 3. **Self-context management** - Handle large codebases efficiently
@@ -98,6 +99,7 @@ The bots project has unique competitive advantages that position it for commerci
 ### Primary Monetization Target: Automated Technical Documentation Generator
 
 **Why Documentation First:**
+
 - Real pain point with proven willingness to pay
 - Does NOT require GUI (faster time to revenue)
 - Leverages our core strengths (branching, trees, parallel exploration)
@@ -105,16 +107,19 @@ The bots project has unique competitive advantages that position it for commerci
 - Demonstrates competitive advantage (scaling efficiency)
 
 **Target Market:**
+
 - B2B SaaS companies with poor documentation
 - Open source projects needing comprehensive docs
 - Enterprise teams with large codebases
 
 **Pricing Model:**
+
 - $200-500/month per repository (based on size/complexity)
 - Free tier for open source projects (marketing)
 - Usage-based pricing for large enterprises
 
 **Competitive Advantage:**
+
 - n*log(n) scaling through parallel branching (vs competitors' n^2)
 - Multi-perspective documentation (explore architecture, API, deployment simultaneously)
 - Incremental updates (only regenerate changed sections)
@@ -123,17 +128,20 @@ The bots project has unique competitive advantages that position it for commerci
 ### Secondary Targets (Revenue-Funded)
 
 **AI Code Review Service** (Item 1 synergy):
+
 - Leverage same GitHub integration infrastructure
 - Use branching to explore multiple review angles
 - Show exploration paths in review comments
 - $50-200/month per repo or $0.10-0.50 per PR
 
 **Conversation as a Service API** (Item 4):
+
 - Expose conversation trees and branching as API
 - Premium visual GUI as reference implementation
 - Usage-based pricing: $0.01-0.05 per API call + LLM costs + 20% margin
 
 **Bot Marketplace** (Item 2):
+
 - Sell pre-trained specialized bots
 - Documentation bots, review bots, domain experts
 - $20-100 per bot or $10-30/month subscription
@@ -141,23 +149,27 @@ The bots project has unique competitive advantages that position it for commerci
 ### Revenue Timeline
 
 **Months 1-2**: Complete Phase 1 (foundation)
+
 - OpenTelemetry cost tracking (essential for pricing)
 - Callback system (progress indicators)
 - Build messages refactor (clean architecture)
 
 **Months 3-4**: Build Documentation Service (Phase 2)
+
 - GitHub integration
 - Documentation output system
 - Automated workflows
 - Usage tracking and metrics
 
 **Month 5**: Launch MVP (Phase 3)
+
 - Simple authentication/billing
 - Basic multi-tenancy
 - Early customer acquisition
 - Target: 10-20 paying customers
 
 **Month 6+**: Scale & Expand (Phase 4)
+
 - Use revenue to fund GUI development
 - Add code review service
 - Build API offering
@@ -166,17 +178,20 @@ The bots project has unique competitive advantages that position it for commerci
 ### Success Metrics
 
 **Technical:**
+
 - Prove n*log(n) scaling advantage with OpenTelemetry metrics
 - Document generation time < 5 minutes for typical repo
 - Cost per documentation run < $2 (maintain 80%+ margin at $10/run)
 
 **Business:**
+
 - 10 paying customers by Month 5
 - $5k MRR by Month 6
 - $10k MRR by Month 9
 - 90%+ customer retention
 
 **Strategic:**
+
 - GUI development funded by Month 6
 - Code review service launched by Month 8
 - API service beta by Month 10
@@ -189,13 +204,15 @@ The bots project has unique competitive advantages that position it for commerci
 
 ## 1. Expand Provider Base
 
-**Current State**: 
+**Current State**:
+
 - Supports Anthropic Claude, OpenAI GPT, and Google Gemini
 - v3.0.0 achieved multi-provider support with 97%+ test pass rate
 
 **Goal**: Add support for additional LLM providers
 
 **Potential Providers**:
+
 - Cohere
 - Mistral AI
 - Local models (Ollama, LM Studio)
@@ -212,10 +229,12 @@ The bots project has unique competitive advantages that position it for commerci
 **Status**: PARTIAL (PR #125, 13-Oct-2025)
 
 **Delivered**:
+
 - Session-wide metrics display (tokens, cost, response time)
 - Auto-prompt for context reduction when threshold exceeded
 
 **Remaining Work**:
+
 - Color coding for different message types
 - Syntax highlighting for code in tool results
 - Progress indicators for long-running operations (see item 12)
@@ -233,6 +252,7 @@ The bots project has unique competitive advantages that position it for commerci
 **Goal**: Create web-based GUI that interfaces with CLI backend
 
 **Architecture Options**:
+
 - Thin Client: FastAPI backend + React frontend + WebSocket
 - Electron App: Package CLI with Electron
 - Jupyter-style Notebook: Web-based notebook interface
@@ -260,6 +280,7 @@ The bots project has unique competitive advantages that position it for commerci
 **Goal**: Initialize utility bots from same provider as main CLI bot
 
 **Provider Model Tiers**:
+
 - Anthropic: Sonnet (flagship) / Haiku (fast)
 - OpenAI: GPT-4 Turbo (flagship) / GPT-4o-mini (fast)
 - Google: Gemini Pro (flagship) / Gemini Flash (fast)
@@ -285,6 +306,7 @@ The bots project has unique competitive advantages that position it for commerci
 **Status**: [DONE] COMPLETED
 
 **Key Items Found**:
+
 1. Conversation Tree Visualization Tools
 2. GUI over the cli
 3. Enhanced Callback System for functional prompts
@@ -320,6 +342,7 @@ The bots project has unique competitive advantages that position it for commerci
 **Status**: DONE (WO012, 09-Oct-2025)
 
 **Delivered**:
+
 - Reorganized tests into unit/, integration/, e2e/ structure
 - Created centralized fixtures/ directory
 - Implemented proper pytest fixtures and markers
@@ -344,12 +367,14 @@ The bots project has unique competitive advantages that position it for commerci
 **Status**: PARTIAL (PR #125, 13-Oct-2025)
 
 **Delivered**:
+
 - list_context: Display bot messages with labels for removal
 - remove_context: Remove bot-user message pairs by label
 - CLI auto-prompts context reduction when token threshold exceeded
 - Session-wide metrics tracking and display
 
 **Remaining Work**:
+
 - Phase 1: fork_from_node (create branch from earlier point)
 - Phase 2: summarize_context, merge_branches
 - Phase 3: mark_checkpoint, goto_checkpoint
@@ -357,6 +382,7 @@ The bots project has unique competitive advantages that position it for commerci
 **Goal**: Add more tools for bots to manage their own conversation context
 
 **Proposed Tools**:
+
 - delete_stale_context: Remove outdated message pairs
 - summarize_context: Replace verbose history with summary
 - fork_from_node: Create branch from earlier point
@@ -366,6 +392,7 @@ The bots project has unique competitive advantages that position it for commerci
 - goto_checkpoint: Navigate to checkpoint
 
 **Implementation Phases**:
+
 1. Core context management (delete_stale_context, list_conversation_nodes, fork_from_node)
 2. Advanced operations (summarize_context, merge_branches)
 3. Navigation helpers (mark_checkpoint, goto_checkpoint)
@@ -388,7 +415,6 @@ The bots project has unique competitive advantages that position it for commerci
 
 **Priority**: Medium
 
-
 ---
 
 ## 12. Add Callbacks to Major Bot Operation Steps
@@ -396,6 +422,7 @@ The bots project has unique competitive advantages that position it for commerci
 **Status**: DONE (WO015 - 10-Oct-2025)
 
 **Delivered**:
+
 - Complete callback system (BotCallbacks base class)
 - OpenTelemetryCallbacks for observability integration
 - ProgressCallbacks for user-facing progress indicators
@@ -407,6 +434,7 @@ The bots project has unique competitive advantages that position it for commerci
 **Goal**: Implement callback system with progress indicators
 
 **Major Steps**:
+
 1. Message Building
 2. API Call
 3. Response Processing
@@ -415,6 +443,7 @@ The bots project has unique competitive advantages that position it for commerci
 **Progress Indicator**: Four dots (. .. ... ....)
 
 **Callback Interface**:
+
 - on_step_start(step_name, metadata)
 - on_step_complete(step_name, result)
 - on_step_error(step_name, error)
@@ -429,19 +458,21 @@ The bots project has unique competitive advantages that position it for commerci
 
 ---
 
-
 ## 13. MCP Integration (Model Context Protocol)
 
-**Current State**: 
+**Current State**:
+
 - No MCP support
 - Tools are bot-specific, not accessible to other MCP clients
 
 **Goal**: Integrate MCP as both client and server
 
 ### MCP as Client (Priority 1)
+
 **Purpose**: Connect to existing MCP servers to access their tools
 
 **Implementation**:
+
 ```python
 # Bot gains access to all MCP server tools
 bot = AnthropicBot()
@@ -452,12 +483,14 @@ bot.add_mcp_server("postgres", "npx @modelcontextprotocol/server-postgres")
 ```
 
 **Benefits**:
+
 - Instant access to growing MCP ecosystem
 - Standardized tool connectivity (like USB-C for AI)
 - Compatible with Claude Desktop, Cursor, and other MCP clients
 - No need to build custom integrations for each tool
 
 **MCP Ecosystem (October 2025)**:
+
 - 90% of organizations projected to use MCP by end of 2025
 - Major adoption: Microsoft, OpenAI, Google DeepMind
 - Early adopters: Block, Apollo, Zed, Replit, Codeium, Sourcegraph
@@ -465,6 +498,7 @@ bot.add_mcp_server("postgres", "npx @modelcontextprotocol/server-postgres")
 - Market growing from $1.2B (2022) to $4.5B (2025)
 
 **Implementation Steps**:
+
 1. Install MCP Python SDK: `pip install mcp`
 2. Create MCPToolWrapper class to convert MCP tools to bot-compatible functions
 3. Add `bot.add_mcp_server(name, command)` method
@@ -472,9 +506,11 @@ bot.add_mcp_server("postgres", "npx @modelcontextprotocol/server-postgres")
 5. Test with popular MCP servers (filesystem, github, etc.)
 
 ### MCP as Server (Priority 2)
+
 **Purpose**: Expose your bot's tools as MCP server for other applications
 
 **Implementation**:
+
 ```python
 # Your code_tools become available to Claude Desktop, Cursor, etc.
 from bots.mcp import MCPServer
@@ -486,12 +522,14 @@ mcp_server.start()
 ```
 
 **Benefits**:
+
 - Your excellent tools (python_edit, branch_self, etc.) become available to entire MCP ecosystem
 - Other developers can use them in Claude Desktop, Cursor, Windsurf, etc.
 - Positions your project as valuable MCP tool provider
 - Increases project visibility and adoption
 
 **Tools to Expose**:
+
 - python_edit - Scope-aware Python editing
 - python_view - Scope-aware Python viewing
 - branch_self - Parallel conversation exploration
@@ -500,12 +538,14 @@ mcp_server.start()
 - All self_tools (when implemented)
 
 **Related Standards**:
+
 - Open Agentic Schema Framework (OASF) - Launched early 2025 for agent interoperability
 - Agent Connect Protocol (ACP) - Part of AGNTCY initiative for agent-to-agent communication
 
 **Priority**: High (Phase 1 for Client, Phase 2 for Server)
 
 **Why MCP Over LangChain**:
+
 - Simpler protocol vs. complex framework
 - Industry standard emerging NOW
 - LangChain itself is adapting to MCP (released MCP adapters)
@@ -518,7 +558,8 @@ mcp_server.start()
 
 **Status**: Phases 1-3 Complete. Phase 4 not started.
 
-**Current State**: 
+**Current State**:
+
 - Print statements scattered throughout code (item 11)
 - No structured logging or monitoring
 - Difficult to debug issues in production
@@ -532,6 +573,7 @@ mcp_server.start()
 **Observability** = Understanding what's happening inside your system by examining its outputs
 
 **Three Pillars**:
+
 1. **Logs** - What happened? (events, errors, state changes)
 2. **Metrics** - How much/many? (API calls, response times, token usage)
 3. **Traces** - Journey of a request (full flow with timing)
@@ -539,6 +581,7 @@ mcp_server.start()
 ### Why OpenTelemetry?
 
 **OpenTelemetry** is the industry standard for observability (like MCP for tools):
+
 - CNCF-backed open standard
 - Vendor-agnostic (works with any monitoring tool)
 - Automatic instrumentation available
@@ -548,6 +591,7 @@ mcp_server.start()
 ### Implementation Design
 
 #### Basic Setup
+
 ```python
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -562,6 +606,7 @@ tracer = trace.get_tracer(__name__)
 ```
 
 #### Bot Integration
+
 ```python
 class AnthropicBot:
     def respond(self, prompt):
@@ -601,6 +646,7 @@ class AnthropicBot:
 ```
 
 #### What You Get
+
 ```
 Trace: bot.respond (4.2s)
   |-- build_messages (0.1s)
@@ -623,19 +669,23 @@ Trace: bot.respond (4.2s)
 ### Integration with Existing Items
 
 #### Replaces Item 11 (Remove Print Statements)
+
 **Before:**
+
 ```python
 print("Sending message to mailbox...")
 print(f"Tool execution: {tool_name}")
 ```
 
 **After:**
+
 ```python
 logger.info("mailbox.send", extra={"message_id": msg_id})
 span.add_event("tool.execution", {"tool_name": tool_name})
 ```
 
 #### Enables Item 12 (Progress Callbacks)
+
 ```python
 class ObservabilityCallbacks(BotCallbacks):
     def on_step_start(self, step_name, metadata):
@@ -654,34 +704,40 @@ class ObservabilityCallbacks(BotCallbacks):
 ### Metrics to Track
 
 **Performance Metrics**:
+
 - `bot.response_time` - Total time for bot.respond()
 - `bot.api_call_duration` - Time spent in API calls
 - `bot.tool_execution_duration` - Time spent executing tools
 - `bot.message_building_duration` - Time building messages
 
 **Usage Metrics**:
+
 - `bot.api_calls_total` - Count of API calls (by provider, model)
 - `bot.tool_calls_total` - Count of tool executions (by tool name)
 - `bot.conversations_total` - Count of conversations
 - `bot.tokens_used` - Token usage (input/output, by provider)
 
 **Cost Metrics**:
+
 - `bot.cost_usd` - Cost in USD (by provider, model)
 - `bot.cost_per_conversation` - Average cost per conversation
 
 **Error Metrics**:
+
 - `bot.errors_total` - Count of errors (by type, provider)
 - `bot.tool_failures_total` - Count of tool failures (by tool)
 
 ### Benefits
 
 **For Development**:
+
 - Debug issues quickly (see exact flow and timing)
 - Identify performance bottlenecks
 - Understand tool usage patterns
 - Track down errors with full context
 
 **For Production**:
+
 - Monitor system health
 - Track costs and token usage
 - Set up alerts for anomalies
@@ -689,6 +745,7 @@ class ObservabilityCallbacks(BotCallbacks):
 - Performance optimization
 
 **For Users**:
+
 - Better progress indicators (know what's happening)
 - Faster issue resolution
 - More reliable system
@@ -696,23 +753,27 @@ class ObservabilityCallbacks(BotCallbacks):
 ### Implementation Steps
 
 **Phase 1: Basic Tracing**
+
 1. Install OpenTelemetry: `pip install opentelemetry-api opentelemetry-sdk`
 2. Add tracing to bot.respond() method
 3. Add tracing to tool execution
 4. Test with console exporter
 
 **Phase 2: Structured Logging**
+
 1. Replace all print statements with logging
 2. Add OpenTelemetry logging integration
 3. Configure log levels (DEBUG, INFO, WARNING, ERROR)
 4. Add structured context to logs
 
 **Phase 3: Metrics**
+
 1. Add metrics collection
 2. Track performance, usage, cost metrics
 3. Set up dashboards (Grafana, Datadog, etc.)
 
 **Phase 4: Production Observability**
+
 1. Configure exporters (Jaeger, Zipkin, or cloud provider)
 2. Set up alerting
 3. Create runbooks for common issues
@@ -721,11 +782,13 @@ class ObservabilityCallbacks(BotCallbacks):
 ### Observability Backends (Choose One)
 
 **Open Source**:
+
 - Jaeger - Distributed tracing
 - Prometheus + Grafana - Metrics and dashboards
 - Loki - Log aggregation
 
 **Commercial (with free tiers)**:
+
 - Datadog - Full observability platform
 - New Relic - APM and monitoring
 - Honeycomb - Observability for complex systems
@@ -747,12 +810,14 @@ class ObservabilityCallbacks(BotCallbacks):
 **Status**: DONE (WO015 - 10-Oct-2025)
 
 **All 4 Phases Complete**:
+
 - [DONE] Phase 1: Basic Tracing - COMPLETE (PR #114)
 - [DONE] Phase 2: Structured Logging - COMPLETE (PR #114)
 - [DONE] Phase 3: Metrics - COMPLETE (WO015)
 - [DONE] Phase 4: Production Observability - COMPLETE (WO015)
 
 **Delivered in PR #114 (Phases 1-2)**:
+
 - New /bots/observability module with tracing support
 - Configuration system with environment variables
 - Full instrumentation of all bot providers (Anthropic, OpenAI, Gemini)
@@ -762,6 +827,7 @@ class ObservabilityCallbacks(BotCallbacks):
 - 100% backward compatibility
 
 **Delivered in WO015 (Phases 3-4)**:
+
 - Cost calculator for all providers (27 models: Anthropic, OpenAI, Google)
 - Metrics infrastructure (11 instruments: 4 histograms, 7 counters)
   - Performance: response_time, api_call_duration, tool_execution_duration, message_building_duration
@@ -778,7 +844,8 @@ class ObservabilityCallbacks(BotCallbacks):
 
 ## 15. LiteLLM Integration for Provider Expansion
 
-**Current State**: 
+**Current State**:
+
 - Manual implementation for each provider (Anthropic, OpenAI, Gemini)
 - Each provider requires custom code for API calls, message formatting, tool handling
 - Adding new providers is time-consuming
@@ -788,12 +855,14 @@ class ObservabilityCallbacks(BotCallbacks):
 ### What is LiteLLM?
 
 **LiteLLM** provides a unified interface for 100+ LLM providers:
+
 - OpenAI, Anthropic, Google, Cohere, Mistral, Replicate
 - Azure OpenAI, AWS Bedrock, Vertex AI
 - Local models (Ollama, LM Studio, vLLM)
 - Open source models (Llama, Mistral, etc.)
 
 **One API format for all providers:**
+
 ```python
 from litellm import completion
 
@@ -807,21 +876,25 @@ response = completion(
 ### Benefits
 
 **Instant Provider Support**:
+
 - 100+ providers immediately available
 - No need to implement each provider manually
 - Automatic handling of provider-specific quirks
 
 **Unified Interface**:
+
 - Same code works across all providers
 - Easy to switch providers
 - Easy to compare providers
 
 **Active Maintenance**:
+
 - LiteLLM team handles provider API changes
 - New providers added regularly
 - Bug fixes and updates
 
 **Cost Tracking**:
+
 - Built-in cost calculation for all providers
 - Token usage tracking
 - Budget management
@@ -829,6 +902,7 @@ response = completion(
 ### Implementation Approach
 
 #### Option 1: LiteLLM as Base Layer
+
 ```python
 from litellm import completion
 import bots
@@ -855,7 +929,9 @@ bot = LiteLLMBot(model="ollama/llama3")  # Local model!
 ```
 
 #### Option 2: Hybrid Approach
+
 Keep existing provider implementations for fine-grained control, add LiteLLM for quick provider support:
+
 ```python
 # Use native implementation for main providers
 bot = AnthropicBot()  # Full control, optimized
@@ -867,6 +943,7 @@ bot = LiteLLMBot(model="cohere/command-r-plus")  # Quick support
 ### Integration with Other Items
 
 **Complements Item 5** (CLI Haiku Bots):
+
 ```python
 PROVIDER_MODELS = {
     'anthropic': {
@@ -895,6 +972,7 @@ PROVIDER_MODELS = {
 
 **Enables Item 1** (Expand Provider Base):
 Instead of manually implementing each provider, use LiteLLM to get instant support for:
+
 - Cohere
 - Mistral AI
 - Local models (Ollama, LM Studio)
@@ -905,6 +983,7 @@ Instead of manually implementing each provider, use LiteLLM to get instant suppo
 ### Considerations
 
 **Pros**:
+
 - [x] Instant 100+ provider support
 - [x] Unified interface
 - [x] Active maintenance
@@ -912,11 +991,13 @@ Instead of manually implementing each provider, use LiteLLM to get instant suppo
 - [x] Easy to test different providers
 
 **Cons**:
--   Abstraction layer (slight overhead)
--   Less control over provider-specific features
--   Dependency on external library
 
-**Recommendation**: 
+- Abstraction layer (slight overhead)
+- Less control over provider-specific features
+- Dependency on external library
+
+**Recommendation**:
+
 - Use LiteLLM for quick provider expansion
 - Keep native implementations for primary providers (Anthropic, OpenAI, Gemini)
 - Best of both worlds: control + breadth
@@ -942,39 +1023,48 @@ Instead of manually implementing each provider, use LiteLLM to get instant suppo
 ## Additional Items from large_refactor_tasks.md
 
 ### 16. Centralized File-Writing Wrapper
+
 **Goal**: Wrapper with BOM removal logic (for all tools using toolify decorator?)
 **Priority**: Medium
 
 ### 17. Tool Requirements Decorator
+
 **Status**: Partially complete - bots.dev.decorators 'toolify'
 **Goal**: Decorator that applies tool requirements to functions
 **Priority**: Low-Medium
 
 ### 18. Bot Requirements System
+
 **Goal**: bot.requirements parameter for tool dependencies
 **Priority**: Medium
 
 ### 19. AST String vs Constant Warnings
+
 **Goal**: Clean up AST warnings
 **Priority**: Low
 
 ### 20. python_edit Feedback
+
 **Goal**: Better feedback when input is incorrect
 **Priority**: Complete!
 
 ### 21. Autosave Behavior
+
 **Goal**: More intuitive autosave (save over loaded filename)
 **Priority**: Low-Medium
 
 ### 22. Terminal Tool Output Format
+
 **Goal**: Implicit [dir]> format like in terminal_tools.py
 **Priority**: Complete!
 
 ### 23. Tool Configurations in CI/CD
+
 **Goal**: Tool factories respecting CI/CD constraints
 **Priority**: Medium
 
 ### 24. Test Parallelism
+
 **Goal**: Fix test parallelism issues (mainly in terminal_tools)
 **Priority**: High
 **Status**: [DONE] COMPLETED (PR #112, 05-Oct-2025)
@@ -984,6 +1074,7 @@ Fixed PowerShell test files to use unique temp directories per test. Removed ser
 ```
 
 ### 25. Uniform Tempfile Handling
+
 **Goal**: Consistent tempfile handling in tests
 **Priority**: High
 **Reason**: Tests pollute repository with extraneous files
@@ -994,11 +1085,13 @@ Fixed test_patch_edit.py, test_class_replace.py, and test_python_edit_edge_cases
 ```
 
 ### Docker Testing Infrastructure (Archived)
+
 **Status**: [ARCHIVED] ARCHIVED (PR #113, 05-Oct-2025)
 
 Docker-based test infrastructure was developed but abandoned due to Docker Desktop issues. All Docker testing files have been moved to `archived_docker_testing/` directory and preserved on the `docker-testing` branch for potential future use. The infrastructure included Dockerfile, test orchestration scripts, comprehensive documentation, and pytest integration with --use-docker flags. See `archived_docker_testing/README.md` for details.
 
 **PR #113 Actions**:
+
 - Archived all Docker files to `/archived_docker_testing/` directory
 - Removed Docker-related code from conftest.py
 - Created comprehensive README explaining the history
@@ -1011,6 +1104,7 @@ Docker-based test infrastructure was developed but abandoned due to Docker Deskt
 **Status**: DONE (PR #110, 04-Oct-2025)
 
 **Delivered**:
+
 - CodeRabbit configuration (.coderabbit.yaml)
 - PR template (.github/pull_request_template.md)
 - PR validation workflow (.github/workflows/pr-checks.yml)
@@ -1024,6 +1118,7 @@ Docker-based test infrastructure was developed but abandoned due to Docker Deskt
 ### Branch Protection Rules
 
 **Requirements for main branch**:
+
 1. **Require pull request before merging**
    - No direct pushes to main
    - All changes must go through PR workflow
@@ -1044,6 +1139,7 @@ Docker-based test infrastructure was developed but abandoned due to Docker Deskt
 ### Implementation Steps
 
 #### Step 1: Configure Branch Protection
+
 ```
 GitHub Repository Settings:
 1. Go to Settings -> Branches
@@ -1059,7 +1155,9 @@ GitHub Repository Settings:
 ```
 
 #### Step 2: Required Status Checks
+
 Configure these checks to be required:
+
 - `test` - Run test suite
 - `lint` - Code quality checks
 - `type-check` - Type checking (if applicable)
@@ -1070,20 +1168,23 @@ Configure these checks to be required:
 #### Step 3: Set Up CodeRabbit
 
 **What is CodeRabbit?**
+
 - AI-powered code review assistant
 - Automated PR reviews with contextual feedback
 - Suggests improvements, catches bugs, identifies security issues
 - Integrates directly with GitHub PRs
 
 **Setup**:
+
 1. Install CodeRabbit GitHub App
-   - Go to https://github.com/apps/coderabbitai
+   - Go to <https://github.com/apps/coderabbitai>
    - Click "Install"
    - Select repository: benbuzz790/bots
    - Grant permissions
 
 2. Configure CodeRabbit
    - Create `.coderabbit.yaml` in repository root:
+
    ```yaml
    # .coderabbit.yaml
    language: "en-US"
@@ -1260,6 +1361,7 @@ Create `.github/pull_request_template.md`:
 ### Workflow After Implementation
 
 **Developer Workflow**:
+
 1. Create feature branch: `git checkout -b feature/my-feature`
 2. Make changes (small, incremental)
 3. Commit and push: `git push origin feature/my-feature`
@@ -1271,6 +1373,7 @@ Create `.github/pull_request_template.md`:
 9. Once approved + all checks green -> Merge
 
 **What Blocks a Merge**:
+
 - Any CI/CD test failures
 - Code coverage below threshold
 - Linting errors
@@ -1279,6 +1382,7 @@ Create `.github/pull_request_template.md`:
 - Branch not up to date with main
 
 **What Allows a Merge**:
+
 - [x] All tests passing (green checkmark)
 - [x] Code coverage meets threshold
 - [x] Linting passes
@@ -1289,21 +1393,25 @@ Create `.github/pull_request_template.md`:
 ### Benefits
 
 **Quality Assurance**:
+
 - No broken code reaches main
 - Consistent code quality
 - Automated checks catch issues early
 
 **Code Review**:
+
 - CodeRabbit provides instant AI feedback
 - Human reviewers focus on architecture/design
 - Faster review cycles
 
 **Safety**:
+
 - Protected main branch
 - No accidental direct pushes
 - Rollback is easier (clean history)
 
 **Collaboration**:
+
 - Clear PR process
 - Discussion on changes
 - Knowledge sharing through reviews
@@ -1311,11 +1419,13 @@ Create `.github/pull_request_template.md`:
 ### Alternative/Additional Tools
 
 **Other AI Code Review Tools**:
+
 - **GitHub Copilot for PRs** - Similar to CodeRabbit
 - **Sourcery** - Python-specific refactoring suggestions
 - **DeepCode (Snyk)** - Security-focused
 
 **Traditional Tools**:
+
 - **SonarCloud** - Code quality and security
 - **Codecov** - Coverage reporting with PR comments
 - **Dependabot** - Dependency updates
@@ -1325,27 +1435,32 @@ Create `.github/pull_request_template.md`:
 ### Cost Considerations
 
 **CodeRabbit Pricing** (as of 2025):
+
 - Free for open source projects
 - Pro: $15/user/month for private repos
 - Enterprise: Custom pricing
 
 **GitHub Actions**:
+
 - 2,000 minutes/month free for private repos
 - Unlimited for public repos
 
 ### Implementation Priority
 
 **Phase 1** (Immediate):
+
 1. Set up branch protection rules
 2. Configure required status checks
 3. Update CI/CD workflow
 
 **Phase 2** (Short-term):
+
 1. Install and configure CodeRabbit
 2. Create PR template
 3. Document workflow for contributors
 
 **Phase 3** (Ongoing):
+
 1. Refine CodeRabbit configuration based on feedback
 2. Add additional checks as needed
 3. Monitor and improve coverage thresholds
@@ -1356,12 +1471,12 @@ Create `.github/pull_request_template.md`:
 
 **Impact**: High - Significantly improves code quality and prevents bugs from reaching main
 
-
 ## 27. GitHub Integration & Webhook System
 
 **Goal**: Enable automated repository access and event-driven workflows
 
 **Components**:
+
 1. **GitHub App**:
    - OAuth authentication for repo access
    - Webhook endpoint for commit/PR events
@@ -1380,6 +1495,7 @@ Create `.github/pull_request_template.md`:
    - Track file changes (incremental updates)
 
 **Implementation**:
+
 ```python
 # GitHub App integration
 from github import Github
@@ -1416,6 +1532,7 @@ def handle_webhook():
 **Goal**: Generate high-quality documentation from conversation trees
 
 **Components**:
+
 1. **Markdown Generator**:
    - Convert conversation trees to structured markdown
    - Generate README.md, API docs, architecture docs
@@ -1442,6 +1559,7 @@ def handle_webhook():
    - Content filtering
 
 **Implementation**:
+
 ```python
 class DocumentationGenerator:
     def __init__(self, bot, repo_path):
@@ -1474,6 +1592,7 @@ class DocumentationGenerator:
 ```
 
 **Key Features**:
+
 - **Tree-based structure**: Documentation hierarchy mirrors conversation tree
 - **Multi-perspective**: Explore different angles simultaneously (architecture, API, deployment)
 - **Incremental updates**: Only regenerate changed sections
@@ -1494,6 +1613,7 @@ class DocumentationGenerator:
 **Goal**: End-to-end automated documentation generation and updates
 
 **Components**:
+
 1. **Scheduled Generation**:
    - Nightly/weekly full documentation regeneration
    - Configurable schedules per repository
@@ -1518,6 +1638,7 @@ class DocumentationGenerator:
    - Change notifications
 
 **Workflow**:
+
 ```
 1. Webhook receives commit event
 2. Clone/pull repository
@@ -1545,6 +1666,7 @@ class DocumentationGenerator:
 **Goal**: Secure access control and revenue collection
 
 **Components**:
+
 1. **Authentication**:
    - GitHub OAuth for user login
    - API key generation for programmatic access
@@ -1570,6 +1692,7 @@ class DocumentationGenerator:
    - Alert on approaching limits
 
 **Implementation**:
+
 ```python
 from stripe import Subscription, Customer
 from flask_login import login_required
@@ -1609,6 +1732,7 @@ def create_subscription():
 **Goal**: Isolate customer data and resources securely
 
 **Components**:
+
 1. **Data Isolation**:
    - Separate database schemas per customer
    - Isolated file storage (S3 buckets per customer)
@@ -1634,6 +1758,7 @@ def create_subscription():
    - Monitoring per tenant
 
 **Implementation**:
+
 ```python
 class TenantContext:
     def __init__(self, customer_id):
@@ -1678,6 +1803,7 @@ class TenantContext:
 **Goal**: Launch minimal viable product for automated documentation
 
 **Components**:
+
 1. **Landing Page**:
    - Value proposition and features
    - Pricing tiers
@@ -1709,6 +1835,7 @@ class TenantContext:
    - Download as markdown/HTML
 
 **User Flow**:
+
 ```
 1. User signs up with GitHub OAuth
 2. Selects pricing tier and enters payment
@@ -1721,6 +1848,7 @@ class TenantContext:
 ```
 
 **MVP Features** (Keep it simple!):
+
 - ✅ GitHub OAuth login
 - ✅ Stripe subscription (3 tiers)
 - ✅ GitHub App installation
@@ -1730,6 +1858,7 @@ class TenantContext:
 - ✅ Usage tracking
 
 **Post-MVP Features** (Add later):
+
 - Custom templates
 - Advanced styling
 - API access
@@ -1749,15 +1878,15 @@ class TenantContext:
 
 ---
 
-
 ## 42. Issue Resolver GitHub App
 
 **Goal**: Automated issue resolution through PR submissions
 
-**Description**: 
+**Description**:
 A GitHub App that monitors repository issues and automatically submits PRs with fixes, similar to CodeRabbit's review capabilities but focused on issue resolution.
 
 **Components**:
+
 1. **Issue Monitoring**:
    - Webhook listener for new issues and issue comments
    - Issue classification (bug, feature request, documentation, etc.)
@@ -1790,6 +1919,7 @@ A GitHub App that monitors repository issues and automatically submits PRs with 
    - Track success metrics
 
 **Workflow**:
+
 ```
 1. Webhook receives new issue event
 2. Classify and score issue for auto-resolution
@@ -1802,12 +1932,14 @@ A GitHub App that monitors repository issues and automatically submits PRs with 
 ```
 
 **Competitive Advantages**:
+
 - Conversation tree exploration shows reasoning process
 - branch_self enables exploring multiple solution approaches
 - OpenTelemetry tracking for cost and performance metrics
 - Self-context management for handling complex issues
 
 **Pricing Model**:
+
 - $100-300/month per repository
 - Free tier for open source (marketing + training data)
 - Usage-based for high-volume repos
@@ -1856,6 +1988,7 @@ A GitHub App that monitors repository issues and automatically submits PRs with 
 ## 36. Tutorial Expansion
 
 **Current State**:
+
 - Single tutorial: `tutorials/01_getting_started.md` (47 lines, very minimal)
 - Good documentation exists (README, CLI_PRIMER, functional_prompt_primer)
 - No hands-on tutorials for key features
@@ -1863,6 +1996,7 @@ A GitHub App that monitors repository issues and automatically submits PRs with 
 **Goal**: Create comprehensive tutorial series covering all major features
 
 **Missing Tutorial Topics**:
+
 1. **Tool Development Tutorial** - How to create custom tools (HIGH PRIORITY)
 2. **Conversation Tree Navigation Tutorial** - Branching and navigation
 3. **Functional Prompts Tutorial** - Practical examples with real workflows
@@ -1872,6 +2006,7 @@ A GitHub App that monitors repository issues and automatically submits PRs with 
 7. **Advanced Patterns Tutorial** - Real-world workflows and patterns
 
 **Recommended Structure**:
+
 - tutorials/01_getting_started.md (EXISTS - needs expansion)
 - tutorials/02_adding_tools.md (NEW - custom tool development)
 - tutorials/03_conversation_trees.md (NEW - branching and navigation)
@@ -1890,6 +2025,7 @@ A GitHub App that monitors repository issues and automatically submits PRs with 
 ## 37. CHATME.bot - Interactive Welcome Bot
 
 **Current State**:
+
 - 19 .bot files exist in repo (examples, tests, dev bots)
 - No standardized "welcome" or "introduction" bot
 - New users must create bots from scratch
@@ -1897,6 +2033,7 @@ A GitHub App that monitors repository issues and automatically submits PRs with 
 **Goal**: Create welcoming introduction bot demonstrating key features
 
 **Purpose**:
+
 - Greet new users with pre-loaded conversation
 - Demonstrate basic bot capabilities interactively
 - Provide guided tour of features
@@ -1904,6 +2041,7 @@ A GitHub App that monitors repository issues and automatically submits PRs with 
 - Can be loaded with: `python -m bots.dev.cli CHATME.bot`
 
 **Content Should Include**:
+
 - Pre-loaded conversation showing example interactions
 - Tools already added (code_tools, terminal_tools)
 - System message explaining its purpose
@@ -1914,6 +2052,7 @@ A GitHub App that monitors repository issues and automatically submits PRs with 
   - Functional prompt examples
 
 **Implementation**:
+
 1. Create bot programmatically with curated conversation history
 2. Add relevant tools
 3. Set helpful system message
@@ -1925,11 +2064,10 @@ A GitHub App that monitors repository issues and automatically submits PRs with 
 
 **Effort**: Low (2-3 hours to create and test)
 
-
-
 ## 38. Unix/Linux/Mac Compatibility
 
 **Current State**:
+
 - Repository is **Windows-centric**
 - PowerShell-only terminal tools
 - Windows-only CI/CD testing
@@ -1963,21 +2101,25 @@ A GitHub App that monitors repository issues and automatically submits PRs with 
 **Implementation Approach**:
 
 **Phase 1: Shell Abstraction Layer**
+
 - Detect OS: `sys.platform` or `os.name`
 - Route to `execute_powershell()` on Windows
 - Route to `execute_bash()` on Unix/Mac
 - Unified interface: `execute_shell(command)`
 
 **Phase 2: Unix Shell Support**
+
 - Create `BashSession` class (mirror of `PowerShellSession`)
 - Handle bash-specific stateful execution
 - Test on Linux/Mac
 
 **Phase 3: CLI Updates**
+
 - Change help text from "execute powershell" to "execute shell commands"
 - Auto-detect and use appropriate shell
 
 **Related Items**:
+
 - Item 30 (Multi-OS Testing) - Required to validate Unix compatibility
 - Item 31 (.bot File Association) - Must work cross-platform
 
@@ -1990,6 +2132,7 @@ A GitHub App that monitors repository issues and automatically submits PRs with 
 ## 39. Multi-OS Testing Infrastructure
 
 **Current State**:
+
 - All CI/CD workflows run exclusively on Windows (windows-latest)
 - Python 3.12 only
 - No OS matrix strategy
@@ -2003,6 +2146,7 @@ A GitHub App that monitors repository issues and automatically submits PRs with 
 Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and Python versions 3.10, 3.11, 3.12
 
 **2. Code Challenges to Address**:
+
 - PowerShell tools need bash/sh equivalents for Unix
 - Path handling (Windows backslash vs Unix forward slash)
 - File encoding (Windows UTF-8 BOM vs Unix clean UTF-8)
@@ -2011,18 +2155,21 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 - Line endings (CRLF vs LF)
 
 **3. Test Infrastructure Needs**:
+
 - OS-specific test fixtures
 - Conditional test skipping for OS-specific features
 - OS detection and conditional tool loading
 - Platform-specific mocking strategies
 
 **Benefits**:
+
 - Catch OS-specific bugs before users encounter them
 - True cross-platform compatibility validation
 - Broader user base support (Linux/Mac developers)
 - More robust, production-ready codebase
 
 **Relationship to Other Items**:
+
 - **Directly enables**: Item 29 (Unix compatibility)
 - **Complements**: Test organization efforts (WO012)
 - **Foundation**: Cross-platform support strategy
@@ -2036,6 +2183,7 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 ## 40. .bot File Association - Open in Terminal
 
 **Current State**:
+
 - CLI supports loading: `python -m bots.dev.cli [filepath]`
 - No file association - must manually type command
 - Double-clicking .bot files doesn't work
@@ -2045,6 +2193,7 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 **Cross-Platform Implementation**:
 
 **Phase 1: Console Entry Point (Essential)**
+
 - Add `console_scripts` entry point to setup.py
 - Creates `bots-cli` command available system-wide
 - Cross-platform foundation for file associations
@@ -2052,32 +2201,38 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 **Phase 2: Platform-Specific File Associations**
 
 **Windows**:
+
 - Registry file (.reg) to associate .bot extension
 - Command: `cmd.exe /k bots-cli "%1"`
 - Keeps terminal open after loading bot
 
 **macOS**:
+
 - AppleScript wrapper or .app bundle
 - Opens Terminal.app with `bots-cli` command
 - Alternative: Automator workflow
 
 **Linux**:
+
 - XDG .desktop file for application registration
 - MIME type registration for .bot files
 - Command: `x-terminal-emulator -e bots-cli %f`
 
 **Phase 3: Automated Installer (Optional)**
+
 - Script to detect OS and install associations
 - May require admin/sudo permissions
 - Provide manual instructions as fallback
 
 **Key Challenges**:
+
 - Terminal must stay open after loading bot
 - Must work with user's Python environment (entry point solves this)
 - Platform-specific terminal invocation differences
 - May require admin/sudo permissions
 
 **Recommended Minimal Implementation**:
+
 - Add entry_points to setup.py
 - Provide platform-specific installation scripts/files in `docs/file_associations/`
 - Document manual association steps for each OS
@@ -2093,6 +2248,7 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 ## 41. Repository-Level Tools
 
 **Current State**:
+
 - File-level tools exist (view, edit individual files)
 - Meta-tools exist (coordinate multiple bots/files)
 - **Gap**: No true repository-wide awareness tools
@@ -2100,6 +2256,7 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 **Goal**: Tools that operate on entire codebase rather than individual files
 
 **What "Repository-Level Tools" Means**:
+
 - Understand repository structure (git repos, project layout, dependencies)
 - Provide repository-wide context and awareness
 - Enable cross-file operations (refactoring, analysis, testing)
@@ -2107,41 +2264,48 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 **Proposed Tool Categories**:
 
 **1. Repository Analysis**:
+
 - `analyze_repository_structure()` - Map entire repo structure
 - `find_dependencies()` - Analyze import graphs
 - `identify_entry_points()` - Find main files, CLIs, APIs
 - `analyze_test_coverage()` - Repository-wide coverage
 
 **2. Repository Navigation**:
+
 - `search_codebase(query)` - Search across all files
 - `find_definition(symbol)` - Locate function/class definitions
 - `find_usages(symbol)` - Find all usages
 - `get_call_graph()` - Generate call graph
 
 **3. Repository Operations**:
+
 - `refactor_across_files(old, new)` - Rename across repo
 - `update_imports()` - Fix imports repository-wide
 - `run_repository_tests()` - Full test suite execution
 - `generate_documentation()` - Create repo-wide docs
 
 **4. Repository Context**:
+
 - `get_repository_summary()` - High-level overview
 - `get_architecture_diagram()` - Architecture visualization
 - `get_recent_changes()` - Git history
 - `get_project_metadata()` - Package info, dependencies
 
 **5. Repository Management**:
+
 - `create_module(name, spec)` - Create new module
 - `remove_module(name)` - Remove module + references
 - `merge_modules()` - Combine modules
 - `split_module()` - Break large modules
 
 **Implementation Phases**:
+
 1. **Phase 1**: Basic repository context (structure, search, summary)
 2. **Phase 2**: Advanced navigation (symbols, call graphs, dependencies)
 3. **Phase 3**: Repository operations (refactoring, testing, docs)
 
 **Use Cases**:
+
 - Onboarding new bots with full repo context
 - Large cross-file refactorings
 - Architecture analysis and understanding
@@ -2157,6 +2321,7 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 ## 48. Functional Prompts on Specific Branches
 
 **Current State**:
+
 - Functional prompts always operate from `bot.conversation` (current node)
 - No built-in way to apply FPs to specific branches in conversation tree
 - Workaround requires manual conversation manipulation
@@ -2167,6 +2332,7 @@ Add OS matrix to workflows with ubuntu-latest, windows-latest, macos-latest and 
 Apply any functional prompt (chain, branch, prompt_while, etc.) to specific nodes in the conversation tree, not just the current node.
 
 **Use Cases**:
+
 1. **Continue specific branch**: Apply `prompt_while` to Branch B while leaving A and C untouched
 2. **Parallel branch processing**: Apply same FP to all branches (e.g., "write tests" for each file)
 3. **Nested workflows**: Create complex multi-level branching with different FPs per branch
@@ -2179,6 +2345,7 @@ Apply any functional prompt (chain, branch, prompt_while, etc.) to specific node
 Create `apply_to_node(bot, node, fp_function, *args, **kwargs)` that temporarily sets bot.conversation to target node, executes FP, then restores original conversation.
 
 **Phase 2: Convenience Functions** (If Phase 1 sees adoption)
+
 - `apply_to_branches(bot, nodes, fp_function, ...)` - Apply FP to multiple nodes
 - `apply_to_leaves(bot, fp_function, ...)` - Apply FP to all leaf nodes
 - `apply_to_matching(bot, condition, fp_function, ...)` - Apply to nodes matching condition
@@ -2187,6 +2354,7 @@ Create `apply_to_node(bot, node, fp_function, *args, **kwargs)` that temporarily
 Create context manager for cleaner syntax when working with specific nodes.
 
 **Benefits**:
+
 - Natural extension of existing conversation tree patterns
 - Enables sophisticated multi-branch reasoning
 - Low implementation cost, high value
@@ -2201,6 +2369,7 @@ Create context manager for cleaner syntax when working with specific nodes.
 ## 49. Improve Save/Load Behavior
 
 **Current State**:
+
 - **Critical inconsistency**: `Bot.load()` uses `replies[0]` (first/oldest), but CLI overrides to `replies[-1]` (last/most recent)
 - Default filename: `{bot.name}@{timestamp}.bot`
 - Autosave filename: `{bot.name}.bot` (overwrites each time)
@@ -2212,28 +2381,33 @@ Create context manager for cleaner syntax when working with specific nodes.
 **Proposed Changes**:
 
 **1. Load to Last Messaged Node (replies[-1])**
+
 - **Issue**: Line 2540-2541 in `base.py` uses `replies[0]`
 - **Fix**: Change to `replies[-1]` to match CLI behavior and user expectations
 - **Rationale**: Users expect to continue from most recent work, not oldest branch
 
 **2. Track Bot Filename**
+
 - **Issue**: Bot has `self.name` but doesn't track source filename
 - **Fix**: Add `self.filename` attribute to remember source file
 - **Benefit**: Enables intelligent autosave to correct file
 
 **3. Separate Quicksave from Named Save**
+
 - **Issue**: Autosave uses `{name}.bot`, conflicts with intentional saves
-- **Fix**: 
+- **Fix**:
   - Autosave to `quicksave.bot` (working file, can be overwritten)
   - Manual save uses tracked filename or prompts for new name
 - **Benefit**: Stable named bots + safe working quicksave
 
 **4. Intelligent Save Behavior**
+
 - If bot loaded from file: save back to that file by default
 - If bot created fresh: prompt for filename or use `quicksave.bot`
 - Autosave always uses `quicksave.bot` unless filename is tracked
 
 **Test Coverage Gaps**:
+
 - No tests verify which reply is selected after load
 - No tests for filename tracking across save/load cycles
 - No tests for autosave behavior with tracked filenames
@@ -2255,17 +2429,20 @@ Bot loading was reported to fail when bot file is loaded from a different workin
 Upon thorough testing, this bug does NOT exist. The system already implements the recommended solution (Option 3).
 
 **How It Actually Works**:
+
 1. When tools are added via file path, the system reads and stores the FULL SOURCE CODE
 2. The source code is serialized into the .bot file
 3. On load, the system executes the stored source code (not re-reading from file path)
 4. This makes bots truly portable and shareable across directories
 
 **Verification**:
+
 - Created test: `test_cross_directory_loading_with_file_tools()` in `tests/integration/test_save_load_anthropic.py`
 - Test verifies: Bot with file-based tools can be saved in one directory, loaded from another, and tools remain functional
 - Test result: PASSES - confirms cross-directory loading works correctly
 
 **Test Coverage Added**:
+
 - New test fills the gap identified in original report
 - Combines file-based tools + cross-directory loading
 - Provides regression protection for this functionality
@@ -2278,8 +2455,6 @@ The system already stores full tool source code (not just file paths) and handle
 **Effort**: N/A (no fix needed, test added for coverage)
 ---
 
-
-
 ## 45. branch_self Loses Track of Branching Node - DONE ✅
 
 **Status**: RESOLVED (PR #119, 08-Oct-2025) - VERIFIED (09-Oct-2025)
@@ -2289,10 +2464,12 @@ The system already stores full tool source code (not just file paths) and handle
 **Root Cause Identified**: Bot.load() was using replies[0] (oldest branch) instead of replies[-1] (most recent). When branch_self saved/loaded bot state, it would incorrectly position at an old branch from previous operations.
 
 **Fix Delivered in PR #119**:
+
 - Changed Bot.load() from replies[0] to replies[-1] (line 2542 in base.py)
 - This fix directly addresses the root cause of the branching node tracking issue
 
 **Verification (WO014, 09-Oct-2025)**:
+
 - Created comprehensive test suite: `tests/e2e/test_branch_self_tracking.py`
 - 4 new tests covering save/load scenarios with branch_self
 - All tests passing (8/8 branch_self tests total)
@@ -2300,6 +2477,7 @@ The system already stores full tool source code (not just file paths) and handle
 - See: `_work_orders/WO014_VERIFICATION_COMPLETE.md` for full details
 
 **Mechanism**:
+
 ```
 Conversation Tree:
     Root
@@ -2309,6 +2487,7 @@ Conversation Tree:
 ```
 
 **Related Issues**:
+
 - Issue #118: branch_self tracking bug - CLOSED (verified fixed)
 - Issue #117: flaky test - CLOSED (fixed in WO014)
 
@@ -2322,6 +2501,7 @@ Conversation Tree:
 **Status**: DONE (PR #119, 08-Oct-2025) - Closes Issue #115
 
 **Delivered**:
+
 - Added early exit for /s command in CLI (lines 1545-1548 in cli.py)
 - /s command now saves without sending any prompt to LLM
 - Prevents wasted API calls and confusing behavior
@@ -2333,10 +2513,12 @@ Conversation Tree:
 ---
 
 ## 47. Flaky Test - test_branch_self_error_handling - DONE ✅
+
 **Status**: RESOLVED (PR #120, 09-Oct-2025) - Closed Issue #117
 **Issue**: Test `test_branch_self_error_handling` was flaky/unreliable due to vague prompts causing non-deterministic LLM behavior.
 **Root Cause**: Test used vague prompt "use invalid parameters" which LLM interpreted differently each time.
 **Fix Delivered in PR #120**:
+
 - Rewrote test to use MockBot for deterministic behavior
 - Made prompts more specific and explicit
 - Test now passes consistently
@@ -2352,6 +2534,7 @@ Conversation Tree:
 ## Implementation Roadmap
 
 ### Phase 1: Repo Reliability & Critical Fixes (High Priority)
+
 1. [DONE] **branch_self Loses Track of Branching Node** (item 36) - RESOLVED (PR #119, 08-Oct-2025) ✅
    - Fix delivered: Bot.load() now uses replies[-1] instead of replies[0]
    - VERIFIED (WO014, 09-Oct-2025): All tests passing
@@ -2393,6 +2576,7 @@ Conversation Tree:
    - Quick win, cost optimization
 
 **Completed Phase 1 Items**:
+
 - [DONE] GitHub Branch Protection & CodeRabbit (item 26)
 - [DONE] OpenTelemetry Phases 1-2 (item 14)
 - [DONE] Remove print statements (item 11)
@@ -2401,6 +2585,7 @@ Conversation Tree:
 - [DONE] Organize tests better (item 9)
 
 ### Phase 2: Core Features & Expansion (Medium Priority)
+
 1. **MCP Integration - Client** (item 13) - Industry standard for tool connectivity
 2. **MCP Integration - Server** (item 13) - Expose tools to ecosystem
 3. **LiteLLM Integration** (item 15) - 100+ provider support
@@ -2418,6 +2603,7 @@ Conversation Tree:
 11. python_edit feedback improvements (item 20)
 
 ### Phase 3: Enhancement & User Experience (Medium-Low Priority)
+
 1. **Tutorial Expansion** (item 27) - MEDIUM-HIGH
    - Critical for onboarding and adoption
    - 7 new tutorials needed
@@ -2436,6 +2622,7 @@ Conversation Tree:
 10. AST warnings cleanup (item 19)
 
 ### Phase 4: Major Features (Low Priority, High Effort)
+
 1. JavaScript GUI / Frontend backend (item 3)
 2. Conversation tree visualization tools
 3. Repository-Level Tools Phases 2-3 (item 32)
@@ -2449,6 +2636,7 @@ Conversation Tree:
 **Strategic Priority**: Documentation-First Revenue Path
 
 ### Immediate (Weeks 1-2)
+
 1. **Complete OpenTelemetry Phases 3-4** (item 14)
    - Implement metrics collection
    - Set up production observability
@@ -2462,6 +2650,7 @@ Conversation Tree:
    - **Why**: Better user experience, foundation for prettier CLI
 
 ### Short-term (Weeks 3-8)
+
 1. **Build GitHub Integration** (item 27)
    - Create GitHub App
    - Implement webhook handling
@@ -2478,6 +2667,7 @@ Conversation Tree:
    - Deployment automation
 
 ### Medium-term (Weeks 9-20)
+
 1. **Launch Documentation Service MVP** (items 30-32)
    - Authentication and billing
    - Multi-tenancy
@@ -2490,17 +2680,18 @@ Conversation Tree:
    - Improve quality and reliability
 
 ### Long-term (Month 6+)
+
 1. **Fund GUI Development** with documentation service revenue
 2. **Launch Code Review Service** (leverage same infrastructure)
 3. **Build API Service** (expose conversation trees)
 4. **Create Bot Marketplace** (sell specialized bots)
-
 
 ---
 
 ## 51. Cache Controller Enhancement
 
 **Current State**:
+
 - Anthropic supports prompt caching with manually managed cache breakpoints
 - Only 4 cache points allowed (Anthropic limitation)
 - No caching support for Gemini or OpenAI
@@ -2511,17 +2702,20 @@ Conversation Tree:
 **Components**:
 
 **1. Add Caching for Gemini and OpenAI**:
+
 - Implement caching for Google Gemini (context caching API)
 - Implement caching for OpenAI (prompt caching if/when available)
 - Unified cache controller interface across providers
 - Provider-specific cache configuration
 
 **2. Intelligent Cache Point Selection for Anthropic**:
+
 - **Challenge**: Anthropic only allows 4 manually managed cache breakpoints
 - **Goal**: Automatically pick the most efficient forking points in conversation tree
 - **Strategy**: Analyze conversation tree structure to identify optimal cache locations
 
 **Cache Point Selection Algorithm**:
+
 ```
 Optimal cache points are nodes that:
 1. Have multiple children (branching points)
@@ -2542,36 +2736,42 @@ Algorithm:
 **Implementation Approach**:
 
 **Phase 1: Multi-Provider Caching**
+
 - Abstract cache controller interface
 - Implement Gemini caching support
 - Implement OpenAI caching support (when available)
 - Provider-specific configuration
 
 **Phase 2: Intelligent Cache Point Selection**
+
 - Implement conversation tree analysis
 - Develop scoring algorithm for cache point selection
 - Automatic cache point updates as tree evolves
 - Metrics tracking for cache hit rates
 
 **Phase 3: Optimization**
+
 - A/B testing different selection strategies
 - Cost/benefit analysis of cache placement
 - Integration with OpenTelemetry for cache metrics
 - User-configurable cache strategies
 
 **Benefits**:
+
 - **Cost Reduction**: Optimal cache placement reduces token usage
 - **Performance**: Faster response times with effective caching
 - **Multi-Provider**: Consistent caching across all providers
 - **Automatic**: No manual cache point management required
 
 **Technical Considerations**:
+
 - Anthropic's 4-cache-point limit requires careful optimization
 - Cache invalidation strategy when tree is modified
 - Balance between cache overhead and token savings
 - Provider-specific caching APIs and limitations
 
 **Metrics to Track** (via OpenTelemetry):
+
 - Cache hit rate per provider
 - Token savings from caching
 - Cost reduction from caching
@@ -2623,12 +2823,14 @@ When marking items complete based on PRs:
 ### Update Procedures
 
 **When to Update**:
+
 - After PRs are merged that complete roadmap items
 - When new development directions emerge
 - When priorities shift
 - At least monthly review
 
 **What to Update**:
+
 - Status markers on completed items
 - "Last Updated" date at bottom of file
 - Add new items as needed
@@ -2636,6 +2838,7 @@ When marking items complete based on PRs:
 - Add notes about partial completion
 
 **How to Document Completed Items**:
+
 ```
 ## N. Item Title - DONE
 

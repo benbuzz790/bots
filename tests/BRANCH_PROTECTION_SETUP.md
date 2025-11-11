@@ -7,18 +7,21 @@ Branch protection rules are essential safeguards that ensure code quality and pr
 ### What Branch Protection Provides
 
 **Quality Assurance:**
+
 - Prevents broken code from reaching main branch
 - Ensures all changes are tested before merge
 - Maintains consistent code quality standards
 - Catches issues early through automated checks
 
 **Safety:**
+
 - No accidental direct pushes to main
 - All changes reviewed before merge
 - Easy rollback with clean git history
 - Protects against force pushes
 
 **Collaboration:**
+
 - Clear pull request workflow
 - Structured code review process
 - Discussion and knowledge sharing
@@ -45,6 +48,7 @@ Before setting up branch protection, ensure you have:
 ### Configure Protection Rules
 
 **Branch name pattern:**
+
 ```
 main
 ```
@@ -52,17 +56,20 @@ main
 **Enable the following protections:**
 
 #### Protect matching branches
+
 - ☑ **Require a pull request before merging**
   - Require approvals: **1**
   - ☑ Dismiss stale pull request approvals when new commits are pushed
   - ☑ Require review from Code Owners (optional, if you have a CODEOWNERS file)
 
 #### Status checks
+
 - ☑ **Require status checks to pass before merging**
   - ☑ Require branches to be up to date before merging
   - **Note:** Status checks to require will be configured in Step 3 (after first PR runs)
 
 #### Additional protections
+
 - ☑ **Require conversation resolution before merging**
 - ☑ **Require signed commits** (optional, recommended for security)
 - ☑ **Require linear history** (optional, keeps git history clean)
@@ -70,6 +77,7 @@ main
   - ☑ Include administrators (recommended - even admins must follow the rules)
 
 #### Rules applied to everyone
+
 - ☑ **Allow force pushes**: **Disabled** (default)
 - ☑ **Allow deletions**: **Disabled** (default)
 
@@ -83,7 +91,7 @@ CodeRabbit is an AI-powered code review assistant that automatically reviews pul
 
 ### Install CodeRabbit GitHub App
 
-1. Go to: https://github.com/apps/coderabbitai
+1. Go to: <https://github.com/apps/coderabbitai>
 2. Click **Install** (or **Configure** if already installed)
 3. Select **Only select repositories**
 4. Choose: `benbuzz790/bots`
@@ -95,6 +103,7 @@ CodeRabbit is an AI-powered code review assistant that automatically reviews pul
 CodeRabbit will automatically use the `.coderabbit.yaml` configuration file in your repository root. This file should already be created with appropriate settings for the project.
 
 **Key configuration points:**
+
 - Review profile: "chill" (balanced, not overly strict)
 - Focuses on: code quality, bugs, security, performance, test coverage
 - Follows project principles: YAGNI, KISS, defensive programming
@@ -103,6 +112,7 @@ CodeRabbit will automatically use the `.coderabbit.yaml` configuration file in y
 ### Test CodeRabbit
 
 After installation, CodeRabbit will automatically review new pull requests. You can test it by:
+
 1. Creating a test branch
 2. Making a small change
 3. Opening a pull request
@@ -127,6 +137,7 @@ After installation, CodeRabbit will automatically review new pull requests. You 
 ### Verify Status Checks
 
 Create a test PR and verify that:
+
 - All required checks appear in the PR
 - PR cannot be merged until all checks pass
 - Checks automatically run when you push new commits
@@ -134,6 +145,7 @@ Create a test PR and verify that:
 ## Step 4: Create Pull Request Template
 
 The PR template (`.github/pull_request_template.md`) should already be in place. This template:
+
 - Guides contributors through the PR process
 - Ensures all necessary information is provided
 - Includes checklists for code quality and testing
@@ -144,6 +156,7 @@ The PR template (`.github/pull_request_template.md`) should already be in place.
 ### Creating a Pull Request
 
 1. **Create a feature branch:**
+
    ```bash
    git checkout -b feature/my-feature
    ```
@@ -151,6 +164,7 @@ The PR template (`.github/pull_request_template.md`) should already be in place.
 2. **Make your changes** (keep them small and focused)
 
 3. **Commit and push:**
+
    ```bash
    git add .
    git commit -m "Add feature X"
@@ -177,6 +191,7 @@ The PR template (`.github/pull_request_template.md`) should already be in place.
 ### What Blocks a Merge
 
 Your PR **cannot be merged** if:
+
 - ❌ Any required CI/CD checks fail
 - ❌ Code coverage is below threshold (80%)
 - ❌ Linting errors exist
@@ -187,6 +202,7 @@ Your PR **cannot be merged** if:
 ### What Allows a Merge
 
 Your PR **can be merged** when:
+
 - ✅ All tests passing (green checkmark)
 - ✅ Code coverage meets threshold
 - ✅ All linting checks pass
@@ -204,6 +220,7 @@ Your PR **can be merged** when:
 ### Problem: Cannot push to main branch
 
 **Solution:** This is expected! Branch protection is working. Create a feature branch and open a PR instead:
+
 ```bash
 git checkout -b feature/my-fix
 git push origin feature/my-fix
@@ -213,6 +230,7 @@ git push origin feature/my-fix
 ### Problem: PR checks failing
 
 **Solution:** Click on the failing check to see details. Common issues:
+
 - **Tests failing:** Fix the test failures locally, commit, and push
 - **Linting errors:** Run `black .` and `isort .` locally, commit, and push
 - **Coverage too low:** Add tests to increase coverage
@@ -220,7 +238,8 @@ git push origin feature/my-fix
 
 ### Problem: CodeRabbit not reviewing PR
 
-**Solution:** 
+**Solution:**
+
 - Verify CodeRabbit is installed on the repository
 - Check that PR is not a draft (CodeRabbit skips drafts by default)
 - Wait a few minutes - reviews can take 1-2 minutes
@@ -228,7 +247,8 @@ git push origin feature/my-fix
 
 ### Problem: Need to bypass branch protection (emergency)
 
-**Solution:** 
+**Solution:**
+
 - If you're an admin and "Include administrators" is unchecked, you can bypass
 - Otherwise, you'll need to temporarily disable the rule (Settings → Branches → Edit rule)
 - **Important:** Re-enable protection immediately after emergency fix
@@ -236,6 +256,7 @@ git push origin feature/my-fix
 ### Problem: Merge conflicts
 
 **Solution:**
+
 ```bash
 # Update your branch with latest main
 git checkout main
@@ -258,11 +279,13 @@ git push origin feature/my-feature
    - Identify which test(s) failed
 
 2. **Reproduce locally:**
+
    ```bash
    pytest tests/ -v
    ```
 
 3. **Fix and push:**
+
    ```bash
    # Fix the issue
    git add .
@@ -273,6 +296,7 @@ git push origin feature/my-feature
 ### Linting Failures
 
 1. **Run linters locally:**
+
    ```bash
    black --check .
    isort --check-only .
@@ -280,12 +304,14 @@ git push origin feature/my-feature
    ```
 
 2. **Auto-fix formatting:**
+
    ```bash
    black .
    isort .
    ```
 
 3. **Commit and push:**
+
    ```bash
    git add .
    git commit -m "Fix linting issues"
@@ -295,6 +321,7 @@ git push origin feature/my-feature
 ### Coverage Failures
 
 1. **Check current coverage:**
+
    ```bash
    pytest tests/ --cov=bots --cov-report=term-missing
    ```
@@ -304,6 +331,7 @@ git push origin feature/my-feature
    - Write tests for those areas
 
 3. **Verify and push:**
+
    ```bash
    pytest tests/ --cov=bots --cov-report=term-missing
    git add .
@@ -322,6 +350,7 @@ git push origin feature/my-feature
    - Add `# nosec` comments for false positives (with justification)
 
 3. **Push fix:**
+
    ```bash
    git add .
    git commit -m "Address security concerns"
@@ -330,14 +359,15 @@ git push origin feature/my-feature
 
 ## Additional Resources
 
-- **GitHub Branch Protection Documentation:** https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches
-- **CodeRabbit Documentation:** https://docs.coderabbit.ai/
+- **GitHub Branch Protection Documentation:** <https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches>
+- **CodeRabbit Documentation:** <https://docs.coderabbit.ai/>
 - **Project Contributing Guide:** [CONTRIBUTING.md](../CONTRIBUTING.md)
 - **Project Roadmap:** [ROADMAP.md](../ROADMAP.md)
 
 ## Summary
 
 Branch protection is now active! All changes to `main` must:
+
 1. Go through a pull request
 2. Pass all automated checks (tests, linting, security)
 3. Receive CodeRabbit AI review

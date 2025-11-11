@@ -138,16 +138,19 @@ print(f"Estimated cost: ${cost:.4f}")
 ### Prometheus/Grafana Queries
 
 **Total cost in last hour:**
+
 ```promql
 sum(rate(bot_cost_total_usd[1h])) * 3600
 ```
 
 **Cost by provider:**
+
 ```promql
 sum by (provider) (rate(bot_cost_total_usd[5m]))
 ```
 
 **Average cost per API call:**
+
 ```promql
 rate(bot_cost_total_usd[5m]) / rate(bot_api_calls_total[5m])
 ```
@@ -163,21 +166,27 @@ For complete dashboard examples with importable JSON templates, see [DASHBOARDS.
 ### Essential Panels
 
 #### Total Cost (Today)
+
 ```promql
 sum(increase(bot_cost_total_usd[24h]))
 ```
+
 **Panel type:** Stat | **Unit:** USD ($)
 
 #### Cost Rate (per minute)
+
 ```promql
 sum(rate(bot_cost_total_usd[5m])) * 60
 ```
+
 **Panel type:** Graph | **Unit:** USD/min
 
 #### Cost by Provider
+
 ```promql
 sum by (provider) (increase(bot_cost_total_usd[1h]))
 ```
+
 **Panel type:** Pie chart | **Unit:** USD ($)
 
 ### Alert Rules
@@ -202,75 +211,96 @@ For more alert examples, see the [SETUP.md alerting section](SETUP.md#alerting).
 ### Advanced Prometheus Queries
 
 #### Cost Breakdown by Model
+
 ```promql
 sum by (model) (increase(bot_cost_total_usd[24h]))
 ```
+
 **Use case:** Identify which models are driving costs
 
 #### Cost Efficiency (Cost per Token)
+
 ```promql
 increase(bot_cost_total_usd[1h]) / 
   (increase(bot_tokens_used{token_type="input"}[1h]) + 
    increase(bot_tokens_used{token_type="output"}[1h]))
 ```
+
 **Use case:** Compare actual cost efficiency across providers
 
 #### Hourly Cost Trend
+
 ```promql
 sum(increase(bot_cost_total_usd[1h]))
 ```
+
 **Use case:** Identify peak usage hours for cost optimization
 
 #### Cost per Conversation
+
 ```promql
 increase(bot_cost_total_usd[24h]) / increase(bot_api_calls_total[24h])
 ```
+
 **Use case:** Track average conversation cost over time
 
 #### Cache Effectiveness (Cost Savings)
+
 ```promql
 # Estimated savings from caching
 sum(rate(bot_tokens_used{token_type="cached"}[5m])) * 0.0000027  # Anthropic cache savings ($2.70 per 1M tokens = $0.0000027 per token)
 ```
+
 **Use case:** Measure ROI of prompt caching
 
 #### Provider Cost Comparison
+
 ```promql
 topk(3, sum by (provider) (increase(bot_cost_total_usd[7d])))
 ```
+
 **Use case:** Weekly cost comparison across providers
 
 ### Cost Anomaly Detection
 
 #### Sudden Cost Spike
+
 ```promql
 (rate(bot_cost_total_usd[5m]) - rate(bot_cost_total_usd[5m] offset 1h)) > 0.5
 ```
+
 **Alert threshold:** Cost rate increased by $0.50/min
 
 #### Unusual Model Usage
+
 ```promql
 sum by (model) (rate(bot_api_calls_total[5m])) > 10
 ```
+
 **Alert threshold:** More than 10 calls/min to expensive models
 
 ### Budget Tracking
 
 #### Daily Budget Burn Rate
+
 ```promql
 sum(increase(bot_cost_total_usd[24h])) / 10.0  # Assuming $10 daily budget
 ```
+
 **Use case:** Track percentage of daily budget consumed
 
 #### Projected Monthly Cost
+
 ```promql
 sum(increase(bot_cost_total_usd[24h])) * 30
 ```
+
 **Use case:** Forecast monthly costs based on current usage
 
 ### Dashboard Integration
 
 All these queries can be visualized in Grafana. See [DASHBOARDS.md](DASHBOARDS.md) for:
+
 - Pre-built dashboard JSON templates
 - Panel configuration examples
 - Visualization best practices
@@ -310,11 +340,13 @@ response2 = bot.respond("Now summarize the key points")
 ```
 
 **Best practices:**
+
 - ✅ Reuse conversation context
 - ✅ Keep system prompts consistent
 - ✅ Use long-lived bot instances
 
 **Monitoring cache effectiveness:**
+
 ```promql
 # Cache hit rate
 sum(rate(bot_tokens_used{token_type="cached"}[5m])) / 
@@ -326,6 +358,7 @@ sum(rate(bot_tokens_used{token_type="cached"}[5m])) /
 50% discount for non-urgent requests (24-hour turnaround).
 
 **Cost comparison:**
+
 - Real-time API: $3.00/1M input tokens
 - Batch API: $1.50/1M input tokens
 - **Savings: 50%**
@@ -333,6 +366,7 @@ sum(rate(bot_tokens_used{token_type="cached"}[5m])) /
 ### 4. Optimize Token Usage
 
 **Reduce input tokens:**
+
 ```python
 # Bad: Verbose prompt (1000 tokens)
 prompt = "Please analyze the following code..."
@@ -342,11 +376,13 @@ prompt = "Analyze this code and explain key functions:"
 ```
 
 **Limit output tokens:**
+
 ```python
 bot = AnthropicBot(max_tokens=500)  # Limit output length
 ```
 
 **Monitor token efficiency:**
+
 ```promql
 # Average tokens per API call
 rate(bot_tokens_used[5m]) / rate(bot_api_calls_total[5m])
@@ -368,6 +404,7 @@ def get_bot_for_task(complexity):
 ```
 
 **Track model selection effectiveness:**
+
 ```promql
 # Cost per model
 sum by (model) (rate(bot_cost_total_usd[1h]))
@@ -378,6 +415,7 @@ sum by (model) (rate(bot_cost_total_usd[1h]))
 ### 6. Set Cost Budgets and Alerts
 
 **Daily budget alert:**
+
 ```yaml
 - alert: DailyBudgetExceeded
   expr: sum(increase(bot_cost_total_usd[24h])) > 10.0
@@ -386,6 +424,7 @@ sum by (model) (rate(bot_cost_total_usd[1h]))
 ```
 
 **Per-conversation cost alert:**
+
 ```yaml
 - alert: ExpensiveConversation
   expr: bot_cost_usd > 1.0
@@ -400,11 +439,13 @@ sum by (model) (rate(bot_cost_total_usd[1h]))
 ### Anthropic
 
 **Best for cost optimization:**
+
 - ✅ Highest cache discount (90%)
 - ✅ Competitive pricing on Sonnet models
 - ✅ Haiku is extremely cost-effective
 
 **Cost tracking:**
+
 ```python
 from bots import AnthropicBot
 from bots.observability.cost_calculator import calculate_cost
@@ -423,12 +464,14 @@ cost = calculate_cost(
 ### OpenAI
 
 **Best for:**
+
 - ✅ GPT-4o-mini is cheapest option ($0.15/$0.60)
 - ✅ Good balance of cost and performance
 
 ### Google (Gemini)
 
 **Best for:**
+
 - ✅ Gemini 2.0 Flash is very cost-effective ($0.15/$0.60)
 - ✅ Good cache discount (75%)
 - ✅ Long context windows
@@ -501,6 +544,7 @@ for pr in pull_requests:
 ```
 
 **Optimization:** Use Haiku for simple PRs, Sonnet for complex ones
+
 - **Savings:** ~40% ($45/month)
 
 ---

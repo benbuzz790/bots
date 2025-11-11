@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 on:
   push:
     branches:
@@ -60,6 +60,12 @@ jobs:
           pip install pytest pytest-cov
       - name: Install package
         run: pip install -e .
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli
       - name: Remove BOMs from all files
         run: |
           python -m bots.dev.remove_boms
@@ -180,7 +186,11 @@ jobs:
           pip install pydeps
           pydeps bots --show-deps --max-bacon=2 || echo "Circular dependency check completed"
         continue-on-error: true
-  actionlint:
+      - name: Run markdownlint
+        run: |
+          markdownlint **/*.md --ignore node_modules --ignore __pycache__ --ignore .mypy_cache --ignore .pytest_cache
+
+actionlint:
     name: GitHub Actions Lint
     runs-on: windows-latest
     timeout-minutes: 10

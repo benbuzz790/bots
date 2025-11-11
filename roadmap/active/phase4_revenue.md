@@ -17,11 +17,13 @@ Phase 4 focuses on building the automated documentation service - the primary re
 ## In Progress 🚧
 
 ### Item 27: GitHub Integration & Webhook System
+
 **Status:** 🚧 IN PROGRESS (github-docs-app repository)
 
 **Goal:** Enable automated repository access and event-driven workflows
 
 **Components:**
+
 1. **GitHub App:**
    - OAuth authentication for repo access
    - Webhook endpoint for commit/PR events
@@ -50,11 +52,13 @@ Phase 4 focuses on building the automated documentation service - the primary re
 ---
 
 ### Item 28: Documentation Output System
+
 **Status:** 🚧 IN PROGRESS (github-docs-app repository)
 
 **Goal:** Generate high-quality documentation from conversation trees
 
 **Components:**
+
 1. **Markdown Generator:**
    - Convert conversation trees to structured markdown
    - Generate README.md, API docs, architecture docs
@@ -81,6 +85,7 @@ Phase 4 focuses on building the automated documentation service - the primary re
    - Content filtering
 
 **Key Features:**
+
 - **Tree-based structure:** Documentation hierarchy mirrors conversation tree
 - **Multi-perspective:** Explore different angles simultaneously (architecture, API, deployment)
 - **Incremental updates:** Only regenerate changed sections
@@ -97,11 +102,13 @@ Phase 4 focuses on building the automated documentation service - the primary re
 ---
 
 ### Item 29: Automated Documentation Workflow
+
 **Status:** 🚧 IN PROGRESS (github-docs-app repository)
 
 **Goal:** End-to-end automated documentation generation and updates
 
 **Components:**
+
 1. **Scheduled Generation:**
    - Nightly/weekly full documentation regeneration
    - Configurable schedules per repository
@@ -126,6 +133,7 @@ Phase 4 focuses on building the automated documentation service - the primary re
    - Change notifications
 
 **Workflow:**
+
 ```
 1. Webhook receives commit event
 2. Clone/pull repository
@@ -149,17 +157,20 @@ Phase 4 focuses on building the automated documentation service - the primary re
 ---
 
 ### Item 32: Documentation Service MVP
+
 **Status:** 🚧 IN PROGRESS (github-docs-app repository)
 
 **Goal:** Launch minimal viable product for automated documentation
 
 **Current State:**
+
 - **Repository:** github-docs-app
 - **Test Pass Rate:** 81.9% (1466/1790 tests passing)
 - **Remaining Work:** 324 failing tests, estimated 8-12 hours to reach 95%+
 - **Architecture:** Comprehensive requirements and design docs exist
 
 **Components:**
+
 1. **Landing Page:**
    - Value proposition and features
    - Pricing tiers
@@ -191,6 +202,7 @@ Phase 4 focuses on building the automated documentation service - the primary re
    - Download as markdown/HTML
 
 **User Flow:**
+
 ```
 1. User signs up with GitHub OAuth
 2. Selects pricing tier and enters payment
@@ -203,6 +215,7 @@ Phase 4 focuses on building the automated documentation service - the primary re
 ```
 
 **MVP Features** (Keep it simple!):
+
 - ✅ GitHub OAuth login
 - ✅ Stripe subscription (3 tiers)
 - ✅ GitHub App installation
@@ -212,6 +225,7 @@ Phase 4 focuses on building the automated documentation service - the primary re
 - ✅ Usage tracking
 
 **Post-MVP Features** (Add later):
+
 - Custom templates
 - Advanced styling
 - API access
@@ -220,6 +234,7 @@ Phase 4 focuses on building the automated documentation service - the primary re
 - Analytics and insights
 
 **Remaining Work (github-docs-app):**
+
 - Fix 324 failing tests (8-12 hours estimated)
 - Implement ConfigManager (22 tests, high priority)
 - Fix Repository Manager issues (63 tests)
@@ -240,11 +255,13 @@ Phase 4 focuses on building the automated documentation service - the primary re
 ## Not Started ❌
 
 ### Item 30: Authentication & Billing System
+
 **Status:** ❌ NOT STARTED
 
 **Goal:** Secure access control and revenue collection
 
 **Components:**
+
 1. **Authentication:**
    - GitHub OAuth for user login
    - API key generation for programmatic access
@@ -282,11 +299,13 @@ Phase 4 focuses on building the automated documentation service - the primary re
 ---
 
 ### Item 31: Multi-Tenancy Support
+
 **Status:** ❌ NOT STARTED
 
 **Goal:** Isolate customer data and resources securely
 
 **Components:**
+
 1. **Data Isolation:**
    - Separate database schemas per customer
    - Isolated file storage (S3 buckets per customer)
@@ -328,16 +347,19 @@ Phase 4 focuses on building the automated documentation service - the primary re
 **Progress:** In Development (github-docs-app at 81.9% test pass rate)
 
 **In Progress:** 4 items
+
 - Item 27 (GitHub Integration)
 - Item 28 (Documentation Output)
 - Item 29 (Automated Workflow)
 - Item 32 (Documentation MVP)
 
 **Not Started:** 2 items
+
 - Item 30 (Auth & Billing - HIGH priority, required for revenue)
 - Item 31 (Multi-tenancy - HIGH priority, required for B2B)
 
 **github-docs-app Status:**
+
 - **Test Pass Rate:** 81.9% (1466/1790 passing)
 - **Remaining Failures:** 324 tests
 - **Estimated Work:** 8-12 hours to reach 95%+ pass rate
@@ -349,6 +371,7 @@ Phase 4 focuses on building the automated documentation service - the primary re
   - No deployment infrastructure
 
 **Critical Path to Revenue:**
+
 1. Complete github-docs-app test fixes (8-12 hours)
 2. Implement ConfigManager (high priority, 22 tests)
 3. Add authentication & billing system (Item 30)
@@ -357,12 +380,14 @@ Phase 4 focuses on building the automated documentation service - the primary re
 6. Target: $5k MRR by end of Q4 2025
 
 **Competitive Advantages:**
+
 - **Conversation trees:** Explore multiple documentation angles simultaneously
 - **branch_self:** Parallel exploration with n*log(n) scaling vs competitors' n^2
 - **Self-context management:** Handle large codebases efficiently
 - **Functional prompts:** Composable patterns for complex documentation workflows
 
 **Revenue Timeline:**
+
 - **Months 1-2:** Complete Phase 1 foundation (OpenTelemetry cost tracking, callbacks)
 - **Months 3-4:** Build Documentation Service (GitHub integration, doc output, workflows)
 - **Month 5:** Launch MVP (auth/billing, multi-tenancy, first 10 customers)
@@ -371,6 +396,7 @@ Phase 4 focuses on building the automated documentation service - the primary re
 ---
 
 **Navigation:**
+
 - [Back to Roadmap](../ROADMAP.md)
 - [Phase 3: Enhancement](phase3_enhancement.md)
 - [Documentation Service Initiative](../initiatives/documentation_service.md)

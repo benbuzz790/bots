@@ -1,4 +1,4 @@
-﻿.PHONY: help install install-dev format check lint test test-fast clean
+.PHONY: help install install-dev format check lint test test-fast clean
 help:
 	@echo "Bots Development Commands"
 	@echo "========================="
@@ -6,7 +6,7 @@ help:
 	@echo "make install-dev  - Install development dependencies"
 	@echo "make format       - Format code with black and isort"
 	@echo "make check        - Check formatting (what CI runs)"
-	@echo "make lint         - Run all linters (black, isort, flake8)"
+	@echo "make lint         - Run all linters (black, isort, flake8, markdownlint)"
 	@echo "make test         - Run all tests with coverage"
 	@echo "make test-fast    - Run tests in parallel (faster)"
 	@echo "make clean        - Remove temporary files and caches"
@@ -21,10 +21,12 @@ format:
 	black .
 	isort .
 	python -m bots.dev.remove_boms
+	markdownlint --fix **/*.md --ignore node_modules
 check:
 	black --check --diff .
 	isort --check-only --diff .
 	flake8 . --count --statistics --show-source
+	markdownlint **/*.md --ignore node_modules
 lint: check
 test:
 	pytest tests/ -v --cov=bots --cov-report=term-missing --cov-report=xml
