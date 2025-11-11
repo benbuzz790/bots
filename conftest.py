@@ -21,12 +21,13 @@ def pytest_configure(config):
     by zombie pytest worker processes. This is a Windows-specific issue where
     processes that don't exit cleanly leave file handles open, locking directories.
 
-    The real solution is to prevent zombie processes, but as a workaround we:
+    The solution:
     1. Use custom basetemp in project root (if not already set via CLI)
-    2. Let pytest-xdist handle worker isolation (gw0/, gw1/, etc.)
-    3. Clean up old directories that are no longer locked
+    2. Detect if .pytest_tmp is locked and automatically use timestamped alternative
+    3. Let pytest-xdist handle worker isolation (gw0/, gw1/, etc.)
+    4. Clean up old locked and session-specific directories (older than 1 hour)
 
-    Note: If .pytest_tmp is locked, manual cleanup is required (see ticket.txt)
+    This handles locked directories automatically without requiring manual cleanup.
     """
     # Get the project root (where conftest.py is located)
     project_root = Path(__file__).parent
