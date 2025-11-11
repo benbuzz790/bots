@@ -533,7 +533,7 @@ class TestPostNamshubConversation:
 
     def test_sequential_namshubs_with_responses(self):
         """Test conversation between multiple namshub invocations."""
-        from tests.fixtures import namshub_of_no_op, namshub_of_echo, namshub_of_tool_use
+        from tests.fixtures import namshub_of_echo, namshub_of_no_op, namshub_of_tool_use
 
         bot = MockBot(autosave=False)
 
