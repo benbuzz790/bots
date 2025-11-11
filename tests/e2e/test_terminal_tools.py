@@ -182,7 +182,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         )
         result = self._collect_generator_output(execute_powershell(ps_script))
         self.assertNotIn("Should Not See This", result)
-        self._collect_generator_output(execute_powershell('Remove-Item -Path get_unique_filename("test", "txt") -Force'))
+        cleanup_cmd = 'Remove-Item -Path get_unique_filename("test", "txt") -Force'
+        self._collect_generator_output(execute_powershell(cleanup_cmd))
 
     def test_stateful_special_characters(self):
         """Test handling of special characters and box drawing symbols in generator form"""
@@ -320,7 +321,7 @@ class TestTerminalToolsStateful(TestTerminalTools):
         manager.cleanup()
 
     def test_input_error_handling(self):
-        """Test error handling when executing invalid commands"""
+        """Test handling of invalid commands"""
         from bots.tools.terminal_tools import PowerShellManager, execute_powershell
 
         manager = PowerShellManager.get_instance("error_test")
@@ -329,7 +330,9 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertContainsNormalized(output, "Valid command")
         output = execute_powershell("nonexistentcommand")
         self.assertIn("nonexistentcommand", output)
-        self.assertIn("not recognized", output.lower())
+        # Error message may have line breaks, so normalize whitespace
+        normalized_output = " ".join(output.lower().split())
+        self.assertIn("not recognized", normalized_output)
         manager.cleanup()
 
     def test_state_preservation_through_input(self):
@@ -462,12 +465,17 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
         """Test handling of non-existent commands from error logs."""
         result = execute_powershell("nonexistentcommand", timeout="30")
         self.assertIn("Errors:", result)
-        self.assertIn("not recognized", result.lower())
+        # Error message may have line breaks, so normalize whitespace
+        normalized_result = " ".join(result.lower().split())
+        self.assertIn("not recognized", normalized_result)
         self.assertNotIn("Tool Failed:", result)
 
     def test_mixed_stdout_stderr_output(self):
         """Test mixed stdout/stderr output handling."""
-        cmd = '\n        Write-Output "Standard: こんにちは"\n        [System.Console]::Error.WriteLine("Error: システムエラー")\n        '
+        cmd = (
+            '\n        Write-Output "Standard: こんにちは"\n        '
+            '[System.Console]::Error.WriteLine("Error: システムエラー")\n        '
+        )
         result = execute_powershell(cmd, timeout="30")
         self.assertIn("Standard:", result)
         self.assertIn("Errors:", result)
@@ -519,20 +527,15 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
         """Test Python code with many nested quotes."""
         python_code = (
             'python -c "\n'
-            "par_dispatch_line = 'C:\\\\Users\\\\benbu\\\\Code\\\\repo_working\\\\bots\\\\bots\\\\fp\\\\par_dispatch.py:17'\n"
+            "par_dispatch_line = "
+            "'C:\\\\Users\\\\benbu\\\\Code\\\\repo_working\\\\bots\\\\bots\\\\fp\\\\par_dispatch.py:17'\n"
             "par_dispatch_pos = par_dispatch_line.split(':')[-1]\n"
             "print(f'Position: {par_dispatch_pos}')\n"
             '"'
         )
         session = PowerShellSession()
-        try:
-            with session:
-                result = session.execute(python_code, timeout=30)
-                self.assertIsInstance(result, str)
-                # New format: expect "C:\path>" instead of "current directory"
-                self.assertIn(">", result)
-        except Exception as e:
-            self.fail(f"Should not raise exception, but got: {e}")
+        result = session.execute(python_code, timeout=30)
+        self.assertIn("Position:", result)
 
     def test_bom_handling(self):
         """Test handling of Unicode BOM that was causing issues."""
@@ -712,27 +715,15 @@ class TestPowerShellUnicodeIssues(unittest.TestCase):
 
     def test_bom_detection_and_handling(self):
         """Test if PowerShell is adding BOMs that cause issues."""
-        command = '@\'\nsimple test content\n\'@ | Out-File -FilePath get_unique_filename("bom_test", "txt") -Encoding UTF8'
+        filename = get_unique_filename("bom_test", "txt")
+        command = f"@'\nsimple test content\n'@ | " f"Out-File -FilePath {filename} -Encoding UTF8"
         result = execute_powershell(command)
         print(f"BOM test result: {result}")
-        if os.path.exists(get_unique_filename("bom_test", "txt")):
-            with open(get_unique_filename("bom_test", "txt"), "rb") as f:
+        if os.path.exists(filename):
+            with open(filename, "rb") as f:
                 raw_data = f.read()
             print(f"Raw file data: {raw_data}")
             print(f"First 10 bytes: {raw_data[:10]}")
-            bom_checks = [
-                (b"\xff\xfe", "UTF-16 LE BOM"),
-                (b"\xfe\xff", "UTF-16 BE BOM"),
-                (b"\xef\xbb\xbf", "UTF-8 BOM"),
-                (b"\xff\xfe\x00\x00", "UTF-32 LE BOM"),
-                (b"\x00\x00\xfe\xff", "UTF-32 BE BOM"),
-            ]
-            for bom_bytes, bom_name in bom_checks:
-                if raw_data.startswith(bom_bytes):
-                    print(f"🔍 Found {bom_name}")
-                    break
-            else:
-                print("✅ No BOM detected")
 
     def test_powershell_internal_encoding_setup(self):
         """Test if PowerShell's internal encoding setup is causing issues."""
