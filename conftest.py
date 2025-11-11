@@ -33,7 +33,19 @@ def pytest_configure(config):
 
     # Only set basetemp if it wasn't already set via command line
     if config.option.basetemp is None:
+        # Try to use .pytest_tmp, but if it's locked, use a timestamped alternative
         temp_dir = project_root / ".pytest_tmp"
+        try:
+            # Test if we can access the directory
+            if temp_dir.exists():
+                # Try to create a test file to verify we have access
+                test_file = temp_dir / f".test_access_{time.time()}"
+                test_file.touch()
+                test_file.unlink()
+        except (PermissionError, OSError):
+            # Directory is locked, use alternative
+            temp_dir = project_root / f".pytest_tmp_locked_{int(time.time())}"
+
         config.option.basetemp = str(temp_dir)
 
     # Only the main process should do cleanup
@@ -52,7 +64,7 @@ def pytest_configure(config):
 
         # Clean up old session-specific directories
         for old_dir in project_root.glob(".pytest_tmp_*"):
-            if old_dir.name != ".pytest_tmp":
+            if old_dir.name != ".pytest_tmp" and not old_dir.name.startswith(".pytest_tmp_locked_"):
                 try:
                     if old_dir.is_dir():
                         dir_age = time.time() - old_dir.stat().st_mtime
@@ -60,6 +72,16 @@ def pytest_configure(config):
                             shutil.rmtree(old_dir, ignore_errors=True)
                 except Exception:
                     pass
+def pytest_collection_modifyitems(config, items):
+    """Modify test items to handle serial and cli_serial markers with xdist."""
+    for item in items:
+        # Handle serial marker - assign to same group so they run sequentially
+        if item.get_closest_marker("serial"):
+            item.add_marker(pytest.mark.xdist_group(name="serial"))
+
+        # Handle cli_serial marker - assign to same group so they run sequentially
+        if item.get_closest_marker("cli_serial"):
+            item.add_marker(pytest.mark.xdist_group(name="cli_serial"))
 
 
 def register_test_file(filepath: str) -> str:
@@ -216,6 +238,16 @@ def pytest_sessionfinish(session, exitstatus):
     # 1. Successfully removes it (if unlocked)
     # 2. Renames it and creates a fresh one (if still locked)
     # Old locked directories are cleaned up after 1 hour.
+def pytest_collection_modifyitems(config, items):
+    """Modify test items to handle serial and cli_serial markers with xdist."""
+    for item in items:
+        # Handle serial marker - assign to same group so they run sequentially
+        if item.get_closest_marker("serial"):
+            item.add_marker(pytest.mark.xdist_group(name="serial"))
+
+        # Handle cli_serial marker - assign to same group so they run sequentially
+        if item.get_closest_marker("cli_serial"):
+            item.add_marker(pytest.mark.xdist_group(name="cli_serial"))
 
 
 @pytest.fixture
