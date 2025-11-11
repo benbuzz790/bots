@@ -2435,7 +2435,7 @@ class CLI:
 
     def _initialize_new_bot(self):
         """Initialize a new bot with default tools."""
-        from bots.foundation.base import Engines
+        from bots import Engines
 
         bot = AnthropicBot(
             model_engine=Engines.CLAUDE45_SONNET,
@@ -2478,21 +2478,18 @@ class CLI:
         bot.add_tools(*tools_to_add)
 
         sys_msg = textwrap.dedent(
-            """
-        You're a coding agent. Please follow these rules:
-            1. Keep edits and even writing new files to small chunks. You have a low max_token limit
-                and will hit tool errors if you try making too big of a change.
-            2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
-                Instead, use full relative paths.
-            3. Ex uno plura! You have a powerful tool called branch_self which you should use for
-                multitasking or even just to save context in your main branch. Always use a concrete
-                definition of done when branching.
-        """
-        ).strip()
-        bot.system_message = sys_msg
-
-        # This works well as a fallback:
-        # bot.add_tools(bots.tools.terminal_tools, view, view_dir)
+            """You're a coding agent. Please follow these rules:
+    1. Keep edits and even writing new files to small chunks. You have a low max_token limit
+        and will hit tool errors if you try making too big of a change.
+    2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
+        Instead, use full relative paths.
+    3. Ex uno plura! You have a powerful tool called branch_self which you should use for
+        multitasking or even just to save context in your main branch. Always use a concrete
+        definition of done when branching.
+    4. When debugging issues, find the root cause rather than working around symptoms.
+"""
+        )
+        bot.set_system_message(sys_msg)
 
     def _handle_command(self, bot: Bot, user_input: str):
         """Handle command input."""
