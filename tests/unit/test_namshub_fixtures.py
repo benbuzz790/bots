@@ -412,6 +412,143 @@ class TestNamshubProgression:
 
         with pytest.raises(Exception):
             namshub_of_error.invoke(bot)
+class TestPostNamshubConversation:
+    """Test that conversation can continue after namshub execution."""
+
+    def test_respond_after_no_op_namshub(self):
+        """Test that bot can respond after no-op namshub."""
+        from tests.fixtures import namshub_of_no_op
+
+        bot = MockBot(autosave=False)
+
+        # Execute namshub
+        result, node = namshub_of_no_op.invoke(bot)
+        assert "success" in result.lower()
+
+        # Continue conversation
+        response = bot.respond("Hello after namshub")
+        assert response is not None
+        assert isinstance(response, str)
+        assert len(response) > 0
+
+    def test_respond_after_echo_namshub(self):
+        """Test that bot can respond after echo namshub."""
+        from tests.fixtures import namshub_of_echo
+
+        bot = MockBot(autosave=False)
+
+        # Execute namshub
+        result, node = namshub_of_echo.invoke(bot, message="test message")
+        assert "Echo: test message" == result
+
+        # Continue conversation
+        response = bot.respond("What did you just echo?")
+        assert response is not None
+
+    def test_respond_after_state_change_namshub(self):
+        """Test that bot can respond after state change namshub."""
+        from tests.fixtures import namshub_of_state_change
+
+        bot = MockBot(autosave=False)
+        original_message = bot.system_message
+
+        # Execute namshub
+        result, node = namshub_of_state_change.invoke(bot, new_message="Temporary")
+
+        # Verify state changed
+        assert bot.system_message == "Temporary"
+
+        # Continue conversation - this should work even with changed state
+        response = bot.respond("Continue working")
+        assert response is not None
+
+    def test_respond_after_tool_use_namshub(self):
+        """Test that bot can respond after tool use namshub."""
+        from tests.fixtures import namshub_of_tool_use
+
+        bot = MockBot(autosave=False)
+
+        # Execute namshub
+        result, node = namshub_of_tool_use.invoke(bot, expression="10 + 5")
+        assert "15" in result
+
+        # Continue conversation
+        response = bot.respond("What was the calculation?")
+        assert response is not None
+
+    def test_respond_after_workflow_namshub(self):
+        """Test that bot can respond after workflow namshub."""
+        from tests.fixtures import namshub_of_simple_workflow
+
+        bot = MockBot(autosave=False)
+
+        # Execute namshub
+        result, node = namshub_of_simple_workflow.invoke(bot, task="test task")
+        assert "completed" in result.lower()
+
+        # Continue conversation
+        response = bot.respond("Summarize the task")
+        assert response is not None
+
+    def test_multiple_responses_after_namshub(self):
+        """Test multiple conversation turns after namshub."""
+        from tests.fixtures import namshub_of_no_op
+
+        bot = MockBot(autosave=False)
+
+        # Execute namshub
+        namshub_of_no_op.invoke(bot)
+
+        # Multiple conversation turns
+        response1 = bot.respond("First message")
+        assert response1 is not None
+
+        response2 = bot.respond("Second message")
+        assert response2 is not None
+
+        response3 = bot.respond("Third message")
+        assert response3 is not None
+
+    def test_conversation_state_preserved_after_namshub(self):
+        """Test that conversation tree is properly maintained after namshub."""
+        from tests.fixtures import namshub_of_no_op
+
+        bot = MockBot(autosave=False)
+
+        # Add some conversation before namshub
+        bot.respond("Before namshub")
+        conversation_before = bot.conversation
+
+        # Execute namshub
+        namshub_of_no_op.invoke(bot)
+
+        # Continue conversation
+        bot.respond("After namshub")
+
+        # Verify conversation tree is intact
+        assert bot.conversation is not None
+        assert bot.conversation.parent is not None
+
+    def test_sequential_namshubs_with_responses(self):
+        """Test conversation between multiple namshub invocations."""
+        from tests.fixtures import namshub_of_no_op, namshub_of_echo, namshub_of_tool_use
+
+        bot = MockBot(autosave=False)
+
+        # First namshub
+        namshub_of_no_op.invoke(bot)
+        response1 = bot.respond("After first namshub")
+        assert response1 is not None
+
+        # Second namshub
+        namshub_of_echo.invoke(bot, message="test")
+        response2 = bot.respond("After second namshub")
+        assert response2 is not None
+
+        # Third namshub
+        namshub_of_tool_use.invoke(bot)
+        response3 = bot.respond("After third namshub")
+        assert response3 is not None
 
 
 if __name__ == "__main__":

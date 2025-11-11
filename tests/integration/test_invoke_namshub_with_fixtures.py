@@ -413,6 +413,162 @@ class TestInvokeNamshubEdgeCases:
             result = invoke_namshub(fixture_path, kwargs='{"message": ""}')
 
         assert "Echo: " in result
+class TestInvokeNamshubPostExecution:
+    """Test that bot can continue conversation after namshub execution."""
+
+    def test_conversation_continues_after_no_op(self):
+        """Test that bot can respond normally after no-op namshub."""
+        bot = MockBot(autosave=False)
+        bot.add_tools(invoke_namshub)
+
+        fixture_path = os.path.join("tests", "fixtures", "namshub_of_no_op.py")
+
+        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
+            result = invoke_namshub(fixture_path)
+            assert "success" in result.lower()
+
+        # Continue conversation after namshub
+        response = bot.respond("What is 2 + 2?")
+        assert response is not None
+        assert len(response) > 0
+
+    def test_conversation_continues_after_echo(self):
+        """Test that bot can respond after echo namshub."""
+        bot = MockBot(autosave=False)
+        bot.add_tools(invoke_namshub)
+
+        fixture_path = os.path.join("tests", "fixtures", "namshub_of_echo.py")
+
+        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
+            result = invoke_namshub(fixture_path, kwargs='{"message": "test"}')
+            assert "Echo: test" in result
+
+        # Continue conversation
+        response = bot.respond("Continue the conversation")
+        assert response is not None
+
+    def test_conversation_continues_after_state_change(self):
+        """Test that bot can respond after state_change namshub."""
+        bot = MockBot(autosave=False)
+        bot.add_tools(invoke_namshub)
+
+        original_message = "Original"
+        bot.set_system_message(original_message)
+
+        fixture_path = os.path.join("tests", "fixtures", "namshub_of_state_change.py")
+
+        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
+            result = invoke_namshub(fixture_path, kwargs='{"new_message": "Changed"}')
+            assert "changed" in result.lower()
+
+        # Verify state was restored
+        assert bot.system_message == original_message
+
+        # Continue conversation
+        response = bot.respond("What's your system message?")
+        assert response is not None
+
+    def test_conversation_continues_after_tool_use(self):
+        """Test that bot can respond after tool_use namshub."""
+        bot = MockBot(autosave=False)
+        bot.add_tools(invoke_namshub)
+
+        fixture_path = os.path.join("tests", "fixtures", "namshub_of_tool_use.py")
+
+        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
+            result = invoke_namshub(fixture_path, kwargs='{"expression": "5 * 5"}')
+            assert "25" in result
+
+        # Continue conversation
+        response = bot.respond("What was the result?")
+        assert response is not None
+
+    def test_conversation_continues_after_workflow(self):
+        """Test that bot can respond after simple_workflow namshub."""
+        bot = MockBot(autosave=False)
+        bot.add_tools(invoke_namshub)
+
+        fixture_path = os.path.join("tests", "fixtures", "namshub_of_simple_workflow.py")
+
+        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
+            result = invoke_namshub(fixture_path, kwargs='{"task": "test"}')
+            assert "completed" in result.lower()
+
+        # Continue conversation
+        response = bot.respond("Summarize what you did")
+        assert response is not None
+
+    def test_multiple_messages_after_namshub(self):
+        """Test multiple conversation turns after namshub."""
+        bot = MockBot(autosave=False)
+        bot.add_tools(invoke_namshub)
+
+        fixture_path = os.path.join("tests", "fixtures", "namshub_of_no_op.py")
+
+        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
+            result = invoke_namshub(fixture_path)
+
+        # Multiple conversation turns
+        response1 = bot.respond("First message after namshub")
+        assert response1 is not None
+
+        response2 = bot.respond("Second message after namshub")
+        assert response2 is not None
+
+        response3 = bot.respond("Third message after namshub")
+        assert response3 is not None
+
+    def test_conversation_after_error_namshub(self):
+        """Test that bot can continue even after error namshub."""
+        bot = MockBot(autosave=False)
+        bot.add_tools(invoke_namshub)
+
+        original_message = bot.system_message
+
+        fixture_path = os.path.join("tests", "fixtures", "namshub_of_error.py")
+
+        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
+            result = invoke_namshub(fixture_path, kwargs='{"error_type": "ValueError"}')
+            assert "Error" in result or "error" in result.lower()
+
+        # State should be restored
+        assert bot.system_message == original_message
+
+        # Continue conversation
+        response = bot.respond("Are you still working?")
+        assert response is not None
+
+    def test_sequential_namshubs_with_conversation(self):
+        """Test conversation between multiple namshub invocations."""
+        bot = MockBot(autosave=False)
+        bot.add_tools(invoke_namshub)
+
+        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
+            # First namshub
+            result1 = invoke_namshub(os.path.join("tests", "fixtures", "namshub_of_no_op.py"))
+            assert "success" in result1.lower()
+
+        # Conversation after first namshub
+        response1 = bot.respond("First namshub completed")
+        assert response1 is not None
+
+        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
+            # Second namshub
+            result2 = invoke_namshub(os.path.join("tests", "fixtures", "namshub_of_echo.py"), kwargs='{"message": "test"}')
+            assert "Echo: test" in result2
+
+        # Conversation after second namshub
+        response2 = bot.respond("Second namshub completed")
+        assert response2 is not None
+
+        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
+            # Third namshub
+            result3 = invoke_namshub(os.path.join("tests", "fixtures", "namshub_of_tool_use.py"))
+            assert "4" in result3
+
+        # Final conversation
+        response3 = bot.respond("All namshubs completed")
+        assert response3 is not None
 
 
 if __name__ == "__main__":
