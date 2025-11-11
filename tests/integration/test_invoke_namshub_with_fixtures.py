@@ -413,6 +413,8 @@ class TestInvokeNamshubEdgeCases:
             result = invoke_namshub(fixture_path, kwargs='{"message": ""}')
 
         assert "Echo: " in result
+
+
 class TestInvokeNamshubPostExecution:
     """Test that bot can continue conversation after namshub execution."""
 

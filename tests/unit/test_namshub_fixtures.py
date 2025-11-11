@@ -412,6 +412,8 @@ class TestNamshubProgression:
 
         with pytest.raises(Exception):
             namshub_of_error.invoke(bot)
+
+
 class TestPostNamshubConversation:
     """Test that conversation can continue after namshub execution."""
 
