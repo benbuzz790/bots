@@ -602,6 +602,7 @@ class ScopeReplacer(cst.CSTTransformer):
         self.replacement_index = -1
         self.imports_to_add = []
         self.additional_nodes_to_insert = []  # Track additional nodes when replacing with multiple items
+        self.delete_mode = new_code is None or (isinstance(new_code, str) and new_code.strip() == "")
 
     def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
         """Handle module-level whitespace after replacements."""
@@ -677,44 +678,38 @@ class ScopeReplacer(cst.CSTTransformer):
         """Track when entering a class."""
         self.current_path.append(node.name.value)
 
-    def leave_ClassDef(self, original_node: cst.ClassDef, updated_node: cst.ClassDef) -> cst.ClassDef:
-        """Handle leaving a class definition."""
-        # First, handle the scope node (which may set additional_nodes_to_insert)
+    def leave_ClassDef(
+        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+    ) -> Union[cst.ClassDef, cst.RemovalSentinel]:
+        """Handle class definition replacement."""
         result = self._handle_scope_node(original_node, updated_node)
+        self.current_path.pop()
 
-        # If we have additional nodes to insert and we're in the parent of the replaced scope
-        if self.additional_nodes_to_insert and len(self.current_path) == len(self.path_elements) - 1:
-            # We're in the parent class of a replaced method, insert additional methods
-            if isinstance(result.body, cst.IndentedBlock):
-                new_body = list(result.body.body)
-                # Find the replaced method in the body
-                target_name = self.path_elements[-1]
-                for i, stmt in enumerate(new_body):
-                    if (
-                        isinstance(stmt, (cst.FunctionDef, cst.ClassDef))
-                        and hasattr(stmt, "name")
-                        and stmt.name.value == target_name
-                    ):
-                        # Insert additional nodes after this one
-                        for j, node in enumerate(self.additional_nodes_to_insert):
-                            new_body.insert(i + 1 + j, node)
-                        self.additional_nodes_to_insert = []  # Clear after inserting
-                        break
-                result = result.with_changes(body=result.body.with_changes(body=new_body))
+        # Handle deletion mode
+        if self.current_path == self.path_elements and self.delete_mode:
+            return cst.RemovalSentinel.REMOVE
 
-        if self.current_path and self.current_path[-1] == original_node.name.value:
-            self.current_path.pop()
         return result
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
         """Track when entering a function."""
         self.current_path.append(node.name.value)
 
-    def leave_FunctionDef(self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef) -> cst.FunctionDef:
-        """Handle leaving a function definition."""
+    def leave_FunctionDef(
+        self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
+    ) -> Union[cst.FunctionDef, cst.RemovalSentinel, cst.FlattenSentinel[cst.BaseStatement]]:
+        """Handle function definition replacement."""
         result = self._handle_scope_node(original_node, updated_node)
-        if self.current_path and self.current_path[-1] == original_node.name.value:
-            self.current_path.pop()
+        self.current_path.pop()
+
+        # Handle deletion mode
+        if self.current_path == self.path_elements and self.delete_mode:
+            return cst.RemovalSentinel.REMOVE
+
+        # Handle flattening for additional nodes at function level
+        if result != updated_node and self.additional_nodes_to_insert:
+            return cst.FlattenSentinel([result] + self.additional_nodes_to_insert)
+
         return result
 
     def _handle_scope_node(

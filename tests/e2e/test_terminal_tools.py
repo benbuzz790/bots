@@ -174,15 +174,18 @@ class TestTerminalToolsStateful(TestTerminalTools):
         """Test complex command chains with mixed success/failure conditions in generator form"""
         from bots.tools.terminal_tools import execute_powershell
 
+        # Generate actual filename using Python function
+        test_filename = get_unique_filename("test", "txt")
+
         ps_script = (
-            'New-Item -Path get_unique_filename("test", "txt") -ItemType "file" -Force && '
-            'Write-Output "success" > test_20016_16_1750444995166.txt && '
+            f'New-Item -Path "{test_filename}" -ItemType "file" -Force && '
+            f'Write-Output "success" > {test_filename} && '
             'Write-Output "fail" > /nonexistent/path/file.txt && '
             'Write-Output "Should Not See This"'
         )
         result = self._collect_generator_output(execute_powershell(ps_script))
         self.assertNotIn("Should Not See This", result)
-        cleanup_cmd = 'Remove-Item -Path get_unique_filename("test", "txt") -Force'
+        cleanup_cmd = f'Remove-Item -Path "{test_filename}" -Force -ErrorAction SilentlyContinue'
         self._collect_generator_output(execute_powershell(cleanup_cmd))
 
     def test_stateful_special_characters(self):
@@ -533,9 +536,9 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
             "print(f'Position: {par_dispatch_pos}')\n"
             '"'
         )
-        session = PowerShellSession()
-        result = session.execute(python_code, timeout=30)
-        self.assertIn("Position:", result)
+        with PowerShellSession() as session:
+            result = session.execute(python_code, timeout=30)
+            self.assertIn("Position:", result)
 
     def test_bom_handling(self):
         """Test handling of Unicode BOM that was causing issues."""

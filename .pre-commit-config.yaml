@@ -1,4 +1,4 @@
-﻿repos:
+repos:
   - repo: https://github.com/psf/black
     rev: 25.9.0
     hooks:
@@ -30,5 +30,5 @@
         name: Remove BOMs
         entry: python -m bots.dev.remove_boms
         language: system
-        types: [python]
-        pass_filenames: false
+        types: [text]
+        pass_filenames: true
