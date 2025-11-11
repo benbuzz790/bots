@@ -945,6 +945,8 @@ def func2():
     assert (
         new_blank_lines == original_blank_lines
     ), f"Expected {original_blank_lines} blank lines between functions, but got {new_blank_lines}"
+
+
 def test_replace_method_with_multiple_methods(tmp_path):
     """Test replacing a single method with multiple methods (issue #168)"""
     content = """
@@ -969,7 +971,7 @@ def test_replace_method_with_multiple_methods(tmp_path):
 
         def method_one_b(self):
             return "one_b"
-        """
+        """,
     )
 
     assert "replaced" in result.lower()
@@ -1015,7 +1017,7 @@ def test_replace_function_with_multiple_functions(tmp_path):
 
         def func_one_b():
             return "one_b"
-        """
+        """,
     )
 
     assert "replaced" in result.lower()

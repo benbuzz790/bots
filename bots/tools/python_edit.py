@@ -684,7 +684,11 @@ class ScopeReplacer(cst.CSTTransformer):
                 # Find the replaced method in the body
                 target_name = self.path_elements[-1]
                 for i, stmt in enumerate(new_body):
-                    if isinstance(stmt, (cst.FunctionDef, cst.ClassDef)) and hasattr(stmt, "name") and stmt.name.value == target_name:
+                    if (
+                        isinstance(stmt, (cst.FunctionDef, cst.ClassDef))
+                        and hasattr(stmt, "name")
+                        and stmt.name.value == target_name
+                    ):
                         # Insert additional nodes after this one
                         for j, node in enumerate(self.additional_nodes_to_insert):
                             new_body.insert(i + 1 + j, node)
@@ -736,11 +740,7 @@ class ScopeReplacer(cst.CSTTransformer):
                     additional_nodes = []
 
                     for stmt in self.new_code.body:
-                        if (
-                            isinstance(stmt, type(original_node))
-                            and hasattr(stmt, "name")
-                            and stmt.name.value == target_name
-                        ):
+                        if isinstance(stmt, type(original_node)) and hasattr(stmt, "name") and stmt.name.value == target_name:
                             # This is the replacement for the target node
                             new_node = stmt
                         elif isinstance(stmt, (cst.SimpleStatementLine,)) and any(
