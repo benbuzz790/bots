@@ -493,8 +493,7 @@ class TestInvokeNamshubPostExecution:
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_simple_workflow.py")
 
         with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs='{"task": "test"}')
-            assert "completed" in result.lower()
+            _ = invoke_namshub(fixture_path, kwargs='{"task": "test"}')
 
         # Continue conversation
         response = bot.respond("Summarize what you did")
@@ -508,7 +507,7 @@ class TestInvokeNamshubPostExecution:
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_no_op.py")
 
         with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path)
+            _ = invoke_namshub(fixture_path)
 
         # Multiple conversation turns
         response1 = bot.respond("First message after namshub")

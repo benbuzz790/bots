@@ -452,7 +452,7 @@ class TestPostNamshubConversation:
         from tests.fixtures import namshub_of_state_change
 
         bot = MockBot(autosave=False)
-        original_message = bot.system_message
+        _ = bot.system_message  # Store original but don't use it
 
         # Execute namshub
         result, node = namshub_of_state_change.invoke(bot, new_message="Temporary")
@@ -519,7 +519,7 @@ class TestPostNamshubConversation:
 
         # Add some conversation before namshub
         bot.respond("Before namshub")
-        conversation_before = bot.conversation
+        _ = bot.conversation  # Store reference but don't use it
 
         # Execute namshub
         namshub_of_no_op.invoke(bot)
