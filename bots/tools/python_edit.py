@@ -606,6 +606,7 @@ class ScopeReplacer(cst.CSTTransformer):
     def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
         """Handle module-level whitespace after replacements."""
         # Add any imports that were collected during replacement
+        num_imports_added = 0
         if self.imports_to_add:
             # Find the position to insert imports (after existing imports)
             insert_pos = 0
@@ -623,22 +624,27 @@ class ScopeReplacer(cst.CSTTransformer):
             new_body = list(updated_node.body)
             for imp in reversed(self.imports_to_add):  # Insert in reverse order to maintain order
                 new_body.insert(insert_pos, imp)
+                num_imports_added += 1
             updated_node = updated_node.with_changes(body=new_body)
 
         # Insert additional nodes after the replacement (for multi-node replacements)
         if self.additional_nodes_to_insert and self.replacement_index >= 0:
             new_body = list(updated_node.body)
+            # Adjust replacement_index if imports were added before it
+            adjusted_index = self.replacement_index + num_imports_added
             # Insert additional nodes right after the replaced node
             for i, node in enumerate(self.additional_nodes_to_insert):
-                new_body.insert(self.replacement_index + 1 + i, node)
+                new_body.insert(adjusted_index + 1 + i, node)
             updated_node = updated_node.with_changes(body=new_body)
 
         if self.replaced_at_top_level and self.replacement_index >= 0:
             # Ensure proper spacing after top-level function/class replacements
             new_body = list(updated_node.body)
 
+            # Adjust for imports that were added
+            adjusted_index = self.replacement_index + num_imports_added
             # If there's a statement after the replaced one (or after additional nodes), ensure it has proper leading lines
-            last_inserted_index = self.replacement_index + len(self.additional_nodes_to_insert)
+            last_inserted_index = adjusted_index + len(self.additional_nodes_to_insert)
             if last_inserted_index + 1 < len(new_body):
                 next_stmt = new_body[last_inserted_index + 1]
 
