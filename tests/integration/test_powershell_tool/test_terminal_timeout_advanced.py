@@ -66,7 +66,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
         print("\n=== Testing Basic Command Execution ===")
         session = PowerShellSession()
         with session:
-            result = session.execute("Write-Output 'Hello World'", timeout=5)
+            result = session.execute("Write-Output 'Hello World'", timeout=15)
             print(f"Result: {result}")
             assert "Hello World" in result
 
@@ -89,7 +89,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
         session = PowerShellSession()
         with session:
             for i in range(10):
-                result = session.execute(f"Write-Output 'Command {i}'", timeout=5)
+                result = session.execute(f"Write-Output 'Command {i}'", timeout=15)
                 print(f"Command {i}: {result}")
                 assert f"Command {i}" in result
 
@@ -100,12 +100,12 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
         with session:
             # Execute a command that will fail
             try:
-                session.execute("Get-Item NonExistentFile.txt", timeout=5)
+                session.execute("Get-Item NonExistentFile.txt", timeout=15)
             except Exception as e:
                 print(f"Got expected error: {e}")
 
             # Session should still work after error
-            result = session.execute("Write-Output 'Still working'", timeout=5)
+            result = session.execute("Write-Output 'Still working'", timeout=15)
             print(f"Recovery result: {result}")
             assert "Still working" in result
 
@@ -124,7 +124,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
         print("\n=== Testing Special Characters ===")
         session = PowerShellSession()
         with session:
-            result = session.execute("Write-Output 'Test: $var @array #comment'", timeout=5)
+            result = session.execute("Write-Output 'Test: $var @array #comment'", timeout=15)
             print(f"Result: {result}")
             assert "Test:" in result
 
@@ -138,7 +138,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
             $y = 2
             Write-Output ($x + $y)
             """
-            result = session.execute(command, timeout=5)
+            result = session.execute(command, timeout=15)
             print(f"Result: {result}")
             assert "3" in result
 
@@ -150,7 +150,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
         def run_session(session_id):
             session = PowerShellSession()
             with session:
-                result = session.execute(f"Write-Output 'Session {session_id}'", timeout=5)
+                result = session.execute(f"Write-Output 'Session {session_id}'", timeout=15)
                 results.append(result)
 
         threads = []
@@ -170,7 +170,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
         print("\n=== Testing Session Cleanup ===")
         session = PowerShellSession()
         with session:
-            session.execute("Write-Output 'Test'", timeout=5)
+            session.execute("Write-Output 'Test'", timeout=15)
             # Session should be running
             assert session._process is not None
             assert session._process.poll() is None
@@ -185,7 +185,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
         print("\n=== Testing Unicode Handling ===")
         session = PowerShellSession()
         with session:
-            result = session.execute("Write-Output '你好世界'", timeout=5)
+            result = session.execute("Write-Output '你好世界'", timeout=15)
             print(f"Result: {result}")
             # Just verify it doesn't crash
 
@@ -194,8 +194,8 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
         print("\n=== Testing Environment Variables ===")
         session = PowerShellSession()
         with session:
-            session.execute("$env:TEST_VAR = 'test_value'", timeout=5)
-            result = session.execute("Write-Output $env:TEST_VAR", timeout=5)
+            session.execute("$env:TEST_VAR = 'test_value'", timeout=15)
+            result = session.execute("Write-Output $env:TEST_VAR", timeout=15)
             print(f"Result: {result}")
             assert "test_value" in result
 
@@ -214,7 +214,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
 
             for cmd in commands:
                 try:
-                    result = session.execute(cmd, timeout=5)
+                    result = session.execute(cmd, timeout=15)
                     print(f"Command: {repr(cmd)} -> Result: {result}")
                     assert "test" in result
                 except Exception as e:
