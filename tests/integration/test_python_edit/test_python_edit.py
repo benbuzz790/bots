@@ -464,10 +464,10 @@ def test_various_apostrophe_patterns():
         finally:
             if os.path.exists(test_file):
                 os.unlink(test_file)
-    print(f"Ã¢Å“â€œ All {len(test_cases)} apostrophe pattern tests passed!")
+    print(f"ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ All {len(test_cases)} apostrophe pattern tests passed!")
 
 
-@pytest.mark.skip(reason="See issue #XXX")
+@pytest.mark.skip(reason="See issue #195")
 def test_decorated_function_import_capture():
     """Test that decorated functions can access imports from their original module."""
     result = python_edit("test_decorated.py", 'def simple_function(): return "Hello"')
@@ -488,7 +488,7 @@ def test_decorated_function_with_tool_handler():
     assert len(handler.tools) == 1
 
 
-@pytest.mark.skip(reason="See issue #XXX")
+@pytest.mark.skip(reason="See issue #195")
 def test_import_capture_regression():
     """Regression test to ensure the specific _process_error import issue is fixed."""
     test_code = "def example(): return 42"
