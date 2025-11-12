@@ -108,3 +108,6 @@ sorting_algorithms.py
 ROADMAP_BACKUP_*.md
 
 bots/minimal.py
+
+# TODO files
+TODO.md

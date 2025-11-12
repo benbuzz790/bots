@@ -78,25 +78,39 @@ def execute_python(code: str, timeout: int = 300) -> str:
     final_code = _py_ast_to_source(combined_ast)
     # Use system temp directory instead of creating our own scripts directory
     temp_file_name = os.path.join(tempfile.gettempdir(), _get_unique_filename("temp_script", "py"))
-    with open(temp_file_name, "w", encoding="utf-8") as temp_file:
-        temp_file.write(final_code)
-        temp_file.flush()
-        os.fsync(temp_file.fileno())
-    env = os.environ.copy()
-    env["PYTHONIOENCODING"] = "utf-8"
-    process = subprocess.Popen(
-        ["python", temp_file_name],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        encoding="utf-8",
-        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-        env=env,
-    )
-    stdout, stderr = process.communicate(timeout=timeout)
-    # Clean up temp file
-    if os.path.exists(temp_file_name):
-        os.remove(temp_file_name)
-    if process.returncode != 0:
-        return stderr or "Process failed with no error message"
-    return stdout + stderr
+
+    try:
+        with open(temp_file_name, "w", encoding="utf-8") as temp_file:
+            temp_file.write(final_code)
+            temp_file.flush()
+            os.fsync(temp_file.fileno())
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+        process = subprocess.Popen(
+            ["python", temp_file_name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            env=env,
+        )
+
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            # Kill the process and clean up
+            process.kill()
+            process.wait()  # Wait for process to fully terminate
+            raise  # Re-raise to let @toolify handle it
+
+        if process.returncode != 0:
+            return stderr or "Process failed with no error message"
+        return stdout + stderr
+    finally:
+        # Clean up temp file
+        if os.path.exists(temp_file_name):
+            try:
+                os.remove(temp_file_name)
+            except Exception:
+                pass  # Ignore cleanup errors

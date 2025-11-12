@@ -21,19 +21,32 @@ def pytest_configure(config):
     by zombie pytest worker processes. This is a Windows-specific issue where
     processes that don't exit cleanly leave file handles open, locking directories.
 
-    The real solution is to prevent zombie processes, but as a workaround we:
+    The solution:
     1. Use custom basetemp in project root (if not already set via CLI)
-    2. Let pytest-xdist handle worker isolation (gw0/, gw1/, etc.)
-    3. Clean up old directories that are no longer locked
+    2. Detect if .pytest_tmp is locked and automatically use timestamped alternative
+    3. Let pytest-xdist handle worker isolation (gw0/, gw1/, etc.)
+    4. Clean up old locked and session-specific directories (older than 1 hour)
 
-    Note: If .pytest_tmp is locked, manual cleanup is required (see ticket.txt)
+    This handles locked directories automatically without requiring manual cleanup.
     """
     # Get the project root (where conftest.py is located)
     project_root = Path(__file__).parent
 
     # Only set basetemp if it wasn't already set via command line
     if config.option.basetemp is None:
+        # Try to use .pytest_tmp, but if it's locked, use a timestamped alternative
         temp_dir = project_root / ".pytest_tmp"
+        try:
+            # Test if we can access the directory
+            if temp_dir.exists():
+                # Try to create a test file to verify we have access
+                test_file = temp_dir / f".test_access_{time.time()}"
+                test_file.touch()
+                test_file.unlink()
+        except (PermissionError, OSError):
+            # Directory is locked, use alternative
+            temp_dir = project_root / f".pytest_tmp_locked_{int(time.time())}"
+
         config.option.basetemp = str(temp_dir)
 
     # Only the main process should do cleanup
@@ -52,7 +65,7 @@ def pytest_configure(config):
 
         # Clean up old session-specific directories
         for old_dir in project_root.glob(".pytest_tmp_*"):
-            if old_dir.name != ".pytest_tmp":
+            if old_dir.name != ".pytest_tmp" and not old_dir.name.startswith(".pytest_tmp_locked_"):
                 try:
                     if old_dir.is_dir():
                         dir_age = time.time() - old_dir.stat().st_mtime
@@ -60,6 +73,18 @@ def pytest_configure(config):
                             shutil.rmtree(old_dir, ignore_errors=True)
                 except Exception:
                     pass
+
+
+def pytest_collection_modifyitems(config, items):
+    """Modify test items to handle serial and cli_serial markers with xdist."""
+    for item in items:
+        # Handle serial marker - assign to same group so they run sequentially
+        if item.get_closest_marker("serial"):
+            item.add_marker(pytest.mark.xdist_group(name="serial"))
+
+        # Handle cli_serial marker - assign to same group so they run sequentially
+        if item.get_closest_marker("cli_serial"):
+            item.add_marker(pytest.mark.xdist_group(name="cli_serial"))
 
 
 def register_test_file(filepath: str) -> str:

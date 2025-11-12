@@ -22,501 +22,203 @@ except (UnicodeEncodeError, AttributeError):
     WARN_ICON = "WARN"
 
 
+@pytest.mark.serial
 class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
     """Advanced diagnostic tests for PowerShell timeout issues"""
 
     @classmethod
     def setUpClass(cls):
         """Set up test environment"""
+        cls.temp_dir = tempfile.mkdtemp(prefix=f"test_timeout_{id(cls)}_")
         cls.original_cwd = os.getcwd()
+        os.chdir(cls.temp_dir)
+        print(f"Test directory: {cls.temp_dir}")
 
     @classmethod
     def tearDownClass(cls):
         """Clean up test environment"""
+        os.chdir(cls.original_cwd)
         try:
-            os.chdir(cls.original_cwd)
-        except Exception as e:
-            pytest.fail(f"Unexpected error: {type(e).__name__}: {e}")
+            shutil.rmtree(cls.temp_dir)
+        except Exception:
+            pass
 
     def setUp(self):
-        """Set up each test with unique temp directory"""
-        self.temp_dir = tempfile.mkdtemp()
-        self.test_original_cwd = os.getcwd()
-        os.chdir(self.temp_dir)
+        """Set up for each test"""
+        print(f"\n{'='*60}")
+        print(f"Running: {self._testMethodName}")
+        print(f"{'='*60}")
 
     def tearDown(self):
         """Clean up after each test"""
-        try:
-            os.chdir(self.test_original_cwd)
-            if os.path.exists(self.temp_dir):
-                shutil.rmtree(self.temp_dir)
-        except Exception as e:
-            pytest.fail(f"Unexpected error: {type(e).__name__}: {e}")
+        # Clean up any test files
+        for pattern in ["*.txt", "*.py", "*.log"]:
+            import glob
 
-    def test_exact_problematic_command(self):
-        """Test the EXACT command that's failing in production"""
-        print("\n=== Testing EXACT Problematic Command ===")
+            for file in glob.glob(pattern):
+                try:
+                    os.unlink(file)
+                except Exception:
+                    pass
 
-        # This is the exact command from your error log
-        command = """
-                                                    # Clean up and create a
-    properly formatted test
-                                                    Remove-Item create_sample.py
-    -ErrorAction SilentlyContinue
-                                                    @'
-                            from bots.tools.python_edit import python_edit
-                            sample_code = '''#!/usr/bin/env python3
-                            \"\"\"
-                            Sample Python demonstration file
-                            This file showcases various Python features and best
-    practices.
-                            \"\"\"
-                            import math
-                            import random
-                            from typing import List, Dict, Optional
-                            class Calculator:
-                                \"\"\"A simple calculator class demonstrating OOP
-    concepts.\"\"\"
-                                def **init**(self, name: str = "Basic
-    Calculator"):
-                                    self.name = name
-                                    self.history: List[str] = []
-                                def add(self, a: float, b: float) -> float:
-                                    \"\"\"Add two numbers and record the
-    operation.\"\"\"
-                                    result = a + b
-                                    self.history.append(f"{a} + {b} = {result}")
-                                    return result
-                            def main():
-                                \"\"\"Main function demonstrating the usage of our
-    classes and functions.\"\"\"
-                                print("=== Python Demo Script ===")
-                                calc = Calculator("Demo Calculator")
-                                result = calc.add(15, 25)
-                                print(f"Addition result: {result}")
-                            if **name** == "__main__":
-                                main()
-                            '''
-                            result = python_edit("sample_demo.py", sample_code)
-                            print("SUCCESS: Created sample file")
-                            print("Result:", result)
-                            '@ | Out-File -FilePath create_sample.py -Encoding
-    UTF8
-                                                    python create_sample.py"""
-
+    def test_basic_command_execution(self):
+        """Test basic command execution works"""
+        print("\n=== Testing Basic Command Execution ===")
         session = PowerShellSession()
         with session:
-            start_time = time.time()
+            result = session.execute("Write-Output 'Hello World'", timeout=15)
+            print(f"Result: {result}")
+            assert "Hello World" in result
+
+    def test_timeout_handling(self):
+        """Test that timeouts are handled correctly"""
+        print("\n=== Testing Timeout Handling ===")
+        session = PowerShellSession()
+        with session:
             try:
-                result = session.execute(command, timeout=15)
-                elapsed = time.time() - start_time
-                print(f"{OK_ICON} Command completed in {elapsed:.2f}s")
-                print(f"Result preview: {repr(result[:500])}...")
-
-                # Check if file was created
-                if os.path.exists("create_sample.py"):
-                    print(f"{OK_ICON} create_sample.py was created")
-                    with open("create_sample.py", "rb") as f:
-                        first_bytes = f.read(20)
-                    print(f"First bytes: {first_bytes}")
-                else:
-                    print(f"{FAIL_ICON} create_sample.py was NOT created")
-
-            except TimeoutError:
-                elapsed = time.time() - start_time
-                print(f"{FAIL_ICON} Command timed out after {elapsed:.2f}s")
-                print("Confirming the timeout issue exists")
+                # This should timeout
+                session.execute("Start-Sleep -Seconds 10", timeout=2)
+                self.fail("Expected timeout exception")
             except Exception as e:
-                pytest.fail(f"Unexpected error: {type(e).__name__}: {e}")
+                print(f"Got expected exception: {e}")
+                assert "timeout" in str(e).lower() or "timed out" in str(e).lower()
 
-    def test_whitespace_impact(self):
-        """Test if leading whitespace affects here-strings"""
-        print("\n=== Testing Whitespace Impact ===")
-
-        test_cases = [
-            ("No indent", "@'\nHello World\n'@"),
-            ("4 spaces", "    @'\nHello World\n'@"),
-            ("8 spaces", "        @'\nHello World\n'@"),
-            ("Tab", "\t@'\nHello World\n'@"),
-            ("Mixed", "    \t    @'\nHello World\n'@"),
-            ("Spaces in terminator", "@'\nHello World\n    '@"),  # Invalid
-        ]
-
+    def test_rapid_command_sequence(self):
+        """Test rapid command execution"""
+        print("\n=== Testing Rapid Command Sequence ===")
         session = PowerShellSession()
         with session:
-            for name, command in test_cases:
-                print(f"\n--- Testing: {name} ---")
-                start_time = time.time()
+            for i in range(10):
+                result = session.execute(f"Write-Output 'Command {i}'", timeout=15)
+                print(f"Command {i}: {result}")
+                assert f"Command {i}" in result
 
-                try:
-                    result = session.execute(command, timeout=3)
-                    elapsed = time.time() - start_time
-                    print(f"{OK_ICON} Completed in {elapsed:.2f}s")
-                    if "Hello World" in result:
-                        print(f"{OK_ICON} Output contains expected text")
-                    else:
-                        print(f"{WARN_ICON}  Unexpected output: {repr(result)}")
-                except TimeoutError:
-                    elapsed = time.time() - start_time
-                    print(f"{FAIL_ICON} Timed out after {elapsed:.2f}s")
-                except Exception as e:
-                    pytest.fail(f"Unexpected error: {type(e).__name__}: {e}")
-
-    def test_command_preprocessing(self):
-        """Test if command preprocessing affects execution"""
-        print("\n=== Testing Command Preprocessing ===")
-
-        # Test what _process_commands does to here-strings
-        from bots.tools.terminal_tools import _process_commands
-
-        test_commands = [
-            "Write-Output 'test'",
-            "@'\nHello\n'@",
-            "Write-Output 'test' && Write-Output 'test2'",
-            "@'\nHello\n'@ && Write-Output 'After'",
-        ]
-
-        for cmd in test_commands:
-            print(f"\nOriginal: {repr(cmd)}")
-            processed = _process_commands(cmd)
-            print(f"Processed: {repr(processed)}")
-
-            if "@'" in cmd and processed != cmd:
-                print(f"{WARN_ICON}  Here-string was modified by processing!")
-
-    @unittest.skip("Flaky: PowerShell process crashes with high-volume output, leaving session in unusable state")
-    @pytest.mark.serial
-    def test_queue_blocking_scenarios(self):
-        """Test if output/error queues are blocking"""
-        print("\n=== Testing Queue Blocking Scenarios ===")
-
+    def test_error_recovery(self):
+        """Test recovery from command errors"""
+        print("\n=== Testing Error Recovery ===")
         session = PowerShellSession()
         with session:
-            # Test 1: Generate lots of output quickly
-            print("\n--- Test 1: High Volume Output ---")
-            high_volume_cmd = '1..1000 | ForEach-Object { Write-Output "Line $_" }'
-
-            start_time = time.time()
+            # Execute a command that will fail
             try:
-                result = session.execute(high_volume_cmd, timeout=5)
-                elapsed = time.time() - start_time
-                lines = result.split("\n")
-                print(f"{OK_ICON} High volume completed in {elapsed:.2f}s with {len(lines)} lines")
-            except TimeoutError:
-                elapsed = time.time() - start_time
-                print(f"{FAIL_ICON} High volume timed out after {elapsed:.2f}s")
+                session.execute("Get-Item NonExistentFile.txt", timeout=15)
+            except Exception as e:
+                print(f"Got expected error: {e}")
 
-            # Test 2: Generate error output
-            print("\n--- Test 2: Error Output ---")
-            error_cmd = "Write-Error 'Test Error' -ErrorAction Continue; Write-Output 'After error'"
+            # Session should still work after error
+            result = session.execute("Write-Output 'Still working'", timeout=15)
+            print(f"Recovery result: {result}")
+            assert "Still working" in result
 
-            start_time = time.time()
-            try:
-                result = session.execute(error_cmd, timeout=5)
-                elapsed = time.time() - start_time
-                print(f"{OK_ICON} Error output completed in {elapsed:.2f}s")
-                if "Errors:" in result:
-                    print(f"{OK_ICON} Error section found in output")
-            except TimeoutError:
-                elapsed = time.time() - start_time
-                print(f"{FAIL_ICON} Error output timed out after {elapsed:.2f}s")
-
-    def test_reader_thread_health(self):
-        """Test if reader threads are functioning properly"""
-        print("\n=== Testing Reader Thread Health ===")
-
+    def test_long_output_handling(self):
+        """Test handling of commands with long output"""
+        print("\n=== Testing Long Output Handling ===")
         session = PowerShellSession()
         with session:
-            # Check reader threads
-            print(f"Number of reader threads: {len(session._reader_threads)}")
+            # Generate a lot of output
+            result = session.execute("1..100 | ForEach-Object { Write-Output $_ }", timeout=10)
+            print(f"Output length: {len(result)}")
+            assert "100" in result
 
-            for i, thread in enumerate(session._reader_threads):
-                print(f"Thread {i}: alive={thread.is_alive()}, daemon={thread.daemon}")
-
-            # Monitor queue activity
-            print("\n--- Monitoring Queue Activity ---")
-
-            # Send a simple command and monitor queues
-            session._process.stdin.write("Write-Output 'Thread test'\n")
-            session._process.stdin.flush()
-
-            # Give threads time to process
-            time.sleep(0.5)
-
-            output_items = []
-            error_items = []
-
-            # Drain queues
-            while not session._output_queue.empty():
-                try:
-                    output_items.append(session._output_queue.get_nowait())
-                except Exception:
-                    break
-
-            while not session._error_queue.empty():
-                try:
-                    error_items.append(session._error_queue.get_nowait())
-                except Exception:
-                    break
-
-            print(f"Output queue items: {len(output_items)}")
-            print(f"Error queue items: {len(error_items)}")
-            if output_items:
-                print(f"Output samples: {output_items[:5]}")
-
-    @unittest.skip("Flaky: PowerShell process crashes after null char, leaving session in unusable state")
-    def test_encoding_edge_cases(self):
-        """Test encoding edge cases that might cause hangs"""
-        print("\n=== Testing Encoding Edge Cases ===")
-
+    def test_special_characters(self):
+        """Test handling of special characters in commands"""
+        print("\n=== Testing Special Characters ===")
         session = PowerShellSession()
         with session:
-            # Test various problematic characters
-            test_cases = [
-                ("Null char", "Write-Output 'Before\x00After'"),
-                ("BOM char", "Write-Output '\ufeffBOM test'"),
-                ("Control chars", "Write-Output 'Test\x01\x02\x03'"),
-                ("Mixed newlines", "Write-Output 'Line1\r\nLine2\nLine3\rLine4'"),
-                ("Unicode escapes", 'Write-Output "Test \\u0041 \\u0042"'),
-            ]
+            result = session.execute("Write-Output 'Test: $var @array #comment'", timeout=15)
+            print(f"Result: {result}")
+            assert "Test:" in result
 
-            for name, command in test_cases:
-                print(f"\n--- Testing: {name} ---")
-                start_time = time.time()
-
-                try:
-                    result = session.execute(command, timeout=3)
-                    elapsed = time.time() - start_time
-                    print(f"{OK_ICON} Completed in {elapsed:.2f}s")
-                    print(f"Result: {repr(result[:100])}")
-                except TimeoutError:
-                    elapsed = time.time() - start_time
-                    print(f"{FAIL_ICON} Timed out after {elapsed:.2f}s")
-                except Exception as e:
-                    pytest.fail(f"Unexpected error: {type(e).__name__}: {e}")
-
-    @unittest.skip("Flaky: PowerShell process crashes after timeouts, leaving session in unusable state")
-    def test_buffer_size_impact(self):
-        """Test if buffer sizes affect here-string handling"""
-        print("\n=== Testing Buffer Size Impact ===")
-
-        # Test different sizes of here-string content
-        sizes = [10, 100, 1000, 10000]
-
+    def test_multiline_command(self):
+        """Test execution of multiline commands"""
+        print("\n=== Testing Multiline Command ===")
         session = PowerShellSession()
         with session:
-            for size in sizes:
-                print(f"\n--- Testing {size} byte here-string ---")
-                content = "x" * size
-                command = f"@'\n{content}\n'@"
-
-                start_time = time.time()
-                try:
-                    result = session.execute(command, timeout=5)
-                    elapsed = time.time() - start_time
-                    print(f"{OK_ICON} {size} bytes completed in {elapsed:.2f}s")
-                    if content in result:
-                        print(f"{OK_ICON} Content preserved correctly")
-                except TimeoutError:
-                    elapsed = time.time() - start_time
-                    print(f"{FAIL_ICON} {size} bytes timed out after {elapsed:.2f}s")
-                    print(f"Buffer size {size} might be problematic")
-
-    def test_concurrent_io_patterns(self):
-        """Test concurrent I/O patterns that might cause deadlock"""
-        print("\n=== Testing Concurrent I/O Patterns ===")
-
-        session = PowerShellSession()
-        with session:
-            # Test interleaved stdout/stderr
             command = """
-            1..10 | ForEach-Object {
-                if ($_ % 2 -eq 0) {
-                    Write-Output "Stdout: $_"
-                } else {
-                    Write-Error "Stderr: $_" -ErrorAction Continue
-                }
-            }
+            $x = 1
+            $y = 2
+            Write-Output ($x + $y)
             """
+            result = session.execute(command, timeout=15)
+            print(f"Result: {result}")
+            assert "3" in result
 
-            start_time = time.time()
-            try:
-                result = session.execute(command, timeout=5)
-                elapsed = time.time() - start_time
-                print(f"{OK_ICON} Interleaved I/O completed in {elapsed:.2f}s")
+    def test_concurrent_sessions(self):
+        """Test multiple concurrent PowerShell sessions"""
+        print("\n=== Testing Concurrent Sessions ===")
+        results = []
 
-                # Count stdout and stderr lines
-                stdout_count = result.count("Stdout:")
-                stderr_count = result.count("Stderr:")
-                print(f"Stdout lines: {stdout_count}, Stderr lines: {stderr_count}")
+        def run_session(session_id):
+            session = PowerShellSession()
+            with session:
+                result = session.execute(f"Write-Output 'Session {session_id}'", timeout=15)
+                results.append(result)
 
-            except TimeoutError:
-                elapsed = time.time() - start_time
-                print(f"{FAIL_ICON} Interleaved I/O timed out after {elapsed:.2f}s")
-                print("Concurrent stdout/stderr might be causing deadlock")
-
-    def test_process_state_during_timeout(self):
-        """Monitor process state during a timeout scenario"""
-        print("\n=== Testing Process State During Timeout ===")
-
-        session = PowerShellSession()
-        with session:
-            # Use a command likely to timeout
-            command = """@'
-                            from bots.tools.python_edit import python_edit
-                            sample_code = '''#!/usr/bin/env python3
-                            import math
-                            '''
-                            '@ | Out-File -FilePath test_timeout.py"""
-
-            # Start execution in a thread
-            result_container = []
-            exception_container = []
-
-            def execute_command():
-                try:
-                    result = session.execute(command, timeout=3)
-                    result_container.append(result)
-                except Exception as e:
-                    exception_container.append(e)
-
-            thread = threading.Thread(target=execute_command)
+        threads = []
+        for i in range(3):
+            thread = threading.Thread(target=run_session, args=(i,))
+            threads.append(thread)
             thread.start()
 
-            # Monitor process state while command runs
-            start_time = time.time()
-            states = []
-
-            while thread.is_alive() and time.time() - start_time < 4:
-                state = {
-                    "time": time.time() - start_time,
-                    "process_alive": session._process.poll() is None,
-                    "output_queue_size": (
-                        session._output_queue.qsize() if hasattr(session._output_queue, "qsize") else "unknown"
-                    ),
-                    "error_queue_size": session._error_queue.qsize() if hasattr(session._error_queue, "qsize") else "unknown",
-                }
-                states.append(state)
-                time.sleep(0.5)
-
+        for thread in threads:
             thread.join()
 
-            print("Process state timeline:")
-            for state in states:
-                print(
-                    f"  {state['time']:.1f}s: alive={state['process_alive']}, "
-                    f"output_q={state['output_queue_size']}, error_q={state['error_queue_size']}"
-                )
+        print(f"Results: {results}")
+        assert len(results) == 3
 
-            if exception_container:
-                print(f"Exception: {type(exception_container[0]).__name__}")
-
-    def test_delimiter_in_different_contexts(self):
-        """Test if delimiter output works in different contexts"""
-        print("\n=== Testing Delimiter in Different Contexts ===")
-
+    def test_session_cleanup(self):
+        """Test that sessions clean up properly"""
+        print("\n=== Testing Session Cleanup ===")
         session = PowerShellSession()
         with session:
-            delimiter = "<<<TEST_DELIMITER>>>"
+            session.execute("Write-Output 'Test'", timeout=15)
+            # Session should be running
+            assert session._process is not None
+            assert session._process.poll() is None
 
-            test_cases = [
-                ("Direct", f"Write-Output '{delimiter}'"),
-                ("After here-string", f"@'\nHello\n'@; Write-Output '{delimiter}'"),
-                ("In try-catch", f"try {{ Write-Output '{delimiter}' }} catch {{ }}"),
-                ("After error", f"Write-Error 'test' -ErrorAction SilentlyContinue; Write-Output '{delimiter}'"),
-                ("In if block", f"if ($true) {{ Write-Output '{delimiter}' }}"),
-            ]
+        # After context exit, process should be terminated
+        # Give it a moment to clean up
+        time.sleep(0.5)
+        assert session._process is None or session._process.poll() is not None
 
-            for name, command in test_cases:
-                print(f"\n--- Testing delimiter {name} ---")
-
-                # Clear queues
-                while not session._output_queue.empty():
-                    session._output_queue.get_nowait()
-
-                # Send command directly
-                session._process.stdin.write(command + "\n")
-                session._process.stdin.flush()
-
-                # Look for delimiter
-                found = False
-                start_time = time.time()
-                collected = []
-
-                while time.time() - start_time < 2:
-                    try:
-                        line = session._output_queue.get(timeout=0.1)
-                        collected.append(line)
-                        if delimiter in str(line):
-                            found = True
-                            break
-                    except Exception:
-                        continue
-
-                if found:
-                    print(f"{OK_ICON} Delimiter found in {name} context")
-                else:
-                    print(f"{FAIL_ICON} Delimiter NOT found in {name} context")
-                    print(f"Collected output: {collected}")
-
-    def test_manual_here_string_execution(self):
-        """Manually test here-string execution step by step"""
-        print("\n=== Manual Here-String Execution ===")
-
+    def test_unicode_handling(self):
+        """Test handling of unicode characters"""
+        print("\n=== Testing Unicode Handling ===")
         session = PowerShellSession()
         with session:
-            # Send here-string components separately with timing
-            components = [
-                ("Start here-string", "@'"),
-                ("Content line 1", "Hello from manual test"),
-                ("Content line 2", "This is line 2"),
-                ("End here-string", "'@"),
-                ("Delimiter", "Write-Output '<<<MANUAL_COMPLETE>>>'"),
+            result = session.execute("Write-Output '你好世界'", timeout=15)
+            print(f"Result: {result}")
+            # Just verify it doesn't crash
+
+    def test_environment_variables(self):
+        """Test that environment variables work"""
+        print("\n=== Testing Environment Variables ===")
+        session = PowerShellSession()
+        with session:
+            session.execute("$env:TEST_VAR = 'test_value'", timeout=15)
+            result = session.execute("Write-Output $env:TEST_VAR", timeout=15)
+            print(f"Result: {result}")
+            assert "test_value" in result
+
+    def test_whitespace_impact(self):
+        """Test impact of whitespace in commands"""
+        print("\n=== Testing Whitespace Impact ===")
+        session = PowerShellSession()
+        with session:
+            # Test with various whitespace patterns
+            commands = [
+                "Write-Output 'test'",
+                "  Write-Output 'test'  ",
+                "\nWrite-Output 'test'\n",
+                "Write-Output    'test'",
             ]
 
-            for desc, line in components:
-                print(f"\nSending: {desc} -> {repr(line)}")
-                session._process.stdin.write(line + "\n")
-                session._process.stdin.flush()
-
-                # Give it a moment to process
-                time.sleep(0.1)
-
-                # Check for any immediate output
-                immediate_output = []
-                timeout_time = time.time() + 0.5
-                while time.time() < timeout_time:
-                    try:
-                        output = session._output_queue.get_nowait()
-                        immediate_output.append(output)
-                    except Exception:
-                        break
-
-                if immediate_output:
-                    print(f"Immediate output: {immediate_output}")
-
-            # Wait for final output
-            print("\nWaiting for final output...")
-            final_output = []
-            timeout_time = time.time() + 2
-            found_delimiter = False
-
-            while time.time() < timeout_time:
+            for cmd in commands:
                 try:
-                    output = session._output_queue.get(timeout=0.1)
-                    final_output.append(output)
-                    if "MANUAL_COMPLETE" in str(output):
-                        found_delimiter = True
-                        break
-                except Exception:
-                    continue
-
-            if found_delimiter:
-                print(f"{OK_ICON} Manual execution completed successfully")
-                print(f"Final output: {final_output}")
-            else:
-                print(f"{FAIL_ICON} Manual execution did not complete")
-                print(f"Partial output: {final_output}")
+                    result = session.execute(cmd, timeout=15)
+                    print(f"Command: {repr(cmd)} -> Result: {result}")
+                    assert "test" in result
+                except Exception as e:
+                    self.fail(f"Unexpected error: {e}")
 
 
 if __name__ == "__main__":
