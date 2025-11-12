@@ -5,6 +5,8 @@ import threading
 import time
 import unittest
 
+import pytest
+
 from bots.tools.terminal_tools import PowerShellManager, PowerShellSession, execute_powershell
 
 
