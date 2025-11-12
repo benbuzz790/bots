@@ -8,6 +8,7 @@ import unittest
 from bots.tools.terminal_tools import PowerShellManager, PowerShellSession, execute_powershell
 
 
+@pytest.mark.serial
 class TestPowerShellProductionEdgeCases(unittest.TestCase):
     """Test edge cases that might occur in production but not in isolated tests"""
 
