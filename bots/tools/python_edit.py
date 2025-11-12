@@ -601,10 +601,13 @@ class ScopeReplacer(cst.CSTTransformer):
         self.replaced_at_top_level = False
         self.replacement_index = -1
         self.imports_to_add = []
+        self.additional_nodes_to_insert = []  # Track additional nodes when replacing with multiple items
+        self.delete_mode = new_code is None or (isinstance(new_code, str) and new_code.strip() == "")
 
     def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
         """Handle module-level whitespace after replacements."""
         # Add any imports that were collected during replacement
+        num_imports_added = 0
         if self.imports_to_add:
             # Find the position to insert imports (after existing imports)
             insert_pos = 0
@@ -622,15 +625,29 @@ class ScopeReplacer(cst.CSTTransformer):
             new_body = list(updated_node.body)
             for imp in reversed(self.imports_to_add):  # Insert in reverse order to maintain order
                 new_body.insert(insert_pos, imp)
+                num_imports_added += 1
+            updated_node = updated_node.with_changes(body=new_body)
+
+        # Insert additional nodes after the replacement (for multi-node replacements)
+        if self.additional_nodes_to_insert and self.replacement_index >= 0:
+            new_body = list(updated_node.body)
+            # Adjust replacement_index if imports were added before it
+            adjusted_index = self.replacement_index + num_imports_added
+            # Insert additional nodes right after the replaced node
+            for i, node in enumerate(self.additional_nodes_to_insert):
+                new_body.insert(adjusted_index + 1 + i, node)
             updated_node = updated_node.with_changes(body=new_body)
 
         if self.replaced_at_top_level and self.replacement_index >= 0:
             # Ensure proper spacing after top-level function/class replacements
             new_body = list(updated_node.body)
 
-            # If there's a statement after the replaced one, ensure it has proper leading lines
-            if self.replacement_index + 1 < len(new_body):
-                next_stmt = new_body[self.replacement_index + 1]
+            # Adjust for imports that were added
+            adjusted_index = self.replacement_index + num_imports_added
+            # If there's a statement after the replaced one (or after additional nodes), ensure it has proper leading lines
+            last_inserted_index = adjusted_index + len(self.additional_nodes_to_insert)
+            if last_inserted_index + 1 < len(new_body):
+                next_stmt = new_body[last_inserted_index + 1]
 
                 # Add a blank line before the next statement if it's a class or function
                 if isinstance(next_stmt, (cst.ClassDef, cst.FunctionDef)):
@@ -652,7 +669,7 @@ class ScopeReplacer(cst.CSTTransformer):
                             indent="", whitespace=cst.SimpleWhitespace(""), comment=None, newline=cst.Newline()
                         )
                         new_leading_lines = (blank_line_node,)
-                        new_body[self.replacement_index + 1] = next_stmt.with_changes(leading_lines=new_leading_lines)
+                        new_body[last_inserted_index + 1] = next_stmt.with_changes(leading_lines=new_leading_lines)
 
             return updated_node.with_changes(body=new_body)
         return updated_node
@@ -661,22 +678,38 @@ class ScopeReplacer(cst.CSTTransformer):
         """Track when entering a class."""
         self.current_path.append(node.name.value)
 
-    def leave_ClassDef(self, original_node: cst.ClassDef, updated_node: cst.ClassDef) -> cst.ClassDef:
-        """Handle leaving a class definition."""
+    def leave_ClassDef(
+        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+    ) -> Union[cst.ClassDef, cst.RemovalSentinel]:
+        """Handle class definition replacement."""
         result = self._handle_scope_node(original_node, updated_node)
-        if self.current_path and self.current_path[-1] == original_node.name.value:
-            self.current_path.pop()
+        self.current_path.pop()
+
+        # Handle deletion mode
+        if self.current_path == self.path_elements and self.delete_mode:
+            return cst.RemovalSentinel.REMOVE
+
         return result
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
         """Track when entering a function."""
         self.current_path.append(node.name.value)
 
-    def leave_FunctionDef(self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef) -> cst.FunctionDef:
-        """Handle leaving a function definition."""
+    def leave_FunctionDef(
+        self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
+    ) -> Union[cst.FunctionDef, cst.RemovalSentinel, cst.FlattenSentinel[cst.BaseStatement]]:
+        """Handle function definition replacement."""
         result = self._handle_scope_node(original_node, updated_node)
-        if self.current_path and self.current_path[-1] == original_node.name.value:
-            self.current_path.pop()
+        self.current_path.pop()
+
+        # Handle deletion mode
+        if self.current_path == self.path_elements and self.delete_mode:
+            return cst.RemovalSentinel.REMOVE
+
+        # Handle flattening for additional nodes at function level
+        if result != updated_node and self.additional_nodes_to_insert:
+            return cst.FlattenSentinel([result] + self.additional_nodes_to_insert)
+
         return result
 
     def _handle_scope_node(
@@ -702,43 +735,33 @@ class ScopeReplacer(cst.CSTTransformer):
 
                 # Extract the actual function/class definition from the module
                 if hasattr(self.new_code, "body") and len(self.new_code.body) > 0:
-                    # For top-level replacements, we need to handle imports and other statements
-                    if self.module:  # Handle imports for any replacement, not just top-level
-                        # Replace the target node and insert any additional statements (like imports)
-                        target_name = original_node.name.value
-                        new_node = None
+                    # For replacements, we need to handle imports and collect all nodes
+                    target_name = original_node.name.value
+                    new_node = None
+                    additional_nodes = []
 
-                        for stmt in self.new_code.body:
-                            if (
-                                isinstance(stmt, type(original_node))
-                                and hasattr(stmt, "name")
-                                and stmt.name.value == target_name
-                            ):
-                                new_node = stmt
-                            else:
-                                # This is an import or other statement that should be added to the module later
-                                if isinstance(stmt, (cst.SimpleStatementLine,)) and any(
-                                    isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body
-                                ):
-                                    self.imports_to_add.append(stmt)
+                    for stmt in self.new_code.body:
+                        if isinstance(stmt, type(original_node)) and hasattr(stmt, "name") and stmt.name.value == target_name:
+                            # This is the replacement for the target node
+                            new_node = stmt
+                        elif isinstance(stmt, (cst.SimpleStatementLine,)) and any(
+                            isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body
+                        ):
+                            # This is an import that should be added to the module
+                            self.imports_to_add.append(stmt)
+                        elif isinstance(stmt, (cst.FunctionDef, cst.ClassDef)):
+                            # This is an additional function/class to insert after the replacement
+                            additional_nodes.append(stmt)
 
-                        # Use the matching function/class or fallback to first element
-                        if new_node is None:
-                            new_node = self.new_code.body[0]
-                    else:
-                        # For non-top-level replacements, find the matching function/class definition
-                        target_name = original_node.name.value
-                        new_node = None
-                        for stmt in self.new_code.body:
-                            if (
-                                isinstance(stmt, type(original_node))
-                                and hasattr(stmt, "name")
-                                and stmt.name.value == target_name
-                            ):
-                                new_node = stmt
-                                break
-                        if new_node is None:
-                            new_node = self.new_code.body[0]
+                    # Use the matching function/class or fallback to first element
+                    if new_node is None:
+                        new_node = self.new_code.body[0]
+                        # If we used the first element as replacement, don't add it to additional_nodes
+                        if additional_nodes and additional_nodes[0] is new_node:
+                            additional_nodes = additional_nodes[1:]
+
+                    # Store additional nodes to be inserted after this one
+                    self.additional_nodes_to_insert = additional_nodes
 
                     # Preserve the original node's leading lines
                     if hasattr(original_node, "leading_lines"):

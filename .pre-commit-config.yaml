@@ -14,11 +14,6 @@ repos:
     hooks:
       - id: flake8
         args: ["--max-line-length=120", "--extend-ignore=E203,W503"]
-  - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.45.0
-    hooks:
-      - id: markdownlint
-        args: ["--fix"]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
@@ -28,4 +23,12 @@ repos:
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: mixed-line-ending
-        args: ['--fix=lf']
+        args: ['--fix=crlf']
+  - repo: local
+    hooks:
+      - id: remove-boms
+        name: Remove BOMs
+        entry: python -m bots.dev.remove_boms
+        language: system
+        types: [text]
+        pass_filenames: true

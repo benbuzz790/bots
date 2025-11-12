@@ -109,5 +109,5 @@ ROADMAP_BACKUP_*.md
 
 bots/minimal.py
 
-.pytest_tmp_cicd/
-.pytest_tmp*/
+# TODO files
+TODO.md
