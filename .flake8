@@ -1,7 +1,10 @@
 [flake8]
 max-line-length = 127
 extend-ignore = E203, W503
-exclude = 
+exclude =
+    .pytest_tmp_cicd,
+    .pytest_tmp,
+    archived_docker_testing, 
     .git,
     trash,
     __pycache__,
