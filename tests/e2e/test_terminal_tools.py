@@ -179,7 +179,7 @@ class TestTerminalToolsStateful(TestTerminalTools):
 
         ps_script = (
             f'New-Item -Path "{test_filename}" -ItemType "file" -Force && '
-            f'Write-Output "success" > {test_filename} && '
+            f'Write-Output "success" > "{test_filename}" && '
             'Write-Output "fail" > /nonexistent/path/file.txt && '
             'Write-Output "Should Not See This"'
         )
