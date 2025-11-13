@@ -1169,7 +1169,7 @@ class ConversationHandler:
                 context.conversation_backup = bot.conversation
                 bot.conversation = leaves[leaf_index]
                 if not self._ensure_assistant_node(bot):
-                    return f"Warning: Jumped to leaf {leaf_index + 1} but ended up on user node with no assistant response"
+                    return f"Warning: Jumped to leaf {leaf_index + 1} but ended up on user node with no assistant response"  # noqa: E501
                 self._display_conversation_context(bot, context)
                 content_preview = self._get_leaf_preview(leaves[leaf_index])
                 return f"Jumped to leaf {leaf_index + 1}: {content_preview}"
@@ -1191,7 +1191,7 @@ class ConversationHandler:
                     context.conversation_backup = bot.conversation
                     bot.conversation = leaves[leaf_index]
                     if not self._ensure_assistant_node(bot):
-                        return f"Warning: Jumped to leaf {leaf_index + 1} but ended up on user node with no assistant response"
+                        return f"Warning: Jumped to leaf {leaf_index + 1} but ended up on user node with no assistant response"  # noqa: E501
                     self._display_conversation_context(bot, context)
                     content_preview = self._get_leaf_preview(leaves[leaf_index])
                     return f"Jumped to leaf {leaf_index + 1}: {content_preview}"
@@ -1548,7 +1548,8 @@ class SystemHandler:
                     (
                         lambda b, i: (
                             context.last_message_metrics
-                            and context.last_message_metrics.get("input_tokens", 0) > context.config.remove_context_threshold
+                            and context.last_message_metrics.get("input_tokens", 0)
+                            > context.config.remove_context_threshold  # noqa: E501
                             and context.context_reduction_cooldown <= 0
                         ),
                         context.config.auto_mode_reduce_context_prompt,
@@ -1568,7 +1569,10 @@ class SystemHandler:
                 # Update cooldown after each iteration
                 if context.last_message_metrics:
                     last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
-                    if last_input_tokens > context.config.remove_context_threshold and context.context_reduction_cooldown <= 0:
+                    if (
+                        last_input_tokens > context.config.remove_context_threshold
+                        and context.context_reduction_cooldown <= 0  # noqa: E501
+                    ):  # noqa: E501
                         context.context_reduction_cooldown = 3
                     elif context.context_reduction_cooldown > 0:
                         context.context_reduction_cooldown -= 1
@@ -1592,7 +1596,9 @@ class SystemHandler:
                     # This prevents duplicate display and ensures correct timing (after bot response)
 
                     # Get the next prompt text
-                    next_prompt = continue_prompt(bot, iteration_count[0]) if callable(continue_prompt) else continue_prompt
+                    next_prompt = (
+                        continue_prompt(bot, iteration_count[0]) if callable(continue_prompt) else continue_prompt
+                    )  # noqa: E501
 
                     # Display the user prompt
                     pretty(
@@ -2149,7 +2155,9 @@ def display_metrics(context: CLIContext, bot: Bot):
             # If session totals fail, just show the per-call metrics
             pass
 
-        pretty(metrics_str, "metrics", context.config.width, context.config.indent, COLOR_METRICS, newline_after_name=True)
+        pretty(
+            metrics_str, "metrics", context.config.width, context.config.indent, COLOR_METRICS, newline_after_name=True
+        )  # noqa: E501
     except Exception:
         pass
 
@@ -2207,7 +2215,11 @@ def pretty(
             initial_line = prefix + line + COLOR_RESET
             try:
                 wrapped = textwrap.wrap(
-                    initial_line, width=width, subsequent_indent=" " * indent, break_long_words=True, break_on_hyphens=False
+                    initial_line,
+                    width=width,
+                    subsequent_indent=" " * indent,
+                    break_long_words=True,
+                    break_on_hyphens=False,  # noqa: E501
                 )
             except Exception:
                 # Fallback if textwrap fails
@@ -2522,7 +2534,13 @@ class CLI:
                 if result:
                     pretty(result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
             except Exception as e:
-                pretty(f"Command error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
+                pretty(
+                    f"Command error: {str(e)}",
+                    "Error",
+                    self.context.config.width,
+                    self.context.config.indent,
+                    COLOR_ERROR,  # noqa: E501
+                )  # noqa: E501
 
                 # Try new backup system first, fall back to old system
                 if self.context.config.auto_restore_on_error and self.context.has_backup():
@@ -2687,7 +2705,7 @@ class PromptHandler:
             # Show preview of content
             preview = content[:80] + "..." if len(content) > 80 else content
             preview = preview.replace("\n", " ")  # Single line preview
-            marker = "→" if i == 1 else " "
+            marker = "â†’" if i == 1 else " "
             print(f"  {marker} {i}. {name}: {preview}")
 
         if len(matches) > 10:
