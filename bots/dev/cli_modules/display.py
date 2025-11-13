@@ -10,9 +10,9 @@ import textwrap
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from bots.dev.cli.config import CLIContext
+    from bots.dev.cli_modules.config import CLIContext
     from bots.foundation.base import Bot
-from bots.dev.cli.utils import (
+from bots.dev.cli_modules.utils import (
     COLOR_BOLD,
     COLOR_METRICS,
     COLOR_RESET,

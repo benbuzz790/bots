@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING
 from bots.observability.callbacks import BotCallbacks
 
 if TYPE_CHECKING:
-    from bots.dev.cli.config import CLIContext
+    from bots.dev.cli_modules.config import CLIContext
 # Import display utilities
-from bots.dev.cli.display import display_metrics, format_tool_data, pretty
-from bots.dev.cli.utils import COLOR_BOT, COLOR_TOOL_NAME, COLOR_TOOL_RESULT
+from bots.dev.cli_modules.display import display_metrics, format_tool_data, pretty
+from bots.dev.cli_modules.utils import COLOR_BOT, COLOR_TOOL_NAME, COLOR_TOOL_RESULT
 
 
 class RealTimeDisplayCallbacks(BotCallbacks):

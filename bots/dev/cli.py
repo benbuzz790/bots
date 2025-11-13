@@ -34,12 +34,35 @@ try:
 except ImportError:
     HAS_READLINE = False
 
+from bots.dev.cli_modules.callbacks import CLICallbacks, RealTimeDisplayCallbacks
+from bots.dev.cli_modules.config import CLIConfig, CLIContext
+from bots.dev.cli_modules.display import clean_dict, display_metrics, format_tool_data, pretty
+from bots.dev.cli_modules.handlers.conversation import ConversationHandler
+from bots.dev.cli_modules.handlers.state import StateHandler
+from bots.dev.cli_modules.utils import (
+    COLOR_ASSISTANT,
+    COLOR_BOT,
+    COLOR_ERROR,
+    COLOR_METRICS,
+    COLOR_RESET,
+    COLOR_SYSTEM,
+    COLOR_TOOL_NAME,
+    COLOR_TOOL_REQUEST,
+    COLOR_TOOL_RESULT,
+    COLOR_USER,
+    EscapeException,
+    check_for_interrupt,
+    find_leaves,
+    input_with_esc,
+    restore_terminal,
+    setup_raw_mode,
+)
 from bots.flows import functional_prompts as fp
 from bots.flows import recombinators
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, ConversationNode
 from bots.observability import tracing
-from bots.observability.callbacks import BotCallbacks
+from bots.observability.callbacks import BotCallbacks  # Import from new CLI modules
 
 # Disable tracing span processors to prevent console output
 try:
@@ -2705,7 +2728,7 @@ class PromptHandler:
             # Show preview of content
             preview = content[:80] + "..." if len(content) > 80 else content
             preview = preview.replace("\n", " ")  # Single line preview
-            marker = "â†’" if i == 1 else " "
+            marker = "Ã¢â€ â€™" if i == 1 else " "
             print(f"  {marker} {i}. {name}: {preview}")
 
         if len(matches) > 10:

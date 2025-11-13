@@ -9,11 +9,11 @@ from collections import deque
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    from bots.dev.cli.config import CLIContext
+    from bots.dev.cli_modules.config import CLIContext
     from bots.foundation.base import Bot
 
-from bots.dev.cli.display import pretty
-from bots.dev.cli.utils import (
+from bots.dev.cli_modules.display import pretty
+from bots.dev.cli_modules.utils import (
     COLOR_ASSISTANT,
     EscapeException,
     find_leaves,

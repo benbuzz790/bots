@@ -85,7 +85,7 @@ class CLIContext:
         self.bot_instance = None
         self.cached_leaves: List[ConversationNode] = []
         # Import here to avoid circular dependency
-        from bots.dev.cli.callbacks import CLICallbacks
+        from bots.dev.cli_modules.callbacks import CLICallbacks
 
         self.callbacks = CLICallbacks(self)
         # Track session start time for cumulative metrics
@@ -167,7 +167,7 @@ class CLIContext:
 
             # Re-attach callbacks on the restored instance
             # (pointing to current context)
-            from bots.dev.cli.callbacks import RealTimeDisplayCallbacks
+            from bots.dev.cli_modules.callbacks import RealTimeDisplayCallbacks
 
             self.bot_instance.callbacks = RealTimeDisplayCallbacks(self)
 

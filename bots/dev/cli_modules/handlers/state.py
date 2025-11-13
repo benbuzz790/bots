@@ -9,11 +9,11 @@ import os
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    from bots.dev.cli.config import CLIContext
+    from bots.dev.cli_modules.config import CLIContext
     from bots.foundation.base import Bot
 
-from bots.dev.cli.callbacks import RealTimeDisplayCallbacks
-from bots.dev.cli.utils import EscapeException, input_with_esc
+from bots.dev.cli_modules.callbacks import RealTimeDisplayCallbacks
+from bots.dev.cli_modules.utils import EscapeException, input_with_esc
 from bots.foundation.base import Bot as BotClass
 
 
