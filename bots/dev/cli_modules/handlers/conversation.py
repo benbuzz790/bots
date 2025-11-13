@@ -218,7 +218,7 @@ class ConversationHandler:
             depth = self._calculate_depth(bot.conversation, leaf)
             labels = getattr(leaf, "labels", [])
             label_str = f" (labels: {', '.join(labels)})" if labels else ""
-            result += f"  {i+1}. [depth {depth}]{label_str}: {content_preview}\n"
+            result += f"  {i + 1}. [depth {depth}]{label_str}: {content_preview}\n"
         result += f"\nEnter a number (1-{len(leaves)}) to jump to that leaf, " f"or press Enter to stay: "
         try:
             choice = input(result).strip()
