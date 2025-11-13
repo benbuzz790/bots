@@ -168,13 +168,13 @@ def patch_input_with_esc_for_tests(monkeypatch):
 
     This fixture runs automatically for all tests.
     """
-    from bots.dev import cli
+    from bots.dev.cli_modules import utils
 
     # Replace input_with_esc with standard input for test compatibility
     def test_input_with_esc(prompt: str = "") -> str:
         return input(prompt)
 
-    monkeypatch.setattr(cli, "input_with_esc", test_input_with_esc)
+    monkeypatch.setattr(utils, "input_with_esc", test_input_with_esc)
     yield
 
 

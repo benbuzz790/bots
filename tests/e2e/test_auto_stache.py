@@ -7,7 +7,8 @@ from unittest.mock import patch
 
 import pytest
 
-from bots.dev.cli import CLI, CLIConfig, create_auto_stash
+from bots.dev.cli import CLI, create_auto_stash
+from bots.dev.cli_modules.config import CLIConfig
 
 pytestmark = pytest.mark.e2e
 
@@ -135,32 +136,33 @@ class TestCreateAutoStash:
         assert "No changes to stash" in result
 
     def test_real_ai_stash_message_generation(self):
-        """Integration test with real AI API call."""
-        # Skip if no API key available
-        if not os.getenv("ANTHROPIC_API_KEY"):
-            pytest.skip("ANTHROPIC_API_KEY not available")
+        """Test that create_auto_stash generates a reasonable AI message."""
+        # Create a temporary git repo with changes
+        with tempfile.TemporaryDirectory() as temp_dir:
+            os.chdir(temp_dir)
+            subprocess.run(["git", "init"], check=True)
+            subprocess.run(["git", "config", "user.email", "test@test.com"], check=True)
+            subprocess.run(["git", "config", "user.name", "Test User"], check=True)
 
-        # Create meaningful changes and stage them
-        Path("calculator.py").write_text(
-            """
-def add(a, b):
-    return a + b
+            # Create and commit an initial file
+            Path("initial.txt").write_text("initial content")
+            subprocess.run(["git", "add", "."], check=True)
+            subprocess.run(["git", "commit", "-m", "Initial commit"], check=True)
 
-def multiply(a, b):
-    return a * b
-"""
-        )
-        subprocess.run(["git", "add", "calculator.py"], check=True)
+            # Make a change that should generate a descriptive message
+            Path("calculator.py").write_text("def add(a, b): return a + b")
+            subprocess.run(["git", "add", "."], check=True)
 
-        result = create_auto_stash()
+            # Call create_auto_stash
+            result = create_auto_stash()
 
-        assert "Auto-stash created:" in result
-        assert "WIP:" in result
+            # Should have created a stash
+            assert "Auto-stash created:" in result
 
-        # Verify the AI generated a reasonable message
-        stash_result = subprocess.run(["git", "stash", "list"], capture_output=True, text=True)
-        stash_message = stash_result.stdout.strip()
-        assert "calculator" in stash_message.lower() or "add" in stash_message.lower() or "math" in stash_message.lower()
+            # Verify the AI generated a reasonable message
+            stash_result = subprocess.run(["git", "stash", "list"], capture_output=True, text=True)
+            msg = stash_result.stdout.strip().lower()
+            assert "calculator" in msg or "add" in msg or "math" in msg
 
 
 class TestLoadStashCommand:

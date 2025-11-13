@@ -6,7 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bots.dev.cli import CLI, PromptHandler, PromptManager
+from bots.dev.cli import CLI
+from bots.dev.cli_modules.handlers.prompts import PromptHandler, PromptManager
 from bots.foundation.base import Engines
 
 pytestmark = pytest.mark.e2e
@@ -49,26 +50,31 @@ class TestPromptManager(unittest.TestCase):
     def test_update_recents(self):
         """Test recency list management."""
         # Add prompts
-        self.prompt_manager.prompts_data["prompts"] = {"prompt1": "content1", "prompt2": "content2", "prompt3": "content3"}
+        self.prompt_manager.prompts_data["prompts"] = {
+            "prompt1": "content1",
+            "prompt2": "content2",
+            "prompt3": "content3",
+        }
 
         # Test adding to empty recents
         self.prompt_manager._update_recents("prompt1")
-        self.assertEqual(self.prompt_manager.prompts_data["recents"], ["prompt1"])
+        assert self.prompt_manager.prompts_data["recents"] == ["prompt1"]
 
-        # Test adding new item
+        # Test adding another prompt
         self.prompt_manager._update_recents("prompt2")
-        self.assertEqual(self.prompt_manager.prompts_data["recents"], ["prompt2", "prompt1"])
+        assert self.prompt_manager.prompts_data["recents"] == ["prompt2", "prompt1"]
 
-        # Test moving existing item to front
+        # Test re-adding existing prompt (should move to front)
         self.prompt_manager._update_recents("prompt1")
-        self.assertEqual(self.prompt_manager.prompts_data["recents"], ["prompt1", "prompt2"])
+        assert self.prompt_manager.prompts_data["recents"] == ["prompt1", "prompt2"]
 
-        # Test limit of 5 items
-        for i in range(3, 8):
+        # Test max recents limit (10)
+        for i in range(3, 13):
+            self.prompt_manager.prompts_data["prompts"][f"prompt{i}"] = f"content{i}"
             self.prompt_manager._update_recents(f"prompt{i}")
 
-        self.assertEqual(len(self.prompt_manager.prompts_data["recents"]), 5)
-        self.assertEqual(self.prompt_manager.prompts_data["recents"][0], "prompt7")
+        assert len(self.prompt_manager.prompts_data["recents"]) == 10
+        assert self.prompt_manager.prompts_data["recents"][0] == "prompt12"
 
     @patch("bots.foundation.anthropic_bots.AnthropicBot")
     def test_generate_prompt_name(self, mock_bot_class):
@@ -269,7 +275,10 @@ class TestPromptHandler(unittest.TestCase):
     def test_load_prompt_with_args(self):
         """Test loading prompt with search args provided."""
         # Setup test data
-        self.handler.prompt_manager.prompts_data = {"recents": [], "prompts": {"neural_network": "Design a neural network"}}
+        self.handler.prompt_manager.prompts_data = {
+            "recents": [],
+            "prompts": {"neural_network": "Design a neural network"},
+        }
 
         message, prefill = self.handler.load_prompt(self.mock_bot, self.mock_context, ["neural"])
 
@@ -318,13 +327,16 @@ class TestCLIPromptIntegration(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
+        import tempfile
+
         self.temp_dir = tempfile.mkdtemp()
         self.test_prompts_file = Path(self.temp_dir) / "test_prompts.json"
 
         # Create CLI with mocked components
         with patch("bots.dev.cli.AnthropicBot"):
             self.cli = CLI()
-            self.cli.prompts.prompt_manager = PromptManager(str(self.test_prompts_file))
+            pm = PromptManager(str(self.test_prompts_file))
+            self.cli.prompts.prompt_manager = pm
 
     def tearDown(self):
         """Clean up test fixtures."""
@@ -335,7 +347,10 @@ class TestCLIPromptIntegration(unittest.TestCase):
     def test_handle_load_prompt(self):
         """Test CLI handling of /p command."""
         # Setup test data
-        self.cli.prompts.prompt_manager.prompts_data = {"recents": [], "prompts": {"test_prompt": "This is a test prompt"}}
+        self.cli.prompts.prompt_manager.prompts_data = {
+            "recents": [],
+            "prompts": {"test_prompt": "This is a test prompt"},
+        }
 
         result = self.cli._handle_load_prompt(None, None, ["test"])
 

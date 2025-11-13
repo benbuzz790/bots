@@ -2,7 +2,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from bots.dev.cli import CLI, DynamicFunctionalPromptHandler, DynamicParameterCollector
+from bots.dev.cli import CLI
+from bots.dev.cli_modules.handlers.functional_prompts import DynamicFunctionalPromptHandler, DynamicParameterCollector
 from bots.flows import functional_prompts as fp
 from bots.foundation.base import ConversationNode
 

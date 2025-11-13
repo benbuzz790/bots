@@ -9,7 +9,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bots.dev.cli import CLI, PromptHandler, PromptManager
+from bots.dev.cli import CLI
+from bots.dev.cli_modules.handlers.prompts import PromptHandler, PromptManager
 
 
 @pytest.fixture
