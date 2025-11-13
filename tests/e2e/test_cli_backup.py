@@ -6,7 +6,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from bots.dev.cli import BackupHandler, CLIContext
+from bots.dev.cli_modules.context import CLIContext
+from bots.dev.cli_modules.handlers.backup import BackupHandler
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 
@@ -169,7 +170,7 @@ class TestCLIBackupSystem:
         # Verify the conversation was reverted to the backup state
         restored_depth = get_depth(context.bot_instance.conversation)
         assert restored_depth == backup_depth, f"Conversation depth should be {backup_depth}, got {restored_depth}"
-        assert context.bot_instance.conversation.content == original_content, "Conversation content should match backup state"
+        assert context.bot_instance.conversation.content == original_content
 
 
 if __name__ == "__main__":

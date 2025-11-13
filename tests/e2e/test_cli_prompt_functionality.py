@@ -43,7 +43,7 @@ def test_prompt_naming_comprehensive():
     """Comprehensive test of prompt naming with various input types."""
     print("=== Testing Comprehensive Prompt Naming ===")
 
-    from bots.dev.cli import PromptManager
+    from bots.dev.cli_modules.handlers.prompts import PromptManager
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         temp_file = f.name
@@ -141,7 +141,7 @@ def test_search_functionality_enhanced():
     """Enhanced search functionality test with edge cases."""
     print("\n=== Testing Enhanced Search Functionality ===")
 
-    from bots.dev.cli import PromptManager
+    from bots.dev.cli_modules.handlers.prompts import PromptManager
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         temp_file = f.name
@@ -208,7 +208,7 @@ def test_recency_tracking():
     """Test that recency tracking works correctly."""
     print("\n=== Testing Recency Tracking ===")
 
-    from bots.dev.cli import PromptManager
+    from bots.dev.cli_modules.handlers.prompts import PromptManager
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         temp_file = f.name
@@ -272,7 +272,7 @@ def test_name_uniqueness():
     """Test that duplicate names are handled correctly."""
     print("\n=== Testing Name Uniqueness ===")
 
-    from bots.dev.cli import PromptManager
+    from bots.dev.cli_modules.handlers.prompts import PromptManager
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         temp_file = f.name
@@ -331,7 +331,11 @@ def test_cli_integration():
         handler = PromptHandler()
 
         # Test save functionality
-        save_result = handler.save_prompt(context.bot_instance, context, ["Test", "prompt", "for", "CLI", "integration"])
+        save_result = handler.save_prompt(
+            context.bot_instance,
+            context,
+            ["Test", "prompt", "for", "CLI", "integration"],
+        )
 
         print(f"Save result: {save_result}")
         success = "Saved prompt as:" in save_result

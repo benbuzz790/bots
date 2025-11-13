@@ -5,7 +5,10 @@ import pytest
 
 import bots.dev.cli as cli_module
 from bots import AnthropicBot, Engines
-from bots.dev.cli import CLI, CLIContext, RealTimeDisplayCallbacks, StateHandler
+from bots.dev.cli import CLI
+from bots.dev.cli_modules.callbacks import RealTimeDisplayCallbacks
+from bots.dev.cli_modules.context import CLIContext
+from bots.dev.cli_modules.handlers.state import StateHandler
 
 pytestmark = pytest.mark.e2e
 
@@ -303,6 +306,6 @@ class TestCLILoadCallbacksRegression:
         # Check if callbacks were attached
         loaded_bot = cli.context.bot_instance
         if loaded_bot:
-            assert isinstance(loaded_bot.callbacks, RealTimeDisplayCallbacks), (
-                f"CLI-loaded bot should have RealTimeDisplayCallbacks, " f"but has {type(loaded_bot.callbacks).__name__}"
-            )
+            assert isinstance(
+                loaded_bot.callbacks, RealTimeDisplayCallbacks
+            ), f"Expected RealTimeDisplayCallbacks, got {type(loaded_bot.callbacks).__name__}"

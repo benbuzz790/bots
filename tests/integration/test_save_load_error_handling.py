@@ -10,7 +10,8 @@ import tempfile
 import unittest
 from io import StringIO
 
-from bots.dev.cli import CLIContext, RealTimeDisplayCallbacks
+from bots.dev.cli_modules.callbacks import RealTimeDisplayCallbacks
+from bots.dev.cli_modules.context import CLIContext
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
 
@@ -60,7 +61,11 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         output = captured.getvalue()
 
         # Successful load should produce minimal or no output
-        self.assertLess(len(output), 500, f"Successful load produced excessive output ({len(output)} chars):\n{output[:200]}")
+        self.assertLess(
+            len(output),
+            500,
+            f"Successful load produced excessive output ({len(output)} chars):\n{output[:200]}",
+        )
 
         # Should not contain error patterns
         self.assertNotIn("Full stack trace:", output)
@@ -117,7 +122,11 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         callback_output = captured.getvalue()
 
         # Callbacks should produce output in verbose mode
-        self.assertGreater(len(callback_output), 20, f"Verbose callbacks should produce output, got: {repr(callback_output)}")
+        self.assertGreater(
+            len(callback_output),
+            20,
+            f"Verbose callbacks should produce output, got: {repr(callback_output)}",
+        )
 
         # Should contain tool-related output
         # Note: The exact format may vary, but there should be visible output
@@ -175,7 +184,11 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         output = captured.getvalue()
 
         # Warning should be concise (< 500 chars for a single module warning)
-        self.assertLess(len(output), 500, f"Code hash mismatch warning too verbose ({len(output)} chars):\n{output[:300]}")
+        self.assertLess(
+            len(output),
+            500,
+            f"Code hash mismatch warning too verbose ({len(output)} chars):\n{output[:300]}",
+        )
 
         # Should contain the expected warning
         self.assertIn("Warning: Code hash mismatch", output)
@@ -214,7 +227,11 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         # Verify reference is restored after load
         self.assertTrue(hasattr(loaded_bot.tool_handler, "bot"), "tool_handler.bot attribute should exist after load")
         self.assertIsNotNone(loaded_bot.tool_handler.bot, "tool_handler.bot should not be None after load")
-        self.assertIs(loaded_bot.tool_handler.bot, loaded_bot, "tool_handler.bot should reference the loaded bot instance")
+        self.assertIs(
+            loaded_bot.tool_handler.bot,
+            loaded_bot,
+            "tool_handler.bot should reference the loaded bot instance",
+        )
 
 
 if __name__ == "__main__":

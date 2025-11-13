@@ -9,7 +9,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from bots.dev.cli import CLIContext, SystemHandler
+from bots.dev.cli_modules.context import CLIContext
+from bots.dev.cli_modules.handlers.system import SystemHandler
 from bots.foundation.anthropic_bots import AnthropicBot
 
 
@@ -89,7 +90,9 @@ def test_metrics_display_once_per_response_in_auto_mode():
     # - 1 at end of auto() method
 
     # Verify the fix
-    assert len(display_calls) == 3, f"Expected 3 display_metrics calls (one per response + final), got {len(display_calls)}"
+    assert len(display_calls) == 3, (
+        f"Expected 3 display_metrics calls (one per response + final), " f"got {len(display_calls)}"
+    )
     print("✓ Fix verified: metrics displayed exactly once per bot response")
 
 

@@ -31,7 +31,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from bots import AnthropicBot, Engines
-from bots.dev.cli import CLIContext, RealTimeDisplayCallbacks
+from bots.dev.cli_modules.callbacks import RealTimeDisplayCallbacks
+from bots.dev.cli_modules.context import CLIContext
 
 # Mark as e2e test, not cli (since we're mocking the CLI, not actually using it interactively)
 pytestmark = pytest.mark.e2e
