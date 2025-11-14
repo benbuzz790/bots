@@ -9,7 +9,7 @@ import bots.dev.cli as cli_module
 from bots.dev.cli_modules.handlers.functional_prompts import DynamicFunctionalPromptHandler, DynamicParameterCollector
 from bots.flows import functional_prompts as fp
 
-pytestmark = [pytest.mark.e2e, pytest.mark.skip(reason="Tests hang due to incorrect input mocking - see issue #199")]
+pytestmark = [pytest.mark.e2e]
 
 """Comprehensive tests for broadcast_fp functionality including par_branch support."""
 
@@ -184,7 +184,7 @@ class TestBroadcastFPRecursiveBranching(unittest.TestCase):
            - Leaf B gets prompts ["Approach 1", "Approach 2", "Approach 3"]
            - Leaf C gets prompts ["Approach 1", "Approach 2", "Approach 3"]
         3. Result: Each original leaf now has 3 parallel sub-branches
-        4. Total: 9 new conversation endpoints (3 leaves × 3 branches each)
+        4. Total: 9 new conversation endpoints (3 leaves Ã— 3 branches each)
         """
 
         # This test documents the intended behavior

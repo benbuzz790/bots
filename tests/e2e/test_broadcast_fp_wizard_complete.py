@@ -8,7 +8,7 @@ import pytest
 import bots.dev.cli as cli_module
 from bots.testing.mock_bot import MockBot
 
-pytestmark = [pytest.mark.e2e, pytest.mark.skip(reason="Tests hang due to incorrect input mocking - see issue #199")]
+pytestmark = [pytest.mark.e2e]
 
 """Complete test suite for all /broadcast_fp command wizards."""
 
@@ -233,7 +233,7 @@ class TestBroadcastFPWizardComplete(unittest.TestCase):
         has_leaf_error = "Invalid leaf selection format" in output
 
         self.assertTrue(has_leaf_error, "Expected leaf selection error message not found")
-        print("✓ Found leaf selection error message")
+        print("âœ“ Found leaf selection error message")
 
         # After retry, should successfully broadcast
         self.assertIn("Broadcasting single_prompt", output)

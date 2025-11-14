@@ -7,7 +7,7 @@ from bots.dev.cli_modules.handlers.functional_prompts import DynamicFunctionalPr
 from bots.flows import functional_prompts as fp
 from bots.foundation.base import ConversationNode
 
-pytestmark = [pytest.mark.e2e, pytest.mark.skip(reason="Tests hang due to incorrect input mocking - see issue #199")]
+pytestmark = [pytest.mark.e2e]
 
 """Tests for broadcast_fp functionality in CLI."""
 
