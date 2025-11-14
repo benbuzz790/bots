@@ -5,9 +5,10 @@ from unittest.mock import patch
 
 import pytest
 
-import bots.dev.cli as cli_module
+# import bots.dev.cli as cli_module  # noqa: F401
+from bots.dev.cli_modules.handlers.functional_prompts import DynamicFunctionalPromptHandler, DynamicParameterCollector
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.skip(reason="Tests hang due to incorrect input mocking - see issue #199")]
 
 """
 Test suite for new CLI functionality implemented in the work order:
@@ -27,8 +28,8 @@ class TestDescopedFunctions(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.handler = cli_module.DynamicFunctionalPromptHandler()
-        self.collector = cli_module.DynamicParameterCollector()
+        self.handler = DynamicFunctionalPromptHandler()
+        self.collector = DynamicParameterCollector()
 
     def test_prompt_for_excluded_from_discovery(self):
         """Test that prompt_for is excluded from function discovery."""

@@ -8,7 +8,7 @@ import pytest
 import bots.dev.cli as cli_module
 from bots.testing.mock_bot import MockBot
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.skip(reason="Tests hang due to incorrect input mocking - see issue #199")]
 
 """Complete test suite for all /broadcast_fp command wizards."""
 

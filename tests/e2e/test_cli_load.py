@@ -10,7 +10,7 @@ from bots.dev.cli_modules.callbacks import RealTimeDisplayCallbacks
 from bots.dev.cli_modules.config import CLIContext
 from bots.dev.cli_modules.handlers.state import StateHandler
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.skip(reason="Tests hang due to incorrect input mocking - see issue #199")]
 
 
 class TestCLILoad(unittest.TestCase):

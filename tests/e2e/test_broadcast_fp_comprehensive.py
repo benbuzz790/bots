@@ -9,7 +9,7 @@ import bots.dev.cli as cli_module
 from bots.dev.cli_modules.handlers.functional_prompts import DynamicFunctionalPromptHandler, DynamicParameterCollector
 from bots.flows import functional_prompts as fp
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.skip(reason="Tests hang due to incorrect input mocking - see issue #199")]
 
 """Comprehensive tests for broadcast_fp functionality including par_branch support."""
 

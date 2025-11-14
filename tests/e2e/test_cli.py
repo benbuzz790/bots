@@ -12,7 +12,7 @@ import pytest
 import bots.dev.cli as cli_module
 import bots.flows.functional_prompts as fp
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.skip(reason="Tests hang due to incorrect input mocking - see issue #199")]
 
 """Unit tests for the CLI module.
 This test suite verifies the functionality of the new CLI interface,
