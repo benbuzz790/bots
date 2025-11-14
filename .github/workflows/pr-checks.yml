@@ -116,17 +116,13 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install -e .
-      # Markdownlint disabled due to ARM64 compatibility issues
-      # The markdownlint-cli npm package has known issues with ARM64 architecture
-      # which can cause CI failures on certain runners. Consider migrating to a
-      # pure Python markdown linter in the future.
-      #
-      # - name: Set up Node.js
-      #   uses: actions/setup-node@v4
-      #   with:
-      #     node-version: '20'
-      # - name: Install markdownlint-cli
-      #   run: npm install -g markdownlint-cli@0.45.0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli@0.45.0
+
       - name: Remove BOMs from all files
         run: |
           python -m bots.dev.remove_boms
@@ -148,9 +144,10 @@ jobs:
           mypy bots/ --ignore-missing-imports
         continue-on-error: true
 
-      # - name: Run markdownlint
-      #   run: |
-      #     markdownlint **/*.md --ignore node_modules --ignore __pycache__ --ignore .mypy_cache --ignore .pytest_cache
+      - name: Run markdownlint
+        run: |
+          markdownlint **/*.md --ignore node_modules --ignore __pycache__ --ignore .mypy_cache --ignore .pytest_cache
+
   security:
     name: Security Scan
     runs-on: windows-latest
