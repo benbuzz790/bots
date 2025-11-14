@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from bots.dev.cli_modules.context import CLIContext
+from bots.dev.cli_modules.config import CLIContext
 from bots.dev.cli_modules.handlers.system import SystemHandler
 from bots.foundation.anthropic_bots import AnthropicBot
 

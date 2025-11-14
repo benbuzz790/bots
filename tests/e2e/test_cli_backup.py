@@ -6,7 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from bots.dev.cli_modules.context import CLIContext
+from bots.dev.cli_modules.config import CLIContext
 from bots.dev.cli_modules.handlers.backup import BackupHandler
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines

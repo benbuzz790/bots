@@ -7,7 +7,7 @@ import bots.dev.cli as cli_module
 from bots import AnthropicBot, Engines
 from bots.dev.cli import CLI
 from bots.dev.cli_modules.callbacks import RealTimeDisplayCallbacks
-from bots.dev.cli_modules.context import CLIContext
+from bots.dev.cli_modules.config import CLIContext
 from bots.dev.cli_modules.handlers.state import StateHandler
 
 pytestmark = pytest.mark.e2e

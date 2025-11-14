@@ -11,7 +11,7 @@ import unittest
 from io import StringIO
 
 from bots.dev.cli_modules.callbacks import RealTimeDisplayCallbacks
-from bots.dev.cli_modules.context import CLIContext
+from bots.dev.cli_modules.config import CLIContext
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
 
