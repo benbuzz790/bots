@@ -35,7 +35,7 @@ class StateHandler:
         except Exception as e:
             return f"Error saving bot: {str(e)}"
 
-    def load(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+    def load(self, bot: "Bot", context: "CLIContext", args: List[str]) -> str:
         """Load a bot from file."""
         try:
             if not args:
@@ -51,7 +51,7 @@ class StateHandler:
         except Exception as e:
             return f"Error loading bot: {str(e)}"
 
-    def _load_bot_from_file(self, filename: str, context: CLIContext) -> str:
+    def _load_bot_from_file(self, filename: str, context: "CLIContext") -> str:
         """Load bot from file and set up context."""
         try:
             if not filename.endswith(".bot"):
