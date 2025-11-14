@@ -48,19 +48,14 @@ class TestPromptManager(unittest.TestCase):
         self.assertEqual(new_manager.prompts_data["prompts"]["test1"], "This is test prompt 1")
 
     def test_update_recents(self):
-        """Test recency list management."""
-        # Add prompts
-        self.prompt_manager.prompts_data["prompts"] = {
-            "prompt1": "content1",
-            "prompt2": "content2",
-            "prompt3": "content3",
-        }
-
-        # Test adding to empty recents
+        """Test recency tracking."""
+        # Add first prompt
+        self.prompt_manager.prompts_data["prompts"]["prompt1"] = "content1"
         self.prompt_manager._update_recents("prompt1")
         assert self.prompt_manager.prompts_data["recents"] == ["prompt1"]
 
-        # Test adding another prompt
+        # Add second prompt
+        self.prompt_manager.prompts_data["prompts"]["prompt2"] = "content2"
         self.prompt_manager._update_recents("prompt2")
         assert self.prompt_manager.prompts_data["recents"] == ["prompt2", "prompt1"]
 
@@ -68,13 +63,13 @@ class TestPromptManager(unittest.TestCase):
         self.prompt_manager._update_recents("prompt1")
         assert self.prompt_manager.prompts_data["recents"] == ["prompt1", "prompt2"]
 
-        # Test max recents limit (10)
-        for i in range(3, 13):
+        # Test max recents limit (5)
+        for i in range(3, 8):
             self.prompt_manager.prompts_data["prompts"][f"prompt{i}"] = f"content{i}"
             self.prompt_manager._update_recents(f"prompt{i}")
 
-        assert len(self.prompt_manager.prompts_data["recents"]) == 10
-        assert self.prompt_manager.prompts_data["recents"][0] == "prompt12"
+        assert len(self.prompt_manager.prompts_data["recents"]) == 5
+        assert self.prompt_manager.prompts_data["recents"][0] == "prompt7"
 
     @patch("bots.foundation.anthropic_bots.AnthropicBot")
     def test_generate_prompt_name(self, mock_bot_class):

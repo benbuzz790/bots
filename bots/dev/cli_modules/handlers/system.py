@@ -348,46 +348,47 @@ class SystemHandler:
 
     def load_stash(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Load a git stash by name or index."""
-        import subprocess
-
-        if not args:
-            return "Usage: /load_stash <stash_name_or_index>"
-
-        stash_identifier = args[0]
-
         try:
-            # First, get the list of stashes
-            result = subprocess.run(["git", "stash", "list"], capture_output=True, text=True, check=True)
-            stash_list = result.stdout.strip().split("\n") if result.stdout.strip() else []
+            if not args:
+                return "Usage: /load_stash <name_or_index>"
 
-            if not stash_list:
+            stash_identifier = " ".join(args)
+
+            # Get list of stashes
+            result = subprocess.run(["git", "stash", "list"], capture_output=True, text=True, check=True)
+            stashes = result.stdout.strip().split("\n")
+
+            if not stashes or not stashes[0]:
                 return "No stashes found"
 
-            # Try to find the stash by index or name pattern
+            # Try to find the stash
             stash_to_apply = None
 
             # Check if it's a numeric index
-            try:
+            if stash_identifier.isdigit():
                 index = int(stash_identifier)
-                if 0 <= index < len(stash_list):
+                if 0 <= index < len(stashes):
                     stash_to_apply = f"stash@{{{index}}}"
-            except ValueError:
-                # Not a number, search by name pattern
-                for i, stash_line in enumerate(stash_list):
-                    if stash_identifier.lower() in stash_line.lower():
-                        stash_to_apply = f"stash@{{{i}}}"
+            else:
+                # Search by name in the stash message
+                for stash in stashes:
+                    if stash_identifier.lower() in stash.lower():
+                        # Extract stash@{n} from the line
+                        stash_to_apply = stash.split(":")[0]
                         break
 
             if not stash_to_apply:
                 return f"Stash '{stash_identifier}' not found"
 
             # Apply the stash
-            subprocess.run(["git", "stash", "apply", stash_to_apply], check=True, capture_output=True)
+            subprocess.run(["git", "stash", "apply", stash_to_apply], check=True, capture_output=True, text=True)
 
             return f"Successfully applied {stash_to_apply}"
 
         except subprocess.CalledProcessError as e:
-            return f"Git error: {e.stderr.decode() if e.stderr else str(e)}"
+            # Handle stderr - it's already a string when text=True
+            error_msg = e.stderr if e.stderr else str(e)
+            return f"Git error: {error_msg}"
         except Exception as e:
             return f"Error loading stash: {str(e)}"
 

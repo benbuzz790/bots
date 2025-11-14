@@ -22,240 +22,218 @@ class DynamicParameterCollector:
     """Dynamically collect parameters for functional prompts based on their signatures."""
 
     def __init__(self, function_filter: Optional[Callable[[str, Callable], bool]] = None):
-        self.param_handlers = {
-            "prompt_list": self._collect_prompts,
-            "prompts": self._collect_prompts,
-            "prompt": self._collect_single_prompt,
-            "first_prompt": self._collect_single_prompt,
-            "stop_condition": self._collect_condition,
-            "continue_prompt": self._collect_continue_prompt,
-            "recombinator_function": self._collect_recombinator,
-            "should_branch": self._collect_boolean,
-            "skip": self._collect_skip_labels,
-            "items": self._collect_items,
-            "dynamic_prompt": self._collect_dynamic_prompt,
-            "functional_prompt": self._collect_functional_prompt,
-        }
-        self.conditions = {
-            "1": ("tool_used", fp.conditions.tool_used),
-            "2": ("tool_not_used", fp.conditions.tool_not_used),
-            "3": ("said_DONE", fp.conditions.said_DONE),
-            "4": ("said_READY", fp.conditions.said_READY),
-            "5": ("error_in_response", fp.conditions.error_in_response),
-        }
         self.function_filter = function_filter
 
     def _format_default_value(self, default: Any) -> str:
-        """Format default values for clean display to users."""
+        """Format default value for display."""
         if default == inspect.Parameter.empty:
             return "required"
-        elif callable(default):
-            if hasattr(default, "__name__"):
-                return f"function: {default.__name__}"
-            else:
-                return "function"
-        elif isinstance(default, str):
-            return f"'{default}'"
-        elif isinstance(default, bool):
-            return str(default)
-        elif isinstance(default, (int, float)):
-            return str(default)
-        elif isinstance(default, list):
-            if not default:
-                return "empty list"
-            elif len(default) <= 3:
-                return f"[{', '.join(repr(item) for item in default)}]"
-            else:
-                return f"[{', '.join(repr(item) for item in default[:2])}, ... ({len(default)} items)]"
         elif default is None:
             return "None"
+        elif isinstance(default, str):
+            return f'"{default}"'
         else:
-            str_repr = str(default)
-            if len(str_repr) > 50:
-                return f"{str_repr[:47]}..."
-            return str_repr
+            return str(default)
 
     def collect_parameters(self, func: Callable) -> Optional[Dict[str, Any]]:
-        """Dynamically collect parameters based on function signature."""
-        try:
-            sig = inspect.signature(func)
-            params = {}
-            print(f"\nCollecting parameters for {func.__name__}:")
-            needs_single_callback = func.__name__ in ["tree_of_thought"]
-            for param_name, param in sig.parameters.items():
-                if param_name == "bot":
-                    continue
-                if param_name == "callback":
-                    continue
-                default_display = self._format_default_value(param.default)
-                print(f"  Parameter: {param_name} (default: {default_display})")
-                if param_name in self.param_handlers:
-                    handler = self.param_handlers[param_name]
-                    value = handler(param_name, param.default)
-                else:
-                    value = self._collect_generic_parameter(param_name, param.default)
-                if value is None:
-                    if param.default == inspect.Parameter.empty:
-                        print(f"Required parameter '{param_name}' not provided")
-                        return None
-                elif value is not None:
-                    params[param_name] = value
-            params["_callback_type"] = "single" if needs_single_callback else "list"
-            return params
-        except Exception as e:
-            print(f"Error collecting parameters: {e}")
-            return None
+        """Collect parameters for a functional prompt function."""
+        sig = inspect.signature(func)
+        params = {}
+        callback_type = "list"  # Default callback type
+
+        for param_name, param in sig.parameters.items():
+            if param_name == "bot":
+                continue  # Skip bot parameter
+
+            # Determine parameter type and collect accordingly
+            if param_name in ["prompts", "prompt_list"]:
+                value = self._collect_prompts(param_name, param.default)
+            elif param_name == "prompt":
+                value = self._collect_single_prompt(param_name, param.default)
+            elif param_name == "stop_condition":
+                value = self._collect_condition(param_name, param.default)
+            elif param_name == "continue_prompt":
+                value = self._collect_continue_prompt(param_name, param.default)
+            elif param_name == "should_branch":
+                value = self._collect_boolean(param_name, param.default)
+            elif param_name == "skip":
+                value = self._collect_skip_labels(param_name, param.default)
+            elif param_name == "recombinator_function":
+                value = self._collect_recombinator(param_name, param.default)
+            elif param_name == "items":
+                value = self._collect_items(param_name, param.default)
+            elif param_name == "dynamic_prompt":
+                value = self._collect_dynamic_prompt(param_name, param.default)
+            elif param_name == "functional_prompt":
+                value = self._collect_functional_prompt(param_name, param.default)
+            elif param_name == "callback":
+                # Skip callback - we'll handle it separately
+                continue
+            else:
+                value = self._collect_generic_parameter(param_name, param.default)
+
+            if value is None and param.default == inspect.Parameter.empty:
+                return None  # Required parameter not provided
+
+            if value is not None:
+                params[param_name] = value
+
+        # Store callback type for later use
+        params["_callback_type"] = callback_type
+
+        return params
 
     def _collect_prompts(self, param_name: str, default: Any) -> Optional[List[str]]:
-        """Collect a list of prompts from user."""
+        """Collect a list of prompts."""
+        print(f"\nEnter prompts for {param_name} (one per line, empty line to finish):")
         prompts = []
-        print(f"\nEnter {param_name} (empty line to finish, ESC to cancel):")
         while True:
             try:
-                prompt = input_with_esc(f"Prompt {len(prompts) + 1}: ").strip()
+                prompt = input_with_esc(f"  Prompt {len(prompts) + 1}: ")
+                if not prompt:
+                    break
+                prompts.append(prompt)
             except EscapeException:
-                print("Cancelled")
                 return None
-            if not prompt:
-                break
-            prompts.append(prompt)
-        if not prompts:
-            print("No prompts entered")
-            return None
-        return prompts
+        return prompts if prompts else default
 
     def _collect_single_prompt(self, param_name: str, default: Any) -> Optional[str]:
-        """Collect a single prompt from user."""
+        """Collect a single prompt."""
         try:
-            prompt = input_with_esc(f"Enter {param_name}: ").strip()
+            default_display = self._format_default_value(default)
+            prompt = input_with_esc(f"Enter {param_name} (default: {default_display}): ")
+            return prompt if prompt else default
         except EscapeException:
-            print("Cancelled")
             return None
-        return prompt if prompt else None
 
     def _collect_condition(self, param_name: str, default: Any) -> Optional[Callable]:
-        """Collect stop condition from user."""
-        print(f"\nAvailable stop conditions for {param_name}:")
-        for key, (name, _) in self.conditions.items():
-            print(f"  {key}. {name}")
-        default_display = self._format_default_value(default)
+        """Collect a stop condition."""
+        print(f"\nAvailable conditions for {param_name}:")
+        conditions_list = [
+            ("tool_not_used", fp.conditions.tool_not_used),
+            ("said_DONE", fp.conditions.said_DONE),
+            ("said_READY", fp.conditions.said_READY),
+        ]
+        for i, (name, _) in enumerate(conditions_list, 1):
+            print(f"  {i}. {name}")
+
         try:
-            choice = input_with_esc(f"Select condition (default: {default_display}): ").strip()
+            choice = input_with_esc("Select condition (number or name, or press Enter for default): ")
+            if not choice:
+                return default if default != inspect.Parameter.empty else fp.conditions.tool_not_used
+
+            if choice.isdigit():
+                idx = int(choice) - 1
+                if 0 <= idx < len(conditions_list):
+                    return conditions_list[idx][1]
+            else:
+                for name, cond in conditions_list:
+                    if name.lower() == choice.lower():
+                        return cond
+            return default if default != inspect.Parameter.empty else fp.conditions.tool_not_used
         except EscapeException:
-            print("Cancelled")
-            return None
-        if not choice and default != inspect.Parameter.empty:
-            return default
-        elif choice in self.conditions:
-            return self.conditions[choice][1]
-        else:
-            print("Invalid condition selection")
             return None
 
     def _collect_continue_prompt(self, param_name: str, default: Any) -> Optional[str]:
-        """Collect continue prompt with default handling."""
-        default_display = self._format_default_value(default)
+        """Collect a continue prompt."""
         try:
-            if default != inspect.Parameter.empty:
-                prompt = input_with_esc(f"Enter {param_name} (default: {default_display}): ").strip()
-                return prompt if prompt else default
-            else:
-                prompt = input_with_esc(f"Enter {param_name}: ").strip()
-                return prompt if prompt else None
+            default_display = self._format_default_value(default)
+            prompt = input_with_esc(f"Enter {param_name} (default: {default_display}): ")
+            return prompt if prompt else (default if default != inspect.Parameter.empty else "ok")
         except EscapeException:
-            print("Cancelled")
             return None
 
     def _collect_boolean(self, param_name: str, default: Any) -> Optional[bool]:
-        """Collect boolean parameter."""
-        default_display = self._format_default_value(default)
+        """Collect a boolean value."""
         try:
-            choice = input_with_esc(f"Enter {param_name} (y/n, default: {default_display}): ").strip().lower()
+            default_display = self._format_default_value(default)
+            value = input_with_esc(f"Enter {param_name} (true/false, default: {default_display}): ")
+            if not value:
+                return default if default != inspect.Parameter.empty else False
+            return value.lower() in ("true", "yes", "1", "t", "y")
         except EscapeException:
-            print("Cancelled")
             return None
-        if not choice and default != inspect.Parameter.empty:
-            return default
-        elif choice in ["y", "yes", "true", "1"]:
-            return True
-        elif choice in ["n", "no", "false", "0"]:
-            return False
-        else:
-            return default if default != inspect.Parameter.empty else False
 
     def _collect_skip_labels(self, param_name: str, default: Any) -> List[str]:
-        """Collect skip labels for broadcast functions."""
+        """Collect skip labels."""
         try:
-            skip_input = input_with_esc(f"Enter {param_name} (comma-separated, or empty for none): ").strip()
+            labels_str = input_with_esc(f"Enter {param_name} (comma-separated, or press Enter to skip): ")
+            if not labels_str:
+                return default if default != inspect.Parameter.empty else []
+            return [label.strip() for label in labels_str.split(",")]
         except EscapeException:
-            print("Cancelled")
-            return []
-        if skip_input:
-            return [label.strip() for label in skip_input.split(",")]
-        else:
             return []
 
     def _collect_recombinator(self, param_name: str, default: Any) -> Optional[Callable]:
-        """Collect recombinator function with available options."""
+        """Collect a recombinator function."""
         print(f"\nAvailable recombinators for {param_name}:")
-        recombinator_options = {
-            "1": ("concatenate", recombinators.recombinators.concatenate),
-            "2": ("llm_judge", recombinators.recombinators.llm_judge),
-            "3": ("llm_vote", recombinators.recombinators.llm_vote),
-            "4": ("llm_merge", recombinators.recombinators.llm_merge),
-        }
-        for key, (name, _) in recombinator_options.items():
-            print(f"  {key}. {name}")
-        default_display = self._format_default_value(default)
+        recombinator_list = [
+            ("concatenate", recombinators.recombinators.concatenate),
+            ("llm_judge", recombinators.recombinators.llm_judge),
+            ("llm_vote", recombinators.recombinators.llm_vote),
+            ("llm_merge", recombinators.recombinators.llm_merge),
+        ]
+        for i, (name, _) in enumerate(recombinator_list, 1):
+            print(f"  {i}. {name}")
+
         try:
-            choice = input_with_esc(f"Select recombinator (default: {default_display}): ").strip()
+            choice = input_with_esc("Select recombinator (number or name): ")
+            if choice.isdigit():
+                idx = int(choice) - 1
+                if 0 <= idx < len(recombinator_list):
+                    return recombinator_list[idx][1]
+            else:
+                for name, recom in recombinator_list:
+                    if name.lower() == choice.lower():
+                        return recom
+            return default if default != inspect.Parameter.empty else None
         except EscapeException:
-            print("Cancelled")
             return None
-        if not choice and default != inspect.Parameter.empty:
-            return default
-        elif choice in recombinator_options:
-            return recombinator_options[choice][1]
-        else:
-            print("Invalid recombinator selection, using concatenate")
-            return recombinators.recombinators.concatenate
 
     def _collect_items(self, param_name: str, default: Any) -> Optional[List[Any]]:
-        """Collect items for prompt_for function - DESCOPED."""
-        print(f"{param_name} is not supported in CLI interface")
-        return None
+        """Collect a list of items."""
+        print(f"\nEnter items for {param_name} (one per line, empty line to finish):")
+        items = []
+        while True:
+            try:
+                item = input_with_esc(f"  Item {len(items) + 1}: ")
+                if not item:
+                    break
+                items.append(item)
+            except EscapeException:
+                return None
+        return items if items else default
 
     def _collect_dynamic_prompt(self, param_name: str, default: Any) -> Optional[Callable]:
-        """Collect dynamic prompt function - DESCOPED."""
-        print(f"{param_name} is not supported in CLI interface")
-        return None
+        """Collect a dynamic prompt function."""
+        # For now, return a simple lambda that returns the item as-is
+        print(f"\nUsing default dynamic prompt for {param_name} (returns item as prompt)")
+        return lambda item: str(item)
 
     def _collect_functional_prompt(self, param_name: str, default: Any) -> Optional[Callable]:
-        """Collect functional prompt function for broadcast_fp."""
+        """Collect a functional prompt function."""
         print(f"\nAvailable functional prompts for {param_name}:")
-        fp_options = {
-            "1": ("single_prompt", fp.single_prompt),
-            "2": ("chain", fp.chain),
-            "3": ("branch", fp.branch),
-            "4": ("tree_of_thought", fp.tree_of_thought),
-            "5": ("prompt_while", fp.prompt_while),
-            "6": ("chain_while", fp.chain_while),
-            "7": ("branch_while", fp.branch_while),
-            "8": ("par_branch", fp.par_branch),
-            "9": ("par_branch_while", fp.par_branch_while),
-        }
-        for key, (name, _) in fp_options.items():
-            print(f"  {key}. {name}")
+        fp_list = [
+            ("single_prompt", fp.single_prompt),
+            ("chain", fp.chain),
+            ("branch", fp.branch),
+        ]
+        for i, (name, _) in enumerate(fp_list, 1):
+            print(f"  {i}. {name}")
+
         try:
-            choice = input_with_esc("Select functional prompt: ").strip()
+            choice = input_with_esc("Select functional prompt (number or name): ")
+            if choice.isdigit():
+                idx = int(choice) - 1
+                if 0 <= idx < len(fp_list):
+                    return fp_list[idx][1]
+            else:
+                for name, func in fp_list:
+                    if name.lower() == choice.lower():
+                        return func
+            return default if default != inspect.Parameter.empty else fp.single_prompt
         except EscapeException:
-            print("Cancelled")
             return None
-        if choice in fp_options:
-            return fp_options[choice][1]
-        else:
-            print("Invalid functional prompt selection, using single_prompt")
-            return fp.single_prompt
 
     def _collect_generic_parameter(self, param_name: str, default: Any) -> Optional[Any]:
         """Generic parameter collection for unknown parameter types."""
@@ -276,7 +254,7 @@ class DynamicFunctionalPromptHandler:
     """Handler for functional prompt commands using dynamic parameter collection."""
 
     def __init__(self, function_filter: Optional[Callable[[str, Callable], bool]] = None):
-        self.collector = DynamicParameterCollector(function_filter)
+        self.collector = DynamicParameterCollector(function_filter=function_filter)
         self.fp_functions = self._discover_fp_functions()
 
     def _discover_fp_functions(self) -> Dict[str, Callable]:
@@ -348,94 +326,60 @@ class DynamicFunctionalPromptHandler:
                                 )
                             if hasattr(node, "tool_results") and node.tool_results:
                                 tool_results_str = "".join((clean_dict(result) for result in node.tool_results))
-                                if tool_results_str.strip():
-                                    pretty(
-                                        f"Tool Results\n\n{tool_results_str}",
-                                        "system",
-                                        context.config.width,
-                                        context.config.indent,
-                                        COLOR_TOOL_RESULT,
-                                    )
+                                pretty(
+                                    f"Tool Results\n\n{tool_results_str}",
+                                    "system",
+                                    context.config.width,
+                                    context.config.indent,
+                                    COLOR_TOOL_RESULT,
+                                )
 
                     params["callback"] = single_callback
                 else:
-                    callback = context.callbacks.get_standard_callback()
-                    params["callback"] = callback
+                    params["callback"] = context.callbacks.get_standard_callback()
 
-            result = fp_function(bot, **params)
-            if isinstance(result, tuple) and len(result) == 2:
-                responses, nodes = result
-                if isinstance(responses, list):
-                    for i, response in enumerate(responses):
-                        if response:
-                            pretty(
-                                f"Response {i + 1}: {response}",
-                                bot.name,
-                                context.config.width,
-                                context.config.indent,
-                                COLOR_ASSISTANT,
-                                newline_after_name=False,
-                            )
-                    return f"Functional prompt '{fp_name}' completed with {len(responses)} responses"
-                else:
-                    if responses:
-                        pretty(
-                            responses,
-                            bot.name,
-                            context.config.width,
-                            context.config.indent,
-                            COLOR_ASSISTANT,
-                            newline_after_name=False,
-                        )
-                    return f"Functional prompt '{fp_name}' completed"
-            else:
-                return f"Functional prompt '{fp_name}' completed with result: {result}"
+            fp_function(bot, **params)
+            return f"Executed {fp_name} successfully"
         except Exception as e:
             return f"Error executing functional prompt: {str(e)}"
 
     def broadcast_fp(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Execute broadcast_fp functional prompt with leaf selection by number."""
+        """Execute functional prompts on all leaf nodes."""
         try:
-            # Use the utility function to find leaves
+            # Find all leaves using the imported function
             leaves = find_leaves(bot.conversation)
             if not leaves:
                 return "No leaves found from current node"
-            print(f"\nFound {len(leaves)} leaf nodes:")
-            for i, leaf in enumerate(leaves, 1):
-                depth = 0
-                current = leaf
-                # Calculate depth safely, handling mock objects
-                while hasattr(current, "parent") and current.parent and not current.parent._is_empty():
-                    depth += 1
-                    current = current.parent
-                preview = leaf.content[:50] + "..." if len(leaf.content) > 50 else leaf.content
-                print(f"  {i}. [depth {depth}]: {preview}")
-            leaf_input = input("\nSelect leaves (comma-separated numbers or 'all'): ").strip()
-            if leaf_input.lower() == "all":
-                target_leaves = leaves
-            else:
-                try:
-                    indices = [int(x.strip()) - 1 for x in leaf_input.split(",")]
-                    if not all(0 <= i < len(leaves) for i in indices):
-                        return "Invalid leaf selection format. Use numbers separated by commas (e.g., '1,3,5') or 'all'"
-                    target_leaves = [leaves[i] for i in indices]
-                except (ValueError, IndexError):
-                    return "Invalid leaf selection format. Use numbers separated by commas (e.g., '1,3,5') or 'all'"
-            print(f"\nSelected {len(target_leaves)} leaves for broadcast")
-            fp_options = [
-                ("single_prompt", fp.single_prompt),
-                ("chain", fp.chain),
-                ("branch", fp.branch),
-                ("tree_of_thought", fp.tree_of_thought),
-                ("prompt_while", fp.prompt_while),
-                ("chain_while", fp.chain_while),
-                ("branch_while", fp.branch_while),
-                ("par_branch", fp.par_branch),
-                ("par_branch_while", fp.par_branch_while),
-            ]
+
+            # Get skip labels if provided
+            skip_labels = []
+            if args and args[0] == "--skip":
+                skip_labels = args[1:]
+
+            # Filter leaves by skip labels
+            target_leaves = []
+            for leaf in leaves:
+                should_skip = False
+                if hasattr(leaf, "labels"):
+                    for label in leaf.labels:
+                        if label in skip_labels:
+                            should_skip = True
+                            break
+                if not should_skip:
+                    target_leaves.append(leaf)
+
+            if not target_leaves:
+                return "No leaves remaining after filtering by skip labels"
+
+            print(f"\nFound {len(target_leaves)} leaf nodes to broadcast to")
+
+            # Show available functional prompts
             print("\nAvailable functional prompts:")
+            fp_options = list(self.fp_functions.items())
             for i, (name, _) in enumerate(fp_options, 1):
                 print(f"  {i}. {name}")
+
+            # Get user selection
             fp_choice = input("\nSelect functional prompt (number or name): ").strip()
             selected_fp = None
             if fp_choice.isdigit():
@@ -454,11 +398,32 @@ class DynamicFunctionalPromptHandler:
             params = self.collector.collect_parameters(fp_func)
             if params is None:
                 return "Parameter collection cancelled"
+
+            # Pop the callback type and select appropriate callback
+            _callback_type = params.pop("_callback_type", "list")
+
+            # Check if the function accepts a callback parameter
+            sig = inspect.signature(fp_func)
+            accepts_callback = "callback" in sig.parameters
+
+            if accepts_callback:
+                if _callback_type == "single":
+                    callback = context.callbacks.get_single_callback()
+                else:
+                    callback = context.callbacks.get_standard_callback()
+            else:
+                callback = None
+
             print(f"\nBroadcasting {fp_name} to {len(target_leaves)} leaves...")
-            callback = context.callbacks.get_standard_callback()
-            responses, nodes = fp.broadcast_fp(
-                bot=bot, leaves=target_leaves, functional_prompt=fp_func, callback=callback, **params
-            )
+
+            # Call broadcast_fp with cleaned params
+            if callback is not None:
+                responses, nodes = fp.broadcast_fp(
+                    bot=bot, leaves=target_leaves, functional_prompt=fp_func, callback=callback, **params
+                )
+            else:
+                responses, nodes = fp.broadcast_fp(bot=bot, leaves=target_leaves, functional_prompt=fp_func, **params)
+
             print(f"\nBroadcast complete! Generated {len(responses)} responses")
             for i, response in enumerate(responses, 1):
                 if response:

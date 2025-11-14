@@ -4,7 +4,6 @@ State management handler for CLI.
 This module handles bot save/load operations and label rebuilding.
 """
 
-import glob
 import os
 from typing import TYPE_CHECKING, List
 
@@ -36,52 +35,31 @@ class StateHandler:
         except Exception as e:
             return f"Error saving bot: {str(e)}"
 
-    def load(self, bot: "Bot", context: "CLIContext", args: List[str]) -> str:
-        """Load bot state."""
+    def load(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Load a bot from file."""
         try:
-            # Display all .bot files in current directory
-            bot_files = glob.glob("*.bot")
-
-            if bot_files:
-                print("\nAvailable .bot files:")
-                for i, filename in enumerate(bot_files, 1):
-                    print(f"  {i}. {filename}")
-                print()
+            if not args:
+                filename = input("Enter filename to load: ").strip()
             else:
-                print("\nNo .bot files found in current directory.")
-
-            try:
-                filename = input_with_esc("Load filename (or number from list): ").strip()
-            except EscapeException:
-                return "Load cancelled"
+                filename = " ".join(args)
             if not filename:
-                return "Load cancelled - no filename provided"
-
-            # Check if input is a number referring to the list
-            if filename.isdigit() and bot_files:
-                file_index = int(filename) - 1
-                if 0 <= file_index < len(bot_files):
-                    filename = bot_files[file_index]
-                else:
-                    return f"Invalid selection. Must be between 1 and " f"{len(bot_files)}"
-
-            return self._load_bot_from_file(filename, context)
+                return "No filename provided"
+            filename = self._load_bot_from_file(filename, context)
+            if filename.startswith("Error") or filename.startswith("File not found"):
+                return filename
+            return f"Bot loaded from {filename}"
         except Exception as e:
             return f"Error loading bot: {str(e)}"
 
-    def _load_bot_from_file(self, filename: str, context: "CLIContext") -> str:
-        """Load bot from file and update context.
-
-        Used by both interactive load and CLI args.
-        """
+    def _load_bot_from_file(self, filename: str, context: CLIContext) -> str:
+        """Load bot from file and set up context."""
         try:
+            if not filename.endswith(".bot"):
+                filename += ".bot"
             if not os.path.exists(filename):
-                if not filename.endswith(".bot"):
-                    filename_with_ext = filename + ".bot"
-                    if os.path.exists(filename_with_ext):
-                        filename = filename_with_ext
-                    else:
-                        return f"File not found: {filename}"
+                # Try in current directory
+                if os.path.exists(os.path.join(".", filename)):
+                    filename = os.path.join(".", filename)
                 else:
                     return f"File not found: {filename}"
             new_bot = BotClass.load(filename)
@@ -93,9 +71,16 @@ class StateHandler:
 
             context.bot_instance = new_bot
             context.labeled_nodes = {}
-            self._rebuild_labels(new_bot.conversation, context)
+
+            # Find the root of the conversation tree
+            root_node = new_bot.conversation
+            while root_node.parent:
+                root_node = root_node.parent
+
+            # Rebuild labels from the entire tree starting at root
+            self._rebuild_labels(root_node, context)
             context.cached_leaves = []
-            return f"Bot loaded from {filename}. Conversation restored to " f"most recent message."
+            return filename
         except Exception as e:
             return f"Error loading bot: {str(e)}"
 

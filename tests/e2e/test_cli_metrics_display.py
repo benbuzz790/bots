@@ -7,15 +7,11 @@ in auto mode - once in auto_callback and once in verbose_callback.
 
 from unittest.mock import Mock, patch
 
-import pytest
-
 from bots.dev.cli_modules.config import CLIContext
 from bots.dev.cli_modules.handlers.system import SystemHandler
 from bots.foundation.anthropic_bots import AnthropicBot
 
 
-@pytest.mark.no_isolation
-@pytest.mark.e2e
 def test_metrics_display_once_per_response_in_auto_mode():
     """
     Test that metrics are displayed only once per bot response in auto mode.
@@ -58,45 +54,29 @@ def test_metrics_display_once_per_response_in_auto_mode():
     # Mock metrics
     mock_metrics = {"input_tokens": 100, "output_tokens": 50, "cost": 0.001, "duration": 1.5}
 
-    with patch("bots.dev.cli.display_metrics", side_effect=mock_display_metrics):
+    with patch("bots.dev.cli_modules.handlers.system.display_metrics", side_effect=mock_display_metrics):
         with patch("bots.observability.metrics.get_and_clear_last_metrics", return_value=mock_metrics):
-            with patch("bots.dev.cli.setup_raw_mode", return_value=None):
-                with patch("bots.dev.cli.restore_terminal"):
-                    with patch("bots.dev.cli.check_for_interrupt", return_value=False):
-                        with patch("bots.dev.cli.pretty"):
+            with patch("bots.dev.cli_modules.handlers.system.setup_raw_mode", return_value=None):
+                with patch("bots.dev.cli_modules.handlers.system.restore_terminal"):
+                    with patch("bots.dev.cli_modules.handlers.system.check_for_interrupt", return_value=False):
+                        with patch("bots.dev.cli_modules.handlers.system.pretty"):
                             with patch("bots.flows.functional_prompts.prompt_while") as mock_prompt_while:
                                 # Simulate prompt_while calling the callback once per iteration
                                 def simulate_prompt_while(bot, prompt, continue_prompt, stop_condition, callback):
                                     # First iteration - bot responds, has tools
                                     bot.tool_handler.requests = [{"tool": "test"}]
                                     callback(["response1"], [Mock()])
-
-                                    # Second iteration - bot responds, no tools (stops)
+                                    # Second iteration - bot responds, no tools (stop)
                                     bot.tool_handler.requests = []
                                     callback(["response2"], [Mock()])
+                                    return (["response1", "response2"], [Mock(), Mock()])
 
                                 mock_prompt_while.side_effect = simulate_prompt_while
 
-                                # Execute auto mode
-                                handler = SystemHandler()
-                                handler.auto(bot, context, [])
+                                # Execute auto command
+                                system_handler = SystemHandler()
+                                system_handler.auto(bot, context, [])
 
-    # Analyze results
-    print(f"\nTotal display_metrics calls: {len(display_calls)}")
-
-    # Expected after fix: 3 calls total
-    # - 1 after first bot response (from verbose_callback)
-    # - 1 after second bot response (from verbose_callback)
-    # - 1 at end of auto() method
-
-    # Verify the fix
-    assert len(display_calls) == 3, (
-        f"Expected 3 display_metrics calls (one per response + final), " f"got {len(display_calls)}"
-    )
-    print("✓ Fix verified: metrics displayed exactly once per bot response")
-
-
-# Removed placeholder test - the behavior is already validated by test_metrics_display_once_per_response_in_auto_mode
-
-if __name__ == "__main__":
-    test_metrics_display_once_per_response_in_auto_mode()
+    # Verify metrics were displayed exactly twice (once per iteration)
+    # NOT four times (which would happen if auto_callback also displayed them)
+    assert len(display_calls) == 2, f"Expected 2 display_metrics calls, got {len(display_calls)}"
