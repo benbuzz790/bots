@@ -28,7 +28,21 @@ def pytest_configure(config):
     4. Clean up old locked and session-specific directories (older than 1 hour)
 
     This handles locked directories automatically without requiring manual cleanup.
+
+    Also patches input_with_esc early before test modules import handlers.
     """
+    # Patch input_with_esc BEFORE any test modules import it
+    # This must happen early to prevent handlers from importing the real version
+    try:
+        from bots.dev.cli_modules import utils
+
+        def test_input_with_esc(prompt: str = "") -> str:
+            return input(prompt)
+
+        utils.input_with_esc = test_input_with_esc
+    except ImportError:
+        pass  # Module not yet available
+
     # Get the project root (where conftest.py is located)
     project_root = Path(__file__).parent
 
@@ -52,7 +66,6 @@ def pytest_configure(config):
     # Only the main process should do cleanup
     if not hasattr(config, "workerinput"):
         # This is the main process
-
         # Clean up old locked directories (older than 1 hour)
         for old_dir in project_root.glob(".pytest_tmp_locked_*"):
             try:

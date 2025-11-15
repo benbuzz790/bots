@@ -11,6 +11,12 @@ import pytest
 
 import bots.dev.cli as cli_module
 import bots.flows.functional_prompts as fp
+from bots.dev.cli_modules.handlers.functional_prompts import (
+    DynamicFunctionalPromptHandler,
+    DynamicParameterCollector,
+)
+
+pytestmark = [pytest.mark.e2e]
 
 pytestmark = [pytest.mark.e2e]
 
@@ -374,8 +380,8 @@ class TestFunctionalPromptUsability(DetailedTestCase):
 
     def setUp(self):
         """Set up test fixtures for parameter collection testing."""
-        self.collector = cli_module.DynamicParameterCollector()
-        self.handler = cli_module.DynamicFunctionalPromptHandler()
+        self.collector = DynamicParameterCollector()
+        self.handler = DynamicFunctionalPromptHandler()
 
         # Set up mock bot for tests that need it
         self.mock_bot = MagicMock()
@@ -383,11 +389,6 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         self.mock_bot.conversation = MagicMock()
         self.mock_bot.conversation.content = "Test response"
         self.mock_bot.tool_handler = MagicMock()
-        self.mock_bot.tool_handler.requests = []
-        self.mock_bot.tool_handler.results = []
-        self.mock_bot.tool_handler.clear = MagicMock()
-        self.context = cli_module.CLIContext()
-        self.context.bot_instance = self.mock_bot
 
     def test_fully_usable_chain_function(self):
         """âœ… Demonstrate that chain() is fully usable through CLI."""
