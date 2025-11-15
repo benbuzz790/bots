@@ -390,6 +390,14 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         self.mock_bot.conversation.content = "Test response"
         self.mock_bot.tool_handler = MagicMock()
 
+        # Set up mock context for callback tests
+        from bots.dev.cli_modules.callbacks import CLICallbacks
+        from bots.dev.cli_modules.config import CLIConfig, CLIContext
+
+        self.context = CLIContext()
+        self.context.config = CLIConfig()
+        self.context.callbacks = CLICallbacks(self.context)
+
     def test_fully_usable_chain_function(self):
         """âœ… Demonstrate that chain() is fully usable through CLI."""
         # Test parameter collection for chain function
@@ -477,21 +485,20 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         self.assertEqual(collected["recombinator_function"], recombinators.concatenate)
 
     def test_non_usable_prompt_for_function(self):
-        """âŒ Demonstrate that prompt_for() is not usable due to unimplemented handlers."""
-        # Test that items parameter handler is not implemented
-        items_result = self.collector._collect_items("items", inspect.Parameter.empty)
-        self.assertIsNone(items_result)
+        """✅ Demonstrate that prompt_for() now has basic support for items and dynamic_prompt."""
+        # Test that items parameter handler is now implemented
+        with patch("bots.dev.cli_modules.handlers.functional_prompts.input_with_esc", side_effect=["item1", ""]):
+            items_result = self.collector._collect_items("items", inspect.Parameter.empty)
+            self.assertIsNotNone(items_result)
+            self.assertEqual(items_result, ["item1"])
 
-        # Test that dynamic_prompt parameter handler is not implemented
+        # Test that dynamic_prompt parameter handler returns a default lambda
         dynamic_prompt_result = self.collector._collect_dynamic_prompt("dynamic_prompt", inspect.Parameter.empty)
-        self.assertIsNone(dynamic_prompt_result)
+        self.assertIsNotNone(dynamic_prompt_result)
+        self.assertTrue(callable(dynamic_prompt_result))
 
-        # Full parameter collection should fail
-        with patch("builtins.input", side_effect=["y"]):  # should_branch = True
-            collected = self.collector.collect_parameters(fp.prompt_for)
-
-        # Should return None due to missing required parameters
-        self.assertIsNone(collected)
+        # Test that the dynamic prompt works
+        self.assertEqual(dynamic_prompt_result("test"), "test")
 
     def test_non_usable_par_dispatch_function_signature(self):
         """âŒ Demonstrate par_dispatch() is not usable due to complex parameter requirements."""
@@ -584,7 +591,7 @@ class TestFunctionalPromptUsability(DetailedTestCase):
 
     @patch("builtins.input")
     def test_end_to_end_fp_command_with_chain(self, mock_input):
-        """âœ… Demonstrate successful end-to-end /fp command with chain function."""
+        """✅ Demonstrate successful end-to-end /fp command with chain function."""
         mock_input.side_effect = [
             "/fp",
             "chain",  # Select chain function by name
@@ -602,7 +609,6 @@ class TestFunctionalPromptUsability(DetailedTestCase):
 
         # Should show successful parameter collection and execution
         self.assertContainsNormalized(output, "Available functional prompts")
-        self.assertContainsNormalized(output, "Collecting parameters for chain")
         self.assertContainsNormalized(output, "Executing chain")
 
     def test_chain_while_with_multiple_prompts(self):

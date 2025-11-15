@@ -23,6 +23,13 @@ class DynamicParameterCollector:
 
     def __init__(self, function_filter: Optional[Callable[[str, Callable], bool]] = None):
         self.function_filter = function_filter
+        self.conditions = {
+            "1": ("tool_used", fp.conditions.tool_used),
+            "2": ("tool_not_used", fp.conditions.tool_not_used),
+            "3": ("said_DONE", fp.conditions.said_DONE),
+            "4": ("said_READY", fp.conditions.said_READY),
+            "5": ("error_in_response", fp.conditions.error_in_response),
+        }
 
     def _format_default_value(self, default: Any) -> str:
         """Format default value for display."""
