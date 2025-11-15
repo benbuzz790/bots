@@ -1,7 +1,7 @@
 import unittest
 
 import bots.flows.functional_prompts as fp
-from bots.dev.cli import DynamicFunctionalPromptHandler
+from bots.dev.cli_modules.handlers.functional_prompts import DynamicFunctionalPromptHandler
 from bots.dev.decorators import debug_on_error
 
 

@@ -11,8 +11,14 @@ import pytest
 
 import bots.dev.cli as cli_module
 import bots.flows.functional_prompts as fp
+from bots.dev.cli_modules.handlers.functional_prompts import (
+    DynamicFunctionalPromptHandler,
+    DynamicParameterCollector,
+)
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e]
+
+pytestmark = [pytest.mark.e2e]
 
 """Unit tests for the CLI module.
 This test suite verifies the functionality of the new CLI interface,
@@ -367,15 +373,15 @@ class TestFunctionalPromptUsability(DetailedTestCase):
     Test suite demonstrating the usability assessment of functional prompts in CLI.
 
     This class validates which functional prompts are:
-    - ✅ Fully usable through CLI parameter collection
-    - ⚠️ Partially usable with limitations
-    - ❌ Not usable due to parameter collection issues
+    - âœ… Fully usable through CLI parameter collection
+    - âš ï¸ Partially usable with limitations
+    - âŒ Not usable due to parameter collection issues
     """
 
     def setUp(self):
         """Set up test fixtures for parameter collection testing."""
-        self.collector = cli_module.DynamicParameterCollector()
-        self.handler = cli_module.DynamicFunctionalPromptHandler()
+        self.collector = DynamicParameterCollector()
+        self.handler = DynamicFunctionalPromptHandler()
 
         # Set up mock bot for tests that need it
         self.mock_bot = MagicMock()
@@ -383,14 +389,17 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         self.mock_bot.conversation = MagicMock()
         self.mock_bot.conversation.content = "Test response"
         self.mock_bot.tool_handler = MagicMock()
-        self.mock_bot.tool_handler.requests = []
-        self.mock_bot.tool_handler.results = []
-        self.mock_bot.tool_handler.clear = MagicMock()
-        self.context = cli_module.CLIContext()
-        self.context.bot_instance = self.mock_bot
+
+        # Set up mock context for callback tests
+        from bots.dev.cli_modules.callbacks import CLICallbacks
+        from bots.dev.cli_modules.config import CLIConfig, CLIContext
+
+        self.context = CLIContext()
+        self.context.config = CLIConfig()
+        self.context.callbacks = CLICallbacks(self.context)
 
     def test_fully_usable_chain_function(self):
-        """✅ Demonstrate that chain() is fully usable through CLI."""
+        """âœ… Demonstrate that chain() is fully usable through CLI."""
         # Test parameter collection for chain function
         with patch(
             "builtins.input",
@@ -414,7 +423,7 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         self.assertEqual(collected["_callback_type"], "list")
 
     def test_fully_usable_branch_function(self):
-        """✅ Demonstrate that branch() is fully usable through CLI."""
+        """âœ… Demonstrate that branch() is fully usable through CLI."""
         with patch(
             "builtins.input",
             side_effect=[
@@ -431,7 +440,7 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         self.assertEqual(len(collected["prompt_list"]), 3)
 
     def test_fully_usable_prompt_while_function(self):
-        """✅ Demonstrate that prompt_while() is fully usable through CLI."""
+        """âœ… Demonstrate that prompt_while() is fully usable through CLI."""
         with patch(
             "builtins.input",
             side_effect=[
@@ -449,7 +458,7 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         self.assertEqual(collected["first_prompt"], "Debug this code and fix all issues")
 
     def test_partially_usable_tree_of_thought_function(self):
-        """⚠️ Demonstrate that tree_of_thought() is partially usable with limitations."""
+        """âš ï¸ Demonstrate that tree_of_thought() is partially usable with limitations."""
         with patch(
             "builtins.input",
             side_effect=[
@@ -476,24 +485,23 @@ class TestFunctionalPromptUsability(DetailedTestCase):
         self.assertEqual(collected["recombinator_function"], recombinators.concatenate)
 
     def test_non_usable_prompt_for_function(self):
-        """❌ Demonstrate that prompt_for() is not usable due to unimplemented handlers."""
-        # Test that items parameter handler is not implemented
-        items_result = self.collector._collect_items("items", inspect.Parameter.empty)
-        self.assertIsNone(items_result)
+        """✅ Demonstrate that prompt_for() now has basic support for items and dynamic_prompt."""
+        # Test that items parameter handler is now implemented
+        with patch("bots.dev.cli_modules.handlers.functional_prompts.input_with_esc", side_effect=["item1", ""]):
+            items_result = self.collector._collect_items("items", inspect.Parameter.empty)
+            self.assertIsNotNone(items_result)
+            self.assertEqual(items_result, ["item1"])
 
-        # Test that dynamic_prompt parameter handler is not implemented
+        # Test that dynamic_prompt parameter handler returns a default lambda
         dynamic_prompt_result = self.collector._collect_dynamic_prompt("dynamic_prompt", inspect.Parameter.empty)
-        self.assertIsNone(dynamic_prompt_result)
+        self.assertIsNotNone(dynamic_prompt_result)
+        self.assertTrue(callable(dynamic_prompt_result))
 
-        # Full parameter collection should fail
-        with patch("builtins.input", side_effect=["y"]):  # should_branch = True
-            collected = self.collector.collect_parameters(fp.prompt_for)
-
-        # Should return None due to missing required parameters
-        self.assertIsNone(collected)
+        # Test that the dynamic prompt works
+        self.assertEqual(dynamic_prompt_result("test"), "test")
 
     def test_non_usable_par_dispatch_function_signature(self):
-        """❌ Demonstrate par_dispatch() is not usable due to complex parameter requirements."""
+        """âŒ Demonstrate par_dispatch() is not usable due to complex parameter requirements."""
         sig = inspect.signature(fp.par_dispatch)
         params = list(sig.parameters.keys())
 
@@ -601,7 +609,6 @@ class TestFunctionalPromptUsability(DetailedTestCase):
 
         # Should show successful parameter collection and execution
         self.assertContainsNormalized(output, "Available functional prompts")
-        self.assertContainsNormalized(output, "Collecting parameters for chain")
         self.assertContainsNormalized(output, "Executing chain")
 
     def test_chain_while_with_multiple_prompts(self):

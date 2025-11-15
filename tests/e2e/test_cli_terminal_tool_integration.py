@@ -13,7 +13,7 @@ import bots.dev.cli as cli_module
 import bots.tools.terminal_tools
 from bots import AnthropicBot
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e]
 
 # Add the parent directory to the path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -139,12 +139,12 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
 
         # Check for timeout pattern
         if self.command_duration > 60:
-            print("ðŸš¨ TIMEOUT DETECTED - This matches the original issue!")
+            print("Ã°Å¸Å¡Â¨ TIMEOUT DETECTED - This matches the original issue!")
             self.timeout_occurred = True
         # Look for timeout indicators in output
         timeout_found = "timeout" in output.lower() or "timed out" in output.lower()
         if timeout_found:
-            print("ðŸš¨ TIMEOUT MESSAGE FOUND in output")
+            print("Ã°Å¸Å¡Â¨ TIMEOUT MESSAGE FOUND in output")
         # Check if file was created despite timeout
         if os.path.exists("test_script.py"):
             print("File created successfully")
@@ -189,17 +189,17 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
 
         # This is the most likely to reproduce the original timeout
         if self.command_duration > 60:
-            print("ðŸš¨ COMPLEX FILE TIMEOUT - Reproduced the issue!")
+            print("Ã°Å¸Å¡Â¨ COMPLEX FILE TIMEOUT - Reproduced the issue!")
             self.timeout_occurred = True
         # Analyze what the bot actually tried to do
         if "function_calls" in output.lower():
-            print("âœ… Bot attempted to use tools")
+            print("Ã¢Å“â€¦ Bot attempted to use tools")
         if "@'" in output or "'@" in output:
-            print("ðŸŽ¯ Bot used here-strings (potential timeout trigger)")
+            print("Ã°Å¸Å½Â¯ Bot used here-strings (potential timeout trigger)")
         if "out-file" in output.lower():
-            print("ðŸŽ¯ Bot used Out-File command")
+            print("Ã°Å¸Å½Â¯ Bot used Out-File command")
         if "encoding utf8" in output.lower():
-            print("ðŸŽ¯ Bot used UTF8 encoding parameter")
+            print("Ã°Å¸Å½Â¯ Bot used UTF8 encoding parameter")
 
     # Bad test
     # @patch("builtins.input")
@@ -228,17 +228,20 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
     #         print(f"Prompt: {prompt[:60]}...")
     #         print(f"Duration: {duration:.2f} seconds")
     #         if duration > 60:
-    #             print(f"ðŸš¨ TIMEOUT at test case {i+1}")
+    #             print(f"Ã°Å¸Å¡Â¨ TIMEOUT at test case {i+1}")
     #             print(f"Breaking point prompt: {prompt}")
     #             break
     #         else:
-    #             print(f"âœ… Test case {i+1} completed successfully")
+    #             print(f"Ã¢Å“â€¦ Test case {i+1} completed successfully")
 
     @patch("builtins.input")
     def test_bot_tool_usage_analysis(self, mock_input):
         """Analyze exactly what terminal tool commands the bot generates."""
         mock_input.side_effect = [
-            "Show me how to create a Python file with subprocess imports " "using PowerShell, but explain your approach first",
+            (
+                "Show me how to create a Python file with subprocess imports "
+                + "using PowerShell, but explain your approach first"
+            ),
             "/exit",
         ]
         start_time = time.time()
@@ -255,7 +258,7 @@ class TestCLIRealTerminalTimeouts(DetailedTestCase):
         print(f"Full output:\n{output}")
         # Extract and analyze the actual PowerShell commands the bot tries to use
         if "execute_powershell" in output:
-            print("ðŸ” Bot used execute_powershell tool")
+            print("Ã°Å¸â€Â Bot used execute_powershell tool")
             # Try to extract the command parameter
             lines = output.split("\n")
             for i, line in enumerate(lines):

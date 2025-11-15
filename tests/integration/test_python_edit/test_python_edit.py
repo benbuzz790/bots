@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import os
 import tempfile
 from textwrap import dedent
@@ -182,7 +182,8 @@ def test_empty_file(tmp_path):
 def test_multiline_imports(test_file):
     """Test handling multiline import statements"""
     new_code = (
-        "\n    from typing import (\n        List,\n        Dict,\n        Optional,\n        Union\n    )\n\n    x = 42\n    "
+        "\n    from typing import (\n        List,\n        Dict,\n"
+        "        Optional,\n        Union\n    )\n\n    x = 42\n    "
     )
     _ = python_edit(test_file, new_code)
     with open(test_file) as f:
@@ -724,18 +725,17 @@ def test_insert_after_simple_name_in_scope(tmp_path):
     """
     test_file = setup_test_file(tmp_path, content)
     # Insert after 'process' method using simple name
-    result = python_edit(
-        f"{test_file}::TestClass", "    def validate(self):\n        return self.data is not None", coscope_with="process"
-    )
+    new_method = "    def validate(self):\n        return self.data is not None"
+    result = python_edit(f"{test_file}::TestClass", new_method, coscope_with="process")
     assert "inserted after" in result
     with open(test_file) as f:
         final_content = f.read()
     assert "def validate" in final_content
     # Verify it's between process and cleanup
-    process_pos = final_content.find("def process")
-    validate_pos = final_content.find("def validate")
-    cleanup_pos = final_content.find("def cleanup")
-    assert process_pos < validate_pos < cleanup_pos
+    process_idx = final_content.index("def process")
+    validate_idx = final_content.index("def validate")
+    cleanup_idx = final_content.index("def cleanup")
+    assert process_idx < validate_idx < cleanup_idx
 
 
 def test_insert_after_function_in_function(tmp_path):

@@ -28,7 +28,21 @@ def pytest_configure(config):
     4. Clean up old locked and session-specific directories (older than 1 hour)
 
     This handles locked directories automatically without requiring manual cleanup.
+
+    Also patches input_with_esc early before test modules import handlers.
     """
+    # Patch input_with_esc BEFORE any test modules import it
+    # This must happen early to prevent handlers from importing the real version
+    try:
+        from bots.dev.cli_modules import utils
+
+        def test_input_with_esc(prompt: str = "") -> str:
+            return input(prompt)
+
+        utils.input_with_esc = test_input_with_esc
+    except ImportError:
+        pass  # Module not yet available
+
     # Get the project root (where conftest.py is located)
     project_root = Path(__file__).parent
 
@@ -52,7 +66,6 @@ def pytest_configure(config):
     # Only the main process should do cleanup
     if not hasattr(config, "workerinput"):
         # This is the main process
-
         # Clean up old locked directories (older than 1 hour)
         for old_dir in project_root.glob(".pytest_tmp_locked_*"):
             try:
@@ -158,24 +171,8 @@ def cleanup_session():
     cleanup_test_artifacts()
 
 
-@pytest.fixture(autouse=True)
-def patch_input_with_esc_for_tests(monkeypatch):
-    """Automatically patch input_with_esc to use builtins.input in tests.
-
-    This prevents tests from hanging when they mock builtins.input, since
-    input_with_esc() uses platform-specific keyboard input that doesn't
-    call builtins.input.
-
-    This fixture runs automatically for all tests.
-    """
-    from bots.dev import cli
-
-    # Replace input_with_esc with standard input for test compatibility
-    def test_input_with_esc(prompt: str = "") -> str:
-        return input(prompt)
-
-    monkeypatch.setattr(cli, "input_with_esc", test_input_with_esc)
-    yield
+# Removed - patching now happens in pytest_configure() before imports
+# This fixture was causing conflicts with the early patching
 
 
 @pytest.fixture
