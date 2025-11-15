@@ -171,33 +171,8 @@ def cleanup_session():
     cleanup_test_artifacts()
 
 
-@pytest.fixture(autouse=True)
-def patch_input_with_esc_for_tests(monkeypatch):
-    """Automatically patch input_with_esc to use builtins.input in tests.
-
-    This prevents tests from hanging when they mock builtins.input, since
-    input_with_esc() uses platform-specific keyboard input that doesn't
-    call builtins.input.
-
-    This fixture runs automatically for all tests and patches input_with_esc
-    in all modules that import it (utils and all handler modules).
-    """
-    from bots.dev.cli_modules import utils
-    from bots.dev.cli_modules.handlers import conversation, prompts, state
-
-    # Replace input_with_esc with standard input for test compatibility
-    def test_input_with_esc(prompt: str = "") -> str:
-        return input(prompt)
-
-    # Patch in utils module (source)
-    monkeypatch.setattr(utils, "input_with_esc", test_input_with_esc)
-
-    # Patch in all handler modules that import it
-    monkeypatch.setattr(conversation, "input_with_esc", test_input_with_esc)
-    monkeypatch.setattr(prompts, "input_with_esc", test_input_with_esc)
-    monkeypatch.setattr(state, "input_with_esc", test_input_with_esc)
-
-    yield
+# Removed - patching now happens in pytest_configure() before imports
+# This fixture was causing conflicts with the early patching
 
 
 @pytest.fixture
