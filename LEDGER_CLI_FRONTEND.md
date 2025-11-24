@@ -21,12 +21,12 @@
 ## Phase 2: StateHandler
 **Goal**: Prove the pattern with one handler class
 ### Tasks
-- [ ] Refactor StateHandler.save() to return data dict
-- [ ] Refactor StateHandler.load() to return data dict
-- [ ] Update CLI._handle_command() to use frontend for display
-- [ ] Write tests for StateHandler data format
-- [ ] Write integration tests with mock frontend
-- [ ] Verify all existing tests pass
+- [x] Refactor StateHandler.save() to return data dict
+- [x] Refactor StateHandler.load() to return data dict
+- [x] Update CLI._handle_command() to use frontend for display
+- [x] Write tests for StateHandler data format
+- [x] Write integration tests with mock frontend
+- [x] Verify all existing tests pass
 ### Notes
 - Created CLIFrontend abstract base class with all required methods
 - Implemented TerminalFrontend with current pretty() behavior
