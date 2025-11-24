@@ -50,11 +50,17 @@
 ## Phase 4: SystemHandler
 **Goal**: Handle config and system commands
 ### Tasks
-- [ ] Refactor SystemHandler methods to return data
-- [ ] Remove display logic from SystemHandler
-- [ ] Update tests for SystemHandler
-- [ ] Verify system commands work identically
+- [x] Refactor SystemHandler methods to return data
+- [x] Remove display logic from SystemHandler
+- [x] Update tests for SystemHandler
+- [x] Verify system commands work identically
 ### Notes
+- SystemHandler methods already return strings (no refactoring needed!)
+- Methods: help(), verbose(), quiet(), config(), auto_stash(), load_stash()
+- All 19 tests passing
+- Note: auto() and add_tool() have special interactive cases with pretty() calls
+- These will be handled in Phase 7 cleanup
+- Ready for Phase 5: PromptHandler
 - Created CLIFrontend abstract base class with all required methods
 - Implemented TerminalFrontend with current pretty() behavior
 - All 17 tests passing
