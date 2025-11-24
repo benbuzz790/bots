@@ -726,7 +726,7 @@ def log_errors(func: Callable) -> Callable:
     return wrapper
 
 
-def toolify(description: str = None):
+def toolify(description: str = None, preconditions: list = None, postconditions: list = None):
     """
     Convert any function into a bot tool with string-in, string-out interface.
 
@@ -734,9 +734,16 @@ def toolify(description: str = None):
     - Ensures string output (JSON for complex types)
     - Wraps in error handling (returns error strings, never raises)
     - Enhances docstring if description provided
+    - Validates preconditions and postconditions before execution
 
     Args:
         description (str, optional): Override the function's docstring
+        preconditions (list, optional): List of contract functions to check before execution
+        postconditions (list, optional): List of contract functions to check before execution
+            (despite the name, these run before execution to validate the operation)
+
+    Contract functions should have signature: (*args, **kwargs) -> tuple[bool, str]
+    They can also raise exceptions which will be caught and converted to error messages.
 
     Example:
         @toolify()
@@ -746,6 +753,15 @@ def toolify(description: str = None):
         @toolify("Calculate the area of a circle")
         def area(radius: float) -> float:
             return 3.14159 * radius * radius
+
+        def check_positive(x: int, y: int) -> tuple[bool, str]:
+            if x > 0 and y > 0:
+                return True, ""
+            return False, "Both numbers must be positive"
+
+        @toolify(preconditions=[check_positive])
+        def add_positive(x: int, y: int) -> int:
+            return x + y
     """
 
     def decorator(func):
@@ -754,6 +770,46 @@ def toolify(description: str = None):
             try:
                 # Convert string inputs to proper types using type hints
                 converted_args, converted_kwargs = _convert_tool_inputs(func, args, kwargs)
+
+                # Check preconditions
+                if preconditions:
+                    precondition_errors = []
+                    for contract in preconditions:
+                        try:
+                            is_valid, error_msg = contract(*converted_args, **converted_kwargs)
+                            if not is_valid:
+                                precondition_errors.append(error_msg)
+                        except Exception as e:
+                            # Contract raised an exception - treat as validation failure
+                            from bots.utils.helpers import _process_error
+
+                            return _process_error(e)
+
+                    if precondition_errors:
+                        error_message = "Contract validation failed:\nPreconditions:\n"
+                        for error in precondition_errors:
+                            error_message += f"  - {error}\n"
+                        return error_message.strip()
+
+                # Check postconditions (despite the name, these run before execution)
+                if postconditions:
+                    postcondition_errors = []
+                    for contract in postconditions:
+                        try:
+                            is_valid, error_msg = contract(*converted_args, **converted_kwargs)
+                            if not is_valid:
+                                postcondition_errors.append(error_msg)
+                        except Exception as e:
+                            # Contract raised an exception - treat as validation failure
+                            from bots.utils.helpers import _process_error
+
+                            return _process_error(e)
+
+                    if postcondition_errors:
+                        error_message = "Contract validation failed:\nPostconditions:\n"
+                        for error in postcondition_errors:
+                            error_message += f"  - {error}\n"
+                        return error_message.strip()
 
                 # Call original function
                 result = func(*converted_args, **converted_kwargs)
@@ -776,8 +832,10 @@ def toolify(description: str = None):
                     # Add special message for output token limitation
                     enhanced_error = TypeError(
                         f"{error_msg}\n\n"
-                        f"⚠️  This error is commonly caused by hitting the max_tokens limit before completing the tool call.\n"
-                        f"The response was truncated mid-parameter, making it appear that required parameters are missing.\n"
+                        f"⚠️  This error is commonly caused by hitting the max_tokens limit "
+                        f"before completing the tool call.\n"
+                        f"The response was truncated mid-parameter, making it appear that "
+                        f"required parameters are missing.\n"
                         f"To fix this: Work in SMALLER CHUNKS. Edit fewer lines at a time, "
                         f"or break your task into multiple steps."
                     )
