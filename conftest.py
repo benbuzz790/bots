@@ -74,6 +74,17 @@ def pytest_configure(config):
                 except Exception:
                     pass
 
+def pytest_collection_modifyitems(config, items):
+    """Modify test items to handle serial and cli_serial markers with xdist."""
+    for item in items:
+        # Handle serial marker - assign to same group so they run sequentially
+        if item.get_closest_marker("serial"):
+            item.add_marker(pytest.mark.xdist_group(name="serial"))
+
+        # Handle cli_serial marker - assign to same group so they run sequentially
+        if item.get_closest_marker("cli_serial"):
+            item.add_marker(pytest.mark.xdist_group(name="cli_serial"))
+
 
 def pytest_collection_modifyitems(config, items):
     """Modify test items to handle serial and cli_serial markers with xdist."""
@@ -241,6 +252,16 @@ def pytest_sessionfinish(session, exitstatus):
     # 1. Successfully removes it (if unlocked)
     # 2. Renames it and creates a fresh one (if still locked)
     # Old locked directories are cleaned up after 1 hour.
+def pytest_collection_modifyitems(config, items):
+    """Modify test items to handle serial and cli_serial markers with xdist."""
+    for item in items:
+        # Handle serial marker - assign to same group so they run sequentially
+        if item.get_closest_marker("serial"):
+            item.add_marker(pytest.mark.xdist_group(name="serial"))
+
+        # Handle cli_serial marker - assign to same group so they run sequentially
+        if item.get_closest_marker("cli_serial"):
+            item.add_marker(pytest.mark.xdist_group(name="cli_serial"))
 
 
 @pytest.fixture
