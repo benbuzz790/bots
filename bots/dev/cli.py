@@ -1140,13 +1140,21 @@ class ConversationHandler:
 
     def label(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Show all labels and create new label or jump to existing one."""
-        # If args provided, use that as the label name
-        if args:
-            label = args[0].strip()
-        else:
-            # Need user input - return a request for input
-            # For now, return error if no args
-            return {"type": "error", "content": "Label name required. Usage: /label <name>"}
+        # If no args provided, show all labels
+        if not args:
+            if hasattr(context, "labeled_nodes") and context.labeled_nodes:
+                result = "Existing labels:\n"
+                for label_name, node in context.labeled_nodes.items():
+                    content_preview = node.content[:100] + "..." if len(node.content) > 100 else node.content
+                    result += f"  '{label_name}': {content_preview}\n"
+                result += "\nUse /label <name> to create a new label or jump to an existing one"
+                return {"type": "system", "content": result}
+            else:
+                msg = "No labels saved yet.\n\n" "Use /label <name> to create a label at the current position"
+                return {"type": "system", "content": msg}
+
+        # Args provided - use as label name
+        label = args[0].strip()
 
         if not label:
             return {"type": "system", "content": "No label entered"}
@@ -1157,12 +1165,10 @@ class ConversationHandler:
             context.conversation_backup = bot.conversation
             bot.conversation = context.labeled_nodes[label]
             if not self._ensure_assistant_node(bot):
-                return {
-                    "type": "system",
-                    "content": (
-                        f"Warning: Moved to node labeled '{label}' but ended up on user node with no assistant response"
-                    ),
-                }
+                warning_msg = (
+                    f"Warning: Moved to node labeled '{label}' but ended up on " "user node with no assistant response"
+                )
+                return {"type": "system", "content": warning_msg}
 
             # Return conversation content as message
             if bot.conversation.content:
@@ -1330,23 +1336,23 @@ class ConversationHandler:
 class StateHandler:
     """Handler for bot state management commands."""
 
-    def save(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+    def save(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Save bot state."""
         try:
             try:
                 filename = input_with_esc("Save filename (without extension): ").strip()
             except EscapeException:
-                return "Save cancelled"
+                return {"type": "system", "message": "Save cancelled"}
             if not filename:
-                return "Save cancelled - no filename provided"
+                return {"type": "system", "message": "Save cancelled - no filename provided"}
             if not filename.endswith(".bot"):
                 filename = filename + ".bot"
             bot.save(filename)
-            return f"Bot saved to {filename}"
+            return {"type": "system", "message": f"Bot saved to {filename}"}
         except Exception as e:
-            return f"Error saving bot: {str(e)}"
+            return {"type": "error", "message": f"Error saving bot: {str(e)}"}
 
-    def load(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+    def load(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Load bot state."""
         try:
             # Display all .bot files in current directory
@@ -1365,9 +1371,9 @@ class StateHandler:
             try:
                 filename = input_with_esc("Load filename (or number from list): ").strip()
             except EscapeException:
-                return "Load cancelled"
+                return {"type": "system", "message": "Load cancelled"}
             if not filename:
-                return "Load cancelled - no filename provided"
+                return {"type": "system", "message": "Load cancelled - no filename provided"}
 
             # Check if input is a number referring to the list
             if filename.isdigit() and bot_files:
@@ -1375,13 +1381,14 @@ class StateHandler:
                 if 0 <= file_index < len(bot_files):
                     filename = bot_files[file_index]
                 else:
-                    return f"Invalid selection. Must be between 1 and {len(bot_files)}"
+                    msg = f"Invalid selection. Must be between 1 and {len(bot_files)}"
+                    return {"type": "error", "message": msg}
 
             return self._load_bot_from_file(filename, context)
         except Exception as e:
-            return f"Error loading bot: {str(e)}"
+            return {"type": "error", "message": f"Error loading bot: {str(e)}"}
 
-    def _load_bot_from_file(self, filename: str, context: CLIContext) -> str:
+    def _load_bot_from_file(self, filename: str, context: CLIContext) -> dict:
         """Load bot from file and update context. Used by both interactive load and CLI args."""
         try:
             if not os.path.exists(filename):
@@ -1390,9 +1397,9 @@ class StateHandler:
                     if os.path.exists(filename_with_ext):
                         filename = filename_with_ext
                     else:
-                        return f"File not found: {filename}"
+                        return {"type": "error", "message": f"File not found: {filename}"}
                 else:
-                    return f"File not found: {filename}"
+                    return {"type": "error", "message": f"File not found: {filename}"}
             new_bot = Bot.load(filename)
             while new_bot.conversation.replies:
                 new_bot.conversation = new_bot.conversation.replies[-1]
@@ -1404,9 +1411,10 @@ class StateHandler:
             context.labeled_nodes = {}
             self._rebuild_labels(new_bot.conversation, context)
             context.cached_leaves = []
-            return f"Bot loaded from {filename}. Conversation restored to most recent message."
+            msg = f"Bot loaded from {filename}. Conversation restored to most recent message."
+            return {"type": "system", "message": msg}
         except Exception as e:
-            return f"Error loading bot: {str(e)}"
+            return {"type": "error", "message": f"Error loading bot: {str(e)}"}
 
     def _rebuild_labels(self, node: ConversationNode, context: CLIContext):
         """Recursively rebuild labeled nodes from conversation tree."""
@@ -2563,7 +2571,45 @@ class CLI:
 
                 result = self.commands[command](bot, self.context, args)
                 if result:
-                    pretty(result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
+                    # Handle dict returns from handlers
+                    if isinstance(result, dict):
+                        result_type = result.get("type", "system")
+                        message = result.get("message", result.get("content", str(result)))
+
+                        if result_type == "error":
+                            pretty(
+                                message,
+                                "Error",
+                                self.context.config.width,
+                                self.context.config.indent,
+                                COLOR_ERROR,
+                            )
+                        elif result_type == "message":
+                            role = result.get("role", "assistant")
+                            pretty(
+                                message,
+                                role,
+                                self.context.config.width,
+                                self.context.config.indent,
+                                COLOR_BOT,
+                            )
+                        else:  # system or other
+                            pretty(
+                                message,
+                                "system",
+                                self.context.config.width,
+                                self.context.config.indent,
+                                COLOR_SYSTEM,
+                            )
+                    else:
+                        # String or other return type
+                        pretty(
+                            result,
+                            "system",
+                            self.context.config.width,
+                            self.context.config.indent,
+                            COLOR_SYSTEM,
+                        )
             except Exception as e:
                 pretty(
                     f"Command error: {str(e)}",
@@ -2576,7 +2622,13 @@ class CLI:
                 # Try new backup system first, fall back to old system
                 if self.context.config.auto_restore_on_error and self.context.has_backup():
                     result = self.context.restore_backup()
-                    pretty(result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
+                    pretty(
+                        result,
+                        "system",
+                        self.context.config.width,
+                        self.context.config.indent,
+                        COLOR_SYSTEM,
+                    )
                 elif self.context.conversation_backup and bot:
                     # Fallback to old conversation backup system
                     bot.tool_handler.clear()
