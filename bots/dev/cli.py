@@ -1,4 +1,4 @@
-﻿"""
+"""
 CLI for bot interactions with improved architecture and dynamic parameter collection.
 Architecture:
 - Handler classes for logical command grouping
@@ -2184,7 +2184,8 @@ def display_metrics(context: CLIContext, bot: Bot):
         )  # noqa: E501
 
         # Format the metrics in a single line: [tokens] | $[cost] | [time]s
-        metrics_str = f"{total_tokens:,} | ${last_metrics['cost']:.4f} | " f"{last_metrics['duration']:.2f}s"
+        # Prepend newline to match format_tool_data behavior
+        metrics_str = f"\n{total_tokens:,} | ${last_metrics['cost']:.4f} | {last_metrics['duration']:.2f}s"
 
         # Add session totals on second line
         try:
@@ -2796,9 +2797,7 @@ class PromptHandler:
             # Show preview of content
             preview = content[:80] + "..." if len(content) > 80 else content
             preview = preview.replace("\n", " ")  # Single line preview
-            marker = (
-                "ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢" if i == 1 else " "  # noqa: E501
-            )
+            marker = "→" if i == 1 else " "
             print(f"  {marker} {i}. {name}: {preview}")
 
         if len(matches) > 10:
@@ -2927,40 +2926,70 @@ class PromptHandler:
             return f"Error deleting prompt: {str(e)}"
 
     def recent_prompts(self, bot: "Bot", context: "CLIContext", args: List[str]) -> tuple:
-        """Show recent prompts and optionally select one. Returns (message, prefill_text)."""
-        try:
-            recents = self.prompt_manager.get_recents()
+        """Show recently used prompts with search capability."""
+        recents = self.prompt_manager.get_recents()
 
-            if not recents:
-                return ("No recent prompts.", None)
+        if not recents:
+            return ("No recent prompts found.", None)
 
-            # Show recents
-            print(f"\nRecent prompts ({len(recents)}):")
-            for i, (name, content) in enumerate(recents, 1):
-                preview = content[:100] + "..." if len(content) > 100 else content
-                preview = preview.replace("\n", " ")
-                print(f"  {i}. {name}: {preview}")
+        # Check if user provided a search query
+        query = " ".join(args) if args else None
 
-            # Get selection
+        if query:
+            # Search in recent prompts
+            matches = [
+                (name, content)
+                for name, content, _ in recents
+                if query.lower() in name.lower() or query.lower() in content.lower()
+            ]
+
+            if not matches:
+                return (f"No recent prompts matching '{query}'", None)
+
+            print(f"\nFound {len(matches)} matches (best match first):")
+            for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
+                # Show preview of content
+                preview = content[:80] + "..." if len(content) > 80 else content
+                preview = preview.replace("\n", " ")  # Single line preview
+                marker = "→" if i == 1 else " "
+                print(f"  {marker} {i}. {name}: {preview}")
+
+            if len(matches) > 10:
+                print(f"  ... and {len(matches) - 10} more matches")
+
             try:
-                choice = input(f"\nSelect prompt (1-{len(recents)}, or Enter to cancel): ").strip()
-                if not choice:
-                    return ("Selection cancelled.", None)
+                choice = input_with_esc("\nEnter number to load (or press ESC to cancel): ").strip()
+                if choice.isdigit():
+                    idx = int(choice) - 1
+                    if 0 <= idx < len(matches):
+                        name, content = matches[idx]
+                        return (content, name)
+                return ("Selection cancelled.", None)
+            except EscapeException:
+                return ("Selection cancelled.", None)
+        else:
+            # Show all recent prompts
+            print("\nRecent prompts (most recent first):")
+            for i, (name, _, timestamp) in enumerate(recents[:10], 1):
+                # Format timestamp (time module imported at top of file)
+                time_str = time.strftime("%Y-%m-%d %H:%M", time.localtime(timestamp))
+                marker = "→" if i == 1 else " "
+                print(f"  {marker} {i}. {name} ({time_str})")
 
-                choice_num = int(choice) - 1
-                if choice_num < 0 or choice_num >= len(recents):
-                    return (f"Invalid selection. Must be between 1 and {len(recents)}.", None)
+            if len(recents) > 10:
+                print(f"  ... and {len(recents) - 10} more")
 
-                name, content = recents[choice_num]
-                self.prompt_manager.load_prompt(name)  # Update recency
-
-                return (f"Loaded prompt: {name}", content)
-
-            except ValueError:
-                return ("Invalid selection. Must be a number.", None)
-
-        except Exception as e:
-            return (f"Error loading recent prompts: {str(e)}", None)
+            try:
+                choice = input_with_esc("\nEnter number to load (or press ESC to cancel): ").strip()
+                if choice.isdigit():
+                    idx = int(choice) - 1
+                    if 0 <= idx < len(recents):
+                        name = recents[idx][0]
+                        content = self.prompt_manager.load_prompt(name)
+                        return (content, name)
+                return ("Selection cancelled.", None)
+            except EscapeException:
+                return ("Selection cancelled.", None)
 
 
 def parse_args():
