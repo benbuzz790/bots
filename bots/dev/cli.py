@@ -1,4 +1,4 @@
-"""
+﻿"""
 CLI for bot interactions with improved architecture and dynamic parameter collection.
 Architecture:
 - Handler classes for logical command grouping
@@ -2178,11 +2178,13 @@ def display_metrics(context: CLIContext, bot: Bot):
         if last_metrics["input_tokens"] == 0 and last_metrics["output_tokens"] == 0:
             return
 
-        # Calculate total tokens for this call
-        total_tokens = last_metrics["input_tokens"] + last_metrics["output_tokens"]
+        # Calculate total tokens for this call (including cached tokens)
+        total_tokens = (
+            last_metrics["input_tokens"] + last_metrics["output_tokens"] + last_metrics.get("cached_tokens", 0)
+        )  # noqa: E501
 
         # Format the metrics in a single line: [tokens] | $[cost] | [time]s
-        metrics_str = f"{total_tokens:,} | ${last_metrics['cost']:.4f} | {last_metrics['duration']:.2f}s"
+        metrics_str = f"{total_tokens:,} | ${last_metrics['cost']:.4f} | " f"{last_metrics['duration']:.2f}s"
 
         # Add session totals on second line
         try:
@@ -2195,8 +2197,14 @@ def display_metrics(context: CLIContext, bot: Bot):
             pass
 
         pretty(
-            metrics_str, "metrics", context.config.width, context.config.indent, COLOR_METRICS, newline_after_name=True
-        )  # noqa: E501
+            metrics_str,
+            "metrics",
+            context.config.width,
+            context.config.indent,
+            COLOR_METRICS,
+            newline_after_name=True,
+        )
+        print()  # Add extra newline after metrics
     except Exception:
         pass
 
@@ -2788,7 +2796,9 @@ class PromptHandler:
             # Show preview of content
             preview = content[:80] + "..." if len(content) > 80 else content
             preview = preview.replace("\n", " ")  # Single line preview
-            marker = "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢" if i == 1 else " "
+            marker = (
+                "ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢" if i == 1 else " "  # noqa: E501
+            )
             print(f"  {marker} {i}. {name}: {preview}")
 
         if len(matches) > 10:

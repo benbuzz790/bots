@@ -392,26 +392,24 @@ class AnthropicMailbox(Mailbox):
                             # Extract cache tokens if present
                             cache_creation_tokens = getattr(response.usage, "cache_creation_input_tokens", 0)
                             cache_read_tokens = getattr(response.usage, "cache_read_input_tokens", 0)
-
-                            # Total cached tokens for metrics
-                            total_cached_tokens = cache_creation_tokens + cache_read_tokens
-
-                            # Record token usage (including cached tokens)
+                            # Total input tokens = regular + cache creation + cache read
+                            total_input_tokens = response.usage.input_tokens + cache_creation_tokens + cache_read_tokens
+                            # Record token usage with total input tokens
                             metrics.record_tokens(
-                                response.usage.input_tokens,
+                                total_input_tokens,
                                 response.usage.output_tokens,
                                 provider="anthropic",
                                 model=bot.model_engine.value,
-                                cached_tokens=total_cached_tokens,
+                                cached_tokens=cache_creation_tokens + cache_read_tokens,
                             )
-
-                            # Calculate and record cost (cache_read tokens get discount)
+                            # Calculate and record cost with separate cache token types
                             cost = calculate_cost(
                                 provider="anthropic",
                                 model=bot.model_engine.value,
                                 input_tokens=response.usage.input_tokens,
                                 output_tokens=response.usage.output_tokens,
-                                cached_tokens=cache_read_tokens,  # Only read tokens get discount
+                                cache_creation_tokens=cache_creation_tokens,
+                                cache_read_tokens=cache_read_tokens,
                             )
                             metrics.record_cost(cost, provider="anthropic", model=bot.model_engine.value)
                         except Exception as e:
