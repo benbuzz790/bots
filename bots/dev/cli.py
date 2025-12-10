@@ -182,7 +182,11 @@ COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 def create_auto_stash() -> str:
-    """Create an automatic git stash with AI-generated message based on current diff."""
+    """Create an automatic git stash with AI-generated message based on current diff.
+
+    This creates a checkpoint without hiding your changes - the stash is immediately
+    reapplied so you can continue working normally.
+    """
     import subprocess
 
     from bots.foundation.base import Engines
@@ -230,6 +234,18 @@ def create_auto_stash() -> str:
         )
         if stash_result.returncode != 0:
             return f"Error creating stash: {stash_result.stderr}"
+
+        # Immediately reapply the stash to keep working directory unchanged
+        # This makes it a "quicksave" rather than "put away"
+        apply_result = subprocess.run(
+            ["git", "stash", "apply"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if apply_result.returncode != 0:
+            return f"Stash created but failed to reapply: {apply_result.stderr}"
+
         return f"Auto-stash created: {stash_message}"
     except subprocess.TimeoutExpired:
         return "Git command timed out"
