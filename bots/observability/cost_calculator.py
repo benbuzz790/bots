@@ -76,8 +76,12 @@ def normalize_provider(provider: str) -> str:
         Normalized provider name ("anthropic", "openai", or "google")
 
     Raises:
-        ValueError: If provider is not supported
+        ValueError: If provider is not supported or empty
     """
+    # Check for empty provider first
+    if not provider or not provider.strip():
+        raise ValueError("Provider cannot be empty")
+
     provider_map = {
         "anthropic": "anthropic",
         "claude": "anthropic",
@@ -87,7 +91,7 @@ def normalize_provider(provider: str) -> str:
         "gemini": "google",
     }
 
-    provider_lower = provider.lower()
+    provider_lower = provider.lower().strip()
 
     normalized = provider_map.get(provider_lower)
     if normalized is None:
@@ -180,9 +184,9 @@ def calculate_cost(
     Args:
         provider: Provider name ("anthropic", "openai", "google", or common aliases)
         model: Model name (e.g., "claude-3-5-sonnet-latest", "gpt-4o")
-        input_tokens: Number of input tokens (non-cached)
+        input_tokens: Number of input tokens (non-cached when using new API, total when using deprecated cached_tokens)
         output_tokens: Number of output tokens
-        cached_tokens: DEPRECATED - use cache_read_tokens instead (default: 0)
+        cached_tokens: DEPRECATED - use cache_read_tokens instead. Represents portion of input_tokens that are cached.
         cache_creation_tokens: Number of tokens written to cache (charged at premium, default: 0)
         cache_read_tokens: Number of tokens read from cache (charged at discount, default: 0)
         is_batch: Whether this is a batch API request (default: False)
@@ -203,11 +207,7 @@ def calculate_cost(
         >>> calculate_cost("anthropic", "claude-3-5-sonnet-latest", 1000, 500, cache_creation_tokens=500)
         0.012375  # 1000 regular + 500 cache creation (1.25x) input + 500 output
     """
-    # Handle deprecated cached_tokens parameter
-    if cached_tokens > 0 and cache_read_tokens == 0:
-        cache_read_tokens = cached_tokens
-
-    # Input validation
+    # Input validation (before handling deprecated parameters)
     if input_tokens < 0:
         raise ValueError(f"Token counts cannot be negative: input_tokens={input_tokens}")
     if output_tokens < 0:
@@ -216,6 +216,16 @@ def calculate_cost(
         raise ValueError(f"Token counts cannot be negative: cache_creation_tokens={cache_creation_tokens}")
     if cache_read_tokens < 0:
         raise ValueError(f"Token counts cannot be negative: cache_read_tokens={cache_read_tokens}")
+    if cached_tokens < 0:
+        raise ValueError(f"Token counts cannot be negative: cached_tokens={cached_tokens}")
+
+    # Handle deprecated cached_tokens parameter
+    # Old API: input_tokens is total, cached_tokens is portion that's cached
+    # New API: input_tokens is non-cached, cache_read_tokens is additional cached tokens
+    if cached_tokens > 0 and cache_read_tokens == 0:
+        cache_read_tokens = cached_tokens
+        # Subtract cached tokens from input_tokens for old API compatibility
+        input_tokens = input_tokens - cached_tokens
 
     # Normalize inputs
     try:

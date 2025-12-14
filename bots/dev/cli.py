@@ -2955,7 +2955,7 @@ class PromptHandler:
             # Search in recent prompts
             matches = [
                 (name, content)
-                for name, content, _ in recents
+                for name, content in recents  # Fixed: was unpacking 3 values
                 if query.lower() in name.lower() or query.lower() in content.lower()
             ]
 
@@ -2968,10 +2968,8 @@ class PromptHandler:
                 preview = content[:80] + "..." if len(content) > 80 else content
                 preview = preview.replace("\n", " ")  # Single line preview
                 marker = "→" if i == 1 else " "
-                print(f"  {marker} {i}. {name}: {preview}")
-
-            if len(matches) > 10:
-                print(f"  ... and {len(matches) - 10} more matches")
+                print(f"  {marker} {i}. {name}")
+                print(f"       {preview}")
 
             try:
                 choice = input_with_esc("\nEnter number to load (or press ESC to cancel): ").strip()
@@ -2979,18 +2977,23 @@ class PromptHandler:
                     idx = int(choice) - 1
                     if 0 <= idx < len(matches):
                         name, content = matches[idx]
-                        return (content, name)
-                return ("Selection cancelled.", None)
+                        return (f"Loading prompt: {name}", content)
+                    else:
+                        return ("Invalid selection.", None)
+                else:
+                    return ("Selection cancelled.", None)
             except EscapeException:
                 return ("Selection cancelled.", None)
         else:
             # Show all recent prompts
             print("\nRecent prompts (most recent first):")
-            for i, (name, _, timestamp) in enumerate(recents[:10], 1):
-                # Format timestamp (time module imported at top of file)
-                time_str = time.strftime("%Y-%m-%d %H:%M", time.localtime(timestamp))
+            for i, (name, content) in enumerate(recents[:10], 1):  # Fixed: was unpacking 3 values
+                # Show a preview
+                preview = content[:60] + "..." if len(content) > 60 else content
+                preview = preview.replace("\n", " ")
                 marker = "→" if i == 1 else " "
-                print(f"  {marker} {i}. {name} ({time_str})")
+                print(f"  {marker} {i}. {name}")
+                print(f"       {preview}")
 
             if len(recents) > 10:
                 print(f"  ... and {len(recents) - 10} more")
@@ -3000,10 +3003,12 @@ class PromptHandler:
                 if choice.isdigit():
                     idx = int(choice) - 1
                     if 0 <= idx < len(recents):
-                        name = recents[idx][0]
-                        content = self.prompt_manager.load_prompt(name)
-                        return (content, name)
-                return ("Selection cancelled.", None)
+                        name, content = recents[idx]
+                        return (f"Loading prompt: {name}", content)
+                    else:
+                        return ("Invalid selection.", None)
+                else:
+                    return ("Selection cancelled.", None)
             except EscapeException:
                 return ("Selection cancelled.", None)
 
