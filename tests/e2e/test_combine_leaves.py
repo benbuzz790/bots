@@ -57,21 +57,24 @@ class TestCombineLeavesCommand(unittest.TestCase):
     @patch("bots.flows.functional_prompts.recombine")
     def test_combine_leaves_success(self, mock_recombine, mock_print, mock_input):
         """Test successful combination of leaves."""
-        mock_input.return_value = "1"  # Select concatenate recombinator
+        # New API: pass recombinator as argument instead of prompting
         mock_recombine.return_value = ("Combined result", MagicMock())
-        with patch("bots.dev.cli.pretty") as mock_pretty:
-            result = self.handler.combine_leaves(self.mock_bot, self.context, [])
-        self.assertIn("Successfully combined 2 leaves", result)
-        self.assertIn("concatenate", result)
+        result = self.handler.combine_leaves(self.mock_bot, self.context, ["1"])  # Pass "1" for concatenate
+        # Result is now a dict
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["type"], "message")
+        self.assertEqual(result["content"], "Combined result")
         mock_recombine.assert_called_once()
-        mock_pretty.assert_called_once()
 
     def test_combine_leaves_no_leaves(self):
         """Test combine_leaves when no leaves exist."""
         # Mock _find_leaves to return empty list
         with patch.object(self.handler, "_find_leaves", return_value=[]):
             result = self.handler.combine_leaves(self.mock_bot, self.context, [])
-            self.assertIn("No leaves found", result)
+            # Result is now a dict
+            self.assertIsInstance(result, dict)
+            content = result.get("content", "")
+            self.assertIn("No leaves found", content)
 
     def test_combine_leaves_insufficient_leaves(self):
         """Test combine_leaves with only one leaf."""
@@ -81,24 +84,33 @@ class TestCombineLeavesCommand(unittest.TestCase):
         root.replies.append(leaf)
         self.mock_bot.conversation = root
         result = self.handler.combine_leaves(self.mock_bot, self.context, [])
-        self.assertIn("Need at least 2 leaves", result)
+        # Result is now a dict
+        self.assertIsInstance(result, dict)
+        content = result.get("content", "")
+        self.assertIn("Need at least 2 leaves", content)
 
     @patch("builtins.input")
     def test_combine_leaves_invalid_recombinator(self, mock_input):
         """Test combine_leaves with invalid recombinator selection."""
-        mock_input.return_value = "invalid"
-        result = self.handler.combine_leaves(self.mock_bot, self.context, [])
-        self.assertIn("Invalid recombinator selection", result)
+        # New API: pass invalid recombinator as argument
+        result = self.handler.combine_leaves(self.mock_bot, self.context, ["invalid"])
+        # Result is now a dict
+        self.assertIsInstance(result, dict)
+        content = result.get("content", "")
+        self.assertIn("Invalid recombinator selection", content)
 
     @patch("builtins.input")
     @patch("bots.flows.functional_prompts.recombine")
     def test_combine_leaves_error_handling(self, mock_recombine, mock_input):
         """Test combine_leaves error handling."""
-        mock_input.return_value = "1"
+        # New API: pass recombinator as argument
         mock_recombine.side_effect = Exception("Test error")
-        result = self.handler.combine_leaves(self.mock_bot, self.context, [])
-        self.assertIn("Error combining leaves", result)
-        self.assertIn("Test error", result)
+        result = self.handler.combine_leaves(self.mock_bot, self.context, ["1"])
+        # Result is now a dict
+        self.assertIsInstance(result, dict)
+        content = result.get("content", "")
+        self.assertIn("Error combining leaves", content)
+        self.assertIn("Test error", content)
 
 
 if __name__ == "__main__":

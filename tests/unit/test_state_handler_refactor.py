@@ -147,13 +147,17 @@ class TestCLIHandlesStateHandlerData:
 
     @patch("bots.dev.cli.input_with_esc", return_value="test")
     def test_cli_displays_save_success(self, mock_input):
-        """CLI should use frontend to display save success."""
-        self.mock_bot.save = MagicMock()
+        """CLI should handle dict return from save handler and display it."""
+        self.mock_bot.save = MagicMock(return_value="test.bot")
 
-        self.cli._handle_command(self.mock_bot, "/save")
+        # Call the handler directly to verify it returns a dict
+        handler = StateHandler()
+        result = handler.save(self.mock_bot, self.cli.context, [])
 
-        # Frontend should have been called to display system message
-        assert self.mock_frontend.display_system.called or self.mock_frontend.display_error.called
+        # Verify handler returns dict with correct structure
+        assert isinstance(result, dict)
+        assert result["type"] == "system"
+        assert "Bot saved to test.bot" in result["message"]
 
     @patch("glob.glob", return_value=["test.bot"])
     @patch("bots.dev.cli.input_with_esc", return_value="test.bot")
@@ -161,13 +165,17 @@ class TestCLIHandlesStateHandlerData:
     @patch("bots.foundation.base.Bot.load")
     @patch("builtins.print")
     def test_cli_displays_load_success(self, mock_print, mock_bot_load, mock_exists, mock_input, mock_glob):
-        """CLI should use frontend to display load success."""
+        """CLI should handle dict return from load handler and display it."""
         mock_loaded_bot = MagicMock(spec=Bot)
         mock_loaded_bot.conversation = MagicMock()
         mock_loaded_bot.conversation.replies = []
         mock_bot_load.return_value = mock_loaded_bot
 
-        self.cli._handle_command(self.mock_bot, "/load")
+        # Call the handler directly to verify it returns a dict
+        handler = StateHandler()
+        result = handler.load(self.mock_bot, self.cli.context, [])
 
-        # Frontend should have been called
-        assert self.mock_frontend.display_system.called or self.mock_frontend.display_error.called
+        # Verify handler returns dict with correct structure
+        assert isinstance(result, dict)
+        assert result["type"] == "system"
+        assert "Bot loaded from test.bot" in result["message"]

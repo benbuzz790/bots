@@ -67,8 +67,11 @@ class TestLeafCommand(unittest.TestCase):
         """Test that /leaf command shows all available leaves."""
         # Test with direct argument to avoid input() call
         result = self.handler.leaf(self.mock_bot, self.context, ["1"])
+        # Result is now a dict, check the content
+        self.assertIsInstance(result, dict)
+        content = result.get("content", "")
         # Should show that it jumped to a leaf, indicating leaves were found
-        self.assertIn("Jumped to leaf 1", result)
+        self.assertIn("Jumped to leaf 1", content)
         # Should have cached the leaves
         self.assertEqual(len(self.context.cached_leaves), 2)
 
@@ -76,15 +79,21 @@ class TestLeafCommand(unittest.TestCase):
         """Test /leaf command with direct jump to specific leaf."""
         # Test jumping to leaf 1
         result = self.handler.leaf(self.mock_bot, self.context, ["1"])
-        self.assertIn("Jumped to leaf 1", result)
+        # Result is now a dict, check the content
+        self.assertIsInstance(result, dict)
+        content = result.get("content", "")
+        self.assertIn("Jumped to leaf 1", content)
         # Should have updated bot conversation
         self.assertEqual(len(self.context.cached_leaves), 2)
 
     def test_leaf_command_invalid_number(self):
         """Test /leaf command with invalid leaf number."""
         result = self.handler.leaf(self.mock_bot, self.context, ["99"])
-        self.assertIn("Invalid leaf number", result)
-        self.assertIn("Must be between 1 and", result)
+        # Result is now a dict, check the content
+        self.assertIsInstance(result, dict)
+        content = result.get("content", "")
+        self.assertIn("Invalid leaf number", content)
+        self.assertIn("Must be between 1 and", content)
 
     def test_leaf_command_no_leaves(self):
         """Test /leaf command when no leaves exist."""
@@ -96,21 +105,33 @@ class TestLeafCommand(unittest.TestCase):
         # Mock _find_leaves to return empty list
         with patch.object(self.handler, "_find_leaves", return_value=[]):
             result = self.handler.leaf(self.mock_bot, self.context, [])
-            self.assertIn("No leaves found", result)
+            # Result is now a dict, check the content
+            self.assertIsInstance(result, dict)
+            content = result.get("content", "")
+            self.assertIn("No leaves found", content)
 
     @patch("builtins.input")
     def test_leaf_command_interactive_selection(self, mock_input):
-        """Test /leaf command with interactive selection."""
-        mock_input.return_value = "2"  # Select leaf 2
-        result = self.handler.leaf(self.mock_bot, self.context, [])
-        self.assertIn("Jumped to leaf 2", result)
+        """Test /leaf command with direct argument (no longer interactive)."""
+        # The new API doesn't prompt for input - it requires args on command line
+        # Test with direct argument instead
+        result = self.handler.leaf(self.mock_bot, self.context, ["2"])
+        # Result is now a dict, check the content
+        self.assertIsInstance(result, dict)
+        content = result.get("content", "")
+        self.assertIn("Jumped to leaf 2", content)
 
     @patch("builtins.input")
     def test_leaf_command_interactive_cancel(self, mock_input):
-        """Test /leaf command with interactive cancellation."""
-        mock_input.return_value = ""  # Cancel selection
+        """Test /leaf command without args shows list of leaves."""
+        # The new API doesn't prompt for input - calling without args shows the list
         result = self.handler.leaf(self.mock_bot, self.context, [])
-        self.assertIn("Staying at current position", result)
+        # Result is now a dict, check the content
+        self.assertIsInstance(result, dict)
+        content = result.get("content", "")
+        # Should show the list of leaves
+        self.assertIn("Found 2 leaf nodes", content)
+        self.assertIn("Use /leaf <number>", content)
 
     def test_get_leaf_preview_short_content(self):
         """Test _get_leaf_preview with short content."""
