@@ -94,7 +94,12 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
 
 
 @toolify()
-def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "False", recombine: str = "concatenate") -> str:
+def branch_self(
+    self_prompts: str,
+    allow_work: str = "False",
+    parallel: str = "False",
+    recombine: str = "concatenate",
+) -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
 
     Creates isolated conversation branches using deepcopy:
@@ -111,8 +116,8 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         allow_work (str): 'True' to let each branch use tools and continue working until done
                          'False' (default) for single-response branches
         parallel (str): 'True' to let branches work in parallel, 'False' for sequential (default).
-        recombine (str): One of ('none', 'concatenate', 'llm_merge', 'llm_vote', 'llm_judge'), default 'concatenate'.
-                         Combines the final messages from each branch using that method.
+        recombine (str): One of ('none', 'concatenate', 'llm_merge', 'llm_vote', 'llm_judge'),
+                         default 'concatenate'. Combines the final messages from each branch.
 
     Returns:
         str: Success message with branch count, or error details if something went wrong
@@ -169,7 +174,9 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
                     # Add a user message node with the tool result
                     # Use a placeholder content since Anthropic requires non-empty text
                     dummy_node = original_node._add_reply(
-                        role="user", content="[Tool execution in progress]", tool_results=[dummy_result]
+                        role="user",
+                        content="[Tool execution in progress]",
+                        tool_results=[dummy_result],
                     )
                     dummy_node_added = True
 
@@ -227,7 +234,9 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         if parallel:
             # Parallel execution
             with ThreadPoolExecutor() as executor:
-                futures = {executor.submit(execute_branch, prompt, bot.conversation): prompt for prompt in prefixed_prompts}
+                futures = {
+                    executor.submit(execute_branch, prompt, bot.conversation): prompt for prompt in prefixed_prompts
+                }  # noqa: E501
                 for future in as_completed(futures):
                     response, node = future.result()
                     responses.append(response)
@@ -286,7 +295,8 @@ def branch_self(self_prompts: str, allow_work: str = "False", parallel: str = "F
         exec_type = "parallel" if parallel else "sequential"
         work_type = "iterative" if allow_work else "single-response"
         result_content = (
-            f"Successfully completed {success_count}/{len(message_list)} {exec_type} {work_type} branches. "
+            f"Successfully completed {success_count}/{len(message_list)} "
+            f"{exec_type} {work_type} branches. "
             f"Recombination result:\n\n{combined}"
         )
 
@@ -387,9 +397,14 @@ def list_context() -> str:
         # Format with labels
         lines = []
         for i, msg in enumerate(messages):
-            label = chr(65 + i)  # A, B, C, ...
-            if i >= 26:
-                label = f"A{chr(65 + (i - 26))}"  # AA, AB, AC, ... after Z
+            # Generate label: A-Z, then AA-AZ, BA-BZ, etc.
+            if i < 26:
+                label = chr(65 + i)  # A, B, C, ..., Z
+            else:
+                # After Z, use AA, AB, AC, ..., AZ, BA, BB, etc.
+                first_letter = chr(65 + ((i - 26) // 26))  # A, B, C, ...
+                second_letter = chr(65 + ((i - 26) % 26))  # A-Z cycling
+                label = first_letter + second_letter
 
             # Format tool calls if present
             tool_str = ""
@@ -463,10 +478,16 @@ def remove_context(labels: str) -> str:
         # Map labels to indices
         indices_to_remove = []
         for label in label_list:
+            label = label.upper()
+
             if len(label) == 1 and label.isalpha():
-                idx = ord(label.upper()) - 65
-            elif len(label) == 2 and label[0] == "A" and label[1].isalpha():
-                idx = 26 + (ord(label[1].upper()) - 65)
+                # Single letter: A-Z (indices 0-25)
+                idx = ord(label) - 65
+            elif len(label) == 2 and label[0].isalpha() and label[1].isalpha():
+                # Two letters: AA, AB, ..., AZ, BA, BB, etc.
+                first_letter_idx = ord(label[0]) - 65
+                second_letter_idx = ord(label[1]) - 65
+                idx = 26 + (first_letter_idx * 26) + second_letter_idx
             else:
                 return f"Error: Invalid label format: {label}"
 
@@ -478,37 +499,77 @@ def remove_context(labels: str) -> str:
         # Remove messages (in reverse order to maintain indices)
         indices_to_remove.sort(reverse=True)
         removed_count = 0
+        skipped_messages = []
 
         for idx in indices_to_remove:
             msg_node = messages[idx]
 
+            # Generate label for error messages
+            if idx < 26:
+                label_str = chr(65 + idx)
+            else:
+                first_letter = chr(65 + ((idx - 26) // 26))
+                second_letter = chr(65 + ((idx - 26) % 26))
+                label_str = first_letter + second_letter
+
             # Find the user message that precedes this bot message
             user_node = msg_node.parent
             if not user_node or user_node.role != "user":
+                skipped_messages.append(f"Label {label_str} (no user parent)")
                 continue
 
             # Find the parent of the user message
             grandparent = user_node.parent
 
-            if grandparent:
-                # Remove user_node from grandparent's replies
-                if user_node in grandparent.replies:
-                    grandparent.replies.remove(user_node)
+            if not grandparent:
+                skipped_messages.append(f"Label {label_str} (no grandparent)")
+                continue
 
-                # If bot message has children, reconnect them to grandparent
-                for child in msg_node.replies:
-                    child.parent = grandparent
-                    grandparent.replies.append(child)
+            # CRITICAL: Check if removing this pair would break tool_call/tool_result pairing
+            # Case 1: grandparent has tool_calls, and user_node has the tool_results
+            if grandparent.role == "assistant" and grandparent.tool_calls and user_node.tool_results:
+                # Removing user_node would leave grandparent's tool_calls without results
+                skipped_messages.append(f"Label {label_str} (would break tool_call/tool_result pairing)")
+                continue
 
-                removed_count += 1
+            # Case 2: msg_node has tool_calls, which means the NEXT user message has tool_results
+            # If we remove msg_node and reconnect its children to grandparent, we need to ensure
+            # tool_results are preserved
+            if msg_node.tool_calls:
+                # Check if any children are user nodes with tool_results
+                has_tool_result_child = any(child.role == "user" and child.tool_results for child in msg_node.replies)
+                if has_tool_result_child:
+                    skipped_messages.append(f"Label {label_str} (has tool_calls with results in children)")
+                    continue
 
-                # Update bot.conversation if we removed the current node
-                if bot.conversation == msg_node or bot.conversation == user_node:
-                    bot.conversation = grandparent
+            # Safe to remove - no tool_call/tool_result pairing issues
+            # Remove user_node from grandparent's replies
+            if user_node in grandparent.replies:
+                grandparent.replies.remove(user_node)
 
-        return f"Removed {removed_count} message pair(s)"
+            # If bot message has children, reconnect them to grandparent
+            for child in msg_node.replies:
+                child.parent = grandparent
+                grandparent.replies.append(child)
+
+            removed_count += 1
+
+            # Update bot.conversation if we removed the current node
+            if bot.conversation == msg_node or bot.conversation == user_node:
+                bot.conversation = grandparent
+
+        # Build result message
+        result_parts = [f"Removed {removed_count} message pair(s)"]
+        if skipped_messages:
+            result_parts.append(f"Skipped {len(skipped_messages)} message(s) to preserve conversation integrity:")
+            result_parts.extend([f"  - {msg}" for msg in skipped_messages])
+
+        return "\n".join(result_parts)
 
     except Exception as e:
+        import traceback
+
+        traceback.print_exc()
         return f"Error removing context: {str(e)}"
 
 

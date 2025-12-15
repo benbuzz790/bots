@@ -182,7 +182,11 @@ COLOR_TOOL_REQUEST = "\033[34m"  # Blue
 
 
 def create_auto_stash() -> str:
-    """Create an automatic git stash with AI-generated message based on current diff."""
+    """Create an automatic git stash with AI-generated message based on current diff.
+
+    This creates a checkpoint without hiding your changes - the stash is immediately
+    reapplied so you can continue working normally.
+    """
     import subprocess
 
     from bots.foundation.base import Engines
@@ -230,6 +234,18 @@ def create_auto_stash() -> str:
         )
         if stash_result.returncode != 0:
             return f"Error creating stash: {stash_result.stderr}"
+
+        # Immediately reapply the stash to keep working directory unchanged
+        # This makes it a "quicksave" rather than "put away"
+        apply_result = subprocess.run(
+            ["git", "stash", "apply"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if apply_result.returncode != 0:
+            return f"Stash created but failed to reapply: {apply_result.stderr}"
+
         return f"Auto-stash created: {stash_message}"
     except subprocess.TimeoutExpired:
         return "Git command timed out"
@@ -987,32 +1003,43 @@ Respond with just the name, no explanation."""
 class ConversationHandler:
     """Handler for conversation navigation commands."""
 
-    def up(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+    def up(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Move up in conversation tree."""
         if bot.conversation.parent and bot.conversation.parent.parent:
             context.conversation_backup = bot.conversation
             bot.conversation = bot.conversation.parent.parent
             if not self._ensure_assistant_node(bot):
-                return "Warning: Ended up on user node with no assistant response. Bumped to previous assistant node."
-            self._display_conversation_context(bot, context)
-            return "Moved up conversation tree"
-        return "At root - can't go up"
+                return {
+                    "type": "system",
+                    "content": (
+                        "Warning: Ended up on user node with no assistant response. Bumped to previous assistant node."
+                    ),
+                }
+            # Return conversation content as message
+            if bot.conversation.content:
+                return {"type": "message", "role": "assistant", "content": bot.conversation.content}
+            return {"type": "system", "content": "Moved up conversation tree"}
+        return {"type": "system", "content": "At root - can't go up"}
 
-    def down(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+    def down(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Move down in conversation tree."""
         if bot.conversation.replies:
             max_index = len(bot.conversation.replies) - 1
             idx = 0
             if max_index > 0:
-                try:
+                # If we need user input, return a special dict indicating that
+                # For now, use args if provided, otherwise default to 0
+                if args:
                     try:
-                        idx = int(input_with_esc(f"Reply index (max {max_index}): "))
-                    except EscapeException:
-                        return "Selection cancelled"
-                    if idx < 0 or idx > max_index:
-                        return f"Invalid index. Must be between 0 and {max_index}"
-                except ValueError:
-                    return "Invalid index. Must be a number"
+                        idx = int(args[0])
+                        if idx < 0 or idx > max_index:
+                            return {"type": "error", "content": f"Invalid index. Must be between 0 and {max_index}"}
+                    except ValueError:
+                        return {"type": "error", "content": "Invalid index. Must be a number"}
+                else:
+                    # Default to first reply if no arg provided
+                    idx = 0
+
             context.conversation_backup = bot.conversation
             next_node = bot.conversation.replies[idx]
             if next_node.replies:
@@ -1020,52 +1047,64 @@ class ConversationHandler:
             else:
                 bot.conversation = next_node
             if not self._ensure_assistant_node(bot):
-                return "Warning: Ended up on user node with no assistant response"
-            self._display_conversation_context(bot, context)
-            return "Moved down conversation tree"
-        return "At leaf - can't go down"
+                return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
 
-    def left(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+            # Return conversation content as message
+            if bot.conversation.content:
+                return {"type": "message", "role": "assistant", "content": bot.conversation.content}
+            return {"type": "system", "content": "Moved down conversation tree"}
+        return {"type": "system", "content": "At leaf - can't go down"}
+
+    def left(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Move left to sibling in conversation tree."""
         if not bot.conversation.parent:
-            return "At root - can't go left"
+            return {"type": "system", "content": "At root - can't go left"}
         replies = bot.conversation.parent.replies
         if not replies or len(replies) <= 1:
-            return "Conversation has no siblings at this point"
+            return {"type": "system", "content": "Conversation has no siblings at this point"}
         current_index = next((i for i, reply in enumerate(replies) if reply is bot.conversation))
         next_index = (current_index - 1) % len(replies)
         context.conversation_backup = bot.conversation
         bot.conversation = replies[next_index]
         if not self._ensure_assistant_node(bot):
-            return "Warning: Ended up on user node with no assistant response"
-        self._display_conversation_context(bot, context)
-        return "Moved left in conversation tree"
+            return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
 
-    def right(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        # Return conversation content as message
+        if bot.conversation.content:
+            return {"type": "message", "role": "assistant", "content": bot.conversation.content}
+        return {"type": "system", "content": "Moved left in conversation tree"}
+
+    def right(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Move right to sibling in conversation tree."""
         if not bot.conversation.parent:
-            return "At root - can't go right"
+            return {"type": "system", "content": "At root - can't go right"}
         replies = bot.conversation.parent.replies
         if not replies or len(replies) <= 1:
-            return "Conversation has no siblings at this point"
+            return {"type": "system", "content": "Conversation has no siblings at this point"}
         current_index = next((i for i, reply in enumerate(replies) if reply is bot.conversation))
         next_index = (current_index + 1) % len(replies)
         context.conversation_backup = bot.conversation
         bot.conversation = replies[next_index]
         if not self._ensure_assistant_node(bot):
-            return "Warning: Ended up on user node with no assistant response"
-        self._display_conversation_context(bot, context)
-        return "Moved right in conversation tree"
+            return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
 
-    def root(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        # Return conversation content as message
+        if bot.conversation.content:
+            return {"type": "message", "role": "assistant", "content": bot.conversation.content}
+        return {"type": "system", "content": "Moved right in conversation tree"}
+
+    def root(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Move to root of conversation tree."""
         context.conversation_backup = bot.conversation
         while bot.conversation.parent:
             bot.conversation = bot.conversation.parent
         if not self._ensure_assistant_node(bot):
-            return "Warning: Ended up on user node with no assistant response"
-        self._display_conversation_context(bot, context)
-        return "Moved to root of conversation tree"
+            return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
+
+        # Return conversation content as message
+        if bot.conversation.content:
+            return {"type": "message", "role": "assistant", "content": bot.conversation.content}
+        return {"type": "system", "content": "Moved to root of conversation tree"}
 
     def lastfork(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Move to the previous node (going up the tree) that has multiple replies."""
@@ -1115,94 +1154,102 @@ class ConversationHandler:
 
         return "No fork found going down the tree"
 
-    def label(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+    def label(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Show all labels and create new label or jump to existing one."""
-        # First, show all existing labels (like showlabels)
-        if context.labeled_nodes:
-            print("Existing labels:")
-            for label_name, node in context.labeled_nodes.items():
-                content_preview = node.content[:100] + "..." if len(node.content) > 100 else node.content
-                print(f"  '{label_name}': {content_preview}")
-            print()
-        else:
-            print("No labels saved yet.")
-            print()
+        # If no args provided, show all labels
+        if not args:
+            if hasattr(context, "labeled_nodes") and context.labeled_nodes:
+                result = "Existing labels:\n"
+                for label_name, node in context.labeled_nodes.items():
+                    content_preview = node.content[:100] + "..." if len(node.content) > 100 else node.content
+                    result += f"  '{label_name}': {content_preview}\n"
+                result += "\nUse /label <name> to create a new label or jump to an existing one"
+                return {"type": "system", "content": result}
+            else:
+                msg = "No labels saved yet.\n\n" "Use /label <name> to create a label at the current position"
+                return {"type": "system", "content": msg}
 
-        # Get label input from user
-        try:
-            label = input_with_esc("Enter label name (new to create, existing to jump): ").strip()
-        except EscapeException:
-            return "Label operation cancelled"
+        # Args provided - use as label name
+        label = args[0].strip()
+
         if not label:
-            return "No label entered"
+            return {"type": "system", "content": "No label entered"}
 
         # Check if label already exists
-        if label in context.labeled_nodes:
-            # Jump to existing label (like goto)
+        if hasattr(context, "labeled_nodes") and label in context.labeled_nodes:
+            # Jump to existing label
             context.conversation_backup = bot.conversation
             bot.conversation = context.labeled_nodes[label]
             if not self._ensure_assistant_node(bot):
-                return f"Warning: Moved to node labeled '{label}' but ended up on user node with no assistant response"
-            self._display_conversation_context(bot, context)
-            return f"Jumped to existing label: {label}"
+                warning_msg = (
+                    f"Warning: Moved to node labeled '{label}' but ended up on " "user node with no assistant response"
+                )
+                return {"type": "system", "content": warning_msg}
+
+            # Return conversation content as message
+            if bot.conversation.content:
+                return {"type": "message", "role": "assistant", "content": bot.conversation.content}
+            return {"type": "system", "content": f"Jumped to existing label: {label}"}
         else:
-            # Create new label (like original label behavior)
+            # Create new label
+            if not hasattr(context, "labeled_nodes"):
+                context.labeled_nodes = {}
             context.labeled_nodes[label] = bot.conversation
             if not hasattr(bot.conversation, "labels"):
                 bot.conversation.labels = []
             if label not in bot.conversation.labels:
                 bot.conversation.labels.append(label)
-            return f"Created new label: {label}"
+            return {"type": "system", "content": f"Created new label: {label}"}
 
     # showlabels method removed - functionality merged into label method
-    def leaf(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+    def leaf(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Show all leaf nodes and optionally jump to one by number."""
         leaves = self._find_leaves(bot.conversation)
         if not leaves:
-            return "No leaves found from current node"
+            return {"type": "system", "content": "No leaves found from current node"}
+
         context.cached_leaves = leaves
+
         if args:
             try:
                 leaf_index = int(args[0]) - 1  # Convert to 0-based index
                 if leaf_index < 0 or leaf_index >= len(leaves):
-                    return f"Invalid leaf number. Must be between 1 and {len(leaves)}"
+                    return {
+                        "type": "error",
+                        "content": f"Invalid leaf number. Must be between 1 and {len(leaves)}",
+                    }
                 context.conversation_backup = bot.conversation
                 bot.conversation = leaves[leaf_index]
                 if not self._ensure_assistant_node(bot):
-                    return f"Warning: Jumped to leaf {leaf_index + 1} but ended up on user node with no assistant response"
-                self._display_conversation_context(bot, context)
+                    return {
+                        "type": "system",
+                        "content": (
+                            (
+                                f"Warning: Jumped to leaf {leaf_index + 1} but ended up on "
+                                "user node with no assistant response"
+                            )
+                        ),
+                    }
+
+                # Return conversation content as message
+                if bot.conversation.content:
+                    return {"type": "message", "role": "assistant", "content": bot.conversation.content}
                 content_preview = self._get_leaf_preview(leaves[leaf_index])
-                return f"Jumped to leaf {leaf_index + 1}: {content_preview}"
+                return {"type": "system", "content": f"Jumped to leaf {leaf_index + 1}: {content_preview}"}
             except ValueError:
-                return "Invalid leaf number. Must be a number."
-        result = f"Found {len(leaves)} leaf nodes:\n"
+                return {"type": "error", "content": "Invalid leaf number. Must be a number."}
+
+        # No args - return list of leaves
+        result = "Found {} leaf nodes:\n".format(len(leaves))
         for i, leaf in enumerate(leaves):
             content_preview = self._get_leaf_preview(leaf)
             depth = self._calculate_depth(bot.conversation, leaf)
             labels = getattr(leaf, "labels", [])
-            label_str = f" (labels: {', '.join(labels)})" if labels else ""
-            result += f"  {i+1}. [depth {depth}]{label_str}: {content_preview}\n"
-        result += f"\nEnter a number (1-{len(leaves)}) to jump to that leaf, or press Enter to stay: "
-        try:
-            choice = input(result).strip()
-            if choice:
-                leaf_index = int(choice) - 1
-                if 0 <= leaf_index < len(leaves):
-                    context.conversation_backup = bot.conversation
-                    bot.conversation = leaves[leaf_index]
-                    if not self._ensure_assistant_node(bot):
-                        return f"Warning: Jumped to leaf {leaf_index + 1} but ended up on user node with no assistant response"
-                    self._display_conversation_context(bot, context)
-                    content_preview = self._get_leaf_preview(leaves[leaf_index])
-                    return f"Jumped to leaf {leaf_index + 1}: {content_preview}"
-                else:
-                    return f"Invalid choice. Must be between 1 and {len(leaves)}"
-            else:
-                return "Staying at current position"
-        except ValueError:
-            return "Invalid input. Staying at current position"
-        except (EOFError, KeyboardInterrupt):
-            return "Cancelled. Staying at current position"
+            label_str = " (labels: {})".format(", ".join(labels)) if labels else ""
+            result += "  {}. [depth {}]{}: {}\n".format(i + 1, depth, label_str, content_preview)
+        result += "\nUse /leaf <number> to jump to a specific leaf"
+
+        return {"type": "system", "content": result}
 
     def _get_leaf_preview(self, leaf: ConversationNode, max_length: int = 300) -> str:
         """Get a preview of leaf content, cutting from middle if too long."""
@@ -1214,44 +1261,50 @@ class ConversationHandler:
         end = content[-half_length:].strip()
         return f"{start} ... {end}"
 
-    def combine_leaves(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+    def combine_leaves(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Combine all leaves below current node using a recombinator function."""
         leaves = self._find_leaves(bot.conversation)
         if not leaves:
-            return "No leaves found from current node"
+            return {"type": "system", "content": "No leaves found from current node"}
         if len(leaves) < 2:
-            return "Need at least 2 leaves to combine"
-        print(f"\nFound {len(leaves)} leaves to combine.")
-        print("Available recombinators:")
+            return {"type": "system", "content": "Need at least 2 leaves to combine"}
+
+        # If args provided, use that as recombinator choice
         recombinator_options = {
             "1": ("concatenate", recombinators.recombinators.concatenate),
             "2": ("llm_judge", recombinators.recombinators.llm_judge),
             "3": ("llm_vote", recombinators.recombinators.llm_vote),
             "4": ("llm_merge", recombinators.recombinators.llm_merge),
+            "concatenate": ("concatenate", recombinators.recombinators.concatenate),
+            "llm_judge": ("llm_judge", recombinators.recombinators.llm_judge),
+            "llm_vote": ("llm_vote", recombinators.recombinators.llm_vote),
+            "llm_merge": ("llm_merge", recombinators.recombinators.llm_merge),
         }
-        for key, (name, _) in recombinator_options.items():
-            print(f"  {key}. {name}")
-        choice = input("Select recombinator: ").strip()
-        if choice not in recombinator_options:
-            return "Invalid recombinator selection"
-        recombinator_func = recombinator_options[choice][1]
-        recombinator_name = recombinator_options[choice][0]
+
+        if args:
+            choice = args[0].strip()
+            if choice not in recombinator_options:
+                return {"type": "error", "content": "Invalid recombinator selection"}
+            recombinator_func = recombinator_options[choice][1]
+        else:
+            # No args - return list of options
+            result = "Found {} leaves to combine.\nAvailable recombinators:\n".format(len(leaves))
+            result += "  1. concatenate\n"
+            result += "  2. llm_judge\n"
+            result += "  3. llm_vote\n"
+            result += "  4. llm_merge\n"
+            result += "\nUse /combine_leaves <number or name> to combine"
+            return {"type": "system", "content": result}
+
         try:
             responses = [leaf.content for leaf in leaves]
             context.conversation_backup = bot.conversation
-            print(f"Combining {len(leaves)} leaves using {recombinator_name}...")
             final_response, final_node = fp.recombine(bot, responses, leaves, recombinator_func)
-            pretty(
-                final_response,
-                bot.name,
-                context.config.width,
-                context.config.indent,
-                COLOR_ASSISTANT,
-                newline_after_name=False,
-            )
-            return f"Successfully combined {len(leaves)} leaves using {recombinator_name}"
+
+            # Return the combined result as a message
+            return {"type": "message", "role": "assistant", "content": final_response}
         except Exception as e:
-            return f"Error combining leaves: {str(e)}"
+            return {"type": "error", "content": "Error combining leaves: {}".format(str(e))}
 
     def _find_leaves(self, node: ConversationNode) -> List[ConversationNode]:
         """Recursively find all leaf nodes from a given node."""
@@ -1299,23 +1352,23 @@ class ConversationHandler:
 class StateHandler:
     """Handler for bot state management commands."""
 
-    def save(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+    def save(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Save bot state."""
         try:
             try:
                 filename = input_with_esc("Save filename (without extension): ").strip()
             except EscapeException:
-                return "Save cancelled"
+                return {"type": "system", "message": "Save cancelled"}
             if not filename:
-                return "Save cancelled - no filename provided"
+                return {"type": "system", "message": "Save cancelled - no filename provided"}
             if not filename.endswith(".bot"):
                 filename = filename + ".bot"
             bot.save(filename)
-            return f"Bot saved to {filename}"
+            return {"type": "system", "message": f"Bot saved to {filename}"}
         except Exception as e:
-            return f"Error saving bot: {str(e)}"
+            return {"type": "error", "message": f"Error saving bot: {str(e)}"}
 
-    def load(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+    def load(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Load bot state."""
         try:
             # Display all .bot files in current directory
@@ -1334,9 +1387,9 @@ class StateHandler:
             try:
                 filename = input_with_esc("Load filename (or number from list): ").strip()
             except EscapeException:
-                return "Load cancelled"
+                return {"type": "system", "message": "Load cancelled"}
             if not filename:
-                return "Load cancelled - no filename provided"
+                return {"type": "system", "message": "Load cancelled - no filename provided"}
 
             # Check if input is a number referring to the list
             if filename.isdigit() and bot_files:
@@ -1344,13 +1397,14 @@ class StateHandler:
                 if 0 <= file_index < len(bot_files):
                     filename = bot_files[file_index]
                 else:
-                    return f"Invalid selection. Must be between 1 and {len(bot_files)}"
+                    msg = f"Invalid selection. Must be between 1 and {len(bot_files)}"
+                    return {"type": "error", "message": msg}
 
             return self._load_bot_from_file(filename, context)
         except Exception as e:
-            return f"Error loading bot: {str(e)}"
+            return {"type": "error", "message": f"Error loading bot: {str(e)}"}
 
-    def _load_bot_from_file(self, filename: str, context: CLIContext) -> str:
+    def _load_bot_from_file(self, filename: str, context: CLIContext) -> dict:
         """Load bot from file and update context. Used by both interactive load and CLI args."""
         try:
             if not os.path.exists(filename):
@@ -1359,9 +1413,9 @@ class StateHandler:
                     if os.path.exists(filename_with_ext):
                         filename = filename_with_ext
                     else:
-                        return f"File not found: {filename}"
+                        return {"type": "error", "message": f"File not found: {filename}"}
                 else:
-                    return f"File not found: {filename}"
+                    return {"type": "error", "message": f"File not found: {filename}"}
             new_bot = Bot.load(filename)
             while new_bot.conversation.replies:
                 new_bot.conversation = new_bot.conversation.replies[-1]
@@ -1373,9 +1427,10 @@ class StateHandler:
             context.labeled_nodes = {}
             self._rebuild_labels(new_bot.conversation, context)
             context.cached_leaves = []
-            return f"Bot loaded from {filename}. Conversation restored to most recent message."
+            msg = f"Bot loaded from {filename}. Conversation restored to most recent message."
+            return {"type": "system", "message": msg}
         except Exception as e:
-            return f"Error loading bot: {str(e)}"
+            return {"type": "error", "message": f"Error loading bot: {str(e)}"}
 
     def _rebuild_labels(self, node: ConversationNode, context: CLIContext):
         """Recursively rebuild labeled nodes from conversation tree."""
@@ -1548,7 +1603,8 @@ class SystemHandler:
                     (
                         lambda b, i: (
                             context.last_message_metrics
-                            and context.last_message_metrics.get("input_tokens", 0) > context.config.remove_context_threshold
+                            and context.last_message_metrics.get("input_tokens", 0)
+                            > context.config.remove_context_threshold  # noqa: E501
                             and context.context_reduction_cooldown <= 0
                         ),
                         context.config.auto_mode_reduce_context_prompt,
@@ -1568,7 +1624,10 @@ class SystemHandler:
                 # Update cooldown after each iteration
                 if context.last_message_metrics:
                     last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
-                    if last_input_tokens > context.config.remove_context_threshold and context.context_reduction_cooldown <= 0:
+                    if (
+                        last_input_tokens > context.config.remove_context_threshold
+                        and context.context_reduction_cooldown <= 0  # noqa: E501
+                    ):
                         context.context_reduction_cooldown = 3
                     elif context.context_reduction_cooldown > 0:
                         context.context_reduction_cooldown -= 1
@@ -1592,7 +1651,9 @@ class SystemHandler:
                     # This prevents duplicate display and ensures correct timing (after bot response)
 
                     # Get the next prompt text
-                    next_prompt = continue_prompt(bot, iteration_count[0]) if callable(continue_prompt) else continue_prompt
+                    next_prompt = (
+                        continue_prompt(bot, iteration_count[0]) if callable(continue_prompt) else continue_prompt
+                    )  # noqa: E501
 
                     # Display the user prompt
                     pretty(
@@ -2133,11 +2194,14 @@ def display_metrics(context: CLIContext, bot: Bot):
         if last_metrics["input_tokens"] == 0 and last_metrics["output_tokens"] == 0:
             return
 
-        # Calculate total tokens for this call
-        total_tokens = last_metrics["input_tokens"] + last_metrics["output_tokens"]
+        # Calculate total tokens for this call (including cached tokens)
+        total_tokens = (
+            last_metrics["input_tokens"] + last_metrics["output_tokens"] + last_metrics.get("cached_tokens", 0)
+        )  # noqa: E501
 
         # Format the metrics in a single line: [tokens] | $[cost] | [time]s
-        metrics_str = f"{total_tokens:,} | ${last_metrics['cost']:.4f} | {last_metrics['duration']:.2f}s"
+        # Prepend newline to match format_tool_data behavior
+        metrics_str = f"\n{total_tokens:,} | ${last_metrics['cost']:.4f} | {last_metrics['duration']:.2f}s"
 
         # Add session totals on second line
         try:
@@ -2149,7 +2213,15 @@ def display_metrics(context: CLIContext, bot: Bot):
             # If session totals fail, just show the per-call metrics
             pass
 
-        pretty(metrics_str, "metrics", context.config.width, context.config.indent, COLOR_METRICS, newline_after_name=True)
+        pretty(
+            metrics_str,
+            "metrics",
+            context.config.width,
+            context.config.indent,
+            COLOR_METRICS,
+            newline_after_name=True,
+        )
+        print()  # Add extra newline after metrics
     except Exception:
         pass
 
@@ -2207,7 +2279,11 @@ def pretty(
             initial_line = prefix + line + COLOR_RESET
             try:
                 wrapped = textwrap.wrap(
-                    initial_line, width=width, subsequent_indent=" " * indent, break_long_words=True, break_on_hyphens=False
+                    initial_line,
+                    width=width,
+                    subsequent_indent=" " * indent,
+                    break_long_words=True,
+                    break_on_hyphens=False,  # noqa: E501
                 )
             except Exception:
                 # Fallback if textwrap fails
@@ -2520,14 +2596,64 @@ class CLI:
 
                 result = self.commands[command](bot, self.context, args)
                 if result:
-                    pretty(result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
+                    # Handle dict returns from handlers
+                    if isinstance(result, dict):
+                        result_type = result.get("type", "system")
+                        message = result.get("message", result.get("content", str(result)))
+
+                        if result_type == "error":
+                            pretty(
+                                message,
+                                "Error",
+                                self.context.config.width,
+                                self.context.config.indent,
+                                COLOR_ERROR,
+                            )
+                        elif result_type == "message":
+                            role = result.get("role", "assistant")
+                            pretty(
+                                message,
+                                role,
+                                self.context.config.width,
+                                self.context.config.indent,
+                                COLOR_BOT,
+                            )
+                        else:  # system or other
+                            pretty(
+                                message,
+                                "system",
+                                self.context.config.width,
+                                self.context.config.indent,
+                                COLOR_SYSTEM,
+                            )
+                    else:
+                        # String or other return type
+                        pretty(
+                            result,
+                            "system",
+                            self.context.config.width,
+                            self.context.config.indent,
+                            COLOR_SYSTEM,
+                        )
             except Exception as e:
-                pretty(f"Command error: {str(e)}", "Error", self.context.config.width, self.context.config.indent, COLOR_ERROR)
+                pretty(
+                    f"Command error: {str(e)}",
+                    "Error",
+                    self.context.config.width,
+                    self.context.config.indent,
+                    COLOR_ERROR,  # noqa: E501
+                )
 
                 # Try new backup system first, fall back to old system
                 if self.context.config.auto_restore_on_error and self.context.has_backup():
                     result = self.context.restore_backup()
-                    pretty(result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
+                    pretty(
+                        result,
+                        "system",
+                        self.context.config.width,
+                        self.context.config.indent,
+                        COLOR_SYSTEM,
+                    )
                 elif self.context.conversation_backup and bot:
                     # Fallback to old conversation backup system
                     bot.tool_handler.clear()
@@ -2816,40 +2942,75 @@ class PromptHandler:
             return f"Error deleting prompt: {str(e)}"
 
     def recent_prompts(self, bot: "Bot", context: "CLIContext", args: List[str]) -> tuple:
-        """Show recent prompts and optionally select one. Returns (message, prefill_text)."""
-        try:
-            recents = self.prompt_manager.get_recents()
+        """Show recently used prompts with search capability."""
+        recents = self.prompt_manager.get_recents()
 
-            if not recents:
-                return ("No recent prompts.", None)
+        if not recents:
+            return ("No recent prompts found.", None)
 
-            # Show recents
-            print(f"\nRecent prompts ({len(recents)}):")
-            for i, (name, content) in enumerate(recents, 1):
-                preview = content[:100] + "..." if len(content) > 100 else content
-                preview = preview.replace("\n", " ")
-                print(f"  {i}. {name}: {preview}")
+        # Check if user provided a search query
+        query = " ".join(args) if args else None
 
-            # Get selection
+        if query:
+            # Search in recent prompts
+            matches = [
+                (name, content)
+                for name, content in recents  # Fixed: was unpacking 3 values
+                if query.lower() in name.lower() or query.lower() in content.lower()
+            ]
+
+            if not matches:
+                return (f"No recent prompts matching '{query}'", None)
+
+            print(f"\nFound {len(matches)} matches (best match first):")
+            for i, (name, content) in enumerate(matches[:10], 1):  # Limit to 10 results
+                # Show preview of content
+                preview = content[:80] + "..." if len(content) > 80 else content
+                preview = preview.replace("\n", " ")  # Single line preview
+                marker = "→" if i == 1 else " "
+                print(f"  {marker} {i}. {name}")
+                print(f"       {preview}")
+
             try:
-                choice = input(f"\nSelect prompt (1-{len(recents)}, or Enter to cancel): ").strip()
-                if not choice:
+                choice = input_with_esc("\nEnter number to load (or press ESC to cancel): ").strip()
+                if choice.isdigit():
+                    idx = int(choice) - 1
+                    if 0 <= idx < len(matches):
+                        name, content = matches[idx]
+                        return (f"Loading prompt: {name}", content)
+                    else:
+                        return ("Invalid selection.", None)
+                else:
                     return ("Selection cancelled.", None)
+            except EscapeException:
+                return ("Selection cancelled.", None)
+        else:
+            # Show all recent prompts
+            print("\nRecent prompts (most recent first):")
+            for i, (name, content) in enumerate(recents[:10], 1):  # Fixed: was unpacking 3 values
+                # Show a preview
+                preview = content[:60] + "..." if len(content) > 60 else content
+                preview = preview.replace("\n", " ")
+                marker = "→" if i == 1 else " "
+                print(f"  {marker} {i}. {name}")
+                print(f"       {preview}")
 
-                choice_num = int(choice) - 1
-                if choice_num < 0 or choice_num >= len(recents):
-                    return (f"Invalid selection. Must be between 1 and {len(recents)}.", None)
+            if len(recents) > 10:
+                print(f"  ... and {len(recents) - 10} more")
 
-                name, content = recents[choice_num]
-                self.prompt_manager.load_prompt(name)  # Update recency
-
-                return (f"Loaded prompt: {name}", content)
-
-            except ValueError:
-                return ("Invalid selection. Must be a number.", None)
-
-        except Exception as e:
-            return (f"Error loading recent prompts: {str(e)}", None)
+            try:
+                choice = input_with_esc("\nEnter number to load (or press ESC to cancel): ").strip()
+                if choice.isdigit():
+                    idx = int(choice) - 1
+                    if 0 <= idx < len(recents):
+                        name, content = recents[idx]
+                        return (f"Loading prompt: {name}", content)
+                    else:
+                        return ("Invalid selection.", None)
+                else:
+                    return ("Selection cancelled.", None)
+            except EscapeException:
+                return ("Selection cancelled.", None)
 
 
 def parse_args():

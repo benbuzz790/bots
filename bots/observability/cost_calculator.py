@@ -63,26 +63,25 @@ PRICING_DATA = {
         "batch_discount": 0.50,
     },
 }
+pass  # Cache creation premium: 25% markup on cache write tokens
 
 
 def normalize_provider(provider: str) -> str:
-    """Normalize provider name to lowercase standard format.
+    """Normalize provider name to canonical form.
 
     Args:
-        provider: Provider name (case-insensitive)
+        provider: Provider name (case-insensitive, accepts common aliases)
 
     Returns:
-        Normalized provider name
+        Normalized provider name ("anthropic", "openai", or "google")
 
     Raises:
-        ValueError: If provider is not supported
+        ValueError: If provider is not supported or empty
     """
+    # Check for empty provider first
     if not provider or not provider.strip():
         raise ValueError("Provider cannot be empty")
 
-    provider_lower = provider.lower().strip()
-
-    # Map common variations to standard names
     provider_map = {
         "anthropic": "anthropic",
         "claude": "anthropic",
@@ -92,9 +91,12 @@ def normalize_provider(provider: str) -> str:
         "gemini": "google",
     }
 
+    provider_lower = provider.lower().strip()
+
     normalized = provider_map.get(provider_lower)
     if normalized is None:
-        raise ValueError(f"Unsupported provider: {provider}. " f"Supported providers: {list(set(provider_map.values()))}")
+        supported = list(set(provider_map.values()))
+        raise ValueError(f"Unsupported provider: {provider}. Supported providers: {supported}")
 
     return normalized
 
@@ -170,6 +172,8 @@ def calculate_cost(
     input_tokens: int,
     output_tokens: int,
     cached_tokens: int = 0,
+    cache_creation_tokens: int = 0,
+    cache_read_tokens: int = 0,
     is_batch: bool = False,
 ) -> float:
     """Calculate the cost of an LLM API call in USD.
@@ -180,9 +184,11 @@ def calculate_cost(
     Args:
         provider: Provider name ("anthropic", "openai", "google", or common aliases)
         model: Model name (e.g., "claude-3-5-sonnet-latest", "gpt-4o")
-        input_tokens: Number of input tokens
+        input_tokens: Number of input tokens (non-cached when using new API, total when using deprecated cached_tokens)
         output_tokens: Number of output tokens
-        cached_tokens: Number of cached input tokens (default: 0)
+        cached_tokens: DEPRECATED - use cache_read_tokens instead. Represents portion of input_tokens that are cached.
+        cache_creation_tokens: Number of tokens written to cache (charged at premium, default: 0)
+        cache_read_tokens: Number of tokens read from cache (charged at discount, default: 0)
         is_batch: Whether this is a batch API request (default: False)
 
     Returns:
@@ -195,21 +201,31 @@ def calculate_cost(
         >>> calculate_cost("anthropic", "claude-3-5-sonnet-latest", 1000, 500)
         0.0105  # $3/1M input + $15/1M output
 
-        >>> calculate_cost("openai", "gpt-4o", 1000, 500, cached_tokens=500)
-        0.0065  # 50% discount on 500 cached input tokens
+        >>> calculate_cost("anthropic", "claude-3-5-sonnet-latest", 1000, 500, cache_read_tokens=500)
+        0.00825  # 1000 regular + 500 cached (0.1x) input + 500 output
 
-        >>> calculate_cost("google", "gemini-2.5-flash", 1000, 500, is_batch=True)
-        0.000775  # 50% batch discount
+        >>> calculate_cost("anthropic", "claude-3-5-sonnet-latest", 1000, 500, cache_creation_tokens=500)
+        0.012375  # 1000 regular + 500 cache creation (1.25x) input + 500 output
     """
-    # Input validation
+    # Input validation (before handling deprecated parameters)
     if input_tokens < 0:
         raise ValueError(f"Token counts cannot be negative: input_tokens={input_tokens}")
     if output_tokens < 0:
         raise ValueError(f"Token counts cannot be negative: output_tokens={output_tokens}")
+    if cache_creation_tokens < 0:
+        raise ValueError(f"Token counts cannot be negative: cache_creation_tokens={cache_creation_tokens}")
+    if cache_read_tokens < 0:
+        raise ValueError(f"Token counts cannot be negative: cache_read_tokens={cache_read_tokens}")
     if cached_tokens < 0:
         raise ValueError(f"Token counts cannot be negative: cached_tokens={cached_tokens}")
-    if cached_tokens > input_tokens:
-        raise ValueError(f"cached_tokens ({cached_tokens}) cannot exceed input_tokens ({input_tokens})")
+
+    # Handle deprecated cached_tokens parameter
+    # Old API: input_tokens is total, cached_tokens is portion that's cached
+    # New API: input_tokens is non-cached, cache_read_tokens is additional cached tokens
+    if cached_tokens > 0 and cache_read_tokens == 0:
+        cache_read_tokens = cached_tokens
+        # Subtract cached tokens from input_tokens for old API compatibility
+        input_tokens = input_tokens - cached_tokens
 
     # Normalize inputs
     try:
@@ -229,18 +245,23 @@ def calculate_cost(
     input_price_per_million = pricing["input"]
     output_price_per_million = pricing["output"]
 
-    # Calculate base costs
-    regular_input_tokens = input_tokens - cached_tokens
-
     # Calculate input cost (regular tokens at full price)
-    input_cost = (regular_input_tokens / 1_000_000) * input_price_per_million
+    input_cost = (input_tokens / 1_000_000) * input_price_per_million
 
-    # Calculate cached input cost (with discount)
-    if cached_tokens > 0:
+    # Calculate cache creation cost (with premium for Anthropic)
+    if cache_creation_tokens > 0:
+        provider_pricing = PRICING_DATA[provider]
+        cache_creation_premium = provider_pricing.get("cache_creation_premium", 1.0)
+        cache_creation_price_per_million = input_price_per_million * cache_creation_premium
+        cache_creation_cost = (cache_creation_tokens / 1_000_000) * cache_creation_price_per_million
+        input_cost += cache_creation_cost
+
+    # Calculate cache read cost (with discount)
+    if cache_read_tokens > 0:
         provider_pricing = PRICING_DATA[provider]
         cache_discount = provider_pricing.get("cache_discount", 0.0)
         cached_price_per_million = input_price_per_million * (1 - cache_discount)
-        cached_cost = (cached_tokens / 1_000_000) * cached_price_per_million
+        cached_cost = (cache_read_tokens / 1_000_000) * cached_price_per_million
         input_cost += cached_cost
 
     # Calculate output cost
@@ -257,10 +278,9 @@ def calculate_cost(
 
     # Validation: warn if cost seems unusually high
     if total_cost > 1.0:
+        total_input = input_tokens + cache_creation_tokens + cache_read_tokens
         logger.warning(
-            f"Unusually high cost calculated: ${total_cost:.4f} "
-            f"(provider={provider}, model={model}, "
-            f"input_tokens={input_tokens}, output_tokens={output_tokens})"
+            f"Unusually high API cost: ${total_cost:.4f} for " f"{total_input} input + {output_tokens} output tokens"
         )
 
     return total_cost

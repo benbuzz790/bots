@@ -378,23 +378,38 @@ class AnthropicMailbox(Mailbox):
                     if span and hasattr(response, "usage"):
                         span.set_attribute("input_tokens", response.usage.input_tokens)
                         span.set_attribute("output_tokens", response.usage.output_tokens)
+                        # Add cache token attributes if present
+                        if hasattr(response.usage, "cache_creation_input_tokens"):
+                            span.set_attribute(
+                                "cache_creation_input_tokens", response.usage.cache_creation_input_tokens
+                            )  # noqa: E501
+                        if hasattr(response.usage, "cache_read_input_tokens"):
+                            span.set_attribute("cache_read_input_tokens", response.usage.cache_read_input_tokens)
+
                     # Calculate and record cost and metrics
                     if METRICS_AVAILABLE and hasattr(response, "usage"):
                         try:
-                            # Record token usage
+                            # Extract cache tokens if present
+                            cache_creation_tokens = getattr(response.usage, "cache_creation_input_tokens", 0)
+                            cache_read_tokens = getattr(response.usage, "cache_read_input_tokens", 0)
+                            # Total input tokens = regular + cache creation + cache read
+                            total_input_tokens = response.usage.input_tokens + cache_creation_tokens + cache_read_tokens
+                            # Record token usage with total input tokens
                             metrics.record_tokens(
-                                response.usage.input_tokens,
+                                total_input_tokens,
                                 response.usage.output_tokens,
                                 provider="anthropic",
                                 model=bot.model_engine.value,
+                                cached_tokens=cache_creation_tokens + cache_read_tokens,
                             )
-
-                            # Calculate and record cost
+                            # Calculate and record cost with separate cache token types
                             cost = calculate_cost(
                                 provider="anthropic",
                                 model=bot.model_engine.value,
                                 input_tokens=response.usage.input_tokens,
                                 output_tokens=response.usage.output_tokens,
+                                cache_creation_tokens=cache_creation_tokens,
+                                cache_read_tokens=cache_read_tokens,
                             )
                             metrics.record_cost(cost, provider="anthropic", model=bot.model_engine.value)
                         except Exception as e:
@@ -405,7 +420,10 @@ class AnthropicMailbox(Mailbox):
                         try:
                             api_duration = time.time() - api_start_time
                             metrics.record_api_call(
-                                duration=api_duration, provider="anthropic", model=bot.model_engine.value, status="success"
+                                duration=api_duration,
+                                provider="anthropic",
+                                model=bot.model_engine.value,
+                                status="success",  # noqa: E501
                             )
                         except Exception as e:
                             logger.warning(f"Failed to record API metrics: {e}")
@@ -419,7 +437,9 @@ class AnthropicMailbox(Mailbox):
                     # Record timeout error metric
                     if METRICS_AVAILABLE:
                         try:
-                            metrics.record_error(error_type="APITimeoutError", provider="anthropic", operation="api_call")
+                            metrics.record_error(
+                                error_type="APITimeoutError", provider="anthropic", operation="api_call"
+                            )  # noqa: E501
                         except Exception:
                             pass
 
@@ -428,7 +448,7 @@ class AnthropicMailbox(Mailbox):
                         timeout_delay = timeout_base_delay * (attempt + 1)
                         logger.warning(
                             "API timeout, retrying",
-                            extra={"attempt": attempt + 1, "delay": timeout_delay, "provider": "anthropic"},
+                            extra={"attempt": attempt + 1, "delay": timeout_delay, "provider": "anthropic"},  # noqa: E501
                         )
                         if span:
                             span.add_event("api.timeout", {"attempt": attempt + 1, "delay": timeout_delay})
@@ -436,7 +456,8 @@ class AnthropicMailbox(Mailbox):
                         continue
                     else:
                         logger.exception(
-                            "Max timeout retries reached", extra={"timeout_retries": timeout_retries, "provider": "anthropic"}
+                            "Max timeout retries reached",
+                            extra={"timeout_retries": timeout_retries, "provider": "anthropic"},  # noqa: E501
                         )
                         if span:
                             span.record_exception(e)
@@ -471,7 +492,8 @@ class AnthropicMailbox(Mailbox):
                     )
                     if span:
                         span.add_event(
-                            "api.error.retry", {"attempt": attempt + 1, "error_type": e.__class__.__name__, "delay": delay}
+                            "api.error.retry",
+                            {"attempt": attempt + 1, "error_type": e.__class__.__name__, "delay": delay},  # noqa: E501
                         )
                     time.sleep(delay)
 
@@ -763,7 +785,8 @@ class CacheController:
                 is_tool = False
                 if isinstance(next_content, list):
                     is_tool = any(
-                        isinstance(item, dict) and item.get("type") in ["tool_call", "tool_result"] for item in next_content
+                        isinstance(item, dict) and item.get("type") in ["tool_call", "tool_result"]
+                        for item in next_content  # noqa: E501
                     )
                 elif isinstance(next_content, dict):
                     is_tool = next_content.get("type") in [
@@ -781,7 +804,8 @@ class CacheController:
                 is_tool = False
                 if isinstance(prev_content, list):
                     is_tool = any(
-                        isinstance(item, dict) and item.get("type") in ["tool_call", "tool_result"] for item in prev_content
+                        isinstance(item, dict) and item.get("type") in ["tool_call", "tool_result"]
+                        for item in prev_content  # noqa: E501
                     )
                 elif isinstance(prev_content, dict):
                     is_tool = prev_content.get("type") in [
