@@ -397,13 +397,15 @@ def list_context() -> str:
         # Format with labels
         lines = []
         for i, msg in enumerate(messages):
-            # Generate label: A-Z, then AA-AZ, BA-BZ, etc.
+            # Generate label: A-Z, then AA-AZ, BA-BZ, etc. (Excel-style column naming)
             if i < 26:
                 label = chr(65 + i)  # A, B, C, ..., Z
             else:
                 # After Z, use AA, AB, AC, ..., AZ, BA, BB, etc.
-                first_letter = chr(65 + ((i - 26) // 26))  # A, B, C, ...
-                second_letter = chr(65 + ((i - 26) % 26))  # A-Z cycling
+                # Subtract 26 to start the two-letter sequence from 0
+                adjusted_i = i - 26
+                first_letter = chr(65 + (adjusted_i // 26))  # A, B, C, ...
+                second_letter = chr(65 + (adjusted_i % 26))  # A-Z cycling
                 label = first_letter + second_letter
 
             # Format tool calls if present
