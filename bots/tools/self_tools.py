@@ -447,6 +447,10 @@ def remove_context(labels: str) -> str:
     Note: This tool has limitations with branched conversations and will
     attempt to handle the simplest case (linear conversation paths).
 
+    Tool call sequences (assistant with tool_calls -> user with tool_results ->
+    assistant with answer) are protected and cannot be partially removed to
+    maintain conversation integrity.
+
     Parameters:
         labels (str): String representation of a list of labels to remove.
             Format: "['A', 'B', 'C']"
@@ -528,20 +532,24 @@ def remove_context(labels: str) -> str:
                 continue
 
             # CRITICAL: Check if removing this pair would break tool_call/tool_result pairing
+            # Tool call sequences must remain intact to maintain valid conversation state
+
             # Case 1: grandparent has tool_calls, and user_node has the tool_results
+            # This means we're trying to remove the message that follows a tool call
             if grandparent.role == "assistant" and grandparent.tool_calls and user_node.tool_results:
-                # Removing user_node would leave grandparent's tool_calls without results
-                skipped_messages.append(f"Label {label_str} (would break tool_call/tool_result pairing)")
+                skipped_messages.append(
+                    f"Label {label_str} (part of tool call sequence - " "cannot remove without breaking pairing)"
+                )
                 continue
 
             # Case 2: msg_node has tool_calls, which means the NEXT user message has tool_results
-            # If we remove msg_node and reconnect its children to grandparent, we need to ensure
-            # tool_results are preserved
+            # Removing this would orphan the tool results
             if msg_node.tool_calls:
-                # Check if any children are user nodes with tool_results
                 has_tool_result_child = any(child.role == "user" and child.tool_results for child in msg_node.replies)
                 if has_tool_result_child:
-                    skipped_messages.append(f"Label {label_str} (has tool_calls with results in children)")
+                    skipped_messages.append(
+                        f"Label {label_str} (initiates tool call - " "cannot remove without breaking pairing)"
+                    )
                     continue
 
             # Safe to remove - no tool_call/tool_result pairing issues
@@ -563,8 +571,12 @@ def remove_context(labels: str) -> str:
         # Build result message
         result_parts = [f"Removed {removed_count} message pair(s)"]
         if skipped_messages:
-            result_parts.append(f"Skipped {len(skipped_messages)} message(s) to preserve conversation integrity:")
+            result_parts.append(f"\nSkipped {len(skipped_messages)} message(s) to preserve conversation integrity:")
             result_parts.extend([f"  - {msg}" for msg in skipped_messages])
+            result_parts.append(
+                "\nNote: Messages involved in tool calls cannot be removed individually. "
+                "Tool call sequences must remain intact."
+            )
 
         return "\n".join(result_parts)
 

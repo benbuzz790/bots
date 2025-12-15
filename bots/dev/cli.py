@@ -1015,6 +1015,17 @@ class ConversationHandler:
                         "Warning: Ended up on user node with no assistant response. Bumped to previous assistant node."
                     ),
                 }
+
+            # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
+            if self._ensure_valid_conversation_position(bot):
+                return {
+                    "type": "system",
+                    "content": (
+                        "Moved up and adjusted position to include tool results. "
+                        f"Now at: {bot.conversation.content[:50] if bot.conversation.content else '(empty)'}"
+                    ),
+                }
+
             # Return conversation content as message
             if bot.conversation.content:
                 return {"type": "message", "role": "assistant", "content": bot.conversation.content}
@@ -1048,6 +1059,16 @@ class ConversationHandler:
                 bot.conversation = next_node
             if not self._ensure_assistant_node(bot):
                 return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
+
+            # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
+            if self._ensure_valid_conversation_position(bot):
+                return {
+                    "type": "system",
+                    "content": (
+                        "Moved down and adjusted position to include tool results. "
+                        f"Now at: {bot.conversation.content[:50] if bot.conversation.content else '(empty)'}"
+                    ),
+                }
 
             # Return conversation content as message
             if bot.conversation.content:
@@ -1334,6 +1355,40 @@ class ConversationHandler:
                 if reply.role == "assistant":
                     bot.conversation = reply
                     return True
+        return False
+
+    def _ensure_valid_conversation_position(self, bot: Bot) -> bool:
+        """Ensure bot.conversation is at a valid position for API calls.
+
+        A valid position means:
+        1. We're on an assistant node (already handled by _ensure_assistant_node)
+        2. If the assistant node has tool_calls, we need to move forward to include
+           the tool_results in the conversation history.
+
+        This prevents issue #206 where navigating to an assistant node with tool_calls
+        causes API errors because tool_results are in a child node and not included
+        in _build_messages().
+
+        Returns:
+            bool: True if position was adjusted, False if no adjustment needed
+        """
+        # Check if current node is assistant with tool_calls
+        if bot.conversation.role == "assistant" and bot.conversation.tool_calls:
+            # Check if there's a user reply with tool_results
+            if bot.conversation.replies:
+                for reply in bot.conversation.replies:
+                    if reply.role == "user" and reply.tool_results:
+                        # Move forward to include the tool_results
+                        # If this user node has assistant replies, move to the first one
+                        if reply.replies:
+                            for assistant_reply in reply.replies:
+                                if assistant_reply.role == "assistant":
+                                    bot.conversation = assistant_reply
+                                    return True
+                        # Otherwise stay at the user node (unusual but valid)
+                        bot.conversation = reply
+                        return True
+
         return False
 
     def _display_conversation_context(self, bot: Bot, context: CLIContext):
