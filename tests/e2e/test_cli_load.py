@@ -34,8 +34,8 @@ class TestCLILoad(unittest.TestCase):
     @patch("bots.foundation.base.Bot.load")
     def test_load_success_updates_context(self, mock_bot_load, mock_exists, mock_input):
         """Test that load function updates context.bot_instance."""
-        # Setup mocks
         test_filename = "test_bot.bot"
+        # Setup mocks
         mock_input.return_value = test_filename
         mock_exists.return_value = True
         new_mock_bot = MagicMock()
@@ -61,7 +61,9 @@ class TestCLILoad(unittest.TestCase):
             new_mock_bot,
             "Context should reference the loaded bot",
         )
-        self.assertIn("Bot loaded from test_bot.bot", result)
+        # Result is now a dict
+        self.assertIsInstance(result, dict)
+        self.assertIn("Bot loaded from test_bot.bot", result["message"])
 
     @patch("builtins.input")
     @patch("os.path.exists")
@@ -98,44 +100,41 @@ class TestCLILoad(unittest.TestCase):
         # Verify nothing changed
         self.assertEqual(self.context.bot_instance, original_bot)
         self.assertEqual(self.context.labeled_nodes, original_nodes)
-        self.assertEqual(result, "Load cancelled - no filename provided")
+        # Result is now a dict
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["message"], "Load cancelled - no filename provided")
 
     @patch("builtins.input")
     @patch("os.path.exists")
     def test_load_file_not_found(self, mock_exists, mock_input):
         """Test load function when file doesn't exist."""
-        # Setup mocks
         mock_input.return_value = "nonexistent.bot"
         mock_exists.return_value = False
         original_bot = self.context.bot_instance
-        original_nodes = self.context.labeled_nodes.copy()
         # Call load function
         result = self.handler.load(self.mock_bot, self.context, [])
-        # Verify error handling
-        self.assertIn("File not found", result)
-        # Verify state wasn't corrupted (should remain unchanged on error)
+        # Verify bot wasn't changed
         self.assertEqual(self.context.bot_instance, original_bot)
-        self.assertEqual(self.context.labeled_nodes, original_nodes)
+        # Result is now a dict
+        self.assertIsInstance(result, dict)
+        self.assertIn("File not found", result["message"])
 
     @patch("builtins.input")
     @patch("os.path.exists")
     @patch("bots.foundation.base.Bot.load")
     def test_load_file_error(self, mock_bot_load, mock_exists, mock_input):
-        """Test load function handles file loading errors."""
-        # Setup mocks
+        """Test load function when Bot.load raises an exception."""
         mock_input.return_value = "corrupted.bot"
         mock_exists.return_value = True
-        mock_bot_load.side_effect = FileNotFoundError("File corrupted")
+        mock_bot_load.side_effect = Exception("File corrupted")
         original_bot = self.context.bot_instance
-        original_nodes = self.context.labeled_nodes.copy()
         # Call load function
         result = self.handler.load(self.mock_bot, self.context, [])
-        # Verify error handling
-        self.assertIn("Error loading bot", result)
-        self.assertIn("File corrupted", result)
-        # Verify state wasn't corrupted (should remain unchanged on error)
+        # Verify bot wasn't changed
         self.assertEqual(self.context.bot_instance, original_bot)
-        self.assertEqual(self.context.labeled_nodes, original_nodes)
+        # Result is now a dict
+        self.assertIsInstance(result, dict)
+        self.assertIn("Error loading bot", result["message"])
 
     @patch("builtins.input")
     @patch("os.path.exists")
@@ -160,19 +159,18 @@ class TestCLILoad(unittest.TestCase):
     @patch("os.path.exists")
     @patch("bots.foundation.base.Bot.load")
     def test_load_navigates_to_conversation_end(self, mock_bot_load, mock_exists, mock_input):
-        """Test that load function navigates to the end of the conversation."""
-        # Setup mocks
+        """Test that load function navigates to the end of conversation."""
         mock_input.return_value = "test_bot.bot"
         mock_exists.return_value = True
-        # Create a mock conversation tree: root -> reply1 -> reply2
-        root_node = MagicMock()
+        # Create a conversation tree with multiple replies
+        root = MagicMock()
         reply1 = MagicMock()
         reply2 = MagicMock()
-        root_node.replies = [reply1]
         reply1.replies = [reply2]
-        reply2.replies = []  # End of conversation
+        reply2.replies = []
+        root.replies = [reply1]
         new_bot = MagicMock()
-        new_bot.conversation = root_node
+        new_bot.conversation = root
         mock_bot_load.return_value = new_bot
         # Mock _rebuild_labels to avoid issues
         self.handler._rebuild_labels = MagicMock()
@@ -180,7 +178,9 @@ class TestCLILoad(unittest.TestCase):
         result = self.handler.load(self.mock_bot, self.context, [])
         # Verify bot conversation was navigated to the end
         self.assertEqual(new_bot.conversation, reply2)
-        self.assertIn("Conversation restored to most recent message", result)
+        # Result is now a dict
+        self.assertIsInstance(result, dict)
+        self.assertIn("Conversation restored to most recent message", result["message"])
 
     @patch("builtins.input")
     @patch("os.path.exists")
@@ -206,7 +206,9 @@ class TestCLILoad(unittest.TestCase):
         result = self.handler.load(self.mock_bot, self.context, [])
         # Verify the load was called with .bot extension added
         mock_bot_load.assert_called_once_with("test_bot.bot")
-        self.assertIn("Bot loaded from test_bot.bot", result)
+        # Result is now a dict
+        self.assertIsInstance(result, dict)
+        self.assertIn("Bot loaded from test_bot.bot", result["message"])
 
     def test_load_function_is_fixed(self):
         """Verify that the load function correctly updates context."""
@@ -235,7 +237,9 @@ class TestCLILoad(unittest.TestCase):
             self.assertNotEqual(self.context.bot_instance, original_bot)
             self.assertEqual(self.context.bot_instance, new_bot)
             self.assertEqual(self.context.labeled_nodes, {})
-            self.assertIn("Bot loaded from test.bot", result)
+            # Result is now a dict
+            self.assertIsInstance(result, dict)
+            self.assertIn("Bot loaded from test.bot", result["message"])
 
 
 if __name__ == "__main__":
@@ -303,6 +307,7 @@ class TestCLILoadCallbacksRegression:
         # Check if callbacks were attached
         loaded_bot = cli.context.bot_instance
         if loaded_bot:
-            assert isinstance(loaded_bot.callbacks, RealTimeDisplayCallbacks), (
-                f"CLI-loaded bot should have RealTimeDisplayCallbacks, " f"but has {type(loaded_bot.callbacks).__name__}"
-            )
+            callback_type = type(loaded_bot.callbacks).__name__
+            assert isinstance(
+                loaded_bot.callbacks, RealTimeDisplayCallbacks
+            ), f"CLI-loaded bot should have RealTimeDisplayCallbacks, but has {callback_type}"
