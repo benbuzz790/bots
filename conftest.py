@@ -149,7 +149,11 @@ class TestProfiler:
 @pytest.fixture(scope="session")
 def test_profiler(request):
     """Session-scoped fixture for test profiling."""
-    profiler = TestProfiler()
+    # Get or create the shared profiler instance from config
+    if not hasattr(request.config, "_test_profiler"):
+        request.config._test_profiler = TestProfiler()
+
+    profiler = request.config._test_profiler
 
     # Register report generation at session end
     def generate_report():
@@ -182,9 +186,33 @@ def pytest_runtest_protocol(item, nextitem):
     result = "unknown"
 
     try:
-        # Run the test
-        yield
-        result = "passed"
+        # Run the test and capture the outcome
+        outcome = yield
+
+        # Get the test report to determine actual outcome
+        try:
+            reports = outcome.get_result()
+            # Find the 'call' phase report (the actual test execution)
+            for report in reports:
+                if report.when == "call":
+                    if report.outcome == "passed":
+                        result = "passed"
+                    elif report.outcome == "failed":
+                        result = "failed"
+                    elif report.outcome == "skipped":
+                        result = "skipped"
+                    else:
+                        result = "error"
+                    break
+            else:
+                # No call phase found, check if test was skipped in setup
+                for report in reports:
+                    if report.outcome == "skipped":
+                        result = "skipped"
+                        break
+        except Exception:
+            # If we can't get the outcome, mark as error
+            result = "error"
 
     except KeyboardInterrupt:
         result = "interrupted"
@@ -192,7 +220,8 @@ def pytest_runtest_protocol(item, nextitem):
 
     except Exception:
         result = "error"
-        # Don't re-raise, let pytest handle it
+        # Re-raise the exception so pytest can properly register the failure
+        raise
 
     finally:
         # Always stop profiling, even if test times out or crashes

@@ -254,4 +254,3 @@ if __name__ == "__main__":
     print("\n" + "=" * 80)
     print("INVESTIGATION COMPLETE")
     print("=" * 80)
-test_deepcopy_functionality()
