@@ -2,6 +2,8 @@ import os
 import tempfile
 import uuid
 
+import pytest
+
 # Import shared fixtures from fixtures directory
 # These will be automatically discovered by pytest
 try:
@@ -62,4 +64,4 @@ def pytest_collection_modifyitems(config, items):
         if item.get_closest_marker("cli_serial"):
             # Add xdist_group marker to force serial execution
             # All tests with the same xdist_group name run in the same worker, serially
-            item.add_marker("xdist_group(name='cli_serial')")
+            item.add_marker(pytest.mark.xdist_group("cli_serial"))
