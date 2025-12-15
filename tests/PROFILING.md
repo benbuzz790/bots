@@ -6,7 +6,7 @@ The profiling script provides timeout protection and is resilient to infinite lo
 ```bash
 # Profile all tests with 60s timeout per test
 python tests/profile_tests.py --timeout 60
-# Quick profile (10s timeout, stops on first failure)
+# Quick profile (10s timeout per test)
 python tests/profile_tests.py --quick
 # Profile specific test directory
 python tests/profile_tests.py tests/unit --timeout 30
@@ -183,5 +183,5 @@ Consider adding a profiling step to CI that fails if tests exceed thresholds:
     # Parse results and fail if too many slow tests
 ```
 ---
-**Last Updated**: 2025-01-14
+**Last Updated**: 2025-12-15
 **Related**: TESTING.md, pytest.ini
