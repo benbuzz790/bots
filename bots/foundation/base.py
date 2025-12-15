@@ -536,29 +536,73 @@ class ConversationNode:
         return node
 
     def _node_count(self) -> int:
-        """Count the total number of nodes in the conversation tree.
-
-        Use when you need to measure the size of the conversation.
-        Counts from the root node down through all branches.
+        """Count total nodes in the tree from this node.
 
         Returns:
-            int: Total number of nodes in the conversation tree
-
-        Example:
-            ```python
-            total_messages = node._node_count()
-            print(f"This conversation has {total_messages} messages")
-            ```
+            int: Total number of nodes including this one and all descendants
         """
-        root = self._find_root()
+        count = 1
+        for reply in self.replies:
+            count += reply._node_count()
+        return count
 
-        def count_recursive(current_node):
-            count = 1
-            for reply in current_node.replies:
-                count += count_recursive(reply)
-            return count
+    def _is_valid_conversation_position(self) -> bool:
+        """
+        Validate that this node position would create a valid message sequence for the API.
 
-        return count_recursive(root)
+        For APIs like Anthropic, the last message cannot be an assistant message with tool_calls
+        without a following user message with tool_results.
+
+        Returns:
+            bool: True if this position creates a valid message sequence, False otherwise
+        """
+        if self.role != "assistant":
+            return True
+
+        # Check if this assistant node has tool_calls
+        if not self.tool_calls:
+            return True
+
+        # If it has tool_calls, there must be at least one reply (user with tool_results)
+        # Otherwise, the message sequence would be invalid
+        if not self.replies:
+            return False
+
+        # Check if any reply is a user node with tool_results
+        has_tool_result_reply = any(reply.role == "user" and reply.tool_results for reply in self.replies)
+
+        return has_tool_result_reply
+
+    def _find_valid_conversation_position(self) -> "ConversationNode":
+        """
+        Find the nearest valid conversation position from this node.
+
+        If this node is invalid (assistant with tool_calls but no tool_result reply),
+        move forward to include the tool_result, or backward to before the tool_calls.
+
+        Returns:
+            ConversationNode: A valid conversation node (may be self if already valid)
+        """
+        if self._is_valid_conversation_position():
+            return self
+
+        # Node is invalid - it's an assistant with tool_calls but no replies with tool_results
+        # Strategy: Move forward to the first reply that has tool_results
+        if self.replies:
+            for reply in self.replies:
+                if reply.role == "user" and reply.tool_results:
+                    # Move to the first assistant reply after this user node
+                    if reply.replies:
+                        return reply.replies[0]
+                    # If no assistant reply yet, stay at the user node
+                    return reply
+
+        # If we can't move forward, move backward to before the tool_calls
+        if self.parent:
+            return self.parent
+
+        # Last resort: return self as-is
+        return self
 
 
 @dataclass
