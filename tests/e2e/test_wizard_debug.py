@@ -113,6 +113,7 @@ class TestWizardDebug(unittest.TestCase):
         self.assertIn("single_prompt", output)
         self.assertIn("Executing single_prompt", output)
 
+    @pytest.mark.skip(reason="Worker crash - see GitHub issue for investigation")
     @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
     def test_05_fp_single_prompt_no_redirect(self, mock_input, mock_bot_class):
