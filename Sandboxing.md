@@ -31,7 +31,7 @@ The `execute_powershell` function and `PowerShellManager` class are **trusted Py
 This approach was considered but has significant drawbacks:
 ### Cons:
 1. **Loss of statefulness** - The current `execute_powershell` maintains a persistent session where you can `cd`, set variables, and activate virtual environments. Wrapping each call would make them isolated.
-2. **Performance overhead** - Would spawn: Python GåÆ Python subprocess GåÆ PowerShell subprocess (instead of reusing existing session)
+2. **Performance overhead** - Would spawn: Python -> Python subprocess -> PowerShell subprocess (instead of reusing existing session)
 3. **Complexity** - Would need to write Python code that calls PowerShell, with escaping challenges
 4. **Doesn't solve the problem** - The Python wrapper managing PowerShell is trusted code; it's the PowerShell commands that need restriction
 ## Available Sandboxing Libraries
