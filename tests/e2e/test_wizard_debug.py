@@ -64,7 +64,7 @@ class TestWizardDebug(unittest.TestCase):
         self.assertIn("Available functional prompts", output)
         self.assertIn("Invalid selection", output)
 
-    @pytest.mark.skip(reason="Worker crash - input mocking causes pytest-xdist hang/crash")
+    @pytest.mark.skip(reason="Hangs with xdist - run with: pytest <test_path> -n 0")
     @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
     def test_03_fp_single_prompt(self, mock_input, mock_bot_class):
@@ -90,7 +90,7 @@ class TestWizardDebug(unittest.TestCase):
         self.assertIn("single_prompt", output)
         self.assertIn("Executing single_prompt", output)
 
-    @pytest.mark.skip(reason="Worker crash - input mocking causes pytest-xdist hang/crash")
+    @pytest.mark.skip(reason="Hangs with xdist - run with: pytest <test_path> -n 0")
     @patch("bots.dev.cli.AnthropicBot")
     @patch("builtins.input")
     def test_04_fp_single_prompt_no_initial_chat(self, mock_input, mock_bot_class):

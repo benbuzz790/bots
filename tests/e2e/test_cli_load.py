@@ -65,7 +65,7 @@ class TestCLILoad(unittest.TestCase):
         self.assertIsInstance(result, dict)
         self.assertIn("Bot loaded from test_bot.bot", result["message"])
 
-    @pytest.mark.skip(reason="Worker crash - input mocking causes pytest-xdist hang/crash")
+    @pytest.mark.skip(reason="Hangs with xdist - run with: pytest <test_path> -n 0")
     @patch("builtins.input")
     @patch("os.path.exists")
     @patch("bots.foundation.base.Bot.load")
