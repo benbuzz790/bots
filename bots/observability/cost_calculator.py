@@ -63,7 +63,6 @@ PRICING_DATA = {
         "batch_discount": 0.50,
     },
 }
-pass  # Cache creation premium: 25% markup on cache write tokens
 
 
 def normalize_provider(provider: str) -> str:
