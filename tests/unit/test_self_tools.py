@@ -163,6 +163,43 @@ class TestSelfTools(unittest.TestCase):
         response = self.bot.respond("Use branch_self with prompts []")
         self.assertIn("empty", response.lower())
 
+    def test_branch_self_preserves_callbacks(self) -> None:
+        """Test that branch_self preserves bot callbacks after deepcopy.
+
+        This is a regression test for issue #180 where CLI callbacks were
+        dropped when branch_self performed a deepcopy of the bot.
+        """
+        from unittest.mock import Mock
+
+        # Create a mock bot with callbacks
+        bot = MockBot()
+
+        # Create a mock callback object
+        mock_callbacks = Mock()
+        mock_callbacks.on_api_call_complete = Mock()
+        mock_callbacks.on_tool_start = Mock()
+        mock_callbacks.on_tool_complete = Mock()
+
+        # Attach callbacks to bot
+        bot.callbacks = mock_callbacks
+
+        # Verify callbacks are set
+        assert bot.callbacks is not None
+        assert bot.callbacks == mock_callbacks
+
+        # Simulate what branch_self does - deepcopy the bot
+        import copy
+
+        branch_bot = copy.deepcopy(bot)
+
+        # After fix: callbacks should be preserved (not None)
+        assert branch_bot.callbacks is not None, "Callbacks should be preserved after deepcopy"
+
+        # Verify the callback has the expected methods
+        assert hasattr(branch_bot.callbacks, "on_api_call_complete")
+        assert hasattr(branch_bot.callbacks, "on_tool_start")
+        assert hasattr(branch_bot.callbacks, "on_tool_complete")
+
     @pytest.mark.api
     def test_debug_output_format(self) -> None:
         """Test that debug output follows the expected format."""

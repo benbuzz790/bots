@@ -3005,10 +3005,18 @@ class Bot(ABC):
         Uses our existing _serialize() method which already handles all the
         complex serialization (modules, functions, tool handlers, etc).
 
+        For deepcopy operations (e.g., in branch_self), we preserve callbacks
+        by storing them separately and not passing them through _serialize().
+
         Returns:
             dict: Serialized bot state (picklable)
         """
-        return self._serialize()
+        state = self._serialize()
+        # Preserve callbacks for deepcopy operations (like branch_self)
+        # They won't be serialized to disk, but will be available during deepcopy
+        if hasattr(self, "callbacks") and self.callbacks is not None:
+            state["_callbacks_preserved"] = self.callbacks
+        return state
 
     def __setstate__(self, state):
         """Support for pickle and deepcopy.
@@ -3017,15 +3025,25 @@ class Bot(ABC):
         Uses our existing _deserialize() method which already handles all the
         complex deserialization (modules, functions, tool handlers, etc).
 
+        For deepcopy operations (e.g., in branch_self), we restore callbacks
+        that were preserved in __getstate__.
+
         Parameters:
             state (dict): Serialized bot state
         """
+        # Extract preserved callbacks before deserialization
+        preserved_callbacks = state.pop("_callbacks_preserved", None)
+
         # _deserialize is a classmethod that returns a new bot instance
         # We need to transfer its state to self
         temp_bot = self.__class__._deserialize(state, api_key=state.get("api_key"))
 
         # Copy all attributes from temp_bot to self
         self.__dict__.update(temp_bot.__dict__)
+
+        # Restore callbacks if they were preserved (for deepcopy operations)
+        if preserved_callbacks is not None:
+            self.callbacks = preserved_callbacks
 
     @classmethod
     def load(cls, filepath: str, api_key: Optional[str] = None) -> "Bot":

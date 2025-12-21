@@ -201,6 +201,32 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertContainsNormalized(result, "Extended ASCII:")
         self.assertTrue(any((char in result for char in "°±²³µ¶·¹º")))
 
+    def test_special_unicode_characters(self):
+        """Test handling of checkmark and crossmark characters (Issue #208)"""
+        from bots.tools.terminal_tools import execute_powershell
+
+        # Test checkmark and crossmark characters that were showing mojibake
+        ps_script = 'Write-Host "✓ Profile report exists!"'
+        result = self._collect_generator_output(execute_powershell(ps_script))
+        self.assertIn("✓", result, "Checkmark character should not be corrupted")
+        self.assertIn("Profile report exists!", result)
+
+        ps_script = 'Write-Host "✗ Profile report NOT created"'
+        result = self._collect_generator_output(execute_powershell(ps_script))
+        self.assertIn("✗", result, "Crossmark character should not be corrupted")
+        self.assertIn("Profile report NOT created", result)
+
+        # Test both together
+        ps_script = """
+    Write-Host "✓ Success"
+    Write-Host "✗ Failure"
+    """
+        result = self._collect_generator_output(execute_powershell(ps_script))
+        self.assertIn("✓", result)
+        self.assertIn("✗", result)
+        self.assertIn("Success", result)
+        self.assertIn("Failure", result)
+
     def test_stateful_invalid_encoding_handling(self):
         """Test handling of potentially problematic encoding scenarios in generator form"""
         from bots.tools.terminal_tools import execute_powershell

@@ -1017,14 +1017,8 @@ class ConversationHandler:
                 }
 
             # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
-            if self._ensure_valid_conversation_position(bot):
-                return {
-                    "type": "system",
-                    "content": (
-                        "Moved up and adjusted position to include tool results. "
-                        f"Now at: {bot.conversation.content[:50] if bot.conversation.content else '(empty)'}"
-                    ),
-                }
+            # Note: This adjusts position but we still want to display content after
+            self._ensure_valid_conversation_position(bot)
 
             # Return conversation content as message
             if bot.conversation.content:
@@ -1061,14 +1055,8 @@ class ConversationHandler:
                 return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
 
             # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
-            if self._ensure_valid_conversation_position(bot):
-                return {
-                    "type": "system",
-                    "content": (
-                        "Moved down and adjusted position to include tool results. "
-                        f"Now at: {bot.conversation.content[:50] if bot.conversation.content else '(empty)'}"
-                    ),
-                }
+            # Note: This adjusts position but we still want to display content after
+            self._ensure_valid_conversation_position(bot)
 
             # Return conversation content as message
             if bot.conversation.content:
@@ -1090,6 +1078,9 @@ class ConversationHandler:
         if not self._ensure_assistant_node(bot):
             return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
 
+        # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
+        self._ensure_valid_conversation_position(bot)
+
         # Return conversation content as message
         if bot.conversation.content:
             return {"type": "message", "role": "assistant", "content": bot.conversation.content}
@@ -1109,6 +1100,9 @@ class ConversationHandler:
         if not self._ensure_assistant_node(bot):
             return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
 
+        # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
+        self._ensure_valid_conversation_position(bot)
+
         # Return conversation content as message
         if bot.conversation.content:
             return {"type": "message", "role": "assistant", "content": bot.conversation.content}
@@ -1121,6 +1115,9 @@ class ConversationHandler:
             bot.conversation = bot.conversation.parent
         if not self._ensure_assistant_node(bot):
             return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
+
+        # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
+        self._ensure_valid_conversation_position(bot)
 
         # Return conversation content as message
         if bot.conversation.content:
@@ -2578,6 +2575,7 @@ class CLI:
         self.context.bot_instance.callbacks = RealTimeDisplayCallbacks(self.context)
 
         # bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools, bots.tools.self_tools)
+        from bots.tools.beep import piano
         from bots.tools.code_tools import view, view_dir
         from bots.tools.python_edit import python_edit, python_view
         from bots.tools.python_execution_tool import execute_python
@@ -2597,6 +2595,7 @@ class CLI:
             list_context,
             web_search,
             python_edit,
+            piano,
         ]
 
         try:

@@ -32,3 +32,9 @@ repos:
         language: system
         types: [text]
         pass_filenames: true
+      - id: reinstall-editable
+        name: Reinstall package in strict editable mode
+        entry: pip install --config-settings editable-mode=strict -e .
+        language: system
+        pass_filenames: false
+        always_run: true

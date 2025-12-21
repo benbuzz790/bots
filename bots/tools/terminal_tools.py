@@ -230,7 +230,10 @@ class PowerShellSession:
         def reader_thread(pipe, queue):
             try:
                 for line in pipe:
-                    queue.put(line.rstrip("\n\r"))
+                    # Decode bytes as UTF-8 (PowerShell outputs UTF-8 after chcp 65001)
+                    # This fixes mojibake issues with special characters like ✓ and ✗ (Issue #208)
+                    decoded_line = line.decode("utf-8", errors="replace").rstrip("\n\r")
+                    queue.put(decoded_line)
             finally:
                 queue.put(None)
 
@@ -249,9 +252,9 @@ class PowerShellSession:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 startupinfo=self.startupinfo,
-                encoding="utf-8",
-                errors="replace",
-                bufsize=1,
+                encoding=None,  # Read as bytes to handle encoding properly
+                errors=None,
+                bufsize=0,  # Unbuffered for binary mode
             )
             self._start_reader_threads()
             init_commands = [
@@ -352,7 +355,7 @@ class PowerShellSession:
                         """.strip(),
             ]
             for cmd in init_commands:
-                self._process.stdin.write(cmd + "\n")
+                self._process.stdin.write((cmd + "\n").encode("utf-8"))
             self._process.stdin.flush()
         return self
 
@@ -459,7 +462,7 @@ class PowerShellSession:
                 self._output_queue.get_nowait()
             while not self._error_queue.empty():
                 self._error_queue.get_nowait()
-            self._process.stdin.write(wrapped_code + "\n")
+            self._process.stdin.write((wrapped_code + "\n").encode("utf-8"))
             self._process.stdin.flush()
             output_lines = []
             error_output = []

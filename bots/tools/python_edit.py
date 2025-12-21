@@ -98,28 +98,36 @@ def _extract_definition_names(module: cst.Module) -> List[str]:
     return names
 
 
-def _check_for_duplicates(tree: cst.Module, new_module: cst.Module, path_elements: List[str]) -> Optional[str]:
+def _check_for_duplicates(tree: cst.Module, new_module: cst.Module, path_elements: List[str]) -> List[tuple]:
     """
     Check if new code would create duplicate definitions.
 
     Returns:
-        Optional[str]: Warning message if duplicates found, None otherwise
+        List[tuple]: List of (name, definition_type) tuples for duplicates found.
+                     definition_type is 'function', 'class', or 'method'.
+                     Empty list if no duplicates.
     """
     # Extract names from new code
     new_names = _extract_definition_names(new_module)
     if not new_names:
-        return None
+        return []
+
+    duplicates_info = []
 
     # If we're at file level (no path elements), check file-level definitions
     if not path_elements:
-        existing_names = _extract_definition_names(tree)
-        duplicates = set(new_names) & set(existing_names)
-        if duplicates:
-            dup_list = ", ".join(sorted(duplicates))
-            return (
-                f"Warning: Adding duplicate definition(s): {dup_list}. "
-                f"This will create multiple definitions with the same name."
-            )
+        # Get existing definitions with their types
+        for statement in tree.body:
+            if isinstance(statement, cst.SimpleStatementLine):
+                continue
+            if isinstance(statement, cst.FunctionDef):
+                name = statement.name.value
+                if name in new_names:
+                    duplicates_info.append((name, "function"))
+            elif isinstance(statement, cst.ClassDef):
+                name = statement.name.value
+                if name in new_names:
+                    duplicates_info.append((name, "class"))
     else:
         # If we're in a class scope, check for duplicate methods
         # Find the target class using the visitor pattern
@@ -128,21 +136,39 @@ def _check_for_duplicates(tree: cst.Module, new_module: cst.Module, path_element
 
         if finder.target_node and isinstance(finder.target_node, cst.ClassDef):
             # Extract existing method names from the class (including async methods)
-            existing_methods = []
             for item in finder.target_node.body.body:
                 if isinstance(item, cst.FunctionDef):
-                    existing_methods.append(item.name.value)
+                    name = item.name.value
+                    if name in new_names:
+                        duplicates_info.append((name, "method"))
 
-            duplicates = set(new_names) & set(existing_methods)
-            if duplicates:
-                dup_list = ", ".join(sorted(duplicates))
-                class_name = finder.target_node.name.value
-                return (
-                    f"Warning: Adding duplicate method(s) to class '{class_name}': {dup_list}. "
-                    f"This will create multiple methods with the same name."
-                )
+    return duplicates_info
 
-    return None
+
+def _remove_definitions(tree: cst.Module, names_to_remove: set, path_elements: List[str]) -> cst.Module:
+    """
+    Remove definitions by name from the CST.
+
+    Parameters:
+    -----------
+    tree : cst.Module
+        The CST tree to modify
+    names_to_remove : set
+        Set of definition names to remove
+    path_elements : List[str]
+        Scope path elements (empty list for file-level, class name for class-level)
+
+    Returns:
+    --------
+    cst.Module
+        Modified CST tree with definitions removed
+    """
+    if not names_to_remove:
+        return tree
+
+    remover = DefinitionRemover(names_to_remove, path_elements)
+    modified_tree = tree.visit(remover)
+    return modified_tree
 
 
 class ScopeViewer(ast.NodeVisitor):
@@ -885,6 +911,65 @@ class ScopeReplacer(cst.CSTTransformer):
         return node
 
 
+class DefinitionRemover(cst.CSTTransformer):
+    """
+    Transformer to remove definitions by name from the CST.
+    """
+
+    def __init__(self, names_to_remove: set, path_elements: List[str]):
+        """
+        Initialize the remover.
+
+        Parameters:
+        -----------
+        names_to_remove : set
+            Set of definition names to remove
+        path_elements : List[str]
+            Scope path elements (empty for file-level, class name for class-level)
+        """
+        self.names_to_remove = names_to_remove
+        self.path_elements = path_elements
+        self.current_path = []
+        self.in_target_scope = False
+
+    def visit_ClassDef(self, node: cst.ClassDef) -> None:
+        """Track when we enter a class definition."""
+        self.current_path.append(node.name.value)
+        # Check if we're in the target scope
+        if self.path_elements and self.current_path == self.path_elements:
+            self.in_target_scope = True
+
+    def leave_ClassDef(
+        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+    ) -> Union[cst.ClassDef, cst.RemovalSentinel]:
+        """Remove class if it matches and we're at file level."""
+        self.current_path.pop()
+        if len(self.current_path) == 0:
+            self.in_target_scope = False
+
+        # Only remove at file level (no path elements)
+        if not self.path_elements and original_node.name.value in self.names_to_remove:
+            return cst.RemovalSentinel.REMOVE
+        return updated_node
+
+    def leave_FunctionDef(
+        self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
+    ) -> Union[cst.FunctionDef, cst.RemovalSentinel]:
+        """Remove function/method if it matches."""
+        name = original_node.name.value
+
+        # If we're in a class scope (path_elements specified), remove methods
+        if self.path_elements and self.in_target_scope:
+            if name in self.names_to_remove:
+                return cst.RemovalSentinel.REMOVE
+        # If we're at file level (no path_elements), remove file-level functions
+        elif not self.path_elements and len(self.current_path) == 0:
+            if name in self.names_to_remove:
+                return cst.RemovalSentinel.REMOVE
+
+        return updated_node
+
+
 @toolify()
 def python_view(target_scope: str, max_lines: str = "500") -> str:
     """
@@ -1058,10 +1143,14 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
                 return _process_error(ValueError("__FIRST__ cannot be combined with other path elements"))
             return _handle_first_definition(abs_path, tree, new_module, coscope_with)
 
-        # Check for duplicates when inserting code (not replacing)
-        duplicate_warning = None
+        # Check for duplicates and remove them when inserting code (not replacing)
+        duplicates_info = []
         if coscope_with and new_module:
-            duplicate_warning = _check_for_duplicates(tree, new_module, path_elements)
+            duplicates_info = _check_for_duplicates(tree, new_module, path_elements)
+            if duplicates_info:
+                # Remove existing definitions before insertion
+                names_to_remove = {name for name, _ in duplicates_info}
+                tree = _remove_definitions(tree, names_to_remove, path_elements)
 
         # CR#9: Check for invalid combination of file-level tokens with scoped targets
         if coscope_with in ("__FILE_START__", "__FILE_END__") and path_elements:
@@ -1075,19 +1164,19 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
 
         if coscope_with == "__FILE_START__":
             result = _handle_file_start_insertion(abs_path, tree, new_module)
-            if duplicate_warning:
-                result = duplicate_warning + " " + result
+            if duplicates_info:
+                result = result + f" (Overwrote {len(duplicates_info)} existing definition(s))"
             return result
         elif coscope_with == "__FILE_END__":
             result = _handle_file_end_insertion(abs_path, tree, new_module)
-            if duplicate_warning:
-                result = duplicate_warning + " " + result
+            if duplicates_info:
+                result = result + f" (Overwrote {len(duplicates_info)} existing definition(s))"
             return result
         elif not path_elements:
             if coscope_with:
                 result = _handle_file_level_insertion(abs_path, tree, new_module, coscope_with)
-                if duplicate_warning:
-                    result = duplicate_warning + " " + result
+                if duplicates_info:
+                    result = result + f" (Overwrote {len(duplicates_info)} existing definition(s))"
                 return result
             else:
                 # Safety check for file-level replacements
@@ -1113,13 +1202,72 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
             _write_file_bom_safe(abs_path, modified_tree.code)
             if coscope_with:
                 result = f"Code inserted after '{coscope_with}' in '{abs_path}'."
-                if duplicate_warning:
-                    result = duplicate_warning + " " + result
+                if duplicates_info:
+                    result = result + f" (Overwrote {len(duplicates_info)} existing definition(s))"
                 return result
             else:
                 return f"Code replaced at '{target_scope}'."
     except Exception as e:
         return _process_error(e)
+
+
+class DefinitionRemover(cst.CSTTransformer):
+    """
+    Transformer to remove definitions by name from the CST.
+    """
+
+    def __init__(self, names_to_remove: set, path_elements: List[str]):
+        """
+        Initialize the remover.
+
+        Parameters:
+        -----------
+        names_to_remove : set
+            Set of definition names to remove
+        path_elements : List[str]
+            Scope path elements (empty for file-level, class name for class-level)
+        """
+        self.names_to_remove = names_to_remove
+        self.path_elements = path_elements
+        self.current_path = []
+        self.in_target_scope = False
+
+    def visit_ClassDef(self, node: cst.ClassDef) -> None:
+        """Track when we enter a class definition."""
+        self.current_path.append(node.name.value)
+        # Check if we're in the target scope
+        if self.path_elements and self.current_path == self.path_elements:
+            self.in_target_scope = True
+
+    def leave_ClassDef(
+        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+    ) -> Union[cst.ClassDef, cst.RemovalSentinel]:
+        """Remove class if it matches and we're at file level."""
+        self.current_path.pop()
+        if len(self.current_path) == 0:
+            self.in_target_scope = False
+
+        # Only remove at file level (no path elements)
+        if not self.path_elements and original_node.name.value in self.names_to_remove:
+            return cst.RemovalSentinel.REMOVE
+        return updated_node
+
+    def leave_FunctionDef(
+        self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
+    ) -> Union[cst.FunctionDef, cst.RemovalSentinel]:
+        """Remove function/method if it matches."""
+        name = original_node.name.value
+
+        # If we're in a class scope (path_elements specified), remove methods
+        if self.path_elements and self.in_target_scope:
+            if name in self.names_to_remove:
+                return cst.RemovalSentinel.REMOVE
+        # If we're at file level (no path_elements), remove file-level functions
+        elif not self.path_elements and len(self.current_path) == 0:
+            if name in self.names_to_remove:
+                return cst.RemovalSentinel.REMOVE
+
+        return updated_node
 
 
 def _handle_file_end_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module) -> str:
