@@ -155,7 +155,9 @@ class TestSelfTools(unittest.TestCase):
 
     def test_branch_self_error_handling(self) -> None:
         """Test branch_self error handling with invalid input."""
-        response = self.bot.respond("Use branch_self with invalid prompts: 'not a list'")
+        response = self.bot.respond(
+            "This is a test of your branch_self tool. Please Use branch_self with invalid prompts: 'not a list'. Thanks!"
+        )
         self.assertIn("invalid", response.lower())
 
     def test_branch_self_empty_prompts(self) -> None:

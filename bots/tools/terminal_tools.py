@@ -884,15 +884,13 @@ def _generate_mojibake_map():
         # Dashes
         "—",
         "–",
-        # Quotes
-        '"',
-        '"',
-        """,
-        """,
-        "„",
-        "'",
-        "'",
-        "‚",
+        # Quotes (using Unicode escapes to prevent this file from being "fixed" by itself)
+        "\u201c",  # left double quote "
+        "\u201d",  # right double quote "
+        "\u201e",  # double low-9 quote „
+        "\u2018",  # left single quote '
+        "\u2019",  # right single quote '
+        "\u201a",  # single low-9 quote ‚
         # Punctuation
         "…",
         "•",
@@ -937,9 +935,13 @@ def _generate_mojibake_map():
     mojibake_map = {}
     for char in common_chars:
         try:
-            # UTF-8 bytes interpreted as Windows-1252
-            mojibake = char.encode("utf-8").decode("windows-1252")
-            mojibake_map[mojibake] = char
+            # UTF-8 bytes interpreted as Windows-1252 (latin-1)
+            # We use latin-1 instead of windows-1252 because it's more permissive
+            # and handles all byte values 0x00-0xFF
+            mojibake = char.encode("utf-8").decode("latin-1")
+            # Skip identity mappings (single-byte characters that don't change)
+            if mojibake != char:
+                mojibake_map[mojibake] = char
         except (UnicodeDecodeError, UnicodeEncodeError):
             pass
 

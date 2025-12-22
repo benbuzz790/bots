@@ -26,6 +26,12 @@ repos:
         args: ['--fix=crlf']
   - repo: local
     hooks:
+      - id: repair-mojibake
+        name: Repair mojibake
+        entry: python -m bots.dev.repair_mojibake_hook
+        language: system
+        types: [text]
+        pass_filenames: true
       - id: remove-boms
         name: Remove BOMs
         entry: python -m bots.dev.remove_boms
