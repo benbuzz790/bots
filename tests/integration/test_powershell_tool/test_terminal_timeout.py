@@ -347,7 +347,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             # Method 1: Send as single block
             print("\n--- Method 1: Single Block ---")
             command1 = "@'\nHello World\n'@\nWrite-Output '<<<DONE1>>>'"
-            session._process.stdin.write(command1 + "\n")
+            session._process.stdin.write((command1 + "\n").encode("utf-8"))
             session._process.stdin.flush()
             output1 = []
             start_time = time.time()
@@ -367,7 +367,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             print("\n--- Method 2: Line by Line ---")
             lines = ["@'", "Hello World", "'@", "Write-Output '<<<DONE2>>>'"]
             for line in lines:
-                session._process.stdin.write(line + "\n")
+                session._process.stdin.write((line + "\n").encode("utf-8"))
                 session._process.stdin.flush()
                 time.sleep(0.1)  # Small delay between lines
             output2 = []
