@@ -278,7 +278,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             start_time = time.time()
             try:
                 # Directly write to stdin
-                session._process.stdin.write(minimal_wrap + "\n")
+                session._process.stdin.write((minimal_wrap + "\n").encode("utf-8"))
                 session._process.stdin.flush()
                 # Read output manually
                 output_lines = []
@@ -315,7 +315,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 full_command = f"{command}; Write-Output '{delimiter}'"
                 start_time = time.time()
                 try:
-                    session._process.stdin.write(full_command + "\n")
+                    session._process.stdin.write((full_command + "\n").encode("utf-8"))
                     session._process.stdin.flush()
                     output = []
                     found_delimiter = False

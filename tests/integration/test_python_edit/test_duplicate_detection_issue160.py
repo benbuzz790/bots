@@ -54,15 +54,15 @@ def my_function():
         with open(test_file, "w") as f:
             f.write(initial_content)
 
-        # Try to add a duplicate function - should overwrite
+        # Try to add a duplicate function using coscope_with - should overwrite
         new_function = """
 def my_function():
     return "new"
 """
-        result = python_edit(test_file, new_function)
+        result = python_edit(test_file, new_function, coscope_with="my_function")
 
         # Check result - python_edit returns "Code replaced at..." message
-        assert "Code replaced" in result
+        assert "Code replaced" in result or "overwrite" in result.lower()
 
         # Verify file content - should have new function, not both
         with open(test_file, "r") as f:

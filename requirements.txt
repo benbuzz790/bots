@@ -6,6 +6,7 @@ dill
 pytest-timeout
 typing_extensions==4.12.2
 pytest-xdist
+pytest-rerunfailures
 psutil
 libcst
 # Google AI SDK for Gemini support (optional)

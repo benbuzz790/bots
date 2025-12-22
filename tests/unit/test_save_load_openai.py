@@ -36,7 +36,7 @@ class TestSaveLoadOpenAI(unittest.TestCase):
     def setUpClass(cls):
         """Check if OpenAI API key is available before running tests."""
         if not os.environ.get("OPENAI_API_KEY"):
-            pytest.skip("OPENAI_API_KEY not set - skipping OpenAI integration tests", allow_module_level=True)
+            raise unittest.SkipTest("OPENAI_API_KEY not set - skipping OpenAI integration tests")
 
     def setUp(self) -> "TestSaveLoadOpenAI":
         """Set up test environment before each test.
