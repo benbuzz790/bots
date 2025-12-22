@@ -217,7 +217,7 @@ class TestPromptHandler:
         assert "No prompts found" in message
         assert prefill is None
 
-    def test_load_prompt_multiple_matches(self, prompt_handler):
+    def test_load_prompt_multiple_matches(self, prompt_handler, monkeypatch):
         """Test /p command with multiple matches requiring selection."""
         # Save multiple prompts
         prompt_handler.prompt_manager.save_prompt("Content 1", name="test_1")
@@ -227,13 +227,16 @@ class TestPromptHandler:
         mock_context = MagicMock()
         args = ["test"]
 
-        with patch("builtins.input", return_value="1"):
-            message, prefill = prompt_handler.load_prompt(mock_bot, mock_context, args)
+        # Use monkeypatch to patch input_with_esc instead of builtins.input
+        inputs = iter(["1"])
+        monkeypatch.setattr("bots.dev.cli.input_with_esc", lambda _: next(inputs, ""))
 
-            assert "Loaded prompt:" in message
-            assert prefill in ["Content 1", "Content 2"]
+        message, prefill = prompt_handler.load_prompt(mock_bot, mock_context, args)
 
-    def test_load_prompt_invalid_selection(self, prompt_handler):
+        assert "Loaded prompt:" in message
+        assert prefill in ["Content 1", "Content 2"]
+
+    def test_load_prompt_invalid_selection(self, prompt_handler, monkeypatch):
         """Test /p command with invalid selection number."""
         # Save multiple prompts
         prompt_handler.prompt_manager.save_prompt("Content 1", name="test_1")
@@ -243,11 +246,14 @@ class TestPromptHandler:
         mock_context = MagicMock()
         args = ["test"]
 
-        with patch("builtins.input", return_value="99"):
-            message, prefill = prompt_handler.load_prompt(mock_bot, mock_context, args)
+        # Use monkeypatch to patch input_with_esc instead of builtins.input
+        inputs = iter(["99"])
+        monkeypatch.setattr("bots.dev.cli.input_with_esc", lambda _: next(inputs, ""))
 
-            assert "Invalid selection" in message
-            assert prefill is None
+        message, prefill = prompt_handler.load_prompt(mock_bot, mock_context, args)
+
+        assert "Invalid selection" in message
+        assert prefill is None
 
     @patch("bots.dev.cli.input_with_esc")
     @patch("builtins.print")

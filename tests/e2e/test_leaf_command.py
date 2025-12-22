@@ -110,8 +110,7 @@ class TestLeafCommand(unittest.TestCase):
             content = result.get("content", "")
             self.assertIn("No leaves found", content)
 
-    @patch("builtins.input")
-    def test_leaf_command_interactive_selection(self, mock_input):
+    def test_leaf_command_interactive_selection(self):
         """Test /leaf command with direct argument (no longer interactive)."""
         # The new API doesn't prompt for input - it requires args on command line
         # Test with direct argument instead
@@ -121,8 +120,7 @@ class TestLeafCommand(unittest.TestCase):
         content = result.get("content", "")
         self.assertIn("Jumped to leaf 2", content)
 
-    @patch("builtins.input")
-    def test_leaf_command_interactive_cancel(self, mock_input):
+    def test_leaf_command_interactive_cancel(self):
         """Test /leaf command without args shows list of leaves."""
         # The new API doesn't prompt for input - calling without args shows the list
         result = self.handler.leaf(self.mock_bot, self.context, [])

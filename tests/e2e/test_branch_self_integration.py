@@ -155,6 +155,76 @@ class TestBranchSelfIntegration(DetailedTestCase):
         if "dir1" in dirs_created and os.path.exists("dir1/test1.txt"):
             print("✅ Nested directory and file creation successful")
 
+    def test_branch_self_preserves_cli_callbacks(self):
+        """Test that branch_self preserves CLI callbacks during execution.
+
+        Regression test for issue #180: branch_self drops cli callbacks.
+        When branch_self creates branch bots via deepcopy, the CLI callbacks
+        should be preserved so that tool execution is properly displayed.
+        """
+        from bots.dev.cli import CLIContext, RealTimeDisplayCallbacks
+
+        print("\n" + "=" * 50)
+        print("STARTING BRANCH_SELF CLI CALLBACKS TEST")
+        print("=" * 50)
+
+        # Create a bot with CLI-style callbacks
+        bot = AnthropicBot(
+            name="TestBot",
+            model_engine=Engines.CLAUDE37_SONNET_20250219,
+            max_tokens=10000,
+        )
+
+        # Create CLI context and attach callbacks (simulating CLI environment)
+        context = CLIContext()
+        context.bot_instance = bot
+        callbacks = RealTimeDisplayCallbacks(context)
+        bot.callbacks = callbacks
+
+        # Verify callbacks are attached
+        self.assertIsNotNone(bot.callbacks, "Bot should have callbacks before branch_self")
+        self.assertIsInstance(bot.callbacks, RealTimeDisplayCallbacks)
+
+        # Track callback invocations
+        callback_invocations = []
+        original_on_tool_start = callbacks.on_tool_start
+        original_on_tool_complete = callbacks.on_tool_complete
+
+        def tracked_on_tool_start(tool_name, metadata=None):
+            callback_invocations.append(("tool_start", tool_name))
+            return original_on_tool_start(tool_name, metadata)
+
+        def tracked_on_tool_complete(tool_name, result, metadata=None):
+            callback_invocations.append(("tool_complete", tool_name))
+            return original_on_tool_complete(tool_name, result, metadata)
+
+        callbacks.on_tool_start = tracked_on_tool_start
+        callbacks.on_tool_complete = tracked_on_tool_complete
+
+        # Add branch_self tool
+        bot.add_tools(branch_self)
+
+        # Use branch_self - this should preserve callbacks in branch bots
+        # We'll use a simple task that doesn't require API calls
+        import copy
+
+        # Simulate what branch_self does internally
+        print("\nSimulating branch_self deepcopy...")
+        branch_bot = copy.deepcopy(bot)
+
+        # Check if callbacks survived the deepcopy
+        print(f"Original bot callbacks: {bot.callbacks}")
+        print(f"Branch bot callbacks: {branch_bot.callbacks}")
+
+        # The bug: callbacks are None after deepcopy
+        # After fix: callbacks should be preserved
+        self.assertIsNotNone(
+            branch_bot.callbacks,
+            "Branch bot should preserve callbacks after deepcopy (issue #180)",
+        )
+
+        print("✅ CLI callbacks preserved in branch_self")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

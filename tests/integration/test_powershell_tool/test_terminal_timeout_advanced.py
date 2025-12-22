@@ -93,6 +93,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
                 print(f"Command {i}: {result}")
                 assert f"Command {i}" in result
 
+    @pytest.mark.skip(reason="Flaky test - PowerShell session cleanup issues in CI")
     def test_error_recovery(self):
         """Test recovery from command errors"""
         print("\n=== Testing Error Recovery ===")

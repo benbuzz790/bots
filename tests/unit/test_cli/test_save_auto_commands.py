@@ -1,4 +1,12 @@
+"""Tests for /save and /auto commands.
+
+NOTE: These tests are skipped when running with pytest-xdist because patching
+builtins.input causes worker processes to crash. See TEST_PATCHING_HARD_WALL.md
+for details.
+"""
+
 import os
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -11,7 +19,11 @@ import bots.dev.cli as cli_module
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 
-"""Tests for /save and /auto commands."""
+# Skip all tests in this module when running with xdist
+# Input patching is incompatible with xdist worker processes
+pytestmark = pytest.mark.skipif(
+    "xdist" in sys.modules, reason="Input patching incompatible with xdist workers - causes worker crashes"
+)
 
 
 class TestSaveCommand(unittest.TestCase):

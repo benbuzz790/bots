@@ -536,29 +536,73 @@ class ConversationNode:
         return node
 
     def _node_count(self) -> int:
-        """Count the total number of nodes in the conversation tree.
-
-        Use when you need to measure the size of the conversation.
-        Counts from the root node down through all branches.
+        """Count total nodes in the tree from this node.
 
         Returns:
-            int: Total number of nodes in the conversation tree
-
-        Example:
-            ```python
-            total_messages = node._node_count()
-            print(f"This conversation has {total_messages} messages")
-            ```
+            int: Total number of nodes including this one and all descendants
         """
-        root = self._find_root()
+        count = 1
+        for reply in self.replies:
+            count += reply._node_count()
+        return count
 
-        def count_recursive(current_node):
-            count = 1
-            for reply in current_node.replies:
-                count += count_recursive(reply)
-            return count
+    def _is_valid_conversation_position(self) -> bool:
+        """
+        Validate that this node position would create a valid message sequence for the API.
 
-        return count_recursive(root)
+        For APIs like Anthropic, the last message cannot be an assistant message with tool_calls
+        without a following user message with tool_results.
+
+        Returns:
+            bool: True if this position creates a valid message sequence, False otherwise
+        """
+        if self.role != "assistant":
+            return True
+
+        # Check if this assistant node has tool_calls
+        if not self.tool_calls:
+            return True
+
+        # If it has tool_calls, there must be at least one reply (user with tool_results)
+        # Otherwise, the message sequence would be invalid
+        if not self.replies:
+            return False
+
+        # Check if any reply is a user node with tool_results
+        has_tool_result_reply = any(reply.role == "user" and reply.tool_results for reply in self.replies)
+
+        return has_tool_result_reply
+
+    def _find_valid_conversation_position(self) -> "ConversationNode":
+        """
+        Find the nearest valid conversation position from this node.
+
+        If this node is invalid (assistant with tool_calls but no tool_result reply),
+        move forward to include the tool_result, or backward to before the tool_calls.
+
+        Returns:
+            ConversationNode: A valid conversation node (may be self if already valid)
+        """
+        if self._is_valid_conversation_position():
+            return self
+
+        # Node is invalid - it's an assistant with tool_calls but no replies with tool_results
+        # Strategy: Move forward to the first reply that has tool_results
+        if self.replies:
+            for reply in self.replies:
+                if reply.role == "user" and reply.tool_results:
+                    # Move to the first assistant reply after this user node
+                    if reply.replies:
+                        return reply.replies[0]
+                    # If no assistant reply yet, stay at the user node
+                    return reply
+
+        # If we can't move forward, move backward to before the tool_calls
+        if self.parent:
+            return self.parent
+
+        # Last resort: return self as-is
+        return self
 
 
 @dataclass
@@ -2961,10 +3005,18 @@ class Bot(ABC):
         Uses our existing _serialize() method which already handles all the
         complex serialization (modules, functions, tool handlers, etc).
 
+        For deepcopy operations (e.g., in branch_self), we preserve callbacks
+        by storing them separately and not passing them through _serialize().
+
         Returns:
             dict: Serialized bot state (picklable)
         """
-        return self._serialize()
+        state = self._serialize()
+        # Preserve callbacks for deepcopy operations (like branch_self)
+        # They won't be serialized to disk, but will be available during deepcopy
+        if hasattr(self, "callbacks") and self.callbacks is not None:
+            state["_callbacks_preserved"] = self.callbacks
+        return state
 
     def __setstate__(self, state):
         """Support for pickle and deepcopy.
@@ -2973,15 +3025,25 @@ class Bot(ABC):
         Uses our existing _deserialize() method which already handles all the
         complex deserialization (modules, functions, tool handlers, etc).
 
+        For deepcopy operations (e.g., in branch_self), we restore callbacks
+        that were preserved in __getstate__.
+
         Parameters:
             state (dict): Serialized bot state
         """
+        # Extract preserved callbacks before deserialization
+        preserved_callbacks = state.pop("_callbacks_preserved", None)
+
         # _deserialize is a classmethod that returns a new bot instance
         # We need to transfer its state to self
         temp_bot = self.__class__._deserialize(state, api_key=state.get("api_key"))
 
         # Copy all attributes from temp_bot to self
         self.__dict__.update(temp_bot.__dict__)
+
+        # Restore callbacks if they were preserved (for deepcopy operations)
+        if preserved_callbacks is not None:
+            self.callbacks = preserved_callbacks
 
     @classmethod
     def load(cls, filepath: str, api_key: Optional[str] = None) -> "Bot":

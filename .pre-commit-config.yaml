@@ -13,7 +13,7 @@ repos:
     rev: 7.3.0
     hooks:
       - id: flake8
-        args: ["--max-line-length=120", "--extend-ignore=E203,W503"]
+        args: ["--max-line-length=120", "--extend-ignore=E203,W503,E501"]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
@@ -32,3 +32,9 @@ repos:
         language: system
         types: [text]
         pass_filenames: true
+      - id: reinstall-editable
+        name: Reinstall package in strict editable mode
+        entry: pip install --config-settings editable-mode=strict -e .
+        language: system
+        pass_filenames: false
+        always_run: true

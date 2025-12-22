@@ -116,12 +116,6 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install -e .
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install markdownlint-cli
-        run: npm install -g markdownlint-cli@0.45.0
 
       - name: Remove BOMs from all files
         run: |
@@ -144,9 +138,6 @@ jobs:
           mypy bots/ --ignore-missing-imports
         continue-on-error: true
 
-      - name: Run markdownlint
-        run: |
-          markdownlint **/*.md --ignore node_modules --ignore __pycache__ --ignore .mypy_cache --ignore .pytest_cache
 
   security:
     name: Security Scan

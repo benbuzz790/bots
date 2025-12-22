@@ -1,320 +1,282 @@
-import atexit
+"""
+Root conftest.py for pytest configuration and shared fixtures.
+"""
+
+import cProfile
+import io
 import os
-import shutil
-import tempfile
+import pstats
+import sys
 import time
-import uuid
 from pathlib import Path
-from typing import Set
 
 import pytest
 
-# Global set to track all test-created files and directories
-_test_created_files: Set[str] = set()
-_test_created_dirs: Set[str] = set()
+# Add project root to path
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
+
+# Test mode environment variable
+os.environ["BOTS_TEST_MODE"] = "1"
 
 
-def pytest_configure(config):
-    """Configure pytest with custom basetemp for Windows compatibility.
+# ============================================================================
+# PROFILING PLUGIN
+# ============================================================================
 
-    We use custom basetemp because the system temp directory can also get locked
-    by zombie pytest worker processes. This is a Windows-specific issue where
-    processes that don't exit cleanly leave file handles open, locking directories.
 
-    The solution:
-    1. Use custom basetemp in project root (if not already set via CLI)
-    2. Detect if .pytest_tmp is locked and automatically use timestamped alternative
-    3. Let pytest-xdist handle worker isolation (gw0/, gw1/, etc.)
-    4. Clean up old locked and session-specific directories (older than 1 hour)
+class TestProfiler:
+    """Collects profiling data for each test."""
 
-    This handles locked directories automatically without requiring manual cleanup.
-    """
-    # Get the project root (where conftest.py is located)
-    project_root = Path(__file__).parent
+    def __init__(self):
+        self.test_profiles = []
+        self.current_profile = None
+        self.current_test_name = None
+        self.start_time = None
 
-    # Only set basetemp if it wasn't already set via command line
-    if config.option.basetemp is None:
-        # Try to use .pytest_tmp, but if it's locked, use a timestamped alternative
-        temp_dir = project_root / ".pytest_tmp"
+    def start_profiling(self, test_name):
+        """Start profiling a test."""
+        self.current_test_name = test_name
+        self.start_time = time.time()
+        self.current_profile = cProfile.Profile()
+        self.current_profile.enable()
+
+    def stop_profiling(self, outcome="passed"):
+        """Stop profiling and save results."""
+        if self.current_profile is None:
+            return
+
         try:
-            # Test if we can access the directory
-            if temp_dir.exists():
-                # Try to create a test file to verify we have access
-                test_file = temp_dir / f".test_access_{time.time()}"
-                test_file.touch()
-                test_file.unlink()
-        except (PermissionError, OSError):
-            # Directory is locked, use alternative
-            temp_dir = project_root / f".pytest_tmp_locked_{int(time.time())}"
+            self.current_profile.disable()
+        except Exception:
+            # If disabling fails, at least try to save what we have
+            pass
 
-        config.option.basetemp = str(temp_dir)
+        duration = time.time() - self.start_time
 
-    # Only the main process should do cleanup
-    if not hasattr(config, "workerinput"):
-        # This is the main process
-
-        # Clean up old locked directories (older than 1 hour)
-        for old_dir in project_root.glob(".pytest_tmp_locked_*"):
-            try:
-                if old_dir.is_dir():
-                    dir_age = time.time() - old_dir.stat().st_mtime
-                    if dir_age > 3600:  # 1 hour
-                        shutil.rmtree(old_dir, ignore_errors=True)
-            except Exception:
-                pass
-
-        # Clean up old session-specific directories
-        for old_dir in project_root.glob(".pytest_tmp_*"):
-            if old_dir.name != ".pytest_tmp" and not old_dir.name.startswith(".pytest_tmp_locked_"):
-                try:
-                    if old_dir.is_dir():
-                        dir_age = time.time() - old_dir.stat().st_mtime
-                        if dir_age > 3600:  # 1 hour
-                            shutil.rmtree(old_dir, ignore_errors=True)
-                except Exception:
-                    pass
-
-
-def pytest_collection_modifyitems(config, items):
-    """Modify test items to handle serial and cli_serial markers with xdist."""
-    for item in items:
-        # Handle serial marker - assign to same group so they run sequentially
-        if item.get_closest_marker("serial"):
-            item.add_marker(pytest.mark.xdist_group(name="serial"))
-
-        # Handle cli_serial marker - assign to same group so they run sequentially
-        if item.get_closest_marker("cli_serial"):
-            item.add_marker(pytest.mark.xdist_group(name="cli_serial"))
-
-
-def register_test_file(filepath: str) -> str:
-    """Register a file as test-created for cleanup."""
-    abs_path = os.path.abspath(filepath)
-    _test_created_files.add(abs_path)
-    return filepath
-
-
-def register_test_dir(dirpath: str) -> str:
-    """Register a directory as test-created for cleanup."""
-    abs_path = os.path.abspath(dirpath)
-    _test_created_dirs.add(abs_path)
-    return dirpath
-
-
-def create_test_file(content: str, prefix: str = "test", extension: str = "py", directory: str = None) -> str:
-    """Create a test file that will be automatically cleaned up."""
-    unique_id = str(uuid.uuid4())[:8]
-    filename = f"{prefix}_{unique_id}.{extension}"
-    if directory:
-        os.makedirs(directory, exist_ok=True)
-        filepath = os.path.join(directory, filename)
-    else:
-        filepath = filename
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(content)
-    return register_test_file(filepath)
-
-
-def create_test_dir(prefix: str = "test_dir") -> str:
-    """Create a test directory that will be automatically cleaned up."""
-    unique_id = str(uuid.uuid4())[:8]
-    dirname = f"{prefix}_{unique_id}"
-    os.makedirs(dirname, exist_ok=True)
-    return register_test_dir(dirname)
-
-
-def cleanup_test_artifacts():
-    """Clean up all registered test artifacts."""
-    # Clean up files
-    for filepath in _test_created_files.copy():
+        # Capture profile stats
         try:
-            if os.path.exists(filepath):
-                os.remove(filepath)
-                print(f"Cleaned up test file: {filepath}")
+            s = io.StringIO()
+            ps = pstats.Stats(self.current_profile, stream=s)
+            ps.sort_stats("cumulative")
+        except Exception:
+            # If stats fail, create a minimal entry
+            ps = None
+
+        self.test_profiles.append(
+            {
+                "name": self.current_test_name,
+                "duration": duration,
+                "outcome": outcome,
+                "profile": self.current_profile,
+                "stats": ps,
+            }
+        )
+
+        # Reset
+        self.current_profile = None
+        self.current_test_name = None
+        self.start_time = None
+
+        # Write incremental report after each test
+        # This ensures we have data even if pytest is interrupted
+        try:
+            self.generate_report()
+        except Exception:
+            pass  # Don't fail the test if report generation fails
+
+    def save_current_if_running(self):
+        """Save current profiling data if a test is still running (e.g., timeout)."""
+        if self.current_profile is not None and self.current_test_name is not None:
+            # Test is still running, save what we have
+            self.stop_profiling("timeout/interrupted")
+
+    def generate_report(self, output_file="test_profile_report.txt", top_n=50):
+        """Generate a profiling report."""
+        # Save any currently running test first
+        self.save_current_if_running()
+
+        if not self.test_profiles:
+            return
+
+        # Sort by duration
+        sorted_tests = sorted(self.test_profiles, key=lambda x: x["duration"], reverse=True)
+
+        with open(output_file, "w") as f:
+            f.write("=" * 80 + "\n")
+            f.write("PYTEST PROFILING REPORT\n")
+            f.write("=" * 80 + "\n\n")
+
+            f.write(f"Total tests profiled: {len(self.test_profiles)}\n")
+            f.write(f"Total time: {sum(t['duration'] for t in self.test_profiles):.2f}s\n\n")
+
+            # Summary of slowest tests
+            f.write("=" * 80 + "\n")
+            f.write(f"TOP {min(top_n, len(sorted_tests))} SLOWEST TESTS\n")
+            f.write("=" * 80 + "\n\n")
+
+            for i, test in enumerate(sorted_tests[:top_n], 1):
+                f.write(f"{i}. {test['name']}\n")
+                f.write(f"   Duration: {test['duration']:.2f}s\n")
+                f.write(f"   Outcome: {test['outcome']}\n")
+                f.write("\n")
+
+            # Detailed profiles for top 10
+            f.write("\n" + "=" * 80 + "\n")
+            f.write("DETAILED PROFILES (TOP 10)\n")
+            f.write("=" * 80 + "\n\n")
+
+            for i, test in enumerate(sorted_tests[:10], 1):
+                f.write(f"\n{'=' * 80}\n")
+                f.write(f"{i}. {test['name']} ({test['duration']:.2f}s)\n")
+                f.write(f"{'=' * 80}\n\n")
+
+                # Print top functions if stats available
+                if test["stats"] is not None:
+                    try:
+                        s = io.StringIO()
+                        ps = pstats.Stats(test["profile"], stream=s)
+                        ps.sort_stats("cumulative")
+                        ps.print_stats(20)  # Top 20 functions
+                        f.write(s.getvalue())
+                    except Exception as e:
+                        f.write(f"(Profile data unavailable: {e})\n")
+                else:
+                    f.write("(Profile data unavailable - test may have been interrupted)\n")
+                f.write("\n")
+
+
+@pytest.fixture(scope="session")
+def test_profiler(request):
+    """Session-scoped fixture for test profiling."""
+    # Get or create the shared profiler instance from config
+    if not hasattr(request.config, "_test_profiler"):
+        request.config._test_profiler = TestProfiler()
+
+    profiler = request.config._test_profiler
+
+    # Register report generation at session end
+    def generate_report():
+        profiler.generate_report()
+        print("\n\nProfile report generated: test_profile_report.txt")
+
+    request.addfinalizer(generate_report)
+
+    return profiler
+
+
+@pytest.hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_runtest_protocol(item, nextitem):
+    """Hook to profile each test."""
+    # Check if profiling is enabled
+    if not item.config.getoption("--profile-tests", default=False):
+        yield
+        return
+
+    # Get or create profiler
+    if not hasattr(item.config, "_test_profiler"):
+        item.config._test_profiler = TestProfiler()
+
+    profiler = item.config._test_profiler
+    test_name = item.nodeid
+
+    # Start profiling
+    profiler.start_profiling(test_name)
+
+    result = "unknown"
+
+    try:
+        # Run the test and capture the outcome
+        outcome = yield
+
+        # Get the test report to determine actual outcome
+        try:
+            reports = outcome.get_result()
+            # Find the 'call' phase report (the actual test execution)
+            for report in reports:
+                if report.when == "call":
+                    if report.outcome == "passed":
+                        result = "passed"
+                    elif report.outcome == "failed":
+                        result = "failed"
+                    elif report.outcome == "skipped":
+                        result = "skipped"
+                    else:
+                        result = "error"
+                    break
+            else:
+                # No call phase found, check if test was skipped in setup
+                for report in reports:
+                    if report.outcome == "skipped":
+                        result = "skipped"
+                        break
+        except Exception:
+            # If we can't get the outcome, mark as error
+            result = "error"
+
+    except KeyboardInterrupt:
+        result = "interrupted"
+        raise
+
+    except Exception:
+        result = "error"
+        # Re-raise the exception so pytest can properly register the failure
+        raise
+
+    finally:
+        # Always stop profiling, even if test times out or crashes
+        try:
+            profiler.stop_profiling(result)
         except Exception as e:
-            print(f"Warning: Could not clean up {filepath}: {e}")
-        finally:
-            _test_created_files.discard(filepath)
-    # Clean up directories
-    for dirpath in _test_created_dirs.copy():
+            # If profiling itself fails, at least record that we tried
+            print(f"\nWarning: Failed to stop profiling for {test_name}: {e}")
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Generate report at end of session."""
+    if hasattr(session.config, "_test_profiler"):
+        profiler = session.config._test_profiler
         try:
-            if os.path.exists(dirpath):
-                shutil.rmtree(dirpath)
-                print(f"Cleaned up test directory: {dirpath}")
+            profiler.generate_report()
+            print(f"\n\n{'=' * 80}")
+            print("Profile report generated: test_profile_report.txt")
+            print(f"Total tests profiled: {len(profiler.test_profiles)}")
+            print(f"{'=' * 80}\n")
         except Exception as e:
-            print(f"Warning: Could not clean up {dirpath}: {e}")
-        finally:
-            _test_created_dirs.discard(dirpath)
-
-
-# Register cleanup function to run at exit
-atexit.register(cleanup_test_artifacts)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def cleanup_session():
-    """Session-level fixture to ensure cleanup happens."""
-    yield
-    cleanup_test_artifacts()
-
-
-@pytest.fixture(autouse=True)
-def patch_input_with_esc_for_tests(monkeypatch):
-    """Automatically patch input_with_esc to use builtins.input in tests.
-
-    This prevents tests from hanging when they mock builtins.input, since
-    input_with_esc() uses platform-specific keyboard input that doesn't
-    call builtins.input.
-
-    This fixture runs automatically for all tests.
-    """
-    from bots.dev import cli
-
-    # Replace input_with_esc with standard input for test compatibility
-    def test_input_with_esc(prompt: str = "") -> str:
-        return input(prompt)
-
-    monkeypatch.setattr(cli, "input_with_esc", test_input_with_esc)
-    yield
-
-
-@pytest.fixture
-def test_file_factory():
-    """Factory fixture for creating test files."""
-    return create_test_file
-
-
-@pytest.fixture
-def test_dir_factory():
-    """Factory fixture for creating test directories."""
-    return create_test_dir
-
-
-@pytest.fixture
-def safe_temp_dir():
-    """Create a temporary directory that will be automatically cleaned up."""
-    temp_dir = tempfile.mkdtemp(prefix="pytest_temp_")
-    register_test_dir(temp_dir)
-    yield temp_dir
-    # Cleanup happens automatically via atexit
-
-
-@pytest.fixture
-def safe_temp_file():
-    """Create a temporary file that will be automatically cleaned up."""
-    fd, temp_file = tempfile.mkstemp(prefix="pytest_temp_", suffix=".py")
-    os.close(fd)  # Close the file descriptor
-    register_test_file(temp_file)
-    yield temp_file
-    # Cleanup happens automatically via atexit
+            print(f"\n\nWarning: Failed to generate profile report: {e}")
+            print(f"Tests profiled before error: {len(profiler.test_profiles) if profiler.test_profiles else 0}\n")
 
 
 def pytest_addoption(parser):
     """Add custom command line options."""
     parser.addoption(
-        "--no-cleanup",
+        "--profile-tests",
         action="store_true",
         default=False,
-        help="Disable automatic cleanup of test files (useful for debugging)",
+        help="Enable test profiling",
+    )
+    parser.addoption(
+        "--profile-timeout",
+        action="store",
+        type=int,
+        default=None,
+        help="Override timeout for profiling runs (in seconds)",
     )
 
 
-def pytest_runtest_teardown(item, nextitem):
-    """Clean up after each test."""
-    # This runs after each test, but we'll rely on the session cleanup
-    # for now to avoid interfering with tests that need files between test methods
-    pass
+def pytest_configure(config):
+    """Configure pytest with custom settings."""
+    # Override timeout if profiling with custom timeout
+    if config.getoption("--profile-tests") and config.getoption("--profile-timeout"):
+        timeout = config.getoption("--profile-timeout")
+        config.option.timeout = timeout
+        print(f"\n{'=' * 80}")
+        print(f"PROFILING MODE: Timeout set to {timeout}s")
+        print(f"{'=' * 80}\n")
 
-
-def pytest_sessionfinish(session, exitstatus):
-    """Clean up at the end of the test session."""
-    cleanup_test_artifacts()
-
-    # Give Windows a moment to release file handles
-    time.sleep(0.1)
-
-    # Note: We don't clean up .pytest_tmp here because with pytest-xdist,
-    # multiple workers share this directory. Even in the main process,
-    # workers may not have fully released their file handles yet.
-    # The directory will be cleaned up on the next pytest run when
-    # pytest_configure detects it and either:
-    # 1. Successfully removes it (if unlocked)
-    # 2. Renames it and creates a fresh one (if still locked)
-    # Old locked directories are cleaned up after 1 hour.
-
-
-@pytest.fixture
-def clean_otel_env(monkeypatch):
-    """Clean OpenTelemetry-related environment variables for testing.
-
-    This fixture removes all OpenTelemetry and bots-specific environment
-    variables to ensure tests start with a clean slate. This prevents
-    environment variables from the host system from affecting test results.
-
-    Use this fixture in tests that need to verify default configuration
-    or test specific environment variable combinations.
-
-    Example:
-        def test_my_config(clean_otel_env, monkeypatch):
-            monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
-            # Test with clean environment
-    """
-    # List of all OpenTelemetry and bots-related env vars to clean
-    otel_env_vars = [
-        "OTEL_SDK_DISABLED",
-        "OTEL_SERVICE_NAME",
-        "OTEL_EXPORTER_OTLP_ENDPOINT",
-        "OTEL_EXPORTER_OTLP_PROTOCOL",
-        "OTEL_EXPORTER_OTLP_HEADERS",
-        "OTEL_TRACES_EXPORTER",
-        "OTEL_METRICS_EXPORTER",
-        "OTEL_LOGS_EXPORTER",
-        "BOTS_OTEL_EXPORTER",
-        "BOTS_ENABLE_TRACING",
-    ]
-
-    # Remove each env var if it exists
-    for var in otel_env_vars:
-        monkeypatch.delenv(var, raising=False)
-
-    yield
-
-    # Cleanup happens automatically via monkeypatch
-
-
-def get_unique_filename(prefix="test", extension="py"):
-    """Generate a unique filename for testing."""
-    unique_id = str(uuid.uuid4())[:8]
-    return f"{prefix}_{unique_id}.{extension}"
-
-
-def create_safe_test_file(content, prefix="test", extension="py", directory=None):
-    """Create a safe test file with given content in specified or temp directory."""
-    if directory is None:
-        # Create in temp directory
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=f".{extension}", prefix=f"{prefix}_", delete=False, encoding="utf-8"
-        ) as f:
-            f.write(content)
-            return f.name
-    else:
-        # Create in specified directory
-        if directory == "tmp":
-            # Use system temp directory
-            directory = tempfile.gettempdir()
-
-        # Ensure directory exists
-        os.makedirs(directory, exist_ok=True)
-
-        # Generate unique filename
-        filename = get_unique_filename(prefix, extension)
-        filepath = os.path.join(directory, filename)
-
-        # Write content to file
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
-
-        return filepath
-
-
-# Trigger CI re-run
+    # If profiling is enabled, create the profiler early
+    if config.getoption("--profile-tests", default=False):
+        config._test_profiler = TestProfiler()
+        print(f"\n{'=' * 80}")
+        print("PROFILING ENABLED: Test profiler initialized")
+        print(f"{'=' * 80}\n")

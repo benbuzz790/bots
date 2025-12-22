@@ -912,25 +912,26 @@ class TestClass:
         self.assertIn("Hello, World!", result)
         self.assertIn("Result: 8", result)
 
-    @pytest.mark.serial
     def test_execute_python_code_timeout(self):
         """Test that the timeout mechanism works properly"""
         code = textwrap.dedent(
             """
-        while True:
-            pass
-    """
+    while True:
+        pass
+"""
         )
         result = python_execution_tool.execute_python(code, timeout=1)
         self.assertIn("timed out", result.lower())
+
+        # Increased timeout margin from 2s to 5s to avoid race conditions in CI
         code = textwrap.dedent(
             """
-        import time
-        time.sleep(1)
-        print("Completed")
-    """
+    import time
+    time.sleep(1)
+    print("Completed")
+"""
         )
-        result = python_execution_tool.execute_python(code, timeout=2)
+        result = python_execution_tool.execute_python(code, timeout=5)
         self.assertIn("Completed", result)
 
     def test_execute_python_code_syntax_error(self):

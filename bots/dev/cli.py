@@ -1015,6 +1015,11 @@ class ConversationHandler:
                         "Warning: Ended up on user node with no assistant response. Bumped to previous assistant node."
                     ),
                 }
+
+            # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
+            # Note: This adjusts position but we still want to display content after
+            self._ensure_valid_conversation_position(bot)
+
             # Return conversation content as message
             if bot.conversation.content:
                 return {"type": "message", "role": "assistant", "content": bot.conversation.content}
@@ -1049,6 +1054,10 @@ class ConversationHandler:
             if not self._ensure_assistant_node(bot):
                 return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
 
+            # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
+            # Note: This adjusts position but we still want to display content after
+            self._ensure_valid_conversation_position(bot)
+
             # Return conversation content as message
             if bot.conversation.content:
                 return {"type": "message", "role": "assistant", "content": bot.conversation.content}
@@ -1069,6 +1078,9 @@ class ConversationHandler:
         if not self._ensure_assistant_node(bot):
             return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
 
+        # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
+        self._ensure_valid_conversation_position(bot)
+
         # Return conversation content as message
         if bot.conversation.content:
             return {"type": "message", "role": "assistant", "content": bot.conversation.content}
@@ -1088,6 +1100,9 @@ class ConversationHandler:
         if not self._ensure_assistant_node(bot):
             return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
 
+        # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
+        self._ensure_valid_conversation_position(bot)
+
         # Return conversation content as message
         if bot.conversation.content:
             return {"type": "message", "role": "assistant", "content": bot.conversation.content}
@@ -1100,6 +1115,9 @@ class ConversationHandler:
             bot.conversation = bot.conversation.parent
         if not self._ensure_assistant_node(bot):
             return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
+
+        # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
+        self._ensure_valid_conversation_position(bot)
 
         # Return conversation content as message
         if bot.conversation.content:
@@ -1334,6 +1352,40 @@ class ConversationHandler:
                 if reply.role == "assistant":
                     bot.conversation = reply
                     return True
+        return False
+
+    def _ensure_valid_conversation_position(self, bot: Bot) -> bool:
+        """Ensure bot.conversation is at a valid position for API calls.
+
+        A valid position means:
+        1. We're on an assistant node (already handled by _ensure_assistant_node)
+        2. If the assistant node has tool_calls, we need to move forward to include
+           the tool_results in the conversation history.
+
+        This prevents issue #206 where navigating to an assistant node with tool_calls
+        causes API errors because tool_results are in a child node and not included
+        in _build_messages().
+
+        Returns:
+            bool: True if position was adjusted, False if no adjustment needed
+        """
+        # Check if current node is assistant with tool_calls
+        if bot.conversation.role == "assistant" and bot.conversation.tool_calls:
+            # Check if there's a user reply with tool_results
+            if bot.conversation.replies:
+                for reply in bot.conversation.replies:
+                    if reply.role == "user" and reply.tool_results:
+                        # Move forward to include the tool_results
+                        # If this user node has assistant replies, move to the first one
+                        if reply.replies:
+                            for assistant_reply in reply.replies:
+                                if assistant_reply.role == "assistant":
+                                    bot.conversation = assistant_reply
+                                    return True
+                        # Otherwise stay at the user node (unusual but valid)
+                        bot.conversation = reply
+                        return True
+
         return False
 
     def _display_conversation_context(self, bot: Bot, context: CLIContext):
@@ -1763,75 +1815,103 @@ class SystemHandler:
             return f"Error loading stash: {str(e)}"
 
     def add_tool(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Add a tool to the bot from available tool modules."""
-        # Import all available tools
-        from bots.tools.code_tools import view, view_dir
-        from bots.tools.python_edit import python_edit, python_view
-        from bots.tools.python_execution_tool import execute_python
-        from bots.tools.self_tools import branch_self, list_context, remove_context
-        from bots.tools.terminal_tools import execute_powershell
-        from bots.tools.web_tool import web_search
+        """Add a tool to the bot from a Python file or specific function.
 
-        # Map of available tools
-        available_tools = {
-            "view": view,
-            "view_dir": view_dir,
-            "python_view": python_view,
-            "python_edit": python_edit,
-            "execute_python": execute_python,
-            "execute_powershell": execute_powershell,
-            "branch_self": branch_self,
-            "list_context": list_context,
-            "remove_context": remove_context,
-            "web_search": web_search,
-        }
+        Usage:
+            /add_tool path/to/file.py              - Add all public functions from file
+            /add_tool path/to/file.py::function    - Add specific function from file
+        """
+        import importlib.util
+        import inspect
+        from pathlib import Path
 
-        # If no args, show view_dir of python files and allow choice
         if not args:
-            try:
-                # Show available tools
-                tools_list = "\n".join([f"  {i+1}. {name}" for i, name in enumerate(sorted(available_tools.keys()))])
-                pretty(
-                    f"Available tools:\n{tools_list}\n\nEnter tool name or number to add:",
-                    "System",
-                    context.config.width,
-                    context.config.indent,
-                    COLOR_SYSTEM,
-                )
+            return (
+                "Usage:\n"
+                "  /add_tool path/to/file.py              - Add all public functions from file\n"
+                "  /add_tool path/to/file.py::function    - Add specific function from file"
+            )
 
-                # Get user input
-                choice = input(f"{COLOR_USER}> {COLOR_RESET}").strip()
-
-                # Handle numeric choice
-                try:
-                    choice_num = int(choice)
-                    tool_names = sorted(available_tools.keys())
-                    if 1 <= choice_num <= len(tool_names):
-                        choice = tool_names[choice_num - 1]
-                except ValueError:
-                    pass  # Not a number, treat as tool name
-
-                args = [choice]
-            except Exception as e:
-                return f"Error: {str(e)}"
-
-        # Add the specified tool(s)
         added = []
-        not_found = []
+        errors = []
 
-        for tool_name in args:
-            tool_name = tool_name.strip()
-            if tool_name in available_tools:
-                bot.add_tools(available_tools[tool_name])
-                added.append(tool_name)
+        for arg in args:
+            arg = arg.strip()
+
+            # Parse the argument
+            if "::" in arg:
+                # Specific function syntax: file.py::function
+                file_path, func_name = arg.split("::", 1)
             else:
-                not_found.append(tool_name)
+                # Whole file syntax: file.py
+                file_path = arg
+                func_name = None
+
+            # Resolve the file path
+            path = Path(file_path)
+            if not path.exists():
+                errors.append(f"File not found: {file_path}")
+                continue
+
+            if not path.suffix == ".py":
+                errors.append(f"Not a Python file: {file_path}")
+                continue
+
+            try:
+                # Load the module dynamically
+                spec = importlib.util.spec_from_file_location(path.stem, path)
+                if spec is None or spec.loader is None:
+                    errors.append(f"Could not load module: {file_path}")
+                    continue
+
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+
+                if func_name:
+                    # Add specific function
+                    if not hasattr(module, func_name):
+                        errors.append(f"Function '{func_name}' not found in {file_path}")
+                        continue
+
+                    func = getattr(module, func_name)
+                    if not callable(func):
+                        errors.append(f"'{func_name}' in {file_path} is not a function")
+                        continue
+
+                    bot.add_tools(func)
+                    added.append(f"{file_path}::{func_name}")
+                else:
+                    # Add all public functions from the file
+                    functions_added = []
+                    for name in dir(module):
+                        # Skip private functions (starting with _)
+                        if name.startswith("_"):
+                            continue
+
+                        obj = getattr(module, name)
+
+                        # Only add callable objects (functions)
+                        if callable(obj) and inspect.isfunction(obj):
+                            bot.add_tools(obj)
+                            functions_added.append(name)
+
+                    if functions_added:
+                        added.append(f"{file_path} ({', '.join(functions_added)})")
+                    else:
+                        errors.append(f"No public functions found in {file_path}")
+
+            except Exception as e:
+                errors.append(f"Error loading {file_path}: {str(e)}")
 
         result = []
         if added:
-            result.append(f"Added tools: {', '.join(added)}")
-        if not_found:
-            result.append(f"Tools not found: {', '.join(not_found)}")
+            result.append("Added tools:")
+            for item in added:
+                result.append(f"  ✓ {item}")
+        if errors:
+            result.append("Errors:")
+            for error in errors:
+                result.append(f"  ✗ {error}")
 
         return "\n".join(result) if result else "No tools added"
 
@@ -2523,6 +2603,7 @@ class CLI:
         self.context.bot_instance.callbacks = RealTimeDisplayCallbacks(self.context)
 
         # bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools, bots.tools.self_tools)
+        from bots.tools.beep import piano
         from bots.tools.code_tools import view, view_dir
         from bots.tools.python_edit import python_edit, python_view
         from bots.tools.python_execution_tool import execute_python
@@ -2542,6 +2623,7 @@ class CLI:
             list_context,
             web_search,
             python_edit,
+            piano,
         ]
 
         try:

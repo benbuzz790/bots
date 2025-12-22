@@ -397,13 +397,15 @@ def list_context() -> str:
         # Format with labels
         lines = []
         for i, msg in enumerate(messages):
-            # Generate label: A-Z, then AA-AZ, BA-BZ, etc.
+            # Generate label: A-Z, then AA-AZ, BA-BZ, etc. (Excel-style column naming)
             if i < 26:
                 label = chr(65 + i)  # A, B, C, ..., Z
             else:
                 # After Z, use AA, AB, AC, ..., AZ, BA, BB, etc.
-                first_letter = chr(65 + ((i - 26) // 26))  # A, B, C, ...
-                second_letter = chr(65 + ((i - 26) % 26))  # A-Z cycling
+                # Subtract 26 to start the two-letter sequence from 0
+                adjusted_i = i - 26
+                first_letter = chr(65 + (adjusted_i // 26))  # A, B, C, ...
+                second_letter = chr(65 + (adjusted_i % 26))  # A-Z cycling
                 label = first_letter + second_letter
 
             # Format tool calls if present
@@ -444,6 +446,10 @@ def remove_context(labels: str) -> str:
 
     Note: This tool has limitations with branched conversations and will
     attempt to handle the simplest case (linear conversation paths).
+
+    Tool call sequences are automatically removed as complete units. If you
+    remove any message in a tool call sequence (question -> tool call ->
+    result -> answer), the entire sequence is removed to maintain integrity.
 
     Parameters:
         labels (str): String representation of a list of labels to remove.
@@ -496,53 +502,90 @@ def remove_context(labels: str) -> str:
             else:
                 return f"Error: Label {label} out of range (only {len(messages)} messages)"
 
-        # Remove messages (in reverse order to maintain indices)
-        indices_to_remove.sort(reverse=True)
-        removed_count = 0
-        skipped_messages = []
+        # Expand indices to include complete tool call sequences
+        expanded_indices = set()
+        sequence_info = []
 
         for idx in indices_to_remove:
             msg_node = messages[idx]
-
-            # Generate label for error messages
-            if idx < 26:
-                label_str = chr(65 + idx)
-            else:
-                first_letter = chr(65 + ((idx - 26) // 26))
-                second_letter = chr(65 + ((idx - 26) % 26))
-                label_str = first_letter + second_letter
-
-            # Find the user message that precedes this bot message
             user_node = msg_node.parent
+
             if not user_node or user_node.role != "user":
-                skipped_messages.append(f"Label {label_str} (no user parent)")
                 continue
 
-            # Find the parent of the user message
             grandparent = user_node.parent
-
             if not grandparent:
-                skipped_messages.append(f"Label {label_str} (no grandparent)")
                 continue
 
-            # CRITICAL: Check if removing this pair would break tool_call/tool_result pairing
-            # Case 1: grandparent has tool_calls, and user_node has the tool_results
-            if grandparent.role == "assistant" and grandparent.tool_calls and user_node.tool_results:
-                # Removing user_node would leave grandparent's tool_calls without results
-                skipped_messages.append(f"Label {label_str} (would break tool_call/tool_result pairing)")
-                continue
+            # Check if this is part of a tool call sequence
+            # Sequence: assistant_with_tool -> user_with_results -> assistant_answer
 
-            # Case 2: msg_node has tool_calls, which means the NEXT user message has tool_results
-            # If we remove msg_node and reconnect its children to grandparent, we need to ensure
-            # tool_results are preserved
+            # Case 1: msg_node has tool_calls (it's the initiator)
             if msg_node.tool_calls:
-                # Check if any children are user nodes with tool_results
-                has_tool_result_child = any(child.role == "user" and child.tool_results for child in msg_node.replies)
-                if has_tool_result_child:
-                    skipped_messages.append(f"Label {label_str} (has tool_calls with results in children)")
-                    continue
+                # Find the next assistant message (the one after tool results)
+                for child in msg_node.replies:
+                    if child.role == "user" and child.tool_results:
+                        for grandchild in child.replies:
+                            if grandchild.role == "assistant":
+                                # Find index of this grandchild
+                                try:
+                                    next_idx = messages.index(grandchild)
+                                    expanded_indices.add(idx)
+                                    expanded_indices.add(next_idx)
+                                    # Use inline label generation to avoid long lines
+                                    if idx < 26:
+                                        label1 = chr(65 + idx)
+                                    else:
+                                        label1 = chr(65 + ((idx - 26) // 26)) + chr(65 + ((idx - 26) % 26))
+                                    if next_idx < 26:
+                                        label2 = chr(65 + next_idx)
+                                    else:
+                                        label2 = chr(65 + ((next_idx - 26) // 26)) + chr(65 + ((next_idx - 26) % 26))
+                                    info = f"Tool call sequence: labels {label1} and {label2}"
+                                    sequence_info.append(info)
+                                except ValueError:
+                                    pass
+                        break
 
-            # Safe to remove - no tool_call/tool_result pairing issues
+            # Case 2: msg_node follows tool results (it's the answer after tool use)
+            elif grandparent.role == "assistant" and grandparent.tool_calls and user_node.tool_results:
+                # Find index of grandparent (the initiator)
+                try:
+                    prev_idx = messages.index(grandparent)
+                    expanded_indices.add(prev_idx)
+                    expanded_indices.add(idx)
+                    # Use inline label generation
+                    if prev_idx < 26:
+                        label1 = chr(65 + prev_idx)
+                    else:
+                        label1 = chr(65 + ((prev_idx - 26) // 26)) + chr(65 + ((prev_idx - 26) % 26))
+                    if idx < 26:
+                        label2 = chr(65 + idx)
+                    else:
+                        label2 = chr(65 + ((idx - 26) // 26)) + chr(65 + ((idx - 26) % 26))
+                    sequence_info.append(f"Tool call sequence: labels {label1} and {label2}")
+                except ValueError:
+                    pass
+
+            # Case 3: Normal message (not part of tool sequence)
+            else:
+                expanded_indices.add(idx)
+
+        # Remove messages (in reverse order to maintain indices)
+        indices_to_remove = sorted(expanded_indices, reverse=True)
+        removed_count = 0
+
+        for idx in indices_to_remove:
+            msg_node = messages[idx]
+            user_node = msg_node.parent
+
+            if not user_node or user_node.role != "user":
+                continue
+
+            grandparent = user_node.parent
+            if not grandparent:
+                continue
+
             # Remove user_node from grandparent's replies
             if user_node in grandparent.replies:
                 grandparent.replies.remove(user_node)
@@ -560,9 +603,10 @@ def remove_context(labels: str) -> str:
 
         # Build result message
         result_parts = [f"Removed {removed_count} message pair(s)"]
-        if skipped_messages:
-            result_parts.append(f"Skipped {len(skipped_messages)} message(s) to preserve conversation integrity:")
-            result_parts.extend([f"  - {msg}" for msg in skipped_messages])
+        if sequence_info:
+            result_parts.append("\nTool call sequences removed as complete units:")
+            for info in set(sequence_info):  # Use set to deduplicate
+                result_parts.append(f"  - {info}")
 
         return "\n".join(result_parts)
 
