@@ -238,6 +238,7 @@ class TestSaveLoadOpenAI(unittest.TestCase):
                 "Function {} is not callable after two save/load cycles".format(func_name),
             )
 
+    @pytest.mark.flaky(reruns=2, reruns_delay=1)
     def test_save_load_empty_bot(self) -> None:
         """Test saving and loading a bot with no conversation history.
 
@@ -247,6 +248,11 @@ class TestSaveLoadOpenAI(unittest.TestCase):
         - Root node properties are correct
         - Bot remains functional after loading
         - Conversation structure develops correctly after loading
+
+        Note: This test makes actual API calls and may be flaky due to:
+        - API rate limiting
+        - Network issues
+        - API service availability
         """
         fresh_bot = ChatGPT_Bot(name="TestGPT", model_engine=Engines.GPT35TURBO)
         save_path = os.path.join(self.temp_dir, f"empty_{fresh_bot.name}")
