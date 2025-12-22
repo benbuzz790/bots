@@ -1211,65 +1211,6 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
         return _process_error(e)
 
 
-class DefinitionRemover(cst.CSTTransformer):
-    """
-    Transformer to remove definitions by name from the CST.
-    """
-
-    def __init__(self, names_to_remove: set, path_elements: List[str]):
-        """
-        Initialize the remover.
-
-        Parameters:
-        -----------
-        names_to_remove : set
-            Set of definition names to remove
-        path_elements : List[str]
-            Scope path elements (empty for file-level, class name for class-level)
-        """
-        self.names_to_remove = names_to_remove
-        self.path_elements = path_elements
-        self.current_path = []
-        self.in_target_scope = False
-
-    def visit_ClassDef(self, node: cst.ClassDef) -> None:
-        """Track when we enter a class definition."""
-        self.current_path.append(node.name.value)
-        # Check if we're in the target scope
-        if self.path_elements and self.current_path == self.path_elements:
-            self.in_target_scope = True
-
-    def leave_ClassDef(
-        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
-    ) -> Union[cst.ClassDef, cst.RemovalSentinel]:
-        """Remove class if it matches and we're at file level."""
-        self.current_path.pop()
-        if len(self.current_path) == 0:
-            self.in_target_scope = False
-
-        # Only remove at file level (no path elements)
-        if not self.path_elements and original_node.name.value in self.names_to_remove:
-            return cst.RemovalSentinel.REMOVE
-        return updated_node
-
-    def leave_FunctionDef(
-        self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
-    ) -> Union[cst.FunctionDef, cst.RemovalSentinel]:
-        """Remove function/method if it matches."""
-        name = original_node.name.value
-
-        # If we're in a class scope (path_elements specified), remove methods
-        if self.path_elements and self.in_target_scope:
-            if name in self.names_to_remove:
-                return cst.RemovalSentinel.REMOVE
-        # If we're at file level (no path_elements), remove file-level functions
-        elif not self.path_elements and len(self.current_path) == 0:
-            if name in self.names_to_remove:
-                return cst.RemovalSentinel.REMOVE
-
-        return updated_node
-
-
 def _handle_file_end_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module) -> str:
     """Handle insertion at the end of a file."""
     # Handle the case where new_module contains only comments (no statements in body)
@@ -1335,7 +1276,8 @@ def _create_statement_with_comment(comment_text: str, indent_level: int = 0) -> 
         comment_text = comment_text[1:].strip()
     comment = cst.Comment(f"# {comment_text}")
     return cst.SimpleStatementLine(
-        body=[cst.Pass()], trailing_whitespace=cst.TrailingWhitespace(whitespace=cst.SimpleWhitespace("  "), comment=comment)
+        body=[cst.Pass()],
+        trailing_whitespace=cst.TrailingWhitespace(whitespace=cst.SimpleWhitespace("  "), comment=comment),
     )
 
 
@@ -1643,7 +1585,12 @@ def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cs
 
 
 def _handle_deletion(
-    abs_path: str, target_scope: str, path_elements: list, original_content: str, tree: cst.Module, delete_a_lot: bool = False
+    abs_path: str,
+    target_scope: str,
+    path_elements: list,
+    original_content: str,
+    tree: cst.Module,
+    delete_a_lot: bool = False,
 ) -> str:
     """Handle deletion of a target section when empty code is provided."""
     try:

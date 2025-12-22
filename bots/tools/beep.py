@@ -5,18 +5,25 @@ Supports MIDI-based piano playback with TRUE polyphonic chords using
 synthesized piano tones. Uses NumPy for synthesis and winsound for playback.
 """
 
+from __future__ import annotations
+
 import os
 import sys
 import tempfile
 import wave
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-try:
+if TYPE_CHECKING:
     import numpy as np
+else:
+    # Runtime import
+    try:
+        import numpy as np
 
-    NUMPY_AVAILABLE = True
-except ImportError:
-    NUMPY_AVAILABLE = False
+        NUMPY_AVAILABLE = True
+    except ImportError:
+        NUMPY_AVAILABLE = False
+        np = None  # type: ignore
 
 # Windows winsound - reliable and built-in
 if sys.platform == "win32":
@@ -120,19 +127,24 @@ def _parse_music_notation(notation: str, tempo: int = 120) -> list:
         if not token:
             continue
 
-        # Split note(s) and duration
+        # Split into notes and duration
         if ":" not in token:
-            raise ValueError(f"Invalid token format (missing duration): {token}")
+            raise ValueError(f"Invalid notation format: {token} (missing ':')")
 
         notes_part, duration_part = token.rsplit(":", 1)
-        duration = float(duration_part)
-        duration_ms = int(duration * ms_per_quarter)
 
-        # Parse chord or single note
+        try:
+            duration_beats = float(duration_part)
+        except ValueError:
+            raise ValueError(f"Invalid duration: {duration_part}")
+
+        duration_ms = int(ms_per_quarter * duration_beats)
+
+        # Parse notes (single note or chord)
         if notes_part.startswith("[") and notes_part.endswith("]"):
             # Chord
-            notes_str = notes_part[1:-1]
-            notes = [_parse_note(n.strip()) for n in notes_str.split(",")]
+            note_strings = notes_part[1:-1].split(",")
+            notes = [_parse_note(n.strip()) for n in note_strings]
         else:
             # Single note
             notes = [_parse_note(notes_part)]
@@ -142,7 +154,7 @@ def _parse_music_notation(notation: str, tempo: int = 120) -> list:
     return result
 
 
-def _generate_piano_tone(frequency: float, duration: float, sample_rate: int = 44100) -> np.ndarray:
+def _generate_piano_tone(frequency: float, duration: float, sample_rate: int = 44100):
     """
     Generate a piano-like tone using additive synthesis with harmonics.
 
@@ -154,6 +166,9 @@ def _generate_piano_tone(frequency: float, duration: float, sample_rate: int = 4
     Returns:
         Audio samples as numpy array
     """
+    if not NUMPY_AVAILABLE:
+        raise RuntimeError("NumPy is required for piano tone synthesis")
+
     num_samples = int(sample_rate * duration)
     t = np.linspace(0, duration, num_samples, False)
 
@@ -227,6 +242,9 @@ def _create_wav_file(parsed_notes: list, sample_rate: int = 44100) -> str:
     Returns:
         Path to created WAV file
     """
+    if not NUMPY_AVAILABLE:
+        raise RuntimeError("NumPy is required for WAV file creation")
+
     # Generate audio for all notes
     audio_segments = []
 
@@ -278,22 +296,19 @@ def _play_with_winsound_simple(parsed_notes: list) -> None:
     """
     Play notes using Windows winsound (simple beep method).
     Chords are played as arpeggios (notes in quick succession).
-
-    Args:
-        parsed_notes: List of (note_list, duration_ms) tuples
     """
+    if not WINSOUND_AVAILABLE:
+        raise RuntimeError("winsound is not available on this platform")
+
     for notes, duration_ms in parsed_notes:
-        # For chords, play notes in quick succession
-        if len(notes) > 1:
-            chord_duration = duration_ms // len(notes)
-            for note in notes:
-                freq = int(_midi_to_frequency(note))
-                freq = max(37, min(32767, freq))
-                winsound.Beep(freq, chord_duration)
-        else:
-            freq = int(_midi_to_frequency(notes[0]))
+        # For chords, play notes in quick succession (arpeggio)
+        note_duration = duration_ms // len(notes) if len(notes) > 1 else duration_ms
+
+        for note in notes:
+            freq = int(_midi_to_frequency(note))
+            # Clamp frequency to winsound's acceptable range
             freq = max(37, min(32767, freq))
-            winsound.Beep(freq, duration_ms)
+            winsound.Beep(freq, note_duration)
 
 
 @toolify()
@@ -359,7 +374,7 @@ def piano(notation: str, tempo: int = 120, soundfont: Optional[str] = None) -> s
                     f"{tempo} BPM (TRUE POLYPHONY with {chord_count} chords!)"
                 )
             else:
-                return f"Successfully played {note_count} note(s) at {tempo} BPM " f"(synthesized piano)"
+                return f"Successfully played {note_count} note(s) at {tempo} BPM (synthesized piano)"
 
         elif WINSOUND_AVAILABLE:
             # Fallback to simple beep method
@@ -369,22 +384,23 @@ def piano(notation: str, tempo: int = 120, soundfont: Optional[str] = None) -> s
                 f"Successfully played {note_count} note(s)/chord(s) at {tempo} BPM "
                 f"(simple beeps - install numpy for polyphony)"
             )
-
         else:
-            return "Error: No audio backend available. This tool requires Windows."
+            return "Error: Audio playback not available on this platform (Windows only)"
 
+    except ValueError as e:
+        return f"Error parsing notation: {str(e)}"
     except Exception as e:
-        return f"Error playing piano: {str(e)}"
+        return f"Error playing audio: {str(e)}"
 
 
 @toolify()
-def beep(frequency: int = 440, duration: float = 0.5) -> str:
+def beep(frequency: int = 440, duration: int = 500) -> str:
     """
     Play a simple beep tone.
 
     Parameters:
-    - frequency (int): Frequency in Hz (default: 440 = A4, range: 37-32767)
-    - duration (float): Duration in seconds (default: 0.5)
+    - frequency (int): Frequency in Hz (37-32767, default 440 = A4)
+    - duration (int): Duration in milliseconds (default 500)
 
     Returns:
     str: Success message or error description
@@ -392,14 +408,15 @@ def beep(frequency: int = 440, duration: float = 0.5) -> str:
     cost: low
     """
     try:
-        if WINSOUND_AVAILABLE:
-            # Clamp frequency to winsound's range
-            frequency = max(37, min(32767, frequency))
-            duration_ms = int(duration * 1000)
-            winsound.Beep(frequency, duration_ms)
-            return f"Played {frequency}Hz beep for {duration}s"
-        else:
-            return "Error: No audio backend available. This tool requires Windows."
+        if not WINSOUND_AVAILABLE:
+            return "Error: Beep not available on this platform (Windows only)"
+
+        # Clamp values to winsound's acceptable range
+        frequency = max(37, min(32767, frequency))
+        duration = max(1, duration)
+
+        winsound.Beep(frequency, duration)
+        return f"Played beep at {frequency}Hz for {duration}ms"
 
     except Exception as e:
         return f"Error playing beep: {str(e)}"
