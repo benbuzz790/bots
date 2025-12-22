@@ -28,7 +28,11 @@ def create_test_module(name: str, content: str) -> ModuleType:
 class TestAddTools2(unittest.TestCase):
     def setUp(self):
         self.bot = AnthropicBot(
-            model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000, temperature=0, name="TestBot", autosave=False
+            model_engine=Engines.CLAUDE37_SONNET_20250219,
+            max_tokens=1000,
+            temperature=0,
+            name="TestBot",
+            autosave=False,
         )
         # Create temp directory for all test files
         self.test_dir = tempfile.mkdtemp()
@@ -218,6 +222,182 @@ class TestAddTools2(unittest.TestCase):
         except Exception as e:
             print(f"Warning: Could not clean up test directory: {e}")
         super().tearDown()
+
+
+class TestCLIAddToolCommand(unittest.TestCase):
+    """Test the CLI /add_tool command with file.py and file.py::function syntax."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from bots.dev.cli import CLIContext, SystemHandler
+        from bots.testing.mock_bot import MockBot
+
+        self.bot = MockBot()
+        self.context = CLIContext()
+        self.context.bot_instance = self.bot
+        self.handler = SystemHandler()
+        self.test_dir = tempfile.mkdtemp()
+
+        # Create test file with multiple functions
+        self.test_file_content = '''
+def public_tool1(x: str) -> str:
+    """Public tool 1"""
+    return f"tool1: {x}"
+
+def public_tool2(y: int) -> int:
+    """Public tool 2"""
+    return y * 2
+
+def _private_tool():
+    """Private tool - should not be added"""
+    return "private"
+
+class NotAFunction:
+    """Class - should not be added"""
+    pass
+'''
+        self.test_file = os.path.join(self.test_dir, "test_tools.py")
+        with open(self.test_file, "w") as f:
+            f.write(self.test_file_content)
+
+    def tearDown(self):
+        """Clean up test files."""
+        try:
+            shutil.rmtree(self.test_dir, ignore_errors=True)
+        except Exception as e:
+            print(f"Warning: Could not clean up test directory: {e}")
+
+    def test_add_tool_no_args(self):
+        """Test /add_tool with no arguments shows usage."""
+        result = self.handler.add_tool(self.bot, self.context, [])
+        self.assertIn("Usage:", result)
+        self.assertIn("file.py", result)
+        self.assertIn("::", result)
+
+    def test_add_tool_whole_file(self):
+        """Test /add_tool with file.py adds all public functions."""
+        result = self.handler.add_tool(self.bot, self.context, [self.test_file])
+
+        # Check result message
+        self.assertIn("Added tools:", result)
+        self.assertIn("public_tool1", result)
+        self.assertIn("public_tool2", result)
+        self.assertNotIn("_private_tool", result)
+        self.assertNotIn("NotAFunction", result)
+
+        # Check tools were actually added
+        self.assertIn("public_tool1", self.bot.tool_handler.function_map)
+        self.assertIn("public_tool2", self.bot.tool_handler.function_map)
+        self.assertNotIn("_private_tool", self.bot.tool_handler.function_map)
+        self.assertNotIn("NotAFunction", self.bot.tool_handler.function_map)
+
+    def test_add_tool_specific_function(self):
+        """Test /add_tool with file.py::function adds only that function."""
+        result = self.handler.add_tool(self.bot, self.context, [f"{self.test_file}::public_tool1"])
+
+        # Check result message
+        self.assertIn("Added tools:", result)
+        self.assertIn("public_tool1", result)
+        self.assertNotIn("public_tool2", result)
+
+        # Check only specified tool was added
+        self.assertIn("public_tool1", self.bot.tool_handler.function_map)
+        self.assertNotIn("public_tool2", self.bot.tool_handler.function_map)
+
+    def test_add_tool_nonexistent_file(self):
+        """Test /add_tool with nonexistent file shows error."""
+        result = self.handler.add_tool(self.bot, self.context, ["nonexistent.py"])
+
+        self.assertIn("Errors:", result)
+        self.assertIn("File not found", result)
+        self.assertIn("nonexistent.py", result)
+
+    def test_add_tool_nonexistent_function(self):
+        """Test /add_tool with nonexistent function shows error."""
+        result = self.handler.add_tool(self.bot, self.context, [f"{self.test_file}::nonexistent_func"])
+
+        self.assertIn("Errors:", result)
+        self.assertIn("not found", result)
+        self.assertIn("nonexistent_func", result)
+
+    def test_add_tool_non_python_file(self):
+        """Test /add_tool with non-Python file shows error."""
+        txt_file = os.path.join(self.test_dir, "test.txt")
+        with open(txt_file, "w") as f:
+            f.write("not python")
+
+        result = self.handler.add_tool(self.bot, self.context, [txt_file])
+
+        self.assertIn("Errors:", result)
+        self.assertIn("Not a Python file", result)
+
+    def test_add_tool_multiple_files(self):
+        """Test /add_tool with multiple files."""
+        # Create second test file
+        test_file2 = os.path.join(self.test_dir, "test_tools2.py")
+        with open(test_file2, "w") as f:
+            f.write(
+                '''
+def another_tool():
+    """Another tool"""
+    return "another"
+'''
+            )
+
+        result = self.handler.add_tool(self.bot, self.context, [self.test_file, test_file2])
+
+        # Check all tools were added
+        self.assertIn("Added tools:", result)
+        self.assertIn("public_tool1", result)
+        self.assertIn("public_tool2", result)
+        self.assertIn("another_tool", result)
+
+        self.assertIn("public_tool1", self.bot.tool_handler.function_map)
+        self.assertIn("public_tool2", self.bot.tool_handler.function_map)
+        self.assertIn("another_tool", self.bot.tool_handler.function_map)
+
+    def test_add_tool_mixed_syntax(self):
+        """Test /add_tool with mix of whole file and specific function."""
+        # Create second test file
+        test_file2 = os.path.join(self.test_dir, "test_tools2.py")
+        with open(test_file2, "w") as f:
+            f.write(
+                '''
+def tool_a():
+    """Tool A"""
+    return "a"
+
+def tool_b():
+    """Tool B"""
+    return "b"
+'''
+            )
+
+        # Add whole first file and specific function from second
+        self.handler.add_tool(self.bot, self.context, [self.test_file, f"{test_file2}::tool_a"])
+
+        # Check correct tools were added
+        self.assertIn("public_tool1", self.bot.tool_handler.function_map)
+        self.assertIn("public_tool2", self.bot.tool_handler.function_map)
+        self.assertIn("tool_a", self.bot.tool_handler.function_map)
+        self.assertNotIn("tool_b", self.bot.tool_handler.function_map)
+
+    def test_add_tool_file_with_no_public_functions(self):
+        """Test /add_tool with file containing only private functions."""
+        empty_file = os.path.join(self.test_dir, "empty_tools.py")
+        with open(empty_file, "w") as f:
+            f.write(
+                '''
+def _private_only():
+    """Private function"""
+    return "private"
+'''
+            )
+
+        result = self.handler.add_tool(self.bot, self.context, [empty_file])
+
+        self.assertIn("Errors:", result)
+        self.assertIn("No public functions found", result)
 
 
 if __name__ == "__main__":
