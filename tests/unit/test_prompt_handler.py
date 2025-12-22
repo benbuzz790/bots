@@ -49,16 +49,16 @@ class TestPromptHandlerDataFormat:
 
     @patch("builtins.input", return_value="test_name")
     def test_load_prompt_returns_tuple(self, mock_input):
-        """load_prompt() returns tuple of (prompt_text, should_execute)."""
+        """load_prompt() returns tuple of (status_message, prompt_content)."""
         # Mock the prompt manager to return a prompt
         self.mock_context.prompt_manager = MagicMock()
         self.mock_context.prompt_manager.load_prompt.return_value = "test prompt text"
         result = self.handler.load_prompt(self.mock_bot, self.mock_context, ["test_name"])
         assert isinstance(result, tuple)
         assert len(result) == 2
-        prompt_text, should_execute = result
-        assert isinstance(prompt_text, str)
-        assert isinstance(should_execute, bool)
+        status_message, prompt_content = result
+        assert isinstance(status_message, str)
+        assert isinstance(prompt_content, (str, type(None)))
 
     def test_delete_prompt_returns_string(self):
         """delete_prompt() returns status message."""

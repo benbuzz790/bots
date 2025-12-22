@@ -3050,7 +3050,7 @@ class PromptHandler:
                 # Show preview of content
                 preview = content[:80] + "..." if len(content) > 80 else content
                 preview = preview.replace("\n", " ")  # Single line preview
-                marker = "→" if i == 1 else " "
+                marker = "â†’" if i == 1 else " "
                 print(f"  {marker} {i}. {name}")
                 print(f"       {preview}")
 
@@ -3074,7 +3074,7 @@ class PromptHandler:
                 # Show a preview
                 preview = content[:60] + "..." if len(content) > 60 else content
                 preview = preview.replace("\n", " ")
-                marker = "→" if i == 1 else " "
+                marker = "â†’" if i == 1 else " "
                 print(f"  {marker} {i}. {name}")
                 print(f"       {preview}")
 

@@ -20,7 +20,13 @@ from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 
 # Skip all tests in this module when running with xdist
-# Input patching is incompatible with xdist worker processes
+# Input patching is incompatible with xdist worker processes because:
+# - builtins.input patching with unittest.mock.patch causes xdist worker crashes
+# - The patched input() function doesn't properly serialize across process boundaries
+# - This reduces parallel test coverage for these CLI interaction tests
+# TODO: Refactor these tests to use pytest's monkeypatch fixture instead of
+#       unittest.mock.patch for input simulation, which should be xdist-compatible.
+#       See issue #211 or create a new issue to track this conversion.
 pytestmark = pytest.mark.skipif(
     "xdist" in sys.modules, reason="Input patching incompatible with xdist workers - causes worker crashes"
 )

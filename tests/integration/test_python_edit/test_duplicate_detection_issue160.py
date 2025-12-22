@@ -42,7 +42,13 @@ class MyClass:
 
 
 def test_duplicate_function_detection():
-    """Test that python_edit overwrites when adding a duplicate function."""
+    """Test that python_edit overwrites when adding a duplicate function.
+
+    Note: This test uses full-file replacement mode (no coscope_with) because
+    the duplicate detection works correctly in that mode. Using coscope_with
+    with a duplicate at file level causes the insert point logic to fail even
+    though the duplicate is detected.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         test_file = os.path.join(tmpdir, "test_duplicate_func.py")
 
@@ -61,7 +67,7 @@ def my_function():
 """
         result = python_edit(test_file, new_function)
 
-        # Check result - python_edit returns "Code replaced at..." message
+        # Check result - should indicate success
         assert "Code replaced" in result
 
         # Verify file content - should have new function, not both
