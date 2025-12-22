@@ -1907,11 +1907,11 @@ class SystemHandler:
         if added:
             result.append("Added tools:")
             for item in added:
-                result.append(f"  ✓ {item}")
+                result.append(f"  âœ“ {item}")
         if errors:
             result.append("Errors:")
             for error in errors:
-                result.append(f"  ✗ {error}")
+                result.append(f"  âœ— {error}")
 
         return "\n".join(result) if result else "No tools added"
 
@@ -2608,7 +2608,7 @@ class CLI:
         from bots.tools.python_edit import python_edit, python_view
         from bots.tools.python_execution_tool import execute_python
         from bots.tools.self_tools import branch_self, list_context, remove_context
-        from bots.tools.terminal_tools import execute_powershell
+        from bots.tools.terminal_tools import execute_powershell, repair_mojibake
         from bots.tools.web_tool import web_search
 
         # Optional: import invoke_namshub if available (not released yet)
@@ -2624,6 +2624,7 @@ class CLI:
             web_search,
             python_edit,
             piano,
+            repair_mojibake,
         ]
 
         try:
@@ -2895,7 +2896,7 @@ class PromptHandler:
             # Show preview of content
             preview = content[:80] + "..." if len(content) > 80 else content
             preview = preview.replace("\n", " ")  # Single line preview
-            marker = "→" if i == 1 else " "
+            marker = "â†’" if i == 1 else " "
             print(f"  {marker} {i}. {name}: {preview}")
 
         if len(matches) > 10:
@@ -3049,7 +3050,7 @@ class PromptHandler:
                 # Show preview of content
                 preview = content[:80] + "..." if len(content) > 80 else content
                 preview = preview.replace("\n", " ")  # Single line preview
-                marker = "→" if i == 1 else " "
+                marker = "â†’" if i == 1 else " "
                 print(f"  {marker} {i}. {name}")
                 print(f"       {preview}")
 
@@ -3073,7 +3074,7 @@ class PromptHandler:
                 # Show a preview
                 preview = content[:60] + "..." if len(content) > 60 else content
                 preview = preview.replace("\n", " ")
-                marker = "→" if i == 1 else " "
+                marker = "â†’" if i == 1 else " "
                 print(f"  {marker} {i}. {name}")
                 print(f"       {preview}")
 

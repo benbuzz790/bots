@@ -861,3 +861,189 @@ def check_files_for_bom(directory: str = None) -> str:
         return f"Found {len(bom_files)} files with BOMs in {directory}:\n{file_list}"
     else:
         return f"No BOMs found in {directory}"
+
+
+def _generate_mojibake_map():
+    """
+    Generate a mapping of mojibake patterns to correct UTF-8 characters.
+
+    Mojibake occurs when UTF-8 bytes are misinterpreted as Windows-1252 (or similar).
+    This function creates a lookup table for common mojibake patterns.
+
+    Returns:
+        dict: Mapping from mojibake strings to correct characters
+    """
+    common_chars = [
+        # Arrows
+        "→",
+        "←",
+        "↑",
+        "↓",
+        "↔",
+        "↕",
+        # Dashes
+        "—",
+        "–",
+        # Quotes
+        '"',
+        '"',
+        """,
+        """,
+        "„",
+        "'",
+        "'",
+        "‚",
+        # Punctuation
+        "…",
+        "•",
+        "·",
+        "‧",
+        # Math
+        "×",
+        "÷",
+        "±",
+        "≠",
+        "≤",
+        "≥",
+        "≈",
+        # Currency
+        "€",
+        "£",
+        "¥",
+        # Accented characters
+        "é",
+        "è",
+        "ê",
+        "ë",
+        "à",
+        "â",
+        "ä",
+        "ô",
+        "ö",
+        "ù",
+        "û",
+        "ü",
+        "ç",
+        "ñ",
+        # Symbols
+        "©",
+        "®",
+        "™",
+        "°",
+        "§",
+        "¶",
+    ]
+
+    mojibake_map = {}
+    for char in common_chars:
+        try:
+            # UTF-8 bytes interpreted as Windows-1252
+            mojibake = char.encode("utf-8").decode("windows-1252")
+            mojibake_map[mojibake] = char
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            pass
+
+    return mojibake_map
+
+
+def _repair_mojibake_in_text(text: str, mojibake_map: dict = None) -> tuple:
+    """
+    Repair mojibake characters in text.
+
+    Args:
+        text: Text potentially containing mojibake
+        mojibake_map: Optional pre-generated mojibake mapping
+
+    Returns:
+        tuple: (repaired_text, replacement_count, replacements_made)
+    """
+    if mojibake_map is None:
+        mojibake_map = _generate_mojibake_map()
+
+    repaired = text
+    replacement_count = 0
+    replacements_made = {}
+
+    # Sort by length (longest first) to handle overlapping patterns
+    for mojibake, correct in sorted(mojibake_map.items(), key=lambda x: len(x[0]), reverse=True):
+        if mojibake in repaired:
+            count = repaired.count(mojibake)
+            repaired = repaired.replace(mojibake, correct)
+            replacement_count += count
+            replacements_made[mojibake] = (correct, count)
+
+    return repaired, replacement_count, replacements_made
+
+
+@toolify()
+def repair_mojibake(file_path: str, backup: str = "true") -> str:
+    """
+    Repair mojibake (corrupted UTF-8) characters in a text file.
+
+    Mojibake occurs when UTF-8 encoded text is incorrectly interpreted as
+    Windows-1252 or another encoding. Common examples:
+    - → becomes Ã¢â€ â€™
+    - " becomes â€œ
+    - é becomes Ã©
+
+    This tool detects and repairs these corrupted characters.
+
+    Args:
+        file_path: Path to the file to repair
+        backup: Whether to create a .bak backup file (default: "true")
+
+    Returns:
+        str: Summary of repairs made
+
+    Example:
+        repair_mojibake("document.md")
+        repair_mojibake("README.txt", backup="false")
+    """
+    try:
+        # Validate file exists
+        if not os.path.isfile(file_path):
+            return f"Error: File not found: {file_path}"
+
+        # Read the file
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                original_text = f.read()
+        except UnicodeDecodeError:
+            return f"Error: File {file_path} is not valid UTF-8. Cannot repair mojibake."
+
+        # Generate mojibake map and repair
+        mojibake_map = _generate_mojibake_map()
+        repaired_text, replacement_count, replacements_made = _repair_mojibake_in_text(original_text, mojibake_map)
+
+        # Check if any repairs were made
+        if replacement_count == 0:
+            return f"No mojibake found in {file_path}"
+
+        # Create backup if requested
+        if backup.lower() == "true":
+            backup_path = file_path + ".bak"
+            try:
+                with open(backup_path, "w", encoding="utf-8") as f:
+                    f.write(original_text)
+            except Exception as e:
+                return f"Error creating backup: {str(e)}"
+
+        # Write repaired content
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(repaired_text)
+        except Exception as e:
+            return f"Error writing repaired file: {str(e)}"
+
+        # Build summary
+        summary = f"Repaired {replacement_count} mojibake character(s) in {file_path}\n"
+        if backup.lower() == "true":
+            summary += f"Backup saved to {file_path}.bak\n"
+        summary += "\nReplacements made:\n"
+        for mojibake, (correct, count) in sorted(replacements_made.items(), key=lambda x: x[1][1], reverse=True):
+            summary += f"  {repr(mojibake):20s} → {correct:5s} ({count} occurrence(s))\n"
+
+        return summary
+
+    except Exception as e:
+        return f"Error repairing mojibake: {str(e)}"

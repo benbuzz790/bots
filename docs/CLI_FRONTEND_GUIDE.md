@@ -17,8 +17,8 @@ The Bots CLI uses a frontend abstraction layer to separate presentation logic fr
 - Easy to test with mock frontends
 ### Data Flow
 ```
-User Input â†’ CLI â†’ Handler â†’ Data Dict â†’ Frontend â†’ Display
-                     â†“
+User Input → CLI → Handler → Data Dict → Frontend → Display
+                     ↓
                   Business Logic
                   (no display calls)
 ```
@@ -136,8 +136,8 @@ def test_handler_with_frontend():
     handler = StateHandler()
     result = handler.save(bot, context, [\"test.bot\"])
     # Verify result format
-    assert isinstance(result, str)
-    assert "test.bot" in result
+    assert isinstance(result, dict)
+    assert "type" in result and "message" in result
 ```
 ## Examples
 ### GUI Frontend (Conceptual)

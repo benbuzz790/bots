@@ -56,13 +56,13 @@ def load_prompt(self, bot: Bot, context: CLIContext, args: List[str]) -> tuple[s
 ```
 ### StateHandler
 **Methods:** `save`, `load`
-**Return format:** String
+**Return format:** Dict with `type` and `message` keys
 ```python
 # Success
-\"Bot saved to mybot.bot\"
-\"Bot loaded from mybot.bot\"
-# Error (as string)
-\"Error: File not found\"
+{"type": "system", "message": "Bot saved to mybot.bot"}
+{"type": "system", "message": "Bot loaded from mybot.bot"}
+# Error
+{"type": "error", "message": "Error saving bot: File not found"}
 ```
 ### SystemHandler
 **Methods:** `help`, `verbose`, `quiet`, `config`, `auto_stash`, `load_stash`, `add_tool`
