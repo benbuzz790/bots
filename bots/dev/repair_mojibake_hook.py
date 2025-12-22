@@ -21,14 +21,20 @@ def main():
     total_fixed = 0
     files_modified = []
 
-    for filepath in files_to_check:
-        # Skip the mojibake repair tool files themselves to avoid recursion
-        if "repair_mojibake" in filepath or "terminal_tools.py" in filepath:
-            continue
+    # Files to exclude from mojibake repair to avoid self-recursion
+    excluded_filenames = {
+        "repair_mojibake_hook.py",
+        "terminal_tools.py",
+    }
 
+    for filepath in files_to_check:
         # Only check text files (skip binary files, images, etc.)
         path = Path(filepath)
         if not path.exists():
+            continue
+
+        # Skip the mojibake repair tool files themselves to avoid recursion
+        if path.name in excluded_filenames:
             continue
 
         # Skip certain file types that shouldn't be modified
