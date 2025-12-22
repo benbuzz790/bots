@@ -223,9 +223,12 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 session.execute(command, timeout=15)
                 print("✅ Command completed")
                 print(f"Items received: {len(received_items)}")
-                # Check if delimiter was received
+                # Check if delimiter was received - handle both bytes and strings
                 delimiter_found = any(
-                    ("COMMAND_" in str(item) and "_COMPLETE" in str(item) for item in received_items if item)
+                    (
+                        ("COMMAND_" in str(item) and "_COMPLETE" in str(item)) if item is not None else False
+                        for item in received_items
+                    )
                 )
                 if delimiter_found:
                     print("✅ Delimiter was properly received")

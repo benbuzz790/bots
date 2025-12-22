@@ -2,10 +2,13 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from bots.dev.cli import CLIContext, DynamicFunctionalPromptHandler
 from bots.foundation.base import Bot
 
 
+@pytest.mark.serial
 class TestDynamicFunctionalPromptHandlerDataFormat:
     """Test that DynamicFunctionalPromptHandler methods return strings."""
 
@@ -63,6 +66,7 @@ class TestDynamicFunctionalPromptHandlerDataFormat:
         assert "Error" in result
 
 
+@pytest.mark.serial
 class TestDynamicFunctionalPromptHandlerInteraction:
     """Test that DynamicFunctionalPromptHandler uses print/input (expected for now)."""
 
@@ -103,6 +107,7 @@ class TestDynamicFunctionalPromptHandlerInteraction:
         assert mock_print.called or not mock_print.called  # Either is fine
 
 
+@pytest.mark.serial
 class TestDynamicFunctionalPromptHandlerReturnTypes:
     """Test that methods always return strings."""
 
