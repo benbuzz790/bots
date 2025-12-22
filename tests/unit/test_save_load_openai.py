@@ -259,20 +259,25 @@ class TestSaveLoadOpenAI(unittest.TestCase):
         save_path = fresh_bot.save(save_path)
         loaded_bot = Bot.load(save_path)
         self.assertIsNotNone(loaded_bot.conversation)
-        self.assertEqual(loaded_bot.conversation._node_count(), 1, "Expected only root node initially")
+
+        # Check initial state - must use root for node count
         root = loaded_bot.conversation._find_root()
+        self.assertEqual(root._node_count(), 1, "Expected only root node initially")
         self.assertEqual(root.role, "empty")
         self.assertEqual(root.content, "")
         self.assertEqual(len(root.replies), 0)
+
         response = loaded_bot.respond("Hello!")
         self.assertIsNotNone(response)
         self.assertTrue(len(response) > 0)
+
+        # Check final state - must use root for node count
+        root = loaded_bot.conversation._find_root()
         self.assertEqual(
-            loaded_bot.conversation._node_count(),
+            root._node_count(),
             3,
             "Expected root node + user message + assistant response " + "(3 nodes total)",
         )
-        root = loaded_bot.conversation._find_root()
         self.assertEqual(len(root.replies), 1, "Root should have one reply")
         user_message = root.replies[0]
         self.assertEqual(user_message.role, "user")
