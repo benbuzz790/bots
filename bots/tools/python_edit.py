@@ -1088,8 +1088,36 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
     """
     try:
         file_path, *path_elements = target_scope.split("::")
+
+        # Handle non-.py files: write them as-is if they don't exist, with a warning
         if not file_path.endswith(".py"):
-            return _process_error(ValueError(f"File path must end with .py: {file_path}"))
+            # If there are path elements (scope), return error
+            if path_elements:
+                return _process_error(ValueError(f"File path must end with .py: {file_path}"))
+
+            # Check if file exists
+            abs_path = os.path.abspath(file_path)
+            if not os.path.exists(abs_path):
+                # Create directories if needed
+                dir_path = os.path.dirname(abs_path)
+                if dir_path:
+                    try:
+                        os.makedirs(dir_path, exist_ok=True)
+                    except Exception as e:
+                        return _process_error(ValueError(f"Error creating directories {dir_path}: {str(e)}"))
+                # Write the file
+                try:
+                    _write_file_bom_safe(abs_path, code)
+                    return (
+                        f"WARNING: python_edit is for python files. As a courtesy, this new file has been written verbatim, "
+                        f"but python_edit will not be able to edit the file.\n"
+                        f"File created: '{abs_path}'"
+                    )
+                except Exception as e:
+                    return _process_error(ValueError(f"Error writing file {abs_path}: {str(e)}"))
+            else:
+                return _process_error(ValueError(f"File path must end with .py: {file_path}"))
+
         for element in path_elements:
             if not element.isidentifier() and element != "__FIRST__":
                 return _process_error(ValueError(f"Invalid identifier in path: {element}"))
