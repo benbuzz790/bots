@@ -1598,7 +1598,7 @@ class ToolHandler(ABC):
         abs_file_path = os.path.abspath(filepath)
         module_name = f"dynamic_module_{hashlib.md5(abs_file_path.encode()).hexdigest()}"
         try:
-            with open(abs_file_path, "r") as file:
+            with open(abs_file_path, "r", encoding="utf-8") as file:
                 source = file.read()
             module = ModuleType(module_name)
             module.__file__ = abs_file_path
