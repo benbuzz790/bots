@@ -14,17 +14,6 @@ capabilities to diagnose and fix issues.
 from typing import Tuple
 
 from bots.foundation.base import Bot, ConversationNode
-from bots.namshubs.helpers import (
-    chain_workflow,
-    create_toolkit,
-    format_final_summary,
-    validate_required_params,
-)
-from bots.tools.code_tools import view, view_dir
-from bots.tools.python_edit import python_edit, python_view
-from bots.tools.python_execution_tool import execute_python
-from bots.tools.self_tools import branch_self
-from bots.tools.terminal_tools import execute_powershell
 
 
 def _set_pr_system_message(bot: Bot, pr_number: str) -> None:
@@ -56,18 +45,28 @@ Your workflow:
    - Follow the actionable prompts from CodeRabbit
 
 4. FIX ISSUES
-   Linting issues:
-   - Run formatters: black . && isort . && python -m bots.dev.remove_boms
-   - Check: black --check --diff . && isort --check-only --diff . &&
-     flake8 . --count --statistics --show-source
+   Reference the CI/CD workflow at .github/workflows/pr-checks.yml for the exact commands.
 
-   Test failures:
+   For linting issues (code-quality job):
+   - Run: python -m bots.dev.remove_boms
+   - Run: black .
+   - Run: isort .
+
+   For test failures (tests job):
    - Read the failing test file
    - Understand what's being tested
    - Fix the code or test as appropriate
    - Make surgical fixes
 
-5. POST UPDATE
+5. VERIFY FIXES
+   Use the same checks as CI/CD (see .github/workflows/pr-checks.yml):
+   - Run: python -m bots.dev.remove_boms
+   - Run: black --check --diff .
+   - Run: isort --check-only --diff .
+   - Run: flake8 . --count --statistics --show-source
+   - For tests: pytest tests/ -n 12 --tb=short -v --maxfail=10
+
+6. POST UPDATE
    - Always post a comment: gh pr comment {pr_number} --body "## Update: [summary of changes]"
 
 IMPORTANT NOTES:
@@ -75,8 +74,7 @@ IMPORTANT NOTES:
 - Get RUN_ID from the URL in gh pr checks output
 - Wait 5 minutes between checks if actions are still running
 - Always post an update comment when done
-- Version mismatch: CI may have different linter versions, update local:
-  pip install --upgrade black isort flake8
+- Reference .github/workflows/pr-checks.yml for the authoritative CI/CD commands
 """
     bot.set_system_message(system_message.strip())
 
