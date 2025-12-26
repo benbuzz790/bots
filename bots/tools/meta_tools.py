@@ -31,7 +31,7 @@ def message_bot(bot_path, message):
     def stop_condition(bot: Bot):
         tool_name = ""
         tools = ""
-        if bot.tool_handler.requests:
+        if bot.tool_handler and bot.tool_handler.requests:
             for request in bot.tool_handler.requests:
                 tool_name, _ = bot.tool_handler.tool_name_and_input(request)
             tools += "- " + tool_name + "\n"

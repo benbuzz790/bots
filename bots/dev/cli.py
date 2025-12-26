@@ -946,7 +946,7 @@ Respond with just the name, no explanation."""
 
         return results
 
-    def save_prompt(self, prompt_text: str, name: str = None) -> str:
+    def save_prompt(self, prompt_text: str, name: str | None = None) -> str:
         """Save a prompt with optional name. If no name, generate one."""
         if not name:
             name = self._generate_prompt_name(prompt_text)
@@ -2926,7 +2926,7 @@ class PromptHandler:
         except EscapeException:
             return ("Load cancelled.", None)
 
-    def save_prompt(self, bot: "Bot", context: "CLIContext", args: List[str], last_user_message: str = None) -> str:
+    def save_prompt(self, bot: "Bot", context: "CLIContext", args: List[str], last_user_message: str | None = None) -> str:
         """Save a prompt. If args provided, save the args. Otherwise save last user message."""
         try:
             if args:

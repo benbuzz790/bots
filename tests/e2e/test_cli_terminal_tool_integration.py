@@ -133,22 +133,25 @@ class TestCLIRealTerminalTimeouts:
         self.command_duration = time.time() - start_time
         print("\n=== POWERSHELL HERE-STRING TEST ===")
         print(f"Duration: {self.command_duration:.2f} seconds")
-        print(f"Output: {output[-500:]}")
+        # Sanitize output to prevent encoding issues in pytest capture
+        safe_output = output[-500:].encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+        print(f"Output: {safe_output}")
 
         # Check for timeout pattern
         if self.command_duration > 60:
-            print("🚨 TIMEOUT DETECTED - This matches the original issue!")
+            print("[!] TIMEOUT DETECTED - This matches the original issue!")
             self.timeout_occurred = True
         # Look for timeout indicators in output
         timeout_found = "timeout" in output.lower() or "timed out" in output.lower()
         if timeout_found:
-            print("🚨 TIMEOUT MESSAGE FOUND in output")
+            print("[!] TIMEOUT MESSAGE FOUND in output")
         # Check if file was created despite timeout
         if os.path.exists("test_script.py"):
             print("File created successfully")
-            with open("test_script.py", "r") as f:
+            with open("test_script.py", "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
-                print(f"File content preview: {content[:200]}...")
+                safe_content = content[:200].encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+                print(f"File content preview: {safe_content}...")
         else:
             print("File was not created")
 
@@ -181,21 +184,23 @@ class TestCLIRealTerminalTimeouts:
         self.command_duration = time.time() - start_time
         print("\n=== COMPLEX PYTHON FILE TEST ===")
         print(f"Duration: {self.command_duration:.2f} seconds")
-        print(f"Output: {output[-500:]}")
+        # Sanitize output to prevent encoding issues
+        safe_output = output[-500:].encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+        print(f"Output: {safe_output}")
 
         # This is the most likely to reproduce the original timeout
         if self.command_duration > 60:
-            print("🚨 COMPLEX FILE TIMEOUT - Reproduced the issue!")
+            print("[!] COMPLEX FILE TIMEOUT - Reproduced the issue!")
             self.timeout_occurred = True
         # Analyze what the bot actually tried to do
         if "function_calls" in output.lower():
-            print("✅ Bot attempted to use tools")
+            print("[+] Bot attempted to use tools")
         if "@'" in output or "'@" in output:
-            print("🎯 Bot used here-strings (potential timeout trigger)")
+            print("[*] Bot used here-strings (potential timeout trigger)")
         if "out-file" in output.lower():
-            print("🎯 Bot used Out-File command")
+            print("[*] Bot used Out-File command")
         if "encoding utf8" in output.lower():
-            print("🎯 Bot used UTF8 encoding parameter")
+            print("[*] Bot used UTF8 encoding parameter")
 
     def test_bot_tool_usage_analysis(self, monkeypatch):
         """Analyze exactly what terminal tool commands the bot generates."""
@@ -219,16 +224,14 @@ class TestCLIRealTerminalTimeouts:
         duration = time.time() - start_time
         print("=== BOT TOOL ANALYSIS TEST ===")
         print(f"Duration: {duration:.2f} seconds")
-        print(f"Full output:\n{output}")
+        # Sanitize output to prevent encoding issues
+        safe_output = output.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+        print(f"Full output:\n{safe_output}")
         # Extract and analyze the actual PowerShell commands the bot tries to use
         if "execute_powershell" in output:
-            print("🔍 Bot used execute_powershell tool")
+            print("[*] Bot used execute_powershell tool")
             # Try to extract the command parameter
             lines = output.split("\n")
             for i, line in enumerate(lines):
-                if 'parameter name="command"' in line.lower():
-                    # Try to get the next few lines to see the command
-                    command_lines = lines[i : i + 10]
-                    command_text = chr(10).join(command_lines)
-                    print(f"Command being executed:\n{command_text}")
-                    break
+                if "execute_powershell" in line and i + 1 < len(lines):
+                    print(f"Command context: {lines[i:i+3]}")

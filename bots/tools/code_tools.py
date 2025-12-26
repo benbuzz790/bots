@@ -262,10 +262,10 @@ def patch_edit(file_path: str, patch_content: str):
             return f"Error parsing hunk header: {str(e)}\nHeader: {header}"
 
         # Parse hunk into components
-        context_before = []
-        context_after = []
-        removals = []
-        additions = []
+        context_before: list[str] = []
+        context_after: list[str] = []
+        removals: list[str] = []
+        additions: list[str] = []
 
         for line in hunk_lines:
             if not line:
