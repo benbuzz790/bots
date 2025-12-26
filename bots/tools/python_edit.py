@@ -1037,7 +1037,7 @@ def python_view(target_scope: str, max_lines: str = "500") -> str:
 
 
 @toolify()
-def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delete_a_lot: bool = False) -> str:
+def python_edit(target_scope: str, code: str, *, coscope_with: str | None = None, delete_a_lot: bool = False) -> str:
     """
         Edit Python code using pytest-style scope syntax and optional expression matching.
 
@@ -1164,6 +1164,10 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str = None, delet
                         return _process_error(ValueError(f"Error parsing new code: {str(e)}"))
         except Exception as e:
             return _process_error(ValueError(f"Error processing new code: {str(e)}"))
+
+        # Ensure new_module is not None at this point
+        if new_module is None:
+            return _process_error(ValueError("Internal error: new_module is None"))
 
         # Handle special __FIRST__ scope
         if path_elements and path_elements[0] == "__FIRST__":

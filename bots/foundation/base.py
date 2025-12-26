@@ -390,7 +390,7 @@ class ConversationNode:
             for node in siblings:
                 for result in node.tool_results:
                     result_str = str(sorted(result.items()))
-                    tool_id = hashlib.md5(result_str.encode()).hexdigest()
+                    tool_id = hashlib.md5(result_str.encode(), usedforsecurity=False).hexdigest()
                     tool_results_dict[tool_id] = result
             all_tool_results = list(tool_results_dict.values())
             for sibling in self.parent.replies:
@@ -423,7 +423,7 @@ class ConversationNode:
         def make_hash(result):
             """Create hash of result for deduplication."""
             result_str = str(sorted(result.items()))
-            return hashlib.md5(result_str.encode()).hexdigest()
+            return hashlib.md5(result_str.encode(), usedforsecurity=False).hexdigest()
 
         existing_dict = {make_hash(r): r for r in self.tool_results}
         new_dict = {make_hash(r): r for r in results}
@@ -1596,7 +1596,7 @@ class ToolHandler(ABC):
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"File '{filepath}' not found.")
         abs_file_path = os.path.abspath(filepath)
-        module_name = f"dynamic_module_{hashlib.md5(abs_file_path.encode()).hexdigest()}"
+        module_name = f"dynamic_module_{hashlib.md5(abs_file_path.encode(), usedforsecurity=False).hexdigest()}"
         try:
             with open(abs_file_path, "r", encoding="utf-8") as file:
                 source = file.read()
@@ -1662,7 +1662,7 @@ class ToolHandler(ABC):
             self._add_tools_from_file(module.__file__)
         elif hasattr(module, "__source__"):
             source = module.__source__
-            module_name = f"dynamic_module_{hashlib.md5(module.__name__.encode()).hexdigest()}"
+            module_name = f"dynamic_module_{hashlib.md5(module.__name__.encode(), usedforsecurity=False).hexdigest()}"
             try:
                 dynamic_module = ModuleType(module_name)
                 dynamic_module.__file__ = f"dynamic_module_{hash(source)}"
@@ -2412,7 +2412,7 @@ class ToolHandler(ABC):
         Returns:
             str: MD5 hash of the code string
         """
-        return hashlib.md5(code.encode()).hexdigest()
+        return hashlib.md5(code.encode(), usedforsecurity=False).hexdigest()
 
     def __str__(self) -> str:
         """Create a simple string representation of the ToolHandler.

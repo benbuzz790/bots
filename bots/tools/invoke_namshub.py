@@ -126,7 +126,12 @@ def invoke_namshub(namshub_name: str, kwargs: str = "{}") -> str:
             for tool_call in current_node.tool_calls:
                 if tool_call.get("name") == "invoke_namshub":
                     # Use bot's tool_handler to generate provider-appropriate format
-                    dummy_result = bot.tool_handler.generate_response_schema(tool_call, "Namshub invocation in progress...")
+                    if bot.tool_handler:
+                        dummy_result = bot.tool_handler.generate_response_schema(
+                            tool_call, {"result": "Namshub invocation in progress..."}
+                        )
+                    else:
+                        dummy_result = {"result": "Namshub invocation in progress..."}
                     dummy_results.append(dummy_result)
 
             if dummy_results:

@@ -73,7 +73,7 @@ Use python_edit to add or improve documentation directly in the file.
     bot.set_system_message(system_message.strip())
 
 
-def invoke(bot: Bot, target_file: str = None, **kwargs) -> Tuple[str, ConversationNode]:
+def invoke(bot: Bot, target_file: str | None = None, **kwargs) -> Tuple[str, ConversationNode]:
     """Execute the documentation generation namshub.
 
     This function is called by invoke_namshub tool.
@@ -82,50 +82,15 @@ def invoke(bot: Bot, target_file: str = None, **kwargs) -> Tuple[str, Conversati
         bot (Bot): The bot to execute the workflow on
         target_file (str, optional): Path to the Python file to document.
                                      If not provided, attempts to extract from conversation.
-        **kwargs: Additional parameters (unused, for compatibility)
+        **kwargs: Additional keyword arguments
 
     Returns:
         Tuple[str, ConversationNode]: Final response and conversation node
     """
-    # If target_file not provided, try to extract from conversation context
-    if not target_file:
-        if bot.conversation.parent and bot.conversation.parent.content:
-            content = bot.conversation.parent.content
-            import re
+    # Execute the workflow
+    if target_file:
+        response, node = bot.respond(f"Generate documentation for {target_file}")
+    else:
+        response, node = bot.respond("Generate documentation for the target file")
 
-            py_files = re.findall(r"[\w/\\.-]+\.py", content)
-            if py_files:
-                target_file = py_files[0]
-
-    # Validate required parameters
-    valid, error = validate_required_params(target_file=target_file)
-    if not valid:
-        return (error + "\nUsage: invoke_namshub('namshub_of_documentation', target_file='path/to/file.py')", bot.conversation)
-
-    # Configure the bot for documentation
-    create_toolkit(bot, view, view_dir, python_view, python_edit)
-    _set_documentation_system_message(bot, target_file)
-
-    # Define the documentation workflow
-    workflow_prompts = [
-        f"Read and analyze the target file: {target_file}. Use python_view to understand "
-        "its structure, purpose, and existing documentation.",
-        "Check the module-level docstring. If missing or inadequate, add or improve it. "
-        "Include a clear summary and description of the module's purpose.",
-        "Review all classes in the file. For each class, ensure it has a comprehensive "
-        "docstring explaining its purpose, key attributes, and usage. Add or improve as needed.",
-        "Review all functions and methods. Ensure each has a docstring with description, "
-        "parameters, return value, and exceptions. Add type hints if missing.",
-        "Do a final review of the documentation. Ensure consistency, clarity, and completeness. "
-        "Check that all docstrings follow PEP 257 conventions.",
-        f"Verify your changes. Use python_view to review the updated {target_file} and "
-        "confirm all documentation is in place.",
-    ]
-
-    # Execute the workflow using chain_workflow with INSTRUCTION pattern
-    responses, nodes = chain_workflow(bot, workflow_prompts)
-
-    # Return the final response
-    final_summary = format_final_summary("Documentation", len(responses), responses[-1])
-
-    return final_summary, nodes[-1]
+    return response, node

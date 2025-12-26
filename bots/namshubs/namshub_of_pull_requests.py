@@ -81,79 +81,37 @@ IMPORTANT NOTES:
     bot.set_system_message(system_message.strip())
 
 
-def invoke(bot: Bot, pr_number: str = None, **kwargs) -> Tuple[str, ConversationNode]:
+def invoke(bot: Bot, pr_number: str | None = None, **kwargs) -> Tuple[str, ConversationNode]:
     """Execute the PR workflow namshub.
 
     This function is called by invoke_namshub tool.
 
     Parameters:
         bot (Bot): The bot to execute the workflow on
-        pr_number (str, optional): The PR number to work on.
-                                   If not provided, attempts to extract from conversation.
-        **kwargs: Additional parameters (unused, for compatibility)
+        pr_number (str): The PR number to work on
+        **kwargs: Additional keyword arguments
 
     Returns:
         Tuple[str, ConversationNode]: Final response and conversation node
     """
-    # If pr_number not provided, try to extract from conversation context
-    if not pr_number:
-        if bot.conversation.parent and bot.conversation.parent.content:
-            content = bot.conversation.parent.content
-            import re
+    if pr_number is None:
+        return "Error: pr_number is required", bot.conversation.current_node
 
-            pr_patterns = [
-                r"#(\d+)",
-                r"PR\s*#?(\d+)",
-                r"pull request\s*#?(\d+)",
-            ]
-            for pattern in pr_patterns:
-                match = re.search(pattern, content, re.IGNORECASE)
-                if match:
-                    pr_number = match.group(1)
-                    break
-
-    # Validate required parameters
-    valid, error = validate_required_params(pr_number=pr_number)
-    if not valid:
-        return (error + "\nUsage: invoke_namshub('namshub_of_pull_requests', pr_number='123')", bot.conversation)
-
-    # Configure the bot for PR workflow
-    create_toolkit(bot, branch_self, execute_powershell, execute_python, view, view_dir, python_view, python_edit)
+    # Set the system message for PR workflow
     _set_pr_system_message(bot, pr_number)
 
-    # Define the PR workflow
-    workflow_prompts = [
+    # Execute the workflow steps
+    prompts = [
         f"Check the status of PR #{pr_number}. Run 'gh pr checks {pr_number}' to see the CI/CD status.",
-        "Extract the RUN_ID from the URL in the output. Check if the actions are still running. "
-        "If they are still running, sleep for 5 minutes using either: "
-        "execute_python with code 'import time; time.sleep(300)' OR "
-        "execute_powershell with 'Start-Sleep -Seconds 300'. "
-        "Then run 'gh run view <RUN_ID> --log-failed' to see what failed.",
-        "View the failures. Use Select-String to filter for errors: "
-        "gh run view <RUN_ID> --log | Select-String -Pattern "
-        '"error|FAILED|would reformat|AssertionError|E[0-9]{3}|F[0-9]{3}" -Context 2,2',
-        "Try to extract any coderabbit comments: python -m bots.dev.pr_comment_parser <REPO> "
-        f"{pr_number}. Read and understand the AI prompts.",
-        "Use branch_self to fix the identified issues. For linting: run black, isort, and remove_boms. "
-        "For test failures: read the test file, understand the issue, and fix it. For coderabbit comments, "
-        "make the suggested change unless it seems at odds with the code intent. You should branch "
-        "for each task or related group of tasks and clear everything up in parallel. You branch_self tool "
-        "is pretty powerful. You should use a clear definition of done to keep branches on task, and specify "
-        "reporting requirements for their last text message (not files), because the text of the last message "
-        "'bubbles up' to you. Note that each branch is a copy of you with all your context, so you do not need "
-        "to be too specific with your task description - but you do with def of done and reporting reqs. Take "
-        "your time and work step by step. Be sure to gather sufficient context before implementing a fix.",
-        "Verify your fixes, then run the linters again to confirm: black --check --diff . && "
-        "isort --check-only --diff . && flake8 . --count --statistics --show-source",
-        f"Post an update comment to PR #{pr_number} summarizing what you fixed: "
-        f'gh pr comment {pr_number} --body "## Update: [your summary here]".',
-        "Finally, push. Thanks for your hard work.",
+        "Extract the RUN_ID from the URL in the output. Check if the actions are still running. If they are still running, sleep for 5 minutes using either: execute_python with code 'import time; time.sleep(300)' OR execute_powershell with 'Start-Sleep -Seconds 300'. Then run 'gh run view <RUN_ID> --log-failed' to see what failed.",
+        f"Try to extract any coderabbit comments: python -m bots.dev.pr_comment_parser <REPO> {pr_number}. Read and understand the AI prompts.",
+        "Use branch_self to fix the identified issues. For linting: run black, isort, and remove_boms. For test failures: read the test file, understand the issue, and fix it. For coderabbit comments, make the suggested change unless it seems at odds with the code intent.",
+        f"Post an update comment: gh pr comment {pr_number} --body '## Update: [summary of changes]'",
     ]
 
-    # Execute the workflow using chain_workflow with INSTRUCTION pattern
-    responses, nodes = chain_workflow(bot, workflow_prompts)
+    for prompt in prompts:
+        response, node = bot.respond(prompt)
+        if "error" in response.lower() or "failed" in response.lower():
+            return f"Workflow stopped due to error: {response}", node
 
-    # Return the final response
-    final_summary = format_final_summary(f"PR #{pr_number}", len(responses), responses[-1])
-
-    return final_summary, nodes[-1]
+    return "PR workflow completed successfully", bot.conversation.current_node

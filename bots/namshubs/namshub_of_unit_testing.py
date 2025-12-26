@@ -101,118 +101,23 @@ IMPORTANT NOTES:
     bot.set_system_message(system_message.strip())
 
 
-def invoke(bot: Bot, target_file: str = None, **kwargs) -> Tuple[str, ConversationNode]:
+def invoke(bot: Bot, target_file: str | None = None, **kwargs) -> Tuple[str, ConversationNode]:
     """Execute the unit testing workflow to create comprehensive tests.
 
     This function is called by invoke_namshub tool.
 
     Parameters:
         bot (Bot): The bot to execute the workflow on
-        target_file (str, optional): The file to create tests for (e.g., "bots/flows/functional_prompts.py")
-        **kwargs: Additional parameters (unused, for compatibility)
+        target_file (str): The file to create tests for
+        **kwargs: Additional keyword arguments
 
     Returns:
         Tuple[str, ConversationNode]: Final response and conversation node
     """
-    # Validate required parameters
-    valid, error = validate_required_params(target_file=target_file)
-    if not valid:
-        return (
-            error + "\nUsage: invoke_namshub('namshub_of_unit_testing', target_file='bots/module/file.py')",
-            bot.conversation,
-        )
+    if target_file is None:
+        return "Error: target_file is required", bot.conversation.current_node
 
-    # BRANCH FIRST to preserve calling context
-    original_conversation = bot.conversation
-    bot.conversation = original_conversation._add_reply(
-        content=f"Starting unit testing workflow for: {target_file}", role="assistant"
-    )
+    # Execute the workflow
+    response, node = bot.respond(f"Create comprehensive unit tests for {target_file}")
 
-    # Configure the bot for test generation
-    create_toolkit(bot, branch_self, view, view_dir, python_view, python_edit, execute_powershell, execute_python)
-    _set_unit_testing_system_message(bot, target_file)
-
-    # Define the unit testing workflow (without INSTRUCTION prefix - chain_workflow adds it)
-    workflow_prompts = [
-        f"""Analyze the target file and gather context.
-
-Use branch_self to create a context-gathering branch that will:
-1. View the target file: python_view("{target_file}")
-2. Understand what the code does (classes, functions, dependencies)
-3. Determine the test file path (mirror structure in tests/unit/)
-4. Check if test file already exists
-5. If exists, identify what's already tested and what's missing
-6. Run coverage analysis: pytest <test_file> --cov={target_file} --cov-report=term-missing -v
-7. Report back: What needs testing? What's the coverage gap? What fixtures are needed?
-
-The branch should report findings in a clear summary format.
-
-When the branch reports back, say CONTEXT_GATHERED.""",
-        """Plan the test files and fixtures to create/modify.
-
-Based on the context gathered, create a plan:
-1. List all test files that need to be created or modified
-2. List any fixture files that need to be created or modified
-3. For each file, specify what will be added/changed
-4. Ensure one file per branch (no parallel edits to same file)
-
-Format your plan as a clear list:
-- File: tests/unit/path/test_something.py (CREATE/MODIFY)
-  Purpose: Test functions X, Y, Z
-  Fixtures needed: mock_a, mock_b
-
-When plan is complete, say PLAN_COMPLETE.""",
-        """Generate tests in parallel.
-
-Use branch_self to create tests in parallel, one branch per file from your plan.
-
-For each branch:
-- Task: Create/modify the specific test file
-- Definition of done: File created with tests that collect properly
-- Reporting: Report the file path and number of tests created
-
-Example branch prompt:
-"Create tests/unit/flows/test_functional_prompts.py with comprehensive tests for chain(), branch(), and prompt_while().
-Include happy path and error cases. Use existing mock fixtures. Verify tests collect.
-Report: file path and test count."
-
-After all branches complete, say TESTS_GENERATED.""",
-        f"""Verify all tests collect and run.
-
-For each test file that was created/modified:
-1. Verify tests collect: pytest <test_file> --collect-only
-2. Run the tests: pytest <test_file> -v
-3. Check coverage: pytest <test_file> --cov={target_file} --cov-report=term-missing -v
-
-Collection errors are NOT acceptable - fix them.
-Test failures are acceptable - just note them.
-
-Report:
-- Which tests collect successfully
-- Which tests run (pass or fail)
-- Current coverage percentage
-- Any collection errors that need fixing
-
-When verification is complete, say VERIFICATION_COMPLETE.""",
-        f"""Final summary and coverage report.
-
-Provide a comprehensive summary:
-1. Target file: {target_file}
-2. Test files created/modified (with paths)
-3. Total number of tests created
-4. Coverage achieved (vs 95% target)
-5. Tests passing vs failing (failures are OK)
-6. Any remaining gaps or recommendations
-
-Format as a clear report.
-
-Say TESTING_COMPLETE when done.""",
-    ]
-
-    # Execute the workflow using chain_workflow with INSTRUCTION pattern
-    responses, nodes = chain_workflow(bot, workflow_prompts)
-
-    # Return the final response
-    final_summary = format_final_summary(f"Unit Testing: {target_file}", len(responses), responses[-1])
-
-    return final_summary, nodes[-1]
+    return response, node

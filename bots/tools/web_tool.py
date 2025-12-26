@@ -49,7 +49,11 @@ Answer:"""
         )
 
         # Extract the response
-        answer = response.content[0].text.strip().upper()
+        content_block = response.content[0]
+        if hasattr(content_block, "text"):
+            answer = content_block.text.strip().upper()
+        else:
+            answer = str(content_block).strip().upper()
 
         if answer.startswith("N"):
             raise ValueError(
@@ -119,7 +123,7 @@ def web_search(question: str) -> str:
             model="claude-opus-4-1",
             max_tokens=16384,
             temperature=0.3,
-            tools=tools,
+            tools=tools,  # type: ignore[arg-type]
             messages=[{"role": "user", "content": search_prompt}],
         )
 
