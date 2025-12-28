@@ -104,9 +104,9 @@ def invoke(bot: Bot, target_file: str | None = None, **kwargs) -> Tuple[str, Con
         Tuple[str, ConversationNode]: Final response and conversation node
     """
     if target_file is None:
-        return "Error: target_file is required", bot.conversation.current_node
+        return "Error: target_file is required", bot.conversation
 
     # Execute the workflow
-    response, node = bot.respond(f"Create comprehensive unit tests for {target_file}")
+    response = bot.respond(f"Create comprehensive unit tests for {target_file}")
 
-    return response, node
+    return response, bot.conversation

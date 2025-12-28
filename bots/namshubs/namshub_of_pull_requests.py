@@ -93,7 +93,7 @@ def invoke(bot: Bot, pr_number: str | None = None, **kwargs) -> Tuple[str, Conve
         Tuple[str, ConversationNode]: Final response and conversation node
     """
     if pr_number is None:
-        return "Error: pr_number is required", bot.conversation.current_node
+        return "Error: pr_number is required", bot.conversation
 
     # Set the system message for PR workflow
     _set_pr_system_message(bot, pr_number)
@@ -112,4 +112,4 @@ def invoke(bot: Bot, pr_number: str | None = None, **kwargs) -> Tuple[str, Conve
         if "error" in response.lower() or "failed" in response.lower():
             return f"Workflow stopped due to error: {response}", node
 
-    return "PR workflow completed successfully", bot.conversation.current_node
+    return "PR workflow completed successfully", bot.conversation

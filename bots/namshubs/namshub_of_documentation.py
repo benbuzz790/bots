@@ -81,8 +81,8 @@ def invoke(bot: Bot, target_file: str | None = None, **kwargs) -> Tuple[str, Con
     """
     # Execute the workflow
     if target_file:
-        response, node = bot.respond(f"Generate documentation for {target_file}")
+        response = bot.respond(f"Generate documentation for {target_file}")
     else:
-        response, node = bot.respond("Generate documentation for the target file")
+        response = bot.respond("Generate documentation for the target file")
 
-    return response, node
+    return response, bot.conversation

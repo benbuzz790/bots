@@ -186,7 +186,7 @@ def invoke(
         Tuple[str, ConversationNode]: Final response and conversation node
     """
     if task_description is None:
-        return "Error: task_description is required", bot.conversation.current_node
+        return "Error: task_description is required", bot.conversation
 
     # Build the prompt
     prompt_parts = [f"Create a namshub for: {task_description}"]
@@ -200,6 +200,6 @@ def invoke(
     prompt = "\n".join(prompt_parts)
 
     # Execute the workflow
-    response, node = bot.respond(prompt)
+    response = bot.respond(prompt)
 
-    return response, node
+    return response, bot.conversation
