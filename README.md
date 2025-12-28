@@ -5,10 +5,15 @@
 ## What This Is
 
 Most agent frameworks treat conversations as lists of messages. This one treats them as trees.
-Why? Because when you're working with an agent, you need to explore. Try different approaches. Backtrack when something doesn't work. Branch to test ideas in parallel. A linear conversation forces you to either lose context or pollute it with failed attempts.
-Trees let you explore without losing your place. Every message is a node. Every response creates a branch. You can navigate back to any point and try something different. The agent only sees the path from root to your current position, so context stays clean.
-This structure enables something more interesting: agents that manage their own context. An agent can branch itself to explore multiple approaches in parallel. It can navigate its own conversation tree. It can save its state—complete with tools and context—and resume later.
-The framework emerged from building with it. Every feature exists because it solved a real problem during development. `respond()` wraps API complexity. `save/load` eliminates context repetition. `add_tools()` makes tool creation trivial—just write a Python function. Functional prompts automate common agent workflows. The CLI grew from `chat()` when interactions got complex enough to need dedicated commands. Namshubs package complete workflows because even with the CLI, certain patterns kept repeating.
+
+Why? Because when you're working with an agent, you may need to explore, to try different approaches, or to backtrack when something doesn't work. A linear conversation forces you to either lose context or pollute that context with failed attempts. 
+
+Trees let you explore without losing your place. Every message is a node. Every response creates a branch. You can navigate back to any point and try something different. The agent only sees the path from root to your current position, so context stays clean. Allowing branching also allows simple parallel operation. For instance, a "gather context, then branch to do tasks in parallel" workflow.
+
+The framework emerged from building with it. Every feature exists because it solved a real problem during development. `respond()` wraps API complexity. `save/load` eliminates context repetition. `add_tools()` makes tool creation trivial—just write a Python function. Functional prompts automate common agent workflows. The CLI grew from `bot.chat()` when interactions got complex enough to need dedicated commands. 
+
+This structure enables something more interesting: agents that manage their own context through tool use. Tools are provided for allowing an agent to branch itself to allow itself to do work in parallel. It can compact itself. Giving agents tools to do the boring task of managing their own context *appears to work*.
+
 This is a tool for programming with agents, not just prompting them.
 
 ## Getting Started
@@ -22,7 +27,8 @@ response = bot.respond("What's the time complexity of quicksort?")
 print(response)
 ```
 
-That's it. `respond()` sends a message and returns the text response. Everything else builds from here.
+That's it. `respond()` sends a message and returns the text response.
+
 Add tools by passing Python functions or modules:
 
 ```python
@@ -33,6 +39,7 @@ response = bot.respond("Create a Flask app in app.py")
 ```
 
 The agent can now call those tools. You don't write schemas or wrappers—just pass the functions.
+
 Save the bot's state when you want to preserve context:
 
 ```python
@@ -47,7 +54,7 @@ bot = bots.load("my_bot.bot")
 bot.respond("Continue where we left off")
 ```
 
-The saved bot includes its conversation tree, tools, and configuration. It's completely portable.
+The saved bot includes its conversation tree, tools (as hashed python code), and configuration. It's completely portable.
 
 ## The CLI
 
@@ -85,16 +92,20 @@ responses, nodes = fp.prompt_while(
 ```
 
 This is the core agentic workflow. The agent keeps working, using tools as needed, until the condition is met.
-For sequential reasoning, use `chain`:
+
+For sequential reasoning, use `chain_while`:
 
 ```python
 # Execute prompts in sequence, building context
-responses, nodes = fp.chain(bot, [
-    "Analyze the codebase structure",
-    "Identify the main entry points",
-    "Suggest improvements to the architecture"
+responses, nodes = fp.chain_while(bot, [
+    "Check out the repo and read all the important .md files.",
+    "Run tests (use a long timeout)",
+    "Branch yourself for each error and write an issue for each."
+    stop_condition = fp.conditions.tool_not_used
 ])
 ```
+
+This is a chain-of-thought approach, but it allows an agentic loop between each instruction.
 
 These patterns compose. You can chain multiple `prompt_while` calls, branch to explore different approaches, or run the same workflow across multiple files in parallel:
 
@@ -120,14 +131,6 @@ From the CLI:
 
 The agent loads the PR review workflow, executes it, then returns control to the main conversation. Namshubs are pre-written tasks that any agent can invoke.
 The name comes from Snow Crash—namshubs "reprogram" the agent temporarily for a specific task, then restore its original state.
-
-## Why Trees Matter
-
-The tree structure isn't just an implementation detail—it's the primary interface for working with agents.
-When you branch, you're not just creating parallel conversations. You're exploring a decision space. Each branch represents a different approach, a different set of assumptions, a different line of reasoning.
-When you navigate, you're not just moving through history. You're choosing which context to build on. The agent only sees the path from root to your current position, so you control exactly what it knows.
-When you save, you're not just preserving a conversation. You're capturing a complete agent state—tools, context, and position in the exploration space. You can share it, resume it, or fork it.
-This makes agents more like development tools than chat interfaces. You explore with them, backtrack when needed, and build up context incrementally.
 
 ## Installation
 
