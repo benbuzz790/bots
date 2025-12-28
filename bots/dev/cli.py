@@ -52,8 +52,6 @@ except Exception:
 class EscapeException(Exception):
     """Exception raised when user presses ESC to cancel input."""
 
-    pass
-
 
 def input_with_esc(prompt: str = "") -> str:
     """
@@ -946,7 +944,7 @@ Respond with just the name, no explanation."""
 
         return results
 
-    def save_prompt(self, prompt_text: str, name: str = None) -> str:
+    def save_prompt(self, prompt_text: str, name: str | None = None) -> str:
         """Save a prompt with optional name. If no name, generate one."""
         if not name:
             name = self._generate_prompt_name(prompt_text)
@@ -1007,6 +1005,7 @@ class ConversationHandler:
         """Move up in conversation tree."""
         if bot.conversation.parent and bot.conversation.parent.parent:
             context.conversation_backup = bot.conversation
+            original_position = bot.conversation
             bot.conversation = bot.conversation.parent.parent
             if not self._ensure_assistant_node(bot):
                 return {
@@ -1016,9 +1015,14 @@ class ConversationHandler:
                     ),
                 }
 
-            # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
-            # Note: This adjusts position but we still want to display content after
-            self._ensure_valid_conversation_position(bot)
+            # Don't call _ensure_valid_conversation_position here!
+            # It can move us forward again, defeating the purpose of /up
+            # The user explicitly wants to navigate backward, even if it means
+            # landing on an assistant node with tool_calls (which is valid for viewing)
+
+            # However, if we ended up at the exact same position, something went wrong
+            if bot.conversation == original_position:
+                return {"type": "system", "content": "Unable to move up - already at earliest accessible position"}
 
             # Return conversation content as message
             if bot.conversation.content:
@@ -1029,39 +1033,60 @@ class ConversationHandler:
     def down(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
         """Move down in conversation tree."""
         if bot.conversation.replies:
-            max_index = len(bot.conversation.replies) - 1
-            idx = 0
-            if max_index > 0:
-                # If we need user input, return a special dict indicating that
-                # For now, use args if provided, otherwise default to 0
-                if args:
-                    try:
-                        idx = int(args[0])
-                        if idx < 0 or idx > max_index:
-                            return {"type": "error", "content": f"Invalid index. Must be between 0 and {max_index}"}
-                    except ValueError:
-                        return {"type": "error", "content": "Invalid index. Must be a number"}
-                else:
-                    # Default to first reply if no arg provided
-                    idx = 0
-
             context.conversation_backup = bot.conversation
-            next_node = bot.conversation.replies[idx]
-            if next_node.replies:
-                bot.conversation = next_node.replies[0]
+            if len(bot.conversation.replies) > 1:
+                # Multiple replies - need to choose
+                if args and args[0].isdigit():
+                    index = int(args[0])
+                    if 0 <= index < len(bot.conversation.replies):
+                        bot.conversation = bot.conversation.replies[index]
+                    else:
+                        return {"type": "system", "content": f"Invalid index. Choose 0-{len(bot.conversation.replies)-1}"}
+                else:
+                    # Show options
+                    options = "\n".join(
+                        [f"{i}: {reply.content[:50]}..." for i, reply in enumerate(bot.conversation.replies) if reply.content]
+                    )
+                    return {"type": "system", "content": f"Multiple replies. Use /down <index>:\n{options}"}
             else:
-                bot.conversation = next_node
+                bot.conversation = bot.conversation.replies[0]
             if not self._ensure_assistant_node(bot):
                 return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
 
-            # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
-            # Note: This adjusts position but we still want to display content after
-            self._ensure_valid_conversation_position(bot)
+            # Don't call _ensure_valid_conversation_position here!
+            # Users explicitly navigating want to VIEW messages at these positions
+            # The pending_results mechanism handles tool context when sending new messages
 
             # Return conversation content as message
             if bot.conversation.content:
                 return {"type": "message", "role": "assistant", "content": bot.conversation.content}
             return {"type": "system", "content": "Moved down conversation tree"}
+
+        # Check if we need to move through tool result nodes
+        if bot.conversation.role == "assistant" and bot.conversation.tool_calls:
+            # Look for user node with tool_results
+            next_node = None
+            for reply in bot.conversation.replies:
+                if reply.role == "user" and reply.tool_results:
+                    next_node = reply
+                    break
+            if next_node:
+                context.conversation_backup = bot.conversation
+                # Move to assistant after tool results if available
+                if next_node.replies:
+                    bot.conversation = next_node.replies[0]
+                else:
+                    bot.conversation = next_node
+                if not self._ensure_assistant_node(bot):
+                    return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
+
+                # Don't call _ensure_valid_conversation_position here!
+                # Users explicitly navigating want to VIEW messages at these positions
+
+                # Return conversation content as message
+                if bot.conversation.content:
+                    return {"type": "message", "role": "assistant", "content": bot.conversation.content}
+                return {"type": "system", "content": "Moved down conversation tree"}
         return {"type": "system", "content": "At leaf - can't go down"}
 
     def left(self, bot: Bot, context: CLIContext, args: List[str]) -> dict:
@@ -1078,8 +1103,9 @@ class ConversationHandler:
         if not self._ensure_assistant_node(bot):
             return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
 
-        # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
-        self._ensure_valid_conversation_position(bot)
+        # Don't call _ensure_valid_conversation_position here!
+        # Users explicitly navigating want to VIEW messages at these positions
+        # The pending_results mechanism handles tool context when sending new messages
 
         # Return conversation content as message
         if bot.conversation.content:
@@ -1100,8 +1126,9 @@ class ConversationHandler:
         if not self._ensure_assistant_node(bot):
             return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
 
-        # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
-        self._ensure_valid_conversation_position(bot)
+        # Don't call _ensure_valid_conversation_position here!
+        # Users explicitly navigating want to VIEW messages at these positions
+        # The pending_results mechanism handles tool context when sending new messages
 
         # Return conversation content as message
         if bot.conversation.content:
@@ -1116,8 +1143,9 @@ class ConversationHandler:
         if not self._ensure_assistant_node(bot):
             return {"type": "system", "content": "Warning: Ended up on user node with no assistant response"}
 
-        # Ensure we're at a valid position (not on assistant with orphaned tool_calls)
-        self._ensure_valid_conversation_position(bot)
+        # Don't call _ensure_valid_conversation_position here!
+        # Users explicitly navigating want to VIEW messages at these positions
+        # The pending_results mechanism handles tool context when sending new messages
 
         # Return conversation content as message
         if bot.conversation.content:
@@ -2607,7 +2635,7 @@ class CLI:
         from bots.tools.code_tools import view, view_dir
         from bots.tools.python_edit import python_edit, python_view
         from bots.tools.python_execution_tool import execute_python
-        from bots.tools.self_tools import branch_self, list_context, remove_context
+        from bots.tools.self_tools import branch_self, remove_context
         from bots.tools.terminal_tools import execute_powershell, repair_mojibake
         from bots.tools.web_tool import web_search
 
@@ -2620,7 +2648,6 @@ class CLI:
             execute_python,
             branch_self,
             remove_context,
-            list_context,
             web_search,
             python_edit,
             piano,
@@ -2778,6 +2805,10 @@ class CLI:
                     # Show errors but not "no changes" message
                     pretty(stash_result, "system", self.context.config.width, self.context.config.indent, COLOR_SYSTEM)
 
+            # No need to validate position here - the pending_results mechanism
+            # in ConversationNode._add_reply() automatically handles tool_results
+            # when branching from an assistant node with tool_calls
+
             # Keep old conversation_backup for backward compatibility during transition
             self.context.conversation_backup = bot.conversation
             callback = self.context.callbacks.get_standard_callback()
@@ -2926,7 +2957,7 @@ class PromptHandler:
         except EscapeException:
             return ("Load cancelled.", None)
 
-    def save_prompt(self, bot: "Bot", context: "CLIContext", args: List[str], last_user_message: str = None) -> str:
+    def save_prompt(self, bot: "Bot", context: "CLIContext", args: List[str], last_user_message: str | None = None) -> str:
         """Save a prompt. If args provided, save the args. Otherwise save last user message."""
         try:
             if args:

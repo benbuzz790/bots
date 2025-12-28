@@ -4,7 +4,7 @@ import os
 import shutil
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -12,6 +12,7 @@ import bots.tools.self_tools as self_tools
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
 from bots.testing.mock_bot import MockBot
+from bots.tools.self_tools import remove_context
 
 
 @pytest.fixture(autouse=True)
@@ -38,6 +39,60 @@ def cleanup_temp_bot_files():
                 os.remove(f)
             except Exception:
                 pass
+
+
+def test_remove_context_with_natural_language():
+    """Test that remove_context uses Haiku to evaluate conditions."""
+    # Create a bot with some conversation history
+    bot = AnthropicBot(api_key="test-key", autosave=False, enable_tracing=False)
+
+    # Build a conversation tree
+    root = bot.conversation
+    user1 = root._add_reply(role="user", content="Can you help me with file operations?")
+    assistant1 = user1._add_reply(role="assistant", content="Sure, I can help with files.")
+    user2 = assistant1._add_reply(role="user", content="What's 2+2?")
+    assistant2 = user2._add_reply(role="assistant", content="2+2 equals 4.")
+
+    bot.conversation = assistant2
+
+    # Mock the Haiku bot responses
+    with patch("bots.foundation.anthropic_bots.AnthropicBot") as MockBot:
+        mock_haiku = MagicMock()
+        MockBot.return_value = mock_haiku
+
+        # First call validates the prompt
+        # Subsequent calls evaluate each message
+        mock_haiku.respond.side_effect = [
+            "VALID",  # Validation response
+            "YES",  # First message pair (about files)
+            "NO",  # Second message pair (about math)
+        ]
+
+        # Patch _get_calling_bot to return our test bot
+        with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
+            result = remove_context("remove all messages about file operations")
+
+        # Verify the result
+        assert "Removed 1 message pair(s)" in result
+        assert "file operations" in result
+
+
+def test_remove_context_invalid_prompt():
+    """Test that remove_context rejects vague prompts."""
+    bot = AnthropicBot(api_key="test-key", autosave=False, enable_tracing=False)
+
+    with patch("bots.foundation.anthropic_bots.AnthropicBot") as MockBot:
+        mock_haiku = MagicMock()
+        MockBot.return_value = mock_haiku
+
+        # Haiku rejects the vague prompt
+        mock_haiku.respond.return_value = "ERROR: The prompt is too vague. Please specify what to remove."
+
+        with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
+            result = remove_context("remove some stuff")
+
+        assert "ERROR:" in result
+        assert "vague" in result.lower()
 
 
 class TestSelfTools(unittest.TestCase):

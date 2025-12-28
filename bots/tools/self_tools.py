@@ -359,118 +359,74 @@ def add_tools(filepath: str) -> str:
 
 
 @toolify()
-def list_context() -> str:
-    """List all bot messages in the conversation with labels for removal.
-
-    Use this before remove_context to see what messages are in your conversation.
-    Shows bot messages only (since removal happens in user-bot pairs) with:
-    - A label [A], [B], [C], etc. for reference
-    - Truncated tool calls (if any) with parameters
-    - Truncated response text
-
-    Returns:
-        str: Formatted list of bot messages with labels, or error message
-
-    Example output:
-        [A] Bot: <tool_name param="value..."> | "Response text..."
-        [B] Bot: "Response text without tools..."
-    """
-    bot = _get_calling_bot()
-    if not bot:
-        return "Error: Could not find calling bot"
-
-    try:
-        # Walk back through conversation to root
-        messages = []
-        current = bot.conversation
-        while current:
-            if current.role == "assistant":
-                messages.append(current)
-            current = current.parent
-
-        # Reverse to get chronological order
-        messages.reverse()
-
-        if not messages:
-            return "No bot messages in conversation history"
-
-        # Format with labels
-        lines = []
-        for i, msg in enumerate(messages):
-            # Generate label: A-Z, then AA-AZ, BA-BZ, etc. (Excel-style column naming)
-            if i < 26:
-                label = chr(65 + i)  # A, B, C, ..., Z
-            else:
-                # After Z, use AA, AB, AC, ..., AZ, BA, BB, etc.
-                # Subtract 26 to start the two-letter sequence from 0
-                adjusted_i = i - 26
-                first_letter = chr(65 + (adjusted_i // 26))  # A, B, C, ...
-                second_letter = chr(65 + (adjusted_i % 26))  # A-Z cycling
-                label = first_letter + second_letter
-
-            # Format tool calls if present
-            tool_str = ""
-            if msg.tool_calls:
-                tool_parts = []
-                for tc in msg.tool_calls[:2]:  # Show first 2 tool calls
-                    name = tc.get("name", "unknown")
-                    # Truncate parameters
-                    params_str = str(tc.get("input", {}))[:50]
-                    if len(str(tc.get("input", {}))) > 50:
-                        params_str += "..."
-                    tool_parts.append(f"<{name} {params_str}>")
-                if len(msg.tool_calls) > 2:
-                    tool_parts.append(f"... +{len(msg.tool_calls) - 2} more")
-                tool_str = " ".join(tool_parts) + " | "
-
-            # Truncate content
-            content = msg.content or ""
-            if len(content) > 100:
-                content = content[:100] + "..."
-
-            lines.append(f'[{label}] Bot: {tool_str}"{content}"')
-
-        return "\n".join(lines)
-
-    except Exception as e:
-        return f"Error listing context: {str(e)}"
-
-
-@toolify()
-def remove_context(labels: str) -> str:
-    """Remove bot-user message pairs from the conversation history.
+def remove_context(prompt: str) -> str:
+    """Remove bot-user message pairs from the conversation history based on a condition.
 
     Use when you need to delete specific messages from your conversation tree
-    to reduce context or remove irrelevant information. This is a demo tool
-    that removes message pairs by stitching the tree after deletion.
-
-    Note: This tool has limitations with branched conversations and will
-    attempt to handle the simplest case (linear conversation paths).
-
-    Tool call sequences are automatically removed as complete units. If you
-    remove any message in a tool call sequence (question -> tool call ->
-    result -> answer), the entire sequence is removed to maintain integrity.
+    to reduce context or remove irrelevant information. Uses Haiku to evaluate
+    which message pairs match your condition.
 
     Parameters:
-        labels (str): String representation of a list of labels to remove.
-            Format: "['A', 'B', 'C']"
-            Use list_context() first to see available labels.
+        prompt (str): Natural language condition describing which messages to remove.
+            Examples:
+            - "remove all messages about file operations"
+            - "delete conversations where I was debugging tests"
+            - "remove tool calls that failed"
+            - "delete messages older than the last save operation"
 
     Returns:
         str: Success message with count of removed pairs, or error message
 
     Example:
-        remove_context("['A', 'C']")
+        remove_context("remove all messages about testing")
     """
     bot = _get_calling_bot()
     if not bot:
         return "Error: Could not find calling bot"
 
     try:
-        # Parse labels
-        label_list = _process_string_array(labels)
-        if not label_list:
-            return "Error: No valid labels provided"
+        # First, validate the prompt using Haiku
+        from bots.foundation.anthropic_bots import AnthropicBot
+        from bots.foundation.base import Engines
+
+        # Create a Haiku instance for evaluation
+        haiku = AnthropicBot(
+            api_key=bot.api_key,
+            model_engine=Engines.CLAUDE35_HAIKU,
+            max_tokens=1000,
+            temperature=0.0,
+            autosave=False,
+            enable_tracing=False,
+        )
+
+        # Check if the prompt contains actionable conditions
+        validation_prompt = f"""You are evaluating whether a user's prompt contains actionable conditions for removing messages from a conversation history.
+
+The user's prompt is: "{prompt}"
+
+Respond with ONLY one of these two options:
+1. "VALID" - if the prompt contains clear, actionable conditions for identifying messages to remove
+2. "ERROR: <explanation>" - if the prompt is too vague, unclear, or doesn't contain actionable conditions
+
+Examples of VALID prompts:
+- "remove all messages about file operations"
+- "delete conversations where I was debugging"
+- "remove tool calls that failed"
+
+Examples of INVALID prompts (respond with ERROR):
+- "remove some stuff" (too vague)
+- "clean up" (no specific condition)
+- "delete things" (unclear what things)
+
+Your response:"""
+
+        validation_response = haiku.respond(validation_prompt).strip()
+
+        if validation_response.startswith("ERROR:"):
+            return validation_response
+
+        if not validation_response.startswith("VALID"):
+            return "Error: Could not validate prompt. The condition must be clear and actionable. Please be more specific about which messages to remove."
 
         # Get all bot messages
         messages = []
@@ -481,26 +437,47 @@ def remove_context(labels: str) -> str:
             current = current.parent
         messages.reverse()
 
-        # Map labels to indices
+        if not messages:
+            return "No bot messages in conversation history"
+
+        # Evaluate each message pair against the condition
         indices_to_remove = []
-        for label in label_list:
-            label = label.upper()
 
-            if len(label) == 1 and label.isalpha():
-                # Single letter: A-Z (indices 0-25)
-                idx = ord(label) - 65
-            elif len(label) == 2 and label[0].isalpha() and label[1].isalpha():
-                # Two letters: AA, AB, ..., AZ, BA, BB, etc.
-                first_letter_idx = ord(label[0]) - 65
-                second_letter_idx = ord(label[1]) - 65
-                idx = 26 + (first_letter_idx * 26) + second_letter_idx
-            else:
-                return f"Error: Invalid label format: {label}"
+        for i, msg in enumerate(messages):
+            # Format message info for evaluation
+            tool_str = ""
+            if msg.tool_calls:
+                tool_names = [tc.get("name", "unknown") for tc in msg.tool_calls]
+                tool_str = f"Tool calls: {', '.join(tool_names)}\n"
 
-            if 0 <= idx < len(messages):
-                indices_to_remove.append(idx)
-            else:
-                return f"Error: Label {label} out of range (only {len(messages)} messages)"
+            content = msg.content or ""
+
+            # Get parent user message if it exists
+            user_content = ""
+            if msg.parent and msg.parent.role == "user":
+                user_content = msg.parent.content or ""
+
+            # Ask Haiku to evaluate this message pair
+            eval_prompt = f"""You are evaluating whether a message pair should be removed based on a condition.
+
+Condition: "{prompt}"
+
+Message pair:
+User: {user_content[:500]}
+Assistant: {tool_str}{content[:500]}
+
+Should this message pair be removed based on the condition?
+Respond with ONLY "YES" or "NO".
+
+Your response:"""
+
+            eval_response = haiku.respond(eval_prompt).strip().upper()
+
+            if eval_response == "YES":
+                indices_to_remove.append(i)
+
+        if not indices_to_remove:
+            return f"No messages matched the condition: '{prompt}'"
 
         # Expand indices to include complete tool call sequences
         expanded_indices = set()
@@ -518,8 +495,6 @@ def remove_context(labels: str) -> str:
                 continue
 
             # Check if this is part of a tool call sequence
-            # Sequence: assistant_with_tool -> user_with_results -> assistant_answer
-
             # Case 1: msg_node has tool_calls (it's the initiator)
             if msg_node.tool_calls:
                 # Find the next assistant message (the one after tool results)
@@ -527,43 +502,22 @@ def remove_context(labels: str) -> str:
                     if child.role == "user" and child.tool_results:
                         for grandchild in child.replies:
                             if grandchild.role == "assistant":
-                                # Find index of this grandchild
                                 try:
                                     next_idx = messages.index(grandchild)
                                     expanded_indices.add(idx)
                                     expanded_indices.add(next_idx)
-                                    # Use inline label generation to avoid long lines
-                                    if idx < 26:
-                                        label1 = chr(65 + idx)
-                                    else:
-                                        label1 = chr(65 + ((idx - 26) // 26)) + chr(65 + ((idx - 26) % 26))
-                                    if next_idx < 26:
-                                        label2 = chr(65 + next_idx)
-                                    else:
-                                        label2 = chr(65 + ((next_idx - 26) // 26)) + chr(65 + ((next_idx - 26) % 26))
-                                    info = f"Tool call sequence: labels {label1} and {label2}"
-                                    sequence_info.append(info)
+                                    sequence_info.append(f"Tool call sequence: indices {idx} and {next_idx}")
                                 except ValueError:
                                     pass
                         break
 
             # Case 2: msg_node follows tool results (it's the answer after tool use)
             elif grandparent.role == "assistant" and grandparent.tool_calls and user_node.tool_results:
-                # Find index of grandparent (the initiator)
                 try:
                     prev_idx = messages.index(grandparent)
                     expanded_indices.add(prev_idx)
                     expanded_indices.add(idx)
-                    # Use inline label generation
-                    if prev_idx < 26:
-                        label1 = chr(65 + prev_idx)
-                    else:
-                        label1 = chr(65 + ((prev_idx - 26) // 26)) + chr(65 + ((prev_idx - 26) % 26))
-                    if idx < 26:
-                        label2 = chr(65 + idx)
-                    else:
-                        label2 = chr(65 + ((idx - 26) // 26)) + chr(65 + ((idx - 26) % 26))
-                    sequence_info.append(f"Tool call sequence: labels {label1} and {label2}")
+                    sequence_info.append(f"Tool call sequence: indices {prev_idx} and {idx}")
                 except ValueError:
                     pass
 
@@ -602,10 +556,10 @@ def remove_context(labels: str) -> str:
                 bot.conversation = grandparent
 
         # Build result message
-        result_parts = [f"Removed {removed_count} message pair(s)"]
+        result_parts = [f"Removed {removed_count} message pair(s) matching condition: '{prompt}'"]
         if sequence_info:
             result_parts.append("\nTool call sequences removed as complete units:")
-            for info in set(sequence_info):  # Use set to deduplicate
+            for info in set(sequence_info):
                 result_parts.append(f"  - {info}")
 
         return "\n".join(result_parts)
