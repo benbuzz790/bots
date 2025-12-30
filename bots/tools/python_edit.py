@@ -1145,7 +1145,7 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str | None = None
                     return _process_error(ValueError("Cannot use empty code with insert_after - nothing to insert"))
                 # For replacement operations, empty code means delete the target
                 return _handle_deletion(abs_path, target_scope, path_elements, original_content, tree, delete_a_lot)
-            elif was_originally_empty and (not path_elements):
+            elif was_originally_empty and (not path_elements or path_elements == ["__FIRST__"]):
                 _write_file_bom_safe(abs_path, cleaned_code)
                 return f"Code added to '{abs_path}'."
 
@@ -1266,8 +1266,12 @@ def _handle_file_end_insertion(abs_path: str, tree: cst.Module, new_module: cst.
 
 def _handle_first_definition(abs_path: str, tree: cst.Module, new_module: cst.Module, coscope_with: str = None) -> str:
     """Handle editing the first top-level definition in a file."""
+    # Handle empty file case - just write the new code
     if not tree.body:
-        return _process_error(ValueError("File has no top-level definitions to edit"))
+        if coscope_with:
+            return _process_error(ValueError("Cannot use coscope_with on an empty file - there's nothing to insert after"))
+        _write_file_bom_safe(abs_path, new_module.code)
+        return f"Code added to empty file '{abs_path}'."
 
     # Find the first function or class definition
     first_def_index = None
@@ -1278,7 +1282,14 @@ def _handle_first_definition(abs_path: str, tree: cst.Module, new_module: cst.Mo
             break
 
     if first_def_index is None:
-        return _process_error(ValueError("No function or class definition found in file"))
+        if coscope_with:
+            return _process_error(ValueError("No function or class definition found to insert after"))
+        # No function/class definitions, but file has content (e.g., imports, comments)
+        # Append the new code after existing content
+        new_body = list(tree.body) + list(new_module.body)
+        modified_tree = tree.with_changes(body=new_body)
+        _write_file_bom_safe(abs_path, modified_tree.code)
+        return f"Code added as first definition in '{abs_path}'."
 
     if coscope_with:
         # Insert after the first definition

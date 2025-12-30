@@ -270,7 +270,7 @@ class TestWebToolManualInspection(unittest.TestCase):
         # Test expected structure
         self.assertIn("=== WEB SEARCH RESULTS ===", result)
         self.assertIn("Search performed:", result)
-        self.assertIn("=== CLAUDE'S ANALYSIS ===", result)
+        self.assertIn("=== ANSWER ===", result)
 
         # Test that raw response data is preserved
         self.assertIn("Python Tutorial", result)
