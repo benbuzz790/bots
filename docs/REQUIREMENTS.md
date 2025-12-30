@@ -57,10 +57,8 @@ This test suite:
 5. Ensures pytest and development tools work correctly
 ## Maintenance
 When adding new dependencies:
-1. Add to
-equirements.txt if it's a core dependency
-2. Add to
-equirements-dev.txt if it's only needed for development
+1. Add to requirements.txt if it's a core dependency
+2. Add to requirements-dev.txt if it's only needed for development
 3. Update setup.py to match
 4. Run the installation test to verify completeness
 5. Use version constraints (>=) to allow flexibility while ensuring minimum versions

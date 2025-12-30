@@ -59,6 +59,17 @@ jobs:
           pip install -r requirements-dev.txt
           pip install -e .[dev]
 
+      - name: Generate requirements lock file
+        run: |
+          pip freeze > requirements.lock
+
+      - name: Upload requirements lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: requirements-lock
+          path: requirements.lock
+          retention-days: 30
+
       - name: Remove BOMs from all files
         run: |
           python -m bots.dev.remove_boms

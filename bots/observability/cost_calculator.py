@@ -55,29 +55,35 @@ def normalize_provider(provider: str) -> str:
     return normalized
 
 
-def normalize_model(model: str, provider: str) -> str:
+def normalize_model(provider: str, model: str) -> str:
     """Normalize model name to match registry keys.
 
     Args:
-        model: Model name
         provider: Normalized provider name
+        model: Raw model name from API response
 
     Returns:
         Normalized model name that matches MODEL_REGISTRY keys
 
     Raises:
-        ValueError: If model is empty or invalid
+        ValueError: If model cannot be matched to any known model
     """
-    if not model:
-        raise ValueError("Model cannot be empty")
+    model_lower = model.lower()
 
-    model_lower = model.lower().strip()
-
-    # Check for exact match first in the registry
+    # Direct match
     if model_lower in MODEL_REGISTRY:
-        model_info = MODEL_REGISTRY[model_lower]
-        if model_info.get("provider") == provider:
-            return model_lower
+        return model_lower
+
+    # Try common variations
+    variations = [
+        model_lower,
+        model_lower.replace(".", "-"),
+        model_lower.replace("-", "."),
+    ]
+
+    for variant in variations:
+        if variant in MODEL_REGISTRY:
+            return variant
 
     # Try to find a match by checking models for this provider
     provider_models = [k for k, v in MODEL_REGISTRY.items() if v.get("provider") == provider]
@@ -85,8 +91,9 @@ def normalize_model(model: str, provider: str) -> str:
     for known_model in provider_models:
         if known_model == model_lower:
             return known_model
-        # Check if model name contains or is contained in known model
-        if known_model in model_lower or model_lower in known_model:
+        # Use separator-aware prefix matching to avoid ambiguous matches
+        # (e.g., "gpt-4" should not match "gpt-4o")
+        if known_model.startswith(model_lower + "-") or model_lower.startswith(known_model + "-"):
             return known_model
 
     # Model not found - raise error
