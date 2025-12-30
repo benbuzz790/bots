@@ -109,23 +109,56 @@ def load(filepath: str) -> "Bot":
 class Engines(str, Enum):
     """Enum class representing different AI model engines."""
 
+    # OpenAI GPT-3.5 Models
+    GPT35TURBO = "gpt-3.5-turbo"
+    GPT35TURBO_16K = "gpt-3.5-turbo-16k"
+    GPT35TURBO_0125 = "gpt-3.5-turbo-0125"
+    GPT35TURBO_INSTRUCT = "gpt-3.5-turbo-instruct"
+
+    # OpenAI GPT-4 Models
     GPT4 = "gpt-4"
     GPT41 = "gpt-4.1"
     GPT4_0613 = "gpt-4-0613"
     GPT4_32K = "gpt-4-32k"
     GPT4_32K_0613 = "gpt-4-32k-0613"
-    GPT35TURBO = "gpt-3.5-turbo"
-    GPT35TURBO_16K = "gpt-3.5-turbo-16k"
-    GPT35TURBO_0125 = "gpt-3.5-turbo-0125"
-    GPT35TURBO_INSTRUCT = "gpt-3.5-turbo-instruct"
+    GPT4O = "gpt-4o"
+    GPT4O_MINI = "gpt-4o-mini"
+
+    # OpenAI GPT-5.2 Models (Released Dec 11, 2025)
+    GPT52_INSTANT = "gpt-5.2-instant"
+    GPT52_THINKING = "gpt-5.2-thinking"
+    GPT52_PRO = "gpt-5.2-pro"
+
+    # Anthropic Claude 3 Haiku Models
     CLAUDE3_HAIKU = "claude-3-haiku-20240307"
     CLAUDE35_HAIKU = "claude-3-5-haiku-latest"
-    CLAUDE37_SONNET_20250219 = "claude-3-7-sonnet-latest"
-    CLAUDE4_OPUS = "claude-opus-4-20250514"
-    CLAUDE41_OPUS = "claude-opus-4-1"
+    CLAUDE45_HAIKU = "claude-haiku-4-5-20251015"
+
+    # Anthropic Claude Sonnet Models
+    CLAUDE37_SONNET_20250219 = "claude-3-7-sonnet-20250219"
     CLAUDE4_SONNET = "claude-sonnet-4-20250514"
     CLAUDE45_SONNET = "claude-sonnet-4-5-20250929"
+
+    # Anthropic Claude Opus Models
+    CLAUDE4_OPUS = "claude-opus-4-20250514"
+    CLAUDE41_OPUS = "claude-opus-4-1-20250805"
+    CLAUDE45_OPUS = "claude-opus-4-5-20251101"
+
+    # Google Gemini 1.5 Models
+    GEMINI15_PRO = "gemini-1.5-pro"
+    GEMINI15_FLASH = "gemini-1.5-flash"
+
+    # Google Gemini 2.0 Models
+    GEMINI20_FLASH = "gemini-2.0-flash"
+
+    # Google Gemini 2.5 Models
     GEMINI25_FLASH = "gemini-2.5-flash"
+    GEMINI25_FLASH_LITE = "gemini-2.5-flash-lite"
+    GEMINI25_PRO = "gemini-2.5-pro"
+
+    # Google Gemini 3 Models (Released Nov-Dec 2025)
+    GEMINI3_FLASH = "gemini-3-flash-preview"
+    GEMINI3_PRO = "gemini-3-pro-preview"
 
     @staticmethod
     def get(name: str) -> Optional["Engines"]:
@@ -220,6 +253,261 @@ class Engines(str, Enum):
         if node_class is None:
             raise ValueError(f"Unsupported conversation node type: {class_name}")
         return node_class
+
+    def get_info(self) -> dict:
+        """Get basic information about this model.
+
+        Returns:
+            dict: Model information including provider, intelligence rating (1-3 stars),
+                  max output tokens, and costs per million tokens.
+
+        Example:
+            ```python
+            info = Engines.CLAUDE45_SONNET.get_info()
+            print(f"Intelligence: {'⭐' * info['intelligence']}")
+            print(f"Max tokens: {info['max_tokens']}")
+            print(f"Cost: ${info['cost_input']:.2f}/${info['cost_output']:.2f} per 1M tokens")
+            ```
+        """
+        return MODEL_INFO.get(
+            self,
+            {
+                "provider": "unknown",
+                "intelligence": 2,
+                "max_tokens": 4096,
+                "cost_input": 0.0,
+                "cost_output": 0.0,
+            },
+        )
+
+
+# Model information dictionary
+# Intelligence: 1 star (fast/cheap), 2 stars (balanced), 3 stars (most capable)
+# Costs are per 1 million tokens (USD)
+MODEL_INFO = {
+    # Anthropic Claude Models
+    Engines.CLAUDE3_HAIKU: {
+        "provider": "anthropic",
+        "intelligence": 1,
+        "max_tokens": 4096,
+        "cost_input": 0.25,
+        "cost_output": 1.25,
+    },
+    Engines.CLAUDE35_HAIKU: {
+        "provider": "anthropic",
+        "intelligence": 1,
+        "max_tokens": 8192,
+        "cost_input": 0.80,
+        "cost_output": 4.00,
+    },
+    Engines.CLAUDE45_HAIKU: {
+        "provider": "anthropic",
+        "intelligence": 1,
+        "max_tokens": 64000,
+        "cost_input": 1.00,
+        "cost_output": 5.00,
+    },
+    Engines.CLAUDE37_SONNET_20250219: {
+        "provider": "anthropic",
+        "intelligence": 2,
+        "max_tokens": 8192,
+        "cost_input": 3.00,
+        "cost_output": 15.00,
+    },
+    Engines.CLAUDE4_SONNET: {
+        "provider": "anthropic",
+        "intelligence": 2,
+        "max_tokens": 64000,
+        "cost_input": 3.00,
+        "cost_output": 15.00,
+    },
+    Engines.CLAUDE45_SONNET: {
+        "provider": "anthropic",
+        "intelligence": 2,
+        "max_tokens": 64000,
+        "cost_input": 3.00,
+        "cost_output": 15.00,
+    },
+    Engines.CLAUDE4_OPUS: {
+        "provider": "anthropic",
+        "intelligence": 3,
+        "max_tokens": 64000,
+        "cost_input": 15.00,
+        "cost_output": 75.00,
+    },
+    Engines.CLAUDE41_OPUS: {
+        "provider": "anthropic",
+        "intelligence": 3,
+        "max_tokens": 64000,
+        "cost_input": 15.00,
+        "cost_output": 75.00,
+    },
+    Engines.CLAUDE45_OPUS: {
+        "provider": "anthropic",
+        "intelligence": 3,
+        "max_tokens": 64000,
+        "cost_input": 5.00,
+        "cost_output": 25.00,
+    },
+    # OpenAI GPT Models
+    Engines.GPT35TURBO: {
+        "provider": "openai",
+        "intelligence": 1,
+        "max_tokens": 4096,
+        "cost_input": 0.50,
+        "cost_output": 1.50,
+    },
+    Engines.GPT35TURBO_16K: {
+        "provider": "openai",
+        "intelligence": 1,
+        "max_tokens": 16384,
+        "cost_input": 3.00,
+        "cost_output": 4.00,
+    },
+    Engines.GPT35TURBO_0125: {
+        "provider": "openai",
+        "intelligence": 1,
+        "max_tokens": 4096,
+        "cost_input": 0.50,
+        "cost_output": 1.50,
+    },
+    Engines.GPT35TURBO_INSTRUCT: {
+        "provider": "openai",
+        "intelligence": 1,
+        "max_tokens": 4096,
+        "cost_input": 1.50,
+        "cost_output": 2.00,
+    },
+    Engines.GPT4O_MINI: {
+        "provider": "openai",
+        "intelligence": 1,
+        "max_tokens": 16384,
+        "cost_input": 0.15,
+        "cost_output": 0.60,
+    },
+    Engines.GPT4: {
+        "provider": "openai",
+        "intelligence": 2,
+        "max_tokens": 8192,
+        "cost_input": 30.00,
+        "cost_output": 60.00,
+    },
+    Engines.GPT41: {
+        "provider": "openai",
+        "intelligence": 2,
+        "max_tokens": 8192,
+        "cost_input": 30.00,
+        "cost_output": 60.00,
+    },
+    Engines.GPT4_0613: {
+        "provider": "openai",
+        "intelligence": 2,
+        "max_tokens": 8192,
+        "cost_input": 30.00,
+        "cost_output": 60.00,
+    },
+    Engines.GPT4O: {
+        "provider": "openai",
+        "intelligence": 2,
+        "max_tokens": 16384,
+        "cost_input": 2.50,
+        "cost_output": 10.00,
+    },
+    Engines.GPT4_32K: {
+        "provider": "openai",
+        "intelligence": 3,
+        "max_tokens": 32768,
+        "cost_input": 60.00,
+        "cost_output": 120.00,
+    },
+    Engines.GPT4_32K_0613: {
+        "provider": "openai",
+        "intelligence": 3,
+        "max_tokens": 32768,
+        "cost_input": 60.00,
+        "cost_output": 120.00,
+    },
+    Engines.GPT52_INSTANT: {
+        "provider": "openai",
+        "intelligence": 2,
+        "max_tokens": 128000,
+        "cost_input": 1.75,
+        "cost_output": 14.00,
+    },
+    Engines.GPT52_THINKING: {
+        "provider": "openai",
+        "intelligence": 3,
+        "max_tokens": 128000,
+        "cost_input": 1.75,
+        "cost_output": 14.00,
+    },
+    Engines.GPT52_PRO: {
+        "provider": "openai",
+        "intelligence": 3,
+        "max_tokens": 128000,
+        "cost_input": 1.75,
+        "cost_output": 14.00,
+    },
+    # Google Gemini Models
+    Engines.GEMINI15_PRO: {
+        "provider": "google",
+        "intelligence": 2,
+        "max_tokens": 8192,
+        "cost_input": 1.25,
+        "cost_output": 10.00,
+    },
+    Engines.GEMINI15_FLASH: {
+        "provider": "google",
+        "intelligence": 1,
+        "max_tokens": 8192,
+        "cost_input": 0.075,
+        "cost_output": 0.30,
+    },
+    Engines.GEMINI20_FLASH: {
+        "provider": "google",
+        "intelligence": 1,
+        "max_tokens": 8192,
+        "cost_input": 0.10,
+        "cost_output": 0.40,
+    },
+    Engines.GEMINI25_FLASH: {
+        "provider": "google",
+        "intelligence": 1,
+        "max_tokens": 8192,
+        "cost_input": 0.15,  # CORRECTED from 0.30
+        "cost_output": 0.60,  # CORRECTED from 2.50
+    },
+    Engines.GEMINI25_FLASH_LITE: {  # NEW
+        "provider": "google",
+        "intelligence": 1,
+        "max_tokens": 8192,
+        "cost_input": 0.10,
+        "cost_output": 0.40,
+    },
+    Engines.GEMINI25_PRO: {
+        "provider": "google",
+        "intelligence": 2,
+        "max_tokens": 65536,
+        "cost_input": 1.25,  # For ≤200K context
+        "cost_output": 10.00,  # For ≤200K context
+        # Note: 2x pricing for >200K context: $2.50/$15.00
+    },
+    Engines.GEMINI3_FLASH: {  # NEW - Released Dec 17, 2025
+        "provider": "google",
+        "intelligence": 1,
+        "max_tokens": 64000,
+        "cost_input": 0.50,
+        "cost_output": 3.00,
+    },
+    Engines.GEMINI3_PRO: {  # NEW - Released Nov 18, 2025
+        "provider": "google",
+        "intelligence": 3,
+        "max_tokens": 64000,
+        "cost_input": 2.00,  # For ≤200K context
+        "cost_output": 12.00,  # For ≤200K context
+        # Note: 2x pricing for >200K context: $4.00/$18.00
+    },
+}
 
 
 class ConversationNode:
@@ -634,8 +922,6 @@ class ToolHandlerError(Exception):
     specific error handling for tool operations.
     """
 
-    pass
-
 
 class ToolNotFoundError(ToolHandlerError):
     """Raised when a requested tool is not available.
@@ -644,8 +930,6 @@ class ToolNotFoundError(ToolHandlerError):
     with the ToolHandler.
     """
 
-    pass
-
 
 class ModuleLoadError(ToolHandlerError):
     """Raised when a module cannot be loaded for tool extraction.
@@ -653,8 +937,6 @@ class ModuleLoadError(ToolHandlerError):
     Use when there are issues loading a module's source code,
     executing it in a new namespace, or extracting its tools.
     """
-
-    pass
 
 
 class ToolHandler(ABC):
@@ -2259,7 +2541,6 @@ class ToolHandler(ABC):
                     module_dict[k] = imported_module
                 except ImportError as e:
                     print(f"Warning: Could not import module {module_name}: {e}")
-                    pass
             elif isinstance(v, dict) and v.get("__original_func__"):
                 # Reconstruct _original_func from pickled data with hash verification
                 try:

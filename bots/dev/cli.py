@@ -513,13 +513,13 @@ class CLIConfig:
         self.width = 160
         self.indent = 4
         self.auto_stash = False
-        self.remove_context_threshold = 40000
+        self.remove_context_threshold = 999999  # Off by default (very large number)
         self.auto_mode_neutral_prompt = "ok"
         self.auto_mode_reduce_context_prompt = "trim useless context"
-        self.max_tokens = 4096
-        self.temperature = 1.0
-        self.auto_backup = False
-        self.auto_restore_on_error = False
+        self.max_tokens = 64000  # Maximum for Claude 4.5 Sonnet
+        self.temperature = 0.3
+        self.auto_backup = True  # Enable backups by default
+        self.auto_restore_on_error = True  # Enable restore on error by default
         self.config_file = "cli_config.json"
         self.load_config()
 
@@ -533,15 +533,15 @@ class CLIConfig:
                     self.width = config_data.get("width", 160)
                     self.indent = config_data.get("indent", 4)
                     self.auto_stash = config_data.get("auto_stash", False)
-                    self.remove_context_threshold = config_data.get("remove_context_threshold", 40000)
+                    self.remove_context_threshold = config_data.get("remove_context_threshold", 999999)
                     self.auto_mode_neutral_prompt = config_data.get("auto_mode_neutral_prompt", "ok")
                     self.auto_mode_reduce_context_prompt = config_data.get(
                         "auto_mode_reduce_context_prompt", "trim useless context"
                     )
-                    self.max_tokens = config_data.get("max_tokens", 4096)
-                    self.temperature = config_data.get("temperature", 1.0)
-                    self.auto_backup = config_data.get("auto_backup", False)
-                    self.auto_restore_on_error = config_data.get("auto_restore_on_error", False)
+                    self.max_tokens = config_data.get("max_tokens", 64000)
+                    self.temperature = config_data.get("temperature", 0.3)
+                    self.auto_backup = config_data.get("auto_backup", True)
+                    self.auto_restore_on_error = config_data.get("auto_restore_on_error", True)
         except Exception:
             pass  # Use defaults if config loading fails
 
@@ -1943,6 +1943,30 @@ class SystemHandler:
 
         return "\n".join(result) if result else "No tools added"
 
+    def models(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Display available models with metadata."""
+        from bots.foundation.base import Engines
+
+        output = []
+        output.append("\n" + "=" * 100)
+        output.append("Available Models")
+        output.append("=" * 100)
+        output.append(f"{'Model':<45} {'Provider':<12} {'Intelligence':<15} {'Max Tokens':<12} {'Cost ($/1M tokens)':<20}")
+        output.append("-" * 100)
+
+        for engine in Engines:
+            info = engine.get_info()
+            stars = "⭐" * info["intelligence"]
+            cost_str = f"${info['cost_input']:.2f} / ${info['cost_output']:.2f}"
+
+            output.append(f"{engine.value:<45} {info['provider']:<12} {stars:<15} " f"{info['max_tokens']:<12} {cost_str:<20}")
+
+        output.append("=" * 100)
+        output.append("\nIntelligence: ⭐ = fast/cheap, ⭐⭐ = balanced, ⭐⭐⭐ = most capable")
+        output.append("Cost format: input / output per 1M tokens\n")
+
+        return "\n".join(output)
+
 
 class DynamicFunctionalPromptHandler:
     """Handler for functional prompt commands using dynamic parameter collection."""
@@ -2463,6 +2487,7 @@ class CLI:
             "/p": self._handle_load_prompt,
             "/s": self._handle_save_prompt,
             "/add_tool": self.system.add_tool,
+            "/models": self.system.models,
             "/d": self._handle_delete_prompt,
             "/r": self._handle_recent_prompts,
             "/backup": self.backup.backup,
