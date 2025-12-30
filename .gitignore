@@ -69,7 +69,8 @@ test_results_*_*.txt
 _work_orders/
 *WO0*
 test_patch_*/
-
+ROADMAP_BACKUP_*.md
+*.bak
 
 # Test artifacts (from cleanup_test_artifacts.py patterns)
 simple.txt
@@ -78,6 +79,9 @@ data.json
 quotes.txt
 sorting.py
 styles.css
+minimal.py
+bots/minimal.py
+
 # Note: index.html at root level only (not docs/index.html)
 /index.html
 hello_world.py
@@ -105,9 +109,6 @@ sorting_algorithms.py
 .pytest_tmp/
 .pytest_tmp_locked_*/
 
-ROADMAP_BACKUP_*.md
-
-bots/minimal.py
 
 # TODO files
 TODO.md
