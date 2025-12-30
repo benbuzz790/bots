@@ -54,9 +54,9 @@ def create_safe_test_file(content, prefix="test", extension="py", directory=None
 
 def pytest_collection_modifyitems(config, items):
     """
-    Modify test items to enforce serial execution for tests marked with @cli_serial.
+    Modify test items to enforce serial execution for tests marked with @serial or @cli_serial.
 
-    This hook adds the pytest-xdist 'xdist_group' marker to tests marked with @cli_serial,
+    This hook adds the pytest-xdist 'xdist_group' marker to tests marked with @serial or @cli_serial,
     ensuring they run serially in the same worker process.
     """
     for item in items:
@@ -65,3 +65,9 @@ def pytest_collection_modifyitems(config, items):
             # Add xdist_group marker to force serial execution
             # All tests with the same xdist_group name run in the same worker, serially
             item.add_marker(pytest.mark.xdist_group("cli_serial"))
+
+        # Check if test has serial marker
+        elif item.get_closest_marker("serial"):
+            # Add xdist_group marker to force serial execution
+            # All tests with the same xdist_group name run in the same worker, serially
+            item.add_marker(pytest.mark.xdist_group("serial"))

@@ -21,6 +21,348 @@ from typing import List, Tuple
 
 import pytest
 
+pytestmark = pytest.mark.serial
+
+
+def scan_project_for_imports() -> Tuple[List[str], List[str]]:
+    """Scan project Python files to extract third-party package dependencies.
+
+    This function analyzes all Python files in the project to determine which
+    third-party packages are actually imported and used. It filters out:
+    - Standard library modules
+    - Local packages (bots and its subpackages)
+    - Build-only packages (setuptools, wheel, pip)
+
+    Returns:
+        Tuple of (core_packages, dev_packages) where:
+        - core_packages: packages imported in non-test code
+        - dev_packages: packages imported only in test code
+    """
+    import ast
+    from pathlib import Path
+    from typing import Dict, Set
+
+    def get_imports_from_file(file_path: Path) -> Set[str]:
+        """Extract all top-level import names from a Python file."""
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            tree = ast.parse(content)
+            imports = set()
+
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        imports.add(alias.name.split(".")[0])
+                elif isinstance(node, ast.ImportFrom):
+                    # Only process absolute imports (level == 0)
+                    if node.level == 0 and node.module:
+                        imports.add(node.module.split(".")[0])
+
+            return imports
+        except Exception:
+            return set()
+
+    def is_stdlib_module(module_name: str) -> bool:
+        """Check if a module is part of Python's standard library."""
+        stdlib_modules = {
+            "abc",
+            "aifc",
+            "argparse",
+            "array",
+            "ast",
+            "asynchat",
+            "asyncio",
+            "asyncore",
+            "atexit",
+            "audioop",
+            "base64",
+            "bdb",
+            "binascii",
+            "binhex",
+            "bisect",
+            "builtins",
+            "bz2",
+            "calendar",
+            "cgi",
+            "cgitb",
+            "chunk",
+            "cmath",
+            "cmd",
+            "code",
+            "codecs",
+            "codeop",
+            "collections",
+            "colorsys",
+            "compileall",
+            "concurrent",
+            "configparser",
+            "contextlib",
+            "contextvars",
+            "copy",
+            "copyreg",
+            "cProfile",
+            "crypt",
+            "csv",
+            "ctypes",
+            "curses",
+            "dataclasses",
+            "datetime",
+            "dbm",
+            "decimal",
+            "difflib",
+            "dis",
+            "distutils",
+            "doctest",
+            "email",
+            "encodings",
+            "enum",
+            "errno",
+            "faulthandler",
+            "fcntl",
+            "filecmp",
+            "fileinput",
+            "fnmatch",
+            "formatter",
+            "fractions",
+            "ftplib",
+            "functools",
+            "gc",
+            "getopt",
+            "getpass",
+            "gettext",
+            "glob",
+            "graphlib",
+            "grp",
+            "gzip",
+            "hashlib",
+            "heapq",
+            "hmac",
+            "html",
+            "http",
+            "imaplib",
+            "imghdr",
+            "imp",
+            "importlib",
+            "inspect",
+            "io",
+            "ipaddress",
+            "itertools",
+            "json",
+            "keyword",
+            "lib2to3",
+            "linecache",
+            "locale",
+            "logging",
+            "lzma",
+            "mailbox",
+            "mailcap",
+            "marshal",
+            "math",
+            "mimetypes",
+            "mmap",
+            "modulefinder",
+            "msilib",
+            "msvcrt",
+            "multiprocessing",
+            "netrc",
+            "nis",
+            "nntplib",
+            "numbers",
+            "operator",
+            "optparse",
+            "os",
+            "ossaudiodev",
+            "parser",
+            "pathlib",
+            "pdb",
+            "pickle",
+            "pickletools",
+            "pipes",
+            "pkgutil",
+            "platform",
+            "plistlib",
+            "poplib",
+            "posix",
+            "posixpath",
+            "pprint",
+            "profile",
+            "pstats",
+            "pty",
+            "pwd",
+            "py_compile",
+            "pyclbr",
+            "pydoc",
+            "queue",
+            "quopri",
+            "random",
+            "re",
+            "readline",
+            "reprlib",
+            "resource",
+            "rlcompleter",
+            "runpy",
+            "sched",
+            "secrets",
+            "select",
+            "selectors",
+            "shelve",
+            "shlex",
+            "shutil",
+            "signal",
+            "site",
+            "smtpd",
+            "smtplib",
+            "sndhdr",
+            "socket",
+            "socketserver",
+            "spwd",
+            "sqlite3",
+            "ssl",
+            "stat",
+            "statistics",
+            "string",
+            "stringprep",
+            "struct",
+            "subprocess",
+            "sunau",
+            "symbol",
+            "symtable",
+            "sys",
+            "sysconfig",
+            "syslog",
+            "tabnanny",
+            "tarfile",
+            "telnetlib",
+            "tempfile",
+            "termios",
+            "test",
+            "textwrap",
+            "threading",
+            "time",
+            "timeit",
+            "tkinter",
+            "token",
+            "tokenize",
+            "tomllib",
+            "trace",
+            "traceback",
+            "tracemalloc",
+            "tty",
+            "turtle",
+            "turtledemo",
+            "types",
+            "typing",
+            "unicodedata",
+            "unittest",
+            "urllib",
+            "uu",
+            "uuid",
+            "venv",
+            "warnings",
+            "wave",
+            "weakref",
+            "webbrowser",
+            "winreg",
+            "winsound",
+            "wsgiref",
+            "xdrlib",
+            "xml",
+            "xmlrpc",
+            "zipapp",
+            "zipfile",
+            "zipimport",
+            "zlib",
+            "_thread",
+        }
+        return module_name in stdlib_modules
+
+    def get_local_subpackages(project_root: Path, main_package: str) -> Set[str]:
+        """Get all subpackage names within the main package."""
+        subpackages = set()
+        main_package_dir = project_root / main_package
+
+        if main_package_dir.exists():
+            for item in main_package_dir.rglob("*"):
+                if item.is_dir() and (item / "__init__.py").exists():
+                    rel_path = item.relative_to(main_package_dir)
+                    if rel_path.parts:
+                        subpackages.add(rel_path.parts[0])
+
+        return subpackages
+
+    def get_import_to_package_mapping() -> Dict[str, str]:
+        """Map import names to PyPI package names."""
+        return {
+            "google": "google-genai",
+            "opentelemetry": "opentelemetry-api",
+        }
+
+    # Setup
+    project_root = Path(__file__).parent.parent
+    main_package = "bots"
+    exclude_dirs = {
+        "venv",
+        ".venv",
+        "env",
+        "__pycache__",
+        ".git",
+        "build",
+        "dist",
+        "*.egg-info",
+        "__trash",
+        "archived_docker_testing",
+    }
+
+    core_imports = set()
+    dev_imports = set()
+
+    # Get local packages
+    local_packages = {main_package}
+    local_packages.update(get_local_subpackages(project_root, main_package))
+    local_packages.add("tests")
+    local_packages.add("conftest")
+
+    # Scan all Python files
+    for py_file in project_root.rglob("*.py"):
+        # Skip excluded directories
+        if any(excluded in py_file.parts for excluded in exclude_dirs):
+            continue
+
+        # Determine if this is a test file
+        is_test_file = "tests" in py_file.parts or py_file.name.startswith("test_") or py_file.name == "conftest.py"
+
+        imports = get_imports_from_file(py_file)
+
+        if is_test_file:
+            dev_imports.update(imports)
+        else:
+            core_imports.update(imports)
+
+    # Process imports to get package names
+    import_to_package = get_import_to_package_mapping()
+
+    def process_imports(imports: Set[str]) -> List[str]:
+        """Filter and map imports to package names."""
+        packages = set()
+        for imp in imports:
+            if is_stdlib_module(imp):
+                continue
+            if imp in local_packages:
+                continue
+            if imp in {"setuptools", "wheel", "pip"}:
+                continue
+            package_name = import_to_package.get(imp, imp)
+            packages.add(package_name)
+        return sorted(packages)
+
+    core_packages = process_imports(core_imports)
+    dev_packages_all = process_imports(dev_imports)
+
+    # Remove core packages from dev (dev should only have additional ones)
+    dev_only_packages = [pkg for pkg in dev_packages_all if pkg not in core_packages]
+
+    return core_packages, dev_only_packages
+
 
 def run_command(cmd: List[str], cwd: str = None, timeout: int = 300) -> Tuple[int, str, str]:
     """Run a command and return exit code, stdout, and stderr.
@@ -109,22 +451,11 @@ def test_core_requirements(fresh_venv, repo_root):
     # Install core requirements
     returncode, stdout, stderr = run_command([pip_path, "install", "-r", str(requirements_file)], timeout=300)
     assert returncode == 0, f"Failed to install requirements.txt: {stderr}"
-    # Verify key packages are installed
-    expected_packages = [
-        "anthropic",
-        "openai",
-        "google-genai",
-        "typing_extensions",
-        "libcst",
-        "dill",
-        "psutil",
-        "numpy",
-        "opentelemetry-api",
-        "opentelemetry-sdk",
-    ]
+    # Verify key packages are installed (dynamically scanned from project code)
+    expected_packages, _ = scan_project_for_imports()
     for package in expected_packages:
         returncode, stdout, stderr = run_command([pip_path, "show", package])
-        assert returncode == 0, f"Package {package} not installed"
+        assert returncode == 0, f"Package {package} not installed (found in project imports)"
 
 
 def test_package_installation(fresh_venv, repo_root):
@@ -181,23 +512,11 @@ def test_dev_requirements(fresh_venv, repo_root):
     # Install dev requirements
     returncode, stdout, stderr = run_command([pip_path, "install", "-r", str(dev_requirements_file)], timeout=300)
     assert returncode == 0, f"Failed to install requirements-dev.txt: {stderr}"
-    # Verify key dev packages are installed
-    expected_dev_packages = [
-        "pytest",
-        "pytest-asyncio",
-        "pytest-cov",
-        "pytest-timeout",
-        "pytest-xdist",
-        "pytest-mock",
-        "black",
-        "isort",
-        "flake8",
-        "mypy",
-        "sphinx",
-    ]
+    # Verify key dev packages are installed (dynamically scanned from test code)
+    _, expected_dev_packages = scan_project_for_imports()
     for package in expected_dev_packages:
         returncode, stdout, stderr = run_command([pip_path, "show", package])
-        assert returncode == 0, f"Dev package {package} not installed"
+        assert returncode == 0, f"Dev package {package} not installed (found in test imports)"
 
 
 def test_pytest_runs(fresh_venv, repo_root):
@@ -231,6 +550,59 @@ def test_setup_py_install(fresh_venv, repo_root):
     for package in test_packages:
         returncode, stdout, stderr = run_command([pip_path, "show", package])
         assert returncode == 0, f"Package {package} not installed with [dev] extras"
+
+
+def test_scanner_detects_new_imports(tmp_path, repo_root):
+    """Test that the import scanner correctly detects new third-party imports.
+
+    This is a positive test to verify that scan_project_for_imports() will
+    catch new dependencies when they are added to the codebase.
+    """
+    import hashlib
+    from datetime import datetime
+
+    # Create a unique fake package name using current datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    fake_package = f"fake_package_{hashlib.md5(timestamp.encode()).hexdigest()[:8]}"
+
+    # Create a temporary Python file in the bots package with the fake import
+    temp_module_dir = repo_root / "bots" / "temp_test_module"
+    temp_module_dir.mkdir(exist_ok=True)
+
+    try:
+        # Create __init__.py to make it a package
+        (temp_module_dir / "__init__.py").write_text("")
+
+        # Create a Python file with the fake import
+        temp_file = temp_module_dir / "temp_test_file.py"
+        temp_file.write_text(
+            f"""
+# Temporary test file to verify import scanner
+import {fake_package}
+
+def test_function():
+    pass
+"""
+        )
+
+        # Run the scanner
+        core_packages, dev_packages = scan_project_for_imports()
+
+        # Verify the fake package was detected
+        assert fake_package in core_packages, (
+            f"Scanner failed to detect new import '{fake_package}'. " f"Found core packages: {core_packages}"
+        )
+
+        print(f"✓ Scanner successfully detected fake package: {fake_package}")
+
+    finally:
+        # Clean up the temporary files
+        if temp_file.exists():
+            temp_file.unlink()
+        if (temp_module_dir / "__init__.py").exists():
+            (temp_module_dir / "__init__.py").unlink()
+        if temp_module_dir.exists():
+            temp_module_dir.rmdir()
 
 
 if __name__ == "__main__":
