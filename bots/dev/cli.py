@@ -1991,12 +1991,24 @@ class SystemHandler:
         if args:
             model_query = " ".join(args).lower()
 
-            # Try exact match first
+            # Try numeric index first
             target_engine = None
-            for engine in provider_models:
-                if engine.value.lower() == model_query:
-                    target_engine = engine
-                    break
+            try:
+                index = int(model_query)
+                if 1 <= index <= len(provider_models):
+                    target_engine = provider_models[index - 1]  # Convert 1-based to 0-based
+                else:
+                    return f"Index {index} out of range. Please choose between 1 and {len(provider_models)}"
+            except ValueError:
+                # Not a number, continue with string matching
+                pass
+
+            # Try exact match first
+            if not target_engine:
+                for engine in provider_models:
+                    if engine.value.lower() == model_query:
+                        target_engine = engine
+                        break
 
             # Try partial match
             if not target_engine:
