@@ -1,15 +1,16 @@
 """Unit tests for Engines metadata functionality."""
 
-from bots.foundation.base import MODEL_INFO, Engines
+from bots.foundation.base import Engines
+from bots.foundation.model_registry import MODEL_REGISTRY
 
 
 class TestEnginesMetadata:
     """Test that all engines have proper metadata."""
 
     def test_all_engines_have_metadata(self):
-        """Verify every engine has an entry in MODEL_INFO."""
+        """Verify every engine has an entry in MODEL_REGISTRY."""
         for engine in Engines:
-            assert engine in MODEL_INFO, f"Engine {engine} missing from MODEL_INFO"
+            assert engine.value in MODEL_REGISTRY, f"Engine {engine} missing from MODEL_REGISTRY"
 
     def test_metadata_returns_correct_type(self):
         """Verify get_info() returns a dictionary."""
@@ -93,7 +94,7 @@ class TestBackwardCompatibility:
 
 
 class TestMetadataConsistency:
-    """Test consistency between MODEL_INFO and other data sources."""
+    """Test consistency between MODEL_REGISTRY and Engines."""
 
     def test_all_anthropic_models_have_correct_provider(self):
         """Verify all Claude models have provider='anthropic'."""

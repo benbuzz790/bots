@@ -1556,6 +1556,8 @@ class SystemHandler:
             "/r: Show recent prompts and select one to load",
             "/d [search]: Delete a saved prompt",
             "/add_tool [tool_name]: Add a tool to the bot (shows list if no name provided)",
+            "/models: Display all available models with metadata",
+            "/switch [model]: Switch to a different model within the same provider",
             "/config: Show or modify CLI configuration",
             "/auto_stash: Toggle auto git stash before user messages",
             "/load_stash <name_or_index>: Load a git stash by name or index",
@@ -1964,6 +1966,72 @@ class SystemHandler:
         output.append("=" * 100)
         output.append("\nIntelligence: ⭐ = fast/cheap, ⭐⭐ = balanced, ⭐⭐⭐ = most capable")
         output.append("Cost format: input / output per 1M tokens\n")
+
+        return "\n".join(output)
+
+    def switch(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Switch to a different model within the same provider."""
+        from bots.foundation.base import Engines
+
+        if not bot:
+            return "No bot instance available"
+
+        # Get current bot's provider
+        current_engine = bot.model_engine
+        current_info = current_engine.get_info()
+        current_provider = current_info["provider"]
+
+        # Get all models for the current provider
+        provider_models = [engine for engine in Engines if engine.get_info()["provider"] == current_provider]
+
+        if not provider_models:
+            return f"No models found for provider: {current_provider}"
+
+        # If args provided, try to switch to that model
+        if args:
+            model_query = " ".join(args).lower()
+
+            # Try exact match first
+            target_engine = None
+            for engine in provider_models:
+                if engine.value.lower() == model_query:
+                    target_engine = engine
+                    break
+
+            # Try partial match
+            if not target_engine:
+                for engine in provider_models:
+                    if model_query in engine.value.lower():
+                        target_engine = engine
+                        break
+
+            if not target_engine:
+                return f"Model '{model_query}' not found in {current_provider} provider"
+
+            # Switch the model
+            bot.model_engine = target_engine
+            new_info = target_engine.get_info()
+            return (
+                f"Switched from {current_engine.value} to {target_engine.value}\n"
+                f"Max tokens: {new_info['max_tokens']:,} | "
+                f"Cost: ${new_info['cost_input']:.2f}/${new_info['cost_output']:.2f} per 1M tokens"
+            )
+
+        # No args - display provider models and request selection
+        output = []
+        output.append(f"\nCurrent model: {current_engine.value}")
+        output.append(f"\nAvailable {current_provider} models:")
+        output.append("-" * 80)
+
+        for i, engine in enumerate(provider_models, 1):
+            info = engine.get_info()
+            stars = "⭐" * info["intelligence"]
+            cost_str = f"${info['cost_input']:.2f}/${info['cost_output']:.2f}"
+            marker = "→" if engine == current_engine else " "
+            output.append(f"{marker} {i:2}. {engine.value:<40} {stars:<10} " f"{info['max_tokens']:>6,} tokens | {cost_str}")
+
+        output.append("-" * 80)
+        output.append("\nUse /switch <number or model name> to switch models")
 
         return "\n".join(output)
 
@@ -2488,6 +2556,7 @@ class CLI:
             "/s": self._handle_save_prompt,
             "/add_tool": self.system.add_tool,
             "/models": self.system.models,
+            "/switch": self.system.switch,
             "/d": self._handle_delete_prompt,
             "/r": self._handle_recent_prompts,
             "/backup": self.backup.backup,

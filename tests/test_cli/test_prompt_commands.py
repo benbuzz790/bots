@@ -2,29 +2,15 @@
 Tests for CLI /s (save prompt) and /p (load prompt) commands.
 """
 
-import json
-import os
-import tempfile
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from bots.dev.cli import CLI, PromptHandler, PromptManager
 
-
-@pytest.fixture
-def temp_prompts_file():
-    """Create a temporary prompts file for testing."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        temp_path = f.name
-        # Initialize with empty structure
-        json.dump({"recents": [], "prompts": {}}, f)
-
-    yield temp_path
-
-    # Cleanup
-    if os.path.exists(temp_path):
-        os.unlink(temp_path)
+"""
+Tests for CLI /s (save prompt), /p (load prompt), and /switch (model switching) commands.
+"""
 
 
 @pytest.fixture
@@ -395,3 +381,191 @@ class TestEndToEnd:
         # Search for "documentation" should return 1 result
         results = cli.prompts.prompt_manager.search_prompts("documentation")
         assert len(results) == 1
+
+
+class TestSwitchCommand:
+    """Tests for the /switch command."""
+
+    def test_switch_without_args_shows_provider_models(self):
+        """Test /switch without args shows only models from current provider."""
+        from bots.dev.cli import CLIContext, SystemHandler
+        from bots.foundation.base import Engines
+        from bots.testing.mock_bot import MockBot
+
+        # Create a mock bot with Anthropic model
+        bot = MockBot(model_engine=Engines.CLAUDE45_SONNET)
+        context = CLIContext()
+        handler = SystemHandler()
+
+        result = handler.switch(bot, context, [])
+
+        # Should show current model
+        assert "claude-sonnet-4-5-20250929" in result
+        # Should show other Anthropic models
+        assert "anthropic" in result.lower()
+        # Should show arrow marker for current model
+        assert "→" in result
+        # Should not show OpenAI or Google models
+        assert "gpt" not in result.lower()
+        assert "gemini" not in result.lower()
+
+    def test_switch_with_exact_model_name(self):
+        """Test /switch with exact model name switches successfully."""
+        from bots.dev.cli import CLIContext, SystemHandler
+        from bots.foundation.base import Engines
+        from bots.testing.mock_bot import MockBot
+
+        # Create a mock bot with Anthropic model
+        bot = MockBot(model_engine=Engines.CLAUDE45_SONNET)
+        context = CLIContext()
+        handler = SystemHandler()
+
+        # Switch to Haiku
+        result = handler.switch(bot, context, ["claude-haiku-4-5-20251015"])
+
+        # Should confirm the switch
+        assert "Switched from" in result
+        assert "claude-sonnet-4-5-20250929" in result
+        assert "claude-haiku-4-5-20251015" in result
+        # Bot's model should be updated
+        assert bot.model_engine == Engines.CLAUDE45_HAIKU
+
+    def test_switch_with_partial_model_name(self):
+        """Test /switch with partial model name finds correct model."""
+        from bots.dev.cli import CLIContext, SystemHandler
+        from bots.foundation.base import Engines
+        from bots.testing.mock_bot import MockBot
+
+        # Create a mock bot with Anthropic model
+        bot = MockBot(model_engine=Engines.CLAUDE45_SONNET)
+        context = CLIContext()
+        handler = SystemHandler()
+
+        # Switch using partial name
+        result = handler.switch(bot, context, ["haiku"])
+
+        # Should find and switch to a Haiku model
+        assert "Switched from" in result
+        assert "haiku" in result.lower()
+        # Bot's model should be updated to some Haiku variant
+        assert "haiku" in bot.model_engine.value.lower()
+
+    def test_switch_rejects_different_provider(self):
+        """Test /switch rejects switching to a different provider."""
+        from bots.dev.cli import CLIContext, SystemHandler
+        from bots.foundation.base import Engines
+        from bots.testing.mock_bot import MockBot
+
+        # Create a mock bot with Anthropic model
+        bot = MockBot(model_engine=Engines.CLAUDE45_SONNET)
+        context = CLIContext()
+        handler = SystemHandler()
+
+        # Try to switch to OpenAI model
+        result = handler.switch(bot, context, ["gpt-4"])
+
+        # Should reject the switch
+        assert "not found" in result.lower()
+        # Bot's model should remain unchanged
+        assert bot.model_engine == Engines.CLAUDE45_SONNET
+
+    def test_switch_with_invalid_model_name(self):
+        """Test /switch with invalid model name returns error."""
+        from bots.dev.cli import CLIContext, SystemHandler
+        from bots.foundation.base import Engines
+        from bots.testing.mock_bot import MockBot
+
+        bot = MockBot(model_engine=Engines.CLAUDE45_SONNET)
+        context = CLIContext()
+        handler = SystemHandler()
+
+        result = handler.switch(bot, context, ["nonexistent-model"])
+
+        # Should return error message
+        assert "not found" in result.lower()
+        # Bot's model should remain unchanged
+        assert bot.model_engine == Engines.CLAUDE45_SONNET
+
+    def test_switch_shows_model_metadata(self):
+        """Test /switch displays model metadata (tokens, cost)."""
+        from bots.dev.cli import CLIContext, SystemHandler
+        from bots.foundation.base import Engines
+        from bots.testing.mock_bot import MockBot
+
+        bot = MockBot(model_engine=Engines.CLAUDE45_SONNET)
+        context = CLIContext()
+        handler = SystemHandler()
+
+        result = handler.switch(bot, context, [])
+
+        # Should show max tokens
+        assert "tokens" in result.lower()
+        # Should show cost information
+        assert "$" in result
+
+    def test_switch_with_no_bot_instance(self):
+        """Test /switch with no bot instance returns error."""
+        from bots.dev.cli import CLIContext, SystemHandler
+
+        context = CLIContext()
+        handler = SystemHandler()
+
+        result = handler.switch(None, context, [])
+
+        # Should return error message
+        assert "No bot instance" in result
+
+    def test_switch_openai_models(self):
+        """Test /switch works with OpenAI models."""
+        from bots.dev.cli import CLIContext, SystemHandler
+        from bots.foundation.base import Engines
+        from bots.testing.mock_bot import MockBot
+
+        # Create a mock bot with OpenAI model
+        bot = MockBot(model_engine=Engines.GPT4O)
+        context = CLIContext()
+        handler = SystemHandler()
+
+        # List should show only OpenAI models
+        result = handler.switch(bot, context, [])
+        assert "gpt" in result.lower()
+        assert "openai" in result.lower()
+        assert "claude" not in result.lower()
+
+        # Switch to another OpenAI model
+        result = handler.switch(bot, context, ["gpt-4o-mini"])
+        assert "Switched from" in result
+        assert bot.model_engine == Engines.GPT4O_MINI
+
+    def test_switch_gemini_models(self):
+        """Test /switch works with Gemini models."""
+        from bots.dev.cli import CLIContext, SystemHandler
+        from bots.foundation.base import Engines
+        from bots.testing.mock_bot import MockBot
+
+        # Create a mock bot with Gemini model
+        bot = MockBot(model_engine=Engines.GEMINI25_PRO)
+        context = CLIContext()
+        handler = SystemHandler()
+
+        # List should show only Gemini models
+        result = handler.switch(bot, context, [])
+        assert "gemini" in result.lower()
+        assert "google" in result.lower()
+        assert "claude" not in result.lower()
+        assert "gpt" not in result.lower()
+
+        # Switch to another Gemini model
+        result = handler.switch(bot, context, ["gemini-2.5-flash"])
+        assert "Switched from" in result
+        assert bot.model_engine == Engines.GEMINI25_FLASH
+
+    def test_switch_command_registered_in_cli(self):
+        """Test that /switch command is properly registered in CLI."""
+        from bots.dev.cli import CLI
+
+        cli = CLI()
+
+        # Command should be registered
+        assert "/switch" in cli.commands
+        assert cli.commands["/switch"] == cli.system.switch
