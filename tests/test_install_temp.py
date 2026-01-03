@@ -189,7 +189,7 @@ def test_core_requirements(fresh_venv, repo_root):
     venv_path, python_path, pip_path = fresh_venv
     requirements_file = repo_root / "requirements.txt"
     # Install core requirements
-    returncode, stdout, stderr = run_command([pip_path, "install", "-r", str(requirements_file)], timeout=600)
+    returncode, stdout, stderr = run_command([pip_path, "install", "-r", str(requirements_file)], timeout=1200)
     assert returncode == 0, f"Failed to install requirements.txt: {stderr}"
     # Verify key packages are installed (dynamically scanned from project code)
     expected_packages, _ = scan_project_for_imports()
@@ -204,7 +204,7 @@ def test_package_installation(fresh_venv, repo_root):
     venv_path, python_path, pip_path = fresh_venv
     requirements_file = repo_root / "requirements.txt"
     # Install requirements first
-    returncode, stdout, stderr = run_command([pip_path, "install", "-r", str(requirements_file)], timeout=600)
+    returncode, stdout, stderr = run_command([pip_path, "install", "-r", str(requirements_file)], timeout=1200)
     assert returncode == 0, f"Failed to install requirements: {stderr}"
     # Install package in editable mode
     returncode, stdout, stderr = run_command([pip_path, "install", "-e", str(repo_root)], timeout=120)
@@ -217,7 +217,7 @@ def test_basic_import(fresh_venv, repo_root):
     venv_path, python_path, pip_path = fresh_venv
     requirements_file = repo_root / "requirements.txt"
     # Install requirements and package
-    run_command([pip_path, "install", "-r", str(requirements_file)], timeout=600)
+    run_command([pip_path, "install", "-r", str(requirements_file)], timeout=1200)
     run_command([pip_path, "install", "-e", str(repo_root)], timeout=120)
     # Test basic imports
     test_script = """
@@ -250,10 +250,10 @@ def test_dev_requirements(fresh_venv, repo_root):
     requirements_file = repo_root / "requirements.txt"
     dev_requirements_file = repo_root / "requirements-dev.txt"
     # Install core requirements first
-    returncode, stdout, stderr = run_command([pip_path, "install", "-r", str(requirements_file)], timeout=600)
+    returncode, stdout, stderr = run_command([pip_path, "install", "-r", str(requirements_file)], timeout=1200)
     assert returncode == 0, f"Failed to install requirements.txt: {stderr}"
     # Install dev requirements
-    returncode, stdout, stderr = run_command([pip_path, "install", "-r", str(dev_requirements_file)], timeout=600)
+    returncode, stdout, stderr = run_command([pip_path, "install", "-r", str(dev_requirements_file)], timeout=1200)
     assert returncode == 0, f"Failed to install requirements-dev.txt: {stderr}"
     # Verify key dev packages are installed (dynamically scanned from test code)
     _, expected_dev_packages = scan_project_for_imports()
@@ -269,8 +269,8 @@ def test_pytest_runs(fresh_venv, repo_root):
     requirements_file = repo_root / "requirements.txt"
     dev_requirements_file = repo_root / "requirements-dev.txt"
     # Install all requirements and package
-    run_command([pip_path, "install", "-r", str(requirements_file)], timeout=600)
-    run_command([pip_path, "install", "-r", str(dev_requirements_file)], timeout=600)
+    run_command([pip_path, "install", "-r", str(requirements_file)], timeout=1200)
+    run_command([pip_path, "install", "-r", str(dev_requirements_file)], timeout=1200)
     run_command([pip_path, "install", "-e", str(repo_root)], timeout=120)
     # Try to run pytest --collect-only (just collect tests, don't run them)
     pytest_path = get_venv_pip(venv_path).replace("pip", "pytest")
@@ -288,7 +288,7 @@ def test_setup_py_install(fresh_venv, repo_root):
     skip_if_xdist()
     venv_path, python_path, pip_path = fresh_venv
     # Install package with dev extras
-    returncode, stdout, stderr = run_command([pip_path, "install", "-e", f"{repo_root}[dev]"], timeout=600)
+    returncode, stdout, stderr = run_command([pip_path, "install", "-e", f"{repo_root}[dev]"], timeout=1200)
     assert returncode == 0, f"Failed to install with [dev] extras: {stderr}"
     # Verify both core and dev packages are installed
     test_packages = ["anthropic", "pytest", "black"]

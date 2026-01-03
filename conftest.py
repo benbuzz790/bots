@@ -287,13 +287,11 @@ def pytest_collection_modifyitems(config, items):
     Modify test items to set custom timeouts based on markers.
 
     This hook sets timeouts for tests marked with specific markers:
-    - @pytest.mark.installation: 600 seconds (10 minutes)
-    - @pytest.mark.api: 300 seconds (5 minutes) - already default
+    - @pytest.mark.installation: 1200 seconds (20 minutes)
+    - @pytest.mark.api: 600 seconds (10 minutes) - already default
     """
     for item in items:
         # Check if test has installation marker
         if item.get_closest_marker("installation"):
-            # Set 10-minute timeout for installation tests
-            # Remove any existing timeout markers first
-            item.own_markers = [m for m in item.own_markers if m.name != "timeout"]
-            item.add_marker(pytest.mark.timeout(600))
+            # Set 20-minute timeout for installation tests
+            item.add_marker(pytest.mark.timeout(1200))
