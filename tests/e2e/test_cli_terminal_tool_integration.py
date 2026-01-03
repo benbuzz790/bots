@@ -78,13 +78,13 @@ class TestCLIRealTerminalTimeouts:
 
     def test_simple_file_creation_real_bot(self):
         """Test that a simple file creation command completes in reasonable time."""
-        bot = AnthropicBot(engine="claude-3-5-haiku-20241022")
+        bot = AnthropicBot()
 
         start_time = time.time()
         with StringIO() as buf:
             try:
                 with redirect_stdout(buf):
-                    bot.query("Create a file called hello.txt with the text 'Hello, World!'")
+                    bot.query("This is a test. Create a file called hello.txt with the text 'Hello, World!'")
             except Exception:
                 pass
             output = buf.getvalue()
