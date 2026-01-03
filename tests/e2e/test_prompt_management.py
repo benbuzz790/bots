@@ -5,6 +5,7 @@ builtins.input causes worker processes to crash. See TEST_PATCHING_HARD_WALL.md
 for details.
 """
 
+import os
 import sys
 import tempfile
 import threading
@@ -25,6 +26,13 @@ pytestmark = [
         "xdist" in sys.modules, reason="Input patching incompatible with xdist workers - causes worker crashes"
     ),
 ]
+
+
+@pytest.fixture(autouse=True, scope="module")
+def skip_if_xdist():
+    """Skip this test when running with xdist (parallel mode)."""
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.skip("Patching tests must run serially with -n0 (skipped in parallel mode)", allow_module_level=True)
 
 
 class TestPromptManager(unittest.TestCase):

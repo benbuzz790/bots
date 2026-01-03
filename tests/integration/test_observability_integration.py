@@ -26,6 +26,14 @@ from bots.observability import metrics
 from bots.observability.callbacks import BotCallbacks
 from bots.observability.cost_calculator import calculate_cost
 
+
+@pytest.fixture(autouse=True, scope="module")
+def skip_if_xdist():
+    """Skip this test when running with xdist (parallel mode)."""
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.skip("Patching tests must run serially with -n0 (skipped in parallel mode)", allow_module_level=True)
+
+
 # Try to import OpenTelemetry for metrics verification
 try:
     from opentelemetry.sdk.metrics.export import InMemoryMetricReader

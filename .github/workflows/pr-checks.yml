@@ -79,6 +79,25 @@ jobs:
         run: |
           pytest tests/ -n 12 --tb=short -v --maxfail=10 --cov=bots --cov-report=term-missing --cov-report=xml
 
+
+      - name: Run installation tests (serial)
+        if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
+        run: |
+          pytest tests/test_install_in_fresh_environment.py -n0 -v --tb=short
+        continue-on-error: false
+
+      - name: Run serial tests (tests that require -n0)
+        if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
+        run: |
+          pytest tests/e2e/test_cli_load.py -n0 -v --tb=short
+          pytest tests/e2e/test_combine_leaves.py -n0 -v --tb=short
+          pytest tests/e2e/test_keyboard_interrupt_handling.py -n0 -v --tb=short
+          pytest tests/e2e/test_prompt_management.py -n0 -v --tb=short
+          pytest tests/e2e/test_quiet_duplicate.py -n0 -v --tb=short
+          pytest tests/e2e/test_quiet_fix_verification.py -n0 -v --tb=short
+          pytest tests/e2e/test_wizard_debug.py -n0 -v --tb=short
+          pytest tests/integration/test_observability_integration.py -n0 -v --tb=short
+        continue-on-error: false
       - name: Check coverage threshold
         if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
         run: |

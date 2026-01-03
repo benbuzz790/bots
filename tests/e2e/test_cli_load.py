@@ -1,3 +1,4 @@
+import os
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -8,6 +9,13 @@ from bots import AnthropicBot, Engines
 from bots.dev.cli import CLI, CLIContext, RealTimeDisplayCallbacks, StateHandler
 
 pytestmark = pytest.mark.e2e
+
+
+@pytest.fixture(autouse=True, scope="module")
+def skip_if_xdist():
+    """Skip this test when running with xdist (parallel mode)."""
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.skip("Patching tests must run serially with -n0 (skipped in parallel mode)", allow_module_level=True)
 
 
 class TestCLILoad:

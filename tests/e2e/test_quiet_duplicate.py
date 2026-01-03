@@ -1,3 +1,4 @@
+import os
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
@@ -8,6 +9,13 @@ import pytest
 import bots.dev.cli as cli_module
 
 pytestmark = pytest.mark.e2e
+
+
+@pytest.fixture(autouse=True, scope="module")
+def skip_if_xdist():
+    """Skip this test when running with xdist (parallel mode)."""
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.skip("Patching tests must run serially with -n0 (skipped in parallel mode)", allow_module_level=True)
 
 
 class TestQuietModeDuplicate(unittest.TestCase):

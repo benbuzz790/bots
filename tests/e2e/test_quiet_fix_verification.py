@@ -1,3 +1,4 @@
+import os
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
@@ -8,6 +9,16 @@ import pytest
 import bots.dev.cli as cli_module
 
 pytestmark = pytest.mark.e2e
+
+
+@pytest.fixture(autouse=True, scope="module")
+def skip_if_xdist():
+    """Skip this test when running with xdist (parallel mode)."""
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.skip(
+            "Patching tests must run serially with -n0 (skipped in parallel mode)",
+            allow_module_level=True,
+        )
 
 
 class TestQuietModeFix(unittest.TestCase):
@@ -50,7 +61,11 @@ class TestQuietModeFix(unittest.TestCase):
         response_count = output.count(test_response)
         print(f"Quiet mode - Output: {repr(output)}")
         print(f"Quiet mode - Count: {response_count} (should be 1)")
-        self.assertEqual(response_count, 1, f"Fix verified: message appears {response_count} time(s)")
+        self.assertEqual(
+            response_count,
+            1,
+            f"Fix verified: message appears {response_count} time(s)",
+        )
 
 
 if __name__ == "__main__":
