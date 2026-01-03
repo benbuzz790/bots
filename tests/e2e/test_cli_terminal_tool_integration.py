@@ -78,7 +78,7 @@ class TestCLIRealTerminalTimeouts:
 
     def test_simple_file_creation_real_bot(self):
         """Test that a simple file creation command completes in reasonable time."""
-        bot = AnthropicBot(engine="claude-3-5-haiku-20241022")
+        bot = AnthropicBot()  # Use default model
 
         start_time = time.time()
         with StringIO() as buf:
