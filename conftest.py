@@ -280,3 +280,20 @@ def pytest_configure(config):
         print(f"\n{'=' * 80}")
         print("PROFILING ENABLED: Test profiler initialized")
         print(f"{'=' * 80}\n")
+
+
+def pytest_collection_modifyitems(config, items):
+    """
+    Modify test items to set custom timeouts based on markers.
+
+    This hook sets timeouts for tests marked with specific markers:
+    - @pytest.mark.installation: 600 seconds (10 minutes)
+    - @pytest.mark.api: 300 seconds (5 minutes) - already default
+    """
+    for item in items:
+        # Check if test has installation marker
+        if item.get_closest_marker("installation"):
+            # Set 10-minute timeout for installation tests
+            # Remove any existing timeout markers first
+            item.own_markers = [m for m in item.own_markers if m.name != "timeout"]
+            item.add_marker(pytest.mark.timeout(600))

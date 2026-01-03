@@ -117,15 +117,15 @@ class TestNonPyFileWrite(unittest.TestCase):
         self.assertEqual(actual_content, "Original content\n")
 
     def test_non_py_file_with_scope_returns_error(self):
-        """Test that python_edit returns an error when trying to use scope with non-.py files."""
+        """Test that python_edit returns a warning when trying to use scope with non-.py files."""
         file_path = "test.txt::SomeScope"
         content = "Content\n"
 
         result = python_edit(file_path, content)
 
-        # Should return an error
-        self.assertIn("Tool Failed", result)
-        self.assertIn("must end with .py", result)
+        # Should return a warning (not an error, because it creates the file ignoring the scope)
+        self.assertIn("WARNING", result)
+        self.assertIn("python_edit is for python files", result.lower())
 
 
 if __name__ == "__main__":

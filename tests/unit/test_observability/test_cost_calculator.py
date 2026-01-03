@@ -236,9 +236,8 @@ class TestCalculateCost:
 
     def test_negative_tokens_raises_error(self):
         """Test that negative token counts are handled (converted to 0)."""
-        # The function doesn't actually validate negative tokens currently
-        # Just ensure it doesn't crash
-        cost = calculate_cost("anthropic", "claude-3-5-sonnet-latest", 0, 0)
+        # Test with negative token counts - should return 0.0 cost
+        cost = calculate_cost("anthropic", "claude-3-5-sonnet-latest", -10, -5)
         assert cost == 0.0
 
     def test_invalid_provider_raises_error(self):

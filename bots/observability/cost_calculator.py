@@ -181,6 +181,13 @@ def calculate_cost(
         ...               1000, 500, is_batch=True)
         0.002325
     """
+    # Validate token counts are non-negative
+    input_tokens = max(0, input_tokens)
+    output_tokens = max(0, output_tokens)
+    cached_tokens = max(0, cached_tokens)
+    cache_creation_tokens = max(0, cache_creation_tokens)
+    cache_read_tokens = max(0, cache_read_tokens)
+
     # Handle deprecated cached_tokens parameter
     # Old API: input_tokens includes cached tokens, cached_tokens is the portion that's cached
     # New API: input_tokens is non-cached, cache_read_tokens is additional cached tokens

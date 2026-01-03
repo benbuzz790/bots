@@ -26,7 +26,7 @@ from typing import List, Tuple
 import pytest
 
 # Mark all tests in this module as serial - they MUST NOT run in parallel
-pytestmark = [pytest.mark.serial, pytest.mark.slow]
+pytestmark = [pytest.mark.serial, pytest.mark.slow, pytest.mark.installation]
 
 
 @pytest.fixture(autouse=True, scope="module")
