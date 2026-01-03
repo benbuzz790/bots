@@ -79,6 +79,33 @@ pytest -n auto
 pytest --cov=bots --cov-report=term-missing
 ```
 
+
+### Smart Test Selection with pytest-testmon
+
+pytest-testmon tracks which source files each test depends on and only runs tests affected by your changes:
+
+```bash
+# First run: builds dependency map (runs full suite)
+pytest --testmon
+
+# Subsequent runs: only runs tests affected by changed files
+pytest --testmon
+
+# Force full run (rebuild dependency map)
+pytest --testmon --testmon-forceselect
+
+# Combine with other options
+pytest --testmon -v tests/unit/
+```
+
+**How it works:**
+- Stores dependency data in `.testmondata` (gitignored)
+- Automatically detects which tests depend on which source files
+- Skips tests whose dependencies haven't changed
+- Great for local development; CI still runs full suite
+
+**Note:** The first run after installing testmon will run all tests to build the dependency map.
+
 ### Test Markers
 
 Tests are marked with pytest markers for selective execution:

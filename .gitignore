@@ -23,6 +23,7 @@ env/
 *.log
 *.swp
 .pytest_cache/
+.testmondata
 project_structure.txt
 scripts/*
 debug_on_error.py
