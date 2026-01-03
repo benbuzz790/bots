@@ -8,11 +8,15 @@ and verifies that:
 3. Basic functionality works (creating bots, using tools)
 4. Development dependencies are present when installed
 Usage:
-    pytest tests/test_install_in_fresh_environment.py
-    pytest tests/test_install_in_fresh_environment.py -v
-    pytest tests/test_install_in_fresh_environment.py::test_core_requirements
+    pytest tests/test_install_in_fresh_environment.py -n0
+    pytest tests/test_install_in_fresh_environment.py -v -n0
+    pytest tests/test_install_in_fresh_environment.py::test_core_requirements -n0
+Note: These tests are SKIPPED when running in parallel mode (pytest with -n auto).
+They must run serially (use -n0) as they create virtual environments
+and can timeout or crash when run in parallel.
 """
 
+import os
 import platform
 import subprocess
 import sys
@@ -21,7 +25,18 @@ from typing import List, Tuple
 
 import pytest
 
-pytestmark = pytest.mark.serial
+# Mark all tests in this module as serial - they MUST NOT run in parallel
+pytestmark = [pytest.mark.serial, pytest.mark.slow]
+
+
+@pytest.fixture(autouse=True, scope="module")
+def skip_if_xdist():
+    """Skip all tests in this module if running with xdist (parallel mode)."""
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.skip(
+            "Installation tests must run serially with -n0 (skipped in parallel mode)",
+            allow_module_level=True,
+        )
 
 
 def scan_project_for_imports() -> Tuple[List[str], List[str]]:
