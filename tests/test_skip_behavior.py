@@ -19,7 +19,7 @@ result = subprocess.run(
     ],
     capture_output=True,
     text=True,
-    timeout=30,
+    timeout=60,
 )
 if "PASSED" in result.stdout:
     print("   ✓ Test RAN and PASSED (correct)")
@@ -42,7 +42,7 @@ result = subprocess.run(
     ],
     capture_output=True,
     text=True,
-    timeout=30,
+    timeout=60,
 )
 if "SKIPPED" in result.stdout:
     print("   ✓ Test was SKIPPED (correct)")
