@@ -161,6 +161,14 @@ def get_venv_pip(venv_path: Path) -> str:
         return str(venv_path / "bin" / "pip")
 
 
+def get_venv_pytest(venv_path: Path) -> str:
+    """Get the path to the pytest executable in the virtual environment."""
+    if platform.system() == "Windows":
+        return str(venv_path / "Scripts" / "pytest.exe")
+    else:
+        return str(venv_path / "bin" / "pytest")
+
+
 @pytest.fixture
 def fresh_venv(tmp_path):
     """Create a fresh virtual environment for testing."""
@@ -273,9 +281,7 @@ def test_pytest_runs(fresh_venv, repo_root):
     run_command([pip_path, "install", "-r", str(dev_requirements_file)], timeout=1200)
     run_command([pip_path, "install", "-e", str(repo_root)], timeout=120)
     # Try to run pytest --collect-only (just collect tests, don't run them)
-    pytest_path = get_venv_pip(venv_path).replace("pip", "pytest")
-    if platform.system() == "Windows":
-        pytest_path = pytest_path.replace("pip.exe", "pytest.exe")
+    pytest_path = get_venv_pytest(venv_path)
     returncode, stdout, stderr = run_command(
         [pytest_path, "--collect-only", str(repo_root / "tests" / "unit")], cwd=str(repo_root), timeout=60
     )
@@ -339,7 +345,7 @@ def test_function():
             f"Scanner failed to detect new import '{fake_package}'. " f"Found core packages: {core_packages}"
         )
 
-        print(f"✓ Scanner successfully detected fake package: {fake_package}")
+        print(f"âœ“ Scanner successfully detected fake package: {fake_package}")
 
     finally:
         # Clean up the temporary files

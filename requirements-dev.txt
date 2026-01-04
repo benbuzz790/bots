@@ -26,4 +26,6 @@ pre-commit>=3.5.0
 # Encoding detection for tests
 chardet>=5.0.0
 # Optional observability exporters (for production use)
-opentelemetry-exporter-otlp>=1.20.0
+# Note: grpcio (required by otlp exporter) has compilation issues on ARM64 Windows
+# Skip on ARM64 Windows to avoid build failures
+opentelemetry-exporter-otlp>=1.20.0; platform_machine != "ARM64" or sys_platform != "win32"
