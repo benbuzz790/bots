@@ -4,7 +4,7 @@ Provides mocks for user input, print output, and bot loading.
 """
 
 from io import StringIO
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -99,3 +99,51 @@ def mock_check_interrupt():
     Returns a mock for interrupt handling in CLI tests.
     """
     return Mock(return_value=False)
+
+
+@pytest.fixture
+def safe_cli_context():
+    """Create a safe CLI context for testing with MagicMock bots.
+
+    This fixture prevents recursive issues when using MagicMock bots by:
+    1. Disabling auto_backup (which tries to copy the bot with bot * 1)
+    2. Disabling auto_stash (which can trigger git operations)
+    3. Disabling auto_restore_on_error (which depends on backups)
+
+    The issue: When a MagicMock bot is assigned to context.bot_instance,
+    and then callbacks are attached (callbacks.context.bot_instance -> mock_bot),
+    this creates a circular reference. When auto_backup tries to copy the bot
+    using (bot * 1), it attempts to deep copy the MagicMock, causing infinite
+    recursion or memory issues.
+
+    Usage:
+        def test_something(safe_cli_context):
+            context, mock_bot = safe_cli_context
+            # Use context and mock_bot safely
+            cli = CLI()
+            cli.context = context
+            cli._handle_chat(mock_bot, "test input")
+
+    Returns:
+        tuple: (CLIContext, MagicMock) - A safe context and mock bot
+    """
+    from bots.dev.cli import CLIContext
+
+    context = CLIContext()
+    # Disable features that try to copy/serialize the bot
+    context.config.auto_backup = False
+    context.config.auto_stash = False
+    context.config.auto_restore_on_error = False
+
+    # Create a mock bot with basic attributes
+    mock_bot = MagicMock()
+    mock_bot.name = "TestBot"
+    mock_bot.conversation = MagicMock()
+    mock_bot.tool_handler = MagicMock()
+    mock_bot.tool_handler.requests = []
+    mock_bot.tool_handler.results = []
+
+    # Assign to context
+    context.bot_instance = mock_bot
+
+    return context, mock_bot

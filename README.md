@@ -6,11 +6,11 @@
 
 Most agent frameworks treat conversations as lists of messages. This one treats them as trees.
 
-Why? Because when you're working with an agent, you may need to explore, to try different approaches, or to backtrack when something doesn't work. A linear conversation forces you to either lose context or pollute that context with failed attempts. 
+Why? Because when you're working with an agent, you may need to explore, to try different approaches, or to backtrack when something doesn't work. A linear conversation forces you to either lose context or pollute that context with failed attempts.
 
 Trees let you explore without losing your place. Every message is a node. Every response creates a branch. You can navigate back to any point and try something different. The agent only sees the path from root to your current position, so context stays clean. Allowing branching also allows simple parallel operation. For instance, a "gather context, then branch to do tasks in parallel" workflow.
 
-The framework emerged from building with it. Every feature exists because it solved a real problem during development. `respond()` wraps API complexity. `save/load` eliminates context repetition. `add_tools()` makes tool creation trivial—just write a Python function. Functional prompts automate common agent workflows. The CLI grew from `bot.chat()` when interactions got complex enough to need dedicated commands. 
+The framework emerged from building with it. Every feature exists because it solved a real problem during development. `respond()` wraps API complexity. `save/load` eliminates context repetition. `add_tools()` makes tool creation trivialâ€”just write a Python function. Functional prompts automate common agent workflows. The CLI grew from `bot.chat()` when interactions got complex enough to need dedicated commands.
 
 This structure enables something more interesting: agents that manage their own context through tool use. Tools are provided for allowing an agent to branch itself to allow itself to do work in parallel. It can compact itself. Giving agents tools to do the boring task of managing their own context *appears to work*.
 
@@ -38,7 +38,7 @@ bot.add_tools(code_tools)
 response = bot.respond("Create a Flask app in app.py")
 ```
 
-The agent can now call those tools. You don't write schemas or wrappers—just pass the functions.
+The agent can now call those tools. You don't write schemas or wrappersâ€”just pass the functions.
 
 Save the bot's state when you want to preserve context:
 
@@ -78,7 +78,7 @@ The CLI lets you work with the tree structure directly. Branch to explore differ
 ## Functional Prompts
 
 When you're programming with agents (not just chatting), you need patterns for structured reasoning. Functional prompts provide these.
-The most important pattern is `prompt_while`—it lets an agent work iteratively until a task is complete:
+The most important pattern is `prompt_while`â€”it lets an agent work iteratively until a task is complete:
 
 ```python
 from bots.flows import functional_prompts as fp
@@ -118,7 +118,7 @@ responses, nodes = fp.par_branch_while(bot, [
 ], stop_condition=fp.conditions.said_DONE)
 ```
 
-Functional prompts separate "what to think about" from "how to think about it." The patterns are language-agnostic—they work the same way regardless of what you're asking the agent to do.
+Functional prompts separate "what to think about" from "how to think about it." The patterns are language-agnosticâ€”they work the same way regardless of what you're asking the agent to do.
 
 ## Namshubs
 
@@ -130,7 +130,7 @@ From the CLI:
 ```
 
 The agent loads the PR review workflow, executes it, then returns control to the main conversation. Namshubs are pre-written tasks that any agent can invoke.
-The name comes from Snow Crash—namshubs "reprogram" the agent temporarily for a specific task, then restore its original state.
+The name comes from Snow Crashâ€”namshubs "reprogram" the agent temporarily for a specific task, then restore its original state.
 
 ## Installation
 
@@ -157,6 +157,7 @@ The framework has three layers:
 - [Functional Prompts Primer](functional_prompt_primer.md) - Deep dive into functional prompt patterns
 - [Contributing Guide](CONTRIBUTING.md) - How to contribute to the project
 - [Testing Guide](TESTING.md) - Running and writing tests
+- [Requirements Organization](docs/REQUIREMENTS.md) - Understanding dependency management
 
 ### Component Documentation
 

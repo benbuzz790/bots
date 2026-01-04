@@ -138,6 +138,9 @@ class TestBranchSelfIntegration(DetailedTestCase):
             max_tokens=10000,
         )
         bot.add_tools(branch_self)
+
+        # Save the original stdout before redirecting
+        original_stdout = sys.stdout
         with io.StringIO() as buf:
             sys.stdout = buf
             try:
@@ -149,7 +152,9 @@ class TestBranchSelfIntegration(DetailedTestCase):
                     "file 'dir2/test2.txt' with content 'Test 2'."
                 )
             finally:
-                sys.stdout = sys.__stdout__
+                # Restore to the saved original stdout, not sys.__stdout__
+                sys.stdout = original_stdout
+
         dirs_created = [d for d in os.listdir(".") if os.path.isdir(d)]
         print(f"Directories created: {dirs_created}")
         if "dir1" in dirs_created and os.path.exists("dir1/test1.txt"):

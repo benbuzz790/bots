@@ -51,13 +51,38 @@ jobs:
           $env:PYTHONUTF8 = "1"
           echo "PYTHONIOENCODING=utf-8" >> $env:GITHUB_ENV
           echo "PYTHONUTF8=1" >> $env:GITHUB_ENV
-
+      - name: Restore requirements lock from cache
+        id: cache-requirements-lock
+        uses: actions/cache@v4
+        with:
+          path: requirements.lock
+          key: requirements-lock-${{ runner.os }}-${{ hashFiles('requirements.txt', 'requirements-dev.txt', 'setup.py') }}
+          restore-keys: |
+            requirements-lock-${{ runner.os }}-
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: pip-cache-${{ runner.os }}-${{ hashFiles('requirements.lock') }}
+          restore-keys: |
+            pip-cache-${{ runner.os }}-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install -e .[dev]
+
+      - name: Generate requirements lock file
+        run: |
+          pip freeze > requirements.lock
+
+      - name: Upload requirements lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: requirements-lock
+          path: requirements.lock
+          retention-days: 30
 
       - name: Remove BOMs from all files
         run: |
@@ -68,6 +93,25 @@ jobs:
         run: |
           pytest tests/ -n 12 --tb=short -v --maxfail=10 --cov=bots --cov-report=term-missing --cov-report=xml
 
+
+      - name: Run installation tests (serial)
+        if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
+        run: |
+          pytest tests/test_install_in_fresh_environment.py -n0 -v --tb=short
+        continue-on-error: false
+
+      - name: Run serial tests (tests that require -n0)
+        if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
+        run: |
+          pytest tests/e2e/test_cli_load.py -n0 -v --tb=short
+          pytest tests/e2e/test_combine_leaves.py -n0 -v --tb=short
+          pytest tests/e2e/test_keyboard_interrupt_handling.py -n0 -v --tb=short
+          pytest tests/e2e/test_prompt_management.py -n0 -v --tb=short
+          pytest tests/e2e/test_quiet_duplicate.py -n0 -v --tb=short
+          pytest tests/e2e/test_quiet_fix_verification.py -n0 -v --tb=short
+          pytest tests/e2e/test_wizard_debug.py -n0 -v --tb=short
+          pytest tests/integration/test_observability_integration.py -n0 -v --tb=short
+        continue-on-error: false
       - name: Check coverage threshold
         if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
         run: |
@@ -109,7 +153,21 @@ jobs:
           $env:PYTHONUTF8 = "1"
           echo "PYTHONIOENCODING=utf-8" >> $env:GITHUB_ENV
           echo "PYTHONUTF8=1" >> $env:GITHUB_ENV
-
+      - name: Restore requirements lock from cache
+        id: cache-requirements-lock
+        uses: actions/cache@v4
+        with:
+          path: requirements.lock
+          key: requirements-lock-${{ runner.os }}-${{ hashFiles('requirements.txt', 'requirements-dev.txt', 'setup.py') }}
+          restore-keys: |
+            requirements-lock-${{ runner.os }}-
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: pip-cache-${{ runner.os }}-${{ hashFiles('requirements.lock') }}
+          restore-keys: |
+            pip-cache-${{ runner.os }}-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -166,7 +224,21 @@ jobs:
           $env:PYTHONUTF8 = "1"
           echo "PYTHONIOENCODING=utf-8" >> $env:GITHUB_ENV
           echo "PYTHONUTF8=1" >> $env:GITHUB_ENV
-
+      - name: Restore requirements lock from cache
+        id: cache-requirements-lock
+        uses: actions/cache@v4
+        with:
+          path: requirements.lock
+          key: requirements-lock-${{ runner.os }}-${{ hashFiles('requirements.txt', 'requirements-dev.txt', 'setup.py') }}
+          restore-keys: |
+            requirements-lock-${{ runner.os }}-
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: pip-cache-${{ runner.os }}-${{ hashFiles('requirements.lock') }}
+          restore-keys: |
+            pip-cache-${{ runner.os }}-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip

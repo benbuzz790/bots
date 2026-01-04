@@ -26,6 +26,14 @@ from bots.observability import metrics
 from bots.observability.callbacks import BotCallbacks
 from bots.observability.cost_calculator import calculate_cost
 
+
+@pytest.fixture(autouse=True, scope="module")
+def skip_if_xdist():
+    """Skip this test when running with xdist (parallel mode)."""
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.skip("Patching tests must run serially with -n0 (skipped in parallel mode)", allow_module_level=True)
+
+
 # Try to import OpenTelemetry for metrics verification
 try:
     from opentelemetry.sdk.metrics.export import InMemoryMetricReader
@@ -189,9 +197,9 @@ class TestObservabilityIntegration(unittest.TestCase):
         expected_openai = (1000 * 0.15 / 1_000_000) + (500 * 0.60 / 1_000_000)
         self.assertAlmostEqual(openai_cost, expected_openai, places=6)
 
-        # Test Google pricing
+        # Test Google pricing (gemini-2.0-flash has 0.10 input / 0.40 output pricing)
         google_cost = calculate_cost(provider="google", model="gemini-2.0-flash", input_tokens=1000, output_tokens=500)
-        expected_google = (1000 * 0.15 / 1_000_000) + (500 * 0.60 / 1_000_000)
+        expected_google = (1000 * 0.10 / 1_000_000) + (500 * 0.40 / 1_000_000)
         self.assertAlmostEqual(google_cost, expected_google, places=6)
 
     @pytest.mark.skip(reason="Test hangs - needs investigation")

@@ -3,6 +3,7 @@ Debug test file to isolate CLI wizard test issues.
 Building up complexity step by step.
 """
 
+import os
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
@@ -14,6 +15,13 @@ import bots.dev.cli as cli_module
 from bots.testing.mock_bot import MockBot
 
 pytestmark = pytest.mark.e2e
+
+
+@pytest.fixture(autouse=True, scope="module")
+def skip_if_xdist():
+    """Skip this test when running with xdist (parallel mode)."""
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.skip("Patching tests must run serially with -n0 (skipped in parallel mode)", allow_module_level=True)
 
 
 class TestWizardDebug:

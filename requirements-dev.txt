@@ -1,23 +1,31 @@
 # Development dependencies for bots project
-# These should match the versions used in CI
-# Code formatting and linting
-black==25.9.0
-isort==7.0.0
-flake8==7.3.0
-mypy==1.13.0
-# Testing
-pytest==7.4.3
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
-pytest-timeout==2.4.0
-pytest-xdist==3.7.0
-pytest-forked==1.6.0
-pytest-mock==3.15.1
-pytest-rerunfailures
+# Install with: pip install -r requirements.txt -r requirements-dev.txt
+# Testing framework and plugins
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-timeout>=2.4.0
+pytest-xdist>=3.7.0
+pytest-forked>=1.6.0
+pytest-mock>=3.15.0
+pytest-rerunfailures>=12.0
+pytest-testmon>=2.1.0
+# Code formatting
+black>=24.0.0
+isort>=5.13.0
+# Linting
+flake8>=7.0.0
+mypy>=1.13.0
 # Security scanning
-bandit==1.8.0
+bandit>=1.8.0
 # Documentation
-sphinx==7.2.6
-sphinx-rtd-theme==2.0.0
-# Pre-commit hooks (optional but recommended)
-pre-commit==3.5.0
+sphinx>=7.2.0
+sphinx-rtd-theme>=2.0.0
+# Pre-commit hooks
+pre-commit>=3.5.0
+# Encoding detection for tests
+chardet>=5.0.0
+# Optional observability exporters (for production use)
+# Note: grpcio (required by otlp exporter) has compilation issues on ARM64 Windows
+# Skip on ARM64 Windows to avoid build failures
+opentelemetry-exporter-otlp>=1.20.0; platform_machine != "ARM64" or sys_platform != "win32"

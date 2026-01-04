@@ -1,3 +1,4 @@
+import os
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
@@ -10,6 +11,16 @@ import bots.dev.cli as cli_module
 pytestmark = pytest.mark.e2e
 
 
+@pytest.fixture(autouse=True, scope="module")
+def skip_if_xdist():
+    """Skip this test when running with xdist (parallel mode)."""
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.skip(
+            "Patching tests must run serially with -n0 (skipped in parallel mode)",
+            allow_module_level=True,
+        )
+
+
 class TestQuietModeFix(unittest.TestCase):
     def setUp(self):
         self.mock_bot = MagicMock()
@@ -20,6 +31,11 @@ class TestQuietModeFix(unittest.TestCase):
         self.mock_bot.tool_handler.results = []
         self.context = cli_module.CLIContext()
         self.context.bot_instance = self.mock_bot
+        # Disable auto_backup and auto_stash to prevent recursion with MagicMock
+        # The backup system tries to copy the bot using `bot * 1`, which causes
+        # infinite recursion with MagicMock objects that have circular references
+        self.context.config.auto_backup = False
+        self.context.config.auto_stash = False
 
     @patch("bots.flows.functional_prompts.chain")
     def test_quiet_mode_fix_verified(self, mock_chain):
@@ -50,7 +66,11 @@ class TestQuietModeFix(unittest.TestCase):
         response_count = output.count(test_response)
         print(f"Quiet mode - Output: {repr(output)}")
         print(f"Quiet mode - Count: {response_count} (should be 1)")
-        self.assertEqual(response_count, 1, f"Fix verified: message appears {response_count} time(s)")
+        self.assertEqual(
+            response_count,
+            1,
+            f"Fix verified: message appears {response_count} time(s)",
+        )
 
 
 if __name__ == "__main__":

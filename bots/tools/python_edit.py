@@ -1036,70 +1036,60 @@ def python_view(target_scope: str, max_lines: str = "500") -> str:
         return _process_error(e)
 
 
-@toolify()
 def python_edit(target_scope: str, code: str, *, coscope_with: str | None = None, delete_a_lot: bool = False) -> str:
     """
-        Edit Python code using pytest-style scope syntax and optional expression matching.
+    Edit Python code using pytest-style scope syntax and optional expression matching.
 
-        Parameters:
-        -----------
-        target_scope : str
-            Location to edit in pytest-style scope syntax:
-            - "file.py" (whole file)
-            - "file.py::MyClass" (class)
-            - "file.py::my_function" (function)
-            - "file.py::MyClass::method" (method)
-            - "file.py::__FIRST__" (first top-level definition)
+    Parameters:
+    -----------
+    target_scope : str
+        Location to edit in pytest-style scope syntax:
+        - "file.py" (whole file)
+        - "file.py::MyClass" (class)
+        - "file.py::my_function" (function)
+        - "file.py::MyClass::method" (method)
+        - "file.py::__FIRST__" (first top-level definition)
 
-        code : str
-            Python code. This code will replace the entire target scope by default,
-            or insert after (if coscope_with is specified). Code is indented automatically
-            to match to scope.
+    code : str
+        Python code. This code will replace the entire target scope by default,
+        or insert after (if coscope_with is specified). Code is indented automatically
+        to match to scope.
 
-        coscope_with : str, optional
-            If specified, code is inserted in the same scope as the specified code,
-            and immediately after it. Uses the same syntax as target_scope with
-            optional expression at the end in quotes.
+    coscope_with : str, optional
+        If specified, code is inserted in the same scope as the specified code,
+        and immediately after it. Uses the same syntax as target_scope with
+        optional expression at the end in quotes.
 
+            Scope:
+                - a
+                - b
 
-                Scope:
-                    - a
-                    - b
+            - python edit called with coscope_with = "a", code = "- c" -
 
-                - python edit called with coscope_with = "a", code = "- c" -
+            Scope:
+                - a
+                - c
+                - b
 
-                Scope:
-                    - a
-                    - c
-                    - b
+        - "__FILE_START__" (special token for file beginning)
+        - "__FILE_END__" (special token for file end)
+        - "MyClass::method" (insert after this method within the target scope)
+        - '"expression"' (insert after a line matching this expression)
+    delete_a_lot : bool, optional
+        Safety parameter. Must be True to allow operations that delete more than 100 lines.
+        Helps prevent accidental file overwrites. Default False.
 
-            - "__FILE_START__" (special token for file beginning)
-            - "MyClass::method" (insert after this method within the target scope)
-            - '"expression"' (insert after a line matching this expression)
-        delete_a_lot : bool, optional
-    - "__FILE_END__" (special token for file end)
-            Safety parameter. Must be True to allow operations that delete more than 100 lines.
-            Helps prevent accidental file overwrites. Default False.
-
-        Returns:
-        --------
-        str
-            Description of what was modified or error message
+    Returns:
+    --------
+    str
+        Description of what was modified or error message
     """
     try:
         file_path, *path_elements = target_scope.split("::")
-
-        # Handle non-.py files: write them as-is if they don't exist, with a warning
         if not file_path.endswith(".py"):
-            # If there are path elements (scope), return error
-            if path_elements:
-                return _process_error(ValueError(f"File path must end with .py: {file_path}"))
-
-            # Check if file exists
-            abs_path = os.path.abspath(file_path)
-            if not os.path.exists(abs_path):
+            if not os.path.exists(file_path):
                 # Create directories if needed
-                dir_path = os.path.dirname(abs_path)
+                dir_path = os.path.dirname(file_path)
                 if dir_path:
                     try:
                         os.makedirs(dir_path, exist_ok=True)
@@ -1107,14 +1097,14 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str | None = None
                         return _process_error(ValueError(f"Error creating directories {dir_path}: {str(e)}"))
                 # Write the file
                 try:
-                    _write_file_bom_safe(abs_path, code)
+                    _write_file_bom_safe(file_path, code)
                     return (
                         f"WARNING: python_edit is for python files. As a courtesy, this new file has been written verbatim, "
                         f"but python_edit will not be able to edit the file.\n"
-                        f"File created: '{abs_path}'"
+                        f"File created: '{file_path}'"
                     )
                 except Exception as e:
-                    return _process_error(ValueError(f"Error writing file {abs_path}: {str(e)}"))
+                    return _process_error(ValueError(f"Error writing file {file_path}: {str(e)}"))
             else:
                 return _process_error(ValueError(f"File path must end with .py: {file_path}"))
 
@@ -1145,7 +1135,10 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str | None = None
                     return _process_error(ValueError("Cannot use empty code with insert_after - nothing to insert"))
                 # For replacement operations, empty code means delete the target
                 return _handle_deletion(abs_path, target_scope, path_elements, original_content, tree, delete_a_lot)
-            elif was_originally_empty and (not path_elements):
+
+            # Special case: if file was originally empty and we're doing a file-level edit
+            # (no path_elements or just __FIRST__), write the code and return "added" message
+            elif was_originally_empty and (not path_elements or path_elements == ["__FIRST__"]):
                 _write_file_bom_safe(abs_path, cleaned_code)
                 return f"Code added to '{abs_path}'."
 
@@ -1266,8 +1259,12 @@ def _handle_file_end_insertion(abs_path: str, tree: cst.Module, new_module: cst.
 
 def _handle_first_definition(abs_path: str, tree: cst.Module, new_module: cst.Module, coscope_with: str = None) -> str:
     """Handle editing the first top-level definition in a file."""
+    # Handle empty file case - just write the new code
     if not tree.body:
-        return _process_error(ValueError("File has no top-level definitions to edit"))
+        if coscope_with:
+            return _process_error(ValueError("Cannot use coscope_with on an empty file - there's nothing to insert after"))
+        _write_file_bom_safe(abs_path, new_module.code)
+        return f"Code added to empty file '{abs_path}'."
 
     # Find the first function or class definition
     first_def_index = None
@@ -1278,7 +1275,14 @@ def _handle_first_definition(abs_path: str, tree: cst.Module, new_module: cst.Mo
             break
 
     if first_def_index is None:
-        return _process_error(ValueError("No function or class definition found in file"))
+        if coscope_with:
+            return _process_error(ValueError("No function or class definition found to insert after"))
+        # No function/class definitions, but file has content (e.g., imports, comments)
+        # Append the new code after existing content
+        new_body = list(tree.body) + list(new_module.body)
+        modified_tree = tree.with_changes(body=new_body)
+        _write_file_bom_safe(abs_path, modified_tree.code)
+        return f"Code added as first definition in '{abs_path}'."
 
     if coscope_with:
         # Insert after the first definition
