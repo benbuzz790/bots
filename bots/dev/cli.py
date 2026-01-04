@@ -1873,6 +1873,11 @@ class SystemHandler:
             if "::" in arg:
                 filepath, func_name = arg.split("::", 1)
 
+                # Validate function name is not empty
+                if not func_name or func_name.strip() == "":
+                    errors.append(f"Function name missing: {arg}")
+                    continue
+
                 # Validate file exists
                 if not os.path.exists(filepath):
                     errors.append(f"File not found: {filepath}")
@@ -1907,6 +1912,9 @@ class SystemHandler:
                     bot.add_tools(func)
                     added_tools.append(func_name)
 
+                except SyntaxError as e:
+                    errors.append(f"Syntax error in {filepath}: {e}")
+                    continue
                 except (FileNotFoundError, ModuleNotFoundError, TypeError, ModuleLoadError) as e:
                     errors.append(f"Error loading {filepath}: {e}")
                     continue
@@ -1940,6 +1948,9 @@ class SystemHandler:
                         errors.append(f"No public functions found in {filepath}")
                         continue
 
+                except SyntaxError as e:
+                    errors.append(f"Syntax error in {filepath}: {e}")
+                    continue
                 except (FileNotFoundError, ModuleNotFoundError, TypeError, ModuleLoadError) as e:
                     errors.append(f"Error loading {filepath}: {e}")
                     continue
@@ -1948,6 +1959,9 @@ class SystemHandler:
                 try:
                     bot.add_tools(filepath)
                     added_tools.extend(public_funcs)
+                except SyntaxError as e:
+                    errors.append(f"Syntax error in {filepath}: {e}")
+                    continue
                 except (FileNotFoundError, ModuleNotFoundError, TypeError, ModuleLoadError) as e:
                     errors.append(f"Error loading {filepath}: {e}")
                     continue
