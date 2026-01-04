@@ -452,7 +452,7 @@ Your response:"""
 
             content = msg.content or ""
 
-            # Get parent user message if it exists
+            # Get parent user message if it exists (for context in evaluation)
             user_content = ""
             if msg.parent and msg.parent.role == "user":
                 user_content = msg.parent.content or ""
@@ -485,14 +485,6 @@ Your response:"""
 
         for idx in indices_to_remove:
             msg_node = messages[idx]
-            user_node = msg_node.parent
-
-            if not user_node or user_node.role != "user":
-                continue
-
-            grandparent = user_node.parent
-            if not grandparent:
-                continue
 
             # Check if this is part of a tool call sequence
             # Case 1: msg_node has tool_calls (it's the initiator)
@@ -512,14 +504,18 @@ Your response:"""
                         break
 
             # Case 2: msg_node follows tool results (it's the answer after tool use)
-            elif grandparent.role == "assistant" and grandparent.tool_calls and user_node.tool_results:
-                try:
-                    prev_idx = messages.index(grandparent)
-                    expanded_indices.add(prev_idx)
-                    expanded_indices.add(idx)
-                    sequence_info.append(f"Tool call sequence: indices {prev_idx} and {idx}")
-                except ValueError:
-                    pass
+            elif msg_node.parent and msg_node.parent.role == "user" and msg_node.parent.tool_results:
+                # This assistant message is responding to tool results
+                # Find the assistant that made the tool call
+                parent_user = msg_node.parent
+                if parent_user.parent and parent_user.parent.role == "assistant" and parent_user.parent.tool_calls:
+                    try:
+                        prev_idx = messages.index(parent_user.parent)
+                        expanded_indices.add(prev_idx)
+                        expanded_indices.add(idx)
+                        sequence_info.append(f"Tool call sequence: indices {prev_idx} and {idx}")
+                    except ValueError:
+                        pass
 
             # Case 3: Normal message (not part of tool sequence)
             else:
@@ -531,57 +527,71 @@ Your response:"""
 
         for idx in indices_to_remove:
             msg_node = messages[idx]
-            user_node = msg_node.parent
 
-            if not user_node or user_node.role != "user":
+            # Find the child user message (the one that comes AFTER the assistant)
+            child_user_node = None
+            for reply in msg_node.replies:
+                if reply.role == "user":
+                    child_user_node = reply
+                    break
+
+            # Get the parent (what comes before the assistant)
+            parent_node = msg_node.parent
+
+            if not parent_node:
+                # Can't remove if there's no parent to reconnect to
                 continue
 
-            grandparent = user_node.parent
-            if not grandparent:
-                continue
+            # Determine what to reconnect to the parent
+            if child_user_node:
+                # We have a child user message to remove along with the assistant
+                # Get the children of the child_user_node (what comes after)
+                grandchildren = list(child_user_node.replies)
 
-            # Check if user_node has tool_results - if so, we need special handling
-            if user_node.tool_results:
-                # This user node contains tool_results that correspond to grandparent's tool_calls
-                # We cannot simply remove it, as that would break the tool_call -> tool_result chain
-                # Instead, we keep the user_node but move msg_node's children to it
+                # Remove the assistant and its child user from the tree
+                # Reconnect grandchildren to parent
+                for grandchild in grandchildren:
+                    grandchild.parent = parent_node
+                    if grandchild not in parent_node.replies:
+                        parent_node.replies.append(grandchild)
 
-                # Move all children from msg_node to user_node
-                for child in list(msg_node.replies):
-                    child.parent = user_node
-                    user_node.replies.append(child)
+                # Remove msg_node from parent's replies
+                if msg_node in parent_node.replies:
+                    parent_node.replies.remove(msg_node)
 
-                # Clear msg_node's replies
+                # Clear references to avoid memory leaks
                 msg_node.replies.clear()
-
-                # Remove msg_node from user_node's replies
-                if msg_node in user_node.replies:
-                    user_node.replies.remove(msg_node)
+                child_user_node.replies.clear()
 
                 # Update bot.conversation if we removed the current node
-                if bot.conversation == msg_node:
-                    bot.conversation = user_node
+                if bot.conversation == msg_node or bot.conversation == child_user_node:
+                    # Point to the first grandchild if available, otherwise parent
+                    if grandchildren:
+                        bot.conversation = grandchildren[-1]  # Last grandchild (most recent)
+                    else:
+                        bot.conversation = parent_node
 
                 removed_count += 1
             else:
-                # Normal removal: user_node has no tool_results
-                # Move children from msg_node to grandparent (following branch_self pattern)
+                # No child user message - just remove the assistant message
+                # This shouldn't happen in normal conversation flow, but handle it
+                # Reconnect any children of msg_node to parent
                 for child in list(msg_node.replies):
-                    child.parent = grandparent
-                    grandparent.replies.append(child)
+                    child.parent = parent_node
+                    if child not in parent_node.replies:
+                        parent_node.replies.append(child)
 
-                # Clear msg_node's replies to avoid dangling references
+                # Remove msg_node from parent's replies
+                if msg_node in parent_node.replies:
+                    parent_node.replies.remove(msg_node)
+
                 msg_node.replies.clear()
 
-                # Remove user_node from grandparent's replies
-                if user_node in grandparent.replies:
-                    grandparent.replies.remove(user_node)
+                # Update bot.conversation if we removed the current node
+                if bot.conversation == msg_node:
+                    bot.conversation = parent_node
 
                 removed_count += 1
-
-                # Update bot.conversation if we removed the current node
-                if bot.conversation == msg_node or bot.conversation == user_node:
-                    bot.conversation = grandparent
 
         # Build result message
         result_parts = [f"Removed {removed_count} message pair(s) matching condition: '{prompt}'"]
