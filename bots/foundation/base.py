@@ -2998,6 +2998,17 @@ class Bot(ABC):
             - Callbacks must be injected after deserialization
             - Uses hybrid deserialization for tool handlers (see tool_handling.md)
         """
+        # Backwards-compatibility map for legacy model IDs
+        LEGACY_MODEL_MAP = {
+            "claude-haiku-4-5-20251015": "claude-haiku-4-5",
+            # Add other legacy mappings as needed
+        }
+
+        # Map legacy model IDs to current enum values
+        model_engine_value = data["model_engine"]
+        if model_engine_value in LEGACY_MODEL_MAP:
+            model_engine_value = LEGACY_MODEL_MAP[model_engine_value]
+
         # Try to load the exact bot class if saved, otherwise fall back to engine-based lookup
         if "bot_class" in data:
             # Try to import the bot class from common locations
@@ -3016,9 +3027,9 @@ class Bot(ABC):
 
             # Fall back to engine-based lookup if class not found
             if bot_class is None:
-                bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
+                bot_class = Engines.get_bot_class(Engines(model_engine_value))
         else:
-            bot_class = Engines.get_bot_class(Engines(data["model_engine"]))
+            bot_class = Engines.get_bot_class(Engines(model_engine_value))
 
         init_params = inspect.signature(bot_class.__init__).parameters
         constructor_args = {k: v for k, v in data.items() if k in init_params}
