@@ -255,11 +255,13 @@ def test_remove_context_with_tool_results_in_removed_pair():
         mock_haiku = MagicMock()
         MockBot.return_value = mock_haiku
 
+        # Need 4 responses: 1 validation + 3 evaluations (assistant1, assistant2, assistant3)
         # Mark the tool call sequence for removal
         mock_haiku.respond.side_effect = [
             "VALID",
-            "YES",  # Remove the file check (this includes assistant1 and assistant2)
-            "NO",  # Keep the thanks
+            "YES",  # Remove assistant1 (file check initiator)
+            "YES",  # Remove assistant2 (file check response) - part of same sequence
+            "NO",  # Keep the thanks (assistant3)
         ]
 
         with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
@@ -289,17 +291,17 @@ def test_remove_context_tool_handler_integration():
     This test verifies that after removing context, the bot can still use tools
     and the tool_handler doesn't have stale references.
     """
-    from bots.tools.self_tools import get_own_info
+    from bots.tools.self_tools import _get_own_info
 
     bot = AnthropicBot(api_key="test-key", autosave=False, enable_tracing=False)
-    bot.add_tools([get_own_info])
+    bot.add_tools([_get_own_info])
 
     root = bot.conversation
 
     # Simulate a tool call
     user1 = root._add_reply(role="user", content="What's your name?")
     assistant1 = user1._add_reply(role="assistant", content="Let me check")
-    assistant1.tool_calls = [{"name": "get_own_info", "id": "tc1", "input": {}}]
+    assistant1.tool_calls = [{"name": "_get_own_info", "id": "tc1", "input": {}}]
 
     tool_user1 = assistant1._add_reply(role="user", content="[Tool execution]")
     tool_user1.tool_results = [{"tool_use_id": "tc1", "content": "Bot info", "type": "tool_result"}]
@@ -320,10 +322,12 @@ def test_remove_context_tool_handler_integration():
         mock_haiku = MagicMock()
         MockBot.return_value = mock_haiku
 
+        # Need 4 responses: 1 validation + 3 evaluations (assistant1, assistant2, assistant3)
         mock_haiku.respond.side_effect = [
             "VALID",
-            "NO",  # Keep the name question
-            "YES",  # Remove the math question
+            "NO",  # Keep the name question (assistant1)
+            "NO",  # Keep the name response (assistant2)
+            "YES",  # Remove the math question (assistant3)
         ]
 
         with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
@@ -396,11 +400,13 @@ def test_remove_context_preserves_earlier_tool_results():
         mock_haiku = MagicMock()
         MockBot.return_value = mock_haiku
 
+        # Need 5 responses: 1 validation + 4 evaluations (one per assistant message)
         mock_haiku.respond.side_effect = [
-            "VALID",
-            "NO",  # Keep file check
-            "YES",  # Remove math question
-            "NO",  # Keep thanks
+            "VALID",  # Validation
+            "NO",  # Keep file check (assistant1)
+            "NO",  # Keep file response (assistant2)
+            "YES",  # Remove math question (assistant3)
+            "NO",  # Keep thanks (assistant4)
         ]
 
         with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
@@ -475,10 +481,12 @@ def test_remove_context_end_to_end_with_subsequent_message():
         mock_haiku = MagicMock()
         MockBot.return_value = mock_haiku
 
+        # Need 4 responses: 1 validation + 3 evaluations (assistant1, assistant2, assistant3)
         mock_haiku.respond.side_effect = [
             "VALID",
-            "NO",  # Keep file check
-            "YES",  # Remove math question
+            "NO",  # Keep file check (assistant1)
+            "NO",  # Keep file response (assistant2)
+            "YES",  # Remove math question (assistant3)
         ]
 
         with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
