@@ -1852,105 +1852,20 @@ class SystemHandler:
             return f"Error loading stash: {str(e)}"
 
     def add_tool(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Add a tool to the bot from a Python file or specific function.
+        """Add a tool to the bot from a Python file or module.
 
         Usage:
-            /add_tool path/to/file.py              - Add all public functions from file
-            /add_tool path/to/file.py::function    - Add specific function from file
+            /add_tool path/to/file.py
+            /add_tool path/to/file1.py path/to/file2.py
         """
-        import importlib.util
-        import inspect
-        from pathlib import Path
-
         if not args:
-            return (
-                "Usage:\n"
-                "  /add_tool path/to/file.py              - Add all public functions from file\n"
-                "  /add_tool path/to/file.py::function    - Add specific function from file"
-            )
+            return "Usage: /add_tool path/to/file.py"
 
-        added = []
-        errors = []
-
-        for arg in args:
-            arg = arg.strip()
-
-            # Parse the argument
-            if "::" in arg:
-                # Specific function syntax: file.py::function
-                file_path, func_name = arg.split("::", 1)
-            else:
-                # Whole file syntax: file.py
-                file_path = arg
-                func_name = None
-
-            # Resolve the file path
-            path = Path(file_path)
-            if not path.exists():
-                errors.append(f"File not found: {file_path}")
-                continue
-
-            if not path.suffix == ".py":
-                errors.append(f"Not a Python file: {file_path}")
-                continue
-
-            try:
-                # Load the module dynamically
-                spec = importlib.util.spec_from_file_location(path.stem, path)
-                if spec is None or spec.loader is None:
-                    errors.append(f"Could not load module: {file_path}")
-                    continue
-
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-
-                if func_name:
-                    # Add specific function
-                    if not hasattr(module, func_name):
-                        errors.append(f"Function '{func_name}' not found in {file_path}")
-                        continue
-
-                    func = getattr(module, func_name)
-                    if not callable(func):
-                        errors.append(f"'{func_name}' in {file_path} is not a function")
-                        continue
-
-                    bot.add_tools(func)
-                    added.append(f"{file_path}::{func_name}")
-                else:
-                    # Add all public functions from the file
-                    functions_added = []
-                    for name in dir(module):
-                        # Skip private functions (starting with _)
-                        if name.startswith("_"):
-                            continue
-
-                        obj = getattr(module, name)
-
-                        # Only add callable objects (functions)
-                        if callable(obj) and inspect.isfunction(obj):
-                            bot.add_tools(obj)
-                            functions_added.append(name)
-
-                    if functions_added:
-                        added.append(f"{file_path} ({', '.join(functions_added)})")
-                    else:
-                        errors.append(f"No public functions found in {file_path}")
-
-            except Exception as e:
-                errors.append(f"Error loading {file_path}: {str(e)}")
-
-        result = []
-        if added:
-            result.append("Added tools:")
-            for item in added:
-                result.append(f"  âœ“ {item}")
-        if errors:
-            result.append("Errors:")
-            for error in errors:
-                result.append(f"  âœ— {error}")
-
-        return "\n".join(result) if result else "No tools added"
+        try:
+            bot.add_tools(*args)
+            return f"Successfully added tools from: {', '.join(args)}"
+        except Exception as e:
+            return f"Error adding tools: {str(e)}"
 
     def models(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Display available models with metadata."""
