@@ -23,7 +23,7 @@ def _get_calling_bot() -> Optional[Bot]:
 
 
 @toolify()
-def get_own_info() -> str:
+def _get_own_info() -> str:
     """Get information about the bot's current state and configuration.
 
     Returns:
