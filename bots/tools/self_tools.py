@@ -392,7 +392,7 @@ def remove_context(prompt: str) -> str:
         # Create a Haiku instance for evaluation
         haiku = AnthropicBot(
             api_key=bot.api_key,
-            model_engine=Engines.CLAUDE35_HAIKU,
+            model_engine=Engines.CLAUDE45_HAIKU,
             max_tokens=1000,
             temperature=0.0,
             autosave=False,
