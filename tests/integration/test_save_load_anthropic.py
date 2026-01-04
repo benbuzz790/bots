@@ -780,10 +780,11 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         """
         import bots.tools.self_tools as self_tools
 
-        # Add self_tools to the bot
-        self.bot.add_tools(self_tools)
+        # Add _get_own_info explicitly since it's a private function
+        # (private functions are filtered out when adding modules)
+        self.bot.add_tools(self_tools._get_own_info)
         # Try to use a self_tools function that relies on _get_calling_bot()
-        _ = self.bot.respond("Please get your own info using get_own_info")
+        _ = self.bot.respond("Please get your own info using _get_own_info")
         response = self.bot.respond("Here are those tool results - can you read them back to me?")
         # The response should contain bot information, not an error
         self.assertNotIn("Error: Could not find calling bot", response)

@@ -37,7 +37,7 @@ except ImportError:
 from bots.flows import functional_prompts as fp
 from bots.flows import recombinators
 from bots.foundation.anthropic_bots import AnthropicBot
-from bots.foundation.base import Bot, ConversationNode
+from bots.foundation.base import Bot, ConversationNode, ModuleLoadError
 from bots.observability import tracing
 from bots.observability.callbacks import BotCallbacks
 
@@ -1562,7 +1562,7 @@ class SystemHandler:
             "/s [text]: Save a prompt - saves provided text or last user message if no text given",
             "/r: Show recent prompts and select one to load",
             "/d [search]: Delete a saved prompt",
-            "/add_tool [tool_name]: Add a tool to the bot (shows list if no name provided)",
+            "/add_tool <path> [...]: Add tools from one or more Python files or modules (e.g., file.py, file.py::function)",
             "/models: Display all available models with metadata",
             "/switch [model]: Switch to a different model within the same provider",
             "/config: Show or modify CLI configuration",
@@ -1852,105 +1852,128 @@ class SystemHandler:
             return f"Error loading stash: {str(e)}"
 
     def add_tool(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Add a tool to the bot from a Python file or specific function.
+        """Add a tool to the bot from a Python file or module.
 
         Usage:
-            /add_tool path/to/file.py              - Add all public functions from file
-            /add_tool path/to/file.py::function    - Add specific function from file
+            /add_tool path/to/file.py
+            /add_tool path/to/file.py::function_name
+            /add_tool path/to/file1.py path/to/file2.py
         """
-        import importlib.util
-        import inspect
-        from pathlib import Path
-
         if not args:
-            return (
-                "Usage:\n"
-                "  /add_tool path/to/file.py              - Add all public functions from file\n"
-                "  /add_tool path/to/file.py::function    - Add specific function from file"
-            )
+            return "Usage: /add_tool path/to/file.py [path/to/file.py::function_name ...]"
 
-        added = []
+        import ast
+        import importlib.util
+
+        added_tools = []
         errors = []
 
         for arg in args:
-            arg = arg.strip()
-
-            # Parse the argument
+            # Check if :: syntax is used for specific function
             if "::" in arg:
-                # Specific function syntax: file.py::function
-                file_path, func_name = arg.split("::", 1)
-            else:
-                # Whole file syntax: file.py
-                file_path = arg
-                func_name = None
+                filepath, func_name = arg.split("::", 1)
 
-            # Resolve the file path
-            path = Path(file_path)
-            if not path.exists():
-                errors.append(f"File not found: {file_path}")
-                continue
-
-            if not path.suffix == ".py":
-                errors.append(f"Not a Python file: {file_path}")
-                continue
-
-            try:
-                # Load the module dynamically
-                spec = importlib.util.spec_from_file_location(path.stem, path)
-                if spec is None or spec.loader is None:
-                    errors.append(f"Could not load module: {file_path}")
+                # Validate function name is not empty
+                if not func_name or func_name.strip() == "":
+                    errors.append(f"Function name missing: {arg}")
                     continue
 
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
+                # Validate file exists
+                if not os.path.exists(filepath):
+                    errors.append(f"File not found: {filepath}")
+                    continue
 
-                if func_name:
-                    # Add specific function
+                # Validate it's a Python file
+                if not filepath.endswith(".py"):
+                    errors.append(f"Not a Python file: {filepath}")
+                    continue
+
+                try:
+                    # Load the module
+                    spec = importlib.util.spec_from_file_location("temp_module", filepath)
+                    if spec is None or spec.loader is None:
+                        errors.append(f"Cannot load module from {filepath}")
+                        continue
+
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+
+                    # Get the specific function
                     if not hasattr(module, func_name):
-                        errors.append(f"Function '{func_name}' not found in {file_path}")
+                        errors.append(f"Function '{func_name}' not found in {filepath}")
                         continue
 
                     func = getattr(module, func_name)
                     if not callable(func):
-                        errors.append(f"'{func_name}' in {file_path} is not a function")
+                        errors.append(f"'{func_name}' in {filepath} is not callable")
                         continue
 
+                    # Add the specific function
                     bot.add_tools(func)
-                    added.append(f"{file_path}::{func_name}")
-                else:
-                    # Add all public functions from the file
-                    functions_added = []
-                    for name in dir(module):
-                        # Skip private functions (starting with _)
-                        if name.startswith("_"):
-                            continue
+                    added_tools.append(func_name)
 
-                        obj = getattr(module, name)
+                except SyntaxError as e:
+                    errors.append(f"Syntax error in {filepath}: {e}")
+                    continue
+                except (FileNotFoundError, ModuleNotFoundError, TypeError, ModuleLoadError) as e:
+                    errors.append(f"Error loading {filepath}: {e}")
+                    continue
 
-                        # Only add callable objects (functions)
-                        if callable(obj) and inspect.isfunction(obj):
-                            bot.add_tools(obj)
-                            functions_added.append(name)
+            else:
+                # Whole file - validate before passing to bot.add_tools
+                filepath = arg
 
-                    if functions_added:
-                        added.append(f"{file_path} ({', '.join(functions_added)})")
-                    else:
-                        errors.append(f"No public functions found in {file_path}")
+                # Validate file exists
+                if not os.path.exists(filepath):
+                    errors.append(f"File not found: {filepath}")
+                    continue
 
-            except Exception as e:
-                errors.append(f"Error loading {file_path}: {str(e)}")
+                # Validate it's a Python file
+                if not filepath.endswith(".py"):
+                    errors.append(f"Not a Python file: {filepath}")
+                    continue
 
-        result = []
-        if added:
-            result.append("Added tools:")
-            for item in added:
-                result.append(f"  âœ“ {item}")
+                # Check if file has any public functions
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        tree = ast.parse(f.read())
+
+                    public_funcs = [
+                        node.name
+                        for node in ast.walk(tree)
+                        if isinstance(node, ast.FunctionDef) and not node.name.startswith("_")
+                    ]
+
+                    if not public_funcs:
+                        errors.append(f"No public functions found in {filepath}")
+                        continue
+
+                except SyntaxError as e:
+                    errors.append(f"Syntax error in {filepath}: {e}")
+                    continue
+                except (FileNotFoundError, ModuleNotFoundError, TypeError, ModuleLoadError) as e:
+                    errors.append(f"Error loading {filepath}: {e}")
+                    continue
+
+                # Add all public functions from file
+                try:
+                    bot.add_tools(filepath)
+                    added_tools.extend(public_funcs)
+                except SyntaxError as e:
+                    errors.append(f"Syntax error in {filepath}: {e}")
+                    continue
+                except (FileNotFoundError, ModuleNotFoundError, TypeError, ModuleLoadError) as e:
+                    errors.append(f"Error loading {filepath}: {e}")
+                    continue
+
+        # Format response
+        result_parts = []
+        if added_tools:
+            result_parts.append(f"Added tools: {', '.join(added_tools)}")
         if errors:
-            result.append("Errors:")
-            for error in errors:
-                result.append(f"  âœ— {error}")
+            result_parts.append("Errors:\n  " + "\n  ".join(errors))
 
-        return "\n".join(result) if result else "No tools added"
+        return "\n".join(result_parts) if result_parts else "No tools added"
 
     def models(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
         """Display available models with metadata."""

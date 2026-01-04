@@ -420,13 +420,13 @@ class TestSwitchCommand:
         context = CLIContext()
         handler = SystemHandler()
 
-        # Switch to Haiku
-        result = handler.switch(bot, context, ["claude-haiku-4-5-20251015"])
+        # Switch to Haiku using the new alias
+        result = handler.switch(bot, context, ["claude-haiku-4-5"])
 
         # Should confirm the switch
         assert "Switched from" in result
         assert "claude-sonnet-4-5-20250929" in result
-        assert "claude-haiku-4-5-20251015" in result
+        assert "claude-haiku-4-5" in result
         # Bot's model should be updated
         assert bot.model_engine == Engines.CLAUDE45_HAIKU
 
