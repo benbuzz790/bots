@@ -108,7 +108,7 @@ def scan_project_for_imports() -> Tuple[List[str], List[str]]:
     package_mapping = {
         "anthropic": "anthropic",
         "openai": "openai",
-        "google": "google-generativeai",
+        "google": "google-genai",
         "pytest": "pytest",
         "black": "black",
         "isort": "isort",
