@@ -948,6 +948,55 @@ def _generate_mojibake_map():
     return mojibake_map
 
 
+def _generate_byte_mojibake_map():
+    """
+    Generate a mapping of byte-level mojibake patterns to correct UTF-8 bytes.
+
+    This handles cases where mojibake is already stored as UTF-8 in the file,
+    but represents double-encoded characters.
+
+    Returns:
+        dict: Mapping from mojibake bytes to correct UTF-8 bytes
+    """
+    byte_map = {}
+
+    # Common mojibake patterns at byte level
+    # These are UTF-8 bytes that represent mojibake when decoded as UTF-8
+    common_patterns = {
+        # Em dash — (U+2014)
+        # Correct: \xe2\x80\x94
+        # Mojibake: \xc3\xa2\xe2\x82\xac\xe2\x80\x9d (â€")
+        b"\xc3\xa2\xe2\x82\xac\xe2\x80\x9d": b"\xe2\x80\x94",
+        # En dash – (U+2013)
+        # Mojibake: \xc3\xa2\xe2\x82\xac\xe2\x80\x9c (â€")
+        b"\xc3\xa2\xe2\x82\xac\xe2\x80\x9c": b"\xe2\x80\x93",
+        # Left double quote " (U+201C)
+        # Mojibake: \xc3\xa2\xe2\x82\xac\xc5\x93 (â€œ)
+        b"\xc3\xa2\xe2\x82\xac\xc5\x93": b"\xe2\x80\x9c",
+        # Right double quote " (U+201D)
+        # Mojibake: \xc3\xa2\xe2\x82\xac\xc2\x9d (â€)
+        b"\xc3\xa2\xe2\x82\xac\xc2\x9d": b"\xe2\x80\x9d",
+        # Left single quote ' (U+2018)
+        # Mojibake: \xc3\xa2\xe2\x82\xac\xcb\x9c (â€˜)
+        b"\xc3\xa2\xe2\x82\xac\xcb\x9c": b"\xe2\x80\x98",
+        # Right single quote ' (U+2019)
+        # Mojibake: \xc3\xa2\xe2\x82\xac\xe2\x84\xa2 (â€™)
+        b"\xc3\xa2\xe2\x82\xac\xe2\x84\xa2": b"\xe2\x80\x99",
+        # Ellipsis … (U+2026)
+        # Mojibake: \xc3\xa2\xe2\x82\xac\xc2\xa6 (â€¦)
+        b"\xc3\xa2\xe2\x82\xac\xc2\xa6": b"\xe2\x80\xa6",
+        # Bullet • (U+2022)
+        # Mojibake: \xc3\xa2\xe2\x82\xac\xc2\xa2 (â€¢)
+        b"\xc3\xa2\xe2\x82\xac\xc2\xa2": b"\xe2\x80\xa2",
+        # Right arrow → (U+2192)
+        # Mojibake: \xc3\xa2\xe2\x80\x9e\xc2\x92 (â†')
+        b"\xc3\xa2\xe2\x80\x9e\xc2\x92": b"\xe2\x86\x92",
+    }
+
+    byte_map.update(common_patterns)
+    return byte_map
+
+
 def _repair_mojibake_in_text(text: str, mojibake_map: dict = None) -> tuple:
     """
     Repair mojibake characters in text.
@@ -1006,27 +1055,65 @@ def repair_mojibake(file_path: str, backup: str = "true") -> str:
         if not os.path.isfile(file_path):
             return f"Error: File not found: {file_path}"
 
-        # Read the file
+        # Read the file as bytes to detect byte-level mojibake
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                original_text = f.read()
+            with open(file_path, "rb") as f:
+                original_bytes = f.read()
+        except Exception as e:
+            return f"Error reading file: {str(e)}"
+
+        # Try to decode as UTF-8 to verify it's a text file
+        try:
+            original_bytes.decode("utf-8")
         except UnicodeDecodeError:
             return f"Error: File {file_path} is not valid UTF-8. Cannot repair mojibake."
 
-        # Generate mojibake map and repair
-        mojibake_map = _generate_mojibake_map()
-        repaired_text, replacement_count, replacements_made = _repair_mojibake_in_text(original_text, mojibake_map)
+        # Generate both text-level and byte-level mojibake maps
+        text_mojibake_map = _generate_mojibake_map()
+        byte_mojibake_map = _generate_byte_mojibake_map()
+
+        # First try byte-level repair (for double-encoded mojibake)
+        repaired_bytes = original_bytes
+        byte_replacement_count = 0
+        byte_replacements_made = {}
+
+        for mojibake_bytes, correct_bytes in sorted(byte_mojibake_map.items(), key=lambda x: len(x[0]), reverse=True):
+            if mojibake_bytes in repaired_bytes:
+                count = repaired_bytes.count(mojibake_bytes)
+                repaired_bytes = repaired_bytes.replace(mojibake_bytes, correct_bytes)
+                byte_replacement_count += count
+                # Store as strings for display
+                try:
+                    mojibake_str = mojibake_bytes.decode("utf-8", errors="replace")
+                    correct_str = correct_bytes.decode("utf-8", errors="replace")
+                    byte_replacements_made[mojibake_str] = (correct_str, count)
+                except (UnicodeDecodeError, UnicodeEncodeError):
+                    pass
+
+        # Then try text-level repair (for single-encoded mojibake)
+        repaired_text = repaired_bytes.decode("utf-8")
+        text_replacement_count = 0
+        text_replacements_made = {}
+
+        for mojibake, correct in sorted(text_mojibake_map.items(), key=lambda x: len(x[0]), reverse=True):
+            if mojibake in repaired_text:
+                count = repaired_text.count(mojibake)
+                repaired_text = repaired_text.replace(mojibake, correct)
+                text_replacement_count += count
+                text_replacements_made[mojibake] = (correct, count)
+
+        total_replacements = byte_replacement_count + text_replacement_count
 
         # Check if any repairs were made
-        if replacement_count == 0:
+        if total_replacements == 0:
             return f"No mojibake found in {file_path}"
 
         # Create backup if requested
         if backup.lower() == "true":
             backup_path = file_path + ".bak"
             try:
-                with open(backup_path, "w", encoding="utf-8") as f:
-                    f.write(original_text)
+                with open(backup_path, "wb") as f:
+                    f.write(original_bytes)
             except Exception as e:
                 return f"Error creating backup: {str(e)}"
 
@@ -1038,12 +1125,19 @@ def repair_mojibake(file_path: str, backup: str = "true") -> str:
             return f"Error writing repaired file: {str(e)}"
 
         # Build summary
-        summary = f"Repaired {replacement_count} mojibake character(s) in {file_path}\n"
+        summary = f"Repaired {total_replacements} mojibake character(s) in {file_path}\n"
         if backup.lower() == "true":
             summary += f"Backup saved to {file_path}.bak\n"
-        summary += "\nReplacements made:\n"
-        for mojibake, (correct, count) in sorted(replacements_made.items(), key=lambda x: x[1][1], reverse=True):
-            summary += f"  {repr(mojibake):20s} → {correct:5s} ({count} occurrence(s))\n"
+
+        if byte_replacements_made:
+            summary += "\nByte-level replacements made:\n"
+            for mojibake, (correct, count) in sorted(byte_replacements_made.items(), key=lambda x: x[1][1], reverse=True):
+                summary += f"  {repr(mojibake):20s} → {correct:5s} ({count} occurrence(s))\n"
+
+        if text_replacements_made:
+            summary += "\nText-level replacements made:\n"
+            for mojibake, (correct, count) in sorted(text_replacements_made.items(), key=lambda x: x[1][1], reverse=True):
+                summary += f"  {repr(mojibake):20s} → {correct:5s} ({count} occurrence(s))\n"
 
         return summary
 
