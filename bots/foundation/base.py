@@ -132,7 +132,7 @@ class Engines(str, Enum):
     # Anthropic Claude 3 Haiku Models
     CLAUDE3_HAIKU = "claude-3-haiku-20240307"
     CLAUDE35_HAIKU = "claude-3-5-haiku-latest"
-    CLAUDE45_HAIKU = "claude-haiku-4-5-20251015"
+    CLAUDE45_HAIKU = "claude-haiku-4-5"
 
     # Anthropic Claude Sonnet Models
     CLAUDE37_SONNET_20250219 = "claude-3-7-sonnet-20250219"

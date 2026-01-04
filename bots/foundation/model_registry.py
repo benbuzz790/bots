@@ -34,7 +34,7 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "cost_input": 0.80,
         "cost_output": 4.00,
     },
-    "claude-haiku-4-5-20251015": {
+    "claude-haiku-4-5": {
         "provider": "anthropic",
         "intelligence": 1,
         "max_tokens": 64000,
