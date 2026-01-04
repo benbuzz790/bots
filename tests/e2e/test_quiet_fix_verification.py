@@ -31,6 +31,11 @@ class TestQuietModeFix(unittest.TestCase):
         self.mock_bot.tool_handler.results = []
         self.context = cli_module.CLIContext()
         self.context.bot_instance = self.mock_bot
+        # Disable auto_backup and auto_stash to prevent recursion with MagicMock
+        # The backup system tries to copy the bot using `bot * 1`, which causes
+        # infinite recursion with MagicMock objects that have circular references
+        self.context.config.auto_backup = False
+        self.context.config.auto_stash = False
 
     @patch("bots.flows.functional_prompts.chain")
     def test_quiet_mode_fix_verified(self, mock_chain):

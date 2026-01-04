@@ -33,6 +33,11 @@ class TestCLILoad:
         self.mock_bot.tool_handler.requests = []
         self.mock_bot.tool_handler.results = []
         self.context = cli_module.CLIContext()
+        # IMPORTANT: Disable auto_backup to prevent recursive issues with MagicMock
+        # See tests/fixtures/mock_fixtures.py for detailed explanation
+        self.context.config.auto_backup = False
+        self.context.config.auto_stash = False
+        self.context.config.auto_restore_on_error = False
         self.context.bot_instance = self.mock_bot
         self.context.labeled_nodes = {"test": "node"}
         # Use StateHandler which contains the load function

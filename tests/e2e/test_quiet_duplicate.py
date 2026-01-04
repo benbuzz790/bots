@@ -8,9 +8,8 @@ import pytest
 
 import bots.dev.cli as cli_module
 
-# Skip entire module - causes stack overflow due to circular reference
-# ISSUE: context.bot_instance -> mock_bot -> mock_bot.callbacks -> RealTimeDisplayCallbacks(context) -> context
-pytestmark = [pytest.mark.skip(reason="Circular reference causes stack overflow - needs refactoring")]
+# Fixed: Circular reference issue resolved by disabling auto_backup in setUp
+pytestmark = pytest.mark.e2e
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -32,6 +31,9 @@ class TestQuietModeDuplicate(unittest.TestCase):
         self.context = cli_module.CLIContext()
         self.context.bot_instance = self.mock_bot
         self.context.config.verbose = False
+        # Prevent recursion with MagicMock - see tests/fixtures/mock_fixtures.py for details
+        self.context.config.auto_backup = False
+        self.context.config.auto_stash = False
 
     @patch("bots.flows.functional_prompts.chain")
     def test_quiet_mode_shows_message_once_after_fix(self, mock_chain):

@@ -197,9 +197,9 @@ class TestObservabilityIntegration(unittest.TestCase):
         expected_openai = (1000 * 0.15 / 1_000_000) + (500 * 0.60 / 1_000_000)
         self.assertAlmostEqual(openai_cost, expected_openai, places=6)
 
-        # Test Google pricing
+        # Test Google pricing (gemini-2.0-flash has 0.10 input / 0.40 output pricing)
         google_cost = calculate_cost(provider="google", model="gemini-2.0-flash", input_tokens=1000, output_tokens=500)
-        expected_google = (1000 * 0.15 / 1_000_000) + (500 * 0.60 / 1_000_000)
+        expected_google = (1000 * 0.10 / 1_000_000) + (500 * 0.40 / 1_000_000)
         self.assertAlmostEqual(google_cost, expected_google, places=6)
 
     @pytest.mark.skip(reason="Test hangs - needs investigation")

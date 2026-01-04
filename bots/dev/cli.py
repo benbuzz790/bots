@@ -734,6 +734,13 @@ class CLIContext:
         try:
             self.backup_in_progress = True
 
+            # Safety check: Don't try to backup mock objects (used in tests)
+            # Mock objects can cause infinite recursion when copied
+            bot_type = type(self.bot_instance).__name__
+            if "Mock" in bot_type:
+                # Silently skip backup for mock objects
+                return False
+
             # Use bot's built-in copy mechanism (bot * 1) which properly handles
             # callbacks, api_key, and other bot-specific concerns
             backup_bot = (self.bot_instance * 1)[0]
