@@ -74,6 +74,9 @@ def scan_project_for_imports() -> Tuple[List[str], List[str]]:
                         package = alias.name.split(".")[0]
                         imports.add(package)
                 elif isinstance(node, ast.ImportFrom):
+                    # Skip relative imports (e.g., from .dev import something)
+                    if node.level > 0:
+                        continue
                     if node.module:
                         # Get the top-level package name
                         package = node.module.split(".")[0]
