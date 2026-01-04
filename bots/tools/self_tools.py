@@ -540,20 +540,48 @@ Your response:"""
             if not grandparent:
                 continue
 
-            # Remove user_node from grandparent's replies
-            if user_node in grandparent.replies:
-                grandparent.replies.remove(user_node)
+            # Check if user_node has tool_results - if so, we need special handling
+            if user_node.tool_results:
+                # This user node contains tool_results that correspond to grandparent's tool_calls
+                # We cannot simply remove it, as that would break the tool_call -> tool_result chain
+                # Instead, we keep the user_node but move msg_node's children to it
 
-            # If bot message has children, reconnect them to grandparent
-            for child in msg_node.replies:
-                child.parent = grandparent
-                grandparent.replies.append(child)
+                # Move all children from msg_node to user_node
+                for child in list(msg_node.replies):
+                    child.parent = user_node
+                    user_node.replies.append(child)
 
-            removed_count += 1
+                # Clear msg_node's replies
+                msg_node.replies.clear()
 
-            # Update bot.conversation if we removed the current node
-            if bot.conversation == msg_node or bot.conversation == user_node:
-                bot.conversation = grandparent
+                # Remove msg_node from user_node's replies
+                if msg_node in user_node.replies:
+                    user_node.replies.remove(msg_node)
+
+                # Update bot.conversation if we removed the current node
+                if bot.conversation == msg_node:
+                    bot.conversation = user_node
+
+                removed_count += 1
+            else:
+                # Normal removal: user_node has no tool_results
+                # Move children from msg_node to grandparent (following branch_self pattern)
+                for child in list(msg_node.replies):
+                    child.parent = grandparent
+                    grandparent.replies.append(child)
+
+                # Clear msg_node's replies to avoid dangling references
+                msg_node.replies.clear()
+
+                # Remove user_node from grandparent's replies
+                if user_node in grandparent.replies:
+                    grandparent.replies.remove(user_node)
+
+                removed_count += 1
+
+                # Update bot.conversation if we removed the current node
+                if bot.conversation == msg_node or bot.conversation == user_node:
+                    bot.conversation = grandparent
 
         # Build result message
         result_parts = [f"Removed {removed_count} message pair(s) matching condition: '{prompt}'"]
