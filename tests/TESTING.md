@@ -8,11 +8,11 @@ Our test suite is organized into three categories following pytest best practice
 
 ```
 tests/
-├── unit/           # Fast, isolated tests with mocks
-├── integration/    # Tests with real APIs, file I/O, tool execution
-├── e2e/           # End-to-end workflow tests
-├── fixtures/      # Shared test fixtures
-└── helpers/       # Test utilities and helpers
+â”œâ”€â”€ unit/           # Fast, isolated tests with mocks
+â”œâ”€â”€ integration/    # Tests with real APIs, file I/O, tool execution
+â”œâ”€â”€ e2e/           # End-to-end workflow tests
+â”œâ”€â”€ fixtures/      # Shared test fixtures
+â””â”€â”€ helpers/       # Test utilities and helpers
 ```
 
 ### Test Categories
@@ -78,6 +78,33 @@ pytest -n auto
 # Run with coverage
 pytest --cov=bots --cov-report=term-missing
 ```
+
+
+### Smart Test Selection with pytest-testmon
+
+pytest-testmon tracks which source files each test depends on and only runs tests affected by your changes:
+
+```bash
+# First run: builds dependency map (runs full suite)
+pytest --testmon
+
+# Subsequent runs: only runs tests affected by changed files
+pytest --testmon
+
+# Force full run (rebuild dependency map)
+pytest --testmon --testmon-forceselect
+
+# Combine with other options
+pytest --testmon -v tests/unit/
+```
+
+**How it works:**
+- Stores dependency data in `.testmondata` (gitignored)
+- Automatically detects which tests depend on which source files
+- Skips tests whose dependencies haven't changed
+- Great for local development; CI still runs full suite
+
+**Note:** The first run after installing testmon will run all tests to build the dependency map.
 
 ### Test Markers
 
@@ -232,6 +259,31 @@ open htmlcov/index.html
 - Minimum coverage: 80%
 - New code should have 90%+ coverage
 - Critical paths should have 100% coverage
+
+
+## Special Test Cases
+
+### Installation Tests
+
+The `test_install_in_fresh_environment.py` tests verify that package dependencies are correctly specified:
+
+- **Auto-skip in parallel mode**: These tests automatically skip when running with `pytest` (parallel mode)
+- **Run explicitly with**: `pytest tests/test_install_in_fresh_environment.py -n0 -v`
+- **Why serial only**: They create virtual environments and install packages, which causes worker crashes in parallel mode
+- **CI handling**: PR checks run them separately with `-n0`; main CI runs them automatically (uses `-n 0` by default)
+
+See `tests/README_INSTALL_TESTS.md` for more details.
+
+### Tests with Input Patching
+
+Some tests use `@patch("builtins.input")` to mock user input:
+- `tests/unit/test_fp_handler.py`
+- `tests/unit/test_prompt_handler.py`
+- `tests/unit/test_cli_frontend.py`
+- `tests/unit/test_cli/test_fp_wizard_complete.py`
+- `tests/unit/test_cli/test_save_auto_commands.py`
+
+These tests automatically skip when running with xdist (parallel mode) because input patching is incompatible with worker processes.
 
 ## CI/CD Integration
 

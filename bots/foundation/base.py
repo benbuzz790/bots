@@ -109,23 +109,56 @@ def load(filepath: str) -> "Bot":
 class Engines(str, Enum):
     """Enum class representing different AI model engines."""
 
+    # OpenAI GPT-3.5 Models
+    GPT35TURBO = "gpt-3.5-turbo"
+    GPT35TURBO_16K = "gpt-3.5-turbo-16k"
+    GPT35TURBO_0125 = "gpt-3.5-turbo-0125"
+    GPT35TURBO_INSTRUCT = "gpt-3.5-turbo-instruct"
+
+    # OpenAI GPT-4 Models
     GPT4 = "gpt-4"
     GPT41 = "gpt-4.1"
     GPT4_0613 = "gpt-4-0613"
     GPT4_32K = "gpt-4-32k"
     GPT4_32K_0613 = "gpt-4-32k-0613"
-    GPT35TURBO = "gpt-3.5-turbo"
-    GPT35TURBO_16K = "gpt-3.5-turbo-16k"
-    GPT35TURBO_0125 = "gpt-3.5-turbo-0125"
-    GPT35TURBO_INSTRUCT = "gpt-3.5-turbo-instruct"
+    GPT4O = "gpt-4o"
+    GPT4O_MINI = "gpt-4o-mini"
+
+    # OpenAI GPT-5.2 Models (Released Dec 11, 2025)
+    GPT52_INSTANT = "gpt-5.2-instant"
+    GPT52_THINKING = "gpt-5.2-thinking"
+    GPT52_PRO = "gpt-5.2-pro"
+
+    # Anthropic Claude 3 Haiku Models
     CLAUDE3_HAIKU = "claude-3-haiku-20240307"
     CLAUDE35_HAIKU = "claude-3-5-haiku-latest"
-    CLAUDE37_SONNET_20250219 = "claude-3-7-sonnet-latest"
-    CLAUDE4_OPUS = "claude-opus-4-20250514"
-    CLAUDE41_OPUS = "claude-opus-4-1"
+    CLAUDE45_HAIKU = "claude-haiku-4-5-20251015"
+
+    # Anthropic Claude Sonnet Models
+    CLAUDE37_SONNET_20250219 = "claude-3-7-sonnet-20250219"
     CLAUDE4_SONNET = "claude-sonnet-4-20250514"
     CLAUDE45_SONNET = "claude-sonnet-4-5-20250929"
+
+    # Anthropic Claude Opus Models
+    CLAUDE4_OPUS = "claude-opus-4-20250514"
+    CLAUDE41_OPUS = "claude-opus-4-1-20250805"
+    CLAUDE45_OPUS = "claude-opus-4-5-20251101"
+
+    # Google Gemini 1.5 Models
+    GEMINI15_PRO = "gemini-1.5-pro"
+    GEMINI15_FLASH = "gemini-1.5-flash"
+
+    # Google Gemini 2.0 Models
+    GEMINI20_FLASH = "gemini-2.0-flash"
+
+    # Google Gemini 2.5 Models
     GEMINI25_FLASH = "gemini-2.5-flash"
+    GEMINI25_FLASH_LITE = "gemini-2.5-flash-lite"
+    GEMINI25_PRO = "gemini-2.5-pro"
+
+    # Google Gemini 3 Models (Released Nov-Dec 2025)
+    GEMINI3_FLASH = "gemini-3-flash-preview"
+    GEMINI3_PRO = "gemini-3-pro-preview"
 
     @staticmethod
     def get(name: str) -> Optional["Engines"]:
@@ -220,6 +253,31 @@ class Engines(str, Enum):
         if node_class is None:
             raise ValueError(f"Unsupported conversation node type: {class_name}")
         return node_class
+
+    def get_info(self) -> dict:
+        """Get basic information about this model.
+
+        Returns:
+            dict: Model information including provider, intelligence rating (1-3 stars),
+                  max output tokens, and costs per million tokens.
+
+        Example:
+            ```python
+            info = Engines.CLAUDE45_SONNET.get_info()
+            print(f"Intelligence: {'⭐' * info['intelligence']}")
+            print(f"Max tokens: {info['max_tokens']}")
+            print(f"Cost: ${info['cost_input']:.2f}/${info['cost_output']:.2f} per 1M tokens")
+            ```
+        """
+        from bots.foundation.model_registry import get_model_info
+
+        return get_model_info(self.value) or {
+            "provider": "unknown",
+            "intelligence": 2,
+            "max_tokens": 4096,
+            "cost_input": 0.0,
+            "cost_output": 0.0,
+        }
 
 
 class ConversationNode:
@@ -634,8 +692,6 @@ class ToolHandlerError(Exception):
     specific error handling for tool operations.
     """
 
-    pass
-
 
 class ToolNotFoundError(ToolHandlerError):
     """Raised when a requested tool is not available.
@@ -644,8 +700,6 @@ class ToolNotFoundError(ToolHandlerError):
     with the ToolHandler.
     """
 
-    pass
-
 
 class ModuleLoadError(ToolHandlerError):
     """Raised when a module cannot be loaded for tool extraction.
@@ -653,8 +707,6 @@ class ModuleLoadError(ToolHandlerError):
     Use when there are issues loading a module's source code,
     executing it in a new namespace, or extracting its tools.
     """
-
-    pass
 
 
 class ToolHandler(ABC):
@@ -2259,7 +2311,6 @@ class ToolHandler(ABC):
                     module_dict[k] = imported_module
                 except ImportError as e:
                     print(f"Warning: Could not import module {module_name}: {e}")
-                    pass
             elif isinstance(v, dict) and v.get("__original_func__"):
                 # Reconstruct _original_func from pickled data with hash verification
                 try:

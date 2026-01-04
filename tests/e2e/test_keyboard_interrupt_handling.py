@@ -1,3 +1,4 @@
+import os
 import unittest
 from io import StringIO
 from unittest.mock import patch
@@ -9,10 +10,15 @@ from bots.dev.decorators import toolify
 pytestmark = pytest.mark.e2e
 
 
+@pytest.fixture(autouse=True, scope="module")
+def skip_if_xdist():
+    """Skip this test when running with xdist (parallel mode)."""
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.skip("Patching tests must run serially with -n0 (skipped in parallel mode)", allow_module_level=True)
+
+
 class ToolExecutionError(Exception):
     """Custom exception for tool execution failures."""
-
-    pass
 
 
 class TestKeyboardInterruptHandling(unittest.TestCase):

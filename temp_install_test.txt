@@ -1,0 +1,50 @@
+"""Test installation in a fresh virtual environment.
+This test ensures that requirements.txt and requirements-dev.txt contain
+all necessary dependencies for the bots framework to function properly.
+The test creates a fresh virtual environment, installs dependencies,
+and verifies that:
+1. All core dependencies are installed correctly
+2. The package can be imported without errors
+3. Basic functionality works (creating bots, using tools)
+4. Development dependencies are present when installed
+Usage:
+    pytest tests/test_install_in_fresh_environment.py
+    pytest tests/test_install_in_fresh_environment.py -v
+    pytest tests/test_install_in_fresh_environment.py::test_core_requirements
+"""
+
+import platform
+import subprocess
+import sys
+from pathlib import Path
+from typing import List, Tuple
+
+import pytest
+
+pytestmark = pytest.mark.serial
+
+
+def scan_project_for_imports() -> Tuple[List[str], List[str]]:
+    """Scan project Python files to extract third-party package dependencies.
+
+    This function analyzes all Python files in the project to determine which
+    third-party packages are actually imported and used. It filters out:
+    - Standard library modules
+    - Local packages (bots and its subpackages)
+    - Build-only packages (setuptools, wheel, pip)
+
+    Returns:
+        Tuple of (core_packages, dev_packages) where:
+        - core_packages: packages imported in non-test code
+        - dev_packages: packages imported only in test code
+    """
+    import ast
+    from pathlib import Path
+    from typing import Dict, Set
+
+    def get_imports_from_file(file_path: Path) -> Set[str]:
+        """Extract all top-level import names from a Python file."""
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            tree = ast.parse(content)
+            imports = set()

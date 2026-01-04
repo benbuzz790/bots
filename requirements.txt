@@ -1,17 +1,19 @@
-anthropic
-openai
-fastapi
-pytest==7.3.1
-dill
-pytest-timeout
-typing_extensions==4.12.2
-pytest-xdist
-pytest-rerunfailures
-psutil
-libcst
-# Google AI SDK for Gemini support (optional)
-google-genai
-# Additional test dependencies
-pytest-mock
-pytest-asyncio
-numpy
+# Core dependencies for bots framework
+# These are required for basic functionality
+# LLM Provider SDKs
+anthropic>=0.18.0
+openai>=1.0.0
+google-genai>=0.2.0
+# Type hints compatibility
+typing_extensions>=4.12.0
+# Code parsing and manipulation
+libcst>=1.0.0
+# Serialization for bot state management
+dill>=0.3.0
+# System utilities
+psutil>=5.9.0
+# Audio/sound generation (for piano tool)
+numpy>=1.24.0
+# OpenTelemetry for observability
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0

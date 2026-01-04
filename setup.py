@@ -6,8 +6,8 @@ metadata, dependencies, and installation requirements.
 
 Features:
     - Automatic package discovery
-    - Core dependencies (anthropic, openai)
-    - Development extras (pytest)
+    - Core dependencies (anthropic, openai, google-genai)
+    - Development extras (pytest, black, etc.)
     - Python version compatibility check
 
 Example:
@@ -49,20 +49,20 @@ long_description: str = _read_long_description()
 
 # Core package dependencies required for basic functionality
 INSTALL_REQUIRES: List[str] = [
-    # Required for Claude LLM integration
-    "anthropic",
-    # Required for GPT LLM integration
-    "openai",
-    # Required for Python 3.6+ type hint compatibility
-    "typing_extensions",
-]
-INSTALL_REQUIRES: List[str] = [
-    # Required for Claude LLM integration
-    "anthropic",
-    # Required for GPT LLM integration
-    "openai",
-    # Required for Python 3.6+ type hint compatibility
-    "typing_extensions",
+    # LLM Provider SDKs
+    "anthropic>=0.18.0",
+    "openai>=1.0.0",
+    "google-genai>=0.2.0",
+    # Type hints compatibility
+    "typing_extensions>=4.12.0",
+    # Code parsing and manipulation
+    "libcst>=1.0.0",
+    # Serialization for bot state management
+    "dill>=0.3.0",
+    # System utilities
+    "psutil>=5.9.0",
+    # Audio/sound generation (for piano tool)
+    "numpy>=1.24.0",
     # OpenTelemetry core packages for observability
     "opentelemetry-api>=1.20.0",
     "opentelemetry-sdk>=1.20.0",
@@ -70,12 +70,30 @@ INSTALL_REQUIRES: List[str] = [
 
 # Optional development dependencies for testing and development
 EXTRAS_REQUIRE: Dict[str, List[str]] = {
-    # Testing framework for running the test suite
-    "dev": ["pytest"],
-}
-EXTRAS_REQUIRE: Dict[str, List[str]] = {
-    # Testing framework for running the test suite
-    "dev": ["pytest"],
+    "dev": [
+        # Testing framework and plugins
+        "pytest>=7.4.0",
+        "pytest-asyncio>=0.21.0",
+        "pytest-cov>=4.1.0",
+        "pytest-timeout>=2.4.0",
+        "pytest-xdist>=3.7.0",
+        "pytest-forked>=1.6.0",
+        "pytest-mock>=3.15.0",
+        "pytest-rerunfailures>=12.0",
+        # Code formatting
+        "black>=24.0.0",
+        "isort>=5.13.0",
+        # Linting
+        "flake8>=7.0.0",
+        "mypy>=1.13.0",
+        # Security scanning
+        "bandit>=1.8.0",
+        # Documentation
+        "sphinx>=7.2.0",
+        "sphinx-rtd-theme>=2.0.0",
+        # Pre-commit hooks
+        "pre-commit>=3.5.0",
+    ],
     # Optional exporters for production observability
     "observability": [
         "opentelemetry-exporter-otlp>=1.20.0",

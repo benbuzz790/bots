@@ -2,7 +2,7 @@ import os
 import shutil
 import tempfile
 
-from bots.tools.python_edit import python_edit  # noqa: E402
+from bots.tools.python_edit import python_edit
 
 # Create a temporary directory for test files
 temp_dir = tempfile.mkdtemp()
@@ -58,8 +58,8 @@ try:
     print("File content after class replacement:")
     print(content)
     print("=" * 50)
-    # Test 4: Test insert_after functionality
-    print("\n=== Test 4: Test insert_after ===")
+    # Test 4: Test coscope_with functionality
+    print("\n=== Test 4: Test coscope_with ===")
     # First, let's create a fresh test file
     test_content = """class TestInsert:
     def method1(self):
@@ -75,13 +75,13 @@ try:
         target_scope="test_insert.py::TestInsert",
         code='''def method2(self):
     return "method2 inserted"''',
-        insert_after="method1",
+        coscope_with="method1",
     )
     print("Result:", result)
     # Check what happened
     with open("test_insert.py", "r") as f:
         content = f.read()
-    print("File content after insert_after:")
+    print("File content after coscope_with:")
     print(content)
     print("=" * 50)
     # Test 5: Test function-level operations

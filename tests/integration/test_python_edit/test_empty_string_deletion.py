@@ -222,8 +222,8 @@ def test_empty_string_deletes_helper_func(tmp_path):
     assert "helper2" in content
 
 
-def test_empty_string_with_insert_after_fails(tmp_path):
-    """Test that empty string with insert_after raises an error"""
+def test_empty_string_with_coscope_with_fails(tmp_path):
+    """Test that empty string with coscope_with raises an error"""
     content = """
     def hello():
         print("Hello!")
@@ -233,9 +233,9 @@ def test_empty_string_with_insert_after_fails(tmp_path):
     """
     test_file = setup_test_file(tmp_path, content)
 
-    # Try to use empty string with insert_after - should fail
-    result = python_edit(test_file, "", insert_after="hello")
-    assert "cannot use empty code with insert_after" in result.lower() or "tool failed" in result.lower()
+    # Try to use empty string with coscope_with - should fail
+    result = python_edit(test_file, "", coscope_with="hello")
+    assert "cannot use empty code with coscope_with" in result.lower() or "tool failed" in result.lower()
 
     # File should be unchanged
     with open(test_file, "r") as f:
@@ -362,7 +362,7 @@ if __name__ == "__main__":
         print("✓ Class deletion works")
         test_empty_string_deletes_method(tmp_dir)
         print("✓ Method deletion works")
-        test_empty_string_with_insert_after_fails(tmp_dir)
+        test_empty_string_with_coscope_with_fails(tmp_dir)
         print("✓ Insert after with empty string fails correctly")
         test_empty_string_nonexistent_scope_fails(tmp_dir)
         print("✓ Nonexistent scope deletion fails correctly")

@@ -18,8 +18,8 @@ pytestmark = pytest.mark.integration
 
 def test_comprehensive_failure_cases():
     """Test all the major failure cases discovered during testing"""
-    # Test 1: File-level insert_after bug
-    print("=== Testing file-level insert_after bug ===")
+    # Test 1: File-level coscope_with bug
+    print("=== Testing file-level coscope_with bug ===")
     content1 = """
         def func_a():
             return "a"
@@ -28,16 +28,16 @@ def test_comprehensive_failure_cases():
     """
     test_file1 = setup_test_file(content1)
     try:
-        result = python_edit(test_file1, 'def func_new():\n    return "new"', insert_after="func_a")
+        result = python_edit(test_file1, 'def func_new():\n    return "new"', coscope_with="func_a")
         with open(test_file1, "r") as f:
             final_content = f.read()
         print(f"Result: {result}")
         print(f"Content: {final_content}")
         # This will likely fail - file gets replaced instead of inserting
         if "func_a" not in final_content or "func_b" not in final_content:
-            print("BUG: File-level insert_after replaced entire file!")
+            print("BUG: File-level coscope_with replaced entire file!")
         else:
-            print("File-level insert_after working correctly")
+            print("File-level coscope_with working correctly")
     finally:
         if os.path.exists(test_file1):
             os.unlink(test_file1)

@@ -136,13 +136,14 @@ def web_search(question: str) -> str:
             result.append(f'Search: "{question}"\n')
 
             if hasattr(response, "content") and response.content:
-                text_responses = []
+                text_parts = []
                 search_results = []
 
                 for block in response.content:
-                    # Extract Claude's text responses
+                    # Extract Claude's text responses - join them directly as they are
+                    # fragments that form a coherent response
                     if hasattr(block, "type") and block.type == "text" and hasattr(block, "text") and block.text:
-                        text_responses.append(block.text)
+                        text_parts.append(block.text)
 
                     # Extract web search results
                     elif hasattr(block, "type") and block.type == "web_search_tool_result":
@@ -157,16 +158,17 @@ def web_search(question: str) -> str:
                                         }
                                     )
 
-                # Add Claude's responses
-                if text_responses:
-                    result.append("=== CLAUDE'S ANALYSIS ===\n")
-                    for i, text in enumerate(text_responses, 1):
-                        result.append(f"{i}. {text}\n")
+                # Add Claude's response - join all text parts directly (they form one response)
+                if text_parts:
+                    result.append("=== ANSWER ===\n")
+                    # Join directly - the text blocks are fragments of a single coherent response
+                    combined_text = "".join(text_parts)
+                    result.append(combined_text)
                     result.append("")
 
                 # Add search results
                 if search_results:
-                    result.append("=== SOURCES FOUND ===\n")
+                    result.append("\n=== SOURCES ===\n")
                     for i, item in enumerate(search_results, 1):
                         result.append(f"{i}. {item['title']}")
                         result.append(f"   {item['url']}")
