@@ -54,8 +54,8 @@ def scan_project_for_imports() -> Tuple[List[str], List[str]]:
     # Standard library modules (Python 3.12)
     stdlib_modules = set(sys.stdlib_module_names)
 
-    # Local modules (our own packages)
-    local_modules = {"bots", "tests", "conftest"}
+    # Local modules (our own packages and subpackages)
+    local_modules = {"bots", "tests", "conftest", "tools"}
 
     core_packages = set()
     dev_packages = set()
