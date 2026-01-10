@@ -365,16 +365,36 @@ def _replace_section(lines: List[str], heading: HeadingNode, new_content: str) -
 
     # Check if there are any child headings (headings with level > current heading level)
     # that appear before the next same-or-higher level heading
+    # Track fence state to ignore heading-like lines inside code blocks
+    in_fence = False
+    fence_marker = None
+
     for i in range(heading.start_line + 1, heading.end_line + 1):
         if i < len(lines):
-            # Check if this line is a heading
-            match = re.match(r"^(#{1,6})\s+(.+)$", lines[i])
-            if match:
-                child_level = len(match.group(1))
-                # If we found a child heading (deeper level), stop before it
-                if child_level > heading.level:
-                    content_end_line = i - 1
-                    break
+            line = lines[i]
+
+            # Check for fence markers
+            fence_match = re.match(r"^(`{3,}|~{3,})", line)
+            if fence_match:
+                marker = fence_match.group(1)[0]  # '`' or '~'
+                if not in_fence:
+                    in_fence = True
+                    fence_marker = marker
+                elif marker == fence_marker:
+                    in_fence = False
+                    fence_marker = None
+                continue
+
+            # Only check for headings if we're not inside a fence
+            if not in_fence:
+                # Check if this line is a heading
+                match = re.match(r"^(#{1,6})\s+(.+)$", line)
+                if match:
+                    child_level = len(match.group(1))
+                    # If we found a child heading (deeper level), stop before it
+                    if child_level > heading.level:
+                        content_end_line = i - 1
+                        break
 
     # Replace the section: keep lines before, add new content, keep child headings and after
     result = lines[: heading.start_line] + new_lines + lines[content_end_line + 1 :]
@@ -531,7 +551,7 @@ def markdown_view(target_scope: str, max_lines: str = "500") -> str:
             lines = content.splitlines()
             if max_lines_int > 0 and len(lines) > max_lines_int:
                 truncated = lines[:max_lines_int]
-                truncated.append(f"\n... ({len(lines) - max_lines_int} more lines) ...")
+                truncated.append(f"... ({len(lines) - max_lines_int} more lines) ...")
                 return "\n".join(truncated)
             return content
 
@@ -561,7 +581,7 @@ def markdown_view(target_scope: str, max_lines: str = "500") -> str:
             section_lines = section_content.splitlines()
             if len(section_lines) > max_lines_int:
                 truncated = section_lines[:max_lines_int]
-                truncated.append(f"\n... ({len(section_lines) - max_lines_int} more lines) ...")
+                truncated.append(f"... ({len(section_lines) - max_lines_int} more lines) ...")
                 return "\n".join(truncated)
 
         return section_content
@@ -643,18 +663,16 @@ def markdown_edit(target_scope: str, content: str, *, coscope_with: str | None =
             if coscope_with:
                 return _process_error(ValueError("Cannot use empty content with coscope_with - nothing to insert"))
 
-            # Safety check for large deletions
-            lines_to_delete = _count_lines_to_be_deleted(original_content, "")
-            if lines_to_delete > 100 and not delete_a_lot:
-                return _process_error(
-                    ValueError(
-                        f"Safety check: this operation would delete {lines_to_delete} lines. "
-                        + "If intentional, set delete_a_lot=True."
-                    )
-                )
-
             if not path_elements:
-                # Delete entire file
+                # Delete entire file - check safety threshold
+                lines_to_delete = _count_lines_to_be_deleted(original_content, "")
+                if lines_to_delete > 100 and not delete_a_lot:
+                    return _process_error(
+                        ValueError(
+                            f"Safety check: this operation would delete {lines_to_delete} lines. "
+                            + "If intentional, set delete_a_lot=True."
+                        )
+                    )
                 _write_file_bom_safe(abs_path, "")
                 return f"File '{abs_path}' cleared (deleted all content)."
             else:
@@ -677,7 +695,19 @@ def markdown_edit(target_scope: str, content: str, *, coscope_with: str | None =
                     return _process_error(ValueError(f"Target scope not found: {target_scope}"))
 
                 modified_lines = _delete_section(lines, target_heading)
-                _write_file_bom_safe(abs_path, _join_lines_preserve_trailing_newline(modified_lines, original_content))
+
+                # Check safety threshold for scoped deletion
+                modified_content = _join_lines_preserve_trailing_newline(modified_lines, original_content)
+                lines_to_delete = _count_lines_to_be_deleted(original_content, modified_content)
+                if lines_to_delete > 100 and not delete_a_lot:
+                    return _process_error(
+                        ValueError(
+                            f"Safety check: this operation would delete {lines_to_delete} lines from '{target_scope}'. "
+                            + "If intentional, set delete_a_lot=True."
+                        )
+                    )
+
+                _write_file_bom_safe(abs_path, modified_content)
                 return f"Deleted scope '{target_scope}' from '{abs_path}'."
 
         # Handle empty file with content
