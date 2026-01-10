@@ -60,13 +60,9 @@ def test_remove_context_with_natural_language():
         mock_haiku = MagicMock()
         MockBot.return_value = mock_haiku
 
-        # First call validates the prompt
-        # Subsequent calls evaluate each message
-        mock_haiku.respond.side_effect = [
-            "VALID",  # Validation response
-            "YES",  # First message pair (about files)
-            "NO",  # Second message pair (about math)
-        ]
+        # New implementation expects a single JSON array response with indices to remove
+        # assistant1 is at index 0 (file operations), assistant2 is at index 1 (math)
+        mock_haiku.respond.return_value = "[0]"  # Remove index 0 (file operations)
 
         # Patch _get_calling_bot to return our test bot
         with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
@@ -78,21 +74,27 @@ def test_remove_context_with_natural_language():
 
 
 def test_remove_context_invalid_prompt():
-    """Test that remove_context rejects vague prompts."""
+    """Test that remove_context handles vague prompts gracefully."""
     bot = AnthropicBot(api_key="test-key", autosave=False, enable_tracing=False)
+
+    # Build a conversation tree
+    root = bot.conversation
+    user1 = root._add_reply(role="user", content="Can you help me with file operations?")
+    assistant1 = user1._add_reply(role="assistant", content="Sure, I can help with files.")
+    bot.conversation = assistant1
 
     with patch("bots.foundation.anthropic_bots.AnthropicBot") as MockBot:
         mock_haiku = MagicMock()
         MockBot.return_value = mock_haiku
 
-        # Haiku rejects the vague prompt
-        mock_haiku.respond.return_value = "ERROR: The prompt is too vague. Please specify what to remove."
+        # Haiku returns empty array for vague prompt (doesn't match anything)
+        mock_haiku.respond.return_value = "[]"
 
         with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
             result = remove_context("remove some stuff")
 
-        assert "ERROR:" in result
-        assert "vague" in result.lower()
+        # Should report no matches for vague prompt
+        assert "No messages matched" in result
 
 
 def test_remove_context_preserves_tool_results():
