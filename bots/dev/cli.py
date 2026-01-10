@@ -2769,6 +2769,7 @@ class CLI:
         # bot.add_tools(bots.tools.terminal_tools, bots.tools.python_edit, bots.tools.code_tools, bots.tools.self_tools)
         from bots.tools.beep import piano
         from bots.tools.code_tools import view, view_dir
+        from bots.tools.markdown_edit import markdown_edit, markdown_view
         from bots.tools.python_edit import python_edit, python_view
         from bots.tools.python_execution_tool import execute_python
         from bots.tools.self_tools import branch_self, remove_context
@@ -2780,12 +2781,14 @@ class CLI:
             view,
             view_dir,
             python_view,
+            markdown_view,
             execute_powershell,
             execute_python,
             branch_self,
             remove_context,
             web_search,
             python_edit,
+            markdown_edit,
             piano,
             repair_mojibake,
         ]
@@ -2801,15 +2804,15 @@ class CLI:
 
         sys_msg = textwrap.dedent(
             """
-        You're a coding agent. Please follow these rules:
-            1. Keep edits and even writing new files to small chunks. You have a low max_token limit
-                and will hit tool errors if you try making too big of a change.
-            2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
-                Instead, use full relative paths.
-            3. Ex uno plura! You have a powerful tool called branch_self which you should use for
-                multitasking or even just to save context in your main branch. Always use a concrete
-                definition of done when branching.
-        """
+    You're a coding agent. Please follow these rules:
+        1. Keep edits and even writing new files to small chunks. You have a low max_token limit
+            and will hit tool errors if you try making too big of a change.
+        2. Avoid using cd. Your terminal is stateful and will remember if you use cd.
+            Instead, use full relative paths.
+        3. Ex uno plura! You have a powerful tool called branch_self which you should use for
+            multitasking or even just to save context in your main branch. Always use a concrete
+            definition of done when branching.
+    """
         ).strip()
         bot.system_message = sys_msg
 
