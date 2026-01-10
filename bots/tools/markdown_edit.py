@@ -4,21 +4,28 @@ from typing import List, Optional, Tuple
 
 from bots.dev.decorators import toolify
 from bots.utils.helpers import _process_error
-from bots.utils.unicode_utils import clean_unicode_string
+
+
+def _remove_bom(content: str) -> str:
+    """Remove UTF-8 BOM if present, otherwise return string unchanged."""
+    if content.startswith("\ufeff"):
+        return content[1:]
+    return content
 
 
 def _read_file_bom_safe(file_path: str) -> str:
     """Read a file with BOM protection."""
     with open(file_path, "r", encoding="utf-8") as file:
         content = file.read()
-    return clean_unicode_string(content)
+    return _remove_bom(content)
 
 
 def _write_file_bom_safe(file_path: str, content: str) -> None:
     """Write a file with BOM protection."""
-    # Check if original content ended with newline before cleaning
+    # Remove BOM if present
+    clean_content = _remove_bom(content)
+    # Check if original content ended with newline
     ends_with_newline = content.endswith("\n")
-    clean_content = clean_unicode_string(content)
     # Restore newline if it was there originally
     if ends_with_newline and not clean_content.endswith("\n"):
         clean_content += "\n"
@@ -107,8 +114,27 @@ def _parse_markdown_structure(content: str) -> List[HeadingNode]:
     """
     lines = content.splitlines()
     headings = []
+    in_fence = False
+    fence_marker = ""
 
     for i, line in enumerate(lines):
+        # Check for fenced code block markers
+        fence_match = re.match(r"^(`{3,}|~{3,})", line)
+        if fence_match:
+            if not in_fence:
+                # Starting a fence
+                in_fence = True
+                fence_marker = fence_match.group(1)[0]  # '`' or '~'
+            elif line.startswith(fence_marker * 3):
+                # Ending a fence (must match the opening marker type)
+                in_fence = False
+                fence_marker = ""
+            continue
+
+        # Skip heading detection if we're inside a fence
+        if in_fence:
+            continue
+
         # Match ATX-style headings (# Heading)
         match = re.match(r"^(#{1,6})\s+(.+)$", line)
         if match:
@@ -496,6 +522,7 @@ def markdown_view(target_scope: str, max_lines: str = "500") -> str:
         return _process_error(e)
 
 
+@toolify()
 def markdown_edit(target_scope: str, content: str, *, coscope_with: str | None = None, delete_a_lot: bool = False) -> str:
     """
     Edit markdown files using file::heading::subheading scope syntax.
