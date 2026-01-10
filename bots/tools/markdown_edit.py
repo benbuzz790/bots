@@ -33,6 +33,50 @@ def _write_file_bom_safe(file_path: str, content: str) -> None:
         file.write(clean_content)
 
 
+def _join_lines_preserve_trailing_newline(lines: List[str], original_content: str) -> str:
+    """
+    Join lines with newlines, preserving the original file's trailing newline.
+
+    Parameters:
+    -----------
+    lines : List[str]
+        Lines to join
+    original_content : str
+        Original file content to check for trailing newline
+
+    Returns:
+    --------
+    str
+        Joined content with trailing newline preserved if original had one
+    """
+    joined = "\n".join(lines)
+    if original_content.endswith("\n") and not joined.endswith("\n"):
+        joined += "\n"
+    return joined
+
+
+def _re_resolve_heading(lines: List[str], path_elements: List[str]) -> Optional["HeadingNode"]:
+    """
+    Re-resolve a heading after lines have been modified.
+
+    Parameters:
+    -----------
+    lines : List[str]
+        Modified lines to parse
+    path_elements : List[str]
+        Path elements to find the heading
+
+    Returns:
+    --------
+    Optional[HeadingNode]
+        The re-resolved heading node, or None if not found
+    """
+    content = "\n".join(lines)
+    headings = _parse_markdown_structure(content)
+    target_heading, _ = _find_heading_by_path(headings, path_elements)
+    return target_heading
+
+
 def _make_file(file_path: str) -> str:
     """
     Create a file and its parent directories if they don't exist.
@@ -183,11 +227,10 @@ def _find_heading_by_path(headings: List[HeadingNode], path_elements: List[str])
     if not path_elements:
         return None, []
 
-    # Clear children lists to prevent duplicates from multiple calls
-    for heading in headings:
-        heading.children = []
+    # Build a separate children map instead of mutating heading objects
+    children_map = {heading: [] for heading in headings}
 
-    # Build a hierarchy
+    # Build a hierarchy using the children map
     root_headings = []
     stack = []
 
@@ -198,11 +241,16 @@ def _find_heading_by_path(headings: List[HeadingNode], path_elements: List[str])
 
         # Add as child to parent, or as root
         if stack:
-            stack[-1].children.append(heading)
+            children_map[stack[-1]].append(heading)
         else:
             root_headings.append(heading)
 
         stack.append(heading)
+
+    # Helper function to get children without mutating the heading
+    def get_children(node: HeadingNode) -> List[HeadingNode]:
+        """Get children from the children map."""
+        return children_map.get(node, [])
 
     # Helper function to build full path for a heading
     def get_full_path(target_heading: HeadingNode) -> List[str]:
@@ -215,7 +263,7 @@ def _find_heading_by_path(headings: List[HeadingNode], path_elements: List[str])
                 if node is target:
                     path.extend(new_path)
                     return True
-                if find_path_recursive(node.children, target, new_path):
+                if find_path_recursive(get_children(node), target, new_path):
                     return True
             return False
 
@@ -228,7 +276,7 @@ def _find_heading_by_path(headings: List[HeadingNode], path_elements: List[str])
         current_node = start_node
         for element in remaining_path:
             found = False
-            for child in current_node.children:
+            for child in get_children(current_node):
                 if child.title == element:
                     current_node = child
                     found = True
@@ -245,7 +293,7 @@ def _find_heading_by_path(headings: List[HeadingNode], path_elements: List[str])
         for node in nodes:
             if node.title == first_element:
                 first_matches.append(node)
-            find_all_first_matches(node.children)
+            find_all_first_matches(get_children(node))
 
     find_all_first_matches(root_headings)
 
@@ -629,7 +677,7 @@ def markdown_edit(target_scope: str, content: str, *, coscope_with: str | None =
                     return _process_error(ValueError(f"Target scope not found: {target_scope}"))
 
                 modified_lines = _delete_section(lines, target_heading)
-                _write_file_bom_safe(abs_path, "\n".join(modified_lines))
+                _write_file_bom_safe(abs_path, _join_lines_preserve_trailing_newline(modified_lines, original_content))
                 return f"Deleted scope '{target_scope}' from '{abs_path}'."
 
         # Handle empty file with content
@@ -654,7 +702,7 @@ def markdown_edit(target_scope: str, content: str, *, coscope_with: str | None =
             # Check for duplicates and remove them
             lines = _check_for_duplicate_headings(lines, content, None)
             modified_lines = _insert_at_file_start(lines, content)
-            _write_file_bom_safe(abs_path, "\n".join(modified_lines))
+            _write_file_bom_safe(abs_path, _join_lines_preserve_trailing_newline(modified_lines, original_content))
             return f"Content inserted at start of '{abs_path}'."
 
         # Handle __FILE_END__
@@ -662,7 +710,7 @@ def markdown_edit(target_scope: str, content: str, *, coscope_with: str | None =
             # Check for duplicates and remove them
             lines = _check_for_duplicate_headings(lines, content, None)
             modified_lines = _insert_at_file_end(lines, content)
-            _write_file_bom_safe(abs_path, "\n".join(modified_lines))
+            _write_file_bom_safe(abs_path, _join_lines_preserve_trailing_newline(modified_lines, original_content))
             return f"Content inserted at end of '{abs_path}'."
 
         # Handle file-level operations (no path_elements)
@@ -702,7 +750,7 @@ def markdown_edit(target_scope: str, content: str, *, coscope_with: str | None =
                         return _process_error(ValueError(f"Pattern not found: {coscope_with}"))
 
                     modified_lines = _insert_after_pattern(lines, found_line, content)
-                    _write_file_bom_safe(abs_path, "\n".join(modified_lines))
+                    _write_file_bom_safe(abs_path, _join_lines_preserve_trailing_newline(modified_lines, original_content))
                     return f"Content inserted after pattern in '{abs_path}'."
                 else:
                     # It's a heading name - search for it with ambiguity detection
@@ -725,8 +773,13 @@ def markdown_edit(target_scope: str, content: str, *, coscope_with: str | None =
                     # Check for duplicates and remove them
                     lines = _check_for_duplicate_headings(lines, content, target_heading)
 
+                    # Re-resolve target_heading after lines have been modified
+                    target_heading = _re_resolve_heading(lines, insert_after_elements)
+                    if not target_heading:
+                        return _process_error(ValueError(f"Heading not found after duplicate removal: {coscope_with}"))
+
                     modified_lines = _insert_after_heading(lines, target_heading, content)
-                    _write_file_bom_safe(abs_path, "\n".join(modified_lines))
+                    _write_file_bom_safe(abs_path, _join_lines_preserve_trailing_newline(modified_lines, original_content))
                     return f"Content inserted after '{coscope_with}' in '{abs_path}'."
             else:
                 # File-level replacement
@@ -773,8 +826,18 @@ def markdown_edit(target_scope: str, content: str, *, coscope_with: str | None =
                 # Check for duplicates
                 lines = _check_for_duplicate_headings(lines, content, target_heading)
 
+                # Re-resolve target_heading after lines have been modified
+                target_heading = _re_resolve_heading(lines, path_elements)
+                if not target_heading:
+                    return _process_error(ValueError(f"Target scope not found after duplicate removal: {target_scope}"))
+
+                # Re-find the pattern line in the modified lines
+                found_line = _find_pattern_in_section(lines, target_heading, pattern)
+                if found_line is None:
+                    return _process_error(ValueError(f"Pattern not found in section after duplicate removal: {coscope_with}"))
+
                 modified_lines = _insert_after_pattern(lines, found_line, content)
-                _write_file_bom_safe(abs_path, "\n".join(modified_lines))
+                _write_file_bom_safe(abs_path, _join_lines_preserve_trailing_newline(modified_lines, original_content))
                 return f"Content inserted after pattern in '{abs_path}'."
             else:
                 # Heading-based insertion (insert after a subheading)
@@ -807,13 +870,33 @@ def markdown_edit(target_scope: str, content: str, *, coscope_with: str | None =
                 # Check for duplicates
                 lines = _check_for_duplicate_headings(lines, content, target_heading)
 
+                # Re-resolve both headings after lines have been modified
+                target_heading = _re_resolve_heading(lines, path_elements)
+                if not target_heading:
+                    return _process_error(ValueError(f"Target scope not found after duplicate removal: {target_scope}"))
+
+                insert_after_heading = _re_resolve_heading(lines, insert_after_elements)
+                if not insert_after_heading:
+                    return _process_error(ValueError(f"Insert point not found after duplicate removal: {coscope_with}"))
+
                 modified_lines = _insert_after_heading(lines, insert_after_heading, content)
-                _write_file_bom_safe(abs_path, "\n".join(modified_lines))
+                _write_file_bom_safe(abs_path, _join_lines_preserve_trailing_newline(modified_lines, original_content))
                 return f"Content inserted after '{coscope_with}' in '{abs_path}'."
         else:
             # Replacement within scope
             modified_lines = _replace_section(lines, target_heading, content)
-            _write_file_bom_safe(abs_path, "\n".join(modified_lines))
+
+            # Safety check for large deletions in scoped replacements
+            lines_deleted = len(lines) - len(modified_lines)
+            if lines_deleted > 100 and not delete_a_lot:
+                return _process_error(
+                    ValueError(
+                        f"Safety check: this operation would delete {lines_deleted} lines in scope '{target_scope}'. "
+                        + "If intentional, set delete_a_lot=True."
+                    )
+                )
+
+            _write_file_bom_safe(abs_path, _join_lines_preserve_trailing_newline(modified_lines, original_content))
             return f"Content replaced at '{target_scope}'."
 
     except Exception as e:
