@@ -115,8 +115,9 @@ class BotSession:
             from bots.observability import metrics
 
             metrics.setup_metrics(verbose=False)
-        except Exception:
-            pass
+        except Exception as e:
+            if self.context.config.verbose:
+                print(f"Warning: metrics.setup_metrics failed: {e}")
 
         # Load bot if filename provided, otherwise initialize new bot
         if bot_filename:
@@ -271,15 +272,16 @@ class BotSession:
             callback = self.context.callbacks.get_standard_callback()
 
             # Execute the chat
-            responses, nodes = fp.chain(bot, [user_input], callback=callback)
+            responses, _nodes = fp.chain(bot, [user_input], callback=callback)
 
             # Capture metrics after the response
             try:
                 from bots.observability import metrics
 
                 self.context.last_message_metrics = metrics.get_and_clear_last_metrics()
-            except Exception:
-                pass
+            except Exception as e:
+                if self.context.config.verbose:
+                    print(f"Warning: metrics.get_and_clear_last_metrics failed: {e}")
 
             # Combine stash messages with bot response
             result_parts = []

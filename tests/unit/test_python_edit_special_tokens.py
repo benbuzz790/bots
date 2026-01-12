@@ -34,8 +34,8 @@ import json
             with open(temp_file, "r") as f:
                 content = f.read()
 
-            # Docstring should still be first
-            assert content.strip().startswith('"""Module docstring."""')
+            # Docstring should still be first - don't use strip() to catch leading whitespace issues
+            assert content.startswith('"""Module docstring."""')
             # New imports should come after docstring
             assert "import sys" in content
             assert content.index('"""') < content.index("import sys")

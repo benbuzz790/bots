@@ -461,7 +461,21 @@ def remove_context(prompt: str) -> str:
             if msg.parent and msg.parent.role == "user" and msg.parent.tool_results:
                 tool_results_str = "Tool Results:\n"
                 for tr in msg.parent.tool_results:
-                    tool_name = tr.get("tool_name", "unknown")
+                    # Get the tool_use_id or tool_call_id from the result
+                    tool_id = tr.get("tool_use_id") or tr.get("tool_call_id")
+
+                    # Look up the tool name from the parent's tool_calls
+                    tool_name = "unknown"
+                    if tool_id and msg.tool_calls:
+                        for tc in msg.tool_calls:
+                            if tc.get("id") == tool_id:
+                                tool_name = tc.get("name", "unknown")
+                                break
+
+                    # Fallback to tool_id if no name found
+                    if tool_name == "unknown" and tool_id:
+                        tool_name = tool_id
+
                     content = tr.get("content", "")
                     tool_results_str += f"  - {tool_name}: {content}\n"
                 msg_parts.append(truncate_lines(tool_results_str, max_lines=20))

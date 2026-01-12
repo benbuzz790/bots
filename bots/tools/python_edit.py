@@ -74,6 +74,16 @@ def _handle_text_file_special_tokens(file_path: str, code: str, coscope_with: st
     """
     import textwrap
 
+    # Validate that scoped targets are not used with file-level tokens
+    if "::" in file_path:
+        return _process_error(
+            ValueError(
+                f"Cannot use {coscope_with} with scoped target '{file_path}'. "
+                f"File-level tokens (__FILE_START__, __FILE_END__) can only be used "
+                f"with file-level targets in text mode."
+            )
+        )
+
     cleaned_code = textwrap.dedent(code).strip()
 
     # Ensure file exists

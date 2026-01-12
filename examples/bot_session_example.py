@@ -23,10 +23,16 @@ def main():
     help_text = session.input("/help")
     print(f"Available commands: {len(help_text)} chars of help text")
 
-    # Example 3: Saving and loading
-    print("\n--- Example 3: Save/Load ---")
-    save_response = session.input("/save example_bot")
-    print(f"Save result: {save_response}")
+    # Example 3: Saving using API (non-interactive)
+    print("\n--- Example 3: Save via API ---")
+    if session.bot:
+        try:
+            session.bot.save("example_bot.bot")
+            print("Bot saved successfully to example_bot.bot")
+        except Exception as e:
+            print(f"Save failed: {e}")
+    else:
+        print("No bot available to save")
 
     # Example 4: Accessing bot directly
     print("\n--- Example 4: Direct Bot Access ---")
@@ -43,11 +49,15 @@ def main():
     print(f"Temperature: {config.temperature}")
     print(f"Verbose mode: {config.verbose}")
 
-    # Example 6: Multiple interactions with context
-    print("\n--- Example 6: Context Preservation ---")
+    # Example 6: Short-term context within same session
+    print("\n--- Example 6: Context Preservation (Same Session) ---")
     session.input("Remember: my favorite color is blue")
     response = session.input("What's my favorite color?")
-    print(f"Bot remembers: {'blue' in response.lower()}")
+    # Check if the bot can recall within the same session
+    if "blue" in response.lower():
+        print("Bot remembers within session: ✓")
+    else:
+        print(f"Bot response: {response}")
 
     print("\n✓ BotSession provides clean programmatic access!")
 
