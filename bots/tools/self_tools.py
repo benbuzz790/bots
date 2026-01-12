@@ -464,9 +464,25 @@ def remove_context(prompt: str) -> str:
                     # Get the tool_use_id or tool_call_id from the result
                     tool_id = tr.get("tool_use_id") or tr.get("tool_call_id")
 
-                    # Look up the tool name from the parent's tool_calls
+                    # Look up the tool name from the grandparent's tool_calls
+                    # (tool_results in msg.parent came from msg.parent.parent's tool_calls)
                     tool_name = "unknown"
-                    if tool_id and msg.tool_calls:
+
+                    # First check grandparent's tool_calls
+                    if (
+                        tool_id
+                        and msg.parent
+                        and msg.parent.parent
+                        and hasattr(msg.parent.parent, "tool_calls")
+                        and msg.parent.parent.tool_calls
+                    ):
+                        for tc in msg.parent.parent.tool_calls:
+                            if tc.get("id") == tool_id:
+                                tool_name = tc.get("name", "unknown")
+                                break
+
+                    # Fallback to current message's tool_calls if grandparent not available
+                    if tool_name == "unknown" and tool_id and msg.tool_calls:
                         for tc in msg.tool_calls:
                             if tc.get("id") == tool_id:
                                 tool_name = tc.get("name", "unknown")

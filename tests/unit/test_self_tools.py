@@ -305,7 +305,6 @@ def test_remove_context_tool_handler_integration():
     bot.conversation = assistant3
 
     # Store initial tool_handler state
-    len(bot.tool_handler.results) if hasattr(bot, "tool_handler") else 0
 
     # Remove the math question (assistant3 is at index 2)
     with patch("bots.foundation.anthropic_bots.AnthropicBot") as MockBot:
