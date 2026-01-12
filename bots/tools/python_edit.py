@@ -66,6 +66,54 @@ def _write_file_bom_safe(file_path: str, content: str) -> None:
         file.write(clean_content)
 
 
+def _handle_text_file_special_tokens(file_path: str, code: str, coscope_with: str) -> str:
+    """
+    Handle __FILE_START__ and __FILE_END__ for non-Python text files.
+
+    This is a simple text-based insertion without AST parsing.
+    """
+    import textwrap
+
+    cleaned_code = textwrap.dedent(code).strip()
+
+    # Ensure file exists
+    abs_path = os.path.abspath(file_path)
+    if not os.path.exists(abs_path):
+        # Create the file
+        dir_path = os.path.dirname(abs_path)
+        if dir_path:
+            os.makedirs(dir_path, exist_ok=True)
+        original_content = ""
+    else:
+        # Read existing content
+        original_content = _read_file_bom_safe(abs_path)
+
+    # Perform insertion
+    if coscope_with == "__FILE_START__":
+        # Insert at start
+        if original_content:
+            new_content = cleaned_code + "\n\n" + original_content
+        else:
+            new_content = cleaned_code
+        _write_file_bom_safe(abs_path, new_content)
+        return f"Code inserted at start of '{abs_path}' (text mode - no Python parsing)."
+
+    elif coscope_with == "__FILE_END__":
+        # Insert at end
+        if original_content:
+            # Ensure original content ends with newline
+            if not original_content.endswith("\n"):
+                original_content += "\n"
+            new_content = original_content + "\n" + cleaned_code
+        else:
+            new_content = cleaned_code
+        _write_file_bom_safe(abs_path, new_content)
+        return f"Code inserted at end of '{abs_path}' (text mode - no Python parsing)."
+
+    else:
+        return _process_error(ValueError(f"Unsupported coscope_with for text files: {coscope_with}"))
+
+
 def _count_lines_to_be_deleted(original_content: str, new_content: str) -> int:
     """
     Count how many lines would be deleted by comparing original vs new content.
@@ -1086,6 +1134,13 @@ def python_edit(target_scope: str, code: str, *, coscope_with: str | None = None
     """
     try:
         file_path, *path_elements = target_scope.split("::")
+
+        # Check for special tokens with non-.py files FIRST
+        # This allows __FILE_START__ and __FILE_END__ to work with any text file as a courtesy
+        if coscope_with in ("__FILE_START__", "__FILE_END__") and not file_path.endswith(".py"):
+            # Handle as text file without Python parsing
+            return _handle_text_file_special_tokens(file_path, code, coscope_with)
+
         if not file_path.endswith(".py"):
             if not os.path.exists(file_path):
                 # Create directories if needed
@@ -1498,7 +1553,15 @@ def _create_outline_view(scope_entries, max_depth, lines):
 
 
 def _handle_file_start_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module) -> str:
-    """Handle insertion at the beginning of a file, avoiding duplicate imports."""
+    """
+    Handle insertion at the beginning of a file, respecting Python file structure.
+
+    Inserts after:
+    1. Module docstring (if present)
+    2. __future__ imports (if present)
+
+    This ensures proper Python file structure per PEP 8 and PEP 257.
+    """
     # Collect existing imports from the original file
     existing_imports = set()
     for stmt in tree.body:
@@ -1564,11 +1627,46 @@ def _handle_file_start_insertion(abs_path: str, tree: cst.Module, new_module: cs
             # Non-import statements are added as-is
             new_body.append(stmt)
 
-    # Combine filtered new body with existing body
-    combined_body = new_body + list(tree.body)
+    # Find the correct insertion position (after docstring and __future__ imports)
+    insert_position = 0
+
+    # Check for module docstring (must be first statement)
+    if tree.body:
+        first_stmt = tree.body[0]
+        # Check if it's a docstring (expression statement with a string)
+        if isinstance(first_stmt, cst.SimpleStatementLine):
+            if first_stmt.body and isinstance(first_stmt.body[0], cst.Expr):
+                expr = first_stmt.body[0]
+                if isinstance(expr.value, (cst.SimpleString, cst.ConcatenatedString, cst.FormattedString)):
+                    # This is a docstring, insert after it
+                    insert_position = 1
+
+    # Check for __future__ imports (must come after docstring, before other imports)
+    for i in range(insert_position, len(tree.body)):
+        stmt = tree.body[i]
+        if isinstance(stmt, cst.SimpleStatementLine):
+            # Check if this is a __future__ import
+            is_future_import = False
+            for s in stmt.body:
+                if isinstance(s, cst.ImportFrom):
+                    if s.module and _get_module_name(s.module) == "__future__":
+                        is_future_import = True
+                        break
+
+            if is_future_import:
+                insert_position = i + 1
+            else:
+                # Stop at first non-__future__ import
+                break
+        else:
+            # Stop at first non-simple statement
+            break
+
+    # Insert new code at the correct position
+    combined_body = list(tree.body[:insert_position]) + new_body + list(tree.body[insert_position:])
     modified_tree = tree.with_changes(body=combined_body)
     _write_file_bom_safe(abs_path, modified_tree.code)
-    return f"Code inserted at start of '{abs_path}' (duplicate imports filtered)."
+    return f"Code inserted at start of '{abs_path}' (after docstring/future imports, duplicate imports filtered)."
 
 
 def _handle_file_level_insertion(abs_path: str, tree: cst.Module, new_module: cst.Module, insert_after: str) -> str:
