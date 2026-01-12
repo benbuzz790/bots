@@ -385,7 +385,6 @@ def remove_context(prompt: str) -> str:
         return "Error: Could not find calling bot"
 
     try:
-        # First, validate the prompt using Haiku
         from bots.foundation.anthropic_bots import AnthropicBot
         from bots.foundation.base import Engines
 
@@ -393,40 +392,11 @@ def remove_context(prompt: str) -> str:
         haiku = AnthropicBot(
             api_key=bot.api_key,
             model_engine=Engines.CLAUDE45_HAIKU,
-            max_tokens=1000,
+            max_tokens=4000,
             temperature=0.0,
             autosave=False,
             enable_tracing=False,
         )
-
-        # Check if the prompt contains actionable conditions
-        validation_prompt = f"""You are evaluating whether a user's prompt contains actionable conditions for removing messages from a conversation history.
-
-The user's prompt is: "{prompt}"
-
-Respond with ONLY one of these two options:
-1. "VALID" - if the prompt contains clear, actionable conditions for identifying messages to remove
-2. "ERROR: <explanation>" - if the prompt is too vague, unclear, or doesn't contain actionable conditions
-
-Examples of VALID prompts:
-- "remove all messages about file operations"
-- "delete conversations where I was debugging"
-- "remove tool calls that failed"
-
-Examples of INVALID prompts (respond with ERROR):
-- "remove some stuff" (too vague)
-- "clean up" (no specific condition)
-- "delete things" (unclear what things)
-
-Your response:"""
-
-        validation_response = haiku.respond(validation_prompt).strip()
-
-        if validation_response.startswith("ERROR:"):
-            return validation_response
-
-        if not validation_response.startswith("VALID"):
-            return "Error: Could not validate prompt. The condition must be clear and actionable. Please be more specific about which messages to remove."
 
         # Get all bot messages
         messages = []
@@ -440,44 +410,136 @@ Your response:"""
         if not messages:
             return "No bot messages in conversation history"
 
-        # Evaluate each message pair against the condition
-        indices_to_remove = []
+        # Helper function to truncate lines from the middle
+        def truncate_lines(text: str, max_lines: int = 20) -> str:
+            """Truncate text to max_lines, removing from the middle if needed."""
+            if not text:
+                return ""
 
+            lines = text.split("\n")
+            if len(lines) <= max_lines:
+                return text
+
+            # Keep first 10 and last 10 lines
+            first_half = max_lines // 2
+            second_half = max_lines - first_half
+            removed_count = len(lines) - max_lines
+
+            result = "\n".join(lines[:first_half])
+            result += f"\n... ({removed_count} lines removed) ...\n"
+            result += "\n".join(lines[-second_half:])
+            return result
+
+        # Build numbered list of messages
+        conversation_list = []
         for i, msg in enumerate(messages):
-            # Format message info for evaluation
-            tool_str = ""
-            if msg.tool_calls:
-                tool_names = [tc.get("name", "unknown") for tc in msg.tool_calls]
-                tool_str = f"Tool calls: {', '.join(tool_names)}\n"
+            msg_parts = []
 
-            content = msg.content or ""
-
-            # Get parent user message if it exists (for context in evaluation)
+            # Get parent user message if it exists
             user_content = ""
             if msg.parent and msg.parent.role == "user":
                 user_content = msg.parent.content or ""
 
-            # Ask Haiku to evaluate this message pair
-            eval_prompt = f"""You are evaluating whether a message pair should be removed based on a condition.
+            # Add user message (not truncated)
+            if user_content:
+                msg_parts.append(f"User: {user_content}")
+
+            # Add assistant text content (not truncated)
+            if msg.content:
+                msg_parts.append(f"Assistant: {msg.content}")
+
+            # Add tool calls (truncated if needed)
+            if msg.tool_calls:
+                tool_calls_str = "Tool Calls:\n"
+                for tc in msg.tool_calls:
+                    tool_name = tc.get("name", "unknown")
+                    tool_input = tc.get("input", {})
+                    tool_calls_str += f"  - {tool_name}({tool_input})\n"
+                msg_parts.append(truncate_lines(tool_calls_str, max_lines=20))
+
+            # Add tool results (truncated if needed)
+            if msg.parent and msg.parent.role == "user" and msg.parent.tool_results:
+                tool_results_str = "Tool Results:\n"
+                for tr in msg.parent.tool_results:
+                    # Get the tool_use_id or tool_call_id from the result
+                    tool_id = tr.get("tool_use_id") or tr.get("tool_call_id")
+
+                    # Look up the tool name from the grandparent's tool_calls
+                    # (tool_results in msg.parent came from msg.parent.parent's tool_calls)
+                    tool_name = "unknown"
+
+                    # First check grandparent's tool_calls
+                    if (
+                        tool_id
+                        and msg.parent
+                        and msg.parent.parent
+                        and hasattr(msg.parent.parent, "tool_calls")
+                        and msg.parent.parent.tool_calls
+                    ):
+                        for tc in msg.parent.parent.tool_calls:
+                            if tc.get("id") == tool_id:
+                                tool_name = tc.get("name", "unknown")
+                                break
+
+                    # Fallback to current message's tool_calls if grandparent not available
+                    if tool_name == "unknown" and tool_id and msg.tool_calls:
+                        for tc in msg.tool_calls:
+                            if tc.get("id") == tool_id:
+                                tool_name = tc.get("name", "unknown")
+                                break
+
+                    # Fallback to tool_id if no name found
+                    if tool_name == "unknown" and tool_id:
+                        tool_name = tool_id
+
+                    content = tr.get("content", "")
+                    tool_results_str += f"  - {tool_name}: {content}\n"
+                msg_parts.append(truncate_lines(tool_results_str, max_lines=20))
+
+            conversation_list.append(f"[{i}] {' | '.join(msg_parts)}")
+
+        # Create the evaluation prompt with the full conversation
+        conversation_text = "\n\n".join(conversation_list)
+
+        eval_prompt = f"""You are evaluating a conversation history to identify which message pairs should be removed based on a condition.
 
 Condition: "{prompt}"
 
-Message pair:
-User: {user_content[:500]}
-Assistant: {tool_str}{content[:500]}
+Conversation history (numbered):
+{conversation_text}
 
-Should this message pair be removed based on the condition?
-Respond with ONLY "YES" or "NO".
+Based on the condition, which message indices should be removed? Consider the full context of the conversation.
 
-Your response:"""
+Respond with a JSON array of integers representing the indices to remove. For example: [0, 3, 5]
+If no messages match the condition, respond with an empty array: []
 
-            eval_response = haiku.respond(eval_prompt).strip().upper()
+Your response (JSON array only):"""
 
-            if eval_response == "YES":
-                indices_to_remove.append(i)
+        eval_response = haiku.respond(eval_prompt).strip()
+
+        # Parse the response to extract indices
+        import json
+
+        try:
+            # Try to extract JSON array from response
+            if "[" in eval_response and "]" in eval_response:
+                start = eval_response.index("[")
+                end = eval_response.rindex("]") + 1
+                json_str = eval_response[start:end]
+                indices_to_remove = json.loads(json_str)
+            else:
+                indices_to_remove = []
+        except (json.JSONDecodeError, ValueError) as e:
+            return f"Error parsing Haiku response: {eval_response}\nError: {str(e)}"
 
         if not indices_to_remove:
             return f"No messages matched the condition: '{prompt}'"
+
+        # Validate indices
+        indices_to_remove = [idx for idx in indices_to_remove if 0 <= idx < len(messages)]
+
+        if not indices_to_remove:
+            return "No valid message indices to remove"
 
         # Expand indices to include complete tool call sequences
         expanded_indices = set()
