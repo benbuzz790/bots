@@ -2333,6 +2333,57 @@ class ToolHandler(ABC):
         return handler
 
     @staticmethod
+    def _resolve_module_path(original_path: str, relative_path: Optional[str], save_cwd: Optional[str]) -> str:
+        """Resolve module path using multiple strategies.
+
+        Tries to find the module file in this order:
+        1. Original absolute path (if it exists)
+        2. Relative path from current working directory
+        3. Relative path from save working directory
+        4. Basename in current working directory
+        5. Falls back to original path (will use serialized source)
+
+        Parameters:
+            original_path: The original absolute path from when the bot was saved
+            relative_path: The relative path from the save directory
+            save_cwd: The working directory when the bot was saved
+
+        Returns:
+            str: The resolved path (may be the original if no better option found)
+        """
+        # Strategy 1: Try original path
+        if os.path.exists(original_path):
+            return original_path
+
+        # Strategy 2: Try relative path from current directory
+        if relative_path:
+            cwd_relative = os.path.join(os.getcwd(), relative_path)
+            if os.path.exists(cwd_relative):
+                return os.path.abspath(cwd_relative)
+
+        # Strategy 3: Try relative path from save directory
+        if relative_path and save_cwd:
+            save_relative = os.path.join(save_cwd, relative_path)
+            if os.path.exists(save_relative):
+                return os.path.abspath(save_relative)
+
+        # Strategy 4: Try just the basename in current directory
+        basename = os.path.basename(original_path)
+        cwd_basename = os.path.join(os.getcwd(), basename)
+        if os.path.exists(cwd_basename):
+            return os.path.abspath(cwd_basename)
+
+        # Strategy 5: Check if there's a file with the same name in common locations
+        # Look for tools/ subdirectory
+        tools_path = os.path.join(os.getcwd(), "tools", basename)
+        if os.path.exists(tools_path):
+            return os.path.abspath(tools_path)
+
+        # Fallback: Return original path
+        # The module will still work using the serialized source code
+        return original_path
+
+    @staticmethod
     def _deserialize_globals(module_dict: dict, serialized_globals: dict):
         """Deserialize globals including module reconstruction with hash verification."""
         import base64
