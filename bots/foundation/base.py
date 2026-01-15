@@ -33,9 +33,19 @@ except ImportError:
 
     # Provide dummy functions if import fails
     def is_tracing_enabled():
+        """Checks if tracing functionality is currently enabled.
+
+        Returns:
+            bool: False, indicating tracing is disabled.
+        """
         return False
 
     def get_default_tracing_preference():
+        """Returns the default tracing preference setting.
+
+        Returns:
+            bool: False, indicating tracing is disabled by default.
+        """
         return False
 
 
@@ -1784,7 +1794,23 @@ class ToolHandler(ABC):
             annotation_names = set()
 
             class AnnotationVisitor(ast.NodeVisitor):
+                """Visits function definition nodes to extract type annotation information.
+
+                Processes function return type annotations and parameter type annotations,
+                extracting referenced type names for further analysis.
+
+                Args:
+                    node: The AST FunctionDef node to visit and process for type annotations.
+                """
                 def visit_FunctionDef(self, node):
+                    """Visit a function definition node and extract names from type annotations.
+
+                    Processes both return type annotations and parameter type annotations,
+                    adding discovered names to the annotation_names collection.
+
+                    Args:
+                        node: The FunctionDef AST node to visit and process for type annotations.
+                    """
                     if node.returns:
                         self._extract_names_from_annotation(node.returns, annotation_names)
                     for arg in node.args.args:
@@ -1793,6 +1819,14 @@ class ToolHandler(ABC):
                     self.generic_visit(node)
 
                 def visit_AsyncFunctionDef(self, node):
+                    """Visit an async function definition node and extract type annotation names.
+
+                    Processes the function's return type annotation and all parameter type annotations,
+                    extracting referenced names into the annotation_names collection.
+
+                    Args:
+                        node: The AsyncFunctionDef AST node to process.
+                    """
                     if node.returns:
                         self._extract_names_from_annotation(node.returns, annotation_names)
                     for arg in node.args.args:
@@ -1834,7 +1868,24 @@ class ToolHandler(ABC):
                 all_names_used = set()
 
                 class NameCollector(ast.NodeVisitor):
+                    """Visits Name nodes in an AST and collects variable names that are loaded.
+
+                    This method is part of an AST visitor pattern that identifies variable names
+                    being read (loaded) from their context, adding them to the global all_names_used set.
+
+                    Args:
+                        node: The AST Name node being visited.
+                    """
                     def visit_Name(self, node):
+                        """Visits AST Name nodes and tracks loaded variable names.
+
+                        When encountering a Name node with a Load context, adds the variable name
+                        to the global all_names_used set for tracking purposes. Continues traversal
+                        to child nodes.
+
+                        Args:
+                            node: The AST Name node being visited.
+                        """
                         if isinstance(node.ctx, ast.Load):
                             all_names_used.add(node.id)
                         self.generic_visit(node)
@@ -2183,6 +2234,17 @@ class ToolHandler(ABC):
 
             # Create a placeholder function that provides useful information
             def placeholder_func(*args, **kwargs):
+                """Placeholder function that displays information about a dynamic function that cannot be restored.
+
+                This function serves as a replacement for dynamic functions that lose their original
+                implementation after serialization/deserialization. It provides diagnostic information
+                about the original function including its name, signature, documentation, and closure
+                details.
+
+                Returns:
+                    str: Formatted information string containing the original function's metadata
+                        including name, signature, documentation, and closure information if available.
+                """
                 info = f"Dynamic function '{metadata['name']}' cannot be restored after save/load\n"
                 info += f"Original signature: {metadata.get('signature', 'unknown')}\n"
                 if metadata.get("doc"):
@@ -2622,6 +2684,12 @@ class Mailbox(ABC):
         self.log_file = "data\\mailbox_log.txt"
 
     def log_message(self, message: str, direction: str) -> None:
+        """Logs a message with timestamp and direction to the log file.
+
+        Args:
+            message (str): The message content to be logged.
+            direction (str): The direction indicator (e.g., 'sent', 'received') that will be uppercased in the log entry.
+        """
         timestamp = formatted_datetime()
         log_entry = f"[{timestamp}] {direction.upper()}:\n{message}\n\n"
         with open(self.log_file, "a", encoding="utf-8") as file:
@@ -2924,6 +2992,15 @@ class Bot(ABC):
         """
 
         def process_item(item):
+            """Process a tool item by adding it to the tool handler based on its type.
+
+            Handles different types of tool sources including file paths, modules, and callable objects.
+            The method delegates to appropriate tool handler methods based on the item's type.
+
+            Args:
+                item: The tool item to process. Can be a string (file path), ModuleType (module),
+                    or Callable (function/method).
+            """
             if isinstance(item, str):
                 self.tool_handler._add_tools_from_file(item)
             elif isinstance(item, ModuleType):
@@ -3424,6 +3501,20 @@ class Bot(ABC):
         """
 
         def format_conversation(node, level=0):
+            """Format conversation node display with appropriate indentation and width constraints.
+
+            Calculates display parameters for rendering conversation nodes in a hierarchical
+            structure with level-based indentation and width limitations.
+
+            Args:
+                node: The conversation node to format.
+                level (int): The hierarchical level of the node (0-based).
+
+            Returns:
+                tuple: A tuple containing (indent_str, available_width) where indent_str
+                    is the spacing string for the current level and available_width is
+                    the maximum character width available for content display.
+            """
             display_level = min(level, 5)
             indent_size = 1
             marker_size = 4
