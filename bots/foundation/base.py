@@ -1902,15 +1902,32 @@ class ToolHandler(ABC):
             - Handles both file-based and dynamic modules
             - Includes function source code for reconstruction
             - Maintains tool relationships and dependencies
+            - Stores both absolute and relative paths for portability
         """
         module_details = {}
         function_paths = {}
+
+        # Get current working directory for relative path calculation
+        cwd = os.getcwd()
+
         for file_path, module_context in self.modules.items():
             enhanced_source = self._add_imports_to_source(module_context)
+
+            # Calculate relative path from current working directory
+            try:
+                if os.path.isabs(file_path):
+                    rel_path = os.path.relpath(file_path, cwd)
+                else:
+                    rel_path = file_path
+            except (ValueError, TypeError):
+                # Can't calculate relative path (e.g., different drives on Windows)
+                rel_path = None
+
             module_details[file_path] = {
                 "name": module_context.name,
                 "source": enhanced_source,
-                "file_path": module_context.file_path,
+                "file_path": module_context.file_path,  # Absolute path (original)
+                "relative_path": rel_path,  # Relative path for portability
                 "code_hash": self._get_code_hash(enhanced_source),
                 "globals": self._serialize_globals(module_context.namespace.__dict__),
             }
@@ -1920,7 +1937,6 @@ class ToolHandler(ABC):
                 function_paths[name] = module_context.file_path
             else:
                 function_paths[name] = "dynamic"
-        # Serialize dynamic functions
         # Serialize dynamic functions
         dynamic_functions = {}
         for name, func in self.function_map.items():
@@ -1934,6 +1950,7 @@ class ToolHandler(ABC):
             "results": self.results.copy(),
             "modules": module_details,
             "function_paths": function_paths,
+            "save_cwd": cwd,  # Store the working directory at save time
         }
 
         # Add dynamic functions if any exist
@@ -2208,6 +2225,7 @@ class ToolHandler(ABC):
             - Verifies code hashes for security
             - Maintains original module structure
             - Preserves execution state (requests/results)
+            - Attempts to resolve module paths using multiple strategies
 
         Example:
             ```python
@@ -2223,21 +2241,38 @@ class ToolHandler(ABC):
         handler.requests = data.get("requests", [])
         handler.tools = data.get("tools", []).copy()
         function_paths = data.get("function_paths", {})
+        save_cwd = data.get("save_cwd", None)  # Directory where bot was saved
+
+        # Track path remapping for function_paths
+        path_remap = {}
+
         for file_path, module_data in data.get("modules", {}).items():
             current_code_hash = cls._get_code_hash(module_data["source"])
             if current_code_hash != module_data["code_hash"]:
                 print(f"Warning: Code hash mismatch for module {file_path}. Skipping.")
                 continue
             try:
+                # Try to resolve the actual file path using multiple strategies
+                resolved_path = cls._resolve_module_path(
+                    original_path=module_data["file_path"], relative_path=module_data.get("relative_path"), save_cwd=save_cwd
+                )
+
+                if resolved_path != module_data["file_path"]:
+                    # Path was remapped
+                    path_remap[module_data["file_path"]] = resolved_path
+                    print("Info: Remapped module path:")
+                    print(f"  From: {module_data['file_path']}")
+                    print(f"  To:   {resolved_path}")
+
                 module = ModuleType(module_data["name"])
-                module.__file__ = file_path
+                module.__file__ = resolved_path
                 source = module_data["source"]
                 if "globals" in module_data:
                     cls._deserialize_globals(module.__dict__, module_data["globals"])
 
                 # Add the directory containing the module to sys.path temporarily
                 # This ensures imports within the module can be resolved
-                module_dir = os.path.dirname(module_data["file_path"]) if os.path.isabs(module_data["file_path"]) else None
+                module_dir = os.path.dirname(resolved_path) if os.path.isabs(resolved_path) else None
                 if module_dir and module_dir not in sys.path:
                     sys.path.insert(0, module_dir)
                     try:
@@ -2250,12 +2285,15 @@ class ToolHandler(ABC):
                 module_context = ModuleContext(
                     name=module_data["name"],
                     source=source,
-                    file_path=module_data["file_path"],
+                    file_path=resolved_path,  # Use resolved path
                     namespace=module,
                     code_hash=current_code_hash,
                 )
-                handler.modules[module_data["file_path"]] = module_context
+                handler.modules[resolved_path] = module_context  # Use resolved path as key
+
+                # Map functions using the resolved path
                 for func_name, path in function_paths.items():
+                    # Check if this function belongs to this module (using original or remapped path)
                     if path == module_data["file_path"] and func_name in module.__dict__:
                         func = module.__dict__[func_name]
                         if callable(func):

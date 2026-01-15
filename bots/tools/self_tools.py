@@ -93,7 +93,6 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
         return "No changes made"
 
 
-@toolify()
 def branch_self(
     self_prompts: str,
     allow_work: str = "False",
@@ -158,31 +157,44 @@ def branch_self(
         original_autosave = bot.autosave
         bot.autosave = False
 
-        # Handle tool_use without tool_result issue
-        # If the current node has tool_calls (the branch_self call itself),
-        # we need to add a USER message with tool_results before copying
+        # Handle tool_use without tool_result issue for parallel tool calls
+        # If the current node has tool_calls, we need to add a USER message with
+        # tool_results for ALL tool calls before copying (not just branch_self)
         dummy_node_added = False
         dummy_node = None
 
         if original_node.tool_calls:
-            # Check if this is the branch_self call
-            for tool_call in original_node.tool_calls:
-                if tool_call.get("name") == "branch_self":
-                    # Create a dummy USER message with tool_result
-                    dummy_result = bot.tool_handler.generate_response_schema(tool_call, "Branching in progress...")
+            # Check if branch_self is among the tool calls (parallel or not)
+            has_branch_self = any(tc.get("name") == "branch_self" for tc in original_node.tool_calls)
 
-                    # Add a user message node with the tool result
-                    # Use a placeholder content since Anthropic requires non-empty text
-                    dummy_node = original_node._add_reply(
-                        role="user",
-                        content="[Tool execution in progress]",
-                        tool_results=[dummy_result],
-                    )
-                    dummy_node_added = True
+            if has_branch_self:
+                # Create dummy tool_results for ALL tool calls in this message
+                # This is required for parallel tool calling compatibility
+                dummy_results = []
+                for tool_call in original_node.tool_calls:
+                    if tool_call.get("name") == "branch_self":
+                        # branch_self gets a proper "in progress" message
+                        dummy_result = bot.tool_handler.generate_response_schema(tool_call, "Branching in progress...")
+                    else:
+                        # Other parallel tool calls get placeholder results
+                        # This ensures Anthropic's requirement that all tool results
+                        # must be in a single user message
+                        dummy_result = bot.tool_handler.generate_response_schema(
+                            tool_call, "[Parallel tool execution - result pending]"
+                        )
+                    dummy_results.append(dummy_result)
 
-                    # Update bot's conversation pointer to this new node
-                    bot.conversation = dummy_node
-                    break
+                # Add a user message node with ALL tool results
+                # Use a placeholder content since Anthropic requires non-empty text
+                dummy_node = original_node._add_reply(
+                    role="user",
+                    content="[Tool execution in progress]",
+                    tool_results=dummy_results,
+                )
+                dummy_node_added = True
+
+                # Update bot's conversation pointer to this new node
+                bot.conversation = dummy_node
 
         # Create lock for thread-safe mutations
         replies_lock = threading.Lock()
