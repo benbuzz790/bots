@@ -122,13 +122,13 @@ def test_clear_command_execution():
 
     session = BotSession(auto_initialize=False)
 
-    # Mock os.system to avoid actually clearing the screen
-    with patch("os.system") as mock_system:
+    # Mock subprocess.run to avoid actually clearing the screen
+    with patch("subprocess.run") as mock_run:
         # Test /clear command
         result = session.input("/clear")
 
-        # Should have called os.system once
-        assert mock_system.call_count == 1
+        # Should have called subprocess.run once
+        assert mock_run.call_count == 1
         # Result should be empty string
         assert result == ""
 
