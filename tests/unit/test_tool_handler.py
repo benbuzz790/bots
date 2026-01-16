@@ -7,6 +7,15 @@ from bots.foundation.base import ToolHandler
 
 
 class DummyToolHandler(ToolHandler):
+    """Simple schema generation for testing purposes.
+
+    Args:
+        func: The function to generate a schema for.
+
+    Returns:
+        dict: A dictionary containing the function name and description, with keys
+            'name' (function name as string) and 'description' (docstring or empty string).
+    """
     def generate_tool_schema(self, func):
         """Simple schema generation for testing"""
         return {
@@ -33,17 +42,53 @@ class DummyToolHandler(ToolHandler):
 
 
 class TestToolHandlerPersistence(unittest.TestCase):
+    """Test class for verifying tool handler persistence functionality.
+
+    Sets up a temporary directory and dummy tool handler for testing persistence
+    operations across test methods.
+
+    Attributes:
+        temp_dir (str): Temporary directory path for test files.
+        handler (DummyToolHandler): Mock tool handler instance for testing.
+    """
     def setUp(self):
+        """Initialize test fixture by creating a DummyToolHandler instance.
+
+        Sets up the test environment with a fresh DummyToolHandler object
+        assigned to self.handler for use in test methods.
+        """
+        """Set up test environment with temporary directory and test files.
+
+        Creates a temporary directory, initializes a DummyToolHandler instance,
+        and generates necessary test files for the test suite.
+        """
         self.temp_dir = tempfile.mkdtemp()
         self.handler = DummyToolHandler()
         self.create_test_files()
 
     def tearDown(self):
+        """Clean up test resources by removing the temporary directory.
+
+        This method is called after each test method to ensure proper cleanup
+        of the temporary directory and all its contents created during testing.
+
+        Raises:
+            OSError: If the temporary directory cannot be removed due to
+                permission issues or if it doesn't exist.
+        """
         import shutil
 
         shutil.rmtree(self.temp_dir)
 
     def create_test_files(self):
+        """Creates test module files with sample content for testing purposes.
+
+        This method generates a Python module containing a simple test function
+        that doubles an integer input value.
+
+        Returns:
+            None: Method performs file creation as a side effect.
+        """
         module_content = textwrap.dedent(
             """
             def test_function(x: int) -> int:

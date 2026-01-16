@@ -108,6 +108,18 @@ class GeminiToolHandler(ToolHandler):
 
     def generate_tool_schema(self, func: Callable) -> Dict[str, Any]:
         # Generate a JSON Schema for the function
+        """Generate a JSON schema representation for a given function.
+
+        Creates a structured schema containing the function's name, description,
+        and parameter specifications suitable for tool registration or API documentation.
+
+        Args:
+            func (Callable): The function to generate a schema for.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the function's schema with 'name',
+                'description', and 'parameters' fields.
+        """
         schema = {
             "name": func.__name__,
             "description": func.__doc__ or "No description provided.",
@@ -136,6 +148,20 @@ class GeminiToolHandler(ToolHandler):
 
     def generate_request_schema(self, response: Any) -> List[Dict[str, Any]]:
         # Extract function calls from Gemini response
+        """Extracts function call schemas from a Gemini API response.
+
+        Parses the response object to identify and extract function call information
+        from all candidates, converting them into a standardized schema format.
+
+        Args:
+            response (Any): The response object from Gemini API containing candidates
+                with potential function calls.
+
+        Returns:
+            List[Dict[str, Any]]: A list of dictionaries representing the extracted
+                function call schemas. Each dictionary contains the structured
+                function call information.
+        """
         calls = []
         try:
             candidates = response.candidates if hasattr(response, "candidates") else []
@@ -154,6 +180,17 @@ class GeminiToolHandler(ToolHandler):
         return calls
 
     def tool_name_and_input(self, request_schema: Dict[str, Any]) -> Tuple[Optional[str], Dict[str, Any]]:
+        """Extract tool name and input arguments from a request schema dictionary.
+
+        Args:
+            request_schema (Dict[str, Any]): Dictionary containing tool request information
+                with optional 'name' and 'args' keys.
+
+        Returns:
+            Tuple[Optional[str], Dict[str, Any]]: A tuple containing the tool name 
+                (None if not found or empty schema) and the arguments dictionary 
+                (empty dict if 'args' key not present).
+        """
         if not request_schema:
             return (None, {})
         return (
@@ -163,6 +200,16 @@ class GeminiToolHandler(ToolHandler):
 
     def generate_response_schema(self, request: Dict[str, Any], tool_output_kwargs: Dict[str, Any]) -> Dict[str, Any]:
         # Return a string result for Gemini
+        """Generate a response schema for tool output in Gemini format.
+
+        Args:
+            request (Dict[str, Any]): The original tool request containing metadata.
+            tool_output_kwargs (Dict[str, Any]): The tool execution output parameters.
+
+        Returns:
+            Dict[str, Any]: A formatted response schema with role, JSON-serialized content,
+                and tool call ID for Gemini compatibility.
+        """
         return {
             "role": "tool",
             "content": json.dumps(tool_output_kwargs),
@@ -170,6 +217,20 @@ class GeminiToolHandler(ToolHandler):
         }
 
     def generate_error_schema(self, request_schema: Optional[Dict[str, Any]], error_msg: str) -> Dict[str, Any]:
+        """Generate an error response schema for tool calls.
+
+        Creates a standardized error response dictionary that follows the tool call format,
+        including the original request ID for proper error tracking.
+
+        Args:
+            request_schema: Optional dictionary containing the original request data,
+                expected to have an 'id' field. If None, 'unknown' is used as fallback.
+            error_msg: The error message to include in the response content.
+
+        Returns:
+            Dict[str, Any]: A dictionary with 'role' set to 'tool', 'content' containing
+                the error message, and 'tool_call_id' from the request or 'unknown'.
+        """
         return {
             "role": "tool",
             "content": error_msg,
@@ -278,6 +339,17 @@ class GeminiMailbox(Mailbox):
     def process_response(self, response: Any, bot: Bot, _recursion_depth: int = 0) -> Tuple[str, str, Dict[str, Any]]:
         # If there is a function call, handle it recursively
         # Recursion protection
+        """Processes a response from the bot, handling function calls recursively with depth protection.
+
+        Args:
+            response (Any): The response object to process.
+            bot (Bot): The bot instance containing the tool handler.
+            _recursion_depth (int): Current recursion depth for protection against infinite loops.
+
+        Returns:
+            Tuple[str, str, Dict[str, Any]]: A tuple containing the processed message content,
+                role identifier, and additional metadata dictionary.
+        """
         if _recursion_depth >= 10:
             return ("Maximum tool call recursion depth reached", "assistant", {})
         handler = bot.tool_handler

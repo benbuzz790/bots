@@ -148,6 +148,15 @@ def _find_leaves_util(node: ConversationNode) -> List[ConversationNode]:
     leaves = []
 
     def dfs(current_node):
+        """Performs depth-first search traversal to find all leaf nodes in a tree structure.
+
+        Traverses the tree recursively, identifying nodes without replies as leaves and
+        adding them to the leaves collection.
+
+        Args:
+            current_node: The node to start traversal from. Must have a 'replies' attribute
+                that is either empty (for leaf nodes) or contains child nodes.
+        """
         if not current_node.replies:  # This is a leaf
             leaves.append(current_node)
         else:
@@ -647,6 +656,15 @@ class CLICallbacks:
         """Create a callback that only prints bot messages, no tool info."""
 
         def message_only_callback(responses, nodes):
+            """Callback function that displays only the last bot response message.
+
+            Processes bot responses and displays the most recent non-empty response
+            using pretty formatting with the bot's name.
+
+            Args:
+                responses: List of bot response messages, may contain empty values.
+                nodes: Node objects associated with the responses (unused in this function).
+            """
             if responses and responses[-1]:
                 bot_name = self.context.bot_instance.name if self.context.bot_instance else "Bot"
                 pretty(
@@ -669,6 +687,16 @@ class CLICallbacks:
         def verbose_callback(responses, nodes):
             # Bot response and tools are already displayed in real-time
             # Just show metrics at the end
+            """Callback function that displays bot metrics after processing responses.
+
+            This callback is designed for verbose output mode where bot responses and tools
+            are already shown in real-time. It only displays performance metrics at the end
+            of processing if a bot instance is available in the context.
+
+            Args:
+                responses: The responses generated during processing.
+                nodes: The nodes involved in the processing workflow.
+            """
             if hasattr(self.context, "bot_instance") and self.context.bot_instance:
                 bot = self.context.bot_instance
                 display_metrics(self.context, bot)
@@ -681,6 +709,15 @@ class CLICallbacks:
         def quiet_callback(responses, nodes):
             # In quiet mode, RealTimeDisplayCallbacks still shows the bot response
             # but we don't show tools or metrics
+            """Callback function for quiet mode operation that suppresses tool and metrics display.
+
+            In quiet mode, only bot responses are shown through RealTimeDisplayCallbacks
+            while tool outputs and performance metrics are hidden.
+
+            Args:
+                responses: The response data from the system.
+                nodes: The node data associated with the responses.
+            """
             pass
 
         return quiet_callback
@@ -1367,6 +1404,19 @@ class ConversationHandler:
         """Calculate the depth/distance from start_node to target_node."""
 
         def find_path_length(current, target, depth=0):
+            """Find the depth of a target node in a tree structure using depth-first search.
+
+            Recursively traverses a tree starting from the current node to locate the target
+            node and returns the depth at which it is found.
+
+            Args:
+                current: The current node being examined in the traversal.
+                target: The target node to search for.
+                depth (int): The current depth level in the tree traversal.
+
+            Returns:
+                int or None: The depth of the target node if found, None otherwise.
+            """
             if current is target:
                 return depth
             for reply in current.replies:
@@ -1706,6 +1756,14 @@ class SystemHandler:
 
             # Use prompt_while with the dynamic continue prompt
             def stop_on_no_tools(bot: Bot) -> bool:
+                """Determines whether the bot should stop based on the absence of tool requests.
+
+                Args:
+                    bot (Bot): The bot instance to check for tool requests.
+
+                Returns:
+                    bool: True if the bot has no pending tool requests, False otherwise.
+                """
                 return not bot.tool_handler.requests
 
             # Track iteration count to know when we're past the first prompt
@@ -1713,6 +1771,15 @@ class SystemHandler:
 
             def auto_callback(responses, nodes):
                 # Update cooldown after each iteration
+                """Updates cooldown settings based on input token metrics from the last message.
+
+                Checks if the input tokens from the last message exceed the configured threshold
+                for context removal and adjusts cooldown accordingly.
+
+                Args:
+                    responses: Response data from previous operations.
+                    nodes: Node objects being processed.
+                """
                 if context.last_message_metrics:
                     last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
                     if (
@@ -1762,6 +1829,15 @@ class SystemHandler:
             # Combine callbacks
             def combined_callback(responses, nodes):
                 # First run auto callback for logic
+                """Executes both auto callback and display callback functions in sequence.
+
+                First runs the auto callback for logic processing, then conditionally runs
+                the display callback if it exists.
+
+                Args:
+                    responses: Response data to be processed by the callbacks.
+                    nodes: Node data to be processed by the callbacks.
+                """
                 auto_callback(responses, nodes)
                 # Then run display callback if it exists
                 if display_callback:
@@ -2150,6 +2226,12 @@ class DynamicFunctionalPromptHandler:
                 if _callback_type == "single":
 
                     def single_callback(response: str, node):
+                        """Formats and displays a single response from a bot node using pretty printing.
+
+                        Args:
+                            response (str): The response text to be formatted and displayed.
+                            node: The bot node that generated the response.
+                        """
                         pretty(
                             response,
                             context.bot_instance.name if context.bot_instance else "Bot",
@@ -2719,6 +2801,14 @@ class PromptHandler:
             return input(prompt_text)
 
         def startup_hook():
+            """Startup hook function that inserts prefilled text into the readline buffer and refreshes the display.
+
+            This function is typically used as a callback with readline to pre-populate
+            the input line with default text when the user starts typing.
+
+            Note:
+                Requires 'prefill' variable to be defined in the enclosing scope.
+            """
             readline.insert_text(prefill)
             readline.redisplay()
 
