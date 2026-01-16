@@ -52,6 +52,11 @@ class TestToolHandlerPersistence(unittest.TestCase):
         handler (DummyToolHandler): Mock tool handler instance for testing.
     """
     def setUp(self):
+        """Initialize test fixture with a DummyToolHandler instance.
+
+        Sets up the test environment by creating a DummyToolHandler object
+        and assigning it to the handler attribute for use in test methods.
+        """
         """Initialize test fixture by creating a DummyToolHandler instance.
 
         Sets up the test environment with a fresh DummyToolHandler object
