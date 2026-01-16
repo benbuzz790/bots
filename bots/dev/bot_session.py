@@ -120,6 +120,22 @@ class BotSession:
             if self.context.config.verbose:
                 print(f"Warning: metrics.setup_metrics failed: {e}")
 
+        # Initialize bot if requested
+        if auto_initialize:
+            if bot_filename:
+                # Try to load the specified bot file
+                try:
+                    result = self.state._load_bot_from_file(bot_filename, self.context)
+                    if result["type"] == "error":
+                        # If loading fails, create a new bot
+                        self._initialize_new_bot()
+                except Exception:
+                    # If loading fails, create a new bot
+                    self._initialize_new_bot()
+            else:
+                # No filename provided, create a new bot
+                self._initialize_new_bot()
+
     def input(self, user_input: str) -> str:
         """
         Process user input and return response.
