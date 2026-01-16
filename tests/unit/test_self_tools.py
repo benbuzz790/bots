@@ -141,20 +141,20 @@ def test_bare_clear_command():
 
     session = BotSession(auto_initialize=False)
 
-    # Mock os.system to avoid actually clearing the screen
-    with patch("os.system") as mock_system:
+    # Mock subprocess.run since clear now delegates to SystemHandler which uses subprocess
+    with patch("subprocess.run") as mock_run:
         # Test bare "clear"
         result = session.input("clear")
 
-        # Should have called os.system once
-        assert mock_system.call_count == 1
+        # Should have called subprocess.run once (delegated to /clear command)
+        assert mock_run.call_count == 1
         # Result should be empty string
         assert result == ""
 
         # Test case insensitivity
-        mock_system.reset_mock()
+        mock_run.reset_mock()
         result = session.input("CLEAR")
-        assert mock_system.call_count == 1
+        assert mock_run.call_count == 1
         assert result == ""
 
 
