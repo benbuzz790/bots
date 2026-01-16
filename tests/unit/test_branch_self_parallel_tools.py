@@ -33,6 +33,14 @@ class TestBranchSelfParallelTools:
             """Adds a dummy node to the original node's replies list and returns it.
 
             This function serves as a side effect handler that appends a dummy_node
+            to the replies collection of an original_node.
+
+            Returns:
+                The dummy_node that was added to the replies list.
+            """
+            """Adds a dummy node to the original node's replies list and returns it.
+
+            This function serves as a side effect handler that appends a dummy_node
             to the replies of an original_node.
 
             Returns:
