@@ -2049,15 +2049,15 @@ class ToolHandler(ABC):
         return source
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serialize the complete ToolHandler state to a dictionary.
+        """Serialize the ToolHandler state to a dictionary.
 
-        Use when you need to save or transmit the tool handler's state,
-        including all tools, modules, and execution state.
+        Converts the complete state of the ToolHandler into a dictionary format
+        suitable for persistence. This includes all tools, their schemas, module
+        contexts, and execution state.
 
         Returns:
-            Dict[str, Any]: Serialized state containing:
-                - Handler class information
-                - Registered tools and their schemas
+            Dict[str, Any]: Dictionary containing:
+                - Tool schemas and metadata
                 - Module contexts and source code
                 - Function mappings and relationships
                 - Current requests and results
@@ -2065,7 +2065,7 @@ class ToolHandler(ABC):
 
         Note:
             - Preserves complete module contexts
-            - Handles both file-based and dynamic modules
+            - Captures function source code
             - Includes function source code for reconstruction
             - Maintains tool relationships and dependencies
             - Stores both absolute and relative paths for portability
@@ -2073,13 +2073,10 @@ class ToolHandler(ABC):
         """
         module_details = {}
         function_paths = {}
-
-        # Get current working directory for relative path calculation
         cwd = os.getcwd()
 
         for file_path, module_context in self.modules.items():
-            enhanced_source = self._add_imports_to_source(module_context)
-
+            enhanced_source = module_context.source
             # Calculate relative path from current working directory
             try:
                 if os.path.isabs(file_path):
@@ -2112,6 +2109,8 @@ class ToolHandler(ABC):
 
         # Serialize tool registry
         registry_data = {}
+
+        # First, add all tools from the explicit tool_registry
         for tool_name, entry in self.tool_registry.items():
             try:
                 # Check if this tool has a module context
@@ -2136,6 +2135,43 @@ class ToolHandler(ABC):
                 # Silently skip tools that can't be serialized
                 # They will be restored from modules if possible
                 pass
+
+        # Also capture all tools in function_map that aren't in the registry
+        # This ensures tools added via add_tool() (not lazy) are preserved
+        for tool_name, func in self.function_map.items():
+            if tool_name not in registry_data:
+                try:
+                    # Find the schema for this tool
+                    schema = None
+                    for tool_schema in self.tools:
+                        if "name" in tool_schema and tool_schema["name"] == tool_name:
+                            schema = tool_schema
+                            break
+                        elif "function" in tool_schema and "name" in tool_schema["function"]:
+                            if tool_schema["function"]["name"] == tool_name:
+                                schema = tool_schema
+                                break
+
+                    if schema:
+                        module_context = getattr(func, "__module_context__", None)
+
+                        # Determine module path and function data
+                        if module_context:
+                            module_path = module_context.file_path
+                            func_data = None
+                        else:
+                            module_path = None
+                            func_data = self._serialize_dynamic_function(func)
+
+                        registry_data[tool_name] = {
+                            "schema": schema,
+                            "module_path": module_path,
+                            "loaded": True,  # It's in function_map, so it was loaded
+                            "function": func_data,
+                        }
+                except Exception:
+                    # Silently skip tools that can't be serialized
+                    pass
 
         result = {
             "class": f"{self.__class__.__module__}.{self.__class__.__name__}",
