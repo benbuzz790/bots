@@ -1797,19 +1797,20 @@ class ToolHandler(ABC):
                 """Visits function definition nodes to extract type annotation information.
 
                 Processes function return type annotations and parameter type annotations,
-                extracting relevant names for further analysis.
+                extracting referenced type names for further analysis.
 
                 Args:
                     node: The AST FunctionDef node to visit and process for type annotations.
                 """
+
                 def visit_FunctionDef(self, node):
-                    """Visit a FunctionDef AST node and extract type annotation names.
+                    """Visit a function definition node and extract names from type annotations.
 
                     Processes both return type annotations and parameter type annotations,
-                    extracting all referenced names into the annotation_names collection.
+                    adding discovered names to the annotation_names collection.
 
                     Args:
-                        node: The FunctionDef AST node to process.
+                        node: The FunctionDef AST node to visit and process for type annotations.
                     """
                     if node.returns:
                         self._extract_names_from_annotation(node.returns, annotation_names)
@@ -1822,7 +1823,7 @@ class ToolHandler(ABC):
                     """Visit an async function definition node and extract type annotation names.
 
                     Processes the function's return type annotation and all parameter type annotations,
-                    extracting referenced names for further analysis.
+                    extracting referenced names into the annotation_names collection.
 
                     Args:
                         node: The AsyncFunctionDef AST node to process.
@@ -1868,20 +1869,21 @@ class ToolHandler(ABC):
                 all_names_used = set()
 
                 class NameCollector(ast.NodeVisitor):
-                    """Visits Name nodes in an AST and collects loaded variable names.
+                    """Visits Name nodes in an AST and collects variable names that are loaded.
 
-                    This method is part of an AST visitor that identifies variable names being
-                    accessed (loaded) rather than assigned to. Names are added to the global
-                    all_names_used set when encountered in a Load context.
+                    This method is part of an AST visitor pattern that identifies variable names
+                    being read (loaded) from their context, adding them to the global all_names_used set.
 
                     Args:
                         node: The AST Name node being visited.
                     """
+
                     def visit_Name(self, node):
                         """Visits AST Name nodes and tracks loaded variable names.
 
-                        Records the identifier of Name nodes with Load context in the global
-                        all_names_used set, then continues traversal to child nodes.
+                        When encountering a Name node with a Load context, adds the variable name
+                        to the global all_names_used set for tracking purposes. Continues traversal
+                        to child nodes.
 
                         Args:
                             node: The AST Name node being visited.
@@ -2237,12 +2239,13 @@ class ToolHandler(ABC):
                 """Placeholder function that displays information about a dynamic function that cannot be restored.
 
                 This function serves as a replacement for dynamic functions that lose their original
-                implementation after serialization/deserialization. It provides metadata about the
-                original function including its name, signature, documentation, and closure information.
+                implementation after serialization/deserialization. It provides diagnostic information
+                about the original function including its name, signature, documentation, and closure
+                details.
 
                 Returns:
                     str: Formatted information string containing the original function's metadata
-                        including name, signature, documentation, and closure details if available.
+                        including name, signature, documentation, and closure information if available.
                 """
                 info = f"Dynamic function '{metadata['name']}' cannot be restored after save/load\n"
                 info += f"Original signature: {metadata.get('signature', 'unknown')}\n"
@@ -2392,6 +2395,57 @@ class ToolHandler(ABC):
                     print(f"Warning: Failed to restore dynamic function {func_name}: {result}")
 
         return handler
+
+    @staticmethod
+    def _resolve_module_path(original_path: str, relative_path: Optional[str], save_cwd: Optional[str]) -> str:
+        """Resolve module path using multiple strategies.
+
+        Tries to find the module file in this order:
+        1. Original absolute path (if it exists)
+        2. Relative path from current working directory
+        3. Relative path from save working directory
+        4. Basename in current working directory
+        5. Falls back to original path (will use serialized source)
+
+        Parameters:
+            original_path: The original absolute path from when the bot was saved
+            relative_path: The relative path from the save directory
+            save_cwd: The working directory when the bot was saved
+
+        Returns:
+            str: The resolved path (may be the original if no better option found)
+        """
+        # Strategy 1: Try original path
+        if os.path.exists(original_path):
+            return original_path
+
+        # Strategy 2: Try relative path from current directory
+        if relative_path:
+            cwd_relative = os.path.join(os.getcwd(), relative_path)
+            if os.path.exists(cwd_relative):
+                return os.path.abspath(cwd_relative)
+
+        # Strategy 3: Try relative path from save directory
+        if relative_path and save_cwd:
+            save_relative = os.path.join(save_cwd, relative_path)
+            if os.path.exists(save_relative):
+                return os.path.abspath(save_relative)
+
+        # Strategy 4: Try just the basename in current directory
+        basename = os.path.basename(original_path)
+        cwd_basename = os.path.join(os.getcwd(), basename)
+        if os.path.exists(cwd_basename):
+            return os.path.abspath(cwd_basename)
+
+        # Strategy 5: Check if there's a file with the same name in common locations
+        # Look for tools/ subdirectory
+        tools_path = os.path.join(os.getcwd(), "tools", basename)
+        if os.path.exists(tools_path):
+            return os.path.abspath(tools_path)
+
+        # Fallback: Return original path
+        # The module will still work using the serialized source code
+        return original_path
 
     @staticmethod
     def _deserialize_globals(module_dict: dict, serialized_globals: dict):
@@ -2940,15 +2994,14 @@ class Bot(ABC):
         """
 
         def process_item(item):
-            """Process a single item by adding tools based on its type.
+            """Process a tool item by adding it to the tool handler based on its type.
 
-            Handles different item types by delegating to appropriate tool handler methods.
-            String items are treated as file paths, ModuleType items as modules, and
-            Callable items are processed accordingly.
+            Handles different types of tool sources including file paths, modules, and callable objects.
+            The method delegates to appropriate tool handler methods based on the item's type.
 
             Args:
-                item: The item to process. Can be a string (file path), ModuleType
-                    (Python module), or Callable (function/method).
+                item: The tool item to process. Can be a string (file path), ModuleType (module),
+                    or Callable (function/method).
             """
             if isinstance(item, str):
                 self.tool_handler._add_tools_from_file(item)
@@ -3453,14 +3506,16 @@ class Bot(ABC):
             """Format conversation node display with appropriate indentation and width constraints.
 
             Calculates display parameters for rendering conversation nodes in a hierarchical
-            structure with level-based indentation and dynamic width adjustment.
+            structure with level-based indentation and width limitations.
 
             Args:
                 node: The conversation node to format.
                 level (int): The hierarchical level of the node (0-based).
 
             Returns:
-                None: Function performs calculations but doesn't return values.
+                tuple: A tuple containing (indent_str, available_width) where indent_str
+                    is the spacing string for the current level and available_width is
+                    the maximum character width available for content display.
             """
             display_level = min(level, 5)
             indent_size = 1
