@@ -157,16 +157,9 @@ class BotSession:
         if user_input == "/exit":
             return "__EXIT__"
 
-        # Special case: bare "clear" command (no slash)
+        # Special case: bare "clear" command (no slash) - delegate to SystemHandler
         if user_input.lower() == "clear":
-            import os
-            import platform
-
-            if platform.system() == "Windows":
-                os.system("cls")
-            else:
-                os.system("clear")
-            return ""
+            return self._handle_command(self.context.bot_instance, "/clear")
 
         # Check if input contains a command at the end
         parts = user_input.split()

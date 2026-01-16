@@ -718,7 +718,6 @@ class CLICallbacks:
                 responses: The response data from the system.
                 nodes: The node data associated with the responses.
             """
-            pass
 
         return quiet_callback
 
@@ -2166,13 +2165,21 @@ class SystemHandler:
     def clear(self, _bot: Bot, _context: CLIContext, _args: List[str]) -> str:
         """Clear the terminal screen."""
         import platform
+        import shutil
         import subprocess
 
         # Use appropriate clear command for the platform
         if platform.system() == "Windows":
-            subprocess.run(["cls"], shell=False, check=False)
+            # On Windows, use cmd built-in cls command
+            subprocess.run(["cmd", "/c", "cls"], shell=False, check=False)
         else:
-            subprocess.run(["clear"], shell=False, check=False)
+            # On Unix-like systems, check if clear is available
+            clear_path = shutil.which("clear")
+            if clear_path:
+                subprocess.run([clear_path], shell=False, check=False)
+            else:
+                # Fallback to ANSI escape sequence
+                print("\033[H\033[J", end="")
 
         return ""
 
