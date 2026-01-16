@@ -208,7 +208,7 @@ def branch_self(
         # Prepare prompts (no prefixing needed - allow_work is handled in execute_branch)
         prefixed_prompts = message_list
 
-        def execute_branch(prompt, parent_node):
+        def execute_branch(prompt):
             """Execute a single branch and return the response and node."""
             try:
                 # Create a deep copy of the bot for this branch
@@ -254,7 +254,7 @@ def branch_self(
         if parallel:
             # Parallel execution
             with ThreadPoolExecutor() as executor:
-                futures = {executor.submit(execute_branch, prompt, bot.conversation): prompt for prompt in prefixed_prompts}
+                futures = {executor.submit(execute_branch, prompt): prompt for prompt in prefixed_prompts}
                 for future in as_completed(futures):
                     response, node = future.result()
                     responses.append(response)
@@ -262,7 +262,7 @@ def branch_self(
         else:
             # Sequential execution
             for prompt in prefixed_prompts:
-                response, node = execute_branch(prompt, bot.conversation)
+                response, node = execute_branch(prompt)
                 responses.append(response)
                 branch_nodes.append(node)
 
@@ -480,7 +480,18 @@ def remove_context(prompt: str, _bot: Optional[Bot] = None) -> str:
             if msg.parent and msg.parent.role == "user" and msg.parent.tool_results:
                 tool_results_str = "Tool Results:\n"
                 for tr in msg.parent.tool_results:
-                    tool_name = tr.get("tool_name", "unknown")
+                    tool_name = tr.get("tool_name")
+                    # If tool_name is not present, try to resolve from tool_use_id
+                    if not tool_name:
+                        tool_use_id = tr.get("tool_use_id")
+                        if tool_use_id and msg.parent.parent and msg.parent.parent.tool_calls:
+                            # Look up the tool name from the corresponding tool call
+                            for tc in msg.parent.parent.tool_calls:
+                                if tc.get("id") == tool_use_id:
+                                    tool_name = tc.get("name", "unknown")
+                                    break
+                        if not tool_name:
+                            tool_name = "unknown"
                     content = tr.get("content", "")
                     tool_results_str += f"  - {tool_name}: {content}\n"
                 msg_parts.append(truncate_lines(tool_results_str, max_lines=20))

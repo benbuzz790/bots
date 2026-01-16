@@ -1596,27 +1596,36 @@ class SystemHandler:
             "/clear: Clear the terminal screen (also works as bare 'clear')",
             "/verbose: Show tool requests and results (default on)",
             "/quiet: Hide tool requests and results",
+            "/config: Show or modify configuration",
+            "/auto_stash: Toggle auto git stash before user messages",
+            "/load_stash: Load a previously saved auto-stash",
             "/save: Save the current bot (prompts for filename)",
             "/load: Load a previously saved bot (prompts for filename)",
             '/up: "rewind" the conversation by one turn by moving up the conversation tree',
             "/down: Move down the conversation tree (if there are multiple branches)",
-            "/tree: Show the conversation tree structure",
+            "/left: Move to the left sibling in the conversation tree",
+            "/right: Move to the right sibling in the conversation tree",
+            "/root: Jump to the root of the conversation tree",
+            "/lastfork: Jump to the last fork point in the conversation",
+            "/nextfork: Jump to the next fork point in the conversation",
             "/label <name>: Label the current conversation node for easy navigation",
-            "/jump <label>: Jump to a labeled conversation node",
             "/leaf: Show and navigate to conversation leaves (endpoints)",
-            "/branch: Create a new conversation branch from the current point",
-            "/switch: Switch to a different model within the same provider",
-            "/exit or /quit: Exit the CLI",
+            "/combine_leaves: Combine multiple conversation leaves",
+            "/auto: Toggle auto mode",
+            "/fp: Execute a functional prompt",
+            "/broadcast_fp: Broadcast a functional prompt to all leaves",
+            "/p: Load a saved prompt",
+            "/s: Save the last user message as a reusable prompt",
+            "/d: Delete a saved prompt",
+            "/r: Show recent prompts",
             "/add_tool <file.py or module>: Add tools from a Python file or module",
+            "/models: List available models",
+            "/switch: Switch to a different model within the same provider",
             "/backup: Create a backup of the current bot state",
             "/restore: Restore from the most recent backup",
-            "/save_prompt <name>: Save the last user message as a reusable prompt",
-            "/load_prompt <name>: Load and use a saved prompt",
-            "/search_prompts <query>: Search saved prompts by name or content",
-            "/create_auto_stash: Create an auto-stash with AI-generated name",
-            "/load_stash <name or index>: Load a previously saved auto-stash",
-            "/auto_stash on|off: Toggle auto git stash before user messages",
-            "/auto_stash_config: Show or modify auto-stash configuration",
+            "/backup_info: Show information about available backups",
+            "/undo: Undo the last backup operation",
+            "/exit: Exit the CLI",
             "",
             "You can also just type your message and press Enter to chat with the bot.",
             "The bot will respond and can use its tools to help you with various tasks.",
@@ -1624,8 +1633,7 @@ class SystemHandler:
             "Tips:",
             "- Use /verbose to see what tools the bot is using",
             "- Use /save regularly to preserve your conversation",
-            "- Use /tree to visualize the conversation structure",
-            "- Use /label and /jump to mark and return to important points",
+            "- Use /label to mark important points in the conversation",
             "- Use /backup before trying something experimental",
         ]
         return "\n".join(help_lines)
@@ -2155,16 +2163,16 @@ class SystemHandler:
 
         return "\n".join(output)
 
-    def clear(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+    def clear(self, _bot: Bot, _context: CLIContext, _args: List[str]) -> str:
         """Clear the terminal screen."""
-        import os
         import platform
+        import subprocess
 
         # Use appropriate clear command for the platform
         if platform.system() == "Windows":
-            os.system("cls")
+            subprocess.run(["cls"], shell=False, check=False)
         else:
-            os.system("clear")
+            subprocess.run(["clear"], shell=False, check=False)
 
         return ""
 

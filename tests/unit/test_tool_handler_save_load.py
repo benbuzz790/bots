@@ -16,6 +16,7 @@ class TestModuleToolsSaveLoad:
     def test_module_tools_save_load_same_directory(self):
         """Test that module tools work when saved and loaded from same directory."""
         tmpdir = tempfile.mkdtemp()
+        original_cwd = os.getcwd()
         try:
             # Create a tools module
             tools_dir = Path(tmpdir) / "tools"
@@ -69,6 +70,7 @@ def greet(name: str) -> str:
             assert result == "Hello, World!"
 
         finally:
+            os.chdir(original_cwd)
             shutil.rmtree(tmpdir, ignore_errors=True)
 
     def test_module_tools_save_load_different_directory(self):
@@ -156,6 +158,7 @@ def add_numbers(a: int, b: int) -> int:
     def test_module_tools_relative_path_stored(self):
         """Test that relative paths are stored in serialized data."""
         tmpdir = tempfile.mkdtemp()
+        original_cwd = os.getcwd()
         try:
             # Create tools
             tools_dir = Path(tmpdir) / "tools"
@@ -206,4 +209,5 @@ def test_func():
                     assert not os.path.isabs(module_data["relative_path"])
 
         finally:
+            os.chdir(original_cwd)
             shutil.rmtree(tmpdir, ignore_errors=True)
