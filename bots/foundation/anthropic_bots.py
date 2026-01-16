@@ -190,6 +190,11 @@ class AnthropicToolHandler(ToolHandler):
             },
         }
         for param_name, param in sig.parameters.items():
+            # Skip parameters starting with underscore (e.g., _bot)
+            # These are injected by the framework and not meant for LLM
+            if param_name.startswith("_"):
+                continue
+
             tool["input_schema"]["properties"][param_name] = {"type": "string"}
             if param.default == inspect.Parameter.empty:
                 tool["input_schema"]["required"].append(param_name)

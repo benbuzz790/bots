@@ -121,6 +121,11 @@ class GeminiToolHandler(ToolHandler):
 
         sig = inspect.signature(func)
         for param_name, param in sig.parameters.items():
+            # Skip parameters starting with underscore (e.g., _bot)
+            # These are injected by the framework and not meant for LLM
+            if param_name.startswith("_"):
+                continue
+
             schema["parameters"]["properties"][param_name] = {
                 "type": "string",
                 "description": f"Parameter: {param_name}",

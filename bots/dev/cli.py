@@ -1532,49 +1532,51 @@ class SystemHandler:
     """Handler for system and configuration commands."""
 
     def help(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Show help message."""
+        """Display help information about available commands."""
         help_lines = [
-            "This program is an interactive terminal that uses AI bots.",
+            "Welcome to the Bot CLI!",
+            "",
+            "This is a command-line interface for interacting with an AI bot.",
             "It allows you to chat with the LLM, save and load bot states, and execute various commands.",
             "The bot has the ability to read and write files and can execute powershell and python code directly.",
             "The bot also has tools to help edit python files in an accurate and token-efficient way.",
             "",
             "Available commands:",
             "/help: Show this help message",
+            "/clear: Clear the terminal screen (also works as bare 'clear')",
             "/verbose: Show tool requests and results (default on)",
             "/quiet: Hide tool requests and results",
             "/save: Save the current bot (prompts for filename)",
             "/load: Load a previously saved bot (prompts for filename)",
             '/up: "rewind" the conversation by one turn by moving up the conversation tree',
-            "/down: Move down the conversation tree. Requests index of reply if there are multiple.",
-            "/left: Move to this conversation node's left sibling",
-            "/right: Move to this conversation node's right sibling",
-            "/auto: Let the bot work autonomously until it sends a response that doesn't use tools (esc to quit)",
-            "/root: Move to the root node of the conversation tree",
-            "/lastfork: Move to the previous node (going up) that has multiple replies",
-            "/nextfork: Move to the next node (going down) that has multiple replies",
-            "/label: Show all labels, create new label, or jump to existing label",
-            "/leaf [number]: Show all conversation endpoints (leaves) and optionally jump to one",
-            "/fp: Execute functional prompts with dynamic parameter collection",
-            "/combine_leaves: Combine all leaves below current node using a recombinator function",
-            "/broadcast_fp: Execute functional prompts on all leaf nodes",
-            "/p [search]: Load a saved prompt (searches by name and content, pre-fills input)",
-            "/s [text]: Save a prompt - saves provided text or last user message if no text given",
-            "/r: Show recent prompts and select one to load",
-            "/d [search]: Delete a saved prompt",
-            "/add_tool <path> [...]: Add tools from one or more Python files or modules (e.g., file.py, file.py::function)",
-            "/models: Display all available models with metadata",
-            "/switch [model]: Switch to a different model within the same provider",
-            "/config: Show or modify CLI configuration",
-            "/auto_stash: Toggle auto git stash before user messages",
-            "/load_stash <name_or_index>: Load a git stash by name or index",
-            "/backup: Manually create a backup of current bot state",
-            "/restore: Restore bot from backup",
-            "/backup_info: Show information about current backup",
-            "/undo: Quick restore from backup (alias for /restore)",
-            "/exit: Exit the program",
+            "/down: Move down the conversation tree (if there are multiple branches)",
+            "/tree: Show the conversation tree structure",
+            "/label <name>: Label the current conversation node for easy navigation",
+            "/jump <label>: Jump to a labeled conversation node",
+            "/leaf: Show and navigate to conversation leaves (endpoints)",
+            "/branch: Create a new conversation branch from the current point",
+            "/switch: Switch to a different model within the same provider",
+            "/exit or /quit: Exit the CLI",
+            "/add_tool <file.py or module>: Add tools from a Python file or module",
+            "/backup: Create a backup of the current bot state",
+            "/restore: Restore from the most recent backup",
+            "/save_prompt <name>: Save the last user message as a reusable prompt",
+            "/load_prompt <name>: Load and use a saved prompt",
+            "/search_prompts <query>: Search saved prompts by name or content",
+            "/create_auto_stash: Create an auto-stash with AI-generated name",
+            "/load_stash <name or index>: Load a previously saved auto-stash",
+            "/auto_stash on|off: Toggle auto git stash before user messages",
+            "/auto_stash_config: Show or modify auto-stash configuration",
             "",
-            "Type your messages normally to chat.",
+            "You can also just type your message and press Enter to chat with the bot.",
+            "The bot will respond and can use its tools to help you with various tasks.",
+            "",
+            "Tips:",
+            "- Use /verbose to see what tools the bot is using",
+            "- Use /save regularly to preserve your conversation",
+            "- Use /tree to visualize the conversation structure",
+            "- Use /label and /jump to mark and return to important points",
+            "- Use /backup before trying something experimental",
         ]
         return "\n".join(help_lines)
 
@@ -2076,6 +2078,19 @@ class SystemHandler:
         output.append("\nUse /switch <number or model name> to switch models")
 
         return "\n".join(output)
+
+    def clear(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
+        """Clear the terminal screen."""
+        import os
+        import platform
+
+        # Use appropriate clear command for the platform
+        if platform.system() == "Windows":
+            os.system("cls")
+        else:
+            os.system("clear")
+
+        return ""
 
 
 class DynamicFunctionalPromptHandler:

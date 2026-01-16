@@ -755,6 +755,7 @@ class ToolHandler(ABC):
         self.requests: List[Dict[str, Any]] = []
         self.results: List[Dict[str, Any]] = []
         self.modules: Dict[str, ModuleContext] = {}
+        self.tool_registry: Dict[str, Dict[str, Any]] = {}  # For lazy-loading tools
 
     @staticmethod
     def _clean_decorator_source(source):
@@ -1018,7 +1019,17 @@ class ToolHandler(ABC):
                             if tool_name not in self.function_map:
                                 raise ToolNotFoundError(f"Tool '{tool_name}' not found in function map")
                             func = self.function_map[tool_name]
-                            output_kwargs = func(**input_kwargs)
+
+                            # Inject _bot parameter if function signature includes it
+                            sig = inspect.signature(func)
+                            if "_bot" in sig.parameters:
+                                # Create a copy to avoid modifying the original kwargs
+                                call_kwargs = input_kwargs.copy()
+                                call_kwargs["_bot"] = getattr(self, "bot", None)
+                                output_kwargs = func(**call_kwargs)
+                            else:
+                                output_kwargs = func(**input_kwargs)
+
                             response_schema = self.generate_response_schema(request_schema, output_kwargs)
 
                             # Record metrics for successful tool execution
@@ -1139,7 +1150,17 @@ class ToolHandler(ABC):
                     if tool_name not in self.function_map:
                         raise ToolNotFoundError(f"Tool '{tool_name}' not found in function map")
                     func = self.function_map[tool_name]
-                    output_kwargs = func(**input_kwargs)
+
+                    # Inject _bot parameter if function signature includes it
+                    sig = inspect.signature(func)
+                    if "_bot" in sig.parameters:
+                        # Create a copy to avoid modifying the original kwargs
+                        call_kwargs = input_kwargs.copy()
+                        call_kwargs["_bot"] = getattr(self, "bot", None)
+                        output_kwargs = func(**call_kwargs)
+                    else:
+                        output_kwargs = func(**input_kwargs)
+
                     response_schema = self.generate_response_schema(request_schema, output_kwargs)
 
                     # Record metrics for successful tool execution
@@ -1591,6 +1612,97 @@ class ToolHandler(ABC):
 
         self.function_map[func.__name__] = func
 
+    def register_tool(self, func: Callable, module_path: str = None) -> None:
+        """Add tool to registry without loading it into active tools.
+
+        Parameters:
+            func (Callable): The function to register
+            module_path (str, optional): Path to the module containing the function
+        """
+        schema = self.generate_tool_schema(func)
+        if not schema:
+            raise ValueError("Schema undefined. ToolHandler.generate_tool_schema() may not be implemented.")
+
+        tool_name = func.__name__
+        self.tool_registry[tool_name] = {"schema": schema, "module_path": module_path, "function": func, "loaded": False}
+
+    def load_tool_by_name(self, tool_name: str) -> bool:
+        """Load a specific tool from registry into active tools.
+
+        Parameters:
+            tool_name (str): Name of the tool to load
+
+        Returns:
+            bool: True if loaded successfully, False if not in registry
+        """
+        if tool_name not in self.tool_registry:
+            return False
+
+        entry = self.tool_registry[tool_name]
+        if entry["loaded"]:
+            return True  # Already loaded
+
+        # Add to active tools
+        self.tools.append(entry["schema"])
+        self.function_map[tool_name] = entry["function"]
+        entry["loaded"] = True
+        return True
+
+    def unload_tool(self, tool_name: str) -> bool:
+        """Remove tool from active set (but keep in registry).
+
+        Parameters:
+            tool_name (str): Name of the tool to unload
+
+        Returns:
+            bool: True if unloaded successfully, False if not loaded
+        """
+        if tool_name not in self.function_map:
+            return False
+
+        # Remove from active tools
+        self.tools = [t for t in self.tools if self._get_tool_name(t) != tool_name]
+        del self.function_map[tool_name]
+
+        if tool_name in self.tool_registry:
+            self.tool_registry[tool_name]["loaded"] = False
+
+        return True
+
+    def get_registry_info(self, filter: str = "") -> List[Dict[str, Any]]:
+        """Get info about available tools in registry.
+
+        Parameters:
+            filter (str): Optional filter string to search tool names
+
+        Returns:
+            List[Dict[str, Any]]: List of tool info dicts with name, loaded status, description
+        """
+        results = []
+        for name, entry in self.tool_registry.items():
+            if filter and filter.lower() not in name.lower():
+                continue
+            results.append(
+                {"name": name, "loaded": entry["loaded"], "description": self._extract_description(entry["schema"])}
+            )
+        return results
+
+    def _get_tool_name(self, schema: Dict[str, Any]) -> str:
+        """Extract tool name from schema (handles different formats)."""
+        if "name" in schema:
+            return schema["name"]
+        elif "function" in schema and "name" in schema["function"]:
+            return schema["function"]["name"]
+        return ""
+
+    def _extract_description(self, schema: Dict[str, Any]) -> str:
+        """Extract description from tool schema (handles different formats)."""
+        if "description" in schema:
+            return schema["description"]
+        elif "function" in schema and "description" in schema["function"]:
+            return schema["function"]["description"]
+        return ""
+
     def _prepare_function_source_and_context(self, func: Callable) -> tuple[str, dict]:
         """Prepare the source code and execution context for a function."""
         if inspect.isbuiltin(func) or inspect.ismethoddescriptor(func):
@@ -1949,6 +2061,7 @@ class ToolHandler(ABC):
                 - Module contexts and source code
                 - Function mappings and relationships
                 - Current requests and results
+                - Tool registry for lazy-loading
 
         Note:
             - Preserves complete module contexts
@@ -1956,6 +2069,7 @@ class ToolHandler(ABC):
             - Includes function source code for reconstruction
             - Maintains tool relationships and dependencies
             - Stores both absolute and relative paths for portability
+            - Includes tool registry state
         """
         module_details = {}
         function_paths = {}
@@ -1996,6 +2110,33 @@ class ToolHandler(ABC):
             if function_paths.get(name) == "dynamic":
                 dynamic_functions[name] = self._serialize_dynamic_function(func)
 
+        # Serialize tool registry
+        registry_data = {}
+        for tool_name, entry in self.tool_registry.items():
+            try:
+                # Check if this tool has a module context
+                func = entry["function"]
+                module_context = getattr(func, "__module_context__", None)
+
+                # Determine if we need to serialize the function
+                if module_context:
+                    # Function has module context, will be restored from module
+                    func_data = None
+                else:
+                    # Dynamic function, needs to be serialized
+                    func_data = self._serialize_dynamic_function(func)
+
+                registry_data[tool_name] = {
+                    "schema": entry["schema"],
+                    "module_path": entry["module_path"],
+                    "loaded": entry["loaded"],
+                    "function": func_data,
+                }
+            except Exception:
+                # Silently skip tools that can't be serialized
+                # They will be restored from modules if possible
+                pass
+
         result = {
             "class": f"{self.__class__.__module__}.{self.__class__.__name__}",
             "tools": self.tools.copy(),
@@ -2004,6 +2145,7 @@ class ToolHandler(ABC):
             "modules": module_details,
             "function_paths": function_paths,
             "save_cwd": cwd,  # Store the working directory at save time
+            "tool_registry": registry_data,  # Add registry data
         }
 
         # Add dynamic functions if any exist
@@ -2290,6 +2432,7 @@ class ToolHandler(ABC):
             - Maintains original module structure
             - Preserves execution state (requests/results)
             - Attempts to resolve module paths using multiple strategies
+            - Restores tool registry for lazy-loading
 
         Example:
             ```python
@@ -2298,7 +2441,6 @@ class ToolHandler(ABC):
             new_handler = ToolHandler.from_dict(saved_state)
             ```
         """
-        import traceback
 
         handler = cls()
         handler.results = data.get("results", [])
@@ -2309,6 +2451,9 @@ class ToolHandler(ABC):
 
         # Track path remapping for function_paths
         path_remap = {}
+
+        # Store all module functions for registry restoration
+        all_module_functions = {}
 
         for file_path, module_data in data.get("modules", {}).items():
             current_code_hash = cls._get_code_hash(module_data["source"])
@@ -2363,26 +2508,22 @@ class ToolHandler(ABC):
                         if callable(func):
                             func.__module_context__ = module_context
                             handler.function_map[func_name] = func
+
+                # Store all callable functions from this module for registry restoration
+                for name, obj in module.__dict__.items():
+                    if callable(obj) and not name.startswith("_"):
+                        try:
+                            # Try to set module context - some objects (like typing._SpecialForm) don't allow it
+                            obj.__module_context__ = module_context
+                            all_module_functions[name] = obj
+                        except (AttributeError, TypeError):
+                            # Skip objects that don't allow attribute assignment
+                            pass
+
             except Exception as e:
-                print(f"Warning: Failed to load module {file_path}")
+                # Simplified error output - just the essential info
+                print(f"Warning: Failed to load module {module_data.get('name', file_path)}")
                 print(f"  Error: {type(e).__name__}: {str(e)}")
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                if exc_traceback:
-                    tb_frame = exc_traceback.tb_frame
-                    tb_lineno = exc_traceback.tb_lineno
-                    print(f"  Location: {tb_frame.f_code.co_filename}:{tb_lineno}")
-                    print(f"  Function: {tb_frame.f_code.co_name}")
-                    if tb_frame.f_locals:
-                        relevant_locals = {
-                            k: v for k, v in tb_frame.f_locals.items() if not k.startswith("__") and (not callable(v))
-                        }
-                        if relevant_locals:
-                            print(f"  Local variables: {relevant_locals}")
-                tb_lines = traceback.format_tb(exc_traceback)
-                if tb_lines:
-                    print("  Full stack trace:")
-                    for i, line in enumerate(tb_lines):
-                        print(f"    {line.rstrip()}")
                 continue
 
         # Restore dynamic functions
@@ -2391,8 +2532,46 @@ class ToolHandler(ABC):
                 success, result = handler._deserialize_dynamic_function(func_data)
                 if success:
                     handler.function_map[func_name] = result
+                    all_module_functions[func_name] = result
                 else:
-                    print(f"Warning: Failed to restore dynamic function {func_name}: {result}")
+                    # Silently skip - dynamic functions often can't be restored
+                    pass
+
+        # Restore tool registry
+        if "tool_registry" in data:
+            for tool_name, entry_data in data["tool_registry"].items():
+                try:
+                    # Try to find the function
+                    func = None
+
+                    # First check if it's in function_map (loaded tools)
+                    if tool_name in handler.function_map:
+                        func = handler.function_map[tool_name]
+                    # Then check all module functions (registered but not loaded)
+                    elif tool_name in all_module_functions:
+                        func = all_module_functions[tool_name]
+                    # Finally try to deserialize if it's a dynamic function
+                    elif entry_data.get("function"):
+                        success, result = handler._deserialize_dynamic_function(entry_data["function"])
+                        if success:
+                            func = result
+
+                    if func:
+                        was_loaded = entry_data.get("loaded", False)
+                        handler.tool_registry[tool_name] = {
+                            "schema": entry_data["schema"],
+                            "module_path": entry_data.get("module_path"),
+                            "function": func,
+                            "loaded": was_loaded,
+                        }
+
+                        # If the tool was loaded when saved, add it back to function_map
+                        if was_loaded and tool_name not in handler.function_map:
+                            handler.function_map[tool_name] = func
+
+                except Exception:
+                    # Silently skip tools that can't be restored
+                    pass
 
         return handler
 
@@ -2948,7 +3127,7 @@ class Bot(ABC):
                     logger.warning(f"Callback on_respond_error failed: {callback_error}")
             raise
 
-    def add_tools(self, *args) -> None:
+    def add_tools(self, *args, lazy: bool = False) -> None:
         """Add Python functions as tools available to the bot.
 
         Use to provide the bot with capabilities by adding Python functions
@@ -2967,6 +3146,8 @@ class Bot(ABC):
                 - ModuleType: Module containing tools
                 - Callable: Single function to add
                 - List/Tuple: Collection of any above types
+            lazy (bool): If True, register tools without loading them into active set.
+                        Tools can be loaded later with load_tools(). Default False.
 
         Raises:
             TypeError: If an argument is not a supported type
@@ -2985,12 +3166,16 @@ class Bot(ABC):
                 "tools/network.py",
                 [process_data, custom_sort]
             )
+
+            # Lazy loading - register without loading
+            bot.add_tools("tools/optional.py", lazy=True)
             ```
 
         Note:
             - Only adds top-level functions (not nested or class methods)
             - Preserves full module context for imported tools
             - Tools persist across save/load cycles
+            - Lazy-loaded tools can be loaded with load_tools()
         """
 
         def process_item(item):
@@ -3004,11 +3189,34 @@ class Bot(ABC):
                     or Callable (function/method).
             """
             if isinstance(item, str):
-                self.tool_handler._add_tools_from_file(item)
+                if lazy:
+                    # For lazy loading from files, we need to load and register each function
+                    import importlib.util
+
+                    spec = importlib.util.spec_from_file_location("temp_module", item)
+                    if spec and spec.loader:
+                        module = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(module)
+                        for name in dir(module):
+                            obj = getattr(module, name)
+                            if callable(obj) and not name.startswith("_"):
+                                self.tool_handler.register_tool(obj, module_path=item)
+                else:
+                    self.tool_handler._add_tools_from_file(item)
             elif isinstance(item, ModuleType):
-                self.tool_handler._add_tools_from_module(item)
+                if lazy:
+                    # Register all functions from module
+                    for name in dir(item):
+                        obj = getattr(item, name)
+                        if callable(obj) and not name.startswith("_"):
+                            self.tool_handler.register_tool(obj, module_path=item.__name__)
+                else:
+                    self.tool_handler._add_tools_from_module(item)
             elif isinstance(item, Callable):
-                self.tool_handler.add_tool(item)
+                if lazy:
+                    self.tool_handler.register_tool(item)
+                else:
+                    self.tool_handler.add_tool(item)
             elif isinstance(item, (list, tuple)):
                 for subitem in item:
                     process_item(subitem)

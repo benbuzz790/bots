@@ -7,7 +7,14 @@ from bots.foundation.base import Bot
 
 
 def _get_calling_bot() -> Optional[Bot]:
-    """Get the Bot instance that called the current tool."""
+    """Get the Bot instance that called the current tool.
+
+    DEPRECATED: This function uses stack introspection which is fragile.
+    New tools should use the _bot parameter instead, which is automatically
+    injected by ToolHandler.exec_requests().
+
+    This function is kept for backward compatibility only.
+    """
     frame = inspect.currentframe()
     try:
         # Walk up the call stack to find the Bot instance
@@ -23,13 +30,14 @@ def _get_calling_bot() -> Optional[Bot]:
 
 
 @toolify()
-def _get_own_info() -> str:
+def _get_own_info(_bot: Optional[Bot] = None) -> str:
     """Get information about the bot's current state and configuration.
 
     Returns:
         str: Information about model, temperature, max_tokens, and available tools
     """
-    bot = _get_calling_bot()
+    # Try injected bot first, fallback to deprecated method
+    bot = _bot if _bot is not None else _get_calling_bot()
     if not bot:
         return "Error: Could not find calling bot"
 
@@ -50,7 +58,7 @@ def _get_own_info() -> str:
 
 
 @toolify()
-def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str:
+def _modify_own_settings(temperature: str = None, max_tokens: str = None, _bot: Optional[Bot] = None) -> str:
     """Modify the bot's temperature or max_tokens settings.
 
     Parameters:
@@ -60,7 +68,8 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
     Returns:
         str: Confirmation message or error
     """
-    bot = _get_calling_bot()
+    # Try injected bot first, fallback to deprecated method
+    bot = _bot if _bot is not None else _get_calling_bot()
     if not bot:
         return "Error: Could not find calling bot"
 
@@ -93,6 +102,7 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None) -> str
         return "No changes made"
 
 
+@toolify()
 def branch_self(
     self_prompts: str,
     allow_work: str = "False",
@@ -144,15 +154,9 @@ def branch_self(
     try:
         message_list = _process_string_array(self_prompts)
         if not message_list:
-            return "Error: No valid messages provided"
-    except Exception as e:
-        return f"Error parsing prompts: {str(e)}"
+            return "Error: No valid prompts provided"
 
-    # Add self-prompt prefix
-    prefixed_prompts = [f"(self-prompt): {prompt}" for prompt in message_list]
-
-    try:
-        # Store original conversation point and bot settings
+        # Store original settings
         original_node = bot.conversation
         original_autosave = bot.autosave
         bot.autosave = False
@@ -162,7 +166,6 @@ def branch_self(
         # tool_results for ALL tool calls before copying (not just branch_self)
         dummy_node_added = False
         dummy_node = None
-
         if original_node.tool_calls:
             # Check if branch_self is among the tool calls (parallel or not)
             has_branch_self = any(tc.get("name") == "branch_self" for tc in original_node.tool_calls)
@@ -199,15 +202,20 @@ def branch_self(
         # Create lock for thread-safe mutations
         replies_lock = threading.Lock()
 
-        def execute_branch(prompt, parent_bot_node):
-            """Execute a single branch with the given prompt."""
+        # Determine which node to use as parent for branches
+        parent_bot_node = bot.conversation
+
+        # Prepare prompts (no prefixing needed - allow_work is handled in execute_branch)
+        prefixed_prompts = message_list
+
+        def execute_branch(prompt, parent_node):
+            """Execute a single branch and return the response and node."""
             try:
-                # Create a fresh bot copy using deepcopy
-                # This uses __getstate__/__setstate__ which calls _serialize()/_deserialize()
+                # Create a deep copy of the bot for this branch
                 branch_bot = copy.deepcopy(bot)
                 branch_bot.autosave = False
-                # Callbacks are preserved by deepcopy
 
+                # Callbacks are preserved by deepcopy
                 # Store the branching point (branch_bot.conversation is at same point as bot.conversation)
                 branching_node = branch_bot.conversation
 
@@ -246,9 +254,7 @@ def branch_self(
         if parallel:
             # Parallel execution
             with ThreadPoolExecutor() as executor:
-                futures = {
-                    executor.submit(execute_branch, prompt, bot.conversation): prompt for prompt in prefixed_prompts
-                }  # noqa: E501
+                futures = {executor.submit(execute_branch, prompt, bot.conversation): prompt for prompt in prefixed_prompts}
                 for future in as_completed(futures):
                     response, node = future.result()
                     responses.append(response)
@@ -292,7 +298,6 @@ def branch_self(
             if valid_responses:
                 from bots.flows.recombinators import recombinators as recomb
 
-                # Get the appropriate recombinator method
                 if recombine == "concatenate":
                     combined, _ = recomb.concatenate(valid_responses, [])
                 elif recombine == "llm_judge":
@@ -322,7 +327,7 @@ def branch_self(
 
 
 @toolify()
-def add_tools(filepath: str) -> str:
+def add_tools(filepath: str, _bot: Optional[Bot] = None) -> str:
     """Add tools from a Python file to the bot's toolkit.
 
     Parameters:
@@ -331,7 +336,8 @@ def add_tools(filepath: str) -> str:
     Returns:
         str: Success message with tool names, or error message
     """
-    bot = _get_calling_bot()
+    # Try injected bot first, fallback to deprecated method
+    bot = _bot if _bot is not None else _get_calling_bot()
     if not bot:
         return "Error: Could not find calling bot"
 
@@ -371,7 +377,7 @@ def add_tools(filepath: str) -> str:
 
 
 @toolify()
-def remove_context(prompt: str) -> str:
+def remove_context(prompt: str, _bot: Optional[Bot] = None) -> str:
     """Remove bot-user message pairs from the conversation history based on a condition.
 
     Use when you need to delete specific messages from your conversation tree
@@ -392,7 +398,8 @@ def remove_context(prompt: str) -> str:
     Example:
         remove_context("remove all messages about testing")
     """
-    bot = _get_calling_bot()
+    # Try injected bot first, fallback to deprecated method
+    bot = _bot if _bot is not None else _get_calling_bot()
     if not bot:
         return "Error: Could not find calling bot"
 
@@ -473,37 +480,7 @@ def remove_context(prompt: str) -> str:
             if msg.parent and msg.parent.role == "user" and msg.parent.tool_results:
                 tool_results_str = "Tool Results:\n"
                 for tr in msg.parent.tool_results:
-                    # Get the tool_use_id or tool_call_id from the result
-                    tool_id = tr.get("tool_use_id") or tr.get("tool_call_id")
-
-                    # Look up the tool name from the grandparent's tool_calls
-                    # (tool_results in msg.parent came from msg.parent.parent's tool_calls)
-                    tool_name = "unknown"
-
-                    # First check grandparent's tool_calls
-                    if (
-                        tool_id
-                        and msg.parent
-                        and msg.parent.parent
-                        and hasattr(msg.parent.parent, "tool_calls")
-                        and msg.parent.parent.tool_calls
-                    ):
-                        for tc in msg.parent.parent.tool_calls:
-                            if tc.get("id") == tool_id:
-                                tool_name = tc.get("name", "unknown")
-                                break
-
-                    # Fallback to current message's tool_calls if grandparent not available
-                    if tool_name == "unknown" and tool_id and msg.tool_calls:
-                        for tc in msg.tool_calls:
-                            if tc.get("id") == tool_id:
-                                tool_name = tc.get("name", "unknown")
-                                break
-
-                    # Fallback to tool_id if no name found
-                    if tool_name == "unknown" and tool_id:
-                        tool_name = tool_id
-
+                    tool_name = tr.get("tool_name", "unknown")
                     content = tr.get("content", "")
                     tool_results_str += f"  - {tool_name}: {content}\n"
                 msg_parts.append(truncate_lines(tool_results_str, max_lines=20))
@@ -754,7 +731,7 @@ def _remove_dummy_from_tree(node, dummy_content):
 
 
 @toolify()
-def subagent(tasks: str, max_iterations: str = "20") -> str:
+def subagent(tasks: str, max_iterations: str = "20", _bot: Optional[Bot] = None) -> str:
     """Create a subagent that works on a list of tasks iteratively.
 
     The subagent will work through the tasks one by one, using tools as needed.
@@ -767,7 +744,8 @@ def subagent(tasks: str, max_iterations: str = "20") -> str:
     Returns:
         str: Summary of completed tasks and final response
     """
-    bot = _get_calling_bot()
+    # Try injected bot first, fallback to deprecated method
+    bot = _bot if _bot is not None else _get_calling_bot()
     if not bot:
         return "Error: Could not find calling bot"
 

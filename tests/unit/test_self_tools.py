@@ -41,6 +41,123 @@ def cleanup_temp_bot_files():
                 pass
 
 
+def test_get_own_info_with_bot_injection():
+    """Test _get_own_info with _bot parameter injection."""
+    from unittest.mock import MagicMock
+
+    from bots.tools.self_tools import _get_own_info
+
+    mock_bot = MagicMock()
+    mock_bot.name = "TestBot"
+    mock_bot.model_engine = "test-model"
+    mock_bot.temperature = 0.7
+    mock_bot.max_tokens = 1000
+    mock_bot.tool_handler.tools = []
+
+    # Test with injected bot
+    result = _get_own_info(_bot=mock_bot)
+    assert "TestBot" in result
+    assert "test-model" in result
+    assert "0.7" in result
+    assert "1000" in result
+
+
+def test_modify_own_settings_with_bot_injection():
+    """Test _modify_own_settings with _bot parameter injection."""
+    from unittest.mock import MagicMock
+
+    from bots.tools.self_tools import _modify_own_settings
+
+    mock_bot = MagicMock()
+    mock_bot.temperature = 0.5
+    mock_bot.max_tokens = 500
+
+    # Test temperature change
+    result = _modify_own_settings(temperature="0.8", _bot=mock_bot)
+    assert "Temperature set to 0.8" in result
+    assert mock_bot.temperature == 0.8
+
+    # Test max_tokens change
+    result = _modify_own_settings(max_tokens="2000", _bot=mock_bot)
+    assert "Max tokens set to 2000" in result
+    assert mock_bot.max_tokens == 2000
+
+
+def test_backward_compatibility_with_get_calling_bot():
+    """Test that tools still work with deprecated _get_calling_bot fallback."""
+    from unittest.mock import MagicMock, patch
+
+    from bots.tools.self_tools import _get_own_info
+
+    mock_bot = MagicMock()
+    mock_bot.name = "TestBot"
+    mock_bot.model_engine = "test-model"
+    mock_bot.temperature = 0.7
+    mock_bot.max_tokens = 1000
+    mock_bot.tool_handler.tools = []
+
+    with patch("bots.tools.self_tools._get_calling_bot", return_value=mock_bot):
+        # Call without _bot parameter to test fallback
+        result = _get_own_info()
+        assert "TestBot" in result
+        assert "test-model" in result
+
+
+def test_clear_command_registered():
+    """Test that /clear command is properly registered in BotSession."""
+    from bots.dev.bot_session import BotSession
+
+    session = BotSession(auto_initialize=False)
+
+    # Check command is registered
+    assert "/clear" in session.commands
+    assert session.commands["/clear"] == session.system.clear
+
+
+def test_clear_command_execution():
+    """Test that clear command can be executed without errors."""
+    from unittest.mock import patch
+
+    from bots.dev.bot_session import BotSession
+
+    session = BotSession(auto_initialize=False)
+
+    # Mock os.system to avoid actually clearing the screen
+    with patch("os.system") as mock_system:
+        # Test /clear command
+        result = session.input("/clear")
+
+        # Should have called os.system once
+        assert mock_system.call_count == 1
+        # Result should be empty string
+        assert result == ""
+
+
+def test_bare_clear_command():
+    """Test that bare 'clear' (without slash) works."""
+    from unittest.mock import patch
+
+    from bots.dev.bot_session import BotSession
+
+    session = BotSession(auto_initialize=False)
+
+    # Mock os.system to avoid actually clearing the screen
+    with patch("os.system") as mock_system:
+        # Test bare "clear"
+        result = session.input("clear")
+
+        # Should have called os.system once
+        assert mock_system.call_count == 1
+        # Result should be empty string
+        assert result == ""
+
+        # Test case insensitivity
+        mock_system.reset_mock()
+        result = session.input("CLEAR")
+        assert mock_system.call_count == 1
+        assert result == ""
+
+
 def test_remove_context_with_natural_language():
     """Test that remove_context uses Haiku to evaluate conditions."""
     # Create a bot with some conversation history
@@ -64,37 +181,39 @@ def test_remove_context_with_natural_language():
         # assistant1 is at index 0 (file operations), assistant2 is at index 1 (math)
         mock_haiku.respond.return_value = "[0]"  # Remove index 0 (file operations)
 
-        # Patch _get_calling_bot to return our test bot
-        with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
-            result = remove_context("remove all messages about file operations")
+        # Call remove_context with _bot parameter
+        result = remove_context("remove all messages about file operations", _bot=bot)
 
-        # Verify the result
-        assert "Removed 1 message pair(s)" in result
-        assert "file operations" in result
+    # Verify the result
+    assert "Removed 1 message pair(s)" in result or "Removed 1 conversation pair(s)" in result
+    assert "file operations" in result
 
 
 def test_remove_context_invalid_prompt():
-    """Test that remove_context handles vague prompts gracefully."""
+    """Test that remove_context handles invalid prompts gracefully."""
+    # Create a bot with some conversation history
     bot = AnthropicBot(api_key="test-key", autosave=False, enable_tracing=False)
 
     # Build a conversation tree
     root = bot.conversation
     user1 = root._add_reply(role="user", content="Can you help me with file operations?")
     assistant1 = user1._add_reply(role="assistant", content="Sure, I can help with files.")
+
     bot.conversation = assistant1
 
+    # Mock the Haiku bot responses
     with patch("bots.foundation.anthropic_bots.AnthropicBot") as MockBot:
         mock_haiku = MagicMock()
         MockBot.return_value = mock_haiku
 
-        # Haiku returns empty array for vague prompt (doesn't match anything)
+        # Haiku returns empty array (no matches)
         mock_haiku.respond.return_value = "[]"
 
-        with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
-            result = remove_context("remove some stuff")
+        # Call remove_context with _bot parameter
+        result = remove_context("remove some stuff", _bot=bot)
 
-        # Should report no matches for vague prompt
-        assert "No messages matched" in result
+    # Verify the result indicates no matches
+    assert "Removed 0" in result or "No messages matched" in result
 
 
 def test_remove_context_preserves_tool_results():

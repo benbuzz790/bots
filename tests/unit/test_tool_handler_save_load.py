@@ -16,7 +16,6 @@ class TestModuleToolsSaveLoad:
     def test_module_tools_save_load_same_directory(self):
         """Test that module tools work when saved and loaded from same directory."""
         tmpdir = tempfile.mkdtemp()
-        original_cwd = os.getcwd()
         try:
             # Create a tools module
             tools_dir = Path(tmpdir) / "tools"
@@ -26,6 +25,7 @@ class TestModuleToolsSaveLoad:
             tools_file.write_text(
                 """
 def greet(name: str) -> str:
+    '''Greet someone by name.'''
     return f"Hello, {name}!"
 """
             )
@@ -69,7 +69,6 @@ def greet(name: str) -> str:
             assert result == "Hello, World!"
 
         finally:
-            os.chdir(original_cwd)
             shutil.rmtree(tmpdir, ignore_errors=True)
 
     def test_module_tools_save_load_different_directory(self):
@@ -86,6 +85,7 @@ def greet(name: str) -> str:
             tools_file.write_text(
                 """
 def add_numbers(a: int, b: int) -> int:
+    '''Add two numbers.'''
     return a + b
 """
             )
@@ -151,4 +151,59 @@ def add_numbers(a: int, b: int) -> int:
 
         finally:
             os.chdir(original_cwd)
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    def test_module_tools_relative_path_stored(self):
+        """Test that relative paths are stored in serialized data."""
+        tmpdir = tempfile.mkdtemp()
+        try:
+            # Create tools
+            tools_dir = Path(tmpdir) / "tools"
+            tools_dir.mkdir()
+
+            tools_file = tools_dir / "my_tools.py"
+            tools_file.write_text(
+                """
+def test_func():
+    return "test"
+"""
+            )
+
+            os.chdir(tmpdir)
+            bot = AnthropicBot(
+                name="TestBot",
+                api_key="test-key",
+                model_engine=Engines.CLAUDE35_HAIKU,
+                max_tokens=1000,
+                temperature=0.7,
+                role="assistant",
+                role_description="A test bot",
+            )
+
+            sys.path.insert(0, str(tmpdir))
+            try:
+                import tools.my_tools as my_tools
+
+                bot.add_tools(my_tools)
+            finally:
+                sys.path.pop(0)
+                if "tools" in sys.modules:
+                    del sys.modules["tools"]
+                if "tools.my_tools" in sys.modules:
+                    del sys.modules["tools.my_tools"]
+
+            # Serialize and check for relative path
+            serialized = bot.tool_handler.to_dict()
+
+            assert "modules" in serialized
+            assert "save_cwd" in serialized
+
+            # Check that relative_path is stored
+            for module_data in serialized["modules"].values():
+                assert "relative_path" in module_data
+                if module_data["relative_path"]:
+                    # Relative path should not be absolute
+                    assert not os.path.isabs(module_data["relative_path"])
+
+        finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
