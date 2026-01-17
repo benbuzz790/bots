@@ -701,17 +701,38 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         try:
             os.chdir(subdir)
             loaded_bot = Bot.load(os.path.join("..", f"original_{self.bot.name}.bot"))
-            loaded_bot.respond("What is 7 + 8?")
+
+            # Verify tool was loaded
+            self.assertIn(
+                "simple_addition",
+                loaded_bot.tool_handler.function_map,
+                f"Tool not loaded. Available tools: {list(loaded_bot.tool_handler.function_map.keys())}",
+            )
+
+            loaded_bot.respond("This is a test, please use your tool without further questions. What is 7 + 8?")
+
+            # Check that we have results
+            self.assertTrue(
+                loaded_bot.conversation.tool_results or loaded_bot.conversation.pending_results,
+                "No tool results or pending results found after respond()",
+            )
+
             loaded_tool_results = (
                 loaded_bot.conversation.tool_results[0].values() if loaded_bot.conversation.tool_results else []
             )
             loaded_pending_results = (
                 loaded_bot.conversation.pending_results[0].values() if loaded_bot.conversation.pending_results else []
             )
-            self.assertTrue(
-                any(("15" in str(v) for v in loaded_tool_results))
-                or any(("15" in str(v) for v in loaded_pending_results))  # noqa: E501
+
+            # Verify the calculation result
+            has_result = any(("15" in str(v) for v in loaded_tool_results)) or any(
+                ("15" in str(v) for v in loaded_pending_results)
             )
+            self.assertTrue(
+                has_result,
+                f"Expected '15' in results. tool_results={list(loaded_tool_results)}, pending_results={list(loaded_pending_results)}",
+            )
+
             new_path = os.path.join("..", f"from_subdir_{self.bot.name}")
             loaded_bot.save(new_path)
         finally:
