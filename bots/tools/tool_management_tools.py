@@ -2,8 +2,10 @@
 
 import inspect
 import os
+from typing import Optional
 
 from bots.dev.decorators import toolify
+from bots.foundation.base import Bot
 
 
 def _get_calling_bot():
@@ -35,7 +37,7 @@ def _get_calling_bot():
 
 
 @toolify()
-def view_tools(filter: str = "", verbose: bool = False) -> str:
+def view_tools(filter: str = "", verbose: bool = False, _bot: Optional[Bot] = None) -> str:
     """View available tools that can be loaded.
 
     Shows tools in the registry that can be loaded with load_tools().
@@ -47,7 +49,8 @@ def view_tools(filter: str = "", verbose: bool = False) -> str:
     Returns:
         str: List of available tools with their status and optionally descriptions
     """
-    bot = _get_calling_bot()
+    # Try injected bot first, fallback to deprecated method
+    bot = _bot if _bot is not None else _get_calling_bot()
     if not bot or not bot.tool_handler:
         return "Error: Could not access tool handler"
 
@@ -82,60 +85,40 @@ def view_tools(filter: str = "", verbose: bool = False) -> str:
 
 
 @toolify()
-def load_tools(tool_names: str) -> str:
+def load_tools(tool_names: str, _bot: Optional[Bot] = None) -> str:
     """Load specific tools to make them available for use.
-
-
 
     Only tools in the registry can be loaded. Use view_tools() to see available tools.
 
-
-
     Parameters:
-
         tool_names (str): Comma-separated list of tool names to load
-
                          Example: "view_file,python_edit,execute_python"
 
-
-
     Returns:
-
         str: Confirmation of loaded tools or error messages
-
     """
-
-    bot = _get_calling_bot()
-
+    # Try injected bot first, fallback to deprecated method
+    bot = _bot if _bot is not None else _get_calling_bot()
     if not bot or not bot.tool_handler:
-
         return "Error: Could not access tool handler"
 
     # Parse tool names
-
     names = [n.strip() for n in tool_names.split(",") if n.strip()]
-
     if not names:
-
         return "Error: No tool names provided"
 
     results = []
-
     for name in names:
-
         if bot.tool_handler.load_tool_by_name(name):
-
             results.append(f"✓ Loaded: {name}")
-
         else:
-
             results.append(f"✗ Failed: {name} (not in registry)")
 
     return "\n".join(results)
 
 
 @toolify()
-def load_code(code_or_filename: str) -> str:
+def load_code(code_or_filename: str, _bot: Optional[Bot] = None) -> str:
     """Load a new tool from code string or filename.
 
     **SECURITY WARNING**: This function uses exec() to execute arbitrary Python code
@@ -163,7 +146,8 @@ def load_code(code_or_filename: str) -> str:
     import types
     import warnings
 
-    bot = _get_calling_bot()
+    # Try injected bot first, fallback to deprecated method
+    bot = _bot if _bot is not None else _get_calling_bot()
     if not bot or not bot.tool_handler:
         return "Error: Could not access tool handler"
 
