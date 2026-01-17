@@ -8,6 +8,7 @@ This test verifies:
 4. Functions work correctly after deserialization regardless of dill success/failure
 """
 
+import inspect
 import os
 import shutil
 import sys
@@ -69,11 +70,7 @@ class TestDillSerialization(unittest.TestCase):
         self.assertIn("view", loaded_bot.tool_handler.function_map)
         func = loaded_bot.tool_handler.function_map["view"]
         self.assertTrue(callable(func))
-
-        # Test that the function actually works (can be called)
-        # Note: We don't test execution here, just that it's callable and has right signature
-        import inspect
-
+        func(r"tests\unit\test_dill_serialization.py")
         sig = inspect.signature(func)
         self.assertIn("file_path", sig.parameters)
 
