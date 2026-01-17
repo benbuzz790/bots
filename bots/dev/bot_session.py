@@ -385,6 +385,13 @@ class BotSession:
 
         bot.add_tools(*tools_to_add)
 
+        # Add tool management tools with lazy loading
+        # Register all tools but only load view_tools and load_tools
+        from bots.tools.tool_management import load_code, load_tools, view_tools
+
+        bot.add_tools(load_code, lazy=True)
+        bot.add_tools(view_tools, load_tools)
+
         sys_msg = textwrap.dedent(
             """
     You're a coding agent. Please follow these rules:
