@@ -148,6 +148,15 @@ def _find_leaves_util(node: ConversationNode) -> List[ConversationNode]:
     leaves = []
 
     def dfs(current_node):
+        """Performs depth-first search traversal to find all leaf nodes in a tree structure.
+
+        Traverses the tree recursively, identifying nodes without replies as leaves and
+        adding them to the leaves collection.
+
+        Args:
+            current_node: The node to start traversal from. Must have a 'replies' attribute
+                that is either empty (for leaf nodes) or contains child nodes.
+        """
         if not current_node.replies:  # This is a leaf
             leaves.append(current_node)
         else:
@@ -647,6 +656,15 @@ class CLICallbacks:
         """Create a callback that only prints bot messages, no tool info."""
 
         def message_only_callback(responses, nodes):
+            """Callback function that displays only the last bot response message.
+
+            Processes bot responses and displays the most recent non-empty response
+            using pretty formatting with the bot's name.
+
+            Args:
+                responses: List of bot response messages, may contain empty values.
+                nodes: Node objects associated with the responses (unused in this function).
+            """
             if responses and responses[-1]:
                 bot_name = self.context.bot_instance.name if self.context.bot_instance else "Bot"
                 pretty(
@@ -669,6 +687,16 @@ class CLICallbacks:
         def verbose_callback(responses, nodes):
             # Bot response and tools are already displayed in real-time
             # Just show metrics at the end
+            """Callback function that displays bot metrics after processing responses.
+
+            This callback is designed for verbose output mode where bot responses and tools
+            are already shown in real-time. It only displays performance metrics at the end
+            of processing if a bot instance is available in the context.
+
+            Args:
+                responses: The responses generated during processing.
+                nodes: The nodes involved in the processing workflow.
+            """
             if hasattr(self.context, "bot_instance") and self.context.bot_instance:
                 bot = self.context.bot_instance
                 display_metrics(self.context, bot)
@@ -681,7 +709,15 @@ class CLICallbacks:
         def quiet_callback(responses, nodes):
             # In quiet mode, RealTimeDisplayCallbacks still shows the bot response
             # but we don't show tools or metrics
-            pass
+            """Callback function for quiet mode operation that suppresses tool and metrics display.
+
+            In quiet mode, only bot responses are shown through RealTimeDisplayCallbacks
+            while tool outputs and performance metrics are hidden.
+
+            Args:
+                responses: The response data from the system.
+                nodes: The node data associated with the responses.
+            """
 
         return quiet_callback
 
@@ -1367,6 +1403,19 @@ class ConversationHandler:
         """Calculate the depth/distance from start_node to target_node."""
 
         def find_path_length(current, target, depth=0):
+            """Find the depth of a target node in a tree structure using depth-first search.
+
+            Recursively traverses a tree starting from the current node to locate the target
+            node and returns the depth at which it is found.
+
+            Args:
+                current: The current node being examined in the traversal.
+                target: The target node to search for.
+                depth (int): The current depth level in the tree traversal.
+
+            Returns:
+                int or None: The depth of the target node if found, None otherwise.
+            """
             if current is target:
                 return depth
             for reply in current.replies:
@@ -1532,49 +1581,59 @@ class SystemHandler:
     """Handler for system and configuration commands."""
 
     def help(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Show help message."""
+        """Display help information about available commands."""
         help_lines = [
-            "This program is an interactive terminal that uses AI bots.",
+            "Welcome to the Bot CLI!",
+            "",
+            "This is a command-line interface for interacting with an AI bot.",
             "It allows you to chat with the LLM, save and load bot states, and execute various commands.",
             "The bot has the ability to read and write files and can execute powershell and python code directly.",
             "The bot also has tools to help edit python files in an accurate and token-efficient way.",
             "",
             "Available commands:",
             "/help: Show this help message",
+            "/clear: Clear the terminal screen (also works as bare 'clear')",
             "/verbose: Show tool requests and results (default on)",
             "/quiet: Hide tool requests and results",
+            "/config: Show or modify configuration",
+            "/auto_stash: Toggle auto git stash before user messages",
+            "/load_stash: Load a previously saved auto-stash",
             "/save: Save the current bot (prompts for filename)",
             "/load: Load a previously saved bot (prompts for filename)",
             '/up: "rewind" the conversation by one turn by moving up the conversation tree',
-            "/down: Move down the conversation tree. Requests index of reply if there are multiple.",
-            "/left: Move to this conversation node's left sibling",
-            "/right: Move to this conversation node's right sibling",
-            "/auto: Let the bot work autonomously until it sends a response that doesn't use tools (esc to quit)",
-            "/root: Move to the root node of the conversation tree",
-            "/lastfork: Move to the previous node (going up) that has multiple replies",
-            "/nextfork: Move to the next node (going down) that has multiple replies",
-            "/label: Show all labels, create new label, or jump to existing label",
-            "/leaf [number]: Show all conversation endpoints (leaves) and optionally jump to one",
-            "/fp: Execute functional prompts with dynamic parameter collection",
-            "/combine_leaves: Combine all leaves below current node using a recombinator function",
-            "/broadcast_fp: Execute functional prompts on all leaf nodes",
-            "/p [search]: Load a saved prompt (searches by name and content, pre-fills input)",
-            "/s [text]: Save a prompt - saves provided text or last user message if no text given",
-            "/r: Show recent prompts and select one to load",
-            "/d [search]: Delete a saved prompt",
-            "/add_tool <path> [...]: Add tools from one or more Python files or modules (e.g., file.py, file.py::function)",
-            "/models: Display all available models with metadata",
-            "/switch [model]: Switch to a different model within the same provider",
-            "/config: Show or modify CLI configuration",
-            "/auto_stash: Toggle auto git stash before user messages",
-            "/load_stash <name_or_index>: Load a git stash by name or index",
-            "/backup: Manually create a backup of current bot state",
-            "/restore: Restore bot from backup",
-            "/backup_info: Show information about current backup",
-            "/undo: Quick restore from backup (alias for /restore)",
-            "/exit: Exit the program",
+            "/down: Move down the conversation tree (if there are multiple branches)",
+            "/left: Move to the left sibling in the conversation tree",
+            "/right: Move to the right sibling in the conversation tree",
+            "/root: Jump to the root of the conversation tree",
+            "/lastfork: Jump to the last fork point in the conversation",
+            "/nextfork: Jump to the next fork point in the conversation",
+            "/label <name>: Label the current conversation node for easy navigation",
+            "/leaf: Show and navigate to conversation leaves (endpoints)",
+            "/combine_leaves: Combine multiple conversation leaves",
+            "/auto: Toggle auto mode",
+            "/fp: Execute a functional prompt",
+            "/broadcast_fp: Broadcast a functional prompt to all leaves",
+            "/p: Load a saved prompt",
+            "/s: Save the last user message as a reusable prompt",
+            "/d: Delete a saved prompt",
+            "/r: Show recent prompts",
+            "/add_tool <file.py or module>: Add tools from a Python file or module",
+            "/models: List available models",
+            "/switch: Switch to a different model within the same provider",
+            "/backup: Create a backup of the current bot state",
+            "/restore: Restore from the most recent backup",
+            "/backup_info: Show information about available backups",
+            "/undo: Undo the last backup operation",
+            "/exit: Exit the CLI",
             "",
-            "Type your messages normally to chat.",
+            "You can also just type your message and press Enter to chat with the bot.",
+            "The bot will respond and can use its tools to help you with various tasks.",
+            "",
+            "Tips:",
+            "- Use /verbose to see what tools the bot is using",
+            "- Use /save regularly to preserve your conversation",
+            "- Use /label to mark important points in the conversation",
+            "- Use /backup before trying something experimental",
         ]
         return "\n".join(help_lines)
 
@@ -1704,6 +1763,14 @@ class SystemHandler:
 
             # Use prompt_while with the dynamic continue prompt
             def stop_on_no_tools(bot: Bot) -> bool:
+                """Determines whether the bot should stop based on the absence of tool requests.
+
+                Args:
+                    bot (Bot): The bot instance to check for tool requests.
+
+                Returns:
+                    bool: True if the bot has no pending tool requests, False otherwise.
+                """
                 return not bot.tool_handler.requests
 
             # Track iteration count to know when we're past the first prompt
@@ -1711,6 +1778,15 @@ class SystemHandler:
 
             def auto_callback(responses, nodes):
                 # Update cooldown after each iteration
+                """Updates cooldown settings based on input token metrics from the last message.
+
+                Checks if the input tokens from the last message exceed the configured threshold
+                for context removal and adjusts cooldown accordingly.
+
+                Args:
+                    responses: Response data from previous operations.
+                    nodes: Node objects being processed.
+                """
                 if context.last_message_metrics:
                     last_input_tokens = context.last_message_metrics.get("input_tokens", 0)
                     if (
@@ -1760,6 +1836,15 @@ class SystemHandler:
             # Combine callbacks
             def combined_callback(responses, nodes):
                 # First run auto callback for logic
+                """Executes both auto callback and display callback functions in sequence.
+
+                First runs the auto callback for logic processing, then conditionally runs
+                the display callback if it exists.
+
+                Args:
+                    responses: Response data to be processed by the callbacks.
+                    nodes: Node data to be processed by the callbacks.
+                """
                 auto_callback(responses, nodes)
                 # Then run display callback if it exists
                 if display_callback:
@@ -2077,6 +2162,27 @@ class SystemHandler:
 
         return "\n".join(output)
 
+    def clear(self, _bot: Bot, _context: CLIContext, _args: List[str]) -> str:
+        """Clear the terminal screen."""
+        import platform
+        import shutil
+        import subprocess
+
+        # Use appropriate clear command for the platform
+        if platform.system() == "Windows":
+            # On Windows, use cmd built-in cls command
+            subprocess.run(["cmd", "/c", "cls"], shell=False, check=False)
+        else:
+            # On Unix-like systems, check if clear is available
+            clear_path = shutil.which("clear")
+            if clear_path:
+                subprocess.run([clear_path], shell=False, check=False)
+            else:
+                # Fallback to ANSI escape sequence
+                print("\033[H\033[J", end="")
+
+        return ""
+
 
 class DynamicFunctionalPromptHandler:
     """Handler for functional prompt commands using dynamic parameter collection."""
@@ -2135,6 +2241,12 @@ class DynamicFunctionalPromptHandler:
                 if _callback_type == "single":
 
                     def single_callback(response: str, node):
+                        """Formats and displays a single response from a bot node using pretty printing.
+
+                        Args:
+                            response (str): The response text to be formatted and displayed.
+                            node: The bot node that generated the response.
+                        """
                         pretty(
                             response,
                             context.bot_instance.name if context.bot_instance else "Bot",
@@ -2704,6 +2816,14 @@ class PromptHandler:
             return input(prompt_text)
 
         def startup_hook():
+            """Startup hook function that inserts prefilled text into the readline buffer and refreshes the display.
+
+            This function is typically used as a callback with readline to pre-populate
+            the input line with default text when the user starts typing.
+
+            Note:
+                Requires 'prefill' variable to be defined in the enclosing scope.
+            """
             readline.insert_text(prefill)
             readline.redisplay()
 

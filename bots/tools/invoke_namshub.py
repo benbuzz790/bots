@@ -17,6 +17,12 @@ from bots.foundation.base import Bot
 def _get_calling_bot() -> Optional[Bot]:
     """Helper function to get a reference to the calling bot.
 
+    DEPRECATED: This function uses stack introspection which is fragile.
+    New tools should use the _bot parameter instead, which is automatically
+    injected by ToolHandler.exec_requests().
+
+    This function is kept for backward compatibility only.
+
     Returns:
         Optional[Bot]: Reference to the calling bot or None if not found
     """
@@ -31,7 +37,7 @@ def _get_calling_bot() -> Optional[Bot]:
 
 
 @toolify()
-def invoke_namshub(namshub_name: str, kwargs: str = "{}") -> str:
+def invoke_namshub(namshub_name: str, kwargs: str = "{}", _bot: Optional[Bot] = None) -> str:
     """Invoke a namshub workflow on yourself.
 
     A namshub is a specialized workflow that can modify your system prompt,
@@ -61,7 +67,8 @@ def invoke_namshub(namshub_name: str, kwargs: str = "{}") -> str:
     """
     import json
 
-    bot = _get_calling_bot()
+    # Try injected bot first, fallback to deprecated method
+    bot = _bot if _bot is not None else _get_calling_bot()
     if not bot:
         return "Error: Could not find calling bot"
 
@@ -78,95 +85,51 @@ def invoke_namshub(namshub_name: str, kwargs: str = "{}") -> str:
         # It's a directory, list available namshubs
         namshub_files = [f for f in os.listdir(namshub_name) if f.endswith(".py") and not f.startswith("_")]
         if not namshub_files:
-            return f"Error: No namshub files found in directory '{namshub_name}'"
+            return f"No namshub files found in directory: {namshub_name}"
 
-        return (
-            f"Directory '{namshub_name}' contains the following namshubs:\n"
-            + "\n".join(f"- {f}" for f in sorted(namshub_files))
-            + "\n\nPlease specify the full path to the namshub file you want to invoke."
-        )
+        # Return list of available namshubs
+        namshub_list = "\n".join([f"  - {f}" for f in sorted(namshub_files)])
+        return f"Available namshubs in {namshub_name}:\n{namshub_list}\n\nUse invoke_namshub with a specific file path to execute one."
 
-    # It's a filepath
-    namshub_path = namshub_name
-    module_name = os.path.splitext(os.path.basename(namshub_name))[0]
-
-    # Check if the namshub exists
-    if not os.path.exists(namshub_path):
-        return f"Error: Namshub file '{namshub_name}' not found."
+    # It's a file path, try to load and execute
+    if not os.path.isfile(namshub_name):
+        return f"Error: Namshub file not found: {namshub_name}"
 
     try:
-        # Load the namshub module dynamically
-        spec = importlib.util.spec_from_file_location(module_name, namshub_path)
+        # Load the namshub module
+        spec = importlib.util.spec_from_file_location("namshub_module", namshub_name)
         if spec is None or spec.loader is None:
-            return f"Error: Could not load namshub '{namshub_name}'"
+            return f"Error: Could not load namshub from {namshub_name}"
 
         namshub_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(namshub_module)
 
-        # Look for the main invocation function (should be named 'invoke' or 'run')
-        invoke_func = None
-        for func_name in ["invoke", "run", "execute"]:
-            if hasattr(namshub_module, func_name):
-                invoke_func = getattr(namshub_module, func_name)
-                break
+        # Look for the invoke function
+        if not hasattr(namshub_module, "invoke"):
+            return f"Error: Namshub {namshub_name} does not have an 'invoke' function"
 
-        if invoke_func is None:
-            return f"Error: Namshub '{namshub_name}' does not have an 'invoke', 'run', " f"or 'execute' function"
+        invoke_func = namshub_module.invoke
 
-        # Handle tool_use without tool_result issue
-        # If the current node has tool_calls (the invoke_namshub call itself),
-        # we need to add a dummy result before the namshub executes bot.respond()
-        # to avoid API errors
-        current_node = bot.conversation
-        dummy_results_added = False
-        original_results = None
-
-        if current_node.tool_calls:
-            dummy_results = []
-            for tool_call in current_node.tool_calls:
-                if tool_call.get("name") == "invoke_namshub":
-                    # Use bot's tool_handler to generate provider-appropriate format
-                    if bot.tool_handler:
-                        dummy_result = bot.tool_handler.generate_response_schema(
-                            tool_call, {"result": "Namshub invocation in progress..."}
-                        )
-                    else:
-                        dummy_result = {"result": "Namshub invocation in progress..."}
-                    dummy_results.append(dummy_result)
-
-            if dummy_results:
-                # Temporarily add dummy results
-                original_results = list(getattr(current_node, "tool_results", []))
-                current_node._add_tool_results(dummy_results)
-                dummy_results_added = True
-
-        # Save the original bot state
-        original_tool_handler = bot.tool_handler
-        original_system_message = bot.system_message if hasattr(bot, "system_message") else None
+        # Save bot state before invoking namshub
+        original_system_message = bot.system_message
+        original_tools = bot.tool_handler.tools.copy()
+        original_function_map = bot.tool_handler.function_map.copy()
 
         try:
-            # Execute the namshub with kwargs
+            # Invoke the namshub with the bot and kwargs
             result = invoke_func(bot, **kwargs_dict)
 
             # Return the result
-            if isinstance(result, tuple):
-                # If it returns (response, node), just return the response
-                return str(result[0]) if result[0] else "Namshub completed successfully"
-            else:
-                return str(result) if result else "Namshub completed successfully"
+            return f"Namshub execution completed.\n\nResult:\n{result}"
 
         finally:
-            # Remove dummy results if we added them
-            if dummy_results_added:
-                current_node.tool_results = original_results
-
-            # Restore the original bot state
-            bot.tool_handler = original_tool_handler
-            if original_system_message is not None:
-                bot.set_system_message(original_system_message)
+            # Restore bot state
+            bot.system_message = original_system_message
+            bot.tool_handler.tools = original_tools
+            bot.tool_handler.function_map = original_function_map
 
     except Exception as e:
         import traceback
 
         error_trace = traceback.format_exc()
-        return f"Error executing namshub '{namshub_name}':\n{str(e)}\n\n" f"Traceback:\n{error_trace}"
+        return f"Error executing namshub {namshub_name}:\n{str(e)}\n\nTraceback:\n{error_trace}"

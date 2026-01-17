@@ -33,9 +33,19 @@ except ImportError:
 
     # Provide dummy functions if import fails
     def is_tracing_enabled():
+        """Checks if tracing functionality is currently enabled.
+
+        Returns:
+            bool: False, indicating tracing is disabled.
+        """
         return False
 
     def get_default_tracing_preference():
+        """Returns the default tracing preference setting.
+
+        Returns:
+            bool: False, indicating tracing is disabled by default.
+        """
         return False
 
 
@@ -745,6 +755,7 @@ class ToolHandler(ABC):
         self.requests: List[Dict[str, Any]] = []
         self.results: List[Dict[str, Any]] = []
         self.modules: Dict[str, ModuleContext] = {}
+        self.tool_registry: Dict[str, Dict[str, Any]] = {}  # For lazy-loading tools
 
     @staticmethod
     def _clean_decorator_source(source):
@@ -1008,7 +1019,17 @@ class ToolHandler(ABC):
                             if tool_name not in self.function_map:
                                 raise ToolNotFoundError(f"Tool '{tool_name}' not found in function map")
                             func = self.function_map[tool_name]
-                            output_kwargs = func(**input_kwargs)
+
+                            # Inject _bot parameter if function signature includes it
+                            sig = inspect.signature(func)
+                            if "_bot" in sig.parameters:
+                                # Create a copy to avoid modifying the original kwargs
+                                call_kwargs = input_kwargs.copy()
+                                call_kwargs["_bot"] = getattr(self, "bot", None)
+                                output_kwargs = func(**call_kwargs)
+                            else:
+                                output_kwargs = func(**input_kwargs)
+
                             response_schema = self.generate_response_schema(request_schema, output_kwargs)
 
                             # Record metrics for successful tool execution
@@ -1129,7 +1150,17 @@ class ToolHandler(ABC):
                     if tool_name not in self.function_map:
                         raise ToolNotFoundError(f"Tool '{tool_name}' not found in function map")
                     func = self.function_map[tool_name]
-                    output_kwargs = func(**input_kwargs)
+
+                    # Inject _bot parameter if function signature includes it
+                    sig = inspect.signature(func)
+                    if "_bot" in sig.parameters:
+                        # Create a copy to avoid modifying the original kwargs
+                        call_kwargs = input_kwargs.copy()
+                        call_kwargs["_bot"] = getattr(self, "bot", None)
+                        output_kwargs = func(**call_kwargs)
+                    else:
+                        output_kwargs = func(**input_kwargs)
+
                     response_schema = self.generate_response_schema(request_schema, output_kwargs)
 
                     # Record metrics for successful tool execution
@@ -1581,6 +1612,97 @@ class ToolHandler(ABC):
 
         self.function_map[func.__name__] = func
 
+    def register_tool(self, func: Callable, module_path: str = None) -> None:
+        """Add tool to registry without loading it into active tools.
+
+        Parameters:
+            func (Callable): The function to register
+            module_path (str, optional): Path to the module containing the function
+        """
+        schema = self.generate_tool_schema(func)
+        if not schema:
+            raise ValueError("Schema undefined. ToolHandler.generate_tool_schema() may not be implemented.")
+
+        tool_name = func.__name__
+        self.tool_registry[tool_name] = {"schema": schema, "module_path": module_path, "function": func, "loaded": False}
+
+    def load_tool_by_name(self, tool_name: str) -> bool:
+        """Load a specific tool from registry into active tools.
+
+        Parameters:
+            tool_name (str): Name of the tool to load
+
+        Returns:
+            bool: True if loaded successfully, False if not in registry
+        """
+        if tool_name not in self.tool_registry:
+            return False
+
+        entry = self.tool_registry[tool_name]
+        if entry["loaded"]:
+            return True  # Already loaded
+
+        # Add to active tools
+        self.tools.append(entry["schema"])
+        self.function_map[tool_name] = entry["function"]
+        entry["loaded"] = True
+        return True
+
+    def unload_tool(self, tool_name: str) -> bool:
+        """Remove tool from active set (but keep in registry).
+
+        Parameters:
+            tool_name (str): Name of the tool to unload
+
+        Returns:
+            bool: True if unloaded successfully, False if not loaded
+        """
+        if tool_name not in self.function_map:
+            return False
+
+        # Remove from active tools
+        self.tools = [t for t in self.tools if self._get_tool_name(t) != tool_name]
+        del self.function_map[tool_name]
+
+        if tool_name in self.tool_registry:
+            self.tool_registry[tool_name]["loaded"] = False
+
+        return True
+
+    def get_registry_info(self, filter: str = "") -> List[Dict[str, Any]]:
+        """Get info about available tools in registry.
+
+        Parameters:
+            filter (str): Optional filter string to search tool names
+
+        Returns:
+            List[Dict[str, Any]]: List of tool info dicts with name, loaded status, description
+        """
+        results = []
+        for name, entry in self.tool_registry.items():
+            if filter and filter.lower() not in name.lower():
+                continue
+            results.append(
+                {"name": name, "loaded": entry["loaded"], "description": self._extract_description(entry["schema"])}
+            )
+        return results
+
+    def _get_tool_name(self, schema: Dict[str, Any]) -> str:
+        """Extract tool name from schema (handles different formats)."""
+        if "name" in schema:
+            return schema["name"]
+        elif "function" in schema and "name" in schema["function"]:
+            return schema["function"]["name"]
+        return ""
+
+    def _extract_description(self, schema: Dict[str, Any]) -> str:
+        """Extract description from tool schema (handles different formats)."""
+        if "description" in schema:
+            return schema["description"]
+        elif "function" in schema and "description" in schema["function"]:
+            return schema["function"]["description"]
+        return ""
+
     def _prepare_function_source_and_context(self, func: Callable) -> tuple[str, dict]:
         """Prepare the source code and execution context for a function."""
         if inspect.isbuiltin(func) or inspect.ismethoddescriptor(func):
@@ -1784,7 +1906,24 @@ class ToolHandler(ABC):
             annotation_names = set()
 
             class AnnotationVisitor(ast.NodeVisitor):
+                """Visits function definition nodes to extract type annotation information.
+
+                Processes function return type annotations and parameter type annotations,
+                extracting referenced type names for further analysis.
+
+                Args:
+                    node: The AST FunctionDef node to visit and process for type annotations.
+                """
+
                 def visit_FunctionDef(self, node):
+                    """Visit a function definition node and extract names from type annotations.
+
+                    Processes both return type annotations and parameter type annotations,
+                    adding discovered names to the annotation_names collection.
+
+                    Args:
+                        node: The FunctionDef AST node to visit and process for type annotations.
+                    """
                     if node.returns:
                         self._extract_names_from_annotation(node.returns, annotation_names)
                     for arg in node.args.args:
@@ -1793,6 +1932,14 @@ class ToolHandler(ABC):
                     self.generic_visit(node)
 
                 def visit_AsyncFunctionDef(self, node):
+                    """Visit an async function definition node and extract type annotation names.
+
+                    Processes the function's return type annotation and all parameter type annotations,
+                    extracting referenced names into the annotation_names collection.
+
+                    Args:
+                        node: The AsyncFunctionDef AST node to process.
+                    """
                     if node.returns:
                         self._extract_names_from_annotation(node.returns, annotation_names)
                     for arg in node.args.args:
@@ -1834,7 +1981,25 @@ class ToolHandler(ABC):
                 all_names_used = set()
 
                 class NameCollector(ast.NodeVisitor):
+                    """Visits Name nodes in an AST and collects variable names that are loaded.
+
+                    This method is part of an AST visitor pattern that identifies variable names
+                    being read (loaded) from their context, adding them to the global all_names_used set.
+
+                    Args:
+                        node: The AST Name node being visited.
+                    """
+
                     def visit_Name(self, node):
+                        """Visits AST Name nodes and tracks loaded variable names.
+
+                        When encountering a Name node with a Load context, adds the variable name
+                        to the global all_names_used set for tracking purposes. Continues traversal
+                        to child nodes.
+
+                        Args:
+                            node: The AST Name node being visited.
+                        """
                         if isinstance(node.ctx, ast.Load):
                             all_names_used.add(node.id)
                         self.generic_visit(node)
@@ -1884,33 +2049,49 @@ class ToolHandler(ABC):
         return source
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serialize the complete ToolHandler state to a dictionary.
+        """Serialize the ToolHandler state to a dictionary.
 
-        Use when you need to save or transmit the tool handler's state,
-        including all tools, modules, and execution state.
+        Converts the complete state of the ToolHandler into a dictionary format
+        suitable for persistence. This includes all tools, their schemas, module
+        contexts, and execution state.
 
         Returns:
-            Dict[str, Any]: Serialized state containing:
-                - Handler class information
-                - Registered tools and their schemas
+            Dict[str, Any]: Dictionary containing:
+                - Tool schemas and metadata
                 - Module contexts and source code
                 - Function mappings and relationships
                 - Current requests and results
+                - Tool registry for lazy-loading
 
         Note:
             - Preserves complete module contexts
-            - Handles both file-based and dynamic modules
+            - Captures function source code
             - Includes function source code for reconstruction
             - Maintains tool relationships and dependencies
+            - Stores both absolute and relative paths for portability
+            - Includes tool registry state
         """
         module_details = {}
         function_paths = {}
+        cwd = os.getcwd()
+
         for file_path, module_context in self.modules.items():
-            enhanced_source = self._add_imports_to_source(module_context)
+            enhanced_source = module_context.source
+            # Calculate relative path from current working directory
+            try:
+                if os.path.isabs(file_path):
+                    rel_path = os.path.relpath(file_path, cwd)
+                else:
+                    rel_path = file_path
+            except (ValueError, TypeError):
+                # Can't calculate relative path (e.g., different drives on Windows)
+                rel_path = None
+
             module_details[file_path] = {
                 "name": module_context.name,
                 "source": enhanced_source,
-                "file_path": module_context.file_path,
+                "file_path": module_context.file_path,  # Absolute path (original)
+                "relative_path": rel_path,  # Relative path for portability
                 "code_hash": self._get_code_hash(enhanced_source),
                 "globals": self._serialize_globals(module_context.namespace.__dict__),
             }
@@ -1921,11 +2102,76 @@ class ToolHandler(ABC):
             else:
                 function_paths[name] = "dynamic"
         # Serialize dynamic functions
-        # Serialize dynamic functions
         dynamic_functions = {}
         for name, func in self.function_map.items():
             if function_paths.get(name) == "dynamic":
                 dynamic_functions[name] = self._serialize_dynamic_function(func)
+
+        # Serialize tool registry
+        registry_data = {}
+
+        # First, add all tools from the explicit tool_registry
+        for tool_name, entry in self.tool_registry.items():
+            try:
+                # Check if this tool has a module context
+                func = entry["function"]
+                module_context = getattr(func, "__module_context__", None)
+
+                # Determine if we need to serialize the function
+                if module_context:
+                    # Function has module context, will be restored from module
+                    func_data = None
+                else:
+                    # Dynamic function, needs to be serialized
+                    func_data = self._serialize_dynamic_function(func)
+
+                registry_data[tool_name] = {
+                    "schema": entry["schema"],
+                    "module_path": entry["module_path"],
+                    "loaded": entry["loaded"],
+                    "function": func_data,
+                }
+            except Exception:
+                # Silently skip tools that can't be serialized
+                # They will be restored from modules if possible
+                pass
+
+        # Also capture all tools in function_map that aren't in the registry
+        # This ensures tools added via add_tool() (not lazy) are preserved
+        for tool_name, func in self.function_map.items():
+            if tool_name not in registry_data:
+                try:
+                    # Find the schema for this tool
+                    schema = None
+                    for tool_schema in self.tools:
+                        if "name" in tool_schema and tool_schema["name"] == tool_name:
+                            schema = tool_schema
+                            break
+                        elif "function" in tool_schema and "name" in tool_schema["function"]:
+                            if tool_schema["function"]["name"] == tool_name:
+                                schema = tool_schema
+                                break
+
+                    if schema:
+                        module_context = getattr(func, "__module_context__", None)
+
+                        # Determine module path and function data
+                        if module_context:
+                            module_path = module_context.file_path
+                            func_data = None
+                        else:
+                            module_path = None
+                            func_data = self._serialize_dynamic_function(func)
+
+                        registry_data[tool_name] = {
+                            "schema": schema,
+                            "module_path": module_path,
+                            "loaded": True,  # It's in function_map, so it was loaded
+                            "function": func_data,
+                        }
+                except Exception:
+                    # Silently skip tools that can't be serialized
+                    pass
 
         result = {
             "class": f"{self.__class__.__module__}.{self.__class__.__name__}",
@@ -1934,6 +2180,8 @@ class ToolHandler(ABC):
             "results": self.results.copy(),
             "modules": module_details,
             "function_paths": function_paths,
+            "save_cwd": cwd,  # Store the working directory at save time
+            "tool_registry": registry_data,  # Add registry data
         }
 
         # Add dynamic functions if any exist
@@ -2166,6 +2414,17 @@ class ToolHandler(ABC):
 
             # Create a placeholder function that provides useful information
             def placeholder_func(*args, **kwargs):
+                """Placeholder function that displays information about a dynamic function that cannot be restored.
+
+                This function serves as a replacement for dynamic functions that lose their original
+                implementation after serialization/deserialization. It provides diagnostic information
+                about the original function including its name, signature, documentation, and closure
+                details.
+
+                Returns:
+                    str: Formatted information string containing the original function's metadata
+                        including name, signature, documentation, and closure information if available.
+                """
                 info = f"Dynamic function '{metadata['name']}' cannot be restored after save/load\n"
                 info += f"Original signature: {metadata.get('signature', 'unknown')}\n"
                 if metadata.get("doc"):
@@ -2208,6 +2467,8 @@ class ToolHandler(ABC):
             - Verifies code hashes for security
             - Maintains original module structure
             - Preserves execution state (requests/results)
+            - Attempts to resolve module paths using multiple strategies
+            - Restores tool registry for lazy-loading
 
         Example:
             ```python
@@ -2216,28 +2477,47 @@ class ToolHandler(ABC):
             new_handler = ToolHandler.from_dict(saved_state)
             ```
         """
-        import traceback
 
         handler = cls()
         handler.results = data.get("results", [])
         handler.requests = data.get("requests", [])
         handler.tools = data.get("tools", []).copy()
         function_paths = data.get("function_paths", {})
+        save_cwd = data.get("save_cwd", None)  # Directory where bot was saved
+
+        # Track path remapping for function_paths
+        path_remap = {}
+
+        # Store all module functions for registry restoration
+        all_module_functions = {}
+
         for file_path, module_data in data.get("modules", {}).items():
             current_code_hash = cls._get_code_hash(module_data["source"])
             if current_code_hash != module_data["code_hash"]:
                 print(f"Warning: Code hash mismatch for module {file_path}. Skipping.")
                 continue
             try:
+                # Try to resolve the actual file path using multiple strategies
+                resolved_path = cls._resolve_module_path(
+                    original_path=module_data["file_path"], relative_path=module_data.get("relative_path"), save_cwd=save_cwd
+                )
+
+                if resolved_path != module_data["file_path"]:
+                    # Path was remapped
+                    path_remap[module_data["file_path"]] = resolved_path
+                    print("Info: Remapped module path:")
+                    print(f"  From: {module_data['file_path']}")
+                    print(f"  To:   {resolved_path}")
+
                 module = ModuleType(module_data["name"])
-                module.__file__ = file_path
+                module.__file__ = resolved_path
                 source = module_data["source"]
                 if "globals" in module_data:
                     cls._deserialize_globals(module.__dict__, module_data["globals"])
 
                 # Add the directory containing the module to sys.path temporarily
                 # This ensures imports within the module can be resolved
-                module_dir = os.path.dirname(module_data["file_path"]) if os.path.isabs(module_data["file_path"]) else None
+                module_dir = os.path.dirname(resolved_path) if os.path.isabs(resolved_path) else None
                 if module_dir and module_dir not in sys.path:
                     sys.path.insert(0, module_dir)
                     try:
@@ -2250,37 +2530,36 @@ class ToolHandler(ABC):
                 module_context = ModuleContext(
                     name=module_data["name"],
                     source=source,
-                    file_path=module_data["file_path"],
+                    file_path=resolved_path,  # Use resolved path
                     namespace=module,
                     code_hash=current_code_hash,
                 )
-                handler.modules[module_data["file_path"]] = module_context
+                handler.modules[resolved_path] = module_context  # Use resolved path as key
+
+                # Map functions using the resolved path
                 for func_name, path in function_paths.items():
+                    # Check if this function belongs to this module (using original or remapped path)
                     if path == module_data["file_path"] and func_name in module.__dict__:
                         func = module.__dict__[func_name]
                         if callable(func):
                             func.__module_context__ = module_context
                             handler.function_map[func_name] = func
+
+                # Store all callable functions from this module for registry restoration
+                for name, obj in module.__dict__.items():
+                    if callable(obj) and not name.startswith("_"):
+                        try:
+                            # Try to set module context - some objects (like typing._SpecialForm) don't allow it
+                            obj.__module_context__ = module_context
+                            all_module_functions[name] = obj
+                        except (AttributeError, TypeError):
+                            # Skip objects that don't allow attribute assignment
+                            pass
+
             except Exception as e:
-                print(f"Warning: Failed to load module {file_path}")
+                # Simplified error output - just the essential info
+                print(f"Warning: Failed to load module {module_data.get('name', file_path)}")
                 print(f"  Error: {type(e).__name__}: {str(e)}")
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                if exc_traceback:
-                    tb_frame = exc_traceback.tb_frame
-                    tb_lineno = exc_traceback.tb_lineno
-                    print(f"  Location: {tb_frame.f_code.co_filename}:{tb_lineno}")
-                    print(f"  Function: {tb_frame.f_code.co_name}")
-                    if tb_frame.f_locals:
-                        relevant_locals = {
-                            k: v for k, v in tb_frame.f_locals.items() if not k.startswith("__") and (not callable(v))
-                        }
-                        if relevant_locals:
-                            print(f"  Local variables: {relevant_locals}")
-                tb_lines = traceback.format_tb(exc_traceback)
-                if tb_lines:
-                    print("  Full stack trace:")
-                    for i, line in enumerate(tb_lines):
-                        print(f"    {line.rstrip()}")
                 continue
 
         # Restore dynamic functions
@@ -2289,10 +2568,99 @@ class ToolHandler(ABC):
                 success, result = handler._deserialize_dynamic_function(func_data)
                 if success:
                     handler.function_map[func_name] = result
+                    all_module_functions[func_name] = result
                 else:
-                    print(f"Warning: Failed to restore dynamic function {func_name}: {result}")
+                    # Silently skip - dynamic functions often can't be restored
+                    pass
+
+        # Restore tool registry
+        if "tool_registry" in data:
+            for tool_name, entry_data in data["tool_registry"].items():
+                try:
+                    # Try to find the function
+                    func = None
+
+                    # First check if it's in function_map (loaded tools)
+                    if tool_name in handler.function_map:
+                        func = handler.function_map[tool_name]
+                    # Then check all module functions (registered but not loaded)
+                    elif tool_name in all_module_functions:
+                        func = all_module_functions[tool_name]
+                    # Finally try to deserialize if it's a dynamic function
+                    elif entry_data.get("function"):
+                        success, result = handler._deserialize_dynamic_function(entry_data["function"])
+                        if success:
+                            func = result
+
+                    if func:
+                        was_loaded = entry_data.get("loaded", False)
+                        handler.tool_registry[tool_name] = {
+                            "schema": entry_data["schema"],
+                            "module_path": entry_data.get("module_path"),
+                            "function": func,
+                            "loaded": was_loaded,
+                        }
+
+                        # If the tool was loaded when saved, add it back to function_map
+                        if was_loaded and tool_name not in handler.function_map:
+                            handler.function_map[tool_name] = func
+
+                except Exception:
+                    # Silently skip tools that can't be restored
+                    pass
 
         return handler
+
+    @staticmethod
+    def _resolve_module_path(original_path: str, relative_path: Optional[str], save_cwd: Optional[str]) -> str:
+        """Resolve module path using multiple strategies.
+
+        Tries to find the module file in this order:
+        1. Original absolute path (if it exists)
+        2. Relative path from current working directory
+        3. Relative path from save working directory
+        4. Basename in current working directory
+        5. Falls back to original path (will use serialized source)
+
+        Parameters:
+            original_path: The original absolute path from when the bot was saved
+            relative_path: The relative path from the save directory
+            save_cwd: The working directory when the bot was saved
+
+        Returns:
+            str: The resolved path (may be the original if no better option found)
+        """
+        # Strategy 1: Try original path
+        if os.path.exists(original_path):
+            return original_path
+
+        # Strategy 2: Try relative path from current directory
+        if relative_path:
+            cwd_relative = os.path.join(os.getcwd(), relative_path)
+            if os.path.exists(cwd_relative):
+                return os.path.abspath(cwd_relative)
+
+        # Strategy 3: Try relative path from save directory
+        if relative_path and save_cwd:
+            save_relative = os.path.join(save_cwd, relative_path)
+            if os.path.exists(save_relative):
+                return os.path.abspath(save_relative)
+
+        # Strategy 4: Try just the basename in current directory
+        basename = os.path.basename(original_path)
+        cwd_basename = os.path.join(os.getcwd(), basename)
+        if os.path.exists(cwd_basename):
+            return os.path.abspath(cwd_basename)
+
+        # Strategy 5: Check if there's a file with the same name in common locations
+        # Look for tools/ subdirectory
+        tools_path = os.path.join(os.getcwd(), "tools", basename)
+        if os.path.exists(tools_path):
+            return os.path.abspath(tools_path)
+
+        # Fallback: Return original path
+        # The module will still work using the serialized source code
+        return original_path
 
     @staticmethod
     def _deserialize_globals(module_dict: dict, serialized_globals: dict):
@@ -2533,6 +2901,12 @@ class Mailbox(ABC):
         self.log_file = "data\\mailbox_log.txt"
 
     def log_message(self, message: str, direction: str) -> None:
+        """Logs a message with timestamp and direction to the log file.
+
+        Args:
+            message (str): The message content to be logged.
+            direction (str): The direction indicator (e.g., 'sent', 'received') that will be uppercased in the log entry.
+        """
         timestamp = formatted_datetime()
         log_entry = f"[{timestamp}] {direction.upper()}:\n{message}\n\n"
         with open(self.log_file, "a", encoding="utf-8") as file:
@@ -2789,7 +3163,7 @@ class Bot(ABC):
                     logger.warning(f"Callback on_respond_error failed: {callback_error}")
             raise
 
-    def add_tools(self, *args) -> None:
+    def add_tools(self, *args, lazy: bool = False) -> None:
         """Add Python functions as tools available to the bot.
 
         Use to provide the bot with capabilities by adding Python functions
@@ -2808,6 +3182,8 @@ class Bot(ABC):
                 - ModuleType: Module containing tools
                 - Callable: Single function to add
                 - List/Tuple: Collection of any above types
+            lazy (bool): If True, register tools without loading them into active set.
+                        Tools can be loaded later with load_tools(). Default False.
 
         Raises:
             TypeError: If an argument is not a supported type
@@ -2826,21 +3202,57 @@ class Bot(ABC):
                 "tools/network.py",
                 [process_data, custom_sort]
             )
+
+            # Lazy loading - register without loading
+            bot.add_tools("tools/optional.py", lazy=True)
             ```
 
         Note:
             - Only adds top-level functions (not nested or class methods)
             - Preserves full module context for imported tools
             - Tools persist across save/load cycles
+            - Lazy-loaded tools can be loaded with load_tools()
         """
 
         def process_item(item):
+            """Process a tool item by adding it to the tool handler based on its type.
+
+            Handles different types of tool sources including file paths, modules, and callable objects.
+            The method delegates to appropriate tool handler methods based on the item's type.
+
+            Args:
+                item: The tool item to process. Can be a string (file path), ModuleType (module),
+                    or Callable (function/method).
+            """
             if isinstance(item, str):
-                self.tool_handler._add_tools_from_file(item)
+                if lazy:
+                    # For lazy loading from files, we need to load and register each function
+                    import importlib.util
+
+                    spec = importlib.util.spec_from_file_location("temp_module", item)
+                    if spec and spec.loader:
+                        module = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(module)
+                        for name in dir(module):
+                            obj = getattr(module, name)
+                            if callable(obj) and not name.startswith("_"):
+                                self.tool_handler.register_tool(obj, module_path=item)
+                else:
+                    self.tool_handler._add_tools_from_file(item)
             elif isinstance(item, ModuleType):
-                self.tool_handler._add_tools_from_module(item)
+                if lazy:
+                    # Register all functions from module
+                    for name in dir(item):
+                        obj = getattr(item, name)
+                        if callable(obj) and not name.startswith("_"):
+                            self.tool_handler.register_tool(obj, module_path=item.__name__)
+                else:
+                    self.tool_handler._add_tools_from_module(item)
             elif isinstance(item, Callable):
-                self.tool_handler.add_tool(item)
+                if lazy:
+                    self.tool_handler.register_tool(item)
+                else:
+                    self.tool_handler.add_tool(item)
             elif isinstance(item, (list, tuple)):
                 for subitem in item:
                     process_item(subitem)
@@ -3335,6 +3747,20 @@ class Bot(ABC):
         """
 
         def format_conversation(node, level=0):
+            """Format conversation node display with appropriate indentation and width constraints.
+
+            Calculates display parameters for rendering conversation nodes in a hierarchical
+            structure with level-based indentation and width limitations.
+
+            Args:
+                node: The conversation node to format.
+                level (int): The hierarchical level of the node (0-based).
+
+            Returns:
+                tuple: A tuple containing (indent_str, available_width) where indent_str
+                    is the spacing string for the current level and available_width is
+                    the maximum character width available for content display.
+            """
             display_level = min(level, 5)
             indent_size = 1
             marker_size = 4

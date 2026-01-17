@@ -42,10 +42,28 @@ class TestDillSerialization(unittest.TestCase):
 
         bot.add_tools(view)
 
+        # Debug: Check what's in function_map before save
+        print(f"DEBUG: Before save, function_map keys: {list(bot.tool_handler.function_map.keys())}")
+        print(f"DEBUG: Before save, tool_registry keys: {list(bot.tool_handler.tool_registry.keys())}")
+
         # Save and load the bot (save adds .bot extension)
         save_path = os.path.join(self.temp_dir, "bot_state")
         actual_path = bot.save(save_path)
+
+        # Debug: Check what was saved
+        import json
+
+        with open(actual_path, "r") as f:
+            saved_data = json.load(f)
+        tool_handler_data = saved_data.get("tool_handler", {})
+        print(f"DEBUG: Saved tool_registry keys: {list(tool_handler_data.get('tool_registry', {}).keys())}")
+        print(f"DEBUG: Saved function_paths keys: {list(tool_handler_data.get('function_paths', {}).keys())}")
+
         loaded_bot = AnthropicBot.load(actual_path)
+
+        # Debug: Check what's in function_map after load
+        print(f"DEBUG: After load, function_map keys: {list(loaded_bot.tool_handler.function_map.keys())}")
+        print(f"DEBUG: After load, tool_registry keys: {list(loaded_bot.tool_handler.tool_registry.keys())}")
 
         # Verify the tool works after loading
         self.assertIn("view", loaded_bot.tool_handler.function_map)

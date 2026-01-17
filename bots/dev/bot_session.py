@@ -77,6 +77,7 @@ class BotSession:
         # Register commands
         self.commands = {
             "/help": self.system.help,
+            "/clear": self.system.clear,
             "/verbose": self.system.verbose,
             "/quiet": self.system.quiet,
             "/config": self.system.config,
@@ -119,14 +120,21 @@ class BotSession:
             if self.context.config.verbose:
                 print(f"Warning: metrics.setup_metrics failed: {e}")
 
-        # Load bot if filename provided, otherwise initialize new bot
-        if bot_filename:
-            result = self.state._load_bot_from_file(bot_filename, self.context)
-            if "Error" in result or "File not found" in result:
-                if auto_initialize:
+        # Initialize bot if requested
+        if auto_initialize:
+            if bot_filename:
+                # Try to load the specified bot file
+                try:
+                    result = self.state._load_bot_from_file(bot_filename, self.context)
+                    if result["type"] == "error":
+                        # If loading fails, create a new bot
+                        self._initialize_new_bot()
+                except Exception:
+                    # If loading fails, create a new bot
                     self._initialize_new_bot()
-        elif auto_initialize:
-            self._initialize_new_bot()
+            else:
+                # No filename provided, create a new bot
+                self._initialize_new_bot()
 
     def input(self, user_input: str) -> str:
         """
@@ -148,6 +156,10 @@ class BotSession:
         # Handle /exit specially - return a signal
         if user_input == "/exit":
             return "__EXIT__"
+
+        # Special case: bare "clear" command (no slash) - delegate to SystemHandler
+        if user_input.lower() == "clear":
+            return self._handle_command(self.context.bot_instance, "/clear")
 
         # Check if input contains a command at the end
         parts = user_input.split()
