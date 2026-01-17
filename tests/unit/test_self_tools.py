@@ -83,24 +83,7 @@ def test_modify_own_settings_with_bot_injection():
     assert mock_bot.max_tokens == 2000
 
 
-def test_backward_compatibility_with_get_calling_bot():
-    """Test that tools still work with deprecated _get_calling_bot fallback."""
-    from unittest.mock import MagicMock, patch
-
-    from bots.tools.self_tools import _get_own_info
-
-    mock_bot = MagicMock()
-    mock_bot.name = "TestBot"
-    mock_bot.model_engine = "test-model"
-    mock_bot.temperature = 0.7
-    mock_bot.max_tokens = 1000
-    mock_bot.tool_handler.tools = []
-
-    with patch("bots.tools.self_tools._get_calling_bot", return_value=mock_bot):
-        # Call without _bot parameter to test fallback
-        result = _get_own_info()
-        assert "TestBot" in result
-        assert "test-model" in result
+# Test removed - _get_calling_bot has been completely removed in favor of _bot parameter injection
 
 
 def test_clear_command_registered():
@@ -270,8 +253,7 @@ def test_remove_context_preserves_tool_results():
         # assistant1, assistant2, assistant3, assistant4 are at indices 0, 1, 2, 3
         mock_haiku.respond.return_value = "[2]"
 
-        with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
-            remove_context("remove all messages about math")
+        remove_context("remove all messages about math", _bot=bot)
 
     # Count tool results after removal
     tool_results_after = []
@@ -322,8 +304,7 @@ def test_remove_context_allows_subsequent_messages():
             "YES",  # math
         ]
 
-        with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
-            remove_context("remove math questions")
+        remove_context("remove math questions", _bot=bot)
 
     # Now try to add a new message - this should work without errors
     try:
@@ -377,8 +358,7 @@ def test_remove_context_with_tool_results_in_removed_pair():
         # New JSON array format: remove indices 0 and 1 (the tool call sequence)
         mock_haiku.respond.return_value = "[0, 1]"
 
-        with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
-            remove_context("remove file operations")
+        remove_context("remove file operations", _bot=bot)
 
     # After removal, verify we can still traverse the tree
     current = root
@@ -433,8 +413,7 @@ def test_remove_context_tool_handler_integration():
         # New JSON array format: remove index 2 (the math question)
         mock_haiku.respond.return_value = "[2]"
 
-        with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
-            remove_context("remove math questions")
+        remove_context("remove math questions", _bot=bot)
 
     # Verify tool_handler is still functional
     if hasattr(bot, "tool_handler"):
@@ -507,8 +486,7 @@ def test_remove_context_preserves_earlier_tool_results():
         # New JSON array format: remove index 2 (the math question)
         mock_haiku.respond.return_value = "[2]"
 
-        with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
-            remove_context("remove math questions")
+        remove_context("remove math questions", _bot=bot)
 
     # Count tool_results after removal
     tool_results_after = []
@@ -578,8 +556,7 @@ def test_remove_context_end_to_end_with_subsequent_message():
         # New JSON array format: remove index 2 (the math question)
         mock_haiku.respond.return_value = "[2]"
 
-        with patch("bots.tools.self_tools._get_calling_bot", return_value=bot):
-            remove_context("remove math questions")
+        remove_context("remove math questions", _bot=bot)
 
     # Now try to add a new message - this should work without errors
     try:

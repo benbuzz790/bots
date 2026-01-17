@@ -5,7 +5,6 @@ using test fixture namshubs. No API calls - uses MockBot only.
 """
 
 import os
-from unittest.mock import patch
 
 import pytest
 
@@ -24,8 +23,7 @@ class TestInvokeNamshubBasicFlow:
         # Get the path to the no-op namshub
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_no_op.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path)
+        result = invoke_namshub(fixture_path, _bot=bot)
 
         assert "success" in result.lower()
         assert "Error" not in result
@@ -37,8 +35,7 @@ class TestInvokeNamshubBasicFlow:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_echo.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs='{"message": "Hello from test!"}')
+        result = invoke_namshub(fixture_path, kwargs='{"message": "Hello from test!"}', _bot=bot)
 
         assert "Echo: Hello from test!" in result
         assert "Error" not in result
@@ -50,8 +47,7 @@ class TestInvokeNamshubBasicFlow:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_echo.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path)
+        result = invoke_namshub(fixture_path, _bot=bot)
 
         assert "Error" in result
         assert "message" in result.lower()
@@ -71,8 +67,7 @@ class TestInvokeNamshubStateManagement:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_no_op.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            invoke_namshub(fixture_path)
+        invoke_namshub(fixture_path, _bot=bot)
 
         # State should be restored
         assert bot.system_message == original_system_message
@@ -89,8 +84,7 @@ class TestInvokeNamshubStateManagement:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_state_change.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs='{"new_message": "Temporary message"}')
+        result = invoke_namshub(fixture_path, kwargs='{"new_message": "Temporary message"}', _bot=bot)
 
         # During execution, message was changed
         assert "changed" in result.lower()
@@ -108,8 +102,7 @@ class TestInvokeNamshubStateManagement:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_tool_use.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs='{"expression": "10 * 5"}')
+        result = invoke_namshub(fixture_path, kwargs='{"expression": "10 * 5"}', _bot=bot)
 
         assert "50" in result
 
@@ -127,8 +120,7 @@ class TestInvokeNamshubWithToolUse:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_tool_use.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs='{"expression": "7 * 8"}')
+        result = invoke_namshub(fixture_path, kwargs='{"expression": "7 * 8"}', _bot=bot)
 
         assert "7 * 8" in result
         assert "56" in result
@@ -140,8 +132,7 @@ class TestInvokeNamshubWithToolUse:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_tool_use.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path)
+        result = invoke_namshub(fixture_path, _bot=bot)
 
         assert "2 + 2" in result
         assert "4" in result
@@ -153,8 +144,7 @@ class TestInvokeNamshubWithToolUse:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_tool_use.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs='{"expression": "len(\'hello world\')"}')
+        result = invoke_namshub(fixture_path, kwargs='{"expression": "len(\'hello world\')"}', _bot=bot)
 
         assert "len('hello world')" in result
         assert "11" in result
@@ -170,8 +160,7 @@ class TestInvokeNamshubWithWorkflow:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_simple_workflow.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs='{"task": "test workflow execution"}')
+        result = invoke_namshub(fixture_path, kwargs='{"task": "test workflow execution"}', _bot=bot)
 
         assert "completed" in result.lower()
 
@@ -182,8 +171,7 @@ class TestInvokeNamshubWithWorkflow:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_simple_workflow.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs='{"task": "analyze data"}')
+        result = invoke_namshub(fixture_path, kwargs='{"task": "analyze data"}', _bot=bot)
 
         assert "completed" in result.lower()
 
@@ -197,8 +185,7 @@ class TestInvokeNamshubWithWorkflow:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_simple_workflow.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            invoke_namshub(fixture_path, kwargs='{"task": "test task"}')
+        invoke_namshub(fixture_path, kwargs='{"task": "test task"}', _bot=bot)
 
         # System message should be restored
         assert bot.system_message == original_message
@@ -217,8 +204,7 @@ class TestInvokeNamshubErrorHandling:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_error.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs='{"error_type": "ValueError"}')
+        result = invoke_namshub(fixture_path, kwargs='{"error_type": "ValueError"}', _bot=bot)
 
         # Error should be caught and returned as string
         assert "Error" in result or "error" in result.lower()
@@ -234,8 +220,7 @@ class TestInvokeNamshubErrorHandling:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_error.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs='{"error_type": "RuntimeError"}')
+        result = invoke_namshub(fixture_path, kwargs='{"error_type": "RuntimeError"}', _bot=bot)
 
         assert "Error" in result or "error" in result.lower()
         assert "RuntimeError" in result or "runtime" in result.lower()
@@ -245,8 +230,7 @@ class TestInvokeNamshubErrorHandling:
         bot = MockBot(autosave=False)
         bot.add_tools(invoke_namshub)
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub("nonexistent_namshub_file.py")
+        result = invoke_namshub("nonexistent_namshub_file.py", _bot=bot)
 
         assert "Error" in result
         assert "not found" in result.lower()
@@ -256,8 +240,7 @@ class TestInvokeNamshubErrorHandling:
         bot = MockBot(autosave=False)
         bot.add_tools(invoke_namshub)
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub("/invalid/path/to/namshub.py")
+        result = invoke_namshub("/invalid/path/to/namshub.py", _bot=bot)
 
         assert "Error" in result
         assert "not found" in result.lower()
@@ -269,8 +252,7 @@ class TestInvokeNamshubErrorHandling:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_no_op.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs='{"invalid json}')
+        result = invoke_namshub(fixture_path, kwargs='{"invalid json}', _bot=bot)
 
         assert "Error" in result
         assert "JSON" in result or "json" in result
@@ -286,10 +268,9 @@ class TestInvokeNamshubMultipleInvocations:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_no_op.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result1 = invoke_namshub(fixture_path)
-            result2 = invoke_namshub(fixture_path)
-            result3 = invoke_namshub(fixture_path)
+        result1 = invoke_namshub(fixture_path, _bot=bot)
+        result2 = invoke_namshub(fixture_path, _bot=bot)
+        result3 = invoke_namshub(fixture_path, _bot=bot)
 
         assert "success" in result1.lower()
         assert "success" in result2.lower()
@@ -302,20 +283,21 @@ class TestInvokeNamshubMultipleInvocations:
 
         original_message = bot.system_message
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            # Invoke no-op
-            result1 = invoke_namshub(os.path.join("tests", "fixtures", "namshub_of_no_op.py"))
-            assert "success" in result1.lower()
+        # Invoke no-op
+        result1 = invoke_namshub(os.path.join("tests", "fixtures", "namshub_of_no_op.py"), _bot=bot)
+        assert "success" in result1.lower()
 
-            # Invoke echo
-            result2 = invoke_namshub(os.path.join("tests", "fixtures", "namshub_of_echo.py"), kwargs='{"message": "test"}')
-            assert "Echo: test" in result2
+        # Invoke echo
+        result2 = invoke_namshub(
+            os.path.join("tests", "fixtures", "namshub_of_echo.py"), kwargs='{"message": "test"}', _bot=bot
+        )
+        assert "Echo: test" in result2
 
-            # Invoke tool_use
-            result3 = invoke_namshub(
-                os.path.join("tests", "fixtures", "namshub_of_tool_use.py"), kwargs='{"expression": "3 + 3"}'
-            )
-            assert "6" in result3
+        # Invoke tool_use
+        result3 = invoke_namshub(
+            os.path.join("tests", "fixtures", "namshub_of_tool_use.py"), kwargs='{"expression": "3 + 3"}', _bot=bot
+        )
+        assert "6" in result3
 
         # State should be restored after all invocations
         assert bot.system_message == original_message
@@ -331,16 +313,15 @@ class TestInvokeNamshubMultipleInvocations:
         state_change_path = os.path.join("tests", "fixtures", "namshub_of_state_change.py")
         no_op_path = os.path.join("tests", "fixtures", "namshub_of_no_op.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            # Alternate between state-changing and no-op namshubs
-            invoke_namshub(state_change_path, kwargs='{"new_message": "Change 1"}')
-            assert bot.system_message == original_message
+        # Alternate between state-changing and no-op namshubs
+        invoke_namshub(state_change_path, kwargs='{"new_message": "Change 1"}', _bot=bot)
+        assert bot.system_message == original_message
 
-            invoke_namshub(no_op_path)
-            assert bot.system_message == original_message
+        invoke_namshub(no_op_path, _bot=bot)
+        assert bot.system_message == original_message
 
-            invoke_namshub(state_change_path, kwargs='{"new_message": "Change 2"}')
-            assert bot.system_message == original_message
+        invoke_namshub(state_change_path, kwargs='{"new_message": "Change 2"}', _bot=bot)
+        assert bot.system_message == original_message
 
 
 class TestInvokeNamshubDirectoryListing:
@@ -351,8 +332,7 @@ class TestInvokeNamshubDirectoryListing:
         bot = MockBot(autosave=False)
         bot.add_tools(invoke_namshub)
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub("tests/fixtures/")
+        result = invoke_namshub("tests/fixtures/", _bot=bot)
 
         assert "namshub" in result.lower()
         assert "namshub_of_no_op.py" in result or "no_op" in result
@@ -366,10 +346,9 @@ class TestInvokeNamshubDirectoryListing:
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-                result = invoke_namshub(tmpdir)
+            result = invoke_namshub(tmpdir, _bot=bot)
 
-            assert "Error" in result or "No namshub" in result
+        assert "Error" in result or "No namshub" in result
 
 
 class TestInvokeNamshubEdgeCases:
@@ -382,8 +361,7 @@ class TestInvokeNamshubEdgeCases:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_no_op.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs="{}")
+        result = invoke_namshub(fixture_path, kwargs="{}", _bot=bot)
 
         assert "success" in result.lower()
 
@@ -396,8 +374,7 @@ class TestInvokeNamshubEdgeCases:
 
         special_msg = "Test with 'quotes' and newlines"
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs=f'{{"message": "{special_msg}"}}')
+        result = invoke_namshub(fixture_path, kwargs=f'{{"message": "{special_msg}"}}', _bot=bot)
 
         assert "Echo:" in result
         assert "Test with" in result
@@ -409,8 +386,7 @@ class TestInvokeNamshubEdgeCases:
 
         fixture_path = os.path.join("tests", "fixtures", "namshub_of_echo.py")
 
-        with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=bot):
-            result = invoke_namshub(fixture_path, kwargs='{"message": ""}')
+        result = invoke_namshub(fixture_path, kwargs='{"message": ""}', _bot=bot)
 
         assert "Echo: " in result
 

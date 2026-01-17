@@ -8,34 +8,6 @@ from bots.dev.decorators import toolify
 from bots.foundation.base import Bot
 
 
-def _get_calling_bot():
-    """Get the Bot instance that called the current tool."""
-
-    frame = inspect.currentframe()
-
-    try:
-
-        while frame:
-
-            frame = frame.f_back
-
-            if frame and "self" in frame.f_locals:
-
-                obj = frame.f_locals["self"]
-
-                # Check if it's a Bot instance
-
-                if hasattr(obj, "tool_handler") and hasattr(obj, "respond"):
-
-                    return obj
-
-    finally:
-
-        del frame
-
-    return None
-
-
 @toolify()
 def view_tools(filter: str = "", verbose: bool = False, _bot: Optional[Bot] = None) -> str:
     """View available tools that can be loaded.
@@ -49,12 +21,10 @@ def view_tools(filter: str = "", verbose: bool = False, _bot: Optional[Bot] = No
     Returns:
         str: List of available tools with their status and optionally descriptions
     """
-    # Try injected bot first, fallback to deprecated method
-    bot = _bot if _bot is not None else _get_calling_bot()
-    if not bot or not bot.tool_handler:
+    if not _bot or not _bot.tool_handler:
         return "Error: Could not access tool handler"
 
-    registry_info = bot.tool_handler.get_registry_info(filter)
+    registry_info = _bot.tool_handler.get_registry_info(filter)
     if not registry_info:
         return "No tools found in registry" + (f" matching '{filter}'" if filter else "")
 
@@ -67,8 +37,8 @@ def view_tools(filter: str = "", verbose: bool = False, _bot: Optional[Bot] = No
         signature = tool_name + "()"  # Default
 
         # Try to get actual signature from the registry
-        if bot.tool_handler.tool_registry.get(tool_name):
-            func = bot.tool_handler.tool_registry[tool_name].get("function")
+        if _bot.tool_handler.tool_registry.get(tool_name):
+            func = _bot.tool_handler.tool_registry[tool_name].get("function")
             if func and callable(func):
                 try:
                     sig = inspect.signature(func)
@@ -97,9 +67,7 @@ def load_tools(tool_names: str, _bot: Optional[Bot] = None) -> str:
     Returns:
         str: Confirmation of loaded tools or error messages
     """
-    # Try injected bot first, fallback to deprecated method
-    bot = _bot if _bot is not None else _get_calling_bot()
-    if not bot or not bot.tool_handler:
+    if not _bot or not _bot.tool_handler:
         return "Error: Could not access tool handler"
 
     # Parse tool names
@@ -109,7 +77,7 @@ def load_tools(tool_names: str, _bot: Optional[Bot] = None) -> str:
 
     results = []
     for name in names:
-        if bot.tool_handler.load_tool_by_name(name):
+        if _bot.tool_handler.load_tool_by_name(name):
             results.append(f"✓ Loaded: {name}")
         else:
             results.append(f"✗ Failed: {name} (not in registry)")
@@ -146,15 +114,13 @@ def load_code(code_or_filename: str, _bot: Optional[Bot] = None) -> str:
     import types
     import warnings
 
-    # Try injected bot first, fallback to deprecated method
-    bot = _bot if _bot is not None else _get_calling_bot()
-    if not bot or not bot.tool_handler:
+    if not _bot or not _bot.tool_handler:
         return "Error: Could not access tool handler"
 
     # Check if it's a file path
     if os.path.isfile(code_or_filename):
         try:
-            bot.tool_handler._add_tools_from_file(code_or_filename)
+            _bot.tool_handler._add_tools_from_file(code_or_filename)
             return f"Successfully loaded tools from {code_or_filename}"
         except Exception as e:
             return f"Error loading file: {str(e)}"
@@ -178,7 +144,7 @@ def load_code(code_or_filename: str, _bot: Optional[Bot] = None) -> str:
         loaded = []
         for name, obj in temp_module.__dict__.items():
             if callable(obj) and not name.startswith("_"):
-                bot.tool_handler.add_tool(obj)
+                _bot.tool_handler.add_tool(obj)
                 loaded.append(name)
 
         if loaded:

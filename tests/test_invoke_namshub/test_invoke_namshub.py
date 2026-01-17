@@ -2,7 +2,7 @@
 
 import os
 import tempfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -45,8 +45,7 @@ def invoke(bot, test_param=None, **kwargs):
 
 def test_invoke_namshub_with_filepath(mock_bot, temp_namshub_file):
     """Test that invoke_namshub works with a filepath."""
-    with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=mock_bot):
-        result = invoke_namshub(temp_namshub_file, kwargs='{"test_param": "hello"}')
+    result = invoke_namshub(temp_namshub_file, kwargs='{"test_param": "hello"}', _bot=mock_bot)
 
     assert "Test namshub executed with param: hello" in result
     assert "Error" not in result
@@ -55,8 +54,7 @@ def test_invoke_namshub_with_filepath(mock_bot, temp_namshub_file):
 def test_invoke_namshub_with_name(mock_bot):
     """Test that invoke_namshub still works with a namshub name."""
     # This will fail to find the namshub, but should show available ones
-    with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=mock_bot):
-        result = invoke_namshub("nonexistent_namshub")
+    result = invoke_namshub("nonexistent_namshub", _bot=mock_bot)
 
     assert "Error" in result
     assert "not found" in result
@@ -70,9 +68,8 @@ def test_invoke_namshub_with_real_namshub_filepath(mock_bot):
     if not os.path.exists(namshub_path):
         pytest.skip("namshub_of_pull_requests.py not found")
 
-    with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=mock_bot):
-        # This should load but fail due to missing pr_number
-        result = invoke_namshub(namshub_path)
+    # This should load but fail due to missing pr_number
+    result = invoke_namshub(namshub_path, _bot=mock_bot)
 
     # Should either execute or show a parameter error, but not a "not found" error
     assert "not found" not in result.lower() or "Error" in result
@@ -80,8 +77,7 @@ def test_invoke_namshub_with_real_namshub_filepath(mock_bot):
 
 def test_invoke_namshub_nonexistent_filepath(mock_bot):
     """Test that invoke_namshub handles nonexistent filepaths gracefully."""
-    with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=mock_bot):
-        result = invoke_namshub("/nonexistent/path/to/namshub.py")
+    result = invoke_namshub("/nonexistent/path/to/namshub.py", _bot=mock_bot)
 
     assert "Error" in result
     assert "not found" in result
@@ -91,8 +87,7 @@ def test_invoke_namshub_restores_bot_state(mock_bot, temp_namshub_file):
     """Test that invoke_namshub restores the bot's original state."""
     original_handler = mock_bot.tool_handler
 
-    with patch("bots.tools.invoke_namshub._get_calling_bot", return_value=mock_bot):
-        invoke_namshub(temp_namshub_file, kwargs='{"test_param": "test"}')
+    invoke_namshub(temp_namshub_file, kwargs='{"test_param": "test"}', _bot=mock_bot)
 
     # Bot state should be restored
     assert mock_bot.tool_handler == original_handler

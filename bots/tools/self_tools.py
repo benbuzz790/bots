@@ -1,32 +1,8 @@
 import ast
-import inspect
 from typing import List, Optional
 
 from bots.dev.decorators import toolify
 from bots.foundation.base import Bot
-
-
-def _get_calling_bot() -> Optional[Bot]:
-    """Get the Bot instance that called the current tool.
-
-    DEPRECATED: This function uses stack introspection which is fragile.
-    New tools should use the _bot parameter instead, which is automatically
-    injected by ToolHandler.exec_requests().
-
-    This function is kept for backward compatibility only.
-    """
-    frame = inspect.currentframe()
-    try:
-        # Walk up the call stack to find the Bot instance
-        while frame:
-            frame = frame.f_back
-            if frame and "self" in frame.f_locals:
-                obj = frame.f_locals["self"]
-                if isinstance(obj, Bot):
-                    return obj
-    finally:
-        del frame
-    return None
 
 
 @toolify()
@@ -36,10 +12,9 @@ def _get_own_info(_bot: Optional[Bot] = None) -> str:
     Returns:
         str: Information about model, temperature, max_tokens, and available tools
     """
-    # Try injected bot first, fallback to deprecated method
-    bot = _bot if _bot is not None else _get_calling_bot()
-    if not bot:
-        return "Error: Could not find calling bot"
+    if _bot is None:
+        return "Error: Bot reference not provided"
+    bot = _bot
 
     info = []
     if hasattr(bot, "name") and bot.name:
@@ -68,10 +43,9 @@ def _modify_own_settings(temperature: str = None, max_tokens: str = None, _bot: 
     Returns:
         str: Confirmation message or error
     """
-    # Try injected bot first, fallback to deprecated method
-    bot = _bot if _bot is not None else _get_calling_bot()
-    if not bot:
-        return "Error: Could not find calling bot"
+    if _bot is None:
+        return "Error: Bot reference not provided"
+    bot = _bot
 
     changes = []
     if temperature is not None:
@@ -108,6 +82,7 @@ def branch_self(
     allow_work: str = "False",
     parallel: str = "False",
     recombine: str = "concatenate",
+    _bot: Optional[Bot] = None,
 ) -> str:
     """Create multiple conversation branches to explore different approaches or tackle separate tasks.
 
@@ -137,9 +112,9 @@ def branch_self(
 
     from bots.flows import functional_prompts as fp
 
-    bot = _get_calling_bot()
-    if not bot:
-        return "Error: Could not find calling bot"
+    if _bot is None:
+        return "Error: Bot reference not provided"
+    bot = _bot
 
     # Parse parameters
     allow_work = allow_work.lower() == "true"
@@ -336,10 +311,9 @@ def add_tools(filepath: str, _bot: Optional[Bot] = None) -> str:
     Returns:
         str: Success message with tool names, or error message
     """
-    # Try injected bot first, fallback to deprecated method
-    bot = _bot if _bot is not None else _get_calling_bot()
-    if not bot:
-        return "Error: Could not find calling bot"
+    if _bot is None:
+        return "Error: Bot reference not provided"
+    bot = _bot
 
     try:
         import importlib.util
@@ -398,10 +372,9 @@ def remove_context(prompt: str, _bot: Optional[Bot] = None) -> str:
     Example:
         remove_context("remove all messages about testing")
     """
-    # Try injected bot first, fallback to deprecated method
-    bot = _bot if _bot is not None else _get_calling_bot()
-    if not bot:
-        return "Error: Could not find calling bot"
+    if _bot is None:
+        return "Error: Bot reference not provided"
+    bot = _bot
 
     try:
         from bots.foundation.anthropic_bots import AnthropicBot
@@ -755,10 +728,9 @@ def subagent(tasks: str, max_iterations: str = "20", _bot: Optional[Bot] = None)
     Returns:
         str: Summary of completed tasks and final response
     """
-    # Try injected bot first, fallback to deprecated method
-    bot = _bot if _bot is not None else _get_calling_bot()
-    if not bot:
-        return "Error: Could not find calling bot"
+    if _bot is None:
+        return "Error: Bot reference not provided"
+    bot = _bot
 
     try:
         task_list = _process_string_array(tasks)
