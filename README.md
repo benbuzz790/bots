@@ -10,7 +10,7 @@ Why? Because when you're working with an agent, you may need to explore, to try 
 
 Trees let you explore without losing your place. Every message is a node. Every response creates a branch. You can navigate back to any point and try something different. The agent only sees the path from root to your current position, so context stays clean. Allowing branching also allows simple parallel operation. For instance, a "gather context, then branch to do tasks in parallel" workflow.
 
-The framework emerged from building with it. Every feature exists because it solved a real problem during development. `respond()` wraps API complexity. `save/load` eliminates context repetition. `add_tools()` makes tool creation trivial—just write a Python function. Functional prompts automate common agent workflows. The CLI grew from `bot.chat()` when interactions got complex enough to need dedicated commands.
+The framework emerged from building with it. Every feature exists because it solved a real problem during development. `respond()` wraps API complexity. `save/load` eliminates context repetition. `add_tools()` makes tool creation trivialÃƒÆ’Ã‚Â¢ÃƒÂ¢ââ‚¬Å¡Ã‚Â¬ÃƒÂ¢ââ€šÂ¬Ã‚Âjust write a Python function. Functional prompts automate common agent workflows. The CLI grew from `bot.chat()` when interactions got complex enough to need dedicated commands.
 
 This structure enables something more interesting: agents that manage their own context through tool use. Tools are provided for allowing an agent to branch itself to allow itself to do work in parallel. It can compact itself. Giving agents tools to do the boring task of managing their own context *appears to work*.
 
@@ -38,7 +38,7 @@ bot.add_tools(code_tools)
 response = bot.respond("Create a Flask app in app.py")
 ```
 
-The agent can now call those tools. You don't write schemas or wrappers—just pass the functions.
+The agent can now call those tools. You don't write schemas or wrappersÃƒÆ’Ã‚Â¢ÃƒÂ¢ââ‚¬Å¡Ã‚Â¬ÃƒÂ¢ââ€šÂ¬Ã‚Âjust pass the functions.
 
 Save the bot's state when you want to preserve context:
 
@@ -78,7 +78,7 @@ The CLI lets you work with the tree structure directly. Branch to explore differ
 ## Functional Prompts
 
 When you're programming with agents (not just chatting), you need patterns for structured reasoning. Functional prompts provide these.
-The most important pattern is `prompt_while`—it lets an agent work iteratively until a task is complete:
+The most important pattern is `prompt_while`ÃƒÆ’Ã‚Â¢ÃƒÂ¢ââ‚¬Å¡Ã‚Â¬ÃƒÂ¢ââ€šÂ¬Ã‚Âit lets an agent work iteratively until a task is complete:
 
 ```python
 from bots.flows import functional_prompts as fp
@@ -118,7 +118,7 @@ responses, nodes = fp.par_branch_while(bot, [
 ], stop_condition=fp.conditions.said_DONE)
 ```
 
-Functional prompts separate "what to think about" from "how to think about it." The patterns are language-agnostic—they work the same way regardless of what you're asking the agent to do.
+Functional prompts separate "what to think about" from "how to think about it." The patterns are language-agnosticÃƒÆ’Ã‚Â¢ÃƒÂ¢ââ‚¬Å¡Ã‚Â¬ÃƒÂ¢ââ€šÂ¬Ã‚Âthey work the same way regardless of what you're asking the agent to do.
 
 ## Namshubs
 
@@ -130,7 +130,7 @@ From the CLI:
 ```
 
 The agent loads the PR review workflow, executes it, then returns control to the main conversation. Namshubs are pre-written tasks that any agent can invoke.
-The name comes from Snow Crash—namshubs "reprogram" the agent temporarily for a specific task, then restore its original state.
+The name comes from Snow CrashÃƒÆ’Ã‚Â¢ÃƒÂ¢ââ‚¬Å¡Ã‚Â¬ÃƒÂ¢ââ€šÂ¬Ã‚Ânamshubs "reprogram" the agent temporarily for a specific task, then restore its original state.
 
 ## Installation
 
@@ -167,9 +167,34 @@ The framework has three layers:
 - [Namshubs Guide](bots/namshubs/README.md) - Creating and using namshubs
 - [Namshubs Quickstart](bots/namshubs/QUICKSTART.md) - Getting started with namshubs
 
-### Observability
+### Generated API Documentation
+The bots project includes a documentation generator that creates comprehensive module documentation:
+```bash
+# Generate documentation for all modules
+python tools/generate_docs.py
+# Generate docs for specific modules
+python tools/generate_docs.py --modules foundation,tools,dev
+# Preview what would be generated (dry run)
+python tools/generate_docs.py --dry-run --verbose
+```
+Generated module documentation is available in `docs/modules/`:
+- [foundation.md](docs/modules/foundation.md) - Core bot implementations and model registry
+- [tools.md](docs/modules/tools.md) - Bot tools for code editing, execution, and terminal operations
+- [flows.md](docs/modules/flows.md) - Functional prompts and recombination strategies
+- [dev.md](docs/modules/dev.md) - Development tools, CLI, and bot session management
+- [observability.md](docs/modules/observability.md) - Tracing, metrics, and cost tracking
+- [namshubs.md](docs/modules/namshubs.md) - Specialized bot workflows and automation
+- [utils.md](docs/modules/utils.md) - Utility functions and helpers
+- [testing.md](docs/modules/testing.md) - Testing utilities and mock implementations
 
-- [Observability Setup](docs/observability/SETUP.md) - Configuring metrics and tracing
+The generator automatically:
+- Discovers all modules in the bots package
+- Extracts class and function information from source code
+- Creates formatted documentation with architecture diagrams
+- Generates usage examples and API references
+- Organizes documentation by module priority
+
+### Observability
 - [Cost Tracking](docs/observability/COST_TRACKING.md) - Monitoring API costs
 - [Callbacks](docs/observability/CALLBACKS.md) - Using callback hooks
 
