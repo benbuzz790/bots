@@ -102,7 +102,7 @@ class TestBranchSelfParallelTools:
         dummy_node = Mock(spec=ConversationNode)
         dummy_node.replies = []
 
-        def add_reply_side_effect(*args, **kwargs):
+        def add_reply_side_effect(*_, **__):
             original_node.replies.append(dummy_node)
             return dummy_node
 

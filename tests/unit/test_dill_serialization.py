@@ -36,6 +36,8 @@ class TestDillSerialization(unittest.TestCase):
 
     def test_dill_succeeds_for_same_runtime_functions(self):
         """Test that dill successfully serializes/deserializes same-runtime functions."""
+        import os
+
         # Create a bot and add a tool from a real module (not dynamic)
         bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
 
@@ -70,7 +72,8 @@ class TestDillSerialization(unittest.TestCase):
         self.assertIn("view", loaded_bot.tool_handler.function_map)
         func = loaded_bot.tool_handler.function_map["view"]
         self.assertTrue(callable(func))
-        func(r"tests\unit\test_dill_serialization.py")
+        test_file_path = os.path.join("tests", "unit", "test_dill_serialization.py")
+        func(test_file_path)
         sig = inspect.signature(func)
         self.assertIn("file_path", sig.parameters)
 
