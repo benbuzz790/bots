@@ -2147,6 +2147,9 @@ class SystemHandler:
         """Switch model engine."""
         from bots.foundation.base import Engines
 
+        if not bot:
+            return "Error: No bot instance available. Please create a bot first."
+
         if not args:
             # Show available models from current provider only
             current_engine = bot.model_engine
@@ -2193,43 +2196,44 @@ class SystemHandler:
 
             return "\n".join(output)
 
-        # Try to parse as number (1-based index within current provider)
-        target = args[0]
+        # Store the current engine before switching
         current_engine = bot.model_engine
+        target = args[0]
         current_provider = current_engine.get_info()["provider"]
         provider_models = [e for e in Engines if e.get_info()["provider"] == current_provider]
 
+        # Try to parse as number (1-based index within current provider)
         try:
             index = int(target) - 1
             if 0 <= index < len(provider_models):
                 new_engine = provider_models[index]
                 bot.model_engine = new_engine
-                return f"Switched to {new_engine.value}"
+                return f"Switched from {current_engine.value} to {new_engine.value}"
             else:
                 return "Invalid model number. Use /switch to see available models."
         except ValueError:
             pass
 
-        # Try to find by name (exact or partial match)
+        # Try to find by name (exact or partial match) - only within current provider
         target_lower = target.lower()
 
-        # First try exact match
-        for engine in Engines:
+        # First try exact match within current provider
+        for engine in provider_models:
             if engine.value.lower() == target_lower:
                 bot.model_engine = engine
-                return f"Switched to {engine.value}"
+                return f"Switched from {current_engine.value} to {engine.value}"
 
-        # Then try partial match
-        matches = [e for e in Engines if target_lower in e.value.lower()]
+        # Then try partial match within current provider
+        matches = [e for e in provider_models if target_lower in e.value.lower()]
 
         if len(matches) == 1:
             bot.model_engine = matches[0]
-            return f"Switched to {matches[0].value}"
+            return f"Switched from {current_engine.value} to {matches[0].value}"
         elif len(matches) > 1:
             match_list = "\n".join([f"  - {e.value}" for e in matches])
             return f"Multiple matches found:\n{match_list}\n\nPlease be more specific."
         else:
-            return f"Model '{target}' not found. Use /switch or /switch all to see available models."
+            return f"Model '{target}' not found. Use /switch to see available models."
 
     def clear(self, _bot: Bot, _context: CLIContext, _args: List[str]) -> str:
         """Clear the terminal screen."""

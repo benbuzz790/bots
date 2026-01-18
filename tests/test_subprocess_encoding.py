@@ -59,7 +59,7 @@ class TestPowerShellUTF8Encoding:
         command = f'Write-Output "{emoji}"'
         output = run_powershell_with_utf8(command)
 
-        assert_no_mojibake(output)
+        assert_no_mojibake(output, [emoji])
         assert emoji in output
 
     def test_multiple_emoji_with_utf8(self):
@@ -68,7 +68,7 @@ class TestPowerShellUTF8Encoding:
         command = f'Write-Output "{emoji_string}"'
         output = run_powershell_with_utf8(command)
 
-        assert_no_mojibake(output)
+        assert_no_mojibake(output, ["✅", "❌", "⚠️"])
         assert "✅" in output
         assert "❌" in output
         assert "⚠️" in output
@@ -79,7 +79,7 @@ class TestPowerShellUTF8Encoding:
         command = f'Write-Output "{chinese}"'
         output = run_powershell_with_utf8(command)
 
-        assert_no_mojibake(output)
+        assert_no_mojibake(output, [chinese])
         assert chinese in output
 
     def test_arabic_characters_with_utf8(self):
@@ -88,7 +88,7 @@ class TestPowerShellUTF8Encoding:
         command = f'Write-Output "{arabic}"'
         output = run_powershell_with_utf8(command)
 
-        assert_no_mojibake(output)
+        assert_no_mojibake(output, [arabic])
         assert arabic in output
 
     def test_mixed_unicode_with_utf8(self):
@@ -97,7 +97,10 @@ class TestPowerShellUTF8Encoding:
         command = f'Write-Output "{mixed}"'
         output = run_powershell_with_utf8(command)
 
-        assert_no_mojibake(output)
+        assert_no_mojibake(
+            output,
+            [UNICODE_TEST_STRINGS["emoji_checkmark"], UNICODE_TEST_STRINGS["chinese"]],
+        )
         assert UNICODE_TEST_STRINGS["emoji_checkmark"] in output
         assert UNICODE_TEST_STRINGS["chinese"] in output
 
@@ -107,7 +110,7 @@ class TestPowerShellUTF8Encoding:
         command = f'Write-Output "{long_string}"'
         output = run_powershell_with_utf8(command)
 
-        assert_no_mojibake(output)
+        assert_no_mojibake(output, ["✅", UNICODE_TEST_STRINGS["chinese"]])
         assert "✅" in output
         assert UNICODE_TEST_STRINGS["chinese"] in output
 
@@ -237,7 +240,7 @@ class TestRealWorldScenarios:
         command = f'Write-Output "{commit_message}"'
         output = run_powershell_with_utf8(command)
 
-        assert_no_mojibake(output)
+        assert_no_mojibake(output, [emoji])
         assert emoji in output
 
     def test_file_listing_with_unicode_names(self):
@@ -246,7 +249,7 @@ class TestRealWorldScenarios:
         command = f'Write-Output "{unicode_filename}"'
         output = run_powershell_with_utf8(command)
 
-        assert_no_mojibake(output)
+        assert_no_mojibake(output, [UNICODE_TEST_STRINGS["emoji_checkmark"]])
         assert UNICODE_TEST_STRINGS["emoji_checkmark"] in output
 
     def test_status_messages_with_emoji(self):
@@ -255,7 +258,7 @@ class TestRealWorldScenarios:
         command = f'Write-Output "{status}"'
         output = run_powershell_with_utf8(command)
 
-        assert_no_mojibake(output)
+        assert_no_mojibake(output, [UNICODE_TEST_STRINGS["emoji_checkmark"]])
         assert UNICODE_TEST_STRINGS["emoji_checkmark"] in output
         assert "All tests passed" in output
 
@@ -266,7 +269,7 @@ class TestRealWorldScenarios:
         command = f"Write-Output '{json_str}'"
         output = run_powershell_with_utf8(command)
 
-        assert_no_mojibake(output)
+        assert_no_mojibake(output, [emoji])
         assert emoji in output
 
 
