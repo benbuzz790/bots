@@ -105,6 +105,37 @@ class TestInterruptDuringBotRespond:
         with pytest.raises(KeyboardInterrupt):
             bot.respond("test prompt")
 
+    def test_interruptible_wrapper_basic(self):
+        """Test the interruptible wrapper with a simple function."""
+        from bots.utils.interrupt_handler import run_interruptible
+
+        def simple_function(x):
+            return x * 2
+
+        result = run_interruptible(simple_function, 5, check_interval=0.1)
+        assert result == 10
+
+    def test_interruptible_wrapper_with_slow_function(self):
+        """Test that interruptible wrapper completes slow functions."""
+        from bots.utils.interrupt_handler import run_interruptible
+
+        def slow_function():
+            time.sleep(0.2)
+            return "completed"
+
+        result = run_interruptible(slow_function, check_interval=0.05)
+        assert result == "completed"
+
+    def test_interruptible_wrapper_propagates_exceptions(self):
+        """Test that interruptible wrapper propagates exceptions from the function."""
+        from bots.utils.interrupt_handler import run_interruptible
+
+        def failing_function():
+            raise ValueError("Test error")
+
+        with pytest.raises(ValueError, match="Test error"):
+            run_interruptible(failing_function, check_interval=0.1)
+
     def test_cli_handles_interrupted_respond(self):
         """Test that CLI properly handles interrupted bot.respond() calls."""
         # This would test the integration, but requires more complex mocking
