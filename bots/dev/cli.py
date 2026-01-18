@@ -876,18 +876,18 @@ class CLIContext:
             timestamp = self.backup_metadata.get("timestamp", 0)
             time_ago = time.time() - timestamp
             if time_ago < 60:
-                f"{int(time_ago)} seconds ago"
+                time_str = f"{int(time_ago)} seconds ago"
             elif time_ago < 3600:
-                f"{int(time_ago / 60)} minutes ago"
+                time_str = f"{int(time_ago / 60)} minutes ago"
             else:
-                f"{int(time_ago / 3600)} hours ago"
+                time_str = f"{int(time_ago / 3600)} hours ago"
 
             reason = self.backup_metadata.get("reason", "unknown")
 
             # Don't clear backup - allow multiple restores to same point
             # User can create new backup if they want a new checkpoint
 
-            return f"Restored from backup ({reason}, {time_ago})"
+            return f"Restored from backup ({reason}, {time_str})"
 
         except Exception as e:
             return f"Restore failed: {str(e)}"
@@ -3185,6 +3185,8 @@ def parse_args():
 
 def main(bot_filename=None, function_filter=None):
     """Entry point for the CLI."""
+    color_mode = "auto"  # Default color mode
+
     if bot_filename is None:
         args = parse_args()
         bot_filename = args.filename
@@ -3196,7 +3198,7 @@ def main(bot_filename=None, function_filter=None):
     cli = CLI(bot_filename=bot_filename, function_filter=function_filter)
 
     # Set color mode in config if it was specified via CLI args
-    if bot_filename is None and hasattr(args, "color"):
+    if bot_filename is None:
         cli.context.config.color = color_mode
 
     cli.run()
