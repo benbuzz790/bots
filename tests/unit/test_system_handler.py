@@ -27,6 +27,7 @@ class TestSystemHandlerDataFormat:
         self.mock_config.temperature = 0.7
         self.mock_config.auto_backup = False
         self.mock_config.auto_restore_on_error = False
+        self.mock_config.color = "auto"
 
         self.mock_context = MagicMock(spec=CLIContext)
         self.mock_context.config = self.mock_config
@@ -138,7 +139,6 @@ class TestSystemHandlerDataFormat:
         """add_tool() with no args prompts for selection."""
         # This test is tricky because it uses input(), so we'll just verify it doesn't crash
         # and returns a string when given a tool name
-        pass
 
     def test_add_tool_with_valid_tool(self):
         """add_tool() adds a valid tool."""
@@ -174,6 +174,7 @@ class TestSystemHandlerNoDirectPretty:
         self.mock_config.temperature = 0.7
         self.mock_config.auto_backup = False
         self.mock_config.auto_restore_on_error = False
+        self.mock_config.color = "auto"
 
         self.mock_context = MagicMock(spec=CLIContext)
         self.mock_context.config = self.mock_config

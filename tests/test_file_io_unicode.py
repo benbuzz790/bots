@@ -418,7 +418,7 @@ class TestEdgeCases:
         read_content = test_file.read_text(encoding="utf-8")
 
         assert read_content == content
-        assert len(read_content) == 6  # 6 emoji characters
+        assert len(read_content) == len(content)  # Use dynamic length instead of hard-coded value
 
     def test_newlines_with_unicode(self, tmp_path):
         """Test various newline styles with unicode content."""

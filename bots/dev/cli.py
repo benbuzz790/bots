@@ -2144,82 +2144,92 @@ class SystemHandler:
         return "\n".join(output)
 
     def switch(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Switch to a different model within the same provider."""
+        """Switch model engine."""
         from bots.foundation.base import Engines
 
-        if not bot:
-            return "No bot instance available"
+        if not args:
+            # Show available models from current provider only
+            current_engine = bot.model_engine
+            current_provider = current_engine.get_info()["provider"]
 
-        # Get current bot's provider
+            # Filter engines by current provider
+            provider_models = [e for e in Engines if e.get_info()["provider"] == current_provider]
+
+            output = []
+            output.append(f"\nCurrent model: {current_engine.value}\n")
+            output.append(f"Available {current_provider} models:")
+            output.append("-" * 80)
+
+            for i, engine in enumerate(provider_models, 1):
+                info = engine.get_info()
+                stars = "⭐" * info["intelligence"]
+                cost_str = f"${info['cost_input']:.2f}/${info['cost_output']:.2f}"
+                marker = "→" if engine == current_engine else " "
+                output.append(f"{marker} {i:2}. {engine.value:<40} {stars:<10} {info['max_tokens']:>6,} tokens | {cost_str}")
+
+            output.append("-" * 80)
+            output.append("\nUse /switch <number or model name> to switch models")
+            output.append("Use /switch all to see models from all providers")
+            return "\n".join(output)
+
+        # Check if user wants to see all models
+        if args[0].lower() == "all":
+            output = []
+            output.append("\nAll available models:")
+            output.append("=" * 100)
+            output.append(f"{'Model':<45} {'Provider':<12} {'Intelligence':<15} {'Max Tokens':<12} {'Cost ($/1M tokens)':<20}")
+            output.append("-" * 100)
+
+            for engine in Engines:
+                info = engine.get_info()
+                stars = "⭐" * info["intelligence"]
+                cost_str = f"${info['cost_input']:.2f} / ${info['cost_output']:.2f}"
+
+                output.append(f"{engine.value:<45} {info['provider']:<12} {stars:<15} {info['max_tokens']:<12} {cost_str:<20}")
+
+            output.append("=" * 100)
+            output.append("\nIntelligence: ⭐ = fast/cheap, ⭐⭐ = balanced, ⭐⭐⭐ = most capable")
+            output.append("Cost format: input / output per 1M tokens\n")
+
+            return "\n".join(output)
+
+        # Try to parse as number (1-based index within current provider)
+        target = args[0]
         current_engine = bot.model_engine
-        current_info = current_engine.get_info()
-        current_provider = current_info["provider"]
+        current_provider = current_engine.get_info()["provider"]
+        provider_models = [e for e in Engines if e.get_info()["provider"] == current_provider]
 
-        # Get all models for the current provider
-        provider_models = [engine for engine in Engines if engine.get_info()["provider"] == current_provider]
+        try:
+            index = int(target) - 1
+            if 0 <= index < len(provider_models):
+                new_engine = provider_models[index]
+                bot.model_engine = new_engine
+                return f"Switched to {new_engine.value}"
+            else:
+                return "Invalid model number. Use /switch to see available models."
+        except ValueError:
+            pass
 
-        if not provider_models:
-            return f"No models found for provider: {current_provider}"
+        # Try to find by name (exact or partial match)
+        target_lower = target.lower()
 
-        # If args provided, try to switch to that model
-        if args:
-            model_query = " ".join(args).lower()
+        # First try exact match
+        for engine in Engines:
+            if engine.value.lower() == target_lower:
+                bot.model_engine = engine
+                return f"Switched to {engine.value}"
 
-            # Try numeric index first
-            target_engine = None
-            try:
-                index = int(model_query)
-                if 1 <= index <= len(provider_models):
-                    target_engine = provider_models[index - 1]  # Convert 1-based to 0-based
-                else:
-                    return f"Index {index} out of range. Please choose between 1 and {len(provider_models)}"
-            except ValueError:
-                # Not a number, continue with string matching
-                pass
+        # Then try partial match
+        matches = [e for e in Engines if target_lower in e.value.lower()]
 
-            # Try exact match first
-            if not target_engine:
-                for engine in provider_models:
-                    if engine.value.lower() == model_query:
-                        target_engine = engine
-                        break
-
-            # Try partial match
-            if not target_engine:
-                for engine in provider_models:
-                    if model_query in engine.value.lower():
-                        target_engine = engine
-                        break
-
-            if not target_engine:
-                return f"Model '{model_query}' not found in {current_provider} provider"
-
-            # Switch the model
-            bot.model_engine = target_engine
-            new_info = target_engine.get_info()
-            return (
-                f"Switched from {current_engine.value} to {target_engine.value}\n"
-                f"Max tokens: {new_info['max_tokens']:,} | "
-                f"Cost: ${new_info['cost_input']:.2f}/${new_info['cost_output']:.2f} per 1M tokens"
-            )
-
-        # No args - display provider models and request selection
-        output = []
-        output.append(f"\nCurrent model: {current_engine.value}")
-        output.append(f"\nAvailable {current_provider} models:")
-        output.append("-" * 80)
-
-        for i, engine in enumerate(provider_models, 1):
-            info = engine.get_info()
-            stars = "â­" * info["intelligence"]
-            cost_str = f"${info['cost_input']:.2f}/${info['cost_output']:.2f}"
-            marker = "â†’" if engine == current_engine else " "
-            output.append(f"{marker} {i:2}. {engine.value:<40} {stars:<10} " f"{info['max_tokens']:>6,} tokens | {cost_str}")
-
-        output.append("-" * 80)
-        output.append("\nUse /switch <number or model name> to switch models")
-
-        return "\n".join(output)
+        if len(matches) == 1:
+            bot.model_engine = matches[0]
+            return f"Switched to {matches[0].value}"
+        elif len(matches) > 1:
+            match_list = "\n".join([f"  - {e.value}" for e in matches])
+            return f"Multiple matches found:\n{match_list}\n\nPlease be more specific."
+        else:
+            return f"Model '{target}' not found. Use /switch or /switch all to see available models."
 
     def clear(self, _bot: Bot, _context: CLIContext, _args: List[str]) -> str:
         """Clear the terminal screen."""
@@ -2954,7 +2964,7 @@ class PromptHandler:
             # Show preview of content
             preview = content[:80] + "..." if len(content) > 80 else content
             preview = preview.replace("\n", " ")  # Single line preview
-            marker = "â†’" if i == 1 else " "
+            marker = "→" if i == 1 else " "
             print(f"  {marker} {i}. {name}: {preview}")
 
         if len(matches) > 10:
@@ -3108,7 +3118,7 @@ class PromptHandler:
                 # Show preview of content
                 preview = content[:80] + "..." if len(content) > 80 else content
                 preview = preview.replace("\n", " ")  # Single line preview
-                marker = "â†’" if i == 1 else " "
+                marker = "→" if i == 1 else " "
                 print(f"  {marker} {i}. {name}")
                 print(f"       {preview}")
 
@@ -3132,7 +3142,7 @@ class PromptHandler:
                 # Show a preview
                 preview = content[:60] + "..." if len(content) > 60 else content
                 preview = preview.replace("\n", " ")
-                marker = "â†’" if i == 1 else " "
+                marker = "→" if i == 1 else " "
                 print(f"  {marker} {i}. {name}")
                 print(f"       {preview}")
 

@@ -74,6 +74,9 @@ def test_metrics_display_once_per_response_in_auto_mode():
                                     bot.tool_handler.requests = []
                                     callback(["response2"], [Mock()])
 
+                                    # Return responses and nodes as prompt_while does
+                                    return (["response1", "response2"], [Mock(), Mock()])
+
                                 mock_prompt_while.side_effect = simulate_prompt_while
 
                                 # Execute auto mode
