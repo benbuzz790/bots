@@ -296,53 +296,53 @@ class dynamic_prompts:
 def single_prompt(
     bot: Bot, prompt: Prompt, callback: Optional[Callable[[List[Response], List[ResponseNode]], None]] = None
 ) -> Tuple[Response, ResponseNode]:
-    """Send a single prompt to a bot and get its response.
+    """Execute a single prompt and return both response and conversation state.
 
-    Use when you need to:
-    - Send a simple, standalone prompt
-    - Get a direct response without complex orchestration
-    - Start a new conversation thread
-    - Test bot behavior with a specific prompt
+    Use when you need:
+    - The simplest possible bot interaction
+    - To capture both response and conversation state
+    - A building block for custom interaction patterns
+    - To understand the fundamental bot interaction model
 
-    This is the simplest pattern - a direct question-and-answer interaction.
-    It's the foundation for all other patterns and useful when you don't need
-    the structure of chains, branches, or other complex flows.
+    This function serves as:
+    1. A demonstration of the basic bot interaction pattern
+    2. A template for more complex functional patterns
+    3. A utility for simple, one-shot interactions
+    4. A way to understand conversation node handling
 
     Args:
-        bot (Bot): The bot to interact with. The bot's conversation state
-            will be updated with this new interaction
-        prompt (Prompt): The prompt to send. Can be:
-            - A string for direct text
-            - A callable that returns a string for dynamic prompts
+        bot (Bot): The bot to interact with. The bot's current conversation
+            state is preserved and updated with this interaction
+        prompt (Prompt): The prompt to send to the bot. Should be a clear,
+            self-contained instruction or question
         callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
-            A function (with arguments list[respose], list[node]) which is called
+            A function (with arguments list[response], list[node]) which is called
             after the response from the bot.
 
     Returns:
         Tuple[Response, ResponseNode]: A tuple containing:
             - response (str): The bot's response text
-            - node (ConversationNode): The conversation node containing
-              the full interaction context
+            - node (ConversationNode): Conversation node containing:
+                - The response
+                - The prompt that generated it
+                - Links to parent/child nodes
+                - Associated metadata
 
     Examples:
-        >>> # Simple question
-        >>> response, node = single_prompt(bot, "What is Python?")
-        >>> print(response)
-        >>>
-        >>> # Dynamic prompt
-        >>> response, node = single_prompt(bot,
+        >>> # Simple question and answer
+        >>> response, node = basic(bot,
         ...     "What is the time complexity of quicksort?"
         ... )
         >>> print(response)
         >>>
         >>> # Tool usage
-        >>> response, node = single_prompt(bot,
+        >>> response, node = basic(bot,
         ...     "Review the code in main.py"
         ... )
         >>> print(node.tool_calls)  # See what tools were used
         >>>
         >>> # Access conversation context
-        >>> response, node = single_prompt(bot, "Analyze this.")
+        >>> response, node = basic(bot, "Analyze this.")
         >>> print(node.parent.content)  # See previous context
 
     Implementation Notes:
@@ -351,10 +351,7 @@ def single_prompt(
         - Preserves tool usage information
         - Serves as foundation for other patterns
     """
-    from bots.utils.interrupt_handler import run_interruptible
-
-    # Use interruptible wrapper to allow Ctrl-C during bot.respond()
-    response = run_interruptible(bot.respond, prompt, check_interval=0.1)
+    response = bot.respond(prompt)
     node = bot.conversation
     if callback:
         try:
@@ -397,13 +394,10 @@ def chain(
     Tuple[List[Response], List[ResponseNode]]: A tuple containing a list of response strings
         and a list of corresponding ConversationNodes.
     """
-    from bots.utils.interrupt_handler import run_interruptible
-
     responses = []
     nodes = []
     for prompt in prompt_list:
-        # Use interruptible wrapper to allow Ctrl-C during bot.respond()
-        response = run_interruptible(bot.respond, prompt, check_interval=0.1)
+        response = bot.respond(prompt)
         responses.append(response)
         nodes.append(bot.conversation)
         if callback:
@@ -420,26 +414,25 @@ def branch(
     """Create multiple independent conversation paths from the current state.
 
     Use when you need to:
-    - Explore different perspectives or approaches
-    - Generate multiple solutions to compare
-    - Analyze a problem from various angles
-    - Create alternative conversation paths
+    - Explore multiple perspectives simultaneously
+    - Analyze different aspects of a problem independently
+    - Compare different approaches without cross-influence
+    - Generate diverse solutions or viewpoints
 
-    This pattern enables parallel exploration by creating independent branches
-    from the current conversation state. Each branch maintains its own context
-    and can be developed independently, allowing for diverse exploration while
-    preserving the common starting point.
+    This is a fundamental pattern for parallel thinking that allows exploration
+    of multiple lines of thought without letting them influence each other.
+    Each branch starts from the same context but develops independently.
 
     Args:
-        bot (Bot): The bot to interact with. The bot's conversation state
-            is used as the branching point, and each prompt creates an
-            independent path from that point
-        prompt_list (List[Prompt]): List of prompts, each creating a separate
-            branch. For best results:
-            - Make prompts explore different aspects
-            - Keep prompts independent of each other
-            - Use clear, specific instructions
-            - Consider different perspectives or approaches
+        bot (Bot): The bot to interact with. The bot's current conversation
+            state is used as the starting point for all branches, but each
+            branch gets its own independent context
+        prompts (List[Prompt]): List of prompts, each creating a separate
+            conversation branch. For effective branching:
+            - Make prompts independent of each other
+            - Focus each prompt on a distinct aspect
+            - Be explicit about the perspective or approach
+            - Maintain consistent depth across branches
         callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
             A function (with arguments list[respose], list[node]) which is called
             after each response from the bot.
@@ -483,16 +476,13 @@ def branch(
         - Maintains tree structure for conversation history
         - Conversation is left at final prompt's response.
     """
-    from bots.utils.interrupt_handler import run_interruptible
-
     original_conversation = bot.conversation
     responses = []
     nodes = []
     for prompt in prompt_list:
         bot.conversation = original_conversation
         try:
-            # Use interruptible wrapper to allow Ctrl-C during bot.respond()
-            response = run_interruptible(bot.respond, prompt, check_interval=0.1)
+            response = bot.respond(prompt)
             node = bot.conversation
             if callback:
                 try:
@@ -722,84 +712,80 @@ def prompt_while(
             - Include any relevant constraints
             - Specify how to indicate completion
         continue_prompt (Prompt, optional): Prompt sent for each iteration
-            after the first. Can be:
-            - A static string (e.g., "ok", "continue")
-            - A DynamicPrompt function for adaptive prompting
-            - Defaults to "ok"
+            after the first. Defaults to 'ok'. Consider customizing to:
+            - Guide the iteration process
+            - Maintain task focus
+            - Encourage progress
+            - Request specific improvements
         stop_condition (Condition, optional): Function that determines when
-            to stop iterating. Takes the bot as input and returns bool.
-            Common conditions from the conditions module:
-            - tool_not_used: Stop when no tools are requested
-            - max_iterations(n): Stop after n iterations
-            - Custom: Any function(bot) -> bool
-            Defaults to tool_not_used
+            to stop iterating. Takes a Bot parameter and returns bool.
+            Common patterns:
+            - conditions.tool_not_used (default): Stop when bot stops using tools
+            - conditions.said_DONE: Stop when bot indicates completion
+            - Custom conditions for specific criteria
         callback (Optional[Callable[[List[Response], List[ResponseNode]], None]]):
             A function (with arguments list[respose], list[node]) which is called
             after each response from the bot.
 
     Returns:
         Tuple[List[Response], List[ResponseNode]]: A tuple containing:
-            - responses (List[str]): All responses in order, including the
-              first response and all continuation responses
-            - nodes (List[ConversationNode]): Corresponding conversation nodes
-              for each response
+            - responses (List[str]): All bot responses in order:
+                - First response to initial prompt
+                - All subsequent iteration responses
+                - Final response meeting stop condition
+            - nodes (List[ConversationNode]): Conversation nodes containing
+              responses and their cumulative context
 
     Examples:
-        >>> # Simple iteration until tools stop being used
+        >>> # Code debugging with tool usage
         >>> responses, nodes = prompt_while(
         ...     bot,
-        ...     "Analyze all Python files in the current directory",
-        ...     continue_prompt="ok"
+        ...     "Debug this code. Fix all errors you find.",
+        ...     continue_prompt="Continue debugging. Any more issues?",
+        ...     stop_condition=conditions.tool_not_used
         ... )
         >>>
-        >>> # Custom stop condition
-        >>> def until_done(bot):
-        ...     last_response = bot.conversation.content
-        ...     return "DONE" in last_response or "COMPLETE" in last_response
+        >>> # Document improvement with explicit completion
+        >>> responses, nodes = prompt_while(
+        ...     bot,
+        ...     "Improve this text. Say DONE when perfect.",
+        ...     continue_prompt="What else can be improved?",
+        ...     stop_condition=conditions.said_DONE
+        ... )
+        >>>
+        >>> # Custom completion criteria
+        >>> def quality_threshold(bot: Bot) -> bool:
+        ...     # Stop when response contains confidence marker
+        ...     return "99% confident" in bot.conversation.content
         ...
         >>> responses, nodes = prompt_while(
         ...     bot,
-        ...     "Process all items in the queue",
-        ...     stop_condition=until_done
-        ... )
-        >>>
-        >>> # Dynamic prompting based on iteration
-        >>> def adaptive_prompt(bot, iteration):
-        ...     if iteration > 5:
-        ...         return "Please wrap up and summarize"
-        ...     return "continue"
-        ...
-        >>> responses, nodes = prompt_while(
-        ...     bot,
-        ...     "Research this topic thoroughly",
-        ...     continue_prompt=adaptive_prompt
+        ...     "Optimize this function until confident.",
+        ...     continue_prompt="Continue optimization.",
+        ...     stop_condition=quality_threshold
         ... )
 
     Implementation Notes:
-        - First prompt is always sent
-        - Iterations continue until stop_condition returns True
-        - Each iteration maintains full conversation context
-        - Useful for autonomous task completion
-        - Can be combined with other patterns (see chain_while, branch_while)
+        - Maintains continuous conversation context
+        - Preserves all iteration responses
+        - Allows custom iteration control
+        - Supports progressive refinement
+        - Enables self-guided completion
     """
-    from bots.utils.interrupt_handler import run_interruptible
-
     # Wrap static string prompts as DynamicPrompts
     if not callable(continue_prompt):
         continue_prompt = dynamic_prompts.static(continue_prompt)
 
     responses = []
     nodes = []
-    # Use interruptible wrapper for first prompt
-    response = run_interruptible(bot.respond, first_prompt, check_interval=0.1)
+    response = bot.respond(first_prompt)
     responses.append(response)
     nodes.append(bot.conversation)
     iteration = 0
     while not stop_condition(bot):
         iteration += 1
         prompt_text = continue_prompt(bot, iteration)
-        # Use interruptible wrapper for continuation prompts
-        response = run_interruptible(bot.respond, prompt_text, check_interval=0.1)
+        response = bot.respond(prompt_text)
         responses.append(response)
         nodes.append(bot.conversation)
         if callback:
