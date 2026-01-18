@@ -9,17 +9,16 @@ from bots.foundation.base import Bot
 
 
 @toolify()
-def view_tools(filter: str = "", verbose: bool = False, _bot: Optional[Bot] = None) -> str:
+def view_tools(filter: str = "", _bot: Optional[Bot] = None) -> str:
     """View available tools that can be loaded.
 
     Shows tools in the registry that can be loaded with load_tools().
 
     Parameters:
         filter (str): Optional filter string to search tool names/descriptions
-        verbose (bool): If True, show descriptions. If False, show only signatures. Default False.
 
     Returns:
-        str: List of available tools with their status and optionally descriptions
+        str: List of available tools with their status and signatures
     """
     if not _bot or not _bot.tool_handler:
         return "Error: Could not access tool handler"
@@ -47,9 +46,6 @@ def view_tools(filter: str = "", verbose: bool = False, _bot: Optional[Bot] = No
                     pass
 
         lines.append(f"\n{status} {signature}")
-
-        if verbose and info.get("description"):
-            lines.append(f"  {info['description']}")
 
     return "\n".join(lines)
 
