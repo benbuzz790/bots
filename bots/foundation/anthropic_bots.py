@@ -348,6 +348,12 @@ class AnthropicMailbox(Mailbox):
             tools: Optional[List[Dict[str, Any]]] = None
             if bot.tool_handler and bot.tool_handler.tools:
                 tools = bot.tool_handler.tools
+
+                # Remove any existing cache_control from all tools to avoid duplicates
+                for tool in tools:
+                    tool.pop("cache_control", None)
+
+                # Add cache_control to the last tool only
                 tools[-1]["cache_control"] = {"type": "ephemeral"}
 
             cc = CacheController()

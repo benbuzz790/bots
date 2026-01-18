@@ -6,34 +6,11 @@ load and execute namshubs on themselves.
 """
 
 import importlib.util
-import inspect
 import os
 from typing import Optional
 
 from bots.dev.decorators import toolify
 from bots.foundation.base import Bot
-
-
-def _get_calling_bot() -> Optional[Bot]:
-    """Helper function to get a reference to the calling bot.
-
-    DEPRECATED: This function uses stack introspection which is fragile.
-    New tools should use the _bot parameter instead, which is automatically
-    injected by ToolHandler.exec_requests().
-
-    This function is kept for backward compatibility only.
-
-    Returns:
-        Optional[Bot]: Reference to the calling bot or None if not found
-    """
-    frame = inspect.currentframe()
-    while frame:
-        if frame.f_code.co_name == "_cvsn_respond" and "self" in frame.f_locals:
-            potential_bot = frame.f_locals["self"]
-            if isinstance(potential_bot, Bot):
-                return potential_bot
-        frame = frame.f_back
-    return None
 
 
 @toolify()
@@ -67,10 +44,11 @@ def invoke_namshub(namshub_name: str, kwargs: str = "{}", _bot: Optional[Bot] = 
     """
     import json
 
-    # Try injected bot first, fallback to deprecated method
-    bot = _bot if _bot is not None else _get_calling_bot()
-    if not bot:
-        return "Error: Could not find calling bot"
+    # _bot parameter is injected by ToolHandler
+    if _bot is None:
+        return "Error: Could not access bot instance (no _bot parameter injected)"
+
+    bot = _bot
 
     # Parse kwargs string into a dictionary
     try:
