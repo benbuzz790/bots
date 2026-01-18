@@ -859,6 +859,11 @@ class CLIContext:
             # Re-attach callbacks on the restored instance (pointing to current context)
             self.bot_instance.callbacks = RealTimeDisplayCallbacks(self)
 
+            # Make the restored bot interruptible with Ctrl-C
+            from bots.dev.bot_session import make_bot_interruptible
+
+            make_bot_interruptible(self.bot_instance)
+
             # Clear tool handler state to prevent corruption
             self.bot_instance.tool_handler.clear()
 
@@ -871,18 +876,18 @@ class CLIContext:
             timestamp = self.backup_metadata.get("timestamp", 0)
             time_ago = time.time() - timestamp
             if time_ago < 60:
-                time_str = f"{int(time_ago)} seconds ago"
+                f"{int(time_ago)} seconds ago"
             elif time_ago < 3600:
-                time_str = f"{int(time_ago / 60)} minutes ago"
+                f"{int(time_ago / 60)} minutes ago"
             else:
-                time_str = f"{int(time_ago / 3600)} hours ago"
+                f"{int(time_ago / 3600)} hours ago"
 
             reason = self.backup_metadata.get("reason", "unknown")
 
             # Don't clear backup - allow multiple restores to same point
             # User can create new backup if they want a new checkpoint
 
-            return f"Restored from backup ({reason}, {time_str})"
+            return f"Restored from backup ({reason}, {time_ago})"
 
         except Exception as e:
             return f"Restore failed: {str(e)}"
@@ -1595,6 +1600,11 @@ class StateHandler:
 
             # Attach CLI callbacks for proper display
             new_bot.callbacks = RealTimeDisplayCallbacks(context)
+
+            # Make the bot interruptible with Ctrl-C
+            from bots.dev.bot_session import make_bot_interruptible
+
+            make_bot_interruptible(new_bot)
 
             context.bot_instance = new_bot
             context.labeled_nodes = {}
