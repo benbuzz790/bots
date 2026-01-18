@@ -1226,7 +1226,7 @@ def _play_with_winsound_simple(parsed_notes: list) -> None:
 
 
 @toolify()
-def piano(notation: str, tempo: int = 120, voice: str = "default") -> str:
+def piano(notation: str, tempo: int = 120, voice: str = "bright_grand") -> str:
     """
     Play piano notes with TRUE polyphonic chord support using realistic synthesized piano tones.
 
@@ -1265,8 +1265,8 @@ def piano(notation: str, tempo: int = 120, voice: str = "default") -> str:
     Octaves: 0-8 (C4 is middle C, A4 is 440Hz)
 
     Piano Voices:
+        - "bright_grand": Brilliant, clear concert grand with longer sustain (DEFAULT)
         - "default": Balanced concert grand sound
-        - "bright_grand": Brilliant, clear concert grand with longer sustain
         - "warm_upright": Mellow, warm upright piano with shorter decay
 
     This version uses NumPy to synthesize realistic piano tones with:
@@ -1288,7 +1288,7 @@ def piano(notation: str, tempo: int = 120, voice: str = "default") -> str:
     Parameters:
     - notation (str): Music notation string
     - tempo (int): Beats per minute (default: 120)
-    - voice (str): Piano voice preset: "default", "bright_grand", or "warm_upright"
+    - voice (str): Piano voice preset: "bright_grand" (default), "default", or "warm_upright"
 
     Returns:
     str: Success message or error description
