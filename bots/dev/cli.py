@@ -2230,8 +2230,28 @@ class SystemHandler:
             bot.model_engine = matches[0]
             return f"Switched from {current_engine.value} to {matches[0].value}"
         elif len(matches) > 1:
-            match_list = "\n".join([f"  - {e.value}" for e in matches])
-            return f"Multiple matches found:\n{match_list}\n\nPlease be more specific."
+            # Prefer models with version numbers that suggest they're newer
+            # Priority: "4-5" > "3-5" > "3" > others
+            # Also prefer "latest" suffix
+            def model_priority(engine):
+                value = engine.value.lower()
+                # Higher number = higher priority
+                if "4-5" in value or "4.5" in value:
+                    return 400
+                elif "3-5" in value or "3.5" in value:
+                    return 300
+                elif "latest" in value:
+                    return 200
+                elif "-3-" in value or ".3." in value:
+                    return 100
+                else:
+                    return 0
+
+            # Sort by priority (highest first)
+            matches.sort(key=model_priority, reverse=True)
+            # Pick the highest priority match
+            bot.model_engine = matches[0]
+            return f"Switched from {current_engine.value} to {matches[0].value}"
         else:
             return f"Model '{target}' not found. Use /switch to see available models."
 
