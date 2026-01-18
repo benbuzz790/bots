@@ -730,6 +730,7 @@ def _generate_realistic_piano_tone(
     - Short reverb for wooden body time-smearing
     - Frequency-dependent harmonic count (treble has fewer harmonics)
     - Amplitude scaling (treble notes are naturally quieter)
+    - Minimum tail duration (notes don't cut off too abruptly)
 
     Args:
         frequency: Fundamental frequency in Hz
@@ -744,8 +745,27 @@ def _generate_realistic_piano_tone(
     if voice is None:
         voice = PIANO_VOICES["default"]
 
-    num_samples = int(sample_rate * duration)
-    t = np.linspace(0, duration, num_samples, False)
+    # ========== MINIMUM TAIL DURATION (INTERPOLATED) ==========
+    # Even staccato notes need ~100-200ms to sound natural
+    # Smoothly interpolate minimum tail based on frequency
+    if frequency < 500:
+        min_tail = 0.3  # Bass: 300ms
+    elif frequency < 2000:
+        # Interpolate from 300ms to 150ms
+        t_interp = (frequency - 500) / (2000 - 500)
+        min_tail = 0.3 * (1 - t_interp) + 0.15 * t_interp
+    else:
+        # Interpolate from 150ms to 100ms for very high notes
+        t_interp = min((frequency - 2000) / (2000), 1.0)
+        min_tail = 0.15 * (1 - t_interp) + 0.1 * t_interp
+
+    # Actual synthesis duration includes the tail
+    synthesis_duration = max(duration, min_tail)
+    # But we'll fade out starting at the requested duration
+    requested_duration = duration
+
+    num_samples = int(sample_rate * synthesis_duration)
+    t = np.linspace(0, synthesis_duration, num_samples, False)
 
     # ========== INHARMONICITY COEFFICIENT ==========
     # Interpolate B coefficient based on frequency (smoother than steps)
@@ -912,6 +932,18 @@ def _generate_realistic_piano_tone(
     # Apply envelope
     combined_tone = combined_tone * envelope
 
+    # ========== NATURAL TAIL FADEOUT ==========
+    # If the requested duration is shorter than synthesis duration,
+    # add a natural fadeout starting at the requested duration
+    if requested_duration < synthesis_duration:
+        requested_samples = int(requested_duration * sample_rate)
+        tail_samples = num_samples - requested_samples
+
+        if tail_samples > 0 and requested_samples < num_samples:
+            # Create exponential fadeout for the tail
+            tail_fadeout = np.exp(-np.linspace(0, 5, tail_samples))
+            combined_tone[requested_samples:] *= tail_fadeout
+
     # ========== COMB FILTERS (Soundboard Resonances) ==========
     sb = voice["soundboard"]
     comb_frequencies = sb["comb_frequencies"]
@@ -965,7 +997,7 @@ def _generate_realistic_piano_tone(
 
     combined_tone = reverb_output
 
-    # Add a longer fade-out at the end to prevent speaker popping
+    # Final fade-out at the very end to prevent speaker popping
     fadeout_samples = min(int(0.02 * sample_rate), num_samples)  # 20ms fadeout
     if fadeout_samples > 0:
         fadeout_envelope = np.linspace(1, 0, fadeout_samples)
@@ -999,7 +1031,12 @@ def _create_wav_file(parsed_notes: list, sample_rate: int = 44100, voice: dict =
         voice = PIANO_VOICES["default"]
 
     # Calculate total duration needed
-    total_duration_ms = max(start_time + duration for _, start_time, duration in parsed_notes)
+    # Add extra time for the natural tail of the last note(s)
+    # Maximum tail is 300ms for bass notes, so add 500ms to be safe
+    base_duration_ms = max(start_time + duration for _, start_time, duration in parsed_notes)
+    tail_padding_ms = 500  # Extra time for natural decay tails
+    total_duration_ms = base_duration_ms + tail_padding_ms
+
     total_samples = int((total_duration_ms / 1000.0) * sample_rate)
 
     # Create the full waveform buffer
