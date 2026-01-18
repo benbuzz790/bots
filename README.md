@@ -70,6 +70,7 @@ Try these commands:
 - `/help` - see all commands
 - `/save filename` - save current state
 - `/load filename` - load a saved bot
+- `/auto` - run bot autonomously until it stops using tools
 - `/up`, `/down`, `/left`, `/right` - navigate the conversation tree
 - `/label name` - mark the current node for later reference
 - `/leaf` - jump to a leaf node and continue from there

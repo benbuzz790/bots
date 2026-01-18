@@ -40,6 +40,7 @@ from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, ConversationNode, ModuleLoadError
 from bots.observability import tracing
 from bots.observability.callbacks import BotCallbacks
+from bots.utils.terminal_utils import create_color_scheme
 
 # Disable tracing span processors to prevent console output
 try:
@@ -173,19 +174,52 @@ else:
     import select
     import termios
     import tty
-COLOR_USER = "\033[36m"  # Cyan (not dim)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
+
+# Color constants - will be initialized based on terminal capabilities
+# These are set as module-level variables for backward compatibility
+COLOR_USER = ""
+COLOR_BOT = ""
+COLOR_TOOL_NAME = ""
+COLOR_TOOL_RESULT = ""
+COLOR_METRICS = ""
+COLOR_SYSTEM = ""
+COLOR_ERROR = ""
+COLOR_RESET = ""
+COLOR_BOLD = ""
+COLOR_DIM = ""
 # Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
+COLOR_ASSISTANT = ""
+COLOR_TOOL_REQUEST = ""
+
+
+def _init_colors(color_mode: str = "auto"):
+    """Initialize color constants based on terminal capabilities.
+
+    Args:
+        color_mode: Color mode - 'auto', 'always', or 'never'
+    """
+    global COLOR_USER, COLOR_BOT, COLOR_TOOL_NAME, COLOR_TOOL_RESULT
+    global COLOR_METRICS, COLOR_SYSTEM, COLOR_ERROR, COLOR_RESET
+    global COLOR_BOLD, COLOR_DIM, COLOR_ASSISTANT, COLOR_TOOL_REQUEST
+
+    scheme = create_color_scheme(force=color_mode if color_mode != "auto" else None)
+
+    COLOR_USER = scheme.USER
+    COLOR_BOT = scheme.BOT
+    COLOR_TOOL_NAME = scheme.TOOL_NAME
+    COLOR_TOOL_RESULT = scheme.TOOL_RESULT
+    COLOR_METRICS = scheme.METRICS
+    COLOR_SYSTEM = scheme.SYSTEM
+    COLOR_ERROR = scheme.ERROR
+    COLOR_RESET = scheme.RESET
+    COLOR_BOLD = scheme.BOLD
+    COLOR_DIM = scheme.DIM
+    COLOR_ASSISTANT = scheme.ASSISTANT
+    COLOR_TOOL_REQUEST = scheme.TOOL_REQUEST
+
+
+# Initialize colors with auto-detection by default
+_init_colors("auto")
 
 
 def create_auto_stash() -> str:
@@ -529,6 +563,7 @@ class CLIConfig:
         self.temperature = 0.3
         self.auto_backup = True  # Enable backups by default
         self.auto_restore_on_error = True  # Enable restore on error by default
+        self.color = "auto"  # Color mode: 'auto', 'always', 'never'
         self.config_file = "cli_config.json"
         self.load_config()
 
@@ -551,6 +586,7 @@ class CLIConfig:
                     self.temperature = config_data.get("temperature", 0.3)
                     self.auto_backup = config_data.get("auto_backup", True)
                     self.auto_restore_on_error = config_data.get("auto_restore_on_error", True)
+                    self.color = config_data.get("color", "auto")
         except Exception:
             pass  # Use defaults if config loading fails
 
@@ -569,6 +605,7 @@ class CLIConfig:
                 "temperature": self.temperature,
                 "auto_backup": self.auto_backup,
                 "auto_restore_on_error": self.auto_restore_on_error,
+                "color": self.color,
             }
             with open(self.config_file, "w") as f:
                 json.dump(config_data, f, indent=2)
@@ -1685,6 +1722,7 @@ class SystemHandler:
                 f"    temperature: {context.config.temperature}",
                 f"    auto_backup: {context.config.auto_backup}",
                 f"    auto_restore_on_error: {context.config.auto_restore_on_error}",
+                f"    color: {context.config.color}",
                 "Use '/config set <setting> <value>' to modify settings.",
             ]
             return "\n".join(config_lines)
@@ -1722,6 +1760,12 @@ class SystemHandler:
                     context.config.auto_backup = value.lower() in ("true", "1", "yes", "on")
                 elif setting == "auto_restore_on_error":
                     context.config.auto_restore_on_error = value.lower() in ("true", "1", "yes", "on")
+                elif setting == "color":
+                    if value not in ("auto", "always", "never"):
+                        return f"Invalid color mode: {value}. Use 'auto', 'always', or 'never'."
+                    context.config.color = value
+                    # Reinitialize colors with new setting
+                    _init_colors(value)
                 else:
                     return f"Unknown setting: {setting}"
                 context.config.save_config()
@@ -2073,13 +2117,13 @@ class SystemHandler:
 
         for engine in Engines:
             info = engine.get_info()
-            stars = "⭐" * info["intelligence"]
+            stars = "â­" * info["intelligence"]
             cost_str = f"${info['cost_input']:.2f} / ${info['cost_output']:.2f}"
 
             output.append(f"{engine.value:<45} {info['provider']:<12} {stars:<15} " f"{info['max_tokens']:<12} {cost_str:<20}")
 
         output.append("=" * 100)
-        output.append("\nIntelligence: ⭐ = fast/cheap, ⭐⭐ = balanced, ⭐⭐⭐ = most capable")
+        output.append("\nIntelligence: â­ = fast/cheap, â­â­ = balanced, â­â­â­ = most capable")
         output.append("Cost format: input / output per 1M tokens\n")
 
         return "\n".join(output)
@@ -2152,9 +2196,9 @@ class SystemHandler:
 
         for i, engine in enumerate(provider_models, 1):
             info = engine.get_info()
-            stars = "⭐" * info["intelligence"]
+            stars = "â­" * info["intelligence"]
             cost_str = f"${info['cost_input']:.2f}/${info['cost_output']:.2f}"
-            marker = "→" if engine == current_engine else " "
+            marker = "â†’" if engine == current_engine else " "
             output.append(f"{marker} {i:2}. {engine.value:<40} {stars:<10} " f"{info['max_tokens']:>6,} tokens | {cost_str}")
 
         output.append("-" * 80)
@@ -2895,7 +2939,7 @@ class PromptHandler:
             # Show preview of content
             preview = content[:80] + "..." if len(content) > 80 else content
             preview = preview.replace("\n", " ")  # Single line preview
-            marker = "→" if i == 1 else " "
+            marker = "â†’" if i == 1 else " "
             print(f"  {marker} {i}. {name}: {preview}")
 
         if len(matches) > 10:
@@ -3049,7 +3093,7 @@ class PromptHandler:
                 # Show preview of content
                 preview = content[:80] + "..." if len(content) > 80 else content
                 preview = preview.replace("\n", " ")  # Single line preview
-                marker = "→" if i == 1 else " "
+                marker = "â†’" if i == 1 else " "
                 print(f"  {marker} {i}. {name}")
                 print(f"       {preview}")
 
@@ -3073,7 +3117,7 @@ class PromptHandler:
                 # Show a preview
                 preview = content[:60] + "..." if len(content) > 60 else content
                 preview = preview.replace("\n", " ")
-                marker = "→" if i == 1 else " "
+                marker = "â†’" if i == 1 else " "
                 print(f"  {marker} {i}. {name}")
                 print(f"       {preview}")
 
@@ -3110,6 +3154,17 @@ def parse_args():
         ),
     )
     parser.add_argument("filename", nargs="?", help="Bot file to load (.bot extension will be added if not present)")
+    parser.add_argument(
+        "--color",
+        choices=["auto", "always", "never"],
+        default="auto",
+        help="Control color output (default: auto)",
+    )
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable color output (shorthand for --color=never)",
+    )
     return parser.parse_args()
 
 
@@ -3118,7 +3173,17 @@ def main(bot_filename=None, function_filter=None):
     if bot_filename is None:
         args = parse_args()
         bot_filename = args.filename
+
+        # Handle color arguments
+        color_mode = "never" if args.no_color else args.color
+        _init_colors(color_mode)
+
     cli = CLI(bot_filename=bot_filename, function_filter=function_filter)
+
+    # Set color mode in config if it was specified via CLI args
+    if bot_filename is None and hasattr(args, "color"):
+        cli.context.config.color = color_mode
+
     cli.run()
 
 
