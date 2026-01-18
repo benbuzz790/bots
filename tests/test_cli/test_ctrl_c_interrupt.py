@@ -89,6 +89,14 @@ class TestInterruptibleWrapper:
         """Test the interruptible wrapper with a simple function."""
 
         def simple_function(x):
+            """Multiplies the input value by 2.
+
+            Args:
+                x: The value to be doubled.
+
+            Returns:
+                The input value multiplied by 2.
+            """
             return x * 2
 
         result = run_interruptible(simple_function, 5, check_interval=0.1)
@@ -98,6 +106,11 @@ class TestInterruptibleWrapper:
         """Test that interruptible wrapper completes slow functions."""
 
         def slow_function():
+            """Simulates a slow-running operation with a 200ms delay.
+
+            Returns:
+                str: The string "completed" indicating the operation has finished.
+            """
             time.sleep(0.2)
             return "completed"
 
@@ -108,6 +121,11 @@ class TestInterruptibleWrapper:
         """Test that interruptible wrapper propagates exceptions from the function."""
 
         def failing_function():
+            """Test function that always raises a ValueError.
+
+            Raises:
+                ValueError: Always raised with message "Test error".
+            """
             raise ValueError("Test error")
 
         with pytest.raises(ValueError, match="Test error"):

@@ -46,6 +46,16 @@ class InterruptibleOperation:
 
         # Run the function in a separate thread
         def target():
+            """Executes a function with provided arguments and captures the result or any exception.
+
+            This method serves as a target function for thread execution, safely calling
+            the wrapped function and storing either the successful result or any raised
+            exception for later retrieval.
+
+            Raises:
+                Exception: Any exception raised by the wrapped function is caught and
+                    stored in self._exception rather than being propagated.
+            """
             try:
                 self._result = func(*args, **kwargs)
             except Exception as e:
@@ -90,6 +100,14 @@ def make_interruptible(func: Callable[..., T], check_interval: float = 0.1) -> C
     """
 
     def wrapper(*args, **kwargs) -> T:
+        """Executes a function within an interruptible operation handler.
+
+        Creates an InterruptibleOperation instance with the specified check interval
+        and runs the provided function with its arguments through the handler.
+
+        Returns:
+            T: The return value from the executed function.
+        """
         handler = InterruptibleOperation(check_interval=check_interval)
         return handler.run(func, *args, **kwargs)
 
