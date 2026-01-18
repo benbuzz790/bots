@@ -1905,7 +1905,7 @@ class SystemHandler:
             )
 
             # Run the autonomous loop
-            fp.prompt_while(
+            responses, nodes = fp.prompt_while(
                 bot,
                 "ok",
                 continue_prompt=continue_prompt,
@@ -1915,6 +1915,11 @@ class SystemHandler:
 
             restore_terminal(old_settings)
             display_metrics(context, bot)
+
+            # Return the final response if available
+            # This fixes issue #231 - display final message instead of first
+            if responses:
+                return responses[-1]
             return ""
 
         except KeyboardInterrupt:
