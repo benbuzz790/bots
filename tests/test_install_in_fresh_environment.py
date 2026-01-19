@@ -309,6 +309,7 @@ def scan_project_for_imports() -> Tuple[List[str], List[str]]:
         return {
             "google": "google-genai",
             "opentelemetry": "opentelemetry-api",
+            "git": "GitPython",
         }
 
     # Setup
