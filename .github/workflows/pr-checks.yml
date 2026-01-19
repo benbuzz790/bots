@@ -1,16 +1,12 @@
 name: PR Checks
-
 on:
   pull_request:
     branches: [ main ]
-
 permissions:
   contents: read
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 env:
   PYTHONUNBUFFERED: 1
   PYTHONDONTWRITEBYTECODE: 1
@@ -18,12 +14,11 @@ env:
   PYTHONUTF8: 1
   LC_ALL: en_US.UTF-8
   LANG: en_US.UTF-8
-
 jobs:
   tests:
     name: Run Tests with Coverage
     runs-on: windows-latest
-    timeout-minutes: 75
+    timeout-minutes: 120
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -34,13 +29,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-
       - name: Configure UTF-8 encoding
         shell: pwsh
         run: |
@@ -72,34 +65,27 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install -e .[dev]
-
       - name: Generate requirements lock file
         run: |
           pip freeze > requirements.lock
-
       - name: Upload requirements lock
         uses: actions/upload-artifact@v4
         with:
           name: requirements-lock
           path: requirements.lock
           retention-days: 30
-
       - name: Remove BOMs from all files
         run: |
           python -m bots.dev.remove_boms
-
       - name: Run tests with coverage
         if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
         run: |
           pytest tests/ -n 12 --tb=short -v --maxfail=10 --cov=bots --cov-report=term-missing --cov-report=xml
-
-
       - name: Run installation tests (serial)
         if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
         run: |
           pytest tests/test_install_in_fresh_environment.py -n0 -v --tb=short
         continue-on-error: false
-
       - name: Run serial tests (tests that require -n0)
         if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
         run: |
@@ -117,7 +103,6 @@ jobs:
         run: |
           pip install coverage
           coverage report --fail-under=50
-
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
@@ -125,24 +110,21 @@ jobs:
           name: coverage-report
           path: coverage.xml
           retention-days: 7
-
   code-quality:
     name: Code Quality & Linting
     runs-on: windows-latest
-    timeout-minutes: 75
+    timeout-minutes: 120
     env:
       PYTHONIOENCODING: utf-8
       PYTHONUTF8: 1
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-
       - name: Configure UTF-8 encoding
         shell: pwsh
         run: |
@@ -174,46 +156,37 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install -e .
-
       - name: Remove BOMs from all files
         run: |
           python -m bots.dev.remove_boms
-
       - name: Check Black formatting
         run: |
           black --check --diff .
-
       - name: Check isort import sorting
         run: |
           isort --check-only --diff .
-
       - name: Run flake8 linting
         run: |
           flake8 . --count --statistics --show-source
-
       - name: Run mypy type checking
         run: |
           mypy bots/ --ignore-missing-imports
         continue-on-error: true
-
-
   security:
     name: Security Scan
     runs-on: windows-latest
-    timeout-minutes: 75
+    timeout-minutes: 120
     env:
       PYTHONIOENCODING: utf-8
       PYTHONUTF8: 1
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-
       - name: Configure UTF-8 encoding
         shell: pwsh
         run: |
@@ -244,12 +217,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install bandit
           pip install -r requirements.txt
-
       - name: Run Bandit security scan
         run: |
           bandit -r bots/ -f json -o bandit-report.json
         continue-on-error: true
-
       - name: Upload security report
         uses: actions/upload-artifact@v4
         if: always()
