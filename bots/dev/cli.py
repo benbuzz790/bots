@@ -2234,6 +2234,16 @@ class SystemHandler:
             # Priority: "4-5" > "3-5" > "3" > others
             # Also prefer "latest" suffix
             def model_priority(engine):
+                """Determines the priority value for a model engine based on its version string.
+
+                Args:
+                    engine: An object with a 'value' attribute containing the engine version string.
+
+                Returns:
+                    int: Priority value where higher numbers indicate higher priority. Returns 400 
+                    for versions containing "4-5" or "4.5", and appears to handle "3-5" or "3.5" 
+                    versions as well.
+                """
                 value = engine.value.lower()
                 # Higher number = higher priority
                 if "4-5" in value or "4.5" in value:

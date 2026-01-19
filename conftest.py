@@ -178,6 +178,12 @@ def test_profiler(request):
 
     # Register report generation at session end
     def generate_report():
+        """Generate and display a test profiling report showing the slowest tests.
+
+        Prints a formatted report containing the 10 slowest tests if test profiles
+        are available. The report includes a header and divider lines for readability.
+        Only generates output when test profiling data exists.
+        """
         if profiler.test_profiles:
             slowest = profiler.get_slowest_tests(10)
             print("\n" + "=" * 80)
