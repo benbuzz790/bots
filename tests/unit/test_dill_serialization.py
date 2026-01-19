@@ -52,10 +52,10 @@ class TestDillSerialization(unittest.TestCase):
         loaded_bot = AnthropicBot.load(save_path)
 
         # Verify the tool was loaded correctly
-        self.assertIn("view", loaded_bot.function_map, "view function should be in function_map after loading")
+        self.assertIn("view", loaded_bot.tool_handler.function_map, "view function should be in function_map after loading")
 
         # Verify the function works
-        result = loaded_bot.function_map["view"](file_path="README.md", start_line="1", end_line="5")
+        result = loaded_bot.tool_handler.function_map["view"](file_path="README.md", start_line="1", end_line="5")
         self.assertIsInstance(result, str)
         self.assertGreater(len(result), 0)
 
@@ -80,10 +80,14 @@ def dynamic_function(x: int) -> int:
         loaded_bot = AnthropicBot.load(save_path)
 
         # Verify the tool was loaded correctly (via source code fallback)
-        self.assertIn("dynamic_function", loaded_bot.function_map, "dynamic_function should be in function_map after loading")
+        self.assertIn(
+            "dynamic_function",
+            loaded_bot.tool_handler.function_map,
+            "dynamic_function should be in function_map after loading",
+        )
 
         # Verify the function works correctly
-        result = loaded_bot.function_map["dynamic_function"](x=5)
+        result = loaded_bot.tool_handler.function_map["dynamic_function"](x=5)
         self.assertEqual(result, 10, "Function should work correctly after deserialization")
 
     def test_source_code_fallback_preserves_functionality(self):
@@ -104,7 +108,7 @@ def dynamic_function(x: int) -> int:
         loaded_bot = AnthropicBot.load(save_path)
 
         # Verify the function works
-        result = loaded_bot.function_map["test_function"](a=3, b=4)
+        result = loaded_bot.tool_handler.function_map["test_function"](a=3, b=4)
         self.assertEqual(result, 7, "Function should work correctly after deserialization")
 
 
