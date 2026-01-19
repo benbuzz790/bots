@@ -2491,6 +2491,9 @@ class ToolHandler(ABC):
         # Store all module functions for registry restoration
         all_module_functions = {}
 
+        # Track failed modules for better error reporting
+        failed_modules = []
+
         for file_path, module_data in data.get("modules", {}).items():
             current_code_hash = cls._get_code_hash(module_data["source"])
             if current_code_hash != module_data["code_hash"]:
@@ -2539,7 +2542,12 @@ class ToolHandler(ABC):
                 # Map functions using the resolved path
                 for func_name, path in function_paths.items():
                     # Check if this function belongs to this module (using original or remapped path)
-                    if path == module_data["file_path"] and func_name in module.__dict__:
+                    # The path in function_paths is the original path, so we need to check both
+                    # the original path and whether it was remapped to the current resolved_path
+                    original_path_matches = path == module_data["file_path"]
+                    remapped_path_matches = path in path_remap and path_remap[path] == resolved_path
+
+                    if (original_path_matches or remapped_path_matches) and func_name in module.__dict__:
                         func = module.__dict__[func_name]
                         if callable(func):
                             func.__module_context__ = module_context
@@ -2557,9 +2565,30 @@ class ToolHandler(ABC):
                             pass
 
             except Exception as e:
-                # Simplified error output - just the essential info
-                print(f"Warning: Failed to load module {module_data.get('name', file_path)}")
-                print(f"  Error: {type(e).__name__}: {str(e)}")
+                # Enhanced error reporting with details about expected functions
+                module_name = module_data.get("name", file_path)
+                expected_functions = [fn for fn, fp in function_paths.items() if fp == module_data["file_path"]]
+
+                print(f"ERROR: Failed to load module {module_name}")
+                print(f"  Error type: {type(e).__name__}")
+                print(f"  Error message: {str(e)}")
+                print(f"  Module file_path: {module_data.get('file_path')}")
+                if "resolved_path" in locals():
+                    print(f"  Resolved path: {resolved_path}")
+                if expected_functions:
+                    print(f"  Expected functions from this module: {expected_functions}")
+
+                # Track failed module for summary reporting
+                failed_modules.append(
+                    {
+                        "name": module_name,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                        "expected_functions": expected_functions,
+                        "file_path": module_data.get("file_path"),
+                    }
+                )
+
                 continue
 
         # Restore dynamic functions
@@ -2608,6 +2637,30 @@ class ToolHandler(ABC):
                 except Exception:
                     # Silently skip tools that can't be restored
                     pass
+
+        # Final validation: Check if expected functions were loaded
+        expected_functions = set(function_paths.keys())
+        loaded_functions = set(handler.function_map.keys())
+        missing_functions = expected_functions - loaded_functions
+
+        if missing_functions:
+            print(f"\n{'='*70}")
+            print(f"WARNING: {len(missing_functions)} function(s) failed to load during deserialization")
+            print(f"{'='*70}")
+            for func_name in sorted(missing_functions):
+                expected_path = function_paths.get(func_name, "unknown")
+                print(f"  - {func_name} (expected from: {expected_path})")
+
+            if failed_modules:
+                print(f"\nFailed modules ({len(failed_modules)}):")
+                for failed in failed_modules:
+                    print(f"  - {failed['name']}")
+                    print(f"    Error: {failed['error_type']}: {failed['error']}")
+                    if failed["expected_functions"]:
+                        print(f"    Expected functions: {', '.join(failed['expected_functions'])}")
+
+            print(f"\nSuccessfully loaded functions: {sorted(loaded_functions)}")
+            print(f"{'='*70}\n")
 
         return handler
 
