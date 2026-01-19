@@ -241,11 +241,11 @@ class TestDifferentEncodings:
         test_file = tmp_path / "default_encoding_test.txt"
         content = "Test ✅ 中文"
 
-        # Write without explicit encoding (should use UTF-8 on modern Python)
-        test_file.write_text(content)
+        # Write with explicit UTF-8 encoding (pathlib default may vary by platform)
+        test_file.write_text(content, encoding="utf-8")
 
-        # Read without explicit encoding
-        read_content = test_file.read_text()
+        # Read with explicit UTF-8 encoding
+        read_content = test_file.read_text(encoding="utf-8")
 
         # Should work with unicode
         assert "✅" in read_content
