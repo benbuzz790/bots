@@ -337,6 +337,7 @@ def scan_project_for_imports() -> Tuple[List[str], List[str]]:
     local_packages.add("tests")
     local_packages.add("conftest")
     local_packages.add("encoding_fixtures")  # Local test fixture file
+    local_packages.add("src")  # Hypothetical package structure used in tests
 
     # Scan all Python files
     for py_file in project_root.rglob("*.py"):
