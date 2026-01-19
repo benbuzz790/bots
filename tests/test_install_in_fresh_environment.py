@@ -240,7 +240,6 @@ def scan_project_for_imports() -> Tuple[List[str], List[str]]:
             "struct",
             "subprocess",
             "sunau",
-            "symbol",
             "symtable",
             "sys",
             "sysconfig",
@@ -310,6 +309,7 @@ def scan_project_for_imports() -> Tuple[List[str], List[str]]:
         return {
             "google": "google-genai",
             "opentelemetry": "opentelemetry-api",
+            "git": "GitPython",
         }
 
     # Setup
@@ -336,6 +336,8 @@ def scan_project_for_imports() -> Tuple[List[str], List[str]]:
     local_packages.update(get_local_subpackages(project_root, main_package))
     local_packages.add("tests")
     local_packages.add("conftest")
+    local_packages.add("encoding_fixtures")  # Local test fixture file
+    local_packages.add("src")  # Hypothetical package structure used in tests
 
     # Scan all Python files
     for py_file in project_root.rglob("*.py"):

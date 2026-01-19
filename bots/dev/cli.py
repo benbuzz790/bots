@@ -40,6 +40,7 @@ from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, ConversationNode, ModuleLoadError
 from bots.observability import tracing
 from bots.observability.callbacks import BotCallbacks
+from bots.utils.terminal_utils import create_color_scheme
 
 # Disable tracing span processors to prevent console output
 try:
@@ -173,19 +174,52 @@ else:
     import select
     import termios
     import tty
-COLOR_USER = "\033[36m"  # Cyan (not dim)
-COLOR_BOT = "\033[95m"  # Light Pink/Magenta
-COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
-COLOR_TOOL_RESULT = "\033[2m\033[32m"  # Dim Green
-COLOR_METRICS = "\033[2m\033[37m"  # Very Dim Gray
-COLOR_SYSTEM = "\033[2m\033[33m"  # Dim Yellow
-COLOR_ERROR = "\033[31m"  # Red
-COLOR_RESET = "\033[0m"  # Reset
-COLOR_BOLD = "\033[1m"  # Bold
-COLOR_DIM = "\033[2m"  # Dim
+
+# Color constants - will be initialized based on terminal capabilities
+# These are set as module-level variables for backward compatibility
+COLOR_USER = ""
+COLOR_BOT = ""
+COLOR_TOOL_NAME = ""
+COLOR_TOOL_RESULT = ""
+COLOR_METRICS = ""
+COLOR_SYSTEM = ""
+COLOR_ERROR = ""
+COLOR_RESET = ""
+COLOR_BOLD = ""
+COLOR_DIM = ""
 # Legacy colors for compatibility
-COLOR_ASSISTANT = COLOR_BOT
-COLOR_TOOL_REQUEST = "\033[34m"  # Blue
+COLOR_ASSISTANT = ""
+COLOR_TOOL_REQUEST = ""
+
+
+def _init_colors(color_mode: str = "auto"):
+    """Initialize color constants based on terminal capabilities.
+
+    Args:
+        color_mode: Color mode - 'auto', 'always', or 'never'
+    """
+    global COLOR_USER, COLOR_BOT, COLOR_TOOL_NAME, COLOR_TOOL_RESULT
+    global COLOR_METRICS, COLOR_SYSTEM, COLOR_ERROR, COLOR_RESET
+    global COLOR_BOLD, COLOR_DIM, COLOR_ASSISTANT, COLOR_TOOL_REQUEST
+
+    scheme = create_color_scheme(force=color_mode if color_mode != "auto" else None)
+
+    COLOR_USER = scheme.USER
+    COLOR_BOT = scheme.BOT
+    COLOR_TOOL_NAME = scheme.TOOL_NAME
+    COLOR_TOOL_RESULT = scheme.TOOL_RESULT
+    COLOR_METRICS = scheme.METRICS
+    COLOR_SYSTEM = scheme.SYSTEM
+    COLOR_ERROR = scheme.ERROR
+    COLOR_RESET = scheme.RESET
+    COLOR_BOLD = scheme.BOLD
+    COLOR_DIM = scheme.DIM
+    COLOR_ASSISTANT = scheme.ASSISTANT
+    COLOR_TOOL_REQUEST = scheme.TOOL_REQUEST
+
+
+# Initialize colors with auto-detection by default
+_init_colors("auto")
 
 
 def create_auto_stash() -> str:
@@ -529,6 +563,7 @@ class CLIConfig:
         self.temperature = 0.3
         self.auto_backup = True  # Enable backups by default
         self.auto_restore_on_error = True  # Enable restore on error by default
+        self.color = "auto"  # Color mode: 'auto', 'always', 'never'
         self.config_file = "cli_config.json"
         self.load_config()
 
@@ -551,6 +586,7 @@ class CLIConfig:
                     self.temperature = config_data.get("temperature", 0.3)
                     self.auto_backup = config_data.get("auto_backup", True)
                     self.auto_restore_on_error = config_data.get("auto_restore_on_error", True)
+                    self.color = config_data.get("color", "auto")
         except Exception:
             pass  # Use defaults if config loading fails
 
@@ -569,6 +605,7 @@ class CLIConfig:
                 "temperature": self.temperature,
                 "auto_backup": self.auto_backup,
                 "auto_restore_on_error": self.auto_restore_on_error,
+                "color": self.color,
             }
             with open(self.config_file, "w") as f:
                 json.dump(config_data, f, indent=2)
@@ -821,6 +858,11 @@ class CLIContext:
 
             # Re-attach callbacks on the restored instance (pointing to current context)
             self.bot_instance.callbacks = RealTimeDisplayCallbacks(self)
+
+            # Make the restored bot interruptible with Ctrl-C
+            from bots.dev.bot_session import make_bot_interruptible
+
+            make_bot_interruptible(self.bot_instance)
 
             # Clear tool handler state to prevent corruption
             self.bot_instance.tool_handler.clear()
@@ -1559,6 +1601,11 @@ class StateHandler:
             # Attach CLI callbacks for proper display
             new_bot.callbacks = RealTimeDisplayCallbacks(context)
 
+            # Make the bot interruptible with Ctrl-C
+            from bots.dev.bot_session import make_bot_interruptible
+
+            make_bot_interruptible(new_bot)
+
             context.bot_instance = new_bot
             context.labeled_nodes = {}
             self._rebuild_labels(new_bot.conversation, context)
@@ -1685,6 +1732,7 @@ class SystemHandler:
                 f"    temperature: {context.config.temperature}",
                 f"    auto_backup: {context.config.auto_backup}",
                 f"    auto_restore_on_error: {context.config.auto_restore_on_error}",
+                f"    color: {context.config.color}",
                 "Use '/config set <setting> <value>' to modify settings.",
             ]
             return "\n".join(config_lines)
@@ -1722,6 +1770,12 @@ class SystemHandler:
                     context.config.auto_backup = value.lower() in ("true", "1", "yes", "on")
                 elif setting == "auto_restore_on_error":
                     context.config.auto_restore_on_error = value.lower() in ("true", "1", "yes", "on")
+                elif setting == "color":
+                    if value not in ("auto", "always", "never"):
+                        return f"Invalid color mode: {value}. Use 'auto', 'always', or 'never'."
+                    context.config.color = value
+                    # Reinitialize colors with new setting
+                    _init_colors(value)
                 else:
                     return f"Unknown setting: {setting}"
                 context.config.save_config()
@@ -1861,7 +1915,7 @@ class SystemHandler:
             )
 
             # Run the autonomous loop
-            fp.prompt_while(
+            responses, nodes = fp.prompt_while(
                 bot,
                 "ok",
                 continue_prompt=continue_prompt,
@@ -1871,6 +1925,11 @@ class SystemHandler:
 
             restore_terminal(old_settings)
             display_metrics(context, bot)
+
+            # Return the final response if available
+            # This fixes issue #231 - display final message instead of first
+            if responses:
+                return responses[-1]
             return ""
 
         except KeyboardInterrupt:
@@ -2073,94 +2132,138 @@ class SystemHandler:
 
         for engine in Engines:
             info = engine.get_info()
-            stars = "⭐" * info["intelligence"]
+            stars = "â­" * info["intelligence"]
             cost_str = f"${info['cost_input']:.2f} / ${info['cost_output']:.2f}"
 
             output.append(f"{engine.value:<45} {info['provider']:<12} {stars:<15} " f"{info['max_tokens']:<12} {cost_str:<20}")
 
         output.append("=" * 100)
-        output.append("\nIntelligence: ⭐ = fast/cheap, ⭐⭐ = balanced, ⭐⭐⭐ = most capable")
+        output.append("\nIntelligence: â­ = fast/cheap, â­â­ = balanced, â­â­â­ = most capable")
         output.append("Cost format: input / output per 1M tokens\n")
 
         return "\n".join(output)
 
     def switch(self, bot: Bot, context: CLIContext, args: List[str]) -> str:
-        """Switch to a different model within the same provider."""
+        """Switch model engine."""
         from bots.foundation.base import Engines
 
         if not bot:
-            return "No bot instance available"
+            return "Error: No bot instance available. Please create a bot first."
 
-        # Get current bot's provider
+        if not args:
+            # Show available models from current provider only
+            current_engine = bot.model_engine
+            current_provider = current_engine.get_info()["provider"]
+
+            # Filter engines by current provider
+            provider_models = [e for e in Engines if e.get_info()["provider"] == current_provider]
+
+            output = []
+            output.append(f"\nCurrent model: {current_engine.value}\n")
+            output.append(f"Available {current_provider} models:")
+            output.append("-" * 80)
+
+            for i, engine in enumerate(provider_models, 1):
+                info = engine.get_info()
+                stars = "⭐" * info["intelligence"]
+                cost_str = f"${info['cost_input']:.2f}/${info['cost_output']:.2f}"
+                marker = "→" if engine == current_engine else " "
+                output.append(f"{marker} {i:2}. {engine.value:<40} {stars:<10} {info['max_tokens']:>6,} tokens | {cost_str}")
+
+            output.append("-" * 80)
+            output.append("\nUse /switch <number or model name> to switch models")
+            output.append("Use /switch all to see models from all providers")
+            return "\n".join(output)
+
+        # Check if user wants to see all models
+        if args[0].lower() == "all":
+            output = []
+            output.append("\nAll available models:")
+            output.append("=" * 100)
+            output.append(f"{'Model':<45} {'Provider':<12} {'Intelligence':<15} {'Max Tokens':<12} {'Cost ($/1M tokens)':<20}")
+            output.append("-" * 100)
+
+            for engine in Engines:
+                info = engine.get_info()
+                stars = "⭐" * info["intelligence"]
+                cost_str = f"${info['cost_input']:.2f} / ${info['cost_output']:.2f}"
+
+                output.append(f"{engine.value:<45} {info['provider']:<12} {stars:<15} {info['max_tokens']:<12} {cost_str:<20}")
+
+            output.append("=" * 100)
+            output.append("\nIntelligence: ⭐ = fast/cheap, ⭐⭐ = balanced, ⭐⭐⭐ = most capable")
+            output.append("Cost format: input / output per 1M tokens\n")
+
+            return "\n".join(output)
+
+        # Store the current engine before switching
         current_engine = bot.model_engine
-        current_info = current_engine.get_info()
-        current_provider = current_info["provider"]
+        target = args[0]
+        current_provider = current_engine.get_info()["provider"]
+        provider_models = [e for e in Engines if e.get_info()["provider"] == current_provider]
 
-        # Get all models for the current provider
-        provider_models = [engine for engine in Engines if engine.get_info()["provider"] == current_provider]
+        # Try to parse as number (1-based index within current provider)
+        try:
+            index = int(target) - 1
+            if 0 <= index < len(provider_models):
+                new_engine = provider_models[index]
+                bot.model_engine = new_engine
+                return f"Switched from {current_engine.value} to {new_engine.value}"
+            else:
+                return "Invalid model number. Use /switch to see available models."
+        except ValueError:
+            pass
 
-        if not provider_models:
-            return f"No models found for provider: {current_provider}"
+        # Try to find by name (exact or partial match) - only within current provider
+        target_lower = target.lower()
 
-        # If args provided, try to switch to that model
-        if args:
-            model_query = " ".join(args).lower()
+        # First try exact match within current provider
+        for engine in provider_models:
+            if engine.value.lower() == target_lower:
+                bot.model_engine = engine
+                return f"Switched from {current_engine.value} to {engine.value}"
 
-            # Try numeric index first
-            target_engine = None
-            try:
-                index = int(model_query)
-                if 1 <= index <= len(provider_models):
-                    target_engine = provider_models[index - 1]  # Convert 1-based to 0-based
+        # Then try partial match within current provider
+        matches = [e for e in provider_models if target_lower in e.value.lower()]
+
+        if len(matches) == 1:
+            bot.model_engine = matches[0]
+            return f"Switched from {current_engine.value} to {matches[0].value}"
+        elif len(matches) > 1:
+            # Prefer models with version numbers that suggest they're newer
+            # Priority: "4-5" > "3-5" > "3" > others
+            # Also prefer "latest" suffix
+            def model_priority(engine):
+                """Determines the priority value for a model engine based on its version string.
+
+                Args:
+                    engine: An object with a 'value' attribute containing the engine version string.
+
+                Returns:
+                    int: Priority value where higher numbers indicate higher priority. Returns 400 
+                    for versions containing "4-5" or "4.5", and appears to handle "3-5" or "3.5" 
+                    versions as well.
+                """
+                value = engine.value.lower()
+                # Higher number = higher priority
+                if "4-5" in value or "4.5" in value:
+                    return 400
+                elif "3-5" in value or "3.5" in value:
+                    return 300
+                elif "latest" in value:
+                    return 200
+                elif "-3-" in value or ".3." in value:
+                    return 100
                 else:
-                    return f"Index {index} out of range. Please choose between 1 and {len(provider_models)}"
-            except ValueError:
-                # Not a number, continue with string matching
-                pass
+                    return 0
 
-            # Try exact match first
-            if not target_engine:
-                for engine in provider_models:
-                    if engine.value.lower() == model_query:
-                        target_engine = engine
-                        break
-
-            # Try partial match
-            if not target_engine:
-                for engine in provider_models:
-                    if model_query in engine.value.lower():
-                        target_engine = engine
-                        break
-
-            if not target_engine:
-                return f"Model '{model_query}' not found in {current_provider} provider"
-
-            # Switch the model
-            bot.model_engine = target_engine
-            new_info = target_engine.get_info()
-            return (
-                f"Switched from {current_engine.value} to {target_engine.value}\n"
-                f"Max tokens: {new_info['max_tokens']:,} | "
-                f"Cost: ${new_info['cost_input']:.2f}/${new_info['cost_output']:.2f} per 1M tokens"
-            )
-
-        # No args - display provider models and request selection
-        output = []
-        output.append(f"\nCurrent model: {current_engine.value}")
-        output.append(f"\nAvailable {current_provider} models:")
-        output.append("-" * 80)
-
-        for i, engine in enumerate(provider_models, 1):
-            info = engine.get_info()
-            stars = "⭐" * info["intelligence"]
-            cost_str = f"${info['cost_input']:.2f}/${info['cost_output']:.2f}"
-            marker = "→" if engine == current_engine else " "
-            output.append(f"{marker} {i:2}. {engine.value:<40} {stars:<10} " f"{info['max_tokens']:>6,} tokens | {cost_str}")
-
-        output.append("-" * 80)
-        output.append("\nUse /switch <number or model name> to switch models")
-
-        return "\n".join(output)
+            # Sort by priority (highest first)
+            matches.sort(key=model_priority, reverse=True)
+            # Pick the highest priority match
+            bot.model_engine = matches[0]
+            return f"Switched from {current_engine.value} to {matches[0].value}"
+        else:
+            return f"Model '{target}' not found. Use /switch to see available models."
 
     def clear(self, _bot: Bot, _context: CLIContext, _args: List[str]) -> str:
         """Clear the terminal screen."""
@@ -3110,15 +3213,38 @@ def parse_args():
         ),
     )
     parser.add_argument("filename", nargs="?", help="Bot file to load (.bot extension will be added if not present)")
+    parser.add_argument(
+        "--color",
+        choices=["auto", "always", "never"],
+        default="auto",
+        help="Control color output (default: auto)",
+    )
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable color output (shorthand for --color=never)",
+    )
     return parser.parse_args()
 
 
 def main(bot_filename=None, function_filter=None):
     """Entry point for the CLI."""
+    color_mode = "auto"  # Default color mode
+
     if bot_filename is None:
         args = parse_args()
         bot_filename = args.filename
+
+        # Handle color arguments
+        color_mode = "never" if args.no_color else args.color
+        _init_colors(color_mode)
+
     cli = CLI(bot_filename=bot_filename, function_filter=function_filter)
+
+    # Set color mode in config if it was specified via CLI args
+    if bot_filename is None:
+        cli.context.config.color = color_mode
+
     cli.run()
 
 

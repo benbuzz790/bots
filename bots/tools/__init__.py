@@ -6,6 +6,7 @@ from . import (
     python_execution_tool,
     self_tools,
     terminal_tools,
+    tool_management_tools,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "self_tools",
     "code_tools",
     "python_edit",
+    "tool_management_tools",
 ]

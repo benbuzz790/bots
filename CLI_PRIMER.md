@@ -488,23 +488,26 @@ Bot: Great, I can see what I need to do in all three files
 ### Display Modes
 
 #### `/verbose` - Show Everything (Default)
-
-Shows tool requests and results in detail.
-
+Shows tool requests, results, and API metrics in detail.
+**Displays:**
+- Tool requests with parameters
+- Tool results
+- API metrics (tokens, cost, duration) after each response
+- Session totals
 **Use when:**
-
 - Debugging
 - Learning what the bot is doing
 - Verifying tool usage
+- Monitoring API costs
+See [Cost Tracking](docs/observability/COST_TRACKING.md) for details on metrics.
 
 #### `/quiet` - Hide Tool Details
-
-Hides tool requests and results, showing only bot responses.
+Hides tool requests, results, and metrics, showing only bot responses.
 **Use when:**
-
 - Focused on final outputs
 - Cleaner display for presentations
 - Working with very verbose tools
+- Don't need to see API costs
 
 ### Git Integration
 
@@ -581,7 +584,7 @@ You: /fp
 System: Choose functional prompt: par_branch_while
 You: Enter prompts (one per line, empty line to finish):
      Create a Flask API endpoint for users
-     Create a Flask API endpoint for products  
+     Create a Flask API endpoint for products
      Create a Flask API endpoint for orders
      [empty line]
 You: Continue prompt: ok

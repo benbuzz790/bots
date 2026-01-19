@@ -40,12 +40,24 @@ def test_metrics_display_once_per_response_in_auto_mode():
     display_calls = []
 
     def mock_display_metrics(ctx, b):
+        """Mock function that records display_metrics calls for testing purposes.
+
+        Args:
+            ctx: The context object passed to the display_metrics function.
+            b: The second parameter passed to the display_metrics function.
+        """
         display_calls.append(("display_metrics", ctx, b))
 
     # Mock the bot's respond behavior to simulate tool usage then no tools
     call_count = [0]
 
     def mock_tool_requests():
+        """Mock function that simulates tool requests with varying responses based on call count.
+
+        Returns:
+            list: A list containing a single test tool dictionary on first call,
+                empty list on subsequent calls to simulate stopping condition.
+        """
         call_count[0] += 1
         # First call: has tools (continue loop)
         # Second call: no tools (stop loop)
@@ -67,12 +79,27 @@ def test_metrics_display_once_per_response_in_auto_mode():
                                 # Simulate prompt_while calling the callback once per iteration
                                 def simulate_prompt_while(bot, prompt, continue_prompt, stop_condition, callback):
                                     # First iteration - bot responds, has tools
+                                    """Simulates a prompt-while loop for bot interaction testing.
+
+                                    Executes a two-iteration simulation where the bot first responds with tools available,
+                                    then responds without tools to trigger the stop condition.
+
+                                    Args:
+                                        bot: The bot instance to simulate interactions with.
+                                        prompt: Initial prompt to send to the bot.
+                                        continue_prompt: Prompt used for subsequent iterations.
+                                        stop_condition: Condition function that determines when to stop the loop.
+                                        callback: Function called with bot responses and mock objects for each iteration.
+                                    """
                                     bot.tool_handler.requests = [{"tool": "test"}]
                                     callback(["response1"], [Mock()])
 
                                     # Second iteration - bot responds, no tools (stops)
                                     bot.tool_handler.requests = []
                                     callback(["response2"], [Mock()])
+
+                                    # Return responses and nodes as prompt_while does
+                                    return (["response1", "response2"], [Mock(), Mock()])
 
                                 mock_prompt_while.side_effect = simulate_prompt_while
 

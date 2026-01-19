@@ -7,7 +7,10 @@ business logic and command handlers.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
-# Color constants
+from bots.utils.terminal_utils import create_color_scheme
+
+# Color constants - maintained for backward compatibility
+# These will be initialized based on terminal capabilities
 COLOR_USER = "\033[36m"  # Cyan
 COLOR_BOT = "\033[95m"  # Light Pink/Magenta
 COLOR_TOOL_NAME = "\033[2m\033[33m"  # Dim Yellow
@@ -34,7 +37,6 @@ class CLIFrontend(ABC):
             role: The role of the message sender ('user', 'assistant', etc.)
             content: The message content to display
         """
-        pass
 
     @abstractmethod
     def display_system(self, message: str) -> None:
@@ -42,7 +44,6 @@ class CLIFrontend(ABC):
         Args:
             message: The system message to display
         """
-        pass
 
     @abstractmethod
     def display_error(self, message: str) -> None:
@@ -50,7 +51,6 @@ class CLIFrontend(ABC):
         Args:
             message: The error message to display
         """
-        pass
 
     @abstractmethod
     def display_metrics(self, metrics: Dict[str, Any]) -> None:
@@ -58,7 +58,6 @@ class CLIFrontend(ABC):
         Args:
             metrics: Dictionary containing metrics data (tokens, cost, duration, etc.)
         """
-        pass
 
     @abstractmethod
     def display_tool_call(self, name: str, args: Dict[str, Any]) -> None:
@@ -67,7 +66,6 @@ class CLIFrontend(ABC):
             name: Name of the tool being called
             args: Arguments passed to the tool
         """
-        pass
 
     @abstractmethod
     def display_tool_result(self, name: str, result: str) -> None:
@@ -76,7 +74,6 @@ class CLIFrontend(ABC):
             name: Name of the tool that was executed
             result: Result returned by the tool
         """
-        pass
 
     @abstractmethod
     def get_user_input(self, prompt: str = ">>> ") -> str:
@@ -86,7 +83,6 @@ class CLIFrontend(ABC):
         Returns:
             The user's input as a string
         """
-        pass
 
     @abstractmethod
     def get_multiline_input(self, prompt: str) -> str:
@@ -96,7 +92,6 @@ class CLIFrontend(ABC):
         Returns:
             The user's multi-line input as a string
         """
-        pass
 
     @abstractmethod
     def confirm(self, question: str) -> bool:
@@ -106,7 +101,6 @@ class CLIFrontend(ABC):
         Returns:
             True if user confirms, False otherwise
         """
-        pass
 
 
 class TerminalFrontend(CLIFrontend):
@@ -121,19 +115,22 @@ class TerminalFrontend(CLIFrontend):
             config: CLIConfig instance with display settings
         """
         self.config = config
+        # Create color scheme based on config
+        color_mode = getattr(config, "color", "auto")
+        self.colors = create_color_scheme(force=color_mode if color_mode != "auto" else None)
 
     def display_message(self, role: str, content: str) -> None:
         """Display a conversation message with role-appropriate formatting."""
-        color = COLOR_USER if role == "user" else COLOR_BOT
+        color = self.colors.USER if role == "user" else self.colors.BOT
         self._pretty(content, role, color)
 
     def display_system(self, message: str) -> None:
         """Display a system message."""
-        self._pretty(message, "system", COLOR_SYSTEM)
+        self._pretty(message, "system", self.colors.SYSTEM)
 
     def display_error(self, message: str) -> None:
         """Display an error message."""
-        self._pretty(message, "error", COLOR_ERROR)
+        self._pretty(message, "error", self.colors.ERROR)
 
     def display_metrics(self, metrics: Dict[str, Any]) -> None:
         """Display API usage metrics if verbose mode is on."""
@@ -151,24 +148,24 @@ class TerminalFrontend(CLIFrontend):
             session_tokens = metrics["session_tokens"]
             session_cost = metrics["session_cost"]
             metrics_str += f"\n{session_tokens:,} | ${session_cost:.4f}"
-        self._pretty(metrics_str, "metrics", COLOR_METRICS, newline_after_name=True)
+        self._pretty(metrics_str, "metrics", self.colors.METRICS, newline_after_name=True)
 
     def display_tool_call(self, name: str, args: Dict[str, Any]) -> None:
         """Display a tool being called."""
-        formatted_args = self._format_tool_data(args, color=COLOR_TOOL_NAME)
-        self._pretty(formatted_args, name, COLOR_TOOL_NAME)
+        formatted_args = self._format_tool_data(args, color=self.colors.TOOL_NAME)
+        self._pretty(formatted_args, name, self.colors.TOOL_NAME)
 
     def display_tool_result(self, name: str, result: str) -> None:
         """Display a tool execution result."""
-        self._pretty(result, f"{name} result", COLOR_TOOL_RESULT)
+        self._pretty(result, f"{name} result", self.colors.TOOL_RESULT)
 
     def get_user_input(self, prompt: str = ">>> ") -> str:
         """Get single-line input from user."""
-        return input(f"{COLOR_USER}{prompt}{COLOR_RESET}").strip()
+        return input(f"{self.colors.USER}{prompt}{self.colors.RESET}").strip()
 
     def get_multiline_input(self, prompt: str) -> str:
         """Get multi-line input from user (until empty line)."""
-        print(f"{COLOR_USER}{prompt}{COLOR_RESET}")
+        print(f"{self.colors.USER}{prompt}{self.colors.RESET}")
         lines = []
         while True:
             line = input()
@@ -179,14 +176,14 @@ class TerminalFrontend(CLIFrontend):
 
     def confirm(self, question: str) -> bool:
         """Ask user for yes/no confirmation."""
-        response = input(f"{COLOR_SYSTEM}{question} (y/n): {COLOR_RESET}").strip().lower()
+        response = input(f"{self.colors.SYSTEM}{question} (y/n): {self.colors.RESET}").strip().lower()
         return response in ("y", "yes")
 
     def _pretty(
         self,
         string: str,
         name: Optional[str] = None,
-        color: str = COLOR_RESET,
+        color: str = "",
         newline_after_name: bool = False,
     ) -> None:
         """Print a string nicely formatted with color."""
@@ -195,9 +192,9 @@ class TerminalFrontend(CLIFrontend):
         print()
         if name is not None:
             if newline_after_name:
-                prefix = f"{color}{COLOR_BOLD}{name}:{COLOR_RESET}\n{' ' * self.config.indent}{color}"
+                prefix = f"{color}{self.colors.BOLD}{name}:{self.colors.RESET}\n{' ' * self.config.indent}{color}"
             else:
-                prefix = f"{color}{COLOR_BOLD}{name}: {COLOR_RESET}{color}"
+                prefix = f"{color}{self.colors.BOLD}{name}: {self.colors.RESET}{color}"
         else:
             prefix = color
         if not isinstance(string, str):
@@ -208,7 +205,7 @@ class TerminalFrontend(CLIFrontend):
             string = string[:max_length] + "\n... (output truncated)"
         # Quick path for simple strings
         if len(string) < 1000 and "\n" not in string:
-            print(prefix + string + COLOR_RESET)
+            print(prefix + string + self.colors.RESET)
             print()
             return
         lines = string.split("\n")
@@ -222,14 +219,14 @@ class TerminalFrontend(CLIFrontend):
             # Skip wrapping for very long lines
             if len(line) > 10000:
                 if i == 0:
-                    formatted_lines.append(prefix + line[:10000] + "... (line truncated)" + COLOR_RESET)
+                    formatted_lines.append(prefix + line[:10000] + "... (line truncated)" + self.colors.RESET)
                 else:
                     formatted_lines.append(
-                        " " * self.config.indent + color + line[:10000] + "... (line truncated)" + COLOR_RESET
+                        " " * self.config.indent + color + line[:10000] + "... (line truncated)" + self.colors.RESET
                     )
                 continue
             if i == 0:
-                initial_line = prefix + line + COLOR_RESET
+                initial_line = prefix + line + self.colors.RESET
                 try:
                     wrapped = textwrap.wrap(
                         initial_line,
@@ -243,7 +240,7 @@ class TerminalFrontend(CLIFrontend):
             else:
                 try:
                     wrapped = textwrap.wrap(
-                        color + line + COLOR_RESET,
+                        color + line + self.colors.RESET,
                         width=self.config.width,
                         initial_indent=" " * self.config.indent,
                         subsequent_indent=" " * self.config.indent,
@@ -251,16 +248,16 @@ class TerminalFrontend(CLIFrontend):
                         break_on_hyphens=False,
                     )
                 except Exception:
-                    wrapped = [" " * self.config.indent + color + line + COLOR_RESET]
+                    wrapped = [" " * self.config.indent + color + line + self.colors.RESET]
             if wrapped:
                 formatted_lines.extend(wrapped)
             else:
-                formatted_lines.append(" " * self.config.indent if i > 0 else prefix + COLOR_RESET)
+                formatted_lines.append(" " * self.config.indent if i > 0 else prefix + self.colors.RESET)
         for line in formatted_lines:
             print(line)
         print()
 
-    def _format_tool_data(self, data: dict, indent: int = 4, color: str = COLOR_RESET) -> str:
+    def _format_tool_data(self, data: dict, indent: int = 4, color: str = "") -> str:
         """Format tool arguments or results in a clean, minimal way."""
         if not data:
             return "(empty)"
@@ -278,7 +275,7 @@ class TerminalFrontend(CLIFrontend):
         for key, value in data.items():
             # Strip underscores from parameter names
             display_key = key.replace("_", " ")
-            bold_key = f"{color}{COLOR_BOLD}{display_key}{COLOR_RESET}{color}:"
+            bold_key = f"{color}{self.colors.BOLD}{display_key}{self.colors.RESET}{color}:"
             if isinstance(value, dict):
                 # Nested dict
                 nested = self._format_tool_data(value, indent, color)
