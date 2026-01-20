@@ -3819,7 +3819,7 @@ class Bot(ABC):
                 tool_handler_dict = value.to_dict(for_persistence=True)
                 new_bot.tool_handler = value.__class__.from_dict(tool_handler_dict)
             elif key == "mailbox":
-                # Mailbox will be reconstructed, skip for now
+                # Mailbox will be reconstructed after all attributes are copied
                 pass
             elif key == "callbacks":
                 # Callbacks are environment-specific, don't deep copy
@@ -3835,11 +3835,11 @@ class Bot(ABC):
                     # If deepcopy fails, just copy the reference
                     new_bot.__dict__[key] = value
 
-        # Reconstruct mailbox using the bot's own method
-        if hasattr(new_bot, "_create_mailbox"):
-            new_bot.mailbox = new_bot._create_mailbox()
-        elif not hasattr(new_bot, "mailbox"):
-            # If no _create_mailbox method, mailbox will be None
+        # Reconstruct mailbox - create a new instance of the same type as the original
+        if hasattr(self, "mailbox") and self.mailbox is not None:
+            mailbox_class = type(self.mailbox)
+            new_bot.mailbox = mailbox_class()
+        else:
             new_bot.mailbox = None
 
         return new_bot
