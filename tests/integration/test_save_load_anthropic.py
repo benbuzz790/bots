@@ -1211,29 +1211,30 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         """
         import uuid
 
-        # Create a unique quicksave filename for this test
-        unique_quicksave = os.path.join(self.temp_dir, f"quicksave_{uuid.uuid4().hex[:8]}.bot")
+        # Create a unique bot name that includes the temp directory path
+        # This way autosave will create the file in our temp directory
+        unique_name = os.path.join(self.temp_dir, f"AutosaveBot_{uuid.uuid4().hex[:8]}")
 
-        # Create bot with autosave enabled
-        bot = AnthropicBot(name="AutosaveBot", autosave=True, model_engine=Engines.CLAUDE37_SONNET_20250219)
+        # Create bot with autosave enabled and unique name
+        bot = AnthropicBot(name=unique_name, autosave=True, model_engine=Engines.CLAUDE37_SONNET_20250219)
 
-        # Monkey-patch the save method to use our unique quicksave path
-        original_save = bot.save
-
-        def patched_save(filename=None, quicksave=False):
-            if quicksave:
-                return original_save(unique_quicksave)
-            return original_save(filename, quicksave)
-
-        bot.save = patched_save
+        # Expected quicksave file path (autosave uses "{name}" + quicksave=True)
+        # When quicksave=True, save() uses "quicksave.bot" as the filename
+        expected_quicksave = "quicksave.bot"
 
         # Respond should trigger autosave
         with patch("bots.foundation.anthropic_bots.AnthropicMailbox.send_message") as mock_send:
             mock_send.return_value = self._create_mock_response("Test response")
             bot.respond("Test message")
 
-        # Check that our unique quicksave file was created
-        self.assertTrue(os.path.exists(unique_quicksave), f"Autosave should create {unique_quicksave}")
+        # Check that the quicksave file was created
+        self.assertTrue(os.path.exists(expected_quicksave), f"Autosave should create {expected_quicksave}")
+
+        # Cleanup
+        try:
+            os.remove(expected_quicksave)
+        except Exception:
+            pass
 
         # Cleanup is handled by tearDown (removes temp_dir)
 

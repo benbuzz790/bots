@@ -3574,6 +3574,9 @@ class Bot(ABC):
             # Fallback to regular deserialization if dill not available
             return cls._deserialize(state, api_key)
 
+        # Extract preserved callbacks before processing
+        preserved_callbacks = state.pop("_callbacks_preserved", None)
+
         # Extract and restore dill-preserved objects
         restored_state = {}
         dill_preserved = {}
@@ -3601,6 +3604,10 @@ class Bot(ABC):
         # Add back the dill-preserved attributes
         for key, value in dill_preserved.items():
             setattr(bot, key, value)
+
+        # Restore callbacks if they were preserved (for deepcopy operations)
+        if preserved_callbacks is not None:
+            bot.callbacks = preserved_callbacks
 
         return bot
 
