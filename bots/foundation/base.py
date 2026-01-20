@@ -3524,6 +3524,7 @@ class Bot(ABC):
         Note:
             - API keys are not serialized for security
             - Callbacks are not serialized (environment-specific)
+            - Wrapped respond method is not serialized (will use class method on load)
             - Uses hybrid serialization for tool handlers (see tool_handling.md)
             - For deepcopy operations, use _serialize_for_deepcopy() instead
 
@@ -3537,6 +3538,7 @@ class Bot(ABC):
         data.pop("api_key", None)
         data.pop("mailbox", None)
         data.pop("callbacks", None)  # Callbacks are environment-specific, not serialized
+        data.pop("respond", None)  # Wrapped respond method (from make_bot_interruptible), not serialized
 
         # Add metadata
         data["bot_class"] = self.__class__.__name__
@@ -3797,6 +3799,7 @@ class Bot(ABC):
             - Handles tool_handler circular references properly
             - Preserves all bot state including conversation and tools
             - Callbacks are not copied (they're environment-specific)
+            - Wrapped respond method (from make_bot_interruptible) is skipped
         """
         import copy as copy_module
 
@@ -3827,6 +3830,11 @@ class Bot(ABC):
             elif key == "api_key":
                 # API key is just a string, copy directly
                 new_bot.api_key = value
+            elif key == "respond":
+                # Skip wrapped respond method (from make_bot_interruptible)
+                # The class method will be used instead
+                # This avoids issues with closures that reference the original bot
+                pass
             else:
                 # For everything else, use standard deepcopy
                 try:
