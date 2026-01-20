@@ -3412,37 +3412,204 @@ class Bot(ABC):
         """
         self.system_message = message
 
-    def _serialize(self) -> dict:
-        """Serialize the bot's state to a dictionary.
+    def _serialize_for_deepcopy(self) -> dict:
+        """Serialize the bot's state for deepcopy operations (same-runtime).
 
-        This is the core serialization logic extracted from save().
-        Converts the bot's state into a JSON-serializable dictionary.
+        Uses dill to preserve complex objects like wrapped methods, closures,
+        and other non-JSON-serializable state. This is optimized for same-runtime
+        operations like branch_self where we want to preserve everything.
 
         Returns:
-            dict: Serialized bot state
+            dict: Serialized bot state with dill-preserved complex objects
+
+        Note:
+            - Uses dill for rich object preservation
+            - Preserves wrapped methods (e.g., from make_bot_interruptible)
+            - Preserves callbacks for branch operations
+            - Not suitable for disk storage (use _serialize() for that)
+        """
+        import base64
+
+        try:
+            import dill
+        except ImportError:
+            # Fallback to regular serialization if dill not available
+            return self._serialize()
+
+        # Start with all instance attributes
+        data = {}
+
+        for key, value in self.__dict__.items():
+            if key.startswith("_"):
+                # Skip private attributes except _tracing_enabled
+                if key == "_tracing_enabled":
+                    data["enable_tracing"] = value
+                continue
+
+            # Handle special cases
+            if key == "api_key":
+                # Don't serialize API key even for deepcopy
+                continue
+            elif key == "mailbox":
+                # Mailbox needs special handling - it will be reconstructed
+                continue
+            elif key == "callbacks":
+                # Preserve callbacks for deepcopy (they're needed in branches)
+                data["_callbacks_preserved"] = value
+            elif key == "model_engine":
+                # Store as enum value for consistency
+                data["model_engine"] = value.value
+            elif key == "conversation":
+                # Use existing conversation serialization
+                data["conversation"] = value._root_dict()
+            elif key == "tool_handler":
+                # Use existing tool handler serialization
+                data["tool_handler"] = value.to_dict()
+            elif isinstance(value, (str, int, float, bool, list, dict, type(None))):
+                # JSON-safe primitives - store directly
+                data[key] = value
+            else:
+                # Complex object - try to preserve with dill
+                try:
+                    pickled = dill.dumps(value)
+                    encoded = base64.b64encode(pickled).decode("ascii")
+                    data[key] = {"__dill_preserved__": True, "data": encoded, "type": type(value).__name__}
+                except Exception as e:
+                    # If dill fails, log warning and skip
+                    # This is acceptable for deepcopy - the object will be missing
+                    # but won't cause silent corruption
+                    import warnings
+
+                    warnings.warn(
+                        f"Could not preserve attribute '{key}' of type {type(value).__name__} "
+                        f"during deepcopy: {e}. Attribute will be omitted from copy."
+                    )
+
+        # Add metadata
+        data["bot_class"] = self.__class__.__name__
+
+        return data
+
+    def _serialize(self) -> dict:
+        """Serialize the bot's state to a dictionary for disk storage.
+
+        This is the core serialization logic for save()/load() operations.
+        Converts the bot's state into a JSON-serializable dictionary.
+        Uses strict validation - only known, JSON-safe attributes are serialized.
+
+        Returns:
+            dict: Serialized bot state (JSON-safe)
 
         Note:
             - API keys are not serialized for security
             - Callbacks are not serialized (environment-specific)
             - Uses hybrid serialization for tool handlers (see tool_handling.md)
+            - For deepcopy operations, use _serialize_for_deepcopy() instead
+
+        Raises:
+            ValueError: If unexpected non-JSON-serializable attributes are found
         """
+        # Collect all instance attributes (excluding private ones)
         data = {key: value for key, value in self.__dict__.items() if not key.startswith("_")}
+
+        # Remove attributes that should never be serialized
         data.pop("api_key", None)
         data.pop("mailbox", None)
         data.pop("callbacks", None)  # Callbacks are environment-specific, not serialized
+
+        # Add metadata
         data["bot_class"] = self.__class__.__name__
         data["model_engine"] = self.model_engine.value
         data["conversation"] = self.conversation._root_dict()
+
         # Preserve tracing state
         if hasattr(self, "_tracing_enabled"):
             data["enable_tracing"] = self._tracing_enabled
+
+        # Serialize tool handler
         data["tool_handler"] = self.tool_handler.to_dict()
 
-        for key, value in data.items():
+        # Validate that all remaining attributes are JSON-serializable
+        # This prevents silent data corruption
+        for key, value in list(data.items()):
+            if key in ("bot_class", "model_engine", "conversation", "tool_handler", "enable_tracing"):
+                # These are handled specially above
+                continue
+
             if not isinstance(value, (str, int, float, bool, list, dict, type(None))):
-                data[key] = str(value)
+                # Found a non-JSON-serializable attribute
+                # This is likely a bug - we should know about all bot attributes
+                raise ValueError(
+                    f"Cannot serialize attribute '{key}' of type {type(value).__name__}. "
+                    f"Bot attributes must be JSON-serializable for save/load operations. "
+                    f"If this is a legitimate attribute, add explicit handling for it in _serialize()."
+                )
 
         return data
+
+    @classmethod
+    def _deserialize_from_deepcopy(cls, state: dict, api_key: Optional[str] = None) -> "Bot":
+        """Deserialize a bot from a deepcopy state dictionary.
+
+        Reconstructs a bot instance from a state created by _serialize_for_deepcopy().
+        Handles dill-preserved complex objects.
+
+        Parameters:
+            state (dict): Serialized bot state from _serialize_for_deepcopy()
+            api_key (Optional[str]): API key to use
+
+        Returns:
+            Bot: Reconstructed bot instance
+
+        Note:
+            - Restores dill-preserved complex objects
+            - Restores callbacks for branch operations
+            - Uses existing _deserialize() for most of the work
+        """
+        import base64
+
+        try:
+            import dill
+        except ImportError:
+            # Fallback to regular deserialization if dill not available
+            return cls._deserialize(state, api_key)
+
+        # Extract preserved callbacks before processing
+        preserved_callbacks = state.pop("_callbacks_preserved", None)
+
+        # Extract and restore dill-preserved objects
+        restored_state = {}
+        dill_preserved = {}
+
+        for key, value in state.items():
+            if isinstance(value, dict) and value.get("__dill_preserved__"):
+                # This is a dill-preserved object - restore it
+                try:
+                    pickled = base64.b64decode(value["data"].encode("ascii"))
+                    dill_preserved[key] = dill.loads(pickled)
+                except Exception as e:
+                    # If dill restoration fails, skip this attribute
+                    import warnings
+
+                    warnings.warn(
+                        f"Could not restore dill-preserved attribute '{key}': {e}. "
+                        f"Attribute will be omitted from restored bot."
+                    )
+            else:
+                restored_state[key] = value
+
+        # Use regular deserialization for the base bot
+        bot = cls._deserialize(restored_state, api_key)
+
+        # Add back the dill-preserved attributes
+        for key, value in dill_preserved.items():
+            setattr(bot, key, value)
+
+        # Restore callbacks if they were preserved (for deepcopy operations)
+        if preserved_callbacks is not None:
+            bot.callbacks = preserved_callbacks
+
+        return bot
 
     @classmethod
     def _deserialize(cls, data: dict, api_key: Optional[str] = None) -> "Bot":
@@ -3513,8 +3680,24 @@ class Bot(ABC):
         # Callbacks are not deserialized - they are environment-specific and must be
         # injected after load (e.g., by CLI or by tools like branch_self)
 
+        # Exclusion list: keys that should not be set as instance attributes
+        # - constructor_args: already used in bot construction
+        # - conversation, tool_handler, tools, callbacks: handled specially
+        # - bot_class, model_engine, enable_tracing: metadata keys from _serialize
+        # - respond: method name that should never be an instance attribute
+        excluded_keys = (
+            "conversation",
+            "tool_handler",
+            "tools",
+            "callbacks",
+            "bot_class",
+            "model_engine",
+            "enable_tracing",
+            "respond",
+        )
+
         for key, value in data.items():
-            if key not in constructor_args and key not in ("conversation", "tool_handler", "tools", "callbacks"):
+            if key not in constructor_args and key not in excluded_keys:
                 setattr(bot, key, value)
 
         if "conversation" in data and data["conversation"]:
@@ -3529,48 +3712,40 @@ class Bot(ABC):
         """Support for pickle and deepcopy.
 
         Returns the bot's state as a picklable dictionary.
-        Uses our existing _serialize() method which already handles all the
-        complex serialization (modules, functions, tool handlers, etc).
+        Uses _serialize_for_deepcopy() which preserves complex objects
+        like wrapped methods using dill.
 
-        For deepcopy operations (e.g., in branch_self), we preserve callbacks
-        by storing them separately and not passing them through _serialize().
+        For deepcopy operations (e.g., in branch_self), this preserves:
+        - Wrapped methods (e.g., from make_bot_interruptible)
+        - Callbacks
+        - Other complex state
 
         Returns:
-            dict: Serialized bot state (picklable)
+            dict: Serialized bot state (dill-preserved)
         """
-        state = self._serialize()
-        # Preserve callbacks for deepcopy operations (like branch_self)
-        # They won't be serialized to disk, but will be available during deepcopy
-        if hasattr(self, "callbacks") and self.callbacks is not None:
-            state["_callbacks_preserved"] = self.callbacks
-        return state
+        return self._serialize_for_deepcopy()
 
     def __setstate__(self, state):
         """Support for pickle and deepcopy.
 
         Reconstructs the bot from a pickled state dictionary.
-        Uses our existing _deserialize() method which already handles all the
-        complex deserialization (modules, functions, tool handlers, etc).
+        Uses _deserialize_from_deepcopy() which handles dill-preserved
+        complex objects.
 
-        For deepcopy operations (e.g., in branch_self), we restore callbacks
-        that were preserved in __getstate__.
+        For deepcopy operations (e.g., in branch_self), this restores:
+        - Wrapped methods (e.g., from make_bot_interruptible)
+        - Callbacks
+        - Other complex state
 
         Parameters:
-            state (dict): Serialized bot state
+            state (dict): Serialized bot state from __getstate__
         """
-        # Extract preserved callbacks before deserialization
-        preserved_callbacks = state.pop("_callbacks_preserved", None)
-
-        # _deserialize is a classmethod that returns a new bot instance
+        # _deserialize_from_deepcopy is a classmethod that returns a new bot instance
         # We need to transfer its state to self
-        temp_bot = self.__class__._deserialize(state, api_key=state.get("api_key"))
+        temp_bot = self.__class__._deserialize_from_deepcopy(state, api_key=state.get("api_key"))
 
         # Copy all attributes from temp_bot to self
         self.__dict__.update(temp_bot.__dict__)
-
-        # Restore callbacks if they were preserved (for deepcopy operations)
-        if preserved_callbacks is not None:
-            self.callbacks = preserved_callbacks
 
     @classmethod
     def load(cls, filepath: str, api_key: Optional[str] = None) -> "Bot":

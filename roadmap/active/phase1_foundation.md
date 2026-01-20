@@ -1,8 +1,8 @@
 # Phase 1: Foundation & Critical Fixes
 
-**Status:** 10/14 Complete (71%)
+**Status:** 10/14 Complete (71%), plus 4 CLI improvements from WO023-026
 **Priority:** High
-**Last Updated:** December 18, 2025
+**Last Updated:** January 18, 2026
 
 ---
 
@@ -311,11 +311,54 @@ Phase 1 focuses on establishing a solid foundation for the bots project through 
 
 ---
 
-## Summary
+---
+## Recent CLI Improvements (January 2026)
+### WO023: Auto Execution Message Display Fix
+**Status:** ✅ DONE (January 2026)
+**Deliverables:**
+- Fixed /auto command to display final message instead of first message
+- Modified SystemHandler.auto() to use real-time display callbacks
+- Added comprehensive test coverage (3 new tests)
+**Impact:** Correct message display during autonomous execution mode.
+**Related Issue:** GitHub #231
+---
+### WO024: CLI Metrics Display Issues
+**Status:** ✅ DONE (January 2026)
+**Deliverables:**
+- Fixed duplicate metrics display in CLI
+- Implemented metrics caching system (context.last_message_metrics)
+- Metrics now display exactly once per response
+- Clean formatting with proper newlines
+**Impact:** Clean, non-duplicated metrics display.
+---
+### WO025: CLI Terminal Capability Detection
+**Status:** ✅ DONE (January 2026)
+**Deliverables:**
+- Terminal capability detection (color support, width, type)
+- ColorScheme class for dynamic color management
+- CLI color configuration (--color flag, /config set color command)
+- Support for NO_COLOR and FORCE_COLOR environment variables
+- Windows-specific ANSI support detection
+- Comprehensive test coverage (48 tests passing)
+**Impact:** Better color display across different terminals, accessibility support.
+**Related Issue:** GitHub #166
+---
+### WO026: Ctrl-C Interrupt Handling
+**Status:** ✅ DONE (January 2026)
+**Deliverables:**
+- CLI-level interrupt wrapper for bot.respond()
+- Created make_bot_interruptible() function in bot_session.py
+- Wraps bot.respond() with run_interruptible() at initialization
+- Checks for interrupts every 0.1 seconds during API calls
+- Bot state remains consistent after interrupt
+- Comprehensive test coverage (12 tests passing)
+**Impact:** Users can interrupt bot responses with Ctrl-C during API calls.
+**Related Issue:** GitHub #225
+---## Summary
 
-**Progress:** 11/14 items complete (79%)
+**Progress:** 10/14 Phase 1 items complete (71%), plus 4 additional CLI improvements
 
-**Completed:** 11 items
+**Completed:** 10 Phase 1 items, plus 4 CLI improvements (WO023-026)
 
 - Items 45, 50, 49, 12, 11, 24, 25, 9, 26, CLI Frontend Abstraction (all done)
 
