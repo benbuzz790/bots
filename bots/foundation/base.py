@@ -3430,6 +3430,7 @@ class Bot(ABC):
         data.pop("api_key", None)
         data.pop("mailbox", None)
         data.pop("callbacks", None)  # Callbacks are environment-specific, not serialized
+        data.pop("respond", None)  # Remove wrapped respond method if present (e.g., from make_bot_interruptible)
         data["bot_class"] = self.__class__.__name__
         data["model_engine"] = self.model_engine.value
         data["conversation"] = self.conversation._root_dict()
@@ -3513,8 +3514,24 @@ class Bot(ABC):
         # Callbacks are not deserialized - they are environment-specific and must be
         # injected after load (e.g., by CLI or by tools like branch_self)
 
+        # Exclusion list: keys that should not be set as instance attributes
+        # - constructor_args: already used in bot construction
+        # - conversation, tool_handler, tools, callbacks: handled specially
+        # - bot_class, model_engine, enable_tracing: metadata keys from _serialize
+        # - respond: method name that should never be an instance attribute
+        excluded_keys = (
+            "conversation",
+            "tool_handler",
+            "tools",
+            "callbacks",
+            "bot_class",
+            "model_engine",
+            "enable_tracing",
+            "respond",
+        )
+
         for key, value in data.items():
-            if key not in constructor_args and key not in ("conversation", "tool_handler", "tools", "callbacks"):
+            if key not in constructor_args and key not in excluded_keys:
                 setattr(bot, key, value)
 
         if "conversation" in data and data["conversation"]:
