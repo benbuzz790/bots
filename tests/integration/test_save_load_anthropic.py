@@ -56,6 +56,11 @@ class TestSaveLoadAnthropic(unittest.TestCase):
     """
 
     def setUp(self) -> "TestSaveLoadAnthropic":
+        """Set up test fixtures for AnthropicBot testing.
+
+        Creates a temporary directory and initializes an AnthropicBot instance
+        with Claude 3.7 Sonnet model for use in test methods.
+        """
         """Set up test environment before each test.
 
         Creates a temporary directory and initializes a test AnthropicBot instance
@@ -85,6 +90,12 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         return self
 
     def tearDown(self) -> None:
+        """Clean up test resources by removing the temporary directory.
+
+        Removes the temporary directory and all its contents created during test setup.
+        Uses ignore_errors=True to prevent failures if the directory doesn't exist or
+        cannot be removed.
+        """
         """Clean up test environment after each test.
 
         Removes the temporary directory and all its contents created during setUp.
@@ -1473,15 +1484,41 @@ class TestDebugImports(unittest.TestCase):
 
         # Find all names used in the code
         class NameCollector(ast.NodeVisitor):
+            """AST visitor class that collects variable names from Load contexts.
+
+            This class extends the AST node visitor pattern to identify and store
+            all variable names that are being loaded (read) rather than stored or
+            deleted in Python code.
+
+            Attributes:
+                names (set): Set of variable names found in Load contexts.
+            """
             def __init__(self):
                 self.names = set()
 
             def visit_Name(self, node):
+                """Visits an AST Name node and collects loaded variable names.
+
+                Processes Name nodes in the abstract syntax tree, adding variable names
+                to the collection when they are being loaded (read) rather than stored.
+                Continues traversal to child nodes.
+
+                Args:
+                    node: The AST Name node being visited.
+                """
                 if isinstance(node.ctx, ast.Load):
                     self.names.add(node.id)
                 self.generic_visit(node)
 
             def visit_Attribute(self, node):
+                """Visits an Attribute AST node and extracts variable names from attribute access expressions.
+
+                When the attribute is accessed on a Name node (e.g., obj.attr), adds the base object's
+                identifier to the names set. Continues traversal to child nodes.
+
+                Args:
+                    node: The AST Attribute node being visited.
+                """
                 if isinstance(node.value, ast.Name):
                     self.names.add(node.value.id)
                 self.generic_visit(node)
