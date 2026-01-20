@@ -2048,12 +2048,16 @@ class ToolHandler(ABC):
 
         return source
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self, for_persistence: bool = True) -> Dict[str, Any]:
         """Serialize the ToolHandler state to a dictionary.
 
         Converts the complete state of the ToolHandler into a dictionary format
-        suitable for persistence. This includes all tools, their schemas, module
-        contexts, and execution state.
+        suitable for persistence or deepcopy operations.
+
+        Parameters:
+            for_persistence (bool): If True, performs full serialization including
+                globals for disk storage. If False, skips globals serialization
+                for in-memory deepcopy operations (avoids circular reference issues).
 
         Returns:
             Dict[str, Any]: Dictionary containing:
@@ -2070,6 +2074,7 @@ class ToolHandler(ABC):
             - Maintains tool relationships and dependencies
             - Stores both absolute and relative paths for portability
             - Includes tool registry state
+            - When for_persistence=False, skips globals to avoid circular references
         """
         module_details = {}
         function_paths = {}
@@ -2093,8 +2098,13 @@ class ToolHandler(ABC):
                 "file_path": module_context.file_path,  # Absolute path (original)
                 "relative_path": rel_path,  # Relative path for portability
                 "code_hash": self._get_code_hash(enhanced_source),
-                "globals": self._serialize_globals(module_context.namespace.__dict__),
             }
+
+            # Only serialize globals for disk persistence
+            # For deepcopy, skip globals to avoid circular reference issues with tool functions
+            if for_persistence:
+                module_details[file_path]["globals"] = self._serialize_globals(module_context.namespace.__dict__)
+
         for name, func in self.function_map.items():
             module_context = getattr(func, "__module_context__", None)
             if module_context:
@@ -3427,6 +3437,7 @@ class Bot(ABC):
             - Preserves wrapped methods (e.g., from make_bot_interruptible)
             - Preserves callbacks for branch operations
             - Not suitable for disk storage (use _serialize() for that)
+            - Tool handler is preserved by reference (not serialized) to avoid issues
         """
         import base64
 
@@ -3463,8 +3474,18 @@ class Bot(ABC):
                 # Use existing conversation serialization
                 data["conversation"] = value._root_dict()
             elif key == "tool_handler":
-                # Use existing tool handler serialization
-                data["tool_handler"] = value.to_dict()
+                # For deepcopy, preserve the tool_handler by reference using dill
+                # This avoids circular reference issues and is more efficient
+                try:
+                    pickled = dill.dumps(value)
+                    encoded = base64.b64encode(pickled).decode("ascii")
+                    data["tool_handler"] = {"__dill_preserved__": True, "data": encoded, "type": "ToolHandler"}
+                except Exception as e:
+                    # If dill fails, fall back to dict serialization without globals
+                    import warnings
+
+                    warnings.warn(f"Could not dill-preserve tool_handler, falling back to dict serialization: {e}")
+                    data["tool_handler"] = value.to_dict(for_persistence=False)
             elif isinstance(value, (str, int, float, bool, list, dict, type(None))):
                 # JSON-safe primitives - store directly
                 data[key] = value
@@ -3598,10 +3619,22 @@ class Bot(ABC):
             else:
                 restored_state[key] = value
 
+        # Check if tool_handler was dill-preserved
+        if "tool_handler" in dill_preserved:
+            # Tool handler was preserved by dill - use it directly
+            # We'll add it to the bot after construction
+            tool_handler_preserved = dill_preserved.pop("tool_handler")
+        else:
+            tool_handler_preserved = None
+
         # Use regular deserialization for the base bot
         bot = cls._deserialize(restored_state, api_key)
 
-        # Add back the dill-preserved attributes
+        # If tool_handler was dill-preserved, replace the deserialized one
+        if tool_handler_preserved is not None:
+            bot.tool_handler = tool_handler_preserved
+
+        # Add back any other dill-preserved attributes
         for key, value in dill_preserved.items():
             setattr(bot, key, value)
 
@@ -3746,6 +3779,70 @@ class Bot(ABC):
 
         # Copy all attributes from temp_bot to self
         self.__dict__.update(temp_bot.__dict__)
+
+    def __deepcopy__(self, memo):
+        """Custom deepcopy implementation that handles circular references.
+
+        This method properly handles the circular references created by tool
+        functions with _bot parameter injection. We manually copy each attribute,
+        using special handling for the tool_handler to avoid circular refs.
+
+        Parameters:
+            memo (dict): Deepcopy memo dict to track already-copied objects
+
+        Returns:
+            Bot: A deep copy of this bot
+
+        Note:
+            - Handles tool_handler circular references properly
+            - Preserves all bot state including conversation and tools
+            - Callbacks are not copied (they're environment-specific)
+        """
+        import copy as copy_module
+
+        # Check if we've already copied this object (prevents infinite recursion)
+        if id(self) in memo:
+            return memo[id(self)]
+
+        # Create a new instance without calling __init__
+        cls = self.__class__
+        new_bot = cls.__new__(cls)
+
+        # Register in memo immediately to prevent infinite recursion
+        memo[id(self)] = new_bot
+
+        # Manually copy each attribute
+        for key, value in self.__dict__.items():
+            if key == "tool_handler":
+                # For tool_handler, use save/load mechanism to avoid circular refs
+                # This properly serializes tools without hitting circular references
+                tool_handler_dict = value.to_dict(for_persistence=True)
+                new_bot.tool_handler = value.__class__.from_dict(tool_handler_dict)
+            elif key == "mailbox":
+                # Mailbox will be reconstructed, skip for now
+                pass
+            elif key == "callbacks":
+                # Callbacks are environment-specific, don't deep copy
+                new_bot.callbacks = value
+            elif key == "api_key":
+                # API key is just a string, copy directly
+                new_bot.api_key = value
+            else:
+                # For everything else, use standard deepcopy
+                try:
+                    new_bot.__dict__[key] = copy_module.deepcopy(value, memo)
+                except Exception:
+                    # If deepcopy fails, just copy the reference
+                    new_bot.__dict__[key] = value
+
+        # Reconstruct mailbox using the bot's own method
+        if hasattr(new_bot, "_create_mailbox"):
+            new_bot.mailbox = new_bot._create_mailbox()
+        elif not hasattr(new_bot, "mailbox"):
+            # If no _create_mailbox method, mailbox will be None
+            new_bot.mailbox = None
+
+        return new_bot
 
     @classmethod
     def load(cls, filepath: str, api_key: Optional[str] = None) -> "Bot":
