@@ -58,6 +58,11 @@ class TestSaveLoadAnthropic(unittest.TestCase):
     def setUp(self) -> "TestSaveLoadAnthropic":
         """Set up test fixtures for AnthropicBot testing.
 
+        Creates a temporary directory and initializes an AnthropicBot instance
+        with Claude 3.7 Sonnet model for use in test methods.
+        """
+        """Set up test fixtures for AnthropicBot testing.
+
         Creates a temporary directory and initializes an AnthropicBot instance with
         Claude 3.7 Sonnet model for use in test methods.
         """
@@ -110,6 +115,11 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         return self
 
     def tearDown(self) -> None:
+        """Clean up test resources by removing the temporary directory.
+
+        This method is typically called after each test to ensure a clean state
+        for subsequent tests by deleting the temporary directory and all its contents.
+        """
         """Clean up test resources by removing the temporary directory.
 
         Removes the temporary directory and all its contents created during test setup.
