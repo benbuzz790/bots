@@ -66,8 +66,6 @@ from bots.utils.helpers import remove_code_blocks
 class ToolExecutionError(Exception):
     """Custom exception for tool execution failures that should not be treated as user interrupts."""
 
-    pass
-
 
 # from bots.foundation.base import Bot  # Commented to fix circular import
 # from bots import AnthropicBot  # Commented to fix circular import
@@ -947,25 +945,65 @@ def _convert_string_to_type(value, type_hint):
 
 
 def _convert_tool_output(result):
-    """Convert function result to string output."""
-    import json
+    """Convert function result to string output with automatic truncation for long outputs.
 
+    Truncates outputs exceeding a configurable threshold to prevent context overload.
+    Preserves start and end content with a clear truncation notice in the middle.
+
+    Configuration (via environment variables):
+        TOOLIFY_TRUNCATE_ENABLED: "true" to enable truncation (default: "true")
+        TOOLIFY_TRUNCATE_THRESHOLD: Max characters before truncation (default: 5000)
+        TOOLIFY_TRUNCATE_PRESERVE: Characters to preserve from start/end (default: 2000)
+
+    Args:
+        result: The function result to convert to string
+
+    Returns:
+        str: String representation of result, possibly truncated
+    """
+    import json
+    import os
+
+    # Convert result to string first
     if result is None:
-        return "Tool execution completed without errors"
+        output = "Tool execution completed without errors"
     elif isinstance(result, str):
-        return result
+        output = result
     elif isinstance(result, (int, float, bool)):
-        return str(result)
+        output = str(result)
     elif isinstance(result, (list, dict)):
         # JSON serialize complex types
         try:
-            return json.dumps(result, indent=2, ensure_ascii=False)
+            output = json.dumps(result, indent=2, ensure_ascii=False)
         except (TypeError, ValueError):
             # Fallback to string representation
-            return str(result)
+            output = str(result)
     else:
         # For other types, use string representation
-        return str(result)
+        output = str(result)
+
+    # Check if truncation is enabled
+    truncate_enabled = os.environ.get("TOOLIFY_TRUNCATE_ENABLED", "true").lower() == "true"
+
+    if not truncate_enabled:
+        return output
+
+    # Get truncation configuration
+    try:
+        threshold = int(os.environ.get("TOOLIFY_TRUNCATE_THRESHOLD", "5000"))
+        preserve = int(os.environ.get("TOOLIFY_TRUNCATE_PRESERVE", "2000"))
+    except ValueError:
+        # Fallback to defaults if invalid values
+        threshold = 5000
+        preserve = 2000
+
+    # Apply truncation if output exceeds threshold
+    if len(output) > threshold:
+        truncation_message = "\n\n... (tool result truncated from middle to save you from context overload) ...\n\n"
+        truncated_output = output[:preserve] + truncation_message + output[-preserve:]
+        return truncated_output
+
+    return output
 
 
 def _log_error_to_file(function_name: str, error_message: str, args: tuple = None, kwargs: dict = None) -> None:
