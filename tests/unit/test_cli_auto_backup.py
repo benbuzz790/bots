@@ -98,6 +98,12 @@ def test_cli_output_display_with_callbacks():
     output_buffer = StringIO()
 
     class TestCallback:
+        """Callback handler for processing events and writing responses to output buffer.
+
+        Args:
+            event_type (str): Type of event being processed.
+            data: Event data to be processed and written to buffer.
+        """
         def __call__(self, event_type, data):
             if event_type == "response":
                 output_buffer.write(f"Response: {data}\n")
