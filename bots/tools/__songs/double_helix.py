@@ -115,7 +115,7 @@ def play_double_helix():
     print("=" * 60)
     print("\n🎵 Playing at 112 BPM...\n")
 
-    result = piano(song, tempo=112)
+    result = piano(song, tempo=112, voice="warm_upright")
 
     print(f"\n{result}")
     print("\n" + "=" * 60)

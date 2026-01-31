@@ -946,23 +946,14 @@ def _convert_string_to_type(value, type_hint):
 
 def _convert_tool_output(result):
     """Convert function result to string output with automatic truncation for long outputs.
-
-    Truncates outputs exceeding a configurable threshold to prevent context overload.
-    Preserves start and end content with a clear truncation notice in the middle.
-
-    Configuration (via environment variables):
-        TOOLIFY_TRUNCATE_ENABLED: "true" to enable truncation (default: "true")
-        TOOLIFY_TRUNCATE_THRESHOLD: Max characters before truncation (default: 5000)
-        TOOLIFY_TRUNCATE_PRESERVE: Characters to preserve from start/end (default: 2000)
-
+    Truncates outputs exceeding 5000 characters to prevent context overload.
+    Preserves first and last 2000 characters with a clear truncation notice in the middle.
     Args:
         result: The function result to convert to string
-
     Returns:
         str: String representation of result, possibly truncated
     """
     import json
-    import os
 
     # Convert result to string first
     if result is None:
@@ -981,28 +972,13 @@ def _convert_tool_output(result):
     else:
         # For other types, use string representation
         output = str(result)
-
-    # Check if truncation is enabled
-    truncate_enabled = os.environ.get("TOOLIFY_TRUNCATE_ENABLED", "true").lower() == "true"
-
-    if not truncate_enabled:
-        return output
-
-    # Get truncation configuration
-    try:
-        threshold = int(os.environ.get("TOOLIFY_TRUNCATE_THRESHOLD", "5000"))
-        preserve = int(os.environ.get("TOOLIFY_TRUNCATE_PRESERVE", "2000"))
-    except ValueError:
-        # Fallback to defaults if invalid values
-        threshold = 5000
-        preserve = 2000
-
     # Apply truncation if output exceeds threshold
+    threshold = 5000
+    preserve = 2000
     if len(output) > threshold:
         truncation_message = "\n\n... (tool result truncated from middle to save you from context overload) ...\n\n"
         truncated_output = output[:preserve] + truncation_message + output[-preserve:]
         return truncated_output
-
     return output
 
 
