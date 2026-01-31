@@ -1,63 +1,39 @@
 # @toolify Decorator Auto-Truncation
 ## Overview
-The `@toolify` decorator includes automatic truncation to prevent context overload from very long tool outputs. This feature helps maintain manageable conversation context when tools return large amounts of data (e.g., file contents, code analysis results, API responses).
+The `@toolify` decorator includes automatic truncation as an emergency measure to prevent context overload from pathological cases where tools return extremely large outputs.
 ## How It Works
-When a tool returns output exceeding 5000 characters, the decorator automatically truncates the output from the middle while preserving the start and end content. This ensures:
-1. **Context stays manageable** - Long outputs don't overwhelm the LLM's context window
-2. **Important content preserved** - First and last 2000 characters are kept intact
-3. **Clear indication** - A truncation message clearly shows what happened
+When a tool returns output exceeding 500,000 characters, the decorator automatically truncates the output from the middle while preserving the start and end content. This is an emergency safeguard for extreme cases.
 ## Default Behavior
 Truncation is **always enabled** with these settings:
-- **Threshold**: 5000 characters
-- **Preserve**: 2000 characters from start and end
+- **Threshold**: 500,000 characters (~5,000 lines at 100 chars/line)
+- **Preserve**: 100,000 characters from start and end
 - **Message**: "(tool result truncated from middle to save you from context overload)"
+This is intentionally set very high - it's an emergency measure, not an efficiency technique.
 ### Example
 ```python
 from bots.dev.decorators import toolify
 @toolify()
-def read_large_file(filename: str) -> str:
+def read_massive_file(filename: str) -> str:
     """Read and return file contents."""
     with open(filename, 'r') as f:
         return f.read()
-# If file is > 5000 chars, output will be truncated:
-# [First 2000 chars]
+# Only if file is > 500,000 chars will output be truncated:
+# [First 100,000 chars]
 #
 # ... (tool result truncated from middle to save you from context overload) ...
 #
-# [Last 2000 chars]
+# [Last 100,000 chars]
 ```
 ## Use Cases
-### 1. File Reading Tools
-When reading large files, truncation prevents overwhelming context:
-```python
-@toolify("Read file contents")
-def read_file(path: str) -> str:
-    with open(path, 'r') as f:
-        return f.read()
-```
-### 2. Code Analysis Tools
-Analysis results can be verbose. Truncation keeps them manageable:
-```python
-@toolify("Analyze Python code")
-def analyze_code(code: str) -> dict:
-    return {
-        "functions": [...],  # Could be hundreds
-        "classes": [...],    # Could be hundreds
-        "issues": [...]      # Could be many
-    }
-```
-### 3. API Response Tools
-External API responses may be large. Truncation helps:
-```python
-@toolify("Fetch API data")
-def fetch_data(endpoint: str) -> str:
-    response = requests.get(endpoint)
-    return response.text  # Could be megabytes
-```
+This is primarily for pathological cases:
+- Accidentally reading a multi-megabyte file
+- API responses that return unexpectedly large datasets
+- Runaway output generation
+For normal use, outputs should be well under the 500k threshold.
 ## Backward Compatibility
 This feature is **fully backward compatible**:
 - Existing `@toolify()` usage continues to work unchanged
-- Normal-sized outputs (< 5000 chars) are not affected
+- Normal-sized outputs (< 500k chars) are not affected
 - No changes to tool function signatures required
 ## Technical Details
 ### Implementation
@@ -69,23 +45,12 @@ Truncation occurs in the `_convert_tool_output()` function after:
 - **Minimal overhead** - Only checks length and slices strings
 - **No parsing** - Works on final string output
 - **No buffering** - Processes output after tool completes
-### Edge Cases
-- **Exact threshold**: Outputs exactly at 5000 chars are NOT truncated
-- **None results**: Not affected by truncation
-- **Empty strings**: Not affected by truncation
-- **Error messages**: Typically short, rarely truncated
 ## Testing
-Comprehensive tests are available in `tests/unit/test_toolify_truncation.py`:
+Tests are available in `tests/unit/test_toolify_truncation.py`:
 ```bash
 # Run truncation tests
 pytest tests/unit/test_toolify_truncation.py -xvs
 ```
-Tests cover:
-- Normal-sized outputs (no truncation)
-- Outputs exceeding threshold (truncation applied)
-- Edge cases (empty, None, exact threshold)
-- Different output types (strings, JSON, lists)
-- Integration with @toolify decorator
 ## Related Documentation
 - [SPEC_TOOLIFY_CONTRACTS.md](../SPEC_TOOLIFY_CONTRACTS.md) - Contract-based validation
 - [bots/dev/decorators.py](../bots/dev/decorators.py) - Implementation source code
