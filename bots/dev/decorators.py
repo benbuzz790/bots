@@ -1007,8 +1007,8 @@ def _convert_string_to_type(value, type_hint):
 
 def _convert_tool_output(result):
     """Convert function result to string output with automatic truncation for long outputs.
-    Truncates outputs exceeding 5000 characters to prevent context overload.
-    Preserves first and last 2000 characters with a clear truncation notice in the middle.
+    Truncates outputs exceeding 20000 characters to prevent context overload.
+    Preserves first and last 8000 characters with a clear truncation notice in the middle.
     Args:
         result: The function result to convert to string
     Returns:
@@ -1034,8 +1034,8 @@ def _convert_tool_output(result):
         # For other types, use string representation
         output = str(result)
     # Apply truncation if output exceeds threshold
-    threshold = 5000
-    preserve = 2000
+    threshold = 20000
+    preserve = 8000
     if len(output) > threshold:
         truncation_message = "\n\n... (tool result truncated from middle to save you from context overload) ...\n\n"
         truncated_output = output[:preserve] + truncation_message + output[-preserve:]
