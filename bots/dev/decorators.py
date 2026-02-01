@@ -66,8 +66,6 @@ from bots.utils.helpers import remove_code_blocks
 class ToolExecutionError(Exception):
     """Custom exception for tool execution failures that should not be treated as user interrupts."""
 
-    pass
-
 
 # from bots.foundation.base import Bot  # Commented to fix circular import
 # from bots import AnthropicBot  # Commented to fix circular import
@@ -140,6 +138,18 @@ def lazy_fn(prompt: Optional[str] = None, bot: Optional[Any] = None, context: Op
     """
 
     def decorator(func: Callable) -> Callable:
+        """Decorator that automatically converts string inputs to proper types based on function type hints.
+
+        Args:
+            func: The function to be decorated with automatic type conversion.
+
+        Returns:
+            The decorated function with input type conversion applied.
+
+        Raises:
+            TypeError: If type conversion fails for any input parameter.
+            ValueError: If string input cannot be converted to the target type.
+        """
         """Inner decorator function that sets up the lazy implementation.
 
         This decorator initializes the lazy implementation environment by:
@@ -233,6 +243,15 @@ def lazy_fn(prompt: Optional[str] = None, bot: Optional[Any] = None, context: Op
                         self.new_code = new_code
 
                     def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.AST:
+                        """Visits a function definition node and replaces it if it matches the target function name.
+
+                        Args:
+                            node: The AST function definition node to visit.
+
+                        Returns:
+                            The replacement AST node if the function name matches the target, otherwise
+                            the original node unchanged.
+                        """
                         if node.name == self.function_name:
                             logger.debug(f"Replacing function: {self.function_name}")
                             new_node: ast.AST = ast.parse(self.new_code).body[0]
@@ -394,6 +413,19 @@ def lazy_class(prompt: Optional[str] = None, bot: Optional[Any] = None, context:
                         self.new_code = new_code
 
                     def visit_ClassDef(self, node: ast.ClassDef) -> ast.AST:
+                        """Visits a class definition node and replaces it with new code if it matches the target class name.
+
+                        This method is part of an AST visitor pattern that traverses class definition nodes.
+                        When the visited class name matches the specified target class name, it replaces
+                        the entire class definition with parsed new code.
+
+                        Args:
+                            node: The AST ClassDef node being visited.
+
+                        Returns:
+                            The replacement AST node if the class name matches the target, otherwise
+                            returns the original node unchanged.
+                        """
                         if node.name == self.class_name:
                             logger.debug(f"Replacing class: {self.class_name}")
                             new_node: ast.AST = ast.parse(self.new_code).body[0]
@@ -673,6 +705,33 @@ def debug_on_error(func: Callable) -> Callable:
 
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
+        """Wrapper function that converts tool inputs to proper types and validates preconditions.
+
+        Converts string inputs to appropriate types based on function type hints and
+        performs precondition checks before function execution.
+
+        Raises:
+            TypeError: If input conversion fails due to incompatible types.
+            ValueError: If precondition validation fails.
+        """
+        """Executes the wrapped function and checks for tool failure indicators in string results.
+
+        Returns:
+            Any: The result of the wrapped function execution, or processed result if tool failure is detected.
+        """
+        """Executes the wrapped function with exception handling and traceback printing.
+
+        This wrapper function calls the original function with provided arguments and
+        keyword arguments. If an exception occurs during execution, it captures and
+        prints the full traceback before allowing the exception to propagate.
+
+        Returns:
+            Any: The return value of the wrapped function if execution succeeds.
+
+        Raises:
+            Exception: Any exception raised by the wrapped function after printing
+                its traceback.
+        """
         try:
             return func(*args, **kwargs)
         except Exception:
@@ -947,25 +1006,41 @@ def _convert_string_to_type(value, type_hint):
 
 
 def _convert_tool_output(result):
-    """Convert function result to string output."""
+    """Convert function result to string output with automatic truncation for long outputs.
+    Truncates outputs exceeding 20000 characters to prevent context overload.
+    Preserves first and last 8000 characters with a clear truncation notice in the middle.
+    Args:
+        result: The function result to convert to string
+    Returns:
+        str: String representation of result, possibly truncated
+    """
     import json
 
+    # Convert result to string first
     if result is None:
-        return "Tool execution completed without errors"
+        output = "Tool execution completed without errors"
     elif isinstance(result, str):
-        return result
+        output = result
     elif isinstance(result, (int, float, bool)):
-        return str(result)
+        output = str(result)
     elif isinstance(result, (list, dict)):
         # JSON serialize complex types
         try:
-            return json.dumps(result, indent=2, ensure_ascii=False)
+            output = json.dumps(result, indent=2, ensure_ascii=False)
         except (TypeError, ValueError):
             # Fallback to string representation
-            return str(result)
+            output = str(result)
     else:
         # For other types, use string representation
-        return str(result)
+        output = str(result)
+    # Apply truncation if output exceeds threshold
+    threshold = 20000
+    preserve = 8000
+    if len(output) > threshold:
+        truncation_message = "\n\n... (tool result truncated from middle to save you from context overload) ...\n\n"
+        truncated_output = output[:preserve] + truncation_message + output[-preserve:]
+        return truncated_output
+    return output
 
 
 def _log_error_to_file(function_name: str, error_message: str, args: tuple = None, kwargs: dict = None) -> None:

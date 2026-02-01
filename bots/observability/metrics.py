@@ -12,31 +12,43 @@ Session Tracking:
 - History resets when a new Python process/CLI instance starts
 - Use get_total_tokens(timestamp) and get_total_cost(timestamp) to query metrics since a specific time
 
+Per-Bot Tracking:
+- Bot-specific metrics isolation for concurrent bot executions
+- Use get_bot_cost(bot_id, timestamp) and get_bot_tokens(bot_id, timestamp) for per-bot queries
+- Recording functions accept optional bot_id parameter for attribution
+- Prevents cost/token stealing between concurrent bots
+
 Example:
     ```python
     from bots.observability import metrics
     import time
 
-    # Record API call
+    # Record API call with bot_id
     metrics.record_api_call(
         duration=2.5,
         provider="anthropic",
         model="claude-3-5-sonnet-latest",
-        status="success"
+        status="success",
+        bot_id="bot_1_abc123"
     )
 
-    # Record cost
+    # Record cost with bot_id
     metrics.record_cost(
         cost=0.015,
         provider="anthropic",
-        model="claude-3-5-sonnet-latest"
+        model="claude-3-5-sonnet-latest",
+        bot_id="bot_1_abc123"
     )
 
-    # Track session totals
+    # Track session totals (global)
     session_start = time.time()
     # ... make API calls ...
     totals = metrics.get_total_tokens(session_start)
     cost = metrics.get_total_cost(session_start)
+
+    # Track per-bot totals
+    bot_totals = metrics.get_bot_tokens("bot_1_abc123", session_start)
+    bot_cost = metrics.get_bot_cost("bot_1_abc123", session_start)
     ```
 """
 
@@ -76,15 +88,19 @@ _initialized: bool = False
 _init_lock = threading.Lock()  # Lock for thread-safe initialization
 _custom_exporter: Optional[object] = None  # Store reference to custom exporter
 
-# Track last recorded metrics for CLI display
+# Track last recorded metrics for CLI display (backward compatibility - global)
 _last_recorded_metrics = {"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0, "cost": 0.0, "duration": 0.0}
 _metrics_lock = threading.Lock()  # Lock for thread-safe metrics updates
 
-# Metrics history for session tracking
+# Metrics history for session tracking (global)
 # Each entry is a tuple: (timestamp, input_tokens, output_tokens, cached_tokens, cost)
 # This list resets when a new Python process/CLI instance starts
 # Used by get_total_tokens() and get_total_cost() to calculate cumulative totals since a given timestamp
 _metrics_history: List[Tuple[float, int, int, int, float]] = []
+
+# Per-bot metrics tracking
+# Key: bot_id, Value: dict with 'last_metrics' and 'history'
+_bot_metrics: Dict[str, Dict] = {}
 
 # Metric instruments (initialized after setup)
 _response_time_histogram = None
@@ -128,7 +144,7 @@ def reset_metrics():
 
     Warning: This is not thread-safe and should only be used in test environments.
     """
-    global _last_recorded_metrics, _metrics_history
+    global _last_recorded_metrics, _metrics_history, _bot_metrics
     global _meter_provider, _initialized, _custom_exporter
     global _response_time_histogram, _api_call_duration_histogram
     global _tool_execution_duration_histogram, _message_building_duration_histogram
@@ -165,6 +181,7 @@ def reset_metrics():
         "duration": 0.0,
     }
     _metrics_history = []
+    _bot_metrics = {}
 
 
 def setup_metrics(config=None, reader=None, verbose=False):
@@ -392,6 +409,120 @@ def get_total_cost(since_timestamp: float) -> float:
         return cost_total
 
 
+def get_bot_tokens(bot_id: str, since_timestamp: float = 0.0) -> Dict[str, int]:
+    """Get token usage for a specific bot since a given timestamp.
+
+    This function provides per-bot token isolation for concurrent bot executions.
+    Prevents token attribution errors when multiple bots run simultaneously.
+
+    Args:
+        bot_id: Unique identifier for the bot
+        since_timestamp: Unix timestamp (from time.time()). Only metrics recorded after
+                        this time will be included. Defaults to 0.0 (all history).
+
+    Returns:
+        dict: Dictionary with keys:
+            - 'input': Total input tokens for this bot
+            - 'output': Total output tokens for this bot
+            - 'cached': Total cached tokens for this bot
+            - 'total': Sum of input + output + cached tokens
+
+    Example:
+        >>> import time
+        >>> session_start = time.time()
+        >>> # ... bot makes API calls with bot_id="bot_1" ...
+        >>> totals = get_bot_tokens("bot_1", session_start)
+        >>> print(f"Bot 1 used {totals['total']} tokens")
+    """
+    with _metrics_lock:
+        if bot_id not in _bot_metrics:
+            return {"input": 0, "output": 0, "cached": 0, "total": 0}
+
+        input_total = 0
+        output_total = 0
+        cached_total = 0
+
+        for timestamp, input_tokens, output_tokens, cached_tokens, _ in _bot_metrics[bot_id]["history"]:
+            if timestamp > since_timestamp:
+                input_total += input_tokens
+                output_total += output_tokens
+                cached_total += cached_tokens
+
+        return {
+            "input": input_total,
+            "output": output_total,
+            "cached": cached_total,
+            "total": input_total + output_total + cached_total,
+        }
+
+
+def get_bot_cost(bot_id: str, since_timestamp: float = 0.0) -> float:
+    """Get total cost for a specific bot since a given timestamp.
+
+    This function provides per-bot cost isolation for concurrent bot executions.
+    Prevents cost attribution errors when multiple bots run simultaneously.
+
+    Args:
+        bot_id: Unique identifier for the bot
+        since_timestamp: Unix timestamp (from time.time()). Only costs recorded after
+                        this time will be included. Defaults to 0.0 (all history).
+
+    Returns:
+        float: Total cost in USD for this bot since the given timestamp
+
+    Example:
+        >>> import time
+        >>> session_start = time.time()
+        >>> # ... bot makes API calls with bot_id="bot_1" ...
+        >>> cost = get_bot_cost("bot_1", session_start)
+        >>> print(f"Bot 1 cost: ${cost:.4f}")
+    """
+    with _metrics_lock:
+        if bot_id not in _bot_metrics:
+            return 0.0
+
+        cost_total = 0.0
+
+        for timestamp, _, _, _, cost in _bot_metrics[bot_id]["history"]:
+            if timestamp > since_timestamp:
+                cost_total += cost
+
+        return cost_total
+
+
+def clear_bot_metrics(bot_id: str):
+    """Clear all metrics for a specific bot.
+
+    Use this to reset a bot's metrics tracking, useful when reusing bot IDs
+    or cleaning up after bot execution completes.
+
+    Args:
+        bot_id: Unique identifier for the bot
+
+    Example:
+        >>> clear_bot_metrics("bot_1")
+    """
+    with _metrics_lock:
+        if bot_id in _bot_metrics:
+            del _bot_metrics[bot_id]
+
+
+def get_all_bot_ids() -> List[str]:
+    """Get list of all bot IDs that have recorded metrics.
+
+    Returns:
+        list: List of bot IDs (strings)
+
+    Example:
+        >>> bot_ids = get_all_bot_ids()
+        >>> for bot_id in bot_ids:
+        ...     cost = get_bot_cost(bot_id)
+        ...     print(f"{bot_id}: ${cost:.4f}")
+    """
+    with _metrics_lock:
+        return list(_bot_metrics.keys())
+
+
 def set_metrics_verbose(verbose: bool):
     """Set verbose mode for metrics output.
 
@@ -423,10 +554,28 @@ def get_meter(name: str):
     return _meter_provider.get_meter(name)
 
 
-# Helper functions for recording metrics
+def _ensure_bot_metrics(bot_id: str):
+    """Internal helper to ensure bot metrics structure exists.
+
+    Must be called with _metrics_lock held.
+
+    Args:
+        bot_id: Unique identifier for the bot
+    """
+    if bot_id not in _bot_metrics:
+        _bot_metrics[bot_id] = {
+            "last_metrics": {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cached_tokens": 0,
+                "cost": 0.0,
+                "duration": 0.0,
+            },
+            "history": [],
+        }
 
 
-def record_response_time(duration: float, provider: str, model: str, success: bool = True):
+def record_response_time(duration: float, provider: str, model: str, success: bool = True, bot_id: Optional[str] = None):
     """Record bot response time.
 
     Args:
@@ -434,21 +583,24 @@ def record_response_time(duration: float, provider: str, model: str, success: bo
         provider: Provider name (e.g., "anthropic", "openai", "google")
         model: Model name
         success: Whether the response was successful
+        bot_id: Optional bot identifier for per-bot tracking
     """
     if not _initialized or _response_time_histogram is None:
         return
 
-    _response_time_histogram.record(
-        duration,
-        attributes={
-            "provider": provider,
-            "model": model,
-            "success": str(success).lower(),
-        },
-    )
+    attributes = {
+        "provider": provider,
+        "model": model,
+        "success": str(success).lower(),
+    }
+
+    if bot_id:
+        attributes["bot_id"] = bot_id
+
+    _response_time_histogram.record(duration, attributes=attributes)
 
 
-def record_api_call(duration: float, provider: str, model: str, status: str = "success"):
+def record_api_call(duration: float, provider: str, model: str, status: str = "success", bot_id: Optional[str] = None):
     """Record API call metrics.
 
     Args:
@@ -456,83 +608,84 @@ def record_api_call(duration: float, provider: str, model: str, status: str = "s
         provider: Provider name (e.g., "anthropic", "openai", "google")
         model: Model name
         status: Call status ("success", "error", "timeout")
+        bot_id: Optional bot identifier for per-bot tracking
     """
     # Update last recorded metrics for CLI display (thread-safe)
     with _metrics_lock:
         _last_recorded_metrics["duration"] = duration
 
+        # Update per-bot metrics if bot_id provided
+        if bot_id:
+            _ensure_bot_metrics(bot_id)
+            _bot_metrics[bot_id]["last_metrics"]["duration"] = duration
+
     if not _initialized:
         return
 
+    attributes = {
+        "provider": provider,
+        "model": model,
+        "status": status,
+    }
+
+    if bot_id:
+        attributes["bot_id"] = bot_id
+
     if _api_call_duration_histogram is not None:
-        _api_call_duration_histogram.record(
-            duration,
-            attributes={
-                "provider": provider,
-                "model": model,
-                "status": status,
-            },
-        )
+        _api_call_duration_histogram.record(duration, attributes=attributes)
 
     if _api_calls_counter is not None:
-        _api_calls_counter.add(
-            1,
-            attributes={
-                "provider": provider,
-                "model": model,
-                "status": status,
-            },
-        )
+        _api_calls_counter.add(1, attributes=attributes)
 
 
-def record_tool_execution(duration: float, tool_name: str, success: bool = True):
+def record_tool_execution(duration: float, tool_name: str, success: bool = True, bot_id: Optional[str] = None):
     """Record tool execution metrics.
 
     Args:
         duration: Tool execution duration in seconds
         tool_name: Name of the tool
         success: Whether the tool execution was successful
+        bot_id: Optional bot identifier for per-bot tracking
     """
     if not _initialized:
         return
 
+    attributes = {
+        "tool_name": tool_name,
+        "success": str(success).lower(),
+    }
+
+    if bot_id:
+        attributes["bot_id"] = bot_id
+
     if _tool_execution_duration_histogram is not None:
-        _tool_execution_duration_histogram.record(
-            duration,
-            attributes={
-                "tool_name": tool_name,
-                "success": str(success).lower(),
-            },
-        )
+        _tool_execution_duration_histogram.record(duration, attributes=attributes)
 
     if _tool_calls_counter is not None:
-        _tool_calls_counter.add(
-            1,
-            attributes={
-                "tool_name": tool_name,
-                "success": str(success).lower(),
-            },
-        )
+        _tool_calls_counter.add(1, attributes=attributes)
 
 
-def record_message_building(duration: float, provider: str, model: str):
+def record_message_building(duration: float, provider: str, model: str, bot_id: Optional[str] = None):
     """Record message building duration.
 
     Args:
         duration: Message building duration in seconds
         provider: Provider name
         model: Model name
+        bot_id: Optional bot identifier for per-bot tracking
     """
     if not _initialized or _message_building_duration_histogram is None:
         return
 
-    _message_building_duration_histogram.record(
-        duration,
-        attributes={
-            "provider": provider,
-            "model": model,
-        },
-    )
+    attributes = {
+        "provider": provider,
+        "model": model,
+    }
+
+    if bot_id:
+        attributes["bot_id"] = bot_id
+
+    _message_building_duration_histogram.record(duration, attributes=attributes)
 
 
 def record_tokens(
@@ -541,6 +694,7 @@ def record_tokens(
     provider: str,
     model: str,
     cached_tokens: int = 0,
+    bot_id: Optional[str] = None,
 ):
     """Record token usage.
 
@@ -550,6 +704,7 @@ def record_tokens(
         provider: Provider name
         model: Model name
         cached_tokens: Number of cached tokens (optional, default 0)
+        bot_id: Optional bot identifier for per-bot tracking
     """
     # Update last recorded metrics for CLI display (thread-safe)
     with _metrics_lock:
@@ -557,57 +712,58 @@ def record_tokens(
         _last_recorded_metrics["output_tokens"] = output_tokens
         _last_recorded_metrics["cached_tokens"] = cached_tokens
 
-        # Add to metrics history for session tracking
+        # Add to global metrics history for session tracking
         _metrics_history.append(
             (time.time(), input_tokens, output_tokens, cached_tokens, 0.0)  # cost will be recorded separately
         )
 
+        # Update per-bot metrics if bot_id provided
+        if bot_id:
+            _ensure_bot_metrics(bot_id)
+            _bot_metrics[bot_id]["last_metrics"]["input_tokens"] = input_tokens
+            _bot_metrics[bot_id]["last_metrics"]["output_tokens"] = output_tokens
+            _bot_metrics[bot_id]["last_metrics"]["cached_tokens"] = cached_tokens
+            _bot_metrics[bot_id]["history"].append((time.time(), input_tokens, output_tokens, cached_tokens, 0.0))
+
     if not _initialized or _tokens_used_counter is None:
         return
 
-    _tokens_used_counter.add(
-        input_tokens,
-        attributes={
-            "provider": provider,
-            "model": model,
-            "token_type": "input",
-        },
-    )
+    attributes_base = {
+        "provider": provider,
+        "model": model,
+    }
 
-    _tokens_used_counter.add(
-        output_tokens,
-        attributes={
-            "provider": provider,
-            "model": model,
-            "token_type": "output",
-        },
-    )
+    if bot_id:
+        attributes_base["bot_id"] = bot_id
+
+    # Record input tokens
+    attributes_input = {**attributes_base, "token_type": "input"}
+    _tokens_used_counter.add(input_tokens, attributes=attributes_input)
+
+    # Record output tokens
+    attributes_output = {**attributes_base, "token_type": "output"}
+    _tokens_used_counter.add(output_tokens, attributes=attributes_output)
 
     # Record cached tokens if provided
     if cached_tokens > 0:
-        _tokens_used_counter.add(
-            cached_tokens,
-            attributes={
-                "provider": provider,
-                "model": model,
-                "token_type": "cached",
-            },
-        )
+        attributes_cached = {**attributes_base, "token_type": "cached"}
+        _tokens_used_counter.add(cached_tokens, attributes=attributes_cached)
 
 
-def record_cost(cost: float, provider: str, model: str):
+def record_cost(cost: float, provider: str, model: str, bot_id: Optional[str] = None):
     """Record cost metrics.
 
     Args:
         cost: Cost in USD
         provider: Provider name
         model: Model name
+        bot_id: Optional bot identifier for per-bot tracking
     """
     # Update last recorded metrics for CLI display (thread-safe)
     with _metrics_lock:
         _last_recorded_metrics["cost"] = cost
 
-        # Add to metrics history for session tracking
+        # Add to global metrics history for session tracking
         _metrics_history.append(
             (
                 time.time(),
@@ -618,70 +774,82 @@ def record_cost(cost: float, provider: str, model: str):
             )
         )
 
+        # Update per-bot metrics if bot_id provided
+        if bot_id:
+            _ensure_bot_metrics(bot_id)
+            _bot_metrics[bot_id]["last_metrics"]["cost"] = cost
+            _bot_metrics[bot_id]["history"].append((time.time(), 0, 0, 0, cost))
+
     if not _initialized:
         return
 
+    attributes = {
+        "provider": provider,
+        "model": model,
+    }
+
+    if bot_id:
+        attributes["bot_id"] = bot_id
+
     if _cost_histogram is not None:
-        _cost_histogram.record(
-            cost,
-            attributes={
-                "provider": provider,
-                "model": model,
-            },
-        )
+        _cost_histogram.record(cost, attributes=attributes)
 
     if _cost_counter is not None:
-        _cost_counter.add(
-            cost,
-            attributes={
-                "provider": provider,
-                "model": model,
-            },
-        )
+        _cost_counter.add(cost, attributes=attributes)
 
 
-def record_error(error_type: str, provider: str, operation: str):
+def record_error(error_type: str, provider: str, operation: str, bot_id: Optional[str] = None):
     """Record error metrics.
 
     Args:
         error_type: Type of error (exception class name)
         provider: Provider name
         operation: Operation that failed (e.g., "respond", "api_call")
+        bot_id: Optional bot identifier for per-bot tracking
     """
     if not _initialized or _errors_counter is None:
         return
 
-    _errors_counter.add(
-        1,
-        attributes={
-            "provider": provider,
-            "error_type": error_type,
-            "operation": operation,
-        },
-    )
+    attributes = {
+        "provider": provider,
+        "error_type": error_type,
+        "operation": operation,
+    }
+
+    if bot_id:
+        attributes["bot_id"] = bot_id
+
+    _errors_counter.add(1, attributes=attributes)
 
 
-def record_tool_failure(tool_name: str, error_type: str):
+def record_tool_failure(tool_name: str, error_type: str, bot_id: Optional[str] = None):
     """Record tool failure metrics.
 
     Args:
         tool_name: Name of the tool that failed
         error_type: Type of error (exception class name)
+        bot_id: Optional bot identifier for per-bot tracking
     """
     if not _initialized or _tool_failures_counter is None:
         return
 
-    _tool_failures_counter.add(
-        1,
-        attributes={
-            "tool_name": tool_name,
-            "error_type": error_type,
-        },
-    )
+    attributes = {
+        "tool_name": tool_name,
+        "error_type": error_type,
+    }
+
+    if bot_id:
+        attributes["bot_id"] = bot_id
+
+    _tool_failures_counter.add(1, attributes=attributes)
 
 
-def get_and_clear_last_metrics():
+def get_and_clear_last_metrics(bot_id: Optional[str] = None):
     """Get the last recorded metrics and clear them.
+
+    Args:
+        bot_id: Optional bot identifier. If provided, returns and clears bot-specific metrics.
+                If None, returns and clears global metrics (backward compatibility).
 
     Returns:
         dict: Dictionary with keys: input_tokens, output_tokens, cached_tokens, cost, duration
@@ -690,14 +858,35 @@ def get_and_clear_last_metrics():
 
     # Make a copy and clear atomically (thread-safe)
     with _metrics_lock:
-        metrics_copy = _last_recorded_metrics.copy()
-        _last_recorded_metrics = {
-            "input_tokens": 0,
-            "output_tokens": 0,
-            "cached_tokens": 0,
-            "cost": 0.0,
-            "duration": 0.0,
-        }
+        if bot_id:
+            # Per-bot metrics
+            if bot_id not in _bot_metrics:
+                return {
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "cached_tokens": 0,
+                    "cost": 0.0,
+                    "duration": 0.0,
+                }
+
+            metrics_copy = _bot_metrics[bot_id]["last_metrics"].copy()
+            _bot_metrics[bot_id]["last_metrics"] = {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cached_tokens": 0,
+                "cost": 0.0,
+                "duration": 0.0,
+            }
+        else:
+            # Global metrics (backward compatibility)
+            metrics_copy = _last_recorded_metrics.copy()
+            _last_recorded_metrics = {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cached_tokens": 0,
+                "cost": 0.0,
+                "duration": 0.0,
+            }
 
     return metrics_copy
 
