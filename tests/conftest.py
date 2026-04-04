@@ -52,6 +52,27 @@ def create_safe_test_file(content, prefix="test", extension="py", directory=None
         return filepath
 
 
+def pytest_configure(config):
+    """Register custom pytest markers for test categorization.
+
+    Markers:
+        slow: Tests that take significant time to run (>5 seconds)
+        integration: Integration tests that test multiple components together
+        api: Tests that make real API calls to external services (OpenAI, Anthropic, etc.)
+        flaky: Tests known to be flaky/intermittent
+
+    Usage:
+        @pytest.mark.slow
+        @pytest.mark.api
+        def test_anthropic_integration():
+            pass
+    """
+    config.addinivalue_line("markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')")
+    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+    config.addinivalue_line("markers", "api: marks tests that call real APIs")
+    config.addinivalue_line("markers", "flaky: marks tests as flaky/intermittent")
+
+
 def pytest_collection_modifyitems(config, items):
     """
     Modify test items to enforce serial execution for tests marked with @serial or @cli_serial.
