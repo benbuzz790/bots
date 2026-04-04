@@ -115,6 +115,8 @@ class TestBranchSelfIntegration(DetailedTestCase):
         self.assertGreater(len(response) if response else 0, 10, "Should produce some output")
         # Test passes as long as it completes without crashing
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_branch_self_tool_availability(self):
         """Test that branch_self tool is properly available in CLI context."""
         bot = AnthropicBot(
@@ -127,6 +129,8 @@ class TestBranchSelfIntegration(DetailedTestCase):
         self.assertIn("branch_self", tool_names, "branch_self should be available as a tool")
         print(f"✅ branch_self tool is available. All tools: {tool_names}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_branch_self_nested_directory_and_file_creation(self):
         """Test branch_self with nested directory and file creation."""
         print("\n" + "=" * 50)
@@ -160,6 +164,8 @@ class TestBranchSelfIntegration(DetailedTestCase):
         if "dir1" in dirs_created and os.path.exists("dir1/test1.txt"):
             print("✅ Nested directory and file creation successful")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_branch_self_preserves_cli_callbacks(self):
         """Test that branch_self preserves CLI callbacks during execution.
 

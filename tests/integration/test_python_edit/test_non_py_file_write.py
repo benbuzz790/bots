@@ -2,6 +2,8 @@ import os
 import tempfile
 import unittest
 
+import pytest
+
 from bots.tools.python_edit import python_edit
 
 
@@ -21,6 +23,7 @@ class TestNonPyFileWrite(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.api
     def test_write_new_txt_file(self):
         """Test that python_edit writes a new .txt file with a warning."""
         file_path = "test_file.txt"
@@ -40,6 +43,7 @@ class TestNonPyFileWrite(unittest.TestCase):
         self.assertIn("WARNING", result)
         self.assertIn(file_path, result)
 
+    @pytest.mark.api
     def test_write_new_md_file(self):
         """Test that python_edit writes a new .md file with a warning."""
         file_path = "README.md"
@@ -58,6 +62,7 @@ class TestNonPyFileWrite(unittest.TestCase):
         # Check that the result indicates success
         self.assertIn("WARNING", result)
 
+    @pytest.mark.api
     def test_write_new_json_file(self):
         """Test that python_edit writes a new .json file with a warning."""
         file_path = "config.json"
@@ -76,6 +81,7 @@ class TestNonPyFileWrite(unittest.TestCase):
         # Check that the result contains a warning
         self.assertIn("WARNING", result)
 
+    @pytest.mark.api
     def test_write_new_file_in_subdirectory(self):
         """Test that python_edit creates subdirectories when writing non-.py files."""
         file_path = "subdir/nested/test.txt"
@@ -96,6 +102,7 @@ class TestNonPyFileWrite(unittest.TestCase):
         # Check that the result contains a warning
         self.assertIn("WARNING", result)
 
+    @pytest.mark.api
     def test_existing_non_py_file_returns_error(self):
         """Test that python_edit returns an error for existing non-.py files."""
         file_path = "existing.txt"
@@ -116,6 +123,7 @@ class TestNonPyFileWrite(unittest.TestCase):
             actual_content = f.read()
         self.assertEqual(actual_content, "Original content\n")
 
+    @pytest.mark.api
     def test_non_py_file_with_scope_returns_error(self):
         """Test that python_edit returns a warning when trying to use scope with non-.py files."""
         file_path = "test.txt::SomeScope"

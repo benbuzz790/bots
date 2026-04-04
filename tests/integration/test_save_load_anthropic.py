@@ -225,6 +225,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         mock_response.usage.output_tokens = 10
         return mock_response
 
+    @pytest.mark.api
     def test_basic_save_load(self) -> None:
         """Test basic bot attribute persistence during save and load operations.
 
@@ -257,6 +258,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.assertEqual(self.bot.role, loaded_bot.role)
         self.assertEqual(self.bot.role_description, loaded_bot.role_description)
 
+    @pytest.mark.api
     def test_save_load_after_conversation(self) -> None:
         """Test conversation history persistence during save and load operations.
 
@@ -290,6 +292,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.assertEqual(self.bot.conversation._node_count(), loaded_bot.conversation._node_count())
         self.assertEqual(self.bot.conversation.content, loaded_bot.conversation.content)
 
+    @pytest.mark.api
     def test_tool_execution_results(self) -> None:
         """Test tool execution result persistence in conversation nodes.
 
@@ -340,6 +343,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             any(("5" in str(v) for v in loaded_tool_results)) or any(("5" in str(v) for v in loaded_pending_results))
         )
 
+    @pytest.mark.api
     def test_save_load_with_tool_use(self) -> None:
         """Test tool functionality persistence through multiple interactions.
 
@@ -407,6 +411,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             any(("42" in str(v) for v in loaded_tool_results)) or any(("42" in str(v) for v in loaded_pending_results))
         )
 
+    @pytest.mark.api
     def test_module_tool_persistence(self) -> None:
         """Test module-based tool persistence through multiple save/load cycles.
 
@@ -453,6 +458,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
                 f"Function {func_name} is not callable after two save/load cycles",
             )
 
+    @pytest.mark.api
     def test_callable_tool_persistence(self) -> None:
         """Test callabe-based tool persistence through multiple save/load cycles.
 
@@ -501,6 +507,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
                 f"Function {func_name} is not callable after two save/load cycles",
             )
 
+    @pytest.mark.api
     def test_save_load_empty_bot(self) -> None:
         """Test save/load operations on a bot with no conversation history.
 
@@ -556,6 +563,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.assertEqual(assistant_response.role, "assistant")
         self.assertTrue(len(assistant_response.content) > 0)
 
+    @pytest.mark.api
     def test_save_load_with_file_tools(self) -> None:
         """Test persistence of tools loaded from file paths.
 
@@ -597,6 +605,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             if "function" in original_tool and "function" in loaded_tool:
                 self.assertEqual(type(original_tool["function"]), type(loaded_tool["function"]))
 
+    @pytest.mark.api
     def test_save_load_with_module_tools(self) -> None:
         """Test persistence of tools loaded from imported modules.
 
@@ -636,6 +645,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             self.assertEqual(original_tool.get("returns", {}).get("type"), loaded_tool.get("returns", {}).get("type"))
             self.assertEqual(original_tool.get("type"), loaded_tool.get("type"))
 
+    @pytest.mark.api
     def test_custom_attributes(self) -> None:
         """Test persistence of custom bot attributes.
 
@@ -679,6 +689,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         with self.assertRaises(AttributeError):
             _ = loaded_bot.non_existent_attr
 
+    @pytest.mark.api
     def test_file_creation(self) -> None:
         """Test bot save file creation and naming.
 
@@ -714,6 +725,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.assertTrue(os.path.exists(auto_path))
         self.assertTrue(auto_path.endswith(".bot"))
 
+    @pytest.mark.api
     def test_corrupted_save(self) -> None:
         """Test handling of corrupted save file scenarios.
 
@@ -752,6 +764,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         with self.assertRaises(ValueError):
             Bot.load(save_path)
 
+    @pytest.mark.api
     def test_working_directory_independence(self) -> None:
         """Test bot persistence across different working directories.
 
@@ -825,6 +838,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         finally:
             os.chdir(original_cwd)
 
+    @pytest.mark.api
     def test_mixed_tool_sources(self) -> None:
         """Test persistence of tools from multiple sources.
 
@@ -881,6 +895,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.assertEqual("17", result3[0]["content"])
         self.assertEqual("5", result4[0]["content"])
 
+    @pytest.mark.api
     def test_self_tools_get_calling_bot_issue(self) -> None:
         """Test that self_tools functions can find the calling bot during tool execution.
         This test reproduces the issue where _get_calling_bot() fails to find the bot
@@ -898,6 +913,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.assertNotIn("Error: Could not find calling bot", response)
         self.assertIn("name", response.lower())
 
+    @pytest.mark.api
     def test_self_tools_branch_functionality(self) -> None:
         """Test that branch_self function works correctly when called as a tool."""
         import bots.tools.self_tools as self_tools
@@ -911,6 +927,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         # Should indicate successful branching
         self.assertIn("branch", response.lower())
 
+    @pytest.mark.api
     def test_self_tools_add_tools_functionality(self) -> None:
         """Test that add_tools function works when called as a tool."""
         import bots.tools.self_tools as self_tools
@@ -927,6 +944,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         final_count = len(self.bot.tool_handler.tools)
         self.assertGreater(final_count, initial_count)
 
+    @pytest.mark.api
     def test_branch_self_frame_inspection_hypothesis(self) -> None:
         """Test hypothesis: branch_self fails due to frame inspection issues in _get_calling_bot().
 
@@ -976,6 +994,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
                 "Branch bots should work correctly if frame inspection works",
             )
 
+    @pytest.mark.api
     def test_branch_tool_result_integration_issue(self) -> None:
         """Test hypothesis: branch bots execute tools but don't integrate results into responses.
 
@@ -1042,6 +1061,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         print(f"Execution log: {execution_log}")
         print(f"Branch response length: {len(branch_response)}")
 
+    @pytest.mark.api
     def test_branch_self_tool_result_missing_from_responses(self) -> None:
         """DEFINITIVE TEST: Tools execute in branches but results don't appear in responses.
 
@@ -1180,6 +1200,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         print("SUCCESS: Tool execution integrated with bot responses")
         print(f"First result (7) found: {has_first_result}, Second result (10) found: {has_second_result}")
 
+    @pytest.mark.api
     def test_wo013_load_uses_most_recent_reply(self) -> None:
         """Test that Bot.load() navigates to most recent conversation node (WO013 Item 34).
 
@@ -1214,6 +1235,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.assertIn("Branch 2 message", parent_node.content, "Should be at Branch 2, not Branch 1")
         self.assertNotIn("Branch 1 message", parent_node.content, "Should not be at Branch 1")
 
+    @pytest.mark.api
     def test_wo013_filename_tracking(self) -> None:
         """Test that bot.filename is tracked correctly (WO013 Item 34).
 
@@ -1288,6 +1310,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         except Exception as e:
             print(f"Warning: Could not clean up quicksave.bot: {e}")
 
+    @pytest.mark.api
     def test_wo013_autosave_uses_quicksave(self) -> None:
         """Test that autosave creates quicksave.bot (WO013 Item 34).
 
@@ -1336,6 +1359,7 @@ class TestDebugImports(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.api
     def test_simple_json_function(self):
         """Test a simple function that uses json to see what imports are captured."""
 
@@ -1384,6 +1408,7 @@ class TestDebugImports(unittest.TestCase):
                 )  # noqa: E501
         print("\n=== LOAD FAILED ===")
 
+    @pytest.mark.api
     def test_self_tools_module_investigation(self):
         """Investigate the self_tools module itself to see what's going wrong."""
 
@@ -1473,6 +1498,7 @@ class TestDebugImports(unittest.TestCase):
         except Exception as e:
             print(f"Fresh import error: {e}")
 
+    @pytest.mark.api
     def test_branch_self_globals_investigation(self):
         """Deep dive into branch_self's actual globals to see why json is missing."""
 
@@ -1530,6 +1556,7 @@ class TestDebugImports(unittest.TestCase):
 
         return branch_func
 
+    @pytest.mark.api
     def test_import_addition_detailed(self):
         """Deep dive into what _add_imports_to_source is actually doing."""
 
@@ -1624,6 +1651,7 @@ class TestDebugImports(unittest.TestCase):
         ]
         print(f"\nImport lines found: {import_lines}")
 
+    @pytest.mark.api
     def test_namespace_contents(self):
         """Check what's actually in the function's namespace when we capture it."""
 
@@ -1661,6 +1689,7 @@ class TestDebugImports(unittest.TestCase):
                 value = module_context.namespace.__dict__[key]
                 print(f"  {key}: {type(value)}")
 
+    @pytest.mark.api
     def test_mockbot_tool_registration_and_basic_functionality(self) -> None:
         """Test that MockBot can register tools and basic functionality works."""
         import bots.tools.self_tools as self_tools
@@ -1701,6 +1730,7 @@ class TestDebugImports(unittest.TestCase):
         print(f"Registered tools: {tool_names}")
         print(f"Tool result: {results[0]}")
 
+    @pytest.mark.api
     def test_mockbot_multiple_tool_simulation(self) -> None:
         """Test MockBot with multiple tool calls to simulate branch execution."""
         import bots.tools.self_tools as self_tools

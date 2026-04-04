@@ -62,6 +62,8 @@ class TestCombineLeavesCommand(unittest.TestCase):
 
     @patch("builtins.print")
     @patch("bots.flows.functional_prompts.recombine")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_combine_leaves_success(self, mock_recombine, mock_print):
         """Test successful combination of leaves."""
         # New API: pass recombinator as argument instead of prompting
@@ -73,6 +75,8 @@ class TestCombineLeavesCommand(unittest.TestCase):
         self.assertEqual(result["content"], "Combined result")
         mock_recombine.assert_called_once()
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_combine_leaves_no_leaves(self):
         """Test combine_leaves when no leaves exist."""
         # Mock _find_leaves to return empty list
@@ -83,6 +87,8 @@ class TestCombineLeavesCommand(unittest.TestCase):
             content = result.get("content", "")
             self.assertIn("No leaves found", content)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_combine_leaves_insufficient_leaves(self):
         """Test combine_leaves with only one leaf."""
         # Create tree with only one leaf
@@ -96,6 +102,8 @@ class TestCombineLeavesCommand(unittest.TestCase):
         content = result.get("content", "")
         self.assertIn("Need at least 2 leaves", content)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_combine_leaves_invalid_recombinator(self):
         """Test combine_leaves with invalid recombinator selection."""
         # New API: pass invalid recombinator as argument
@@ -106,6 +114,8 @@ class TestCombineLeavesCommand(unittest.TestCase):
         self.assertIn("Invalid recombinator selection", content)
 
     @patch("bots.flows.functional_prompts.recombine")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_combine_leaves_error_handling(self, mock_recombine):
         """Test combine_leaves error handling."""
         # New API: pass recombinator as argument

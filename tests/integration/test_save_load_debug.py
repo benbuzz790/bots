@@ -8,6 +8,8 @@ import sys
 import tempfile
 import unittest
 
+import pytest
+
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
 
@@ -26,6 +28,7 @@ class TestSaveLoadDebug(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.api
     def test_debug_save_load_process(self):
         """Debug the save/load process step by step."""
         print("\nDEBUGGING SAVE/LOAD PROCESS...")

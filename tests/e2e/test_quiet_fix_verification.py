@@ -38,6 +38,8 @@ class TestQuietModeFix(unittest.TestCase):
         self.context.config.auto_stash = False
 
     @patch("bots.flows.functional_prompts.chain")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_quiet_mode_fix_verified(self, mock_chain):
         test_response = "Message should appear once in quiet mode"
 

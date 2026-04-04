@@ -24,6 +24,8 @@ class ToolExecutionError(Exception):
 class TestKeyboardInterruptHandling(unittest.TestCase):
     """Test that KeyboardInterrupt from tools is handled properly."""
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_toolify_converts_keyboard_interrupt(self):
         """Test that @toolify converts KeyboardInterrupt to ToolExecutionError."""
 
@@ -41,6 +43,8 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         self.assertIn("Tool execution interrupted", result)
         self.assertIn("Address already in use", result)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_toolify_converts_keyboard_interrupt_with_description(self):
         """Test that @toolify converts KeyboardInterrupt to ToolExecutionError with tool description."""
 
@@ -59,6 +63,8 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
 
     @patch("sys.stdin", StringIO("hello\n/exit\n"))
     @patch("sys.stdout", new_callable=StringIO)
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_cli_handles_tool_keyboard_interrupt_gracefully(self, mock_stdout):
         """Test that CLI doesn't show 'use /exit to quit' for tool KeyboardInterrupt."""
 
@@ -82,6 +88,8 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         # This proves that the KeyboardInterrupt won't reach the CLI level
         # where it would trigger the "use /exit to quit" message
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_keyboard_interrupt_from_tool_becomes_tool_execution_error(self):
         """Test the specific scenario where a tool raises KeyboardInterrupt."""
 
@@ -103,6 +111,8 @@ class TestKeyboardInterruptHandling(unittest.TestCase):
         self.assertIn("Tool execution interrupted", result)
         self.assertIn("Address already in use", result)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_realistic_server_port_conflict_scenario(self):
         """Test a realistic scenario where a server tool encounters a port conflict."""
 

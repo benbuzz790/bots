@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import pytest
+
 from bots.foundation.base import Bot, Engines
 from bots.foundation.gemini_bots import GeminiBot
 
@@ -70,6 +72,7 @@ class TestSaveLoadGemini(unittest.TestCase):
             except Exception as e:
                 print(f"Warning: Could not clean up {cleanup_file}: {e}")
 
+    @pytest.mark.api
     def test_basic_save_load(self) -> None:
         """Test basic bot attribute persistence during save and load operations."""
         save_path = os.path.join(self.temp_dir, self.bot.name)
@@ -82,6 +85,7 @@ class TestSaveLoadGemini(unittest.TestCase):
         self.assertEqual(self.bot.role, loaded_bot.role)
         self.assertEqual(self.bot.role_description, loaded_bot.role_description)
 
+    @pytest.mark.api
     def test_custom_attributes(self) -> None:
         """Test persistence of custom bot attributes."""
         self.bot.custom_attr1 = "Test Value"
@@ -99,6 +103,7 @@ class TestSaveLoadGemini(unittest.TestCase):
         with self.assertRaises(AttributeError):
             _ = loaded_bot.non_existent_attr
 
+    @pytest.mark.api
     def test_file_creation(self) -> None:
         """Test bot save file creation and naming."""
         save_path = os.path.join(self.temp_dir, f"explicit_{self.bot.name}")
@@ -109,6 +114,7 @@ class TestSaveLoadGemini(unittest.TestCase):
         self.assertTrue(os.path.exists(auto_path))
         self.assertTrue(auto_path.endswith(".bot"))
 
+    @pytest.mark.api
     def test_corrupted_save(self) -> None:
         """Test handling of corrupted save file scenarios."""
         save_path = os.path.join(self.temp_dir, f"corrupted_{self.bot.name}.bot")
@@ -141,6 +147,7 @@ class TestGeminiSpecificFeatures(unittest.TestCase):
         except Exception as e:
             print(f"Warning: Could not clean up {self.temp_dir}: {e}")
 
+    @pytest.mark.api
     def test_gemini_node_message_building(self) -> None:
         """Test GeminiNode's message building functionality."""
         # Test empty node
@@ -160,6 +167,7 @@ class TestGeminiSpecificFeatures(unittest.TestCase):
         self.assertEqual(messages[0], {"role": "user", "parts": [{"text": "Hello"}]})
         self.assertEqual(messages[1], {"role": "model", "parts": [{"text": "Hi there!"}]})
 
+    @pytest.mark.api
     def test_gemini_tool_handler_schema_generation(self) -> None:
         """Test GeminiToolHandler's schema generation."""
 
@@ -176,6 +184,7 @@ class TestGeminiSpecificFeatures(unittest.TestCase):
         self.assertIn("param1", schema["parameters"]["required"])
         self.assertNotIn("param2", schema["parameters"]["required"])
 
+    @pytest.mark.api
     def test_gemini_mailbox_api_key_handling(self) -> None:
         """Test GeminiMailbox API key handling."""
         # Test with environment variable
@@ -246,6 +255,7 @@ class TestGeminiIntegration(unittest.TestCase):
                 print(f"Warning: Could not clean up {bot_file}: {e}")
 
     @unittest.skipIf(not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"), "No Google API key available")
+    @pytest.mark.api
     def test_real_conversation_and_save_load(self) -> None:
         """Test real conversation with Gemini API and save/load functionality."""
         # Have a real conversation
@@ -274,6 +284,7 @@ class TestGeminiIntegration(unittest.TestCase):
         self.assertTrue(len(response2) > 0)
 
     @unittest.skipIf(not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"), "No Google API key available")
+    @pytest.mark.api
     def test_real_tool_usage_and_persistence(self) -> None:
         """Test real tool usage with Gemini API and persistence."""
 
@@ -317,6 +328,7 @@ class TestGeminiIntegration(unittest.TestCase):
         self.assertIsInstance(response2, str)
 
     @unittest.skipIf(not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"), "No Google API key available")
+    @pytest.mark.api
     def test_real_error_handling(self) -> None:
         """Test error handling with real API calls."""
         # Test with a very long message that might cause issues
@@ -332,6 +344,7 @@ class TestGeminiIntegration(unittest.TestCase):
             print(f"Expected error handled: {e}")
 
     @unittest.skipIf(not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"), "No Google API key available")
+    @pytest.mark.api
     def test_multiple_conversation_turns(self) -> None:
         """Test multiple conversation turns with real API."""
         responses = []

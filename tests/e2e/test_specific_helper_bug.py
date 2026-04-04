@@ -28,6 +28,8 @@ class TestSpecificHelperBug(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_view_dir_tool_after_save_load(self):
         """Test view_dir tool specifically after save/load to reproduce the bug."""
         print("\nTesting view_dir tool after save/load (reproducing CLI bug)...")

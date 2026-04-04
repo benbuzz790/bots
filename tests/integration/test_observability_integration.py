@@ -87,6 +87,7 @@ class TestObservabilityIntegration(unittest.TestCase):
         return result
 
     @patch("anthropic.Anthropic")
+    @pytest.mark.api
     def test_anthropic_bot_metrics_recording(self, mock_anthropic_class):
         """Test that AnthropicBot records metrics during respond()."""
         # Mock the API response
@@ -120,6 +121,7 @@ class TestObservabilityIntegration(unittest.TestCase):
         self.assertIn("bot.api_calls_total", recorded)
 
     @patch("openai.OpenAI")
+    @pytest.mark.api
     def test_openai_bot_metrics_recording(self, mock_openai_class):
         """Test that OpenAI bot records metrics during respond()."""
         # Mock the API response
@@ -154,6 +156,7 @@ class TestObservabilityIntegration(unittest.TestCase):
         # self.assertIn("bot.cost_usd", recorded)
 
     @patch("google.genai.Client")
+    @pytest.mark.api
     def test_gemini_bot_metrics_recording(self, mock_genai_class):
         """Test that Gemini bot records metrics during respond()."""
         # Mock the API response
@@ -183,6 +186,7 @@ class TestObservabilityIntegration(unittest.TestCase):
         self.assertIn("bot.tokens_used", recorded)
         self.assertIn("bot.cost_usd", recorded)
 
+    @pytest.mark.api
     def test_cost_calculation_accuracy(self):
         """Test that cost calculations are accurate across providers."""
         # Test Anthropic pricing
@@ -245,6 +249,7 @@ class TestObservabilityIntegration(unittest.TestCase):
         )
 
     @patch("anthropic.Anthropic")
+    @pytest.mark.api
     def test_error_metrics_recording(self, mock_anthropic_class):
         """Test that error metrics are recorded on API failures."""
         # Mock API to raise an error
@@ -266,6 +271,7 @@ class TestObservabilityIntegration(unittest.TestCase):
         # In production, errors are logged via tracing spans
         self.assertIsInstance(recorded, dict)
 
+    @pytest.mark.api
     def test_tool_execution_metrics(self):
         """Test that tool execution metrics are recorded."""
 
@@ -306,6 +312,7 @@ class TestObservabilityIntegration(unittest.TestCase):
             # Verify tool metrics were recorded
             self.assertIn("bot.tool_calls_total", recorded)
 
+    @pytest.mark.api
     def test_metrics_disabled_gracefully(self):
         """Test that bot works when metrics are disabled."""
         os.environ["BOTS_OTEL_METRICS_ENABLED"] = "false"
@@ -328,6 +335,7 @@ class TestObservabilityIntegration(unittest.TestCase):
             response = bot.respond("Test")
             self.assertIsInstance(response, str)
 
+    @pytest.mark.api
     def test_opentelemetry_callbacks_integration(self):
         """Test OpenTelemetryCallbacks integration with tracing."""
         with patch("anthropic.Anthropic") as mock_anthropic:

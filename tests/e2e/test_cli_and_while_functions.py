@@ -105,6 +105,8 @@ def test_chain_while_with_callback():
     callback_called = False
     callback_responses = None
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_callback(responses, nodes):
         nonlocal callback_called, callback_responses
         callback_called = True

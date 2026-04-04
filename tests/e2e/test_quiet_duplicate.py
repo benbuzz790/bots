@@ -36,6 +36,8 @@ class TestQuietModeDuplicate(unittest.TestCase):
         self.context.config.auto_stash = False
 
     @patch("bots.flows.functional_prompts.chain")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_quiet_mode_shows_message_once_after_fix(self, mock_chain):
         """Test that quiet mode shows message only once after the fix."""
         test_response = "Bot response should appear once in quiet mode"
@@ -70,6 +72,8 @@ class TestQuietModeDuplicate(unittest.TestCase):
         self.assertEqual(response_count, 1, f"In quiet mode, message should appear once but appears {response_count} times")
 
     @patch("bots.flows.functional_prompts.chain")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_verbose_mode_shows_message_once_after_fix(self, mock_chain):
         """Test that verbose mode still shows message only once after the fix."""
         test_response = "Bot response should appear once in verbose mode"
@@ -103,6 +107,8 @@ class TestQuietModeDuplicate(unittest.TestCase):
         self.assertEqual(response_count, 1, f"In verbose mode, message should appear once but appears {response_count} times")
 
     @patch("bots.flows.functional_prompts.chain")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_quiet_mode_with_tools_shows_tool_summary(self, mock_chain):
         """Test that quiet mode shows tool usage summary correctly."""
         test_response = "Bot used tools to complete the task"
@@ -142,6 +148,8 @@ class TestQuietModeDuplicate(unittest.TestCase):
         self.assertEqual(response_count, 1, f"Message should appear once but appears {response_count} times")
 
     @patch("bots.flows.functional_prompts.chain")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_verbose_mode_with_tools_shows_full_details(self, mock_chain):
         """Test that verbose mode shows full tool details correctly."""
         test_response = "Bot used tools in verbose mode"

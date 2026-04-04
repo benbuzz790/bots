@@ -43,6 +43,7 @@ class TestPowerShellProductionEdgeCases(unittest.TestCase):
         except Exception as e:
             print(f"Warning: Could not clean up temp directory: {e}")
 
+    @pytest.mark.api
     def test_stateful_session_reuse_with_here_strings(self):
         """Test here-strings in a reused stateful session (production pattern)"""
         print("\n=== Testing Stateful Session Reuse ===")
@@ -98,6 +99,7 @@ Line 3 with 'apostrophes'
         finally:
             manager.cleanup()
 
+    @pytest.mark.api
     def test_rapid_succession_commands(self):
         """Test rapid command execution (as might happen in production)"""
         print("\n=== Testing Rapid Succession Commands ===")
@@ -131,6 +133,7 @@ Line 3 with 'apostrophes'
         if errors:
             print("Failed commands:", [i for i, _ in errors])
 
+    @pytest.mark.api
     def test_here_string_after_error(self):
         """Test here-string execution after previous command errors"""
         print("\n=== Testing Here-String After Error ===")
@@ -167,6 +170,7 @@ Multiple lines
             elapsed = time.time() - start_time
             print(f"❌ Here-string after error failed after {elapsed:.2f}s: {e}")
 
+    @pytest.mark.api
     def test_here_string_with_powershell_special_vars(self):
         """Test here-strings containing PowerShell special variables"""
         print("\n=== Testing Here-Strings with PS Special Vars ===")
@@ -191,6 +195,7 @@ Multiple lines
                 elapsed = time.time() - start_time
                 print(f"❌ {name} failed after {elapsed:.2f}s: {e}")
 
+    @pytest.mark.api
     def test_here_string_with_bom_removal_interaction(self):
         """Test if BOM removal post-processing affects here-strings"""
         print("\n=== Testing BOM Removal Interaction ===")
@@ -228,6 +233,7 @@ print("Testing BOM interaction")
             elapsed = time.time() - start_time
             print(f"❌ Failed after {elapsed:.2f}s: {e}")
 
+    @pytest.mark.api
     def test_powershell_version_and_environment(self):
         """Check PowerShell version and environment settings"""
         print("\n=== PowerShell Environment Check ===")
@@ -248,6 +254,7 @@ print("Testing BOM interaction")
             except Exception as e:
                 print(f"{name}: Failed - {e}")
 
+    @pytest.mark.api
     def test_here_string_stress_test(self):
         """Stress test with many here-strings"""
         print("\n=== Here-String Stress Test ===")
@@ -285,6 +292,7 @@ print("Testing BOM interaction")
         if timeout_count > 0:
             print(f"⚠️  {timeout_count} timeouts suggest intermittent issue")
 
+    @pytest.mark.api
     def test_here_string_with_thread_contention(self):
         """Test here-strings under thread contention"""
         print("\n=== Testing Thread Contention ===")
@@ -316,6 +324,7 @@ print("Testing BOM interaction")
         if errors:
             print("⚠️  Thread contention causes issues")
 
+    @pytest.mark.api
     def test_modified_wrap_code_safely(self):
         """Test with a modified _wrap_code_safely that might fix the issue"""
         print("\n=== Testing Modified Wrapper ===")
@@ -365,6 +374,7 @@ import math
             except Exception as e:
                 print(f"❌ Fixed wrapper failed: {e}")
 
+    @pytest.mark.api
     def test_here_string_line_endings(self):
         """Test different line ending combinations in here-strings"""
         print("\n=== Testing Line Endings in Here-Strings ===")
@@ -395,6 +405,7 @@ import math
                 elapsed = time.time() - start_time
                 print(f"❌ {name} failed after {elapsed:.2f}s: {e}")
 
+    @pytest.mark.api
     def test_here_string_with_very_long_lines(self):
         """Test here-strings with very long lines"""
         print("\n=== Testing Very Long Lines ===")
@@ -425,6 +436,7 @@ import math
             except Exception as e:
                 print(f"❌ {length} chars failed: {e}")
 
+    @pytest.mark.api
     def test_recycle_bin_functionality(self):
         """Test that Remove-Item sends files to Recycle Bin instead of permanent deletion"""
         print("\n=== Testing Recycle Bin Functionality ===")
@@ -522,6 +534,7 @@ import math
         print("\n=== Recycle Bin Test Complete ===")
         print("Note: Files should be in Recycle Bin, not permanently deleted")
 
+    @pytest.mark.api
     def test_recycle_bin_vs_permanent_deletion(self):
         """Test that our safe delete goes to Recycle Bin vs PowerShell's default permanent delete"""
         print("\n=== Testing Recycle Bin vs Permanent Deletion ===")

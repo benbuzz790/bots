@@ -50,11 +50,15 @@ class TestPromptManager(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_empty_prompts_initialization(self):
         """Test that PromptManager initializes with empty structure when no file exists."""
         self.assertEqual(self.prompt_manager.prompts_data["recents"], [])
         self.assertEqual(self.prompt_manager.prompts_data["prompts"], {})
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_save_and_load_prompts_file(self):
         """Test saving and loading prompts from file."""
         # Add some test data
@@ -69,6 +73,8 @@ class TestPromptManager(unittest.TestCase):
         self.assertEqual(new_manager.prompts_data["recents"], ["test1", "test2"])
         self.assertEqual(new_manager.prompts_data["prompts"]["test1"], "This is test prompt 1")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_update_recents(self):
         """Test recency list management."""
         # Add prompts
@@ -94,6 +100,8 @@ class TestPromptManager(unittest.TestCase):
         self.assertEqual(self.prompt_manager.prompts_data["recents"][0], "prompt7")
 
     @patch("bots.foundation.anthropic_bots.AnthropicBot")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_generate_prompt_name(self, mock_bot_class):
         """Test prompt name generation using Haiku bot."""
         # Mock the bot response
@@ -108,6 +116,8 @@ class TestPromptManager(unittest.TestCase):
         mock_bot.respond.assert_called_once()
 
     @patch("bots.foundation.anthropic_bots.AnthropicBot")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_generate_prompt_name_fallback(self, mock_bot_class):
         """Test prompt name generation fallback when bot fails."""
         # Mock the bot to raise an exception
@@ -117,6 +127,8 @@ class TestPromptManager(unittest.TestCase):
             name = self.prompt_manager._generate_prompt_name("This is a test prompt")
             self.assertEqual(name, "prompt_1234567890")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_search_prompts_empty_query(self):
         """Test search with empty query returns recents."""
         self.prompt_manager.prompts_data = {
@@ -129,6 +141,8 @@ class TestPromptManager(unittest.TestCase):
         self.assertEqual(results[0], ("recent1", "Recent prompt 1"))
         self.assertEqual(results[1], ("recent2", "Recent prompt 2"))
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_search_prompts_by_name(self):
         """Test search by prompt name."""
         self.prompt_manager.prompts_data = {
@@ -146,6 +160,8 @@ class TestPromptManager(unittest.TestCase):
         self.assertIn("neural_network", names)
         self.assertIn("neural_optimization", names)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_search_prompts_by_content(self):
         """Test search by prompt content."""
         self.prompt_manager.prompts_data = {
@@ -164,6 +180,8 @@ class TestPromptManager(unittest.TestCase):
         self.assertIn("prompt3", names)
 
     @patch("bots.foundation.anthropic_bots.AnthropicBot")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_save_prompt_with_auto_name(self, mock_bot_class):
         """Test saving prompt with auto-generated name."""
         mock_bot = MagicMock()
@@ -177,6 +195,8 @@ class TestPromptManager(unittest.TestCase):
         self.assertEqual(self.prompt_manager.prompts_data["prompts"]["auto_generated_name"], "This is a test prompt")
         self.assertEqual(self.prompt_manager.prompts_data["recents"][0], "auto_generated_name")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_save_prompt_unique_names(self):
         """Test that duplicate names get unique suffixes."""
         with patch.object(self.prompt_manager, "_generate_prompt_name", return_value="test_name"):
@@ -192,6 +212,8 @@ class TestPromptManager(unittest.TestCase):
             name3 = self.prompt_manager.save_prompt("Third prompt")
             self.assertEqual(name3, "test_name_2")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_prompt(self):
         """Test loading a prompt and updating recency."""
         self.prompt_manager.prompts_data = {
@@ -204,6 +226,8 @@ class TestPromptManager(unittest.TestCase):
         self.assertEqual(content, "This is a test prompt")
         self.assertEqual(self.prompt_manager.prompts_data["recents"][0], "test_prompt")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_nonexistent_prompt(self):
         """Test loading a prompt that doesn't exist."""
         with self.assertRaises(KeyError):
@@ -233,6 +257,8 @@ class TestPromptHandler(unittest.TestCase):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     @patch("bots.dev.cli.input_with_esc")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_prompt_no_matches(self, mock_input):
         """Test loading prompt when no matches found."""
         mock_input.return_value = "nonexistent"
@@ -243,6 +269,8 @@ class TestPromptHandler(unittest.TestCase):
         self.assertIsNone(prefill)
 
     @patch("bots.dev.cli.input_with_esc")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_prompt_single_match(self, mock_input):
         """Test loading prompt with single match."""
         # Setup test data
@@ -257,6 +285,8 @@ class TestPromptHandler(unittest.TestCase):
 
     @patch("bots.dev.cli.input_with_esc")
     @patch("builtins.print")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_prompt_multiple_matches(self, mock_print, mock_input):
         """Test loading prompt with multiple matches."""
         # Setup test data
@@ -274,6 +304,8 @@ class TestPromptHandler(unittest.TestCase):
 
     @patch("bots.dev.cli.input_with_esc")
     @patch("builtins.print")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_prompt_invalid_selection(self, mock_print, mock_input):
         """Test loading prompt with invalid selection."""
         # Setup test data with multiple matches to trigger selection
@@ -289,6 +321,8 @@ class TestPromptHandler(unittest.TestCase):
         self.assertTrue("Invalid selection" in message)
         self.assertIsNone(prefill)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_prompt_with_args(self):
         """Test loading prompt with search args provided."""
         # Setup test data
@@ -300,6 +334,8 @@ class TestPromptHandler(unittest.TestCase):
         self.assertEqual(prefill, "Design a neural network")
 
     @patch("bots.foundation.anthropic_bots.AnthropicBot")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_save_prompt_with_args(self, mock_bot_class):
         """Test saving prompt with provided text."""
         mock_bot = MagicMock()
@@ -312,6 +348,8 @@ class TestPromptHandler(unittest.TestCase):
         self.assertEqual(self.handler.prompt_manager.prompts_data["prompts"]["generated_name"], "test prompt text")
 
     @patch("bots.foundation.anthropic_bots.AnthropicBot")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_save_prompt_last_message(self, mock_bot_class):
         """Test saving prompt from last user message."""
         mock_bot = MagicMock()
@@ -323,12 +361,16 @@ class TestPromptHandler(unittest.TestCase):
         self.assertEqual(result, "Saved prompt as: generated_name")
         self.assertEqual(self.handler.prompt_manager.prompts_data["prompts"]["generated_name"], "last user message")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_save_prompt_no_content(self):
         """Test saving prompt with no content."""
         result = self.handler.save_prompt(self.mock_bot, self.mock_context, [], None)
 
         self.assertTrue(result.startswith("No prompt to save"))
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_save_prompt_empty_content(self):
         """Test saving prompt with empty content."""
         result = self.handler.save_prompt(self.mock_bot, self.mock_context, ["   "], None)
@@ -355,6 +397,8 @@ class TestCLIPromptIntegration(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_handle_load_prompt(self):
         """Test CLI handling of /p command."""
         # Setup test data
@@ -366,6 +410,8 @@ class TestCLIPromptIntegration(unittest.TestCase):
         self.assertEqual(self.cli.pending_prefill, "This is a test prompt")
 
     @patch("bots.foundation.anthropic_bots.AnthropicBot")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_handle_save_prompt(self, mock_bot_class):
         """Test CLI handling of /s command."""
         mock_bot = MagicMock()
@@ -378,6 +424,8 @@ class TestCLIPromptIntegration(unittest.TestCase):
         self.assertEqual(result, "Saved prompt as: generated_name")
 
     @patch("builtins.input")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_get_user_input_with_prefill(self, mock_input):
         """Test getting user input with prefill fallback when readline not available."""
         # Test the fallback behavior when readline is not available
@@ -391,6 +439,8 @@ class TestCLIPromptIntegration(unittest.TestCase):
             self.assertIsNone(self.cli.pending_prefill)  # Should be cleared
 
     @patch("builtins.input")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_get_user_input_without_prefill(self, mock_input):
         """Test getting user input without prefill."""
         mock_input.return_value = "normal input"

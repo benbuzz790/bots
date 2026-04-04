@@ -28,6 +28,8 @@ class TestWizardDebug:
     """Incrementally test CLI wizard functionality to isolate issues."""
 
     @patch("bots.dev.cli.AnthropicBot")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_01_simple_chat_and_exit(self, mock_bot_class, monkeypatch):
         """Test 1: Just chat once and exit."""
         mock_bot = MockBot(name="TestBot")
@@ -46,6 +48,8 @@ class TestWizardDebug:
         assert "Hello!" in output
 
     @patch("bots.dev.cli.AnthropicBot")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_02_fp_command_then_exit(self, mock_bot_class, monkeypatch):
         """Test 2: Type /fp command, see the menu, then type an invalid choice to exit."""
         mock_bot = MockBot(name="TestBot")
@@ -65,6 +69,8 @@ class TestWizardDebug:
         assert "Invalid selection" in output
 
     @patch("bots.dev.cli.AnthropicBot")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_03_fp_single_prompt(self, mock_bot_class, monkeypatch):
         """Test 3: Select single_prompt and provide a prompt."""
         mock_bot = MockBot(name="TestBot")
@@ -90,6 +96,8 @@ class TestWizardDebug:
         assert "Executing single_prompt" in output
 
     @patch("bots.dev.cli.AnthropicBot")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_04_fp_single_prompt_no_initial_chat(self, mock_bot_class, monkeypatch):
         """Test 4: Go straight to /fp without initial chat."""
         mock_bot = MockBot(name="TestBot")
@@ -113,6 +121,8 @@ class TestWizardDebug:
         assert "Executing single_prompt" in output
 
     @patch("bots.dev.cli.AnthropicBot")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_05_fp_single_prompt_no_redirect(self, mock_bot_class, monkeypatch):
         """Test 5: Same as test 4 but without redirect_stdout to see the actual error."""
         mock_bot = MockBot(name="TestBot")

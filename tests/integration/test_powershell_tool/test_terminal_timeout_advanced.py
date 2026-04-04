@@ -61,6 +61,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
                 except Exception:
                     pass
 
+    @pytest.mark.api
     def test_basic_command_execution(self):
         """Test basic command execution works"""
         print("\n=== Testing Basic Command Execution ===")
@@ -70,6 +71,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
             print(f"Result: {result}")
             assert "Hello World" in result
 
+    @pytest.mark.api
     def test_timeout_handling(self):
         """Test that timeouts are handled correctly"""
         print("\n=== Testing Timeout Handling ===")
@@ -83,6 +85,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
                 print(f"Got expected exception: {e}")
                 assert "timeout" in str(e).lower() or "timed out" in str(e).lower()
 
+    @pytest.mark.api
     def test_rapid_command_sequence(self):
         """Test rapid command execution"""
         print("\n=== Testing Rapid Command Sequence ===")
@@ -110,6 +113,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
             print(f"Recovery result: {result}")
             assert "Still working" in result
 
+    @pytest.mark.api
     def test_long_output_handling(self):
         """Test handling of commands with long output"""
         print("\n=== Testing Long Output Handling ===")
@@ -120,6 +124,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
             print(f"Output length: {len(result)}")
             assert "100" in result
 
+    @pytest.mark.api
     def test_special_characters(self):
         """Test handling of special characters in commands"""
         print("\n=== Testing Special Characters ===")
@@ -129,6 +134,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
             print(f"Result: {result}")
             assert "Test:" in result
 
+    @pytest.mark.api
     def test_multiline_command(self):
         """Test execution of multiline commands"""
         print("\n=== Testing Multiline Command ===")
@@ -143,6 +149,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
             print(f"Result: {result}")
             assert "3" in result
 
+    @pytest.mark.api
     def test_concurrent_sessions(self):
         """Test multiple concurrent PowerShell sessions"""
         print("\n=== Testing Concurrent Sessions ===")
@@ -166,6 +173,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
         print(f"Results: {results}")
         assert len(results) == 3
 
+    @pytest.mark.api
     def test_session_cleanup(self):
         """Test that sessions clean up properly"""
         print("\n=== Testing Session Cleanup ===")
@@ -181,6 +189,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
         time.sleep(0.5)
         assert session._process is None or session._process.poll() is not None
 
+    @pytest.mark.api
     def test_unicode_handling(self):
         """Test handling of unicode characters"""
         print("\n=== Testing Unicode Handling ===")
@@ -190,6 +199,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
             print(f"Result: {result}")
             # Just verify it doesn't crash
 
+    @pytest.mark.api
     def test_environment_variables(self):
         """Test that environment variables work"""
         print("\n=== Testing Environment Variables ===")
@@ -200,6 +210,7 @@ class TestPowerShellAdvancedDiagnostics(unittest.TestCase):
             print(f"Result: {result}")
             assert "test_value" in result
 
+    @pytest.mark.api
     def test_whitespace_impact(self):
         """Test impact of whitespace in commands"""
         print("\n=== Testing Whitespace Impact ===")

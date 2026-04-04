@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from typing import Any, Dict
 
+import pytest
+
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
 
@@ -64,6 +66,7 @@ def tool_with_helpers(input_text: str, multiplier: int = 1) -> str:
             result["error_details"].append(f"Helper check error: {str(e)}")
         return result
 
+    @pytest.mark.api
     def test_helper_preservation_basic(self):
         """Test basic helper function preservation."""
         print("\nTesting helper function preservation...")
