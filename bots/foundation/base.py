@@ -265,8 +265,13 @@ class Engines(str, Enum):
         """
         from bots.foundation.anthropic_bots import AnthropicNode
         from bots.foundation.openai_bots import OpenAINode
+        from bots.testing.mock_bot import MockConversationNode
 
-        NODE_CLASS_MAP = {"OpenAINode": OpenAINode, "AnthropicNode": AnthropicNode}
+        NODE_CLASS_MAP = {
+            "OpenAINode": OpenAINode,
+            "AnthropicNode": AnthropicNode,
+            "MockConversationNode": MockConversationNode,
+        }
 
         if class_name not in NODE_CLASS_MAP:
             raise ValueError(f"Unsupported node class: {class_name}")

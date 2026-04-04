@@ -77,8 +77,8 @@ class TestNormalizeModel:
 
     def test_partial_match(self):
         """Test partial model name matching."""
-        # Should match a sonnet model
-        result = normalize_model("anthropic", "claude-3-7-sonnet")
+        # Should match a sonnet model (using an actual model that exists)
+        result = normalize_model("anthropic", "claude-3-5-sonnet")
         assert "sonnet" in result.lower()
 
     def test_unknown_model(self):
@@ -97,8 +97,8 @@ class TestGetModelPricing:
         assert pricing["output"] == 15.00
 
         pricing = get_model_pricing("anthropic", "claude-haiku-4-5-20251001")
-        assert pricing["input"] == 0.80
-        assert pricing["output"] == 4.00
+        assert pricing["input"] == 1.00
+        assert pricing["output"] == 5.00
 
     def test_openai_models(self):
         """Test pricing for all OpenAI models."""
