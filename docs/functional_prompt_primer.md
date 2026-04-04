@@ -271,7 +271,7 @@ responses, nodes = chain_while(
 # Parallel research on different aspects
 research_topics = [
     "Current market trends",
-    "Competitor analysis", 
+    "Competitor analysis",
     "Technology landscape",
     "Regulatory considerations"
 ]

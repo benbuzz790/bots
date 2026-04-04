@@ -52,7 +52,7 @@ def read_file(file_path: str) -> str:
             return f.read()
     except Exception as e:
         return f"Error: {str(e)}"
-        
+
 # Create bot and add tool
 bot = bots.AnthropicBot()
 bot.add_tools(read_file)
@@ -118,7 +118,7 @@ bot.add_tools(code_tools)
 # Execute prompts in sequence, building context
 responses, nodes = fp.chain(bot, [
     "Analyze the current directory structure",
-    "Read the main application files", 
+    "Read the main application files",
     "Identify potential security vulnerabilities",
     "Create a security audit report in security_audit.md"
 ])
@@ -133,7 +133,7 @@ for i, response in enumerate(responses):
 # Explore multiple approaches without cross-contamination
 responses, nodes = fp.branch(bot, [
     "Analyze the code for security issues",
-    "Analyze the code for performance bottlenecks", 
+    "Analyze the code for performance bottlenecks",
     "Analyze the code for maintainability problems",
     "Analyze the code for testing gaps"
 ])
@@ -169,7 +169,7 @@ response, node = fp.tree_of_thought(
     bot,
     [
         "Evaluate technical architecture and scalability",
-        "Assess business logic and requirements coverage", 
+        "Assess business logic and requirements coverage",
         "Review user experience and interface design",
         "Analyze security and compliance aspects"
     ],
@@ -189,7 +189,7 @@ bot_fleet = base_bot * 5
 contexts = [
     "You are a security expert. Focus on vulnerabilities.",
     "You are a performance expert. Focus on optimization.",
-    "You are a UX expert. Focus on user experience.", 
+    "You are a UX expert. Focus on user experience.",
     "You are a testing expert. Focus on test coverage."
 ]
 for bot, context in zip(bot_fleet, contexts):
@@ -249,7 +249,7 @@ python -m bots.dev.cli my_expert.bot
 >>> /fp
 Select functional prompt:
 1. chain
-2. branch  
+2. branch
 3. prompt_while
 4. par_branch_while
 >>> 3
@@ -257,7 +257,7 @@ Enter initial prompt: Create comprehensive documentation
 Enter continue prompt: ok
 Select stop condition:
 1. tool_not_used
-2. tool_used  
+2. tool_used
 3. said_DONE
 >>> 1
 # Bot executes autonomous workflow
@@ -318,7 +318,7 @@ analyses, nodes = fp.par_branch_while(
     analysis_bot,
     [
         "Create comprehensive API documentation",
-        "Generate detailed deployment guide", 
+        "Generate detailed deployment guide",
         "Write complete testing strategy",
         "Produce security assessment report",
         "Create performance optimization plan"
@@ -347,7 +347,7 @@ fp.prompt_while(
 ## Key Concepts Progression
 
 1. **Basic**: Single bot, simple tools, direct interaction
-2. **Intermediate**: Tool modules, state persistence, conversation management  
+2. **Intermediate**: Tool modules, state persistence, conversation management
 3. **Advanced**: Functional prompts, structured workflows, parallel processing
 4. **Expert**: Branching-bot systems, dynamic generation, production pipelines
 Each level builds on the previous, allowing you to start simple and scale to sophisticated AI-powered workflows as your needs grow.

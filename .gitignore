@@ -113,3 +113,11 @@ sorting_algorithms.py
 
 # TODO files
 TODO.md
+
+# Mypy type checker cache
+.mypy_cache/
+# Temporary completion and summary files
+*_COMPLETION.txt
+*_FIX_SUMMARY.md
+*_UPDATE_SUMMARY.md
+test_results.xml
