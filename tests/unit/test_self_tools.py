@@ -688,6 +688,7 @@ class TestSelfTools(unittest.TestCase):
         self.assertNotIn("error", response2.lower())
         self.assertNotIn("failed", response2.lower())
 
+    @pytest.mark.api
     def test_branch_self_debug_printing(self) -> None:
         """Test that branch_self function works correctly with multiple prompts."""
         response = self.bot.respond(
@@ -695,6 +696,7 @@ class TestSelfTools(unittest.TestCase):
         )
         self.assertIn("branch", response.lower())
 
+    @pytest.mark.api
     def test_branch_self_method_restoration(self) -> None:
         """Test that the original respond method is properly restored after branching."""
         # Store the original method's underlying function and instance
@@ -718,6 +720,7 @@ class TestSelfTools(unittest.TestCase):
         )
         self.assertIn("branch", response.lower())
 
+    @pytest.mark.api
     def test_branch_self_error_handling(self) -> None:
         """Test branch_self error handling with invalid input."""
         response = self.bot.respond(
@@ -725,6 +728,7 @@ class TestSelfTools(unittest.TestCase):
         )
         self.assertIn("invalid", response.lower())
 
+    @pytest.mark.api
     def test_branch_self_empty_prompts(self) -> None:
         """Test branch_self with empty prompt list."""
         response = self.bot.respond("Use branch_self with prompts []")
