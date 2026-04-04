@@ -1,5 +1,7 @@
 name: Fast Checks
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   fast-checks:
     name: Fast Checks (Linting & Unit Tests)
