@@ -35,7 +35,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         warning spam or debug output that would clutter the CLI.
         """
         # Create and save a bot
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE46_SONNET, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
 
@@ -74,7 +74,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         the verbose mode properly displays tool requests and results.
         """
         # Create and save a bot
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE46_SONNET, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
 
@@ -130,7 +130,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         not include the entire source code.
         """
         # Create and save a bot
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE46_SONNET, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
 
@@ -194,7 +194,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         Root cause: tool_handler.bot was None after load, preventing callback invocation
         """
         # Create and save a bot with tools
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE46_SONNET, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
 

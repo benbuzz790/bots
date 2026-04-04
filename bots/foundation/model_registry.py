@@ -19,43 +19,53 @@ from bots.foundation.base import Engines
 # Intelligence: 1 star (fast/cheap), 2 stars (balanced), 3 stars (most capable)
 # Costs are per 1 million tokens (USD)
 MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
-    # Anthropic Claude Models
-    "claude-3-haiku-20240307": {
+    # Anthropic Claude 4.6 Models (Latest - Feb 2026)
+    "claude-sonnet-4-6": {
         "provider": "anthropic",
-        "intelligence": 1,
-        "max_tokens": 4096,
-        "cost_input": 0.25,
-        "cost_output": 1.25,
+        "intelligence": 2,
+        "max_tokens": 64000,
+        "cost_input": 3.00,
+        "cost_output": 15.00,
     },
-    "claude-3-5-haiku-latest": {
+    "claude-opus-4-6": {
         "provider": "anthropic",
-        "intelligence": 1,
-        "max_tokens": 8192,
-        "cost_input": 0.80,
-        "cost_output": 4.00,
+        "intelligence": 3,
+        "max_tokens": 64000,
+        "cost_input": 15.00,
+        "cost_output": 75.00,
     },
-    "claude-haiku-4-5": {
+    # Anthropic Claude 4.5 Models
+    "claude-haiku-4-5-20251001": {
         "provider": "anthropic",
         "intelligence": 1,
         "max_tokens": 64000,
         "cost_input": 1.00,
         "cost_output": 5.00,
     },
-    "claude-3-7-sonnet-20250219": {
-        "provider": "anthropic",
-        "intelligence": 2,
-        "max_tokens": 8192,
-        "cost_input": 3.00,
-        "cost_output": 15.00,
-    },
-    "claude-sonnet-4-20250514": {
+    "claude-sonnet-4-5-20250929": {
         "provider": "anthropic",
         "intelligence": 2,
         "max_tokens": 64000,
         "cost_input": 3.00,
         "cost_output": 15.00,
     },
-    "claude-sonnet-4-5-20250929": {
+    "claude-opus-4-5-20251101": {
+        "provider": "anthropic",
+        "intelligence": 3,
+        "max_tokens": 64000,
+        "cost_input": 15.00,
+        "cost_output": 75.00,
+    },
+    # Anthropic Claude 4.1 Models
+    "claude-opus-4-1-20250805": {
+        "provider": "anthropic",
+        "intelligence": 3,
+        "max_tokens": 64000,
+        "cost_input": 15.00,
+        "cost_output": 75.00,
+    },
+    # Anthropic Claude 4 Models
+    "claude-sonnet-4-20250514": {
         "provider": "anthropic",
         "intelligence": 2,
         "max_tokens": 64000,
@@ -69,41 +79,35 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "cost_input": 15.00,
         "cost_output": 75.00,
     },
-    "claude-opus-4-1-20250805": {
-        "provider": "anthropic",
-        "intelligence": 3,
-        "max_tokens": 64000,
-        "cost_input": 15.00,
-        "cost_output": 75.00,
-    },
-    "claude-opus-4-5-20251101": {
-        "provider": "anthropic",
-        "intelligence": 3,
-        "max_tokens": 64000,
-        "cost_input": 5.00,
-        "cost_output": 25.00,
-    },
-    # Legacy Anthropic models (for backward compatibility)
+    # Anthropic Claude 3.5 Models (RETIRED - as of Jan 2025)
     "claude-3-5-sonnet-20241022": {
         "provider": "anthropic",
         "intelligence": 2,
         "max_tokens": 8192,
         "cost_input": 3.00,
         "cost_output": 15.00,
+        "deprecated": True,
+        "retired": True,
+        "retirement_date": "2025-01-01",  # Already retired
     },
-    "claude-3-5-sonnet-latest": {
+    "claude-3-5-sonnet-20240620": {
         "provider": "anthropic",
         "intelligence": 2,
         "max_tokens": 8192,
         "cost_input": 3.00,
         "cost_output": 15.00,
+        "deprecated": True,
+        "retired": True,
+        "retirement_date": "2025-01-01",  # Already retired
     },
-    "claude-3-5-haiku-20241022": {
+    # Anthropic Claude 3 Models
+    "claude-3-haiku-20240307": {
         "provider": "anthropic",
         "intelligence": 1,
-        "max_tokens": 8192,
-        "cost_input": 0.80,
-        "cost_output": 4.00,
+        "max_tokens": 4096,
+        "cost_input": 0.25,
+        "cost_output": 1.25,
+        "retirement_date": "2026-04-19",
     },
     "claude-3-opus-20240229": {
         "provider": "anthropic",
@@ -111,6 +115,9 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "max_tokens": 4096,
         "cost_input": 15.00,
         "cost_output": 75.00,
+        "deprecated": True,
+        "retired": True,
+        "retirement_date": "2026-01-05",
     },
     "claude-3-sonnet-20240229": {
         "provider": "anthropic",
@@ -118,27 +125,50 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "max_tokens": 4096,
         "cost_input": 3.00,
         "cost_output": 15.00,
+        "deprecated": True,
+        "retired": True,
+        "retirement_date": "2025-01-01",  # Already retired
+    },
+    # Legacy aliases (for backward compatibility - map to latest versions)
+    "claude-3-5-haiku-latest": {
+        "provider": "anthropic",
+        "intelligence": 1,
+        "max_tokens": 64000,
+        "cost_input": 1.00,
+        "cost_output": 5.00,
+        "alias_for": "claude-haiku-4-5-20251001",
+    },
+    "claude-haiku-4-5": {
+        "provider": "anthropic",
+        "intelligence": 1,
+        "max_tokens": 64000,
+        "cost_input": 1.00,
+        "cost_output": 5.00,
+        "alias_for": "claude-haiku-4-5-20251001",
+    },
+    "claude-3-5-sonnet-latest": {
+        "provider": "anthropic",
+        "intelligence": 2,
+        "max_tokens": 64000,
+        "cost_input": 3.00,
+        "cost_output": 15.00,
+        "alias_for": "claude-sonnet-4-5-20250929",
     },
     "claude-opus-4-latest": {
         "provider": "anthropic",
         "intelligence": 3,
         "max_tokens": 64000,
-        "cost_input": 20.00,
-        "cost_output": 80.00,
+        "cost_input": 15.00,
+        "cost_output": 75.00,
+        "alias_for": "claude-opus-4-6",
     },
     "claude-sonnet-4-latest": {
         "provider": "anthropic",
         "intelligence": 2,
         "max_tokens": 64000,
-        "cost_input": 5.00,
-        "cost_output": 25.00,
-    },
-    "claude-3-7-sonnet-latest": {
-        "provider": "anthropic",
-        "intelligence": 2,
-        "max_tokens": 8192,
         "cost_input": 3.00,
         "cost_output": 15.00,
+        "alias_for": "claude-sonnet-4-6",
     },
     # OpenAI GPT Models
     "gpt-3.5-turbo": {

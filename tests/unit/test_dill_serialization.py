@@ -40,7 +40,7 @@ class TestDillSerialization(unittest.TestCase):
         import os
 
         # Create a bot and add a tool from a real module (not dynamic)
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE46_SONNET, max_tokens=1000)
 
         from bots.tools.code_tools import view
 
@@ -71,7 +71,7 @@ def dynamic_function(x: int) -> int:
         exec(dynamic_code, dynamic_module.__dict__)
 
         # Create a bot and add the dynamic function
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE46_SONNET, max_tokens=1000)
         bot.add_tools(dynamic_module.dynamic_function)
 
         # Save and load
@@ -99,7 +99,7 @@ def dynamic_function(x: int) -> int:
             return a + b
 
         # Create a bot and add the function
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE46_SONNET, max_tokens=1000)
         bot.add_tools(test_function)
 
         # Save and load

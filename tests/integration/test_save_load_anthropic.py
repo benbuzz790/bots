@@ -114,7 +114,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.bot = AnthropicBot(
             name="TestClaude",
-            model_engine=Engines.CLAUDE37_SONNET_20250219,
+            model_engine=Engines.CLAUDE46_SONNET,
             max_tokens=1000,
             temperature=0,
         )
@@ -528,7 +528,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
             Verifies both the initial empty state and the bot's ability
             to properly function after loading from an empty state
         """
-        fresh_bot = AnthropicBot(name="TestClaude", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        fresh_bot = AnthropicBot(name="TestClaude", model_engine=Engines.CLAUDE46_SONNET, max_tokens=1000)
         save_path = os.path.join(self.temp_dir, f"empty_{fresh_bot.name}")
         save_path = fresh_bot.save(save_path)
         loaded_bot = Bot.load(save_path)
@@ -1303,7 +1303,7 @@ class TestSaveLoadAnthropic(unittest.TestCase):
         unique_name = os.path.join(self.temp_dir, f"AutosaveBot_{uuid.uuid4().hex[:8]}")
 
         # Create bot with autosave enabled and unique name
-        bot = AnthropicBot(name=unique_name, autosave=True, model_engine=Engines.CLAUDE37_SONNET_20250219)
+        bot = AnthropicBot(name=unique_name, autosave=True, model_engine=Engines.CLAUDE46_SONNET)
 
         # Expected quicksave file path (autosave uses "{name}" + quicksave=True)
         # When quicksave=True, save() uses "quicksave.bot" as the filename
@@ -1331,7 +1331,7 @@ class TestDebugImports(unittest.TestCase):
 
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
-        self.bot = AnthropicBot(name="DebugBot", model_engine=Engines.CLAUDE37_SONNET_20250219)
+        self.bot = AnthropicBot(name="DebugBot", model_engine=Engines.CLAUDE46_SONNET)
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
@@ -1569,6 +1569,7 @@ class TestDebugImports(unittest.TestCase):
             Attributes:
                 names (set): Set of variable names found in Load contexts.
             """
+
             def __init__(self):
                 self.names = set()
 

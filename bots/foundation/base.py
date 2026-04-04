@@ -139,20 +139,36 @@ class Engines(str, Enum):
     GPT52_THINKING = "gpt-5.2-thinking"
     GPT52_PRO = "gpt-5.2-pro"
 
-    # Anthropic Claude 3 Haiku Models
+    # Anthropic Claude 3 Models
     CLAUDE3_HAIKU = "claude-3-haiku-20240307"
-    CLAUDE35_HAIKU = "claude-3-5-haiku-latest"
-    CLAUDE45_HAIKU = "claude-haiku-4-5"
+    CLAUDE3_SONNET = "claude-3-sonnet-20240229"
+    CLAUDE3_OPUS = "claude-3-opus-20240229"
 
-    # Anthropic Claude Sonnet Models
-    CLAUDE37_SONNET_20250219 = "claude-3-7-sonnet-20250219"
+    # Anthropic Claude 3.5 Models (Deprecated - retire Oct 2025)
+    CLAUDE35_SONNET_20241022 = "claude-3-5-sonnet-20241022"
+    CLAUDE35_SONNET_20240620 = "claude-3-5-sonnet-20240620"
+
+    # Anthropic Claude 4 Models
     CLAUDE4_SONNET = "claude-sonnet-4-20250514"
-    CLAUDE45_SONNET = "claude-sonnet-4-5-20250929"
-
-    # Anthropic Claude Opus Models
     CLAUDE4_OPUS = "claude-opus-4-20250514"
+
+    # Anthropic Claude 4.1 Models
     CLAUDE41_OPUS = "claude-opus-4-1-20250805"
+
+    # Anthropic Claude 4.5 Models
+    CLAUDE45_HAIKU = "claude-haiku-4-5-20251001"
+    CLAUDE45_SONNET = "claude-sonnet-4-5-20250929"
     CLAUDE45_OPUS = "claude-opus-4-5-20251101"
+
+    # Anthropic Claude 4.6 Models (Latest - Feb 2026)
+    CLAUDE46_SONNET = "claude-sonnet-4-6"
+    CLAUDE46_OPUS = "claude-opus-4-6"
+
+    # Legacy Anthropic aliases (for backward compatibility)
+    CLAUDE35_HAIKU_LATEST = "claude-3-5-haiku-latest"
+    CLAUDE35_SONNET_LATEST = "claude-3-5-sonnet-latest"
+    CLAUDE_SONNET_4_LATEST = "claude-sonnet-4-latest"
+    CLAUDE_OPUS_4_LATEST = "claude-opus-4-latest"
 
     # Google Gemini 1.5 Models
     GEMINI15_PRO = "gemini-1.5-pro"
@@ -184,9 +200,9 @@ class Engines(str, Enum):
 
         Example:
             ```python
-            engine = Engines.get('gpt-4')
+            engine = Engines.get("gpt-4")
             if engine:
-                bot = Bot(model_engine=engine)
+                print(f"Found engine: {engine.value}")
             ```
         """
         for engine in Engines:
@@ -217,15 +233,12 @@ class Engines(str, Enum):
             ```
         """
         from bots.foundation.anthropic_bots import AnthropicBot
-        from bots.foundation.gemini_bots import GeminiBot
         from bots.foundation.openai_bots import ChatGPT_Bot
 
         if model_engine.value.startswith("gpt"):
             return ChatGPT_Bot
-        elif model_engine.value.startswith("claude"):
+        elif model_engine.value.startswith("claude") or model_engine.value.startswith("gemini"):
             return AnthropicBot
-        elif model_engine.value.startswith("gemini"):
-            return GeminiBot
         else:
             raise ValueError(f"Unsupported model engine: {model_engine}")
 
@@ -236,58 +249,60 @@ class Engines(str, Enum):
         Use when you need to reconstruct conversation nodes from saved bot state.
 
         Parameters:
-            class_name (str): Name of the node class ('OpenAINode', 'AnthropicNode', or 'GeminiNode')
+            class_name (str): Name of the node class ('OpenAINode' or 'AnthropicNode')
 
         Returns:
             Type[ConversationNode]: The ConversationNode subclass
 
         Raises:
             ValueError: If the class name is not a supported node type
+
+        Example:
+            ```python
+            node_class = Engines.get_conversation_node_class("AnthropicNode")
+            node = node_class._create_empty(node_class)
+            ```
         """
         from bots.foundation.anthropic_bots import AnthropicNode
-        from bots.foundation.gemini_bots import GeminiNode
         from bots.foundation.openai_bots import OpenAINode
 
-        NODE_CLASS_MAP = {"OpenAINode": OpenAINode, "AnthropicNode": AnthropicNode, "GeminiNode": GeminiNode}
+        NODE_CLASS_MAP = {"OpenAINode": OpenAINode, "AnthropicNode": AnthropicNode}
 
-        # Support MockConversationNode for testing
-        if class_name == "MockConversationNode":
-            try:
-                from bots.testing.mock_bot import MockConversationNode
+        if class_name not in NODE_CLASS_MAP:
+            raise ValueError(f"Unsupported node class: {class_name}")
 
-                return MockConversationNode
-            except ImportError:
-                pass  # Fall through to error
+        return NODE_CLASS_MAP[class_name]
 
-        node_class = NODE_CLASS_MAP.get(class_name)
-        if node_class is None:
-            raise ValueError(f"Unsupported conversation node type: {class_name}")
-        return node_class
+    def get_info(self) -> Dict[str, Any]:
+        """Get detailed information about this model engine.
 
-    def get_info(self) -> dict:
-        """Get basic information about this model.
+        Returns comprehensive model information including pricing, capabilities,
+        and provider details from the unified model registry.
 
         Returns:
-            dict: Model information including provider, intelligence rating (1-3 stars),
-                  max output tokens, and costs per million tokens.
+            Dict[str, Any]: Dictionary containing:
+                - provider: The LLM provider (e.g., 'anthropic', 'openai')
+                - intelligence: Model tier (1=fast/cheap, 2=balanced, 3=most capable)
+                - max_tokens: Maximum output tokens
+                - cost_input: Cost per 1M input tokens (USD)
+                - cost_output: Cost per 1M output tokens (USD)
+
+        Raises:
+            ValueError: If model information is not found in registry
 
         Example:
             ```python
             info = Engines.CLAUDE45_SONNET.get_info()
-            print(f"Intelligence: {'⭐' * info['intelligence']}")
-            print(f"Max tokens: {info['max_tokens']}")
-            print(f"Cost: ${info['cost_input']:.2f}/${info['cost_output']:.2f} per 1M tokens")
+            print(f"Provider: {info['provider']}")
+            print(f"Cost: ${info['cost_input']}/1M input tokens")
             ```
         """
         from bots.foundation.model_registry import get_model_info
 
-        return get_model_info(self.value) or {
-            "provider": "unknown",
-            "intelligence": 2,
-            "max_tokens": 4096,
-            "cost_input": 0.0,
-            "cost_output": 0.0,
-        }
+        info = get_model_info(self.value)
+        if info is None:
+            raise ValueError(f"Model information not found for {self.value}")
+        return info
 
 
 class ConversationNode:

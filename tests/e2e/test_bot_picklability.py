@@ -17,7 +17,7 @@ def test_pickle_bot_attributes():
     import bots.tools.self_tools
     import bots.tools.terminal_tools
 
-    bot = AnthropicBot(model_engine="claude-3-5-haiku-latest", max_tokens=1000, temperature=0.0)
+    bot = AnthropicBot(model_engine="claude-haiku-4-5-20251001", max_tokens=1000, temperature=0.0)
     bot.add_tools(bots.tools.terminal_tools, bots.tools.self_tools)
     bot.respond("Hello")
 
@@ -46,7 +46,7 @@ def test_tool_handler_components():
     """Deep dive into ToolHandler picklability."""
     import bots.tools.terminal_tools
 
-    bot = AnthropicBot(model_engine="claude-3-5-haiku-latest", max_tokens=1000, temperature=0.0)
+    bot = AnthropicBot(model_engine="claude-haiku-4-5-20251001", max_tokens=1000, temperature=0.0)
     bot.add_tools(bots.tools.terminal_tools)
 
     print("\n" + "=" * 80)
@@ -134,7 +134,7 @@ def test_namespace_components():
     """Test what's inside the namespace that makes it unpicklable."""
     import bots.tools.terminal_tools
 
-    bot = AnthropicBot(model_engine="claude-3-5-haiku-latest", max_tokens=1000, temperature=0.0)
+    bot = AnthropicBot(model_engine="claude-haiku-4-5-20251001", max_tokens=1000, temperature=0.0)
     bot.add_tools(bots.tools.terminal_tools)
 
     print("\n" + "=" * 80)
@@ -162,7 +162,7 @@ def test_deepcopy_bot():
     """Test if we can deepcopy the bot with current implementation."""
     import bots.tools.terminal_tools
 
-    bot = AnthropicBot(model_engine="claude-3-5-haiku-latest", max_tokens=1000, temperature=0.0)
+    bot = AnthropicBot(model_engine="claude-haiku-4-5-20251001", max_tokens=1000, temperature=0.0)
     bot.add_tools(bots.tools.terminal_tools)
     bot.respond("Hello")
 
@@ -196,7 +196,7 @@ def test_deepcopy_functionality():
     print("=" * 80)
 
     # Create original bot
-    bot1 = AnthropicBot(model_engine="claude-3-5-haiku-latest", max_tokens=1000, temperature=0.0)
+    bot1 = AnthropicBot(model_engine="claude-haiku-4-5-20251001", max_tokens=1000, temperature=0.0)
     bot1.add_tools(bots.tools.terminal_tools)
     response1 = bot1.respond("Hello, my name is Bot1")
 

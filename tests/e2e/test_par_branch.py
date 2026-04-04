@@ -38,7 +38,7 @@ def test_bot():
     """
     bot = AnthropicBot(
         api_key="dummy_key",
-        model_engine=Engines.CLAUDE37_SONNET_20250219,
+        model_engine=Engines.CLAUDE46_SONNET,
         max_tokens=1000,
         temperature=0.7,
         name="TestBot",
@@ -160,7 +160,7 @@ def test_empty_prompt_list() -> None:
     """
     bot = AnthropicBot(
         api_key=None,
-        model_engine=Engines.CLAUDE37_SONNET_20250219,
+        model_engine=Engines.CLAUDE46_SONNET,
         max_tokens=1000,
         temperature=0.7,
         name="TestBot",
@@ -198,7 +198,7 @@ def test_error_handling() -> None:
     """
     bot = AnthropicBot(
         api_key=None,
-        model_engine=Engines.CLAUDE37_SONNET_20250219,
+        model_engine=Engines.CLAUDE46_SONNET,
         max_tokens=1000,
         temperature=0.7,
         name="TestBot",

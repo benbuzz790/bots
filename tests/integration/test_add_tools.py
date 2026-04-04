@@ -28,7 +28,7 @@ def create_test_module(name: str, content: str) -> ModuleType:
 class TestAddTools2(unittest.TestCase):
     def setUp(self):
         self.bot = AnthropicBot(
-            model_engine=Engines.CLAUDE37_SONNET_20250219,
+            model_engine=Engines.CLAUDE46_SONNET,
             max_tokens=1000,
             temperature=0,
             name="TestBot",

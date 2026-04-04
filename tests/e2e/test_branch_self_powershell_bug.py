@@ -60,7 +60,7 @@ def test_branch_self_powershell_bug():
     import bots.tools.terminal_tools
 
     # Create a bot with the terminal tools (includes execute_powershell)
-    bot = AnthropicBot(model_engine="claude-3-5-haiku-latest", max_tokens=4000, temperature=0.0)
+    bot = AnthropicBot(model_engine="claude-haiku-4-5-20251001", max_tokens=4000, temperature=0.0)
     bot.add_tools(bots.tools.terminal_tools, bots.tools.self_tools)
 
     # Give it an initial prompt
@@ -148,7 +148,7 @@ def test_branch_self_tool_isolation():
     import bots.tools.self_tools
     import bots.tools.terminal_tools
 
-    bot = AnthropicBot(model_engine="claude-3-5-haiku-latest", max_tokens=1000, temperature=0.0)
+    bot = AnthropicBot(model_engine="claude-haiku-4-5-20251001", max_tokens=1000, temperature=0.0)
     bot.add_tools(bots.tools.terminal_tools)
     bot.add_tools(bots.tools.self_tools)
 

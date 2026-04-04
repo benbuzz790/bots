@@ -89,7 +89,7 @@ def another_module_tool(data: str) -> str:
 
     def create_mock_bot(self, name: str = "TestBot") -> MockBot:
         """Create a mock bot for testing."""
-        bot = MockBot(name=name, model_engine=Engines.CLAUDE35_HAIKU, max_tokens=1000, temperature=1)
+        bot = MockBot(name=name, model_engine=Engines.CLAUDE45_HAIKU, max_tokens=1000, temperature=1)
         # Set a response pattern that indicates tool usage
         bot.set_response_pattern("Tool executed successfully with result: {user_input}")
         return bot

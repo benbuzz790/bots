@@ -96,7 +96,7 @@ class TestGetModelPricing:
         assert pricing["input"] == 3.00
         assert pricing["output"] == 15.00
 
-        pricing = get_model_pricing("anthropic", "claude-3-5-haiku-latest")
+        pricing = get_model_pricing("anthropic", "claude-haiku-4-5-20251001")
         assert pricing["input"] == 0.80
         assert pricing["output"] == 4.00
 
@@ -362,7 +362,7 @@ class TestRealWorldScenarios:
         # Same task with expensive vs cheap model
         # Use opus-4 instead of the old opus model
         cost_expensive = calculate_cost("anthropic", "claude-opus-4-20250514", 10_000, 2_000)
-        cost_cheap = calculate_cost("anthropic", "claude-3-5-haiku-latest", 10_000, 2_000)
+        cost_cheap = calculate_cost("anthropic", "claude-haiku-4-5-20251001", 10_000, 2_000)
 
         # Haiku should be much cheaper than Opus
         assert cost_cheap < cost_expensive * 0.2  # At least 5x cheaper

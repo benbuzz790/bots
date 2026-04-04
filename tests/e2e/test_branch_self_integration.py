@@ -54,7 +54,7 @@ class TestBranchSelfIntegration(DetailedTestCase):
         print("=" * 50)
         bot = AnthropicBot(
             name="TestBot",
-            model_engine=Engines.CLAUDE37_SONNET_20250219,
+            model_engine=Engines.CLAUDE46_SONNET,
             max_tokens=10000,
         )
         bot.add_tools(branch_self)
@@ -95,7 +95,7 @@ class TestBranchSelfIntegration(DetailedTestCase):
         print("=" * 50)
         bot = AnthropicBot(
             name="TestBot",
-            model_engine=Engines.CLAUDE37_SONNET_20250219,
+            model_engine=Engines.CLAUDE46_SONNET,
             max_tokens=10000,
         )
         bot.add_tools(branch_self)
@@ -119,7 +119,7 @@ class TestBranchSelfIntegration(DetailedTestCase):
         """Test that branch_self tool is properly available in CLI context."""
         bot = AnthropicBot(
             name="TestBot",
-            model_engine=Engines.CLAUDE37_SONNET_20250219,
+            model_engine=Engines.CLAUDE46_SONNET,
             max_tokens=1000,
         )
         bot.add_tools(branch_self)
@@ -134,7 +134,7 @@ class TestBranchSelfIntegration(DetailedTestCase):
         print("=" * 50)
         bot = AnthropicBot(
             name="TestBot",
-            model_engine=Engines.CLAUDE37_SONNET_20250219,
+            model_engine=Engines.CLAUDE46_SONNET,
             max_tokens=10000,
         )
         bot.add_tools(branch_self)
@@ -176,7 +176,7 @@ class TestBranchSelfIntegration(DetailedTestCase):
         # Create a bot with CLI-style callbacks
         bot = AnthropicBot(
             name="TestBot",
-            model_engine=Engines.CLAUDE37_SONNET_20250219,
+            model_engine=Engines.CLAUDE46_SONNET,
             max_tokens=10000,
         )
 
