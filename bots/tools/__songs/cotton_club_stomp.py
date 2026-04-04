@@ -125,7 +125,7 @@ def play_cotton_club_stomp():
     print("=" * 60)
     print("\n🎵 Playing at a swinging 120 BPM...\n")
 
-    result = piano(song, tempo=120)
+    result = piano(song, tempo=120, voice="default")
 
     print(f"\n{result}")
     print("\n" + "=" * 60)

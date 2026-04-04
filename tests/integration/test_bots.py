@@ -14,6 +14,8 @@ Note: Some tests are marked as not implemented and skipped.
 
 import unittest
 
+import pytest
+
 from bots import AnthropicBot, ChatGPT_Bot
 from bots.foundation.base import Bot, Engines
 
@@ -58,6 +60,7 @@ class TestBaseBot(unittest.TestCase):
             role_description="Test bot",
         )
 
+    @pytest.mark.api
     def test_respond(self) -> None:
         """Test basic response generation functionality.
         Verifies that the bot can generate a text response and
@@ -77,6 +80,7 @@ class TestBaseBot(unittest.TestCase):
         response = self.bot.respond("Hello")
         self.assertIsInstance(response, str)
 
+    @pytest.mark.api
     def test_save_and_load(self) -> None:
         """Test bot state persistence and restoration.
         Verifies that bot state can be saved to disk and loaded back

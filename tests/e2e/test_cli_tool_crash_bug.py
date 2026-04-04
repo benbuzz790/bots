@@ -55,6 +55,8 @@ class TestCLIToolCrashBug:
         # Add both working and crashing tools
         self.bot.add_tools(working_tool, crashing_tool)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_tool_crash_corruption_scenario(self):
         """Test the scenario where a tool crash corrupts the tool request/result structure."""
 
@@ -118,6 +120,8 @@ class TestCLIToolCrashBug:
             print(f"Tool handler requests after exception: {self.bot.tool_handler.requests}")
             print(f"Tool handler results after exception: {self.bot.tool_handler.results}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_conversation_node_tool_state_after_crash(self):
         """Test the conversation node's tool state after a tool crash and backup."""
 
@@ -138,6 +142,8 @@ class TestCLIToolCrashBug:
         print(f"Node tool_results: {node.tool_results}")
         print(f"Node pending_results: {node.pending_results}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_tool_handler_state_persistence(self):
         """Test if tool handler state persists incorrectly after crashes."""
 

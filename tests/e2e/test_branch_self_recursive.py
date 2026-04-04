@@ -54,6 +54,8 @@ class TestBranchSelfRecursive(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_single_level_recursion(self):
         """
         Test that branch_self can be called once within a branch.
@@ -84,6 +86,8 @@ class TestBranchSelfRecursive(unittest.TestCase):
 
         print(f"✅ Test passed: Single level recursion works ({nodes_before} -> {nodes_after} nodes)")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_two_level_recursion(self):
         """
         Test that branch_self can be called twice within nested branches.
@@ -114,6 +118,8 @@ class TestBranchSelfRecursive(unittest.TestCase):
 
         print(f"✅ Test passed: Two level recursion works ({total_nodes} nodes)")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_recursive_branching_no_infinite_loop(self):
         """
         Test that recursive branching completes in reasonable time.

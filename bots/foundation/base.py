@@ -139,20 +139,36 @@ class Engines(str, Enum):
     GPT52_THINKING = "gpt-5.2-thinking"
     GPT52_PRO = "gpt-5.2-pro"
 
-    # Anthropic Claude 3 Haiku Models
+    # Anthropic Claude 3 Models
     CLAUDE3_HAIKU = "claude-3-haiku-20240307"
-    CLAUDE35_HAIKU = "claude-3-5-haiku-latest"
-    CLAUDE45_HAIKU = "claude-haiku-4-5"
+    CLAUDE3_SONNET = "claude-3-sonnet-20240229"
+    CLAUDE3_OPUS = "claude-3-opus-20240229"
 
-    # Anthropic Claude Sonnet Models
-    CLAUDE37_SONNET_20250219 = "claude-3-7-sonnet-20250219"
+    # Anthropic Claude 3.5 Models (Deprecated - retire Oct 2025)
+    CLAUDE35_SONNET_20241022 = "claude-3-5-sonnet-20241022"
+    CLAUDE35_SONNET_20240620 = "claude-3-5-sonnet-20240620"
+
+    # Anthropic Claude 4 Models
     CLAUDE4_SONNET = "claude-sonnet-4-20250514"
-    CLAUDE45_SONNET = "claude-sonnet-4-5-20250929"
-
-    # Anthropic Claude Opus Models
     CLAUDE4_OPUS = "claude-opus-4-20250514"
+
+    # Anthropic Claude 4.1 Models
     CLAUDE41_OPUS = "claude-opus-4-1-20250805"
+
+    # Anthropic Claude 4.5 Models
+    CLAUDE45_HAIKU = "claude-haiku-4-5-20251001"
+    CLAUDE45_SONNET = "claude-sonnet-4-5-20250929"
     CLAUDE45_OPUS = "claude-opus-4-5-20251101"
+
+    # Anthropic Claude 4.6 Models (Latest - Feb 2026)
+    CLAUDE46_SONNET = "claude-sonnet-4-6"
+    CLAUDE46_OPUS = "claude-opus-4-6"
+
+    # Legacy Anthropic aliases (for backward compatibility)
+    CLAUDE35_HAIKU_LATEST = "claude-3-5-haiku-latest"
+    CLAUDE35_SONNET_LATEST = "claude-3-5-sonnet-latest"
+    CLAUDE_SONNET_4_LATEST = "claude-sonnet-4-latest"
+    CLAUDE_OPUS_4_LATEST = "claude-opus-4-latest"
 
     # Google Gemini 1.5 Models
     GEMINI15_PRO = "gemini-1.5-pro"
@@ -184,9 +200,9 @@ class Engines(str, Enum):
 
         Example:
             ```python
-            engine = Engines.get('gpt-4')
+            engine = Engines.get("gpt-4")
             if engine:
-                bot = Bot(model_engine=engine)
+                print(f"Found engine: {engine.value}")
             ```
         """
         for engine in Engines:
@@ -217,15 +233,12 @@ class Engines(str, Enum):
             ```
         """
         from bots.foundation.anthropic_bots import AnthropicBot
-        from bots.foundation.gemini_bots import GeminiBot
         from bots.foundation.openai_bots import ChatGPT_Bot
 
         if model_engine.value.startswith("gpt"):
             return ChatGPT_Bot
-        elif model_engine.value.startswith("claude"):
+        elif model_engine.value.startswith("claude") or model_engine.value.startswith("gemini"):
             return AnthropicBot
-        elif model_engine.value.startswith("gemini"):
-            return GeminiBot
         else:
             raise ValueError(f"Unsupported model engine: {model_engine}")
 
@@ -236,58 +249,65 @@ class Engines(str, Enum):
         Use when you need to reconstruct conversation nodes from saved bot state.
 
         Parameters:
-            class_name (str): Name of the node class ('OpenAINode', 'AnthropicNode', or 'GeminiNode')
+            class_name (str): Name of the node class ('OpenAINode' or 'AnthropicNode')
 
         Returns:
             Type[ConversationNode]: The ConversationNode subclass
 
         Raises:
             ValueError: If the class name is not a supported node type
+
+        Example:
+            ```python
+            node_class = Engines.get_conversation_node_class("AnthropicNode")
+            node = node_class._create_empty(node_class)
+            ```
         """
         from bots.foundation.anthropic_bots import AnthropicNode
-        from bots.foundation.gemini_bots import GeminiNode
         from bots.foundation.openai_bots import OpenAINode
+        from bots.testing.mock_bot import MockConversationNode
 
-        NODE_CLASS_MAP = {"OpenAINode": OpenAINode, "AnthropicNode": AnthropicNode, "GeminiNode": GeminiNode}
+        NODE_CLASS_MAP = {
+            "OpenAINode": OpenAINode,
+            "AnthropicNode": AnthropicNode,
+            "MockConversationNode": MockConversationNode,
+        }
 
-        # Support MockConversationNode for testing
-        if class_name == "MockConversationNode":
-            try:
-                from bots.testing.mock_bot import MockConversationNode
+        if class_name not in NODE_CLASS_MAP:
+            raise ValueError(f"Unsupported node class: {class_name}")
 
-                return MockConversationNode
-            except ImportError:
-                pass  # Fall through to error
+        return NODE_CLASS_MAP[class_name]
 
-        node_class = NODE_CLASS_MAP.get(class_name)
-        if node_class is None:
-            raise ValueError(f"Unsupported conversation node type: {class_name}")
-        return node_class
+    def get_info(self) -> Dict[str, Any]:
+        """Get detailed information about this model engine.
 
-    def get_info(self) -> dict:
-        """Get basic information about this model.
+        Returns comprehensive model information including pricing, capabilities,
+        and provider details from the unified model registry.
 
         Returns:
-            dict: Model information including provider, intelligence rating (1-3 stars),
-                  max output tokens, and costs per million tokens.
+            Dict[str, Any]: Dictionary containing:
+                - provider: The LLM provider (e.g., 'anthropic', 'openai')
+                - intelligence: Model tier (1=fast/cheap, 2=balanced, 3=most capable)
+                - max_tokens: Maximum output tokens
+                - cost_input: Cost per 1M input tokens (USD)
+                - cost_output: Cost per 1M output tokens (USD)
+
+        Raises:
+            ValueError: If model information is not found in registry
 
         Example:
             ```python
             info = Engines.CLAUDE45_SONNET.get_info()
-            print(f"Intelligence: {'⭐' * info['intelligence']}")
-            print(f"Max tokens: {info['max_tokens']}")
-            print(f"Cost: ${info['cost_input']:.2f}/${info['cost_output']:.2f} per 1M tokens")
+            print(f"Provider: {info['provider']}")
+            print(f"Cost: ${info['cost_input']}/1M input tokens")
             ```
         """
         from bots.foundation.model_registry import get_model_info
 
-        return get_model_info(self.value) or {
-            "provider": "unknown",
-            "intelligence": 2,
-            "max_tokens": 4096,
-            "cost_input": 0.0,
-            "cost_output": 0.0,
-        }
+        info = get_model_info(self.value)
+        if info is None:
+            raise ValueError(f"Model information not found for {self.value}")
+        return info
 
 
 class ConversationNode:
@@ -2048,12 +2068,16 @@ class ToolHandler(ABC):
 
         return source
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self, for_persistence: bool = True) -> Dict[str, Any]:
         """Serialize the ToolHandler state to a dictionary.
 
         Converts the complete state of the ToolHandler into a dictionary format
-        suitable for persistence. This includes all tools, their schemas, module
-        contexts, and execution state.
+        suitable for persistence or deepcopy operations.
+
+        Parameters:
+            for_persistence (bool): If True, performs full serialization including
+                globals for disk storage. If False, skips globals serialization
+                for in-memory deepcopy operations (avoids circular reference issues).
 
         Returns:
             Dict[str, Any]: Dictionary containing:
@@ -2070,6 +2094,7 @@ class ToolHandler(ABC):
             - Maintains tool relationships and dependencies
             - Stores both absolute and relative paths for portability
             - Includes tool registry state
+            - When for_persistence=False, skips globals to avoid circular references
         """
         module_details = {}
         function_paths = {}
@@ -2093,8 +2118,13 @@ class ToolHandler(ABC):
                 "file_path": module_context.file_path,  # Absolute path (original)
                 "relative_path": rel_path,  # Relative path for portability
                 "code_hash": self._get_code_hash(enhanced_source),
-                "globals": self._serialize_globals(module_context.namespace.__dict__),
             }
+
+            # Only serialize globals for disk persistence
+            # For deepcopy, skip globals to avoid circular reference issues with tool functions
+            if for_persistence:
+                module_details[file_path]["globals"] = self._serialize_globals(module_context.namespace.__dict__)
+
         for name, func in self.function_map.items():
             module_context = getattr(func, "__module_context__", None)
             if module_context:
@@ -3427,6 +3457,7 @@ class Bot(ABC):
             - Preserves wrapped methods (e.g., from make_bot_interruptible)
             - Preserves callbacks for branch operations
             - Not suitable for disk storage (use _serialize() for that)
+            - Tool handler is preserved by reference (not serialized) to avoid issues
         """
         import base64
 
@@ -3463,8 +3494,18 @@ class Bot(ABC):
                 # Use existing conversation serialization
                 data["conversation"] = value._root_dict()
             elif key == "tool_handler":
-                # Use existing tool handler serialization
-                data["tool_handler"] = value.to_dict()
+                # For deepcopy, preserve the tool_handler by reference using dill
+                # This avoids circular reference issues and is more efficient
+                try:
+                    pickled = dill.dumps(value)
+                    encoded = base64.b64encode(pickled).decode("ascii")
+                    data["tool_handler"] = {"__dill_preserved__": True, "data": encoded, "type": "ToolHandler"}
+                except Exception as e:
+                    # If dill fails, fall back to dict serialization without globals
+                    import warnings
+
+                    warnings.warn(f"Could not dill-preserve tool_handler, falling back to dict serialization: {e}")
+                    data["tool_handler"] = value.to_dict(for_persistence=False)
             elif isinstance(value, (str, int, float, bool, list, dict, type(None))):
                 # JSON-safe primitives - store directly
                 data[key] = value
@@ -3503,6 +3544,7 @@ class Bot(ABC):
         Note:
             - API keys are not serialized for security
             - Callbacks are not serialized (environment-specific)
+            - Wrapped respond method is not serialized (will use class method on load)
             - Uses hybrid serialization for tool handlers (see tool_handling.md)
             - For deepcopy operations, use _serialize_for_deepcopy() instead
 
@@ -3516,6 +3558,7 @@ class Bot(ABC):
         data.pop("api_key", None)
         data.pop("mailbox", None)
         data.pop("callbacks", None)  # Callbacks are environment-specific, not serialized
+        data.pop("respond", None)  # Wrapped respond method (from make_bot_interruptible), not serialized
 
         # Add metadata
         data["bot_class"] = self.__class__.__name__
@@ -3598,10 +3641,22 @@ class Bot(ABC):
             else:
                 restored_state[key] = value
 
+        # Check if tool_handler was dill-preserved
+        if "tool_handler" in dill_preserved:
+            # Tool handler was preserved by dill - use it directly
+            # We'll add it to the bot after construction
+            tool_handler_preserved = dill_preserved.pop("tool_handler")
+        else:
+            tool_handler_preserved = None
+
         # Use regular deserialization for the base bot
         bot = cls._deserialize(restored_state, api_key)
 
-        # Add back the dill-preserved attributes
+        # If tool_handler was dill-preserved, replace the deserialized one
+        if tool_handler_preserved is not None:
+            bot.tool_handler = tool_handler_preserved
+
+        # Add back any other dill-preserved attributes
         for key, value in dill_preserved.items():
             setattr(bot, key, value)
 
@@ -3746,6 +3801,76 @@ class Bot(ABC):
 
         # Copy all attributes from temp_bot to self
         self.__dict__.update(temp_bot.__dict__)
+
+    def __deepcopy__(self, memo):
+        """Custom deepcopy implementation that handles circular references.
+
+        This method properly handles the circular references created by tool
+        functions with _bot parameter injection. We manually copy each attribute,
+        using special handling for the tool_handler to avoid circular refs.
+
+        Parameters:
+            memo (dict): Deepcopy memo dict to track already-copied objects
+
+        Returns:
+            Bot: A deep copy of this bot
+
+        Note:
+            - Handles tool_handler circular references properly
+            - Preserves all bot state including conversation and tools
+            - Callbacks are not copied (they're environment-specific)
+            - Wrapped respond method (from make_bot_interruptible) is skipped
+        """
+        import copy as copy_module
+
+        # Check if we've already copied this object (prevents infinite recursion)
+        if id(self) in memo:
+            return memo[id(self)]
+
+        # Create a new instance without calling __init__
+        cls = self.__class__
+        new_bot = cls.__new__(cls)
+
+        # Register in memo immediately to prevent infinite recursion
+        memo[id(self)] = new_bot
+
+        # Manually copy each attribute
+        for key, value in self.__dict__.items():
+            if key == "tool_handler":
+                # For tool_handler, use save/load mechanism to avoid circular refs
+                # This properly serializes tools without hitting circular references
+                tool_handler_dict = value.to_dict(for_persistence=True)
+                new_bot.tool_handler = value.__class__.from_dict(tool_handler_dict)
+            elif key == "mailbox":
+                # Mailbox will be reconstructed after all attributes are copied
+                pass
+            elif key == "callbacks":
+                # Callbacks are environment-specific, don't deep copy
+                new_bot.callbacks = value
+            elif key == "api_key":
+                # API key is just a string, copy directly
+                new_bot.api_key = value
+            elif key == "respond":
+                # Skip wrapped respond method (from make_bot_interruptible)
+                # The class method will be used instead
+                # This avoids issues with closures that reference the original bot
+                pass
+            else:
+                # For everything else, use standard deepcopy
+                try:
+                    new_bot.__dict__[key] = copy_module.deepcopy(value, memo)
+                except Exception:
+                    # If deepcopy fails, just copy the reference
+                    new_bot.__dict__[key] = value
+
+        # Reconstruct mailbox - create a new instance of the same type as the original
+        if hasattr(self, "mailbox") and self.mailbox is not None:
+            mailbox_class = type(self.mailbox)
+            new_bot.mailbox = mailbox_class()
+        else:
+            new_bot.mailbox = None
+
+        return new_bot
 
     @classmethod
     def load(cls, filepath: str, api_key: Optional[str] = None) -> "Bot":

@@ -14,6 +14,8 @@ from bots.foundation.base import Engines
 class TestCLIBackupSystem:
     """Test the CLI backup system."""
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_backup_creation(self):
         """Test that backups can be created successfully."""
         context = CLIContext()
@@ -28,6 +30,8 @@ class TestCLIBackupSystem:
         assert context.bot_backup is not None
         assert context.bot_backup is not context.bot_instance  # Should be a copy
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_backup_restore(self):
         """Test that backups can be restored."""
         context = CLIContext()
@@ -51,6 +55,8 @@ class TestCLIBackupSystem:
         # Verify it's not the Mock object we set
         assert not isinstance(context.bot_instance.conversation, Mock)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_no_backup_available(self):
         """Test behavior when no backup is available."""
         context = CLIContext()
@@ -59,6 +65,8 @@ class TestCLIBackupSystem:
         result = context.restore_backup()
         assert result == "No backup available"
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_backup_info(self):
         """Test backup info display."""
         context = CLIContext()
@@ -76,6 +84,8 @@ class TestCLIBackupSystem:
         assert "Backup available" in info
         assert "test_reason" in info
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_backup_prevents_concurrent_backups(self):
         """Test that concurrent backups are prevented."""
         context = CLIContext()
@@ -89,6 +99,8 @@ class TestCLIBackupSystem:
 
         assert result is False
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_backup_handler_commands(self):
         """Test BackupHandler command methods."""
         handler = BackupHandler()
@@ -113,6 +125,8 @@ class TestCLIBackupSystem:
         result = handler.undo(bot, context, [])
         assert "Restored from backup" in result
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_backup_with_conversation_changes(self):
         """Test that backup captures conversation state."""
         context = CLIContext()

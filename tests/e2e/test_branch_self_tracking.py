@@ -33,6 +33,8 @@ class TestBranchSelfTracking(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_branch_self_tracking_after_save_load_simple(self):
         """
         Verify branch_self tracks correct node after save/load (Issue #118).
@@ -79,6 +81,8 @@ class TestBranchSelfTracking(unittest.TestCase):
 
         print(f"✅ Test passed: Tree has {total_nodes} nodes, loaded bot at leaf")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_branch_self_position_after_load(self):
         """
         Verify Bot.load() positions at replies[-1] (rightmost) not replies[0] (leftmost).
@@ -120,6 +124,8 @@ class TestBranchSelfTracking(unittest.TestCase):
         else:
             print("✅ Test passed: At root level")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_multiple_branch_self_calls_with_save_load(self):
         """
         Test multiple branch_self calls with save/load between them.
@@ -168,6 +174,8 @@ class TestBranchSelfTracking(unittest.TestCase):
 
         print(f"✅ Test passed: Tree structure preserved ({nodes_after_load} nodes), positioned at leaf")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_conversation_tree_integrity_after_save_load(self):
         """
         Verify that the entire conversation tree structure is preserved

@@ -108,6 +108,7 @@ def branch_self(
     """
     import copy
     import threading
+    import warnings
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     from bots.flows import functional_prompts as fp
@@ -116,189 +117,219 @@ def branch_self(
         return "Error: Bot reference not provided"
     bot = _bot
 
-    # Parse parameters
-    allow_work = allow_work.lower() == "true"
-    parallel = parallel.lower() == "true"
-    recombine = recombine.lower()
+    # Track recursion depth to prevent infinite recursion
+    if not hasattr(bot, "_branch_self_depth"):
+        bot._branch_self_depth = 0
 
-    valid_recombine_options = ["none", "concatenate", "llm_judge", "llm_vote", "llm_merge"]
-    if recombine not in valid_recombine_options:
-        return f"Error: Invalid recombine option. Valid: {valid_recombine_options}"
+    bot._branch_self_depth += 1
+    current_depth = bot._branch_self_depth
 
-    # Process the prompts
+    # Warn at depth 5 and 10
+    if current_depth == 5:
+        warning_msg = (
+            f"WARNING: branch_self recursion depth is {current_depth}. "
+            "This may indicate unintended recursive branching. "
+            "Consider reviewing your branching strategy."
+        )
+        warnings.warn(warning_msg, RuntimeWarning, stacklevel=2)
+        print(f"\n⚠️  {warning_msg}\n")
+    elif current_depth == 10:
+        warning_msg = (
+            f"WARNING: branch_self recursion depth is {current_depth}. "
+            "Deep recursion detected! This is likely unintended and may cause issues. "
+            "Please review your code for infinite recursion patterns."
+        )
+        warnings.warn(warning_msg, RuntimeWarning, stacklevel=2)
+        print(f"\n⚠️⚠️  {warning_msg}\n")
+
     try:
-        message_list = _process_string_array(self_prompts)
-        if not message_list:
-            return "Error: No valid prompts provided"
+        # Parse parameters
+        allow_work = allow_work.lower() == "true"
+        parallel = parallel.lower() == "true"
+        recombine = recombine.lower()
 
-        # Store original settings
-        original_node = bot.conversation
-        original_autosave = bot.autosave
-        bot.autosave = False
+        valid_recombine_options = ["none", "concatenate", "llm_judge", "llm_vote", "llm_merge"]
+        if recombine not in valid_recombine_options:
+            return f"Error: Invalid recombine option. Valid: {valid_recombine_options}"
 
-        # Handle tool_use without tool_result issue for parallel tool calls
-        # If the current node has tool_calls, we need to add a USER message with
-        # tool_results for ALL tool calls before copying (not just branch_self)
-        dummy_node_added = False
-        dummy_node = None
-        if original_node.tool_calls:
-            # Check if branch_self is among the tool calls (parallel or not)
-            has_branch_self = any(tc.get("name") == "branch_self" for tc in original_node.tool_calls)
+        # Process the prompts
+        try:
+            message_list = _process_string_array(self_prompts)
+            if not message_list:
+                return "Error: No valid prompts provided"
 
-            if has_branch_self:
-                # Create dummy tool_results for ALL tool calls in this message
-                # This is required for parallel tool calling compatibility
-                dummy_results = []
-                for tool_call in original_node.tool_calls:
-                    if tool_call.get("name") == "branch_self":
-                        # branch_self gets a proper "in progress" message
-                        dummy_result = bot.tool_handler.generate_response_schema(tool_call, "Branching in progress...")
+            # Store original settings
+            original_node = bot.conversation
+            original_autosave = bot.autosave
+            bot.autosave = False
+
+            # Handle tool_use without tool_result issue for parallel tool calls
+            # If the current node has tool_calls, we need to add a USER message with
+            # tool_results for ALL tool calls before copying (not just branch_self)
+            dummy_node_added = False
+            dummy_node = None
+            if original_node.tool_calls:
+                # Check if branch_self is among the tool calls (parallel or not)
+                has_branch_self = any(tc.get("name") == "branch_self" for tc in original_node.tool_calls)
+
+                if has_branch_self:
+                    # Create dummy tool_results for ALL tool calls in this message
+                    # This is required for parallel tool calling compatibility
+                    dummy_results = []
+                    for tool_call in original_node.tool_calls:
+                        if tool_call.get("name") == "branch_self":
+                            # branch_self gets a proper "in progress" message
+                            dummy_result = bot.tool_handler.generate_response_schema(tool_call, "Branching in progress...")
+                        else:
+                            # Other parallel tool calls get placeholder results
+                            # This ensures Anthropic's requirement that all tool results
+                            # must be in a single user message
+                            dummy_result = bot.tool_handler.generate_response_schema(
+                                tool_call, "[Parallel tool execution - result pending]"
+                            )
+                        dummy_results.append(dummy_result)
+
+                    # Add a user message node with ALL tool results
+                    # Use a placeholder content since Anthropic requires non-empty text
+                    dummy_node = original_node._add_reply(
+                        role="user",
+                        content="[Tool execution in progress]",
+                        tool_results=dummy_results,
+                    )
+                    dummy_node_added = True
+
+                    # Update bot's conversation pointer to this new node
+                    bot.conversation = dummy_node
+
+            # Create lock for thread-safe mutations
+            replies_lock = threading.Lock()
+
+            # Determine which node to use as parent for branches
+            parent_bot_node = bot.conversation
+
+            # Prepare prompts (no prefixing needed - allow_work is handled in execute_branch)
+            prefixed_prompts = message_list
+
+            def execute_branch(prompt):
+                """Execute a single branch and return the response and node."""
+                try:
+                    # Create a deep copy of the bot for this branch
+                    branch_bot = copy.deepcopy(bot)
+                    branch_bot.autosave = False
+
+                    # Callbacks are preserved by deepcopy
+                    # Store the branching point (branch_bot.conversation is at same point as bot.conversation)
+                    branching_node = branch_bot.conversation
+
+                    # Ensure clean tool handler state for branch
+                    if hasattr(branch_bot, "tool_handler") and branch_bot.tool_handler:
+                        branch_bot.tool_handler.clear()
+
+                    if allow_work:
+                        # Use iterative approach for work
+                        response = branch_bot.respond(prompt)
+                        while not fp.conditions.tool_not_used(branch_bot):
+                            response = branch_bot.respond("ok")
                     else:
-                        # Other parallel tool calls get placeholder results
-                        # This ensures Anthropic's requirement that all tool results
-                        # must be in a single user message
-                        dummy_result = bot.tool_handler.generate_response_schema(
-                            tool_call, "[Parallel tool execution - result pending]"
-                        )
-                    dummy_results.append(dummy_result)
+                        # Single response
+                        response = branch_bot.respond(prompt)
 
-                # Add a user message node with ALL tool results
-                # Use a placeholder content since Anthropic requires non-empty text
-                dummy_node = original_node._add_reply(
-                    role="user",
-                    content="[Tool execution in progress]",
-                    tool_results=dummy_results,
-                )
-                dummy_node_added = True
+                    # Stitch completed conversation back onto parent bot conversation
+                    # Thread-safe mutation with lock
+                    with replies_lock:
+                        parent_bot_node.replies.extend(branching_node.replies)
+                        for node in branching_node.replies:
+                            node.parent = parent_bot_node
 
-                # Update bot's conversation pointer to this new node
-                bot.conversation = dummy_node
+                    return response, branch_bot.conversation
 
-        # Create lock for thread-safe mutations
-        replies_lock = threading.Lock()
+                except Exception:
+                    import traceback
 
-        # Determine which node to use as parent for branches
-        parent_bot_node = bot.conversation
+                    traceback.print_exc()
+                    return None, None
 
-        # Prepare prompts (no prefixing needed - allow_work is handled in execute_branch)
-        prefixed_prompts = message_list
+            # Execute branches
+            responses = []
+            branch_nodes = []
 
-        def execute_branch(prompt):
-            """Execute a single branch and return the response and node."""
-            try:
-                # Create a deep copy of the bot for this branch
-                branch_bot = copy.deepcopy(bot)
-                branch_bot.autosave = False
-
-                # Callbacks are preserved by deepcopy
-                # Store the branching point (branch_bot.conversation is at same point as bot.conversation)
-                branching_node = branch_bot.conversation
-
-                # Ensure clean tool handler state for branch
-                if hasattr(branch_bot, "tool_handler") and branch_bot.tool_handler:
-                    branch_bot.tool_handler.clear()
-
-                if allow_work:
-                    # Use iterative approach for work
-                    response = branch_bot.respond(prompt)
-                    while not fp.conditions.tool_not_used(branch_bot):
-                        response = branch_bot.respond("ok")
-                else:
-                    # Single response
-                    response = branch_bot.respond(prompt)
-
-                # Stitch completed conversation back onto parent bot conversation
-                # Thread-safe mutation with lock
-                with replies_lock:
-                    parent_bot_node.replies.extend(branching_node.replies)
-                    for node in branching_node.replies:
-                        node.parent = parent_bot_node
-
-                return response, branch_bot.conversation
-
-            except Exception:
-                import traceback
-
-                traceback.print_exc()
-                return None, None
-
-        # Execute branches
-        responses = []
-        branch_nodes = []
-
-        if parallel:
-            # Parallel execution
-            with ThreadPoolExecutor() as executor:
-                futures = {executor.submit(execute_branch, prompt): prompt for prompt in prefixed_prompts}
-                for future in as_completed(futures):
-                    response, node = future.result()
+            if parallel:
+                # Parallel execution
+                with ThreadPoolExecutor() as executor:
+                    futures = {executor.submit(execute_branch, prompt): prompt for prompt in prefixed_prompts}
+                    for future in as_completed(futures):
+                        response, node = future.result()
+                        responses.append(response)
+                        branch_nodes.append(node)
+            else:
+                # Sequential execution
+                for prompt in prefixed_prompts:
+                    response, node = execute_branch(prompt)
                     responses.append(response)
                     branch_nodes.append(node)
-        else:
-            # Sequential execution
-            for prompt in prefixed_prompts:
-                response, node = execute_branch(prompt)
-                responses.append(response)
-                branch_nodes.append(node)
 
-        # Remove dummy node if we added it
-        if dummy_node_added and dummy_node:
-            # Before removing dummy_node, preserve any branch replies that were attached to it
-            # Iterate over dummy_node's replies and move them to original_node
-            for child in list(dummy_node.replies):  # Use list() to avoid modification during iteration
-                # Update parent reference to point to original_node
-                child.parent = original_node
-                # Add child to original_node's replies
-                original_node.replies.append(child)
+            # Remove dummy node if we added it
+            if dummy_node_added and dummy_node:
+                # Before removing dummy_node, preserve any branch replies that were attached to it
+                # Iterate over dummy_node's replies and move them to original_node
+                for child in list(dummy_node.replies):  # Use list() to avoid modification during iteration
+                    # Update parent reference to point to original_node
+                    child.parent = original_node
+                    # Add child to original_node's replies
+                    original_node.replies.append(child)
 
-            # Clear dummy_node's replies to avoid dangling references
-            dummy_node.replies.clear()
+                # Clear dummy_node's replies to avoid dangling references
+                dummy_node.replies.clear()
 
-            # Now safe to remove the dummy node from the conversation tree
-            original_node.replies.remove(dummy_node)
-            # Restore bot's conversation pointer
-            bot.conversation = original_node
+                # Now safe to remove the dummy node from the conversation tree
+                original_node.replies.remove(dummy_node)
+                # Restore bot's conversation pointer
+                bot.conversation = original_node
 
-        # Restore original bot settings
-        bot.autosave = original_autosave
+            # Restore original bot settings
+            bot.autosave = original_autosave
 
-        # Count successful branches
-        success_count = sum(1 for r in responses if r is not None)
+            # Count successful branches
+            success_count = sum(1 for r in responses if r is not None)
 
-        # Create success message, handle recombination if requested
-        combined = "No recombinator selected"
-        if recombine != "none" and responses:
-            valid_responses = [r for r in responses if r is not None]
+            # Create success message, handle recombination if requested
+            combined = "No recombinator selected"
+            if recombine != "none" and responses:
+                valid_responses = [r for r in responses if r is not None]
 
-            if valid_responses:
-                from bots.flows.recombinators import recombinators as recomb
+                if valid_responses:
+                    from bots.flows.recombinators import recombinators as recomb
 
-                if recombine == "concatenate":
-                    combined, _ = recomb.concatenate(valid_responses, [])
-                elif recombine == "llm_judge":
-                    combined, _ = recomb.llm_judge(valid_responses, [], judge_bot=bot)
-                elif recombine == "llm_vote":
-                    combined, _ = recomb.llm_vote(valid_responses, [], vote_bot=bot)
-                elif recombine == "llm_merge":
-                    combined, _ = recomb.llm_merge(valid_responses, [], merge_bot=bot)
-                else:
-                    combined = "Unknown recombination method"
+                    if recombine == "concatenate":
+                        combined, _ = recomb.concatenate(valid_responses, [])
+                    elif recombine == "llm_judge":
+                        combined, _ = recomb.llm_judge(valid_responses, [], judge_bot=bot)
+                    elif recombine == "llm_vote":
+                        combined, _ = recomb.llm_vote(valid_responses, [], vote_bot=bot)
+                    elif recombine == "llm_merge":
+                        combined, _ = recomb.llm_merge(valid_responses, [], merge_bot=bot)
+                    else:
+                        combined = "Unknown recombination method"
 
-        exec_type = "parallel" if parallel else "sequential"
-        work_type = "iterative" if allow_work else "single-response"
-        result_content = (
-            f"Successfully completed {success_count}/{len(message_list)} "
-            f"{exec_type} {work_type} branches. "
-            f"Recombination result:\n\n{combined}"
-        )
+            exec_type = "parallel" if parallel else "sequential"
+            work_type = "iterative" if allow_work else "single-response"
+            result_content = (
+                f"Successfully completed {success_count}/{len(message_list)} "
+                f"{exec_type} {work_type} branches. "
+                f"Recombination result:\n\n{combined}"
+            )
 
-        return result_content
+            return result_content
 
-    except Exception as e:
-        import traceback
+        except Exception as e:
+            import traceback
 
-        traceback.print_exc()
-        return f"Error in branch_self: {str(e)}"
+            traceback.print_exc()
+            return f"Error in branch_self: {str(e)}"
+
+    finally:
+        # Decrement depth counter when exiting
+        bot._branch_self_depth -= 1
 
 
 @toolify()

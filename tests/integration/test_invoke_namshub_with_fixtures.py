@@ -15,6 +15,7 @@ from bots.tools.invoke_namshub import invoke_namshub
 class TestInvokeNamshubBasicFlow:
     """Test basic invocation flow with simple namshubs."""
 
+    @pytest.mark.api
     def test_invoke_no_op_namshub(self):
         """Test invoking the no-op namshub through invoke_namshub tool."""
         bot = MockBot(autosave=False)
@@ -28,6 +29,7 @@ class TestInvokeNamshubBasicFlow:
         assert "success" in result.lower()
         assert "Error" not in result
 
+    @pytest.mark.api
     def test_invoke_echo_namshub_with_parameter(self):
         """Test invoking echo namshub with parameter."""
         bot = MockBot(autosave=False)
@@ -40,6 +42,7 @@ class TestInvokeNamshubBasicFlow:
         assert "Echo: Hello from test!" in result
         assert "Error" not in result
 
+    @pytest.mark.api
     def test_invoke_echo_namshub_missing_parameter(self):
         """Test that echo namshub validates missing parameter."""
         bot = MockBot(autosave=False)
@@ -57,6 +60,7 @@ class TestInvokeNamshubBasicFlow:
 class TestInvokeNamshubStateManagement:
     """Test that invoke_namshub properly manages bot state."""
 
+    @pytest.mark.api
     def test_state_restored_after_no_op(self):
         """Test that bot state is restored after no-op namshub."""
         bot = MockBot(autosave=False)
@@ -74,6 +78,7 @@ class TestInvokeNamshubStateManagement:
         current_tool_count = len(bot.tool_handler.tools) if hasattr(bot.tool_handler, "tools") else 0
         assert current_tool_count == original_tool_count
 
+    @pytest.mark.api
     def test_state_restored_after_state_change_namshub(self):
         """Test that bot state is restored even after namshub modifies it."""
         bot = MockBot(autosave=False)
@@ -92,6 +97,7 @@ class TestInvokeNamshubStateManagement:
         # After execution, state should be restored
         assert bot.system_message == original_system_message
 
+    @pytest.mark.api
     def test_state_restored_after_tool_use_namshub(self):
         """Test that toolkit is restored after tool_use namshub."""
         bot = MockBot(autosave=False)
@@ -113,6 +119,7 @@ class TestInvokeNamshubStateManagement:
 class TestInvokeNamshubWithToolUse:
     """Test namshubs that use tools."""
 
+    @pytest.mark.api
     def test_tool_use_namshub_evaluates_expression(self):
         """Test that tool_use namshub can execute Python code."""
         bot = MockBot(autosave=False)
@@ -125,6 +132,7 @@ class TestInvokeNamshubWithToolUse:
         assert "7 * 8" in result
         assert "56" in result
 
+    @pytest.mark.api
     def test_tool_use_namshub_with_default_expression(self):
         """Test tool_use namshub with default expression."""
         bot = MockBot(autosave=False)
@@ -137,6 +145,7 @@ class TestInvokeNamshubWithToolUse:
         assert "2 + 2" in result
         assert "4" in result
 
+    @pytest.mark.api
     def test_tool_use_namshub_with_complex_expression(self):
         """Test tool_use namshub with complex Python expression."""
         bot = MockBot(autosave=False)
@@ -153,6 +162,7 @@ class TestInvokeNamshubWithToolUse:
 class TestInvokeNamshubWithWorkflow:
     """Test namshubs that execute workflows."""
 
+    @pytest.mark.api
     def test_simple_workflow_executes(self):
         """Test that simple_workflow namshub executes successfully."""
         bot = MockBot(autosave=False)
@@ -164,6 +174,7 @@ class TestInvokeNamshubWithWorkflow:
 
         assert "completed" in result.lower()
 
+    @pytest.mark.api
     def test_simple_workflow_with_custom_task(self):
         """Test simple_workflow with custom task description."""
         bot = MockBot(autosave=False)
@@ -175,6 +186,7 @@ class TestInvokeNamshubWithWorkflow:
 
         assert "completed" in result.lower()
 
+    @pytest.mark.api
     def test_workflow_system_message_restored(self):
         """Test that system message is restored after workflow execution."""
         bot = MockBot(autosave=False)
@@ -194,6 +206,7 @@ class TestInvokeNamshubWithWorkflow:
 class TestInvokeNamshubErrorHandling:
     """Test error handling in invoke_namshub."""
 
+    @pytest.mark.api
     def test_error_namshub_raises_and_restores_state(self):
         """Test that errors are propagated and state is still restored."""
         bot = MockBot(autosave=False)
@@ -213,6 +226,7 @@ class TestInvokeNamshubErrorHandling:
         # State should still be restored
         assert bot.system_message == original_system_message
 
+    @pytest.mark.api
     def test_error_namshub_runtime_error(self):
         """Test that RuntimeError is handled properly."""
         bot = MockBot(autosave=False)
@@ -225,6 +239,7 @@ class TestInvokeNamshubErrorHandling:
         assert "Error" in result or "error" in result.lower()
         assert "RuntimeError" in result or "runtime" in result.lower()
 
+    @pytest.mark.api
     def test_nonexistent_namshub_file(self):
         """Test that nonexistent namshub file is handled gracefully."""
         bot = MockBot(autosave=False)
@@ -235,6 +250,7 @@ class TestInvokeNamshubErrorHandling:
         assert "Error" in result
         assert "not found" in result.lower()
 
+    @pytest.mark.api
     def test_invalid_namshub_path(self):
         """Test that invalid path is handled gracefully."""
         bot = MockBot(autosave=False)
@@ -245,6 +261,7 @@ class TestInvokeNamshubErrorHandling:
         assert "Error" in result
         assert "not found" in result.lower()
 
+    @pytest.mark.api
     def test_invalid_json_kwargs(self):
         """Test that invalid JSON in kwargs is handled gracefully."""
         bot = MockBot(autosave=False)
@@ -261,6 +278,7 @@ class TestInvokeNamshubErrorHandling:
 class TestInvokeNamshubMultipleInvocations:
     """Test multiple sequential namshub invocations."""
 
+    @pytest.mark.api
     def test_sequential_no_op_invocations(self):
         """Test multiple no-op invocations in sequence."""
         bot = MockBot(autosave=False)
@@ -276,6 +294,7 @@ class TestInvokeNamshubMultipleInvocations:
         assert "success" in result2.lower()
         assert "success" in result3.lower()
 
+    @pytest.mark.api
     def test_sequential_different_namshubs(self):
         """Test invoking different namshubs in sequence."""
         bot = MockBot(autosave=False)
@@ -302,6 +321,7 @@ class TestInvokeNamshubMultipleInvocations:
         # State should be restored after all invocations
         assert bot.system_message == original_message
 
+    @pytest.mark.api
     def test_alternating_state_changes(self):
         """Test that state is properly managed across alternating invocations."""
         bot = MockBot(autosave=False)
@@ -327,6 +347,7 @@ class TestInvokeNamshubMultipleInvocations:
 class TestInvokeNamshubDirectoryListing:
     """Test directory listing functionality."""
 
+    @pytest.mark.api
     def test_list_namshubs_in_directory(self):
         """Test that providing a directory lists available namshubs."""
         bot = MockBot(autosave=False)
@@ -337,6 +358,7 @@ class TestInvokeNamshubDirectoryListing:
         assert "namshub" in result.lower()
         assert "namshub_of_no_op.py" in result or "no_op" in result
 
+    @pytest.mark.api
     def test_empty_directory_error(self):
         """Test that empty directory returns appropriate error."""
         bot = MockBot(autosave=False)
@@ -354,6 +376,7 @@ class TestInvokeNamshubDirectoryListing:
 class TestInvokeNamshubEdgeCases:
     """Test edge cases and boundary conditions."""
 
+    @pytest.mark.api
     def test_invoke_with_empty_kwargs_string(self):
         """Test invoking namshub with empty kwargs string."""
         bot = MockBot(autosave=False)
@@ -365,6 +388,7 @@ class TestInvokeNamshubEdgeCases:
 
         assert "success" in result.lower()
 
+    @pytest.mark.api
     def test_echo_with_special_characters(self):
         """Test echo namshub with special characters in message."""
         bot = MockBot(autosave=False)
@@ -379,6 +403,7 @@ class TestInvokeNamshubEdgeCases:
         assert "Echo:" in result
         assert "Test with" in result
 
+    @pytest.mark.api
     def test_echo_with_empty_string(self):
         """Test echo namshub with empty string message."""
         bot = MockBot(autosave=False)

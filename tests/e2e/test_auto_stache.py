@@ -36,11 +36,15 @@ def safe_rmtree(path):
 class TestAutoStashConfig:
     """Test auto-stash configuration functionality."""
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_config_default_false(self):
         """Test that auto_stash defaults to False."""
         config = CLIConfig()
         assert config.auto_stash is False
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_config_save_load(self, tmp_path):
         """Test saving and loading auto_stash configuration."""
         # Change to temp directory for config file
@@ -58,6 +62,8 @@ class TestAutoStashConfig:
         finally:
             os.chdir(original_cwd)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_config_command_show(self):
         """Test /config command shows auto_stash setting."""
         from bots.dev.cli import CLIContext, SystemHandler
@@ -69,6 +75,8 @@ class TestAutoStashConfig:
         result = handler.config(None, context, [])
         assert "auto_stash: True" in result
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_config_command_set(self):
         """Test /config set auto_stash command."""
         from bots.dev.cli import CLIContext, SystemHandler
@@ -86,6 +94,8 @@ class TestAutoStashConfig:
         assert "Set auto_stash to False" in result
         assert context.config.auto_stash is False
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_auto_stash_toggle_command(self):
         """Test /auto_stash toggle command."""
         from bots.dev.cli import CLIContext, SystemHandler
@@ -129,11 +139,15 @@ class TestCreateAutoStash:
         os.chdir(self.original_cwd)
         safe_rmtree(self.temp_dir)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_no_changes_to_stash(self):
         """Test behavior when there are no changes to stash."""
         result = create_auto_stash()
         assert "No changes to stash" in result
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_real_ai_stash_message_generation(self):
         """Integration test with real AI API call."""
         # Skip if no API key available
@@ -196,6 +210,8 @@ class TestLoadStashCommand:
         os.chdir(self.original_cwd)
         safe_rmtree(self.temp_dir)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_stash_by_index(self):
         """Test loading stash by index."""
         from bots.dev.cli import CLIContext, SystemHandler
@@ -210,6 +226,8 @@ class TestLoadStashCommand:
         assert Path("file2.txt").exists()
         assert Path("file2.txt").read_text() == "content 2"
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_stash_by_name(self):
         """Test loading stash by name pattern."""
         from bots.dev.cli import CLIContext, SystemHandler
@@ -224,6 +242,8 @@ class TestLoadStashCommand:
         assert Path("file1.txt").exists()
         assert Path("file1.txt").read_text() == "content 1"
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_stash_not_found(self):
         """Test error when stash not found."""
         from bots.dev.cli import CLIContext, SystemHandler
@@ -234,6 +254,8 @@ class TestLoadStashCommand:
         result = handler.load_stash(None, context, ["nonexistent"])
         assert "Stash 'nonexistent' not found" in result
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_stash_no_args(self):
         """Test error when no arguments provided."""
         from bots.dev.cli import CLIContext, SystemHandler
@@ -248,6 +270,8 @@ class TestLoadStashCommand:
 class TestCLIIntegration:
     """Test auto-stash integration with CLI."""
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_commands_registered(self):
         """Test that auto-stash commands are registered in CLI."""
         cli = CLI()
@@ -256,6 +280,8 @@ class TestCLIIntegration:
         assert "/load_stash" in cli.commands
         assert "/config" in cli.commands
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_help_includes_auto_stash(self):
         """Test that help includes auto-stash commands."""
         from bots.dev.cli import CLIContext, SystemHandler
@@ -272,6 +298,8 @@ class TestCLIIntegration:
 class TestEdgeCases:
     """Test edge cases and error conditions."""
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_create_auto_stash_timeout(self):
         """Test timeout handling in create_auto_stash."""
         with patch("subprocess.run") as mock_run:
@@ -280,6 +308,8 @@ class TestEdgeCases:
             result = create_auto_stash()
             assert "Git command timed out" in result
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_create_auto_stash_general_exception(self):
         """Test general exception handling in create_auto_stash."""
         with patch("subprocess.run") as mock_run:

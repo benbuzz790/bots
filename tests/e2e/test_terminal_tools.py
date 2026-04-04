@@ -88,6 +88,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
             return ""
         return outputs[0] if len(outputs) == 1 else "".join(outputs)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_stateful_basic_use(self):
         """Test basic command execution and output capture"""
         from bots.tools.terminal_tools import execute_powershell
@@ -99,6 +101,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         actual_output = "\n".join(lines[1:]) if lines and ">" in lines[0] else result
         self.assertEqual(self.normalize_text("Hello, World!"), self.normalize_text(actual_output))
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_stateful_utf8_output(self):
         """Test that PowerShell commands return proper UTF-8 encoded output in generator form"""
         from bots.tools.terminal_tools import execute_powershell
@@ -117,6 +121,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertContainsNormalized(result, "Standard: こんにちは")
         self.assertContainsNormalized(result, "Error: システムエラー")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_stateful_no_output(self):
         """Test that commands with no output work correctly in generator form"""
         from bots.tools.terminal_tools import execute_powershell
@@ -133,6 +139,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         actual_output = "\n".join(lines[1:]) if lines and ">" in lines[0] else result
         self.assertEqual(self.normalize_text(""), self.normalize_text(actual_output))
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_stateful_truncated_output(self):
         """Test that long output is truncated and saved to file in generator form"""
         from bots.tools.terminal_tools import execute_powershell
@@ -151,6 +159,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertTrue(any(("lines omitted" in line for line in lines)), "Should have truncation message")
         self.assertTrue(any(("Full output saved to" in line for line in lines)), "Should have file save message")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_stateful_command_chain_success(self):
         """Test that && chains work correctly when all commands succeed in generator form"""
         from bots.tools.terminal_tools import execute_powershell
@@ -161,6 +171,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertContainsNormalized(result, "Second")
         self.assertContainsNormalized(result, "Third")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_stateful_command_chain_failure(self):
         """Test that && chains stop executing after a command fails in generator form"""
         from bots.tools.terminal_tools import execute_powershell
@@ -170,6 +182,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertNotIn("Should Not See This", result)
         self.assertContainsNormalized(result, "nonexistentcommand")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_stateful_complex_command_chain(self):
         """Test complex command chains with mixed success/failure conditions in generator form"""
         from bots.tools.terminal_tools import execute_powershell
@@ -188,6 +202,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         cleanup_cmd = f'Remove-Item -Path "{test_filename}" -Force -ErrorAction SilentlyContinue'
         self._collect_generator_output(execute_powershell(cleanup_cmd))
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_stateful_special_characters(self):
         """Test handling of special characters and box drawing symbols in generator form"""
         from bots.tools.terminal_tools import execute_powershell
@@ -201,6 +217,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertContainsNormalized(result, "Extended ASCII:")
         self.assertTrue(any((char in result for char in "°±²³µ¶·¹º")))
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_special_unicode_characters(self):
         """Test handling of checkmark and crossmark characters (Issue #208)"""
         from bots.tools.terminal_tools import execute_powershell
@@ -227,6 +245,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertIn("Success", result)
         self.assertIn("Failure", result)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_stateful_invalid_encoding_handling(self):
         """Test handling of potentially problematic encoding scenarios in generator form"""
         from bots.tools.terminal_tools import execute_powershell
@@ -239,6 +259,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertContainsNormalized(result, "Mixed scripts:")
         self.assertContainsNormalized(result, "More mixed:")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_stateful_encoding_environment(self):
         """Test that PowerShell encoding environment is properly configured in generator form"""
         from bots.tools.terminal_tools import execute_powershell
@@ -266,6 +288,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         actual_output = "\n".join(lines[1:]) if lines and ">" in lines[0] else result
         self.assertEqual(self.normalize_text(test_string), self.normalize_text(actual_output))
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_stateful_line_by_line_output(self):
         """Test that output comes as a complete block per command"""
         from bots.tools.terminal_tools import execute_powershell
@@ -280,6 +304,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         actual_lines = [line.strip() for line in lines if line.strip()]
         self.assertEqual(expected_lines, actual_lines, "Line content should match exactly")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_stateful_exact_limit_output(self):
         """Test behavior when output is exactly at the limit"""
         from bots.tools.terminal_tools import execute_powershell
@@ -298,6 +324,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertFalse(any(("lines omitted" in line for line in lines)), "Should not have truncation message")
         self.assertFalse(any(("Full output saved to" in line for line in lines)), "Should not have file save message")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_true_statefulness_between_calls(self):
         """Test that PowerShell state persists between function calls"""
         import random
@@ -318,6 +346,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         ps_script5 = f'Set-Location ..; Remove-Item -Path "{unique_dir}" -Force -Recurse'
         list(execute_powershell(ps_script5))
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_basic_input_handling(self):
         """Test that basic variable setting and retrieval works correctly"""
         from bots.tools.terminal_tools import execute_powershell
@@ -331,6 +361,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         actual_output = "\n".join(lines[1:]) if lines and ">" in lines[0] else result
         self.assertEqual(self.normalize_text("TestUser"), self.normalize_text(actual_output))
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_multiple_input_requests(self):
         """Test handling multiple variable operations in sequence"""
         from bots.tools.terminal_tools import PowerShellManager, execute_powershell
@@ -349,6 +381,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertIn(self.normalize_text("NewValue1 and Value2"), self.normalize_text(actual_output))
         manager.cleanup()
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_input_error_handling(self):
         """Test handling of invalid commands"""
         from bots.tools.terminal_tools import PowerShellManager, execute_powershell
@@ -364,6 +398,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertIn("not recognized", normalized_output)
         manager.cleanup()
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_state_preservation_through_input(self):
         """Test that PowerShell state is preserved through command sequences"""
         from bots.tools.terminal_tools import PowerShellManager, execute_powershell
@@ -380,6 +416,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertEqual(self.normalize_text("1"), self.normalize_text(outputs[-1]))
         manager.cleanup()
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_current_directory_display(self):
         """Test that current directory is properly displayed in output"""
         from bots.tools.terminal_tools import execute_powershell
@@ -392,6 +430,8 @@ class TestTerminalToolsStateful(TestTerminalTools):
         self.assertNotIn("cannot be found", result)
         self.assertContainsNormalized(result, "test command")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_directory_change_persistence(self):
         """Test that directory changes persist between commands"""
         import random
@@ -416,6 +456,8 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
     These tests verify that the improved PowerShell tool handles the problematic cases.
     """
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_complex_python_string_scenario_1(self):
         """
         Test the complex Python command that was failing with unterminated string literals.
@@ -468,6 +510,8 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
         except SyntaxError as e:
             self.fail(f"Should not raise SyntaxError anymore, but got: {e}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_unicode_error_handling(self):
         """Test Unicode handling that was problematic in the error logs."""
         unicode_commands = [
@@ -490,6 +534,8 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
                     if "unicode" in str(e).lower() or "encoding" in str(e).lower():
                         self.fail(f"Encoding error: {e}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_command_not_found_handling(self):
         """Test handling of non-existent commands from error logs."""
         result = execute_powershell("nonexistentcommand", timeout="30")
@@ -499,6 +545,8 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
         self.assertIn("not recognized", normalized_result)
         self.assertNotIn("Tool Failed:", result)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_mixed_stdout_stderr_output(self):
         """Test mixed stdout/stderr output handling."""
         cmd = (
@@ -511,6 +559,8 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
         self.assertIn("こんにちは", result)
         self.assertIn("システムエラー", result)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_file_not_found_scenario(self):
         """Test file not found scenario from error logs."""
         import uuid
@@ -524,6 +574,8 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
             f"Should indicate file not found. Got: {result[:200]}...",
         )
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_python_command_with_file_operations(self):
         """Test Python command with file operations that was problematic."""
         python_code = (
@@ -552,6 +604,8 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
         except Exception as e:
             self.fail(f"Should not raise exception, but got: {e}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_quote_heavy_python_code(self):
         """Test Python code with many nested quotes."""
         python_code = (
@@ -566,6 +620,8 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
             result = session.execute(python_code, timeout=30)
             self.assertIn("Position:", result)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_bom_handling(self):
         """Test handling of Unicode BOM that was causing issues."""
         code_with_bom = '\ufeff# This has a BOM character\nWrite-Output "test"'
@@ -576,6 +632,8 @@ class TestPowerShellErrorLogScenarios(unittest.TestCase):
             if "U+FEFF" in str(e) or "non-printable character" in str(e):
                 self.fail(f"BOM handling failed: {e}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_command_chaining_with_quotes(self):
         """Test command chaining with quotes that might confuse the parser."""
         cmd = 'Write-Output "First && Second" && Write-Output "Third"'
@@ -600,6 +658,8 @@ class TestPowerShellUnicodeIssues(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_basic_utf8_file_creation(self):
         """Test creating files with UTF-8 content."""
         command = "@'\nHello World\n'@ | Out-File -FilePath \"test_utf8.txt\" -Encoding UTF8"
@@ -619,6 +679,8 @@ class TestPowerShellUnicodeIssues(unittest.TestCase):
             except Exception as e:
                 print(f"❌ CP1252 read failed: {e}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_special_characters_in_here_strings(self):
         """Test here-strings with special characters that might cause encoding issues."""
         special_chars_tests = [
@@ -677,6 +739,8 @@ class TestPowerShellUnicodeIssues(unittest.TestCase):
         except Exception as e:
             print(f"  ❌ {test_name}: Binary read failed - {e}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_problematic_python_code_patterns(self):
         """Test the exact Python code patterns that caused the Unicode error."""
         python_code = (
@@ -717,6 +781,8 @@ class TestPowerShellUnicodeIssues(unittest.TestCase):
         except Exception as e:
             print(f"❌ Problematic code test failed: {e}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_encoding_parameter_variations(self):
         """Test different encoding parameters to see which ones cause issues."""
         test_content = 'print("Hello αβγ 中文 🚀")'
@@ -742,6 +808,8 @@ class TestPowerShellUnicodeIssues(unittest.TestCase):
             except Exception as e:
                 print(f"❌ {test_name}: Command failed - {e}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_bom_detection_and_handling(self):
         """Test if PowerShell is adding BOMs that cause issues."""
         filename = get_unique_filename("bom_test", "txt")
@@ -754,6 +822,8 @@ class TestPowerShellUnicodeIssues(unittest.TestCase):
             print(f"Raw file data: {raw_data}")
             print(f"First 10 bytes: {raw_data[:10]}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_powershell_internal_encoding_setup(self):
         """Test if PowerShell's internal encoding setup is causing issues."""
         encoding_setup_commands = [
@@ -798,6 +868,8 @@ class TestPythonCommandBOMFix(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_python_command_no_bom(self):
         """Test that Python -c commands no longer create BOM issues."""
         print("\n🧪 Testing Python command BOM fix...")
@@ -816,6 +888,8 @@ class TestPythonCommandBOMFix(unittest.TestCase):
             else:
                 print("🔍 Different error type - may be unrelated to BOM")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_complex_python_command_with_quotes(self):
         """Test complex Python commands with quotes and JSON."""
         print("\n🧪 Testing complex Python command with quotes...")
@@ -834,6 +908,8 @@ class TestPythonCommandBOMFix(unittest.TestCase):
             if "UnicodeDecodeError" in str(e):
                 print("🚨 Still getting Unicode errors on complex commands")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_python_command_with_file_operations(self):
         """Test Python commands that do file operations."""
         print("\n🧪 Testing Python file operations...")
@@ -861,6 +937,8 @@ class TestPythonCommandBOMFix(unittest.TestCase):
         except Exception as e:
             print(f"❌ File operation failed: {e}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_verify_no_temp_files_with_bom(self):
         """Verify that temp files created by Python commands don't have BOM."""
         print("\n🧪 Testing temp file BOM detection...")
@@ -907,6 +985,8 @@ class TestPowerShellFileCreationDebug(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_debug_file_creation_failure(self):
         """Debug why here-string file creation is failing."""
         print(f"\n🔍 Working directory: {os.getcwd()}")
@@ -973,6 +1053,8 @@ class TestPowerShellFileCreationDebug(unittest.TestCase):
         python_files = os.listdir(os.getcwd())
         print(f"Python sees files: {python_files}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_bom_handling_investigation(self):
         """Investigate BOM handling and its impact on file operations."""
         print("\n🔍 BOM Investigation")
@@ -1027,6 +1109,8 @@ class TestPowerShellFileCreationDebug(unittest.TestCase):
 class TestRegressionScenarios(unittest.TestCase):
     """Test specific regression scenarios to ensure fixes don't break existing functionality."""
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_simple_commands_still_work(self):
         """Ensure simple commands still work after improvements."""
         simple_commands = [
@@ -1044,6 +1128,8 @@ class TestRegressionScenarios(unittest.TestCase):
                 except Exception as e:
                     self.fail(f"Simple command failed: {cmd} - {e}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_basic_python_commands_still_work(self):
         """Ensure basic Python commands still work."""
         basic_python_commands = [
@@ -1061,6 +1147,8 @@ class TestRegressionScenarios(unittest.TestCase):
                 except Exception as e:
                     self.fail(f"Basic Python command failed: {cmd} - {e}")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_output_limiting_still_works(self):
         """Ensure output limiting functionality still works."""
         cmd = 'for ($i=1; $i -le 20; $i++) { Write-Output "Line $i" }'

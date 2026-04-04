@@ -53,6 +53,21 @@ jobs:
           $env:PYTHONUTF8 = "1"
           echo "PYTHONIOENCODING=utf-8" >> $env:GITHUB_ENV
           echo "PYTHONUTF8=1" >> $env:GITHUB_ENV
+      - name: Restore requirements lock from cache
+        id: cache-requirements-lock
+        uses: actions/cache@v4
+        with:
+          path: requirements.lock
+          key: requirements-lock-${{ runner.os }}-${{ hashFiles('requirements.txt', 'setup.py') }}
+          restore-keys: |
+            requirements-lock-${{ runner.os }}-
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: pip-cache-${{ runner.os }}-${{ hashFiles('requirements.lock') }}
+          restore-keys: |
+            pip-cache-${{ runner.os }}-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -60,16 +75,15 @@ jobs:
           pip install pytest pytest-cov
       - name: Install package
         run: pip install -e .
+      - name: Generate requirements lock file
+        run: |
+          pip freeze > requirements.lock
       - name: Remove BOMs from all files
         run: |
           python -m bots.dev.remove_boms
-      - name: Run unit tests
+      - name: Run tests
         if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
         run: pytest tests/ --tb=short -v --maxfail=10 -n 0
-      - name: Run integration tests
-        if: env.OPENAI_API_KEY != '' || env.ANTHROPIC_API_KEY != ''
-        run: pytest tests/ --tb=short -v --maxfail=5 -n 0
-        continue-on-error: true
   integration-tests:
     name: Run Integration Tests
     runs-on: windows-latest
@@ -103,6 +117,21 @@ jobs:
           $env:PYTHONUTF8 = "1"
           echo "PYTHONIOENCODING=utf-8" >> $env:GITHUB_ENV
           echo "PYTHONUTF8=1" >> $env:GITHUB_ENV
+      - name: Restore requirements lock from cache
+        id: cache-requirements-lock
+        uses: actions/cache@v4
+        with:
+          path: requirements.lock
+          key: requirements-lock-${{ runner.os }}-${{ hashFiles('requirements.txt', 'setup.py') }}
+          restore-keys: |
+            requirements-lock-${{ runner.os }}-
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: pip-cache-${{ runner.os }}-${{ hashFiles('requirements.lock') }}
+          restore-keys: |
+            pip-cache-${{ runner.os }}-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -110,6 +139,9 @@ jobs:
           pip install pytest pytest-cov pytest-timeout
       - name: Install package
         run: pip install -e .
+      - name: Generate requirements lock file
+        run: |
+          pip freeze > requirements.lock
       - name: Remove BOMs from all files
         run: |
           python -m bots.dev.remove_boms
@@ -152,6 +184,21 @@ jobs:
           $env:PYTHONUTF8 = "1"
           echo "PYTHONIOENCODING=utf-8" >> $env:GITHUB_ENV
           echo "PYTHONUTF8=1" >> $env:GITHUB_ENV
+      - name: Restore requirements lock from cache
+        id: cache-requirements-lock
+        uses: actions/cache@v4
+        with:
+          path: requirements.lock
+          key: requirements-lock-${{ runner.os }}-${{ hashFiles('requirements.txt', 'setup.py') }}
+          restore-keys: |
+            requirements-lock-${{ runner.os }}-
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: pip-cache-${{ runner.os }}-${{ hashFiles('requirements.lock') }}
+          restore-keys: |
+            pip-cache-${{ runner.os }}-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -159,6 +206,9 @@ jobs:
           pip install black isort flake8 mypy
       - name: Install package
         run: pip install -e .
+      - name: Generate requirements lock file
+        run: |
+          pip freeze > requirements.lock
       - name: Remove BOMs from all files
         run: |
           python -m bots.dev.remove_boms
@@ -180,7 +230,6 @@ jobs:
           pip install pydeps
           pydeps bots --show-deps --max-bacon=2 || echo "Circular dependency check completed"
         continue-on-error: true
-
 actionlint:
     name: GitHub Actions Lint
     runs-on: windows-latest

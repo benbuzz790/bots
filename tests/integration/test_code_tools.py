@@ -2,6 +2,8 @@ import os
 import tempfile
 import unittest
 
+import pytest
+
 from bots.tools.code_tools import view, view_dir
 
 
@@ -31,30 +33,35 @@ class TestCodeTools(unittest.TestCase):
         if os.path.exists(self.temp_dir):
             os.rmdir(self.temp_dir)
 
+    @pytest.mark.api
     def test_view_full_file(self):
         """Test viewing entire file (default behavior)."""
         result = view(self.temp_file)
         expected = "1:Line 1\n2:Line 2\n3:Line 3\n4:Line 4\n5:Line 5\n" "6:Line 6\n7:Line 7\n8:Line 8\n9:Line 9\n10:Line 10"
         self.assertEqual(result, expected)
 
+    @pytest.mark.api
     def test_view_with_start_line(self):
         """Test viewing file starting from a specific line."""
         result = view(self.temp_file, start_line=3)
         expected = "3:Line 3\n4:Line 4\n5:Line 5\n6:Line 6\n" "7:Line 7\n8:Line 8\n9:Line 9\n10:Line 10"
         self.assertEqual(result, expected)
 
+    @pytest.mark.api
     def test_view_with_end_line(self):
         """Test viewing file up to a specific line."""
         result = view(self.temp_file, end_line=5)
         expected = "1:Line 1\n2:Line 2\n3:Line 3\n4:Line 4\n5:Line 5"
         self.assertEqual(result, expected)
 
+    @pytest.mark.api
     def test_view_with_start_and_end_line(self):
         """Test viewing file with both start and end line specified."""
         result = view(self.temp_file, start_line=3, end_line=7)
         expected = "3:Line 3\n4:Line 4\n5:Line 5\n6:Line 6\n7:Line 7"
         self.assertEqual(result, expected)
 
+    @pytest.mark.api
     def test_view_with_string_match(self):
         """Test viewing lines around a string match."""
         # Create a file with some specific content for string matching
@@ -68,6 +75,7 @@ class TestCodeTools(unittest.TestCase):
         finally:
             os.remove(test_file)
 
+    @pytest.mark.api
     def test_view_with_string_match_custom_distance(self):
         """Test viewing lines around a string match with custom distance."""
         content = "Line 1\nLine 2\nLine 3\nTarget line here\n" "Line 5\nLine 6\nLine 7\nLine 8\n"
@@ -80,6 +88,7 @@ class TestCodeTools(unittest.TestCase):
         finally:
             os.remove(test_file)
 
+    @pytest.mark.api
     def test_view_with_multiple_string_matches(self):
         """Test viewing lines around multiple string matches."""
         content = "Line 1\nmatch here\nLine 3\nLine 4\nLine 5\n" "Another match here\nLine 7\nLine 8\n"
@@ -97,17 +106,20 @@ class TestCodeTools(unittest.TestCase):
         finally:
             os.remove(test_file)
 
+    @pytest.mark.api
     def test_view_string_match_no_results(self):
         """Test string match with no matching lines."""
         result = view(self.temp_file, around_str_match="Nonexistent text")
         expected = "No matches found for 'Nonexistent text'"
         self.assertEqual(result, expected)
 
+    @pytest.mark.api
     def test_view_invalid_start_line(self):
         """Test error handling for invalid start_line."""
         result = view(self.temp_file, start_line=100)
         self.assertIn("Error: start_line (100) exceeds file length", result)
 
+    @pytest.mark.api
     def test_view_boundary_conditions(self):
         """Test boundary conditions for line ranges."""
         # Test start_line = 1, end_line = 1 (single line)
@@ -119,6 +131,7 @@ class TestCodeTools(unittest.TestCase):
         expected = "10:Line 10"
         self.assertEqual(result, expected)
 
+    @pytest.mark.api
     def test_view_string_match_at_file_boundaries(self):
         """Test string matching at the beginning and end of file."""
         content = "First match\nMiddle line\nLast match\n"
@@ -163,6 +176,7 @@ class TestViewDir(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.api
     def test_specific_extensions(self):
         """Test view_dir with specific file extensions"""
         result = view_dir(self.temp_dir, target_extensions="['py', 'txt']")

@@ -3,10 +3,13 @@ import os
 import tempfile
 import unittest
 
+import pytest
+
 # Assuming the functions are imported from the main module
 from bots.tools.python_edit import ScopeViewer, python_view
 
 
+@pytest.mark.api
 class TestPythonView(unittest.TestCase):
     """Test suite for the python_view function and ScopeViewer class."""
 

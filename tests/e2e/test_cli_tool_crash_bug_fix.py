@@ -40,6 +40,8 @@ class TestCLIToolCrashBugFix:
         # Add both working and crashing tools
         self.bot.add_tools(working_tool, crashing_tool)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_tool_handler_clear_prevents_corruption(self):
         """Test that clearing tool handler prevents corruption after crashes."""
 
@@ -91,6 +93,8 @@ class TestCLIToolCrashBugFix:
 
         print("✅ Fix verified: No corruption after tool handler clear!")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_without_clear_shows_corruption(self):
         """Test that without clearing, corruption occurs (demonstrates the original bug)."""
 

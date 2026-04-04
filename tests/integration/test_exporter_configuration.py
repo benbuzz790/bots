@@ -22,6 +22,8 @@ import os
 import unittest
 from unittest.mock import patch
 
+import pytest
+
 from bots.observability import metrics, tracing
 from bots.observability.config import ObservabilityConfig, load_config_from_env
 
@@ -50,6 +52,7 @@ class TestExporterConfiguration(unittest.TestCase):
         tracing._tracer_provider = None
         metrics.reset_metrics()
 
+    @pytest.mark.api
     def test_console_exporter_configuration(self):
         """Test console exporter configuration from environment."""
         os.environ["BOTS_OTEL_EXPORTER"] = "console"
@@ -61,6 +64,7 @@ class TestExporterConfiguration(unittest.TestCase):
         self.assertEqual(config.exporter_type, "console")
         self.assertEqual(config.service_name, "test-service")
 
+    @pytest.mark.api
     def test_otlp_exporter_configuration(self):
         """Test OTLP exporter configuration from environment."""
         os.environ["BOTS_OTEL_EXPORTER"] = "otlp"
@@ -74,6 +78,7 @@ class TestExporterConfiguration(unittest.TestCase):
         self.assertEqual(config.otlp_endpoint, "http://localhost:4317")
         self.assertEqual(config.service_name, "bots-prod")
 
+    @pytest.mark.api
     def test_jaeger_exporter_configuration(self):
         """Test Jaeger exporter configuration from environment."""
         os.environ["BOTS_OTEL_EXPORTER"] = "jaeger"
@@ -85,6 +90,7 @@ class TestExporterConfiguration(unittest.TestCase):
         self.assertEqual(config.exporter_type, "jaeger")
         self.assertEqual(config.jaeger_endpoint, "http://localhost:14268/api/traces")
 
+    @pytest.mark.api
     def test_none_exporter_configuration(self):
         """Test 'none' exporter configuration (tracing enabled but not exported)."""
         os.environ["BOTS_OTEL_EXPORTER"] = "none"
@@ -94,6 +100,7 @@ class TestExporterConfiguration(unittest.TestCase):
         self.assertTrue(config.tracing_enabled)
         self.assertEqual(config.exporter_type, "none")
 
+    @pytest.mark.api
     def test_disabled_tracing_configuration(self):
         """Test disabling tracing via OTEL_SDK_DISABLED."""
         os.environ["OTEL_SDK_DISABLED"] = "true"
@@ -102,6 +109,7 @@ class TestExporterConfiguration(unittest.TestCase):
 
         self.assertFalse(config.tracing_enabled)
 
+    @pytest.mark.api
     def test_metrics_exporter_configuration(self):
         """Test metrics exporter configuration."""
         os.environ["BOTS_OTEL_METRICS_EXPORTER"] = "otlp"
@@ -112,6 +120,7 @@ class TestExporterConfiguration(unittest.TestCase):
         self.assertTrue(config.metrics_enabled)
         self.assertEqual(config.metrics_exporter_type, "otlp")
 
+    @pytest.mark.api
     def test_metrics_follows_tracing_by_default(self):
         """Test that metrics_enabled follows tracing_enabled when not explicitly set."""
         os.environ["OTEL_SDK_DISABLED"] = "false"
@@ -122,6 +131,7 @@ class TestExporterConfiguration(unittest.TestCase):
         self.assertTrue(config.tracing_enabled)
         self.assertIsNone(config.metrics_enabled)  # None means follow tracing
 
+    @pytest.mark.api
     def test_metrics_can_be_disabled_independently(self):
         """Test that metrics can be disabled while tracing is enabled."""
         os.environ["OTEL_SDK_DISABLED"] = "false"
@@ -132,6 +142,7 @@ class TestExporterConfiguration(unittest.TestCase):
         self.assertTrue(config.tracing_enabled)
         self.assertFalse(config.metrics_enabled)
 
+    @pytest.mark.api
     def test_environment_variable_case_insensitivity(self):
         """Test that boolean environment variables are case-insensitive."""
         os.environ["OTEL_SDK_DISABLED"] = "TRUE"
@@ -145,6 +156,7 @@ class TestExporterConfiguration(unittest.TestCase):
 
         self.assertTrue(config.tracing_enabled)
 
+    @pytest.mark.api
     def test_empty_string_environment_variables(self):
         """Test handling of empty string environment variables."""
         os.environ["BOTS_OTEL_EXPORTER"] = ""
@@ -156,6 +168,7 @@ class TestExporterConfiguration(unittest.TestCase):
         self.assertEqual(config.exporter_type, "none")  # Changed from "console" to "none"
         self.assertEqual(config.service_name, "bots")
 
+    @pytest.mark.api
     def test_whitespace_environment_variables(self):
         """Test handling of whitespace-only environment variables."""
         os.environ["BOTS_OTEL_EXPORTER"] = "  "
@@ -167,6 +180,7 @@ class TestExporterConfiguration(unittest.TestCase):
         self.assertEqual(config.exporter_type, "none")  # Changed from "console" to "none"
         self.assertEqual(config.service_name, "bots")
 
+    @pytest.mark.api
     def test_console_exporter_setup(self):
         """Test that console exporter can be set up successfully."""
         config = ObservabilityConfig(tracing_enabled=True, exporter_type="console", service_name="test-console")
@@ -176,6 +190,7 @@ class TestExporterConfiguration(unittest.TestCase):
 
         self.assertTrue(tracing._initialized)
 
+    @pytest.mark.api
     def test_otlp_exporter_fallback_to_console(self):
         """Test that OTLP exporter falls back to console when package not available."""
         config = ObservabilityConfig(
@@ -189,6 +204,7 @@ class TestExporterConfiguration(unittest.TestCase):
 
             self.assertTrue(tracing._initialized)
 
+    @pytest.mark.api
     def test_none_exporter_setup(self):
         """Test that 'none' exporter sets up tracing without exporting."""
         config = ObservabilityConfig(tracing_enabled=True, exporter_type="none", service_name="test-none")
@@ -198,6 +214,7 @@ class TestExporterConfiguration(unittest.TestCase):
         self.assertTrue(tracing._initialized)
         self.assertIsNotNone(tracing._tracer_provider)
 
+    @pytest.mark.api
     def test_disabled_tracing_setup(self):
         """Test that disabled tracing doesn't initialize provider."""
         config = ObservabilityConfig(tracing_enabled=False, exporter_type="console", service_name="test-disabled")
@@ -207,6 +224,7 @@ class TestExporterConfiguration(unittest.TestCase):
         self.assertTrue(tracing._initialized)
         self.assertIsNone(tracing._tracer_provider)
 
+    @pytest.mark.api
     def test_metrics_console_exporter_setup(self):
         """Test that metrics console exporter can be set up successfully."""
         config = ObservabilityConfig(
@@ -222,6 +240,7 @@ class TestExporterConfiguration(unittest.TestCase):
 
         self.assertTrue(metrics._initialized)
 
+    @pytest.mark.api
     def test_metrics_otlp_exporter_fallback(self):
         """Test that metrics OTLP exporter falls back to console when unavailable."""
         config = ObservabilityConfig(
@@ -240,6 +259,7 @@ class TestExporterConfiguration(unittest.TestCase):
 
             self.assertTrue(metrics._initialized)
 
+    @pytest.mark.api
     def test_metrics_none_exporter_setup(self):
         """Test that 'none' metrics exporter sets up metrics without exporting."""
         config = ObservabilityConfig(
@@ -255,6 +275,7 @@ class TestExporterConfiguration(unittest.TestCase):
         self.assertTrue(metrics._initialized)
         self.assertIsNotNone(metrics._meter_provider)
 
+    @pytest.mark.api
     def test_runtime_exporter_switching(self):
         """Test switching exporters at runtime using configure_exporter."""
         # Start with console
@@ -268,6 +289,7 @@ class TestExporterConfiguration(unittest.TestCase):
         # Should be re-initialized
         self.assertTrue(tracing._initialized)
 
+    @pytest.mark.api
     def test_custom_exporter_configuration(self):
         """Test configuring with a custom exporter instance."""
         from opentelemetry.sdk.trace.export import ConsoleSpanExporter
@@ -279,6 +301,7 @@ class TestExporterConfiguration(unittest.TestCase):
 
         self.assertTrue(tracing._initialized)
 
+    @pytest.mark.api
     def test_multiple_setup_calls_are_noop(self):
         """Test that multiple setup_tracing calls are no-ops."""
         config = ObservabilityConfig(tracing_enabled=True, exporter_type="console", service_name="test-multiple")
@@ -292,6 +315,7 @@ class TestExporterConfiguration(unittest.TestCase):
 
         self.assertIs(first_provider, second_provider)
 
+    @pytest.mark.api
     def test_exporter_type_normalization(self):
         """Test that exporter types are normalized to lowercase."""
         os.environ["BOTS_OTEL_EXPORTER"] = "CONSOLE"
@@ -300,6 +324,7 @@ class TestExporterConfiguration(unittest.TestCase):
 
         self.assertEqual(config.exporter_type, "console")
 
+    @pytest.mark.api
     def test_service_name_preservation(self):
         """Test that service names preserve case and special characters."""
         os.environ["OTEL_SERVICE_NAME"] = "My-Service_123"
@@ -308,6 +333,7 @@ class TestExporterConfiguration(unittest.TestCase):
 
         self.assertEqual(config.service_name, "My-Service_123")
 
+    @pytest.mark.api
     def test_endpoint_url_preservation(self):
         """Test that endpoint URLs are preserved exactly."""
         endpoint = "https://api.example.com:4317/v1/traces"
@@ -317,6 +343,7 @@ class TestExporterConfiguration(unittest.TestCase):
 
         self.assertEqual(config.otlp_endpoint, endpoint)
 
+    @pytest.mark.api
     def test_config_dataclass_defaults(self):
         """Test ObservabilityConfig dataclass default values."""
         config = ObservabilityConfig()

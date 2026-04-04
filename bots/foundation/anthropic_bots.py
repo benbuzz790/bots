@@ -625,7 +625,7 @@ class AnthropicBot(Bot):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_engine: Engines = Engines.CLAUDE4_SONNET,
+        model_engine: Engines = Engines.CLAUDE46_SONNET,
         max_tokens: int = 32000,
         temperature: float = 0.3,
         name: str = "Claude",
@@ -641,7 +641,7 @@ class AnthropicBot(Bot):
             api_key: Optional API key (will use ANTHROPIC_API_KEY env var if
             not provided)
             model_engine: The Anthropic model to use (default:
-            CLAUDE37_SONNET_20250219)
+            CLAUDE46_SONNET)
             max_tokens: Maximum tokens per response (default: 32000)
             temperature: Response randomness, 0-1 (default: 0.3)
             name: Bot's name (default: 'Claude')

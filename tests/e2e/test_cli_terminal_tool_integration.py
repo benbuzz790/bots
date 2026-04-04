@@ -76,6 +76,8 @@ class TestCLIRealTerminalTimeouts:
         cli.context.bot_instance.add_tools(bots.tools.terminal_tools)
         return cli
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_simple_file_creation_real_bot(self):
         """Test that a simple file creation command completes in reasonable time."""
         bot = AnthropicBot()  # Use default model
@@ -101,6 +103,8 @@ class TestCLIRealTerminalTimeouts:
         else:
             print("File was not created")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_powershell_here_string_real_bot(self, monkeypatch):
         """Test bot using PowerShell here-strings - potential timeout pattern."""
         inputs = iter(
@@ -148,6 +152,8 @@ class TestCLIRealTerminalTimeouts:
         else:
             print("File was not created")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_complex_python_file_real_bot(self, monkeypatch):
         """Test bot creating complex Python file with all problematic patterns."""
         complex_prompt = (
@@ -195,6 +201,8 @@ class TestCLIRealTerminalTimeouts:
         if "encoding utf8" in output.lower():
             print("[*] Bot used UTF8 encoding parameter")
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_bot_tool_usage_analysis(self, monkeypatch):
         """Analyze exactly what terminal tool commands the bot generates."""
         inputs = iter(

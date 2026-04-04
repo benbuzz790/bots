@@ -109,7 +109,7 @@ class TestAutoCommand(unittest.TestCase):
 
         try:
             # Create a bot and save it
-            bot = AnthropicBot(model_engine=Engines.CLAUDE37_SONNET_20250219)
+            bot = AnthropicBot(model_engine=Engines.CLAUDE46_SONNET)
             bot.save(bot_file)
 
             # Simulate CLI with /auto command

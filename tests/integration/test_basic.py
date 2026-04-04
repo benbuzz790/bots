@@ -55,6 +55,7 @@ class TestAnthropicBot(unittest.TestCase):
         """
         self.bot = AnthropicBot(autosave=False)
 
+    @pytest.mark.api
     def test_initialization(self) -> None:
         """Test default initialization parameters of AnthropicBot.
 
@@ -73,6 +74,7 @@ class TestAnthropicBot(unittest.TestCase):
         self.assertEqual(self.bot.temperature, 0.3)
         self.assertEqual(self.bot.name, "Claude")
 
+    @pytest.mark.api
     def test_custom_initialization(self) -> None:
         """Test initialization with custom parameters.
 
@@ -101,6 +103,7 @@ class TestAnthropicBot(unittest.TestCase):
         self.assertEqual(custom_bot.role, "expert")
         self.assertEqual(custom_bot.role_description, "an AI language expert")
 
+    @pytest.mark.api
     def test_basic_conversation(self) -> None:
         """Test basic conversation functionality with a simple greeting.
 
@@ -117,6 +120,7 @@ class TestAnthropicBot(unittest.TestCase):
         self.assertIsInstance(response, str)
         self.assertTrue(len(response) > 0)
 
+    @pytest.mark.api
     def test_multiple_turns(self) -> None:
         """Test multi-turn conversation with context retention.
 
@@ -163,6 +167,7 @@ class TestGPTBot(unittest.TestCase):
         """
         self.bot = ChatGPT_Bot()
 
+    @pytest.mark.api
     def test_initialization(self) -> None:
         """Test default initialization parameters of ChatGPT_Bot.
 
@@ -182,6 +187,7 @@ class TestGPTBot(unittest.TestCase):
         self.assertEqual(self.bot.temperature, 0.3)
         self.assertEqual(self.bot.name, "bot")
 
+    @pytest.mark.api
     def test_custom_initialization(self) -> None:
         """Test initialization with custom parameters.
 
@@ -209,6 +215,7 @@ class TestGPTBot(unittest.TestCase):
         self.assertEqual(custom_bot.role, "assistant")
         self.assertEqual(custom_bot.role_description, "a helpful AI assistant")
 
+    @pytest.mark.api
     def test_basic_conversation(self) -> None:
         """Test basic conversation functionality with a simple greeting.
 
@@ -225,6 +232,7 @@ class TestGPTBot(unittest.TestCase):
         self.assertIsInstance(response, str)
         self.assertTrue(len(response) > 0)
 
+    @pytest.mark.api
     def test_multiple_turns(self) -> None:
         """Test multi-turn conversation with context retention.
 

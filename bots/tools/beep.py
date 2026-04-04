@@ -47,212 +47,6 @@ NOTE_MAP = {
     "Bb": 10,
     "B": 11,
 }
-PIANO_VOICES = {
-    "default": {
-        # Inharmonicity coefficients (B values)
-        "inharmonicity": {
-            "bass": 0.0005,  # < 110 Hz
-            "low_mid": 0.0002,  # 110-260 Hz
-            "mid": 0.00005,  # 260-1000 Hz
-            "treble_min": 0.00005,  # 1000+ Hz (start)
-            "treble_max": 0.025,  # 1000+ Hz (end, at 5000 Hz)
-        },
-        # Harmonic count by frequency range
-        "harmonics": {
-            "bass": 20,  # < 110 Hz
-            "low_mid": 15,  # 110-260 Hz
-            "mid": 10,  # 260-1000 Hz
-            "treble_min": 10,  # 1000+ Hz (start)
-            "treble_max": 5,  # 1000+ Hz (end, at 4000 Hz)
-        },
-        # Amplitude scaling (1.0 = full volume)
-        "amplitude": {
-            "bass": 1.0,  # < 500 Hz
-            "mid": 0.6,  # 500-2000 Hz
-            "treble": 0.35,  # 2000+ Hz
-        },
-        # Decay times (seconds)
-        "decay": {
-            "bass": 6.0,  # < 110 Hz
-            "low_mid": 4.0,  # 110-260 Hz
-            "mid": 2.5,  # 260-1000 Hz
-            "treble": 1.5,  # 1000+ Hz
-        },
-        # Hammer thunk intensity
-        "hammer": {
-            "bass": 0.15,  # < 500 Hz
-            "mid": 0.05,  # 500-2000 Hz
-            "treble": 0.05,  # 2000+ Hz
-        },
-        # String detuning (cents)
-        "detuning": {
-            "bass": [0],  # 1 string
-            "low_mid": [-1.5, 1.5],  # 2 strings
-            "mid_high": [-2, 0, 2],  # 3 strings
-        },
-        # Soundboard resonance
-        "soundboard": {
-            "comb_frequencies": [60, 100, 200, 500, 1000],  # Hz
-            "comb_feedback": 0.4,
-            "comb_mix": 0.15,
-            "allpass_delays_ms": [5, 9, 13],  # milliseconds
-            "allpass_gain": 0.5,
-        },
-        # Reverb settings
-        "reverb": {
-            "predelay_ms": 15,
-            "echo_delays_ms": [25, 45, 70, 105, 150],
-            "echo_gains": [0.3, 0.2, 0.13, 0.08, 0.05],
-        },
-        # Sympathetic resonance
-        "sympathetic": {
-            "harmonic_tolerance": 0.05,  # ±5%
-            "base_amplitude": 0.02,
-            "high_note_boost": 2.0,  # Multiplier for notes > 2000 Hz
-            "high_note_threshold": 2000,  # Hz
-            "mix": 0.3,
-            "attack_time": 0.05,  # 50ms
-            "decay_time": 2.0,
-        },
-        # Envelope
-        "envelope": {
-            "attack_time": 0.01,  # 10ms
-            "initial_decay_time": 0.15,  # 150ms
-            "initial_decay_level": 0.4,
-            "sustain_decay_factor": 0.8,
-        },
-    },
-    "bright_grand": {
-        # Brighter, more brilliant sound - like a concert grand
-        "inharmonicity": {
-            "bass": 0.0003,  # Less inharmonicity = clearer
-            "low_mid": 0.0001,
-            "mid": 0.00003,
-            "treble_min": 0.00003,
-            "treble_max": 0.020,
-        },
-        "harmonics": {
-            "bass": 25,  # More harmonics = brighter
-            "low_mid": 20,
-            "mid": 15,
-            "treble_min": 12,
-            "treble_max": 8,
-        },
-        "amplitude": {
-            "bass": 1.0,
-            "mid": 0.75,  # Louder mids and treble
-            "treble": 0.55,
-        },
-        "decay": {
-            "bass": 7.0,  # Longer sustain
-            "low_mid": 5.0,
-            "mid": 3.5,
-            "treble": 2.0,
-        },
-        "hammer": {
-            "bass": 0.12,
-            "mid": 0.08,
-            "treble": 0.06,
-        },
-        "detuning": {
-            "bass": [0],
-            "low_mid": [-1.0, 1.0],  # Less detuning = clearer
-            "mid_high": [-1.5, 0, 1.5],
-        },
-        "soundboard": {
-            "comb_frequencies": [80, 150, 300, 700, 1200],
-            "comb_feedback": 0.35,
-            "comb_mix": 0.12,
-            "allpass_delays_ms": [4, 7, 11],
-            "allpass_gain": 0.45,
-        },
-        "reverb": {
-            "predelay_ms": 10,
-            "echo_delays_ms": [20, 35, 55, 85, 120],
-            "echo_gains": [0.25, 0.18, 0.12, 0.07, 0.04],
-        },
-        "sympathetic": {
-            "harmonic_tolerance": 0.04,
-            "base_amplitude": 0.025,
-            "high_note_boost": 2.5,
-            "high_note_threshold": 1800,
-            "mix": 0.35,
-            "attack_time": 0.04,
-            "decay_time": 2.5,
-        },
-        "envelope": {
-            "attack_time": 0.008,
-            "initial_decay_time": 0.12,
-            "initial_decay_level": 0.45,
-            "sustain_decay_factor": 0.85,
-        },
-    },
-    "warm_upright": {
-        # Warmer, mellower sound - like an upright piano
-        "inharmonicity": {
-            "bass": 0.0008,  # More inharmonicity = warmer
-            "low_mid": 0.0004,
-            "mid": 0.0001,
-            "treble_min": 0.0001,
-            "treble_max": 0.030,
-        },
-        "harmonics": {
-            "bass": 15,  # Fewer harmonics = mellower
-            "low_mid": 12,
-            "mid": 8,
-            "treble_min": 7,
-            "treble_max": 4,
-        },
-        "amplitude": {
-            "bass": 1.0,
-            "mid": 0.5,  # Quieter treble
-            "treble": 0.25,
-        },
-        "decay": {
-            "bass": 4.5,  # Shorter sustain
-            "low_mid": 3.0,
-            "mid": 2.0,
-            "treble": 1.2,
-        },
-        "hammer": {
-            "bass": 0.18,  # More mechanical noise
-            "mid": 0.10,
-            "treble": 0.08,
-        },
-        "detuning": {
-            "bass": [0],
-            "low_mid": [-2.0, 2.0],  # More detuning = warmer
-            "mid_high": [-2.5, 0, 2.5],
-        },
-        "soundboard": {
-            "comb_frequencies": [50, 90, 180, 450, 900],
-            "comb_feedback": 0.45,
-            "comb_mix": 0.18,
-            "allpass_delays_ms": [6, 11, 16],
-            "allpass_gain": 0.55,
-        },
-        "reverb": {
-            "predelay_ms": 20,
-            "echo_delays_ms": [30, 55, 85, 125, 180],
-            "echo_gains": [0.35, 0.25, 0.16, 0.10, 0.06],
-        },
-        "sympathetic": {
-            "harmonic_tolerance": 0.06,
-            "base_amplitude": 0.018,
-            "high_note_boost": 1.5,
-            "high_note_threshold": 2200,
-            "mix": 0.25,
-            "attack_time": 0.06,
-            "decay_time": 1.8,
-        },
-        "envelope": {
-            "attack_time": 0.012,
-            "initial_decay_time": 0.18,
-            "initial_decay_level": 0.35,
-            "sustain_decay_factor": 0.75,
-        },
-    },
-}
 
 
 def _parse_note(note_str: str) -> int:
@@ -321,7 +115,7 @@ PIANO_VOICES = {
             "bass": 6.0,  # < 110 Hz
             "low_mid": 4.0,  # 110-260 Hz
             "mid": 2.5,  # 260-1000 Hz
-            "treble": 1.5,  # 1000+ Hz
+            "treble": 1.0,  # 1000+ Hz
         },
         # Hammer thunk intensity
         "hammer": {
@@ -357,7 +151,7 @@ PIANO_VOICES = {
             "high_note_threshold": 2000,  # Hz
             "mix": 0.3,
             "attack_time": 0.05,  # 50ms
-            "decay_time": 2.0,
+            "decay_time": 1.0,
         },
         # Envelope
         "envelope": {
@@ -378,15 +172,15 @@ PIANO_VOICES = {
         },
         "harmonics": {
             "bass": 25,  # More harmonics = brighter
-            "low_mid": 20,
-            "mid": 15,
-            "treble_min": 12,
-            "treble_max": 8,
+            "low_mid": 25,
+            "mid": 20,
+            "treble_min": 16,
+            "treble_max": 1,
         },
         "amplitude": {
             "bass": 1.0,
             "mid": 0.75,  # Louder mids and treble
-            "treble": 0.55,
+            "treble": 0.3,
         },
         "decay": {
             "bass": 7.0,  # Longer sustain
@@ -401,8 +195,8 @@ PIANO_VOICES = {
         },
         "detuning": {
             "bass": [0],
-            "low_mid": [-1.0, 1.0],  # Less detuning = clearer
-            "mid_high": [-1.5, 0, 1.5],
+            "low_mid": [-0.1, 0.1],  # Less detuning = clearer
+            "mid_high": [-0.2, 0, 0.2],
         },
         "soundboard": {
             "comb_frequencies": [80, 150, 300, 700, 1200],
@@ -423,7 +217,7 @@ PIANO_VOICES = {
             "high_note_threshold": 1800,
             "mix": 0.35,
             "attack_time": 0.04,
-            "decay_time": 2.5,
+            "decay_time": 1.0,
         },
         "envelope": {
             "attack_time": 0.008,
@@ -445,8 +239,8 @@ PIANO_VOICES = {
             "bass": 15,  # Fewer harmonics = mellower
             "low_mid": 12,
             "mid": 8,
-            "treble_min": 7,
-            "treble_max": 4,
+            "treble_min": 4,
+            "treble_max": 2,
         },
         "amplitude": {
             "bass": 1.0,
@@ -460,8 +254,8 @@ PIANO_VOICES = {
             "treble": 1.2,
         },
         "hammer": {
-            "bass": 0.18,  # More mechanical noise
-            "mid": 0.10,
+            "bass": 0.3,  # More mechanical noise
+            "mid": 0.2,
             "treble": 0.08,
         },
         "detuning": {
@@ -484,11 +278,76 @@ PIANO_VOICES = {
         "sympathetic": {
             "harmonic_tolerance": 0.06,
             "base_amplitude": 0.018,
-            "high_note_boost": 1.5,
+            "high_note_boost": 1.2,
             "high_note_threshold": 2200,
-            "mix": 0.25,
+            "mix": 0.10,
             "attack_time": 0.06,
-            "decay_time": 1.8,
+            "decay_time": 1.0,
+        },
+        "envelope": {
+            "attack_time": 0.012,
+            "initial_decay_time": 0.18,
+            "initial_decay_level": 0.35,
+            "sustain_decay_factor": 0.75,
+        },
+    },
+    "crazy": {
+        # Warmer, mellower sound - like an upright piano
+        "inharmonicity": {
+            "bass": 0.001,  # More inharmonicity = warmer
+            "low_mid": 0.001,
+            "mid": 0.0001,
+            "treble_min": 0.0001,
+            "treble_max": 0.030,
+        },
+        "harmonics": {
+            "bass": 25,  # Fewer harmonics = mellower
+            "low_mid": 25,
+            "mid": 25,
+            "treble_min": 25,
+            "treble_max": 20,
+        },
+        "amplitude": {
+            "bass": 1.0,
+            "mid": 0.5,  # Quieter treble
+            "treble": 0.25,
+        },
+        "decay": {
+            "bass": 4.5,  # Shorter sustain
+            "low_mid": 3.0,
+            "mid": 2.0,
+            "treble": 1.2,
+        },
+        "hammer": {
+            "bass": 0.4,  # More mechanical noise
+            "mid": 0.24,
+            "treble": 0.2,
+        },
+        "detuning": {
+            "bass": [0],
+            "low_mid": [-2.0, 2.0],  # More detuning = warmer
+            "mid_high": [-5, 0, 5],
+        },
+        "soundboard": {
+            "comb_frequencies": [50, 90, 180, 450, 900],
+            "comb_feedback": 0.3,
+            "comb_mix": 0.18,
+            "allpass_delays_ms": [90, 120, 170],
+            "allpass_gain": 0.55,
+        },
+        "reverb": {
+            "predelay_ms": 20,
+            "echo_delays_ms": [30, 55, 85, 125, 180],
+            "echo_gains": [0.35, 0.25, 0.16, 0.10, 0.06],
+        },
+        "sympathetic": {
+            "harmonic_tolerance": 0.06,
+            "base_amplitude": 0.018,
+            "high_note_boost": 1.2,
+            "high_note_threshold": 2200,
+            "mix": 0.40,
+            "attack_time": 0.06,
+            "decay_time": 1.0,
         },
         "envelope": {
             "attack_time": 0.012,

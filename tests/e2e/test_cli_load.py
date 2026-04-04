@@ -45,6 +45,8 @@ class TestCLILoad:
 
     @patch("os.path.exists")
     @patch("bots.foundation.base.Bot.load")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_success_updates_context(self, mock_bot_load, mock_exists, monkeypatch):
         """Test that load function updates context.bot_instance."""
         test_filename = "test_bot.bot"
@@ -73,6 +75,8 @@ class TestCLILoad:
 
     @patch("os.path.exists")
     @patch("bots.foundation.base.Bot.load")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_clears_labeled_nodes(self, mock_bot_load, mock_exists, monkeypatch):
         """Test that load function clears labeled nodes."""
         # Setup mocks
@@ -90,6 +94,8 @@ class TestCLILoad:
         # Verify labeled_nodes was cleared
         assert self.context.labeled_nodes == {}, "Labeled nodes should be cleared after load"
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_cancelled_by_user(self, monkeypatch):
         """Test load function when user cancels by providing empty filename."""
         # User cancels by providing empty filename
@@ -107,6 +113,8 @@ class TestCLILoad:
         assert "cancelled" in result["message"].lower()
 
     @patch("os.path.exists")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_file_not_found(self, mock_exists, monkeypatch):
         """Test load function when file doesn't exist."""
         inputs = iter(["nonexistent.bot"])
@@ -123,6 +131,8 @@ class TestCLILoad:
 
     @patch("os.path.exists")
     @patch("bots.foundation.base.Bot.load")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_file_error(self, mock_bot_load, mock_exists, monkeypatch):
         """Test load function when Bot.load raises an exception."""
         inputs = iter(["corrupted.bot"])
@@ -140,6 +150,8 @@ class TestCLILoad:
 
     @patch("os.path.exists")
     @patch("bots.foundation.base.Bot.load")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_calls_rebuild_labels(self, mock_bot_load, mock_exists, monkeypatch):
         """Test that load function calls _rebuild_labels."""
         # Setup mocks
@@ -159,6 +171,8 @@ class TestCLILoad:
 
     @patch("os.path.exists")
     @patch("bots.foundation.base.Bot.load")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_navigates_to_conversation_end(self, mock_bot_load, mock_exists, monkeypatch):
         """Test that load function navigates to the end of conversation."""
         inputs = iter(["test_bot.bot"])
@@ -186,6 +200,8 @@ class TestCLILoad:
 
     @patch("os.path.exists")
     @patch("bots.foundation.base.Bot.load")
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_handles_extension_automatically(self, mock_bot_load, mock_exists, monkeypatch):
         """Test that load function automatically adds .bot extension."""
         # Setup mocks - user provides filename without extension
@@ -212,6 +228,8 @@ class TestCLILoad:
         assert isinstance(result, dict)
         assert "Bot loaded from test_bot.bot" in result["message"]
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_load_function_is_fixed(self, monkeypatch):
         """Verify that the load function correctly updates context."""
         # This test demonstrates that the load function has been fixed
@@ -251,6 +269,8 @@ if __name__ == "__main__":
 class TestCLILoadCallbacksRegression:
     """Test that verifies callbacks are properly attached when loading bots in CLI."""
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_loaded_bot_missing_cli_callbacks(self, tmp_path):
         """
         REGRESSION TEST: When loading a bot in the CLI, the RealTimeDisplayCallbacks
@@ -284,6 +304,8 @@ class TestCLILoadCallbacksRegression:
             f"This causes CLI display issues."
         )
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_cli_startup_with_bot_file_missing_callbacks(self, tmp_path):
         """
         Test that CLI startup with a bot file doesn't attach proper callbacks.

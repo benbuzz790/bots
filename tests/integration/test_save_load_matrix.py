@@ -12,6 +12,8 @@ import unittest
 from types import ModuleType
 from typing import Any, Callable, Dict
 
+import pytest
+
 from bots.foundation.base import Bot, Engines
 from bots.testing.mock_bot import MockBot
 from bots.tools import code_tools, python_edit
@@ -19,6 +21,7 @@ from bots.tools import code_tools, python_edit
 sys.path.insert(0, os.path.abspath("."))
 
 
+@pytest.mark.api
 class TestSaveLoadMatrix(unittest.TestCase):
     """Comprehensive test matrix for save/load tool functionality."""
 
@@ -89,7 +92,7 @@ def another_module_tool(data: str) -> str:
 
     def create_mock_bot(self, name: str = "TestBot") -> MockBot:
         """Create a mock bot for testing."""
-        bot = MockBot(name=name, model_engine=Engines.CLAUDE35_HAIKU, max_tokens=1000, temperature=1)
+        bot = MockBot(name=name, model_engine=Engines.CLAUDE45_HAIKU, max_tokens=1000, temperature=1)
         # Set a response pattern that indicates tool usage
         bot.set_response_pattern("Tool executed successfully with result: {user_input}")
         return bot
@@ -244,6 +247,8 @@ def tool_with_helpers(input_text: str, multiplier: str = "1") -> str:
 import json
 from typing import Dict, Any
 
+import pytest
+
 # Helper functions
 def _validate_input(data: str) -> bool:
     return len(data) > 0 and data.strip() != ""
@@ -323,6 +328,8 @@ def complex_tool(input_data: str) -> str:
         module_content = """import os
 import json
 from typing import Dict, Any
+
+import pytest
 
 def test_tool(input_data: str) -> str:
     result = {"data": input_data}

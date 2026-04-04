@@ -63,6 +63,8 @@ class TestLeafCommand(unittest.TestCase):
         leaf2.labels = ["nn_info"]
         return assistant1  # Start from a node with multiple leaves
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_leaf_command_shows_leaves(self):
         """Test that /leaf command shows all available leaves."""
         # Test with direct argument to avoid input() call
@@ -75,6 +77,8 @@ class TestLeafCommand(unittest.TestCase):
         # Should have cached the leaves
         self.assertEqual(len(self.context.cached_leaves), 2)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_leaf_command_with_direct_jump(self):
         """Test /leaf command with direct jump to specific leaf."""
         # Test jumping to leaf 1
@@ -86,6 +90,8 @@ class TestLeafCommand(unittest.TestCase):
         # Should have updated bot conversation
         self.assertEqual(len(self.context.cached_leaves), 2)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_leaf_command_invalid_number(self):
         """Test /leaf command with invalid leaf number."""
         result = self.handler.leaf(self.mock_bot, self.context, ["99"])
@@ -95,6 +101,8 @@ class TestLeafCommand(unittest.TestCase):
         self.assertIn("Invalid leaf number", content)
         self.assertIn("Must be between 1 and", content)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_leaf_command_no_leaves(self):
         """Test /leaf command when no leaves exist."""
         # Create a node that has replies but no leaves (empty conversation
@@ -110,6 +118,8 @@ class TestLeafCommand(unittest.TestCase):
             content = result.get("content", "")
             self.assertIn("No leaves found", content)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_leaf_command_interactive_selection(self):
         """Test /leaf command with direct argument (no longer interactive)."""
         # The new API doesn't prompt for input - it requires args on command line
@@ -120,6 +130,8 @@ class TestLeafCommand(unittest.TestCase):
         content = result.get("content", "")
         self.assertIn("Jumped to leaf 2", content)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_leaf_command_interactive_cancel(self):
         """Test /leaf command without args shows list of leaves."""
         # The new API doesn't prompt for input - calling without args shows the list
@@ -131,6 +143,8 @@ class TestLeafCommand(unittest.TestCase):
         self.assertIn("Found 2 leaf nodes", content)
         self.assertIn("Use /leaf <number>", content)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_get_leaf_preview_short_content(self):
         """Test _get_leaf_preview with short content."""
         node = ConversationNode("assistant", "Short message")
@@ -139,6 +153,8 @@ class TestLeafCommand(unittest.TestCase):
         self.assertIsNotNone(preview)
         self.assertIsInstance(preview, str)
 
+    @pytest.mark.api
+    @pytest.mark.slow
     def test_get_leaf_preview_long_content(self):
         """Test _get_leaf_preview with long content that needs cutting."""
         long_content = "This is a very long message that should be cut from the middle " * 10

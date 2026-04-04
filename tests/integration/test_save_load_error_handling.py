@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from io import StringIO
 
+import pytest
+
 from bots.dev.cli import CLIContext, RealTimeDisplayCallbacks
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Bot, Engines
@@ -28,6 +30,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @pytest.mark.api
     def test_successful_load_produces_no_excessive_output(self):
         """Test that successful bot load doesn't produce excessive console output.
 
@@ -35,7 +38,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         warning spam or debug output that would clutter the CLI.
         """
         # Create and save a bot
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE46_SONNET, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
 
@@ -67,6 +70,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         self.assertNotIn("Source context (lines", output)
         self.assertNotIn("Warning: Failed to load module", output)
 
+    @pytest.mark.api
     def test_verbose_callbacks_work_after_load(self):
         """Test that verbose mode properly shows tool execution after bot load.
 
@@ -74,7 +78,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         the verbose mode properly displays tool requests and results.
         """
         # Create and save a bot
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE46_SONNET, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
 
@@ -123,6 +127,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         # Note: The exact format may vary, but there should be visible output
         self.assertTrue(len(callback_output.strip()) > 0, "Callbacks should produce visible output in verbose mode")
 
+    @pytest.mark.api
     def test_code_hash_mismatch_warning_is_concise(self):
         """Test that code hash mismatch warnings are concise, not verbose.
 
@@ -130,7 +135,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         not include the entire source code.
         """
         # Create and save a bot
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE46_SONNET, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
 
@@ -184,6 +189,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         self.assertNotIn("Full stack trace:", output)
         self.assertNotIn("Source context (lines", output)
 
+    @pytest.mark.api
     def test_tool_handler_bot_reference_preserved_after_load(self):
         """Test that tool_handler.bot reference is properly set after bot load.
 
@@ -194,7 +200,7 @@ class TestSaveLoadErrorHandling(unittest.TestCase):
         Root cause: tool_handler.bot was None after load, preventing callback invocation
         """
         # Create and save a bot with tools
-        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE37_SONNET_20250219, max_tokens=1000)
+        bot = AnthropicBot(name="TestBot", model_engine=Engines.CLAUDE46_SONNET, max_tokens=1000)
 
         from bots.tools.code_tools import view_dir
 

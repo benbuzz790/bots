@@ -48,6 +48,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 except Exception:
                     pass
 
+    @pytest.mark.api
     def test_here_string_basic(self):
         """Test basic here-string functionality"""
         print("\n=== Testing Basic Here-String ===")
@@ -66,6 +67,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 print(f"❌ Basic here-string timed out after {elapsed:.2f}s")
                 self.fail(f"Basic here-string should not timeout: {e}")
 
+    @pytest.mark.api
     def test_here_string_with_pipe(self):
         """Test here-string with pipe to Out-File"""
         print("\n=== Testing Here-String with Pipe ===")
@@ -91,6 +93,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 print(f"❌ Here-string with pipe timed out after {elapsed:.2f}s")
                 self.fail(f"Here-string with pipe should not timeout: {e}")
 
+    @pytest.mark.api
     def test_here_string_multiline(self):
         """Test multiline here-string (the problematic case)"""
         print("\n=== Testing Multiline Here-String ===")
@@ -112,6 +115,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 print(f"❌ Multiline here-string timed out after {elapsed:.2f}s")
                 self.fail(f"Multiline here-string should not timeout: {e}")
 
+    @pytest.mark.api
     def test_here_string_with_special_chars(self):
         """Test here-string with special characters"""
         print("\n=== Testing Here-String with Special Characters ===")
@@ -134,6 +138,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 print(f"❌ Special chars here-string timed out after {elapsed:.2f}s")
                 self.fail(f"Special chars here-string should not timeout: {e}")
 
+    @pytest.mark.api
     def test_here_string_with_empty_lines(self):
         """Test here-string with empty lines"""
         print("\n=== Testing Here-String with Empty Lines ===")
@@ -154,6 +159,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 print(f"❌ Empty lines here-string timed out after {elapsed:.2f}s")
                 self.fail(f"Empty lines here-string should not timeout: {e}")
 
+    @pytest.mark.api
     def test_problematic_python_code_here_string(self):
         """Test the exact problematic case from the error"""
         print("\n=== Testing Problematic Python Code Here-String ===")
@@ -188,6 +194,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 print(f"❌ Complex here-string timed out after {elapsed:.2f}s")
                 print("This confirms the timeout issue with complex here-strings")
 
+    @pytest.mark.api
     def test_delimiter_detection(self):
         """Test if delimiter is being properly written and detected"""
         print("\n=== Testing Delimiter Detection ===")
@@ -239,6 +246,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 print("❌ Command timed out")
                 print(f"Items received before timeout: {received_items}")
 
+    @pytest.mark.api
     def test_wrap_code_safely_output(self):
         """Test what _wrap_code_safely actually produces"""
         print("\n=== Testing _wrap_code_safely Output ===")
@@ -265,6 +273,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             except Exception as e:
                 print(f"❌ Wrapped code failed: {e}")
 
+    @pytest.mark.api
     def test_simple_vs_complex_wrapping(self):
         """Compare simple vs complex command wrapping"""
         print("\n=== Testing Simple vs Complex Wrapping ===")
@@ -294,6 +303,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 elapsed = time.time() - start_time
                 print(f"❌ Minimal wrapping failed after {elapsed:.2f}s: {e}")
 
+    @pytest.mark.api
     def test_stdin_write_behavior(self):
         """Test stdin write behavior with different content"""
         print("\n=== Testing stdin.write Behavior ===")
@@ -338,6 +348,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 except Exception as e:
                     print(f"❌ Exception: {e}")
 
+    @pytest.mark.api
     def test_here_string_terminal_behavior(self):
         """Test how here-strings behave in interactive terminal"""
         print("\n=== Testing Here-String Terminal Behavior ===")
@@ -385,6 +396,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
                 print("❌ Method 2 timed out")
             print(f"Output: {output2}")
 
+    @pytest.mark.api
     def test_error_in_wrapped_code(self):
         """Test if errors in wrapped code are preventing delimiter output"""
         print("\n=== Testing Error in Wrapped Code ===")
@@ -402,6 +414,7 @@ class TestPowerShellTimeoutDebug(unittest.TestCase):
             except Exception as e:
                 print(f"❌ Error accessing $LASTOUTPUT: {e}")
 
+    @pytest.mark.api
     def test_alternative_wrapping_approach(self):
         """Test alternative wrapping approach without $LASTOUTPUT"""
         print("\n=== Testing Alternative Wrapping Approach ===")

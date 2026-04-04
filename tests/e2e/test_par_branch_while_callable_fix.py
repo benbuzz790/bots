@@ -19,7 +19,7 @@ def test_par_branch_while_with_unpicklable_callback():
     """
 
     # Create a real bot (with no API key for testing)
-    bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE37_SONNET_20250219, name="TestBot", autosave=False)
+    bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE46_SONNET, name="TestBot", autosave=False)
 
     # Create an unpicklable callback (like CLI creates)
     callback_calls = []
@@ -74,7 +74,7 @@ def test_par_branch_while_with_unpicklable_callback():
 def test_par_branch_while_with_picklable_condition():
     """Test that par_branch_while works with standard picklable conditions."""
 
-    bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE37_SONNET_20250219, name="TestBot", autosave=False)
+    bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE46_SONNET, name="TestBot", autosave=False)
 
     # Use a standard condition from fp.conditions (these are picklable)
     prompts = ["Task 1", "Task 2"]
@@ -102,7 +102,7 @@ def test_par_branch_while_with_picklable_condition():
 def test_callback_is_called_after_threads():
     """Test that callbacks are called after thread execution, not during."""
 
-    bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE37_SONNET_20250219, name="TestBot", autosave=False)
+    bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE46_SONNET, name="TestBot", autosave=False)
 
     callback_calls = []
     callback_responses = []

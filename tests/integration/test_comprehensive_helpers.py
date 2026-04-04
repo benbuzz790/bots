@@ -7,11 +7,14 @@ import unittest
 from types import ModuleType
 from typing import Any, Dict
 
+import pytest
+
 sys.path.insert(0, os.path.abspath("."))
 from bots.foundation.anthropic_bots import AnthropicBot  # noqa: E402
 from bots.foundation.base import Engines  # noqa: E402
 
 
+@pytest.mark.api
 class TestHelperPreservationComprehensive(unittest.TestCase):
     """Comprehensive test for helper function preservation."""
 

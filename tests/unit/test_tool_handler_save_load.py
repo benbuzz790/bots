@@ -36,7 +36,7 @@ def greet(name: str) -> str:
             bot1 = AnthropicBot(
                 name="TestBot",
                 api_key="test-key",
-                model_engine=Engines.CLAUDE35_HAIKU,
+                model_engine=Engines.CLAUDE45_HAIKU,
                 max_tokens=1000,
                 temperature=0.7,
                 role="assistant",
@@ -101,7 +101,7 @@ def add_numbers(a: int, b: int) -> int:
             bot1 = AnthropicBot(
                 name="TestBot",
                 api_key="test-key",
-                model_engine=Engines.CLAUDE35_HAIKU,
+                model_engine=Engines.CLAUDE45_HAIKU,
                 max_tokens=1000,
                 temperature=0.7,
                 role="assistant",
@@ -176,7 +176,7 @@ def test_func():
             bot = AnthropicBot(
                 name="TestBot",
                 api_key="test-key",
-                model_engine=Engines.CLAUDE35_HAIKU,
+                model_engine=Engines.CLAUDE45_HAIKU,
                 max_tokens=1000,
                 temperature=0.7,
                 role="assistant",

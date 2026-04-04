@@ -1,0 +1,42 @@
+# Pytest Markers Configuration - COMPLETED
+## Branch 3 Completion Report
+✅ **DEFINITION OF DONE ACHIEVED**
+### What was completed:
+1. **Added pytest_configure() function** to tests/conftest.py with four custom markers:
+   - slow: Marks tests as slow (>5 seconds)
+   - integration: Marks integration tests
+   - pi: Marks tests that call real APIs
+   - laky: Marks tests as flaky/intermittent
+2. **Markers are now registered** and can be verified with:
+   `ash
+   pytest --markers
+   `
+3. **Usage examples**:
+   `python
+   @pytest.mark.slow
+   @pytest.mark.api
+   def test_anthropic_integration():
+       # Long-running API test
+       pass
+   @pytest.mark.flaky
+   def test_sometimes_fails():
+       # Flaky test
+       pass
+   # Fast unit test (no markers)
+   def test_fast_unit():
+       pass
+   `
+4. **Filter tests by marker**:
+   `ash
+   # Run only fast tests (exclude slow, integration, api)
+   pytest -m "not slow and not integration and not api"
+   # Run only API tests
+   pytest -m "api"
+   # Run integration tests but not slow ones
+   pytest -m "integration and not slow"
+   `
+### Files modified:
+- tests/conftest.py (added pytest_configure function)
+### Verification:
+Pytest now recognizes all four markers and they're ready to be used for categorizing tests in the multi-tier CI strategy.
+**Branch 3 task complete. Pytest markers are configured and documented.**

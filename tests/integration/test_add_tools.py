@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from types import ModuleType
 
+import pytest
+
 import bots
 from bots.foundation.anthropic_bots import AnthropicBot
 from bots.foundation.base import Engines
@@ -28,7 +30,7 @@ def create_test_module(name: str, content: str) -> ModuleType:
 class TestAddTools2(unittest.TestCase):
     def setUp(self):
         self.bot = AnthropicBot(
-            model_engine=Engines.CLAUDE37_SONNET_20250219,
+            model_engine=Engines.CLAUDE46_SONNET,
             max_tokens=1000,
             temperature=0,
             name="TestBot",
@@ -65,6 +67,7 @@ class TestAddTools2(unittest.TestCase):
             ),
         )
 
+    @pytest.mark.api
     def test_single_file(self):
         """Test adding tools from a single file."""
         self.bot.add_tools(self.test_file1)
@@ -72,6 +75,7 @@ class TestAddTools2(unittest.TestCase):
         self.assertIn("tool1", tools)
         self.assertIn("tool2", tools)
 
+    @pytest.mark.api
     def test_multiple_files(self):
         """Test adding tools from multiple files."""
         self.bot.add_tools(self.test_file1, self.test_file2)
@@ -81,6 +85,7 @@ class TestAddTools2(unittest.TestCase):
         self.assertIn("tool3", tools)
         self.assertIn("tool4", tools)
 
+    @pytest.mark.api
     def test_single_module(self):
         """Test adding tools from a single module."""
         self.bot.add_tools(self.module1)
@@ -88,6 +93,7 @@ class TestAddTools2(unittest.TestCase):
         self.assertIn("module1_tool1", tools)
         self.assertIn("module1_tool2", tools)
 
+    @pytest.mark.api
     def test_multiple_modules(self):
         """Test adding tools from multiple modules."""
         self.bot.add_tools(self.module1, self.module2)
@@ -97,6 +103,7 @@ class TestAddTools2(unittest.TestCase):
         self.assertIn("module2_tool1", tools)
         self.assertIn("module2_tool2", tools)
 
+    @pytest.mark.api
     def test_mixed_files_and_modules(self):
         """Test adding tools from a mix of files and modules."""
         self.bot.add_tools(self.test_file1, self.module1, self.test_file2, self.module2)
@@ -110,6 +117,7 @@ class TestAddTools2(unittest.TestCase):
         self.assertIn("module2_tool1", tools)
         self.assertIn("module2_tool2", tools)
 
+    @pytest.mark.api
     def test_single_function(self):
         """Test adding a single function as a tool."""
 
@@ -121,6 +129,7 @@ class TestAddTools2(unittest.TestCase):
         tools = self.bot.tool_handler.function_map
         self.assertIn("test_function", tools)
 
+    @pytest.mark.api
     def test_list_input(self):
         """Test adding tools from a list containing mixed types."""
 
@@ -137,6 +146,7 @@ class TestAddTools2(unittest.TestCase):
         self.assertIn("module1_tool2", tools)
         self.assertIn("test_function", tools)
 
+    @pytest.mark.api
     def test_invalid_input(self):
         """Test that invalid input types raise appropriate exceptions."""
         with self.assertRaises(TypeError):
@@ -144,6 +154,7 @@ class TestAddTools2(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             self.bot.add_tools("nonexistent_file.py")
 
+    @pytest.mark.api
     def test_save_load_dynamic_function(self):
         """Test that dynamically created functions persist through
         save/load."""
@@ -165,6 +176,7 @@ class TestAddTools2(unittest.TestCase):
         loaded_result = loaded_bot.tool_handler.function_map["dynamic_func"]()
         self.assertEqual(original_result, loaded_result)
 
+    @pytest.mark.api
     def test_save_load_mixed_sources(self):
         """Test persistence of tools from multiple sources."""
 
@@ -187,6 +199,7 @@ class TestAddTools2(unittest.TestCase):
         self.assertEqual(loaded_bot.tool_handler.function_map["module1_tool1"](), "module1_tool1")
         os.unlink(test_file)
 
+    @pytest.mark.api
     def test_multiple_save_load_cycles(self):
         """Test tools persist through multiple save/load cycles with usage."""
 
@@ -267,6 +280,7 @@ class NotAFunction:
         except Exception as e:
             print(f"Warning: Could not clean up test directory: {e}")
 
+    @pytest.mark.api
     def test_add_tool_no_args(self):
         """Test /add_tool with no arguments shows usage."""
         result = self.handler.add_tool(self.bot, self.context, [])
@@ -274,6 +288,7 @@ class NotAFunction:
         self.assertIn("file.py", result)
         self.assertIn("::", result)
 
+    @pytest.mark.api
     def test_add_tool_whole_file(self):
         """Test /add_tool with file.py adds all public functions."""
         result = self.handler.add_tool(self.bot, self.context, [self.test_file])
@@ -291,6 +306,7 @@ class NotAFunction:
         self.assertNotIn("_private_tool", self.bot.tool_handler.function_map)
         self.assertNotIn("NotAFunction", self.bot.tool_handler.function_map)
 
+    @pytest.mark.api
     def test_add_tool_specific_function(self):
         """Test /add_tool with file.py::function adds only that function."""
         result = self.handler.add_tool(self.bot, self.context, [f"{self.test_file}::public_tool1"])
@@ -304,6 +320,7 @@ class NotAFunction:
         self.assertIn("public_tool1", self.bot.tool_handler.function_map)
         self.assertNotIn("public_tool2", self.bot.tool_handler.function_map)
 
+    @pytest.mark.api
     def test_add_tool_nonexistent_file(self):
         """Test /add_tool with nonexistent file shows error."""
         result = self.handler.add_tool(self.bot, self.context, ["nonexistent.py"])
@@ -312,6 +329,7 @@ class NotAFunction:
         self.assertIn("File not found", result)
         self.assertIn("nonexistent.py", result)
 
+    @pytest.mark.api
     def test_add_tool_nonexistent_function(self):
         """Test /add_tool with nonexistent function shows error."""
         result = self.handler.add_tool(self.bot, self.context, [f"{self.test_file}::nonexistent_func"])
@@ -320,6 +338,7 @@ class NotAFunction:
         self.assertIn("not found", result)
         self.assertIn("nonexistent_func", result)
 
+    @pytest.mark.api
     def test_add_tool_non_python_file(self):
         """Test /add_tool with non-Python file shows error."""
         txt_file = os.path.join(self.test_dir, "test.txt")
@@ -331,6 +350,7 @@ class NotAFunction:
         self.assertIn("Errors:", result)
         self.assertIn("Not a Python file", result)
 
+    @pytest.mark.api
     def test_add_tool_multiple_files(self):
         """Test /add_tool with multiple files."""
         # Create second test file
@@ -356,6 +376,7 @@ def another_tool():
         self.assertIn("public_tool2", self.bot.tool_handler.function_map)
         self.assertIn("another_tool", self.bot.tool_handler.function_map)
 
+    @pytest.mark.api
     def test_add_tool_mixed_syntax(self):
         """Test /add_tool with mix of whole file and specific function."""
         # Create second test file
@@ -382,6 +403,7 @@ def tool_b():
         self.assertIn("tool_a", self.bot.tool_handler.function_map)
         self.assertNotIn("tool_b", self.bot.tool_handler.function_map)
 
+    @pytest.mark.api
     def test_add_tool_file_with_no_public_functions(self):
         """Test /add_tool with file containing only private functions."""
         empty_file = os.path.join(self.test_dir, "empty_tools.py")

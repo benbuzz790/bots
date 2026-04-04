@@ -608,7 +608,7 @@ class TestSelfTools(unittest.TestCase):
         with Claude 3.5 Sonnet configuration and self_tools loaded.
         """
         self.temp_dir = tempfile.mkdtemp()
-        self.bot = AnthropicBot(name="TestBot", max_tokens=1000, model_engine=Engines.CLAUDE37_SONNET_20250219)
+        self.bot = AnthropicBot(name="TestBot", max_tokens=1000, model_engine=Engines.CLAUDE46_SONNET)
         self.bot.add_tools(self_tools)
 
     def tearDown(self) -> None:
@@ -688,6 +688,7 @@ class TestSelfTools(unittest.TestCase):
         self.assertNotIn("error", response2.lower())
         self.assertNotIn("failed", response2.lower())
 
+    @pytest.mark.api
     def test_branch_self_debug_printing(self) -> None:
         """Test that branch_self function works correctly with multiple prompts."""
         response = self.bot.respond(
@@ -695,6 +696,7 @@ class TestSelfTools(unittest.TestCase):
         )
         self.assertIn("branch", response.lower())
 
+    @pytest.mark.api
     def test_branch_self_method_restoration(self) -> None:
         """Test that the original respond method is properly restored after branching."""
         # Store the original method's underlying function and instance
@@ -718,6 +720,7 @@ class TestSelfTools(unittest.TestCase):
         )
         self.assertIn("branch", response.lower())
 
+    @pytest.mark.api
     def test_branch_self_error_handling(self) -> None:
         """Test branch_self error handling with invalid input."""
         response = self.bot.respond(
@@ -725,6 +728,7 @@ class TestSelfTools(unittest.TestCase):
         )
         self.assertIn("invalid", response.lower())
 
+    @pytest.mark.api
     def test_branch_self_empty_prompts(self) -> None:
         """Test branch_self with empty prompt list."""
         response = self.bot.respond("Use branch_self with prompts []")
@@ -942,7 +946,7 @@ class TestSelfTools(unittest.TestCase):
             # Test sequential branching (uses branch_while)
             bot1 = AnthropicBot(
                 name="SequentialBot",
-                model_engine=Engines.CLAUDE37_SONNET_20250219,
+                model_engine=Engines.CLAUDE46_SONNET,
                 max_tokens=1000,
             )
             bot1.add_tools(self_tools)
@@ -966,7 +970,7 @@ class TestSelfTools(unittest.TestCase):
                 print(f"Sequential - Follow-up failed: {str(e)[:100]}")
             print("\n=== TESTING PARALLEL BRANCHING ===")
             # Test parallel branching (uses par_branch_while)
-            bot2 = AnthropicBot(name="ParallelBot", max_tokens=1000, model_engine=Engines.CLAUDE37_SONNET_20250219)
+            bot2 = AnthropicBot(name="ParallelBot", max_tokens=1000, model_engine=Engines.CLAUDE46_SONNET)
             bot2.add_tools(self_tools)
             initial_tool_results_par = len(bot2.tool_handler.results)
             response_par = bot2.respond(

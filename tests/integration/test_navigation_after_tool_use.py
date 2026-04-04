@@ -70,6 +70,7 @@ class TestNavigationAfterToolUse:
 
         return root, assistant1, assistant2
 
+    @pytest.mark.api
     def test_navigate_up_after_tool_use(self):
         """Test that navigating up after tool use doesn't crash.
 
@@ -105,6 +106,7 @@ class TestNavigationAfterToolUse:
                             # For Anthropic, tool_results are in content
                             assert "content" in next_msg
 
+    @pytest.mark.api
     def test_navigate_down_after_tool_use(self):
         """Test that navigating down through tool use doesn't crash."""
         root, assistant1, assistant2 = self._create_conversation_with_tool_use()
@@ -131,6 +133,7 @@ class TestNavigationAfterToolUse:
                         next_msg = messages[i + 1]
                         assert next_msg.get("role") == "user"
 
+    @pytest.mark.api
     def test_multiple_tool_calls_navigation(self):
         """Test navigation with multiple tool calls in sequence."""
         # Root node
@@ -198,6 +201,7 @@ class TestNavigationAfterToolUse:
                             next_msg = messages[i + 1]
                             assert next_msg.get("role") == "user"
 
+    @pytest.mark.api
     def test_navigation_without_tool_use(self):
         """Test that normal navigation still works without tool use."""
         # Create a simple conversation without tools
@@ -223,6 +227,7 @@ class TestNavigationAfterToolUse:
         assert result is not None
         assert "type" in result
 
+    @pytest.mark.api
     def test_ensure_valid_conversation_position_with_tool_calls(self):
         """Test _ensure_valid_conversation_position directly."""
         root, assistant1, assistant2 = self._create_conversation_with_tool_use()
@@ -239,6 +244,7 @@ class TestNavigationAfterToolUse:
         # Should have moved forward (to user2 or assistant2)
         assert self.bot.conversation != assistant1
 
+    @pytest.mark.api
     def test_ensure_valid_conversation_position_without_tool_calls(self):
         """Test _ensure_valid_conversation_position with no tool calls."""
         root = AnthropicNode(content="System", role="system")

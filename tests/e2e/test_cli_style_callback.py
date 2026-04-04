@@ -43,7 +43,7 @@ def test_cli_like_callback_usage():
         print("✓ Confirmed: CLI-style callback is not picklable")
 
     # Create bot
-    bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE37_SONNET_20250219, name="CLIBot", autosave=False)
+    bot = AnthropicBot(api_key=None, model_engine=Engines.CLAUDE46_SONNET, name="CLIBot", autosave=False)
 
     # Use par_branch_while with CLI-style callback
     print("\nExecuting par_branch_while with CLI-style callback...")
