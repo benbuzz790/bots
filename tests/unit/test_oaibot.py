@@ -11,11 +11,14 @@ import shutil
 import tempfile
 import unittest
 
+import pytest
+
 from bots import ChatGPT_Bot
 from bots.foundation.base import Engines
 from bots.tools.code_tools import view
 
 
+@pytest.mark.api
 class TestGPTBot(unittest.TestCase):
     """Test suite for ChatGPT_Bot functionality.
     Tests basic bot operations including:
