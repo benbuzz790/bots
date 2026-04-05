@@ -113,7 +113,7 @@ def view_dir(start_path: str = ".", output_file=None, target_extensions: str = "
         max_lines = int(max_lines)
     extensions_list = [ext.strip().strip("'\"") for ext in target_extensions.strip("[]").split(",")]
     extensions_list = ["." + ext if not ext.startswith(".") else ext for ext in extensions_list]
-    # First pass: collect all directory entries with their levels
+    # First pass: collect all directory entries with their levels and paths
     dir_entries = []
     max_level = 0
     for root, dirs, files in os.walk(start_path):
@@ -122,7 +122,7 @@ def view_dir(start_path: str = ".", output_file=None, target_extensions: str = "
         basename = os.path.basename(root)
         is_venv = basename in ["venv", "env", ".env"] or "pyvenv.cfg" in files
         if is_venv:
-            dir_entries.append((level, f"{indent}{basename}/"))
+            dir_entries.append((level, f"{indent}{basename}/", root))
             max_level = max(max_level, level)
             dirs[:] = []
             continue
@@ -132,30 +132,31 @@ def view_dir(start_path: str = ".", output_file=None, target_extensions: str = "
                 has_relevant_files = True
                 break
         if has_relevant_files:
-            dir_entries.append((level, f"{indent}{basename}/"))
+            dir_entries.append((level, f"{indent}{basename}/", root))
             max_level = max(max_level, level)
             subindent = "    " * (level + 1)
             for file in files:
                 if file.endswith(tuple(extensions_list)):
-                    dir_entries.append((level + 1, f"{subindent}{file}"))
+                    dir_entries.append((level + 1, f"{subindent}{file}", os.path.join(root, file)))
                     max_level = max(max_level, level + 1)
     # Second pass: apply length limiting by progressively removing deeper levels
     current_level_limit = max_level
     while current_level_limit >= 0:
         # Filter entries up to current level limit
-        filtered_entries = [(level, line) for level, line in dir_entries if level <= current_level_limit]
+        filtered_entries = [(level, line, path) for level, line, path in dir_entries if level <= current_level_limit]
         # Check if we need to add truncation indicators
         truncated_dirs = set()
-        for level, line in dir_entries:
-            if level > current_level_limit and level == current_level_limit + 1:
-                # Find parent directory
-                parent_level = level - 1
-                for parent_level_check, parent_line in filtered_entries:
-                    if parent_level_check == parent_level and parent_line.endswith("/"):
+        for level, line, path in dir_entries:
+            if level == current_level_limit + 1:
+                # Find the actual parent directory by comparing paths
+                parent_path = os.path.dirname(path)
+                for parent_level, parent_line, parent_path_check in filtered_entries:
+                    if parent_path_check == parent_path and parent_line.endswith("/"):
                         truncated_dirs.add(parent_line)
+                        break
         # Add truncation indicators
         final_entries = []
-        for level, line in filtered_entries:
+        for level, line, path in filtered_entries:
             final_entries.append(line)
             if line in truncated_dirs:
                 truncation_indent = "    " * (level + 1)

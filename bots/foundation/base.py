@@ -264,12 +264,15 @@ class Engines(str, Enum):
             ```
         """
         from bots.foundation.anthropic_bots import AnthropicNode
+        from bots.foundation.gemini_bots import GeminiNode
         from bots.foundation.openai_bots import OpenAINode
         from bots.testing.mock_bot import MockConversationNode
 
         NODE_CLASS_MAP = {
+            "ConversationNode": ConversationNode,
             "OpenAINode": OpenAINode,
             "AnthropicNode": AnthropicNode,
+            "GeminiNode": GeminiNode,
             "MockConversationNode": MockConversationNode,
         }
 

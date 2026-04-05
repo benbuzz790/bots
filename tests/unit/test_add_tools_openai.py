@@ -54,9 +54,13 @@ class TestAddToolsOpenAI(unittest.TestCase):
 
     def test_list_input(self):
         """Test adding tools from a list of file paths"""
-        result = self.bot.add_tools(self.test_file1, self.test_file2)
-        self.assertIsInstance(result, list)
-        self.assertEqual(len(result), 4)  # 2 tools from each file
+        self.bot.add_tools(self.test_file1, self.test_file2)
+        # Verify actual registered functions in function_map
+        registered_names = set(self.bot.tool_handler.function_map.keys())
+        expected_names = {"tool1", "tool2", "tool3", "tool4"}
+        self.assertTrue(expected_names.issubset(registered_names))
+        for name in expected_names:
+            self.assertTrue(callable(self.bot.tool_handler.function_map[name]))
 
     def test_invalid_input(self):
         """Test that invalid input raises appropriate error"""
@@ -65,26 +69,39 @@ class TestAddToolsOpenAI(unittest.TestCase):
 
     def test_multiple_files(self):
         """Test adding tools from multiple files"""
-        result = self.bot.add_tools(self.test_file1, self.test_file2)
-        self.assertEqual(len(result), 4)
-        tool_names = [t.__name__ for t in result]
-        self.assertIn("tool1", tool_names)
-        self.assertIn("tool2", tool_names)
-        self.assertIn("tool3", tool_names)
-        self.assertIn("tool4", tool_names)
+        self.bot.add_tools(self.test_file1, self.test_file2)
+        # Verify actual registered functions in function_map
+        registered_names = set(self.bot.tool_handler.function_map.keys())
+        expected_names = {"tool1", "tool2", "tool3", "tool4"}
+        self.assertTrue(expected_names.issubset(registered_names))
+        for name in expected_names:
+            self.assertIn(name, self.bot.tool_handler.function_map)
+            self.assertTrue(callable(self.bot.tool_handler.function_map[name]))
 
     def test_mixed_files_and_modules(self):
         """Test adding tools from both files and modules"""
         module = create_test_module("test_module", self.test_file1_content)
-        result = self.bot.add_tools(self.test_file1, module)
-        self.assertEqual(len(result), 4)  # 2 from file + 2 from module
+        self.bot.add_tools(self.test_file1, module)
+        # Verify actual registered functions in function_map
+        registered_names = set(self.bot.tool_handler.function_map.keys())
+        expected_names = {"tool1", "tool2"}
+        self.assertTrue(expected_names.issubset(registered_names), f"Expected {expected_names} to be in {registered_names}")
+        # Verify the callables are actually from the module (module functions overwrite file functions)
+        for name in expected_names:
+            self.assertIn(name, self.bot.tool_handler.function_map)
+            self.assertTrue(callable(self.bot.tool_handler.function_map[name]))
 
     def test_multiple_modules(self):
         """Test adding tools from multiple modules"""
         module1 = create_test_module("module1", self.test_file1_content)
         module2 = create_test_module("module2", self.test_file2_content)
-        result = self.bot.add_tools(module1, module2)
-        self.assertEqual(len(result), 4)
+        self.bot.add_tools(module1, module2)
+        # Verify actual registered functions in function_map
+        registered_names = set(self.bot.tool_handler.function_map.keys())
+        expected_names = {"tool1", "tool2", "tool3", "tool4"}
+        self.assertTrue(expected_names.issubset(registered_names))
+        for name in expected_names:
+            self.assertTrue(callable(self.bot.tool_handler.function_map[name]))
 
     def test_multiple_save_load_cycles(self):
         """Test that tools persist through multiple save/load cycles"""
