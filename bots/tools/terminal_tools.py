@@ -193,7 +193,7 @@ def execute_powershell(command: str, output_length_limit: str = "1000", timeout:
     - output_length_limit (int, optional): Maximum number of lines in the output.
       If set, output exceeding this limit will be truncated. Default 200.
 
-    Returns:
+        Returns:
         str: The complete output from the command execution
     """
     manager = PowerShellManager.get_instance()
@@ -450,7 +450,7 @@ class PowerShellSession:
 
         Raises:
             Exception if the process is not running or other execution errors
-            TimeoutError if command execution exceeds timeout
+            TimeoutError if command execution exceeds timeout (includes partial output with timestamps)
         """
         if not self._process:
             raise Exception("PowerShell process is not running")
@@ -468,9 +468,38 @@ class PowerShellSession:
             error_output = []
             start_time = time.time()
             done = False
+
+            # Track timestamps for each line
+            timestamped_output = []
+            timestamped_errors = []
+
             while not done:
-                if time.time() - start_time > timeout:
-                    raise TimeoutError(f"Command execution timed out after {timeout} seconds")
+                current_time = time.time()
+                elapsed = current_time - start_time
+
+                if elapsed > timeout:
+                    # Timeout occurred - format output with timestamps
+                    timeout_msg = f"\n{'='*60}\nTIMEOUT after {timeout} seconds\n{'='*60}\n"
+                    timeout_msg += f"Command started at: {datetime.fromtimestamp(start_time).strftime('%H:%M:%S.%f')[:-3]}\n"
+                    timeout_msg += (
+                        f"Timeout occurred at: {datetime.fromtimestamp(current_time).strftime('%H:%M:%S.%f')[:-3]}\n"
+                    )
+                    timeout_msg += f"\nPartial output collected ({len(timestamped_output)} lines):\n"
+                    timeout_msg += "-" * 60 + "\n"
+
+                    for timestamp, line in timestamped_output:
+                        timeout_msg += f"[{timestamp}] {line}\n"
+
+                    if timestamped_errors:
+                        timeout_msg += "\n" + "-" * 60 + "\n"
+                        timeout_msg += f"Errors collected ({len(timestamped_errors)} lines):\n"
+                        timeout_msg += "-" * 60 + "\n"
+                        for timestamp, line in timestamped_errors:
+                            timeout_msg += f"[{timestamp}] {line}\n"
+
+                    timeout_msg += "=" * 60 + "\n"
+                    raise TimeoutError(timeout_msg)
+
                 if self._process.poll() is not None:
                     raise Exception("PowerShell process unexpectedly closed")
                 try:
@@ -481,6 +510,9 @@ class PowerShellSession:
                         done = True
                     else:
                         output_lines.append(line)
+                        # Add timestamp for this line
+                        line_time = datetime.fromtimestamp(time.time()).strftime("%H:%M:%S.%f")[:-3]
+                        timestamped_output.append((line_time, line))
                 except Empty:
                     pass
                 try:
@@ -489,6 +521,9 @@ class PowerShellSession:
                         if line is None:
                             raise Exception("PowerShell process closed stderr")
                         error_output.append(line)
+                        # Add timestamp for error line
+                        line_time = datetime.fromtimestamp(time.time()).strftime("%H:%M:%S.%f")[:-3]
+                        timestamped_errors.append((line_time, line))
                 except Empty:
                     pass
             all_output = [line for line in output_lines if line.strip()]
@@ -719,7 +754,7 @@ def _get_active_sessions() -> list:
     """
     Get information about all active PowerShell sessions.
 
-    Returns:
+        Returns:
         List of dictionaries containing session information
     """
     sessions = []
@@ -748,10 +783,10 @@ def _process_commands(code: str) -> str:
 
     Enhanced to better handle complex multiline code blocks.
 
-    Args:
+        Args:
         code (str): The original command string with && separators
 
-    Returns:
+        Returns:
         str: PowerShell code with proper error checking between commands
     """
     if "\n" in code.strip() and "&&" not in code:
@@ -794,10 +829,10 @@ def _remove_bom_from_current_directory(recursive: bool = True) -> str:
     """
     Manually remove BOMs from all eligible files in the current directory.
 
-    Args:
+        Args:
         recursive: Whether to process subdirectories
 
-    Returns:
+        Returns:
         str: Summary of BOM removal operation
     """
     current_dir = os.getcwd()
@@ -813,10 +848,10 @@ def remove_bom_from_files(file_pattern: str) -> str:
     """
     Manually remove BOMs from files matching a specific pattern.
 
-    Args:
+        Args:
         file_pattern: Glob pattern to match files (e.g., "*.py", "**/*.txt")
 
-    Returns:
+        Returns:
         str: Summary of BOM removal operation
     """
     bom_count = BOMRemover.remove_bom_from_pattern(file_pattern)
@@ -831,10 +866,10 @@ def check_files_for_bom(directory: str = None) -> str:
     """
     Check files for BOMs without removing them.
 
-    Args:
+        Args:
         directory: Directory to check (defaults to current directory)
 
-    Returns:
+        Returns:
         str: Report of files containing BOMs
     """
     if directory is None:
@@ -870,7 +905,7 @@ def _generate_mojibake_map():
     Mojibake occurs when UTF-8 bytes are misinterpreted as Windows-1252 (or similar).
     This function creates a lookup table for common mojibake patterns.
 
-    Returns:
+        Returns:
         dict: Mapping from mojibake strings to correct characters
     """
     common_chars = [
@@ -955,7 +990,7 @@ def _generate_byte_mojibake_map():
     This handles cases where mojibake is already stored as UTF-8 in the file,
     but represents double-encoded characters.
 
-    Returns:
+        Returns:
         dict: Mapping from mojibake bytes to correct UTF-8 bytes
     """
     byte_map = {}
@@ -1001,11 +1036,11 @@ def _repair_mojibake_in_text(text: str, mojibake_map: dict = None) -> tuple:
     """
     Repair mojibake characters in text.
 
-    Args:
+        Args:
         text: Text potentially containing mojibake
         mojibake_map: Optional pre-generated mojibake mapping
 
-    Returns:
+        Returns:
         tuple: (repaired_text, replacement_count, replacements_made)
     """
     if mojibake_map is None:
@@ -1039,11 +1074,11 @@ def repair_mojibake(file_path: str, backup: str = "true") -> str:
 
     This tool detects and repairs these corrupted characters.
 
-    Args:
+        Args:
         file_path: Path to the file to repair
         backup: Whether to create a .bak backup file (default: "true")
 
-    Returns:
+        Returns:
         str: Summary of repairs made
 
     Example:
