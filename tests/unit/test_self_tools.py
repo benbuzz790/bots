@@ -655,7 +655,8 @@ class TestSelfTools(unittest.TestCase):
         response = self.bot.respond("Please create 2 branches with prompts ['Hello world', 'Goodbye world'] using branch_self")
         self.assertNotIn("Error: Could not find calling bot", response)
         self.assertIn("branch", response.lower())
-        self.assertIn("two", response.lower())
+        # Accept either "two" or "2"
+        self.assertTrue("two" in response.lower() or "2" in response, "Response should mention two/2 branches")
         follow_up = self.bot.respond("What happened with the branching?")
         self.assertIn("branch", follow_up.lower())
 

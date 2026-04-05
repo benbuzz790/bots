@@ -70,7 +70,7 @@ class TestAnthropicBot(unittest.TestCase):
                 value
         """
         self.assertIsInstance(self.bot, AnthropicBot)
-        self.assertEqual(self.bot.model_engine, Engines.CLAUDE4_SONNET)
+        self.assertEqual(self.bot.model_engine, Engines.CLAUDE46_SONNET)
         self.assertEqual(self.bot.temperature, 0.3)
         self.assertEqual(self.bot.name, "Claude")
 

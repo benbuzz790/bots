@@ -112,6 +112,7 @@ def branch_self(
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     from bots.flows import functional_prompts as fp
+    from bots.flows.recombinators import recombinators
 
     if _bot is None:
         return "Error: Bot reference not provided"
@@ -210,8 +211,8 @@ def branch_self(
             # Prepare prompts (no prefixing needed - allow_work is handled in execute_branch)
             prefixed_prompts = message_list
 
-            def execute_branch(prompt):
-                """Execute a single branch and return the response and node."""
+            def execute_branch(prompt, idx):
+                """Execute a single branch and return the response, node, and index."""
                 try:
                     # Create a deep copy of the bot for this branch
                     branch_bot = copy.deepcopy(bot)
@@ -241,32 +242,35 @@ def branch_self(
                         for node in branching_node.replies:
                             node.parent = parent_bot_node
 
-                    return response, branch_bot.conversation
+                    return response, branch_bot.conversation, idx
 
                 except Exception:
                     import traceback
 
                     traceback.print_exc()
-                    return None, None
+                    return None, None, idx
 
             # Execute branches
-            responses = []
-            branch_nodes = []
+            # Pre-allocate arrays to preserve prompt order
+            responses = [None] * len(prefixed_prompts)
+            branch_nodes = [None] * len(prefixed_prompts)
 
             if parallel:
-                # Parallel execution
+                # Parallel execution - preserve order by storing index
                 with ThreadPoolExecutor() as executor:
-                    futures = {executor.submit(execute_branch, prompt): prompt for prompt in prefixed_prompts}
+                    futures = {
+                        executor.submit(execute_branch, prompt, idx): idx for idx, prompt in enumerate(prefixed_prompts)
+                    }
                     for future in as_completed(futures):
-                        response, node = future.result()
-                        responses.append(response)
-                        branch_nodes.append(node)
+                        response, node, idx = future.result()
+                        responses[idx] = response
+                        branch_nodes[idx] = node
             else:
                 # Sequential execution
-                for prompt in prefixed_prompts:
-                    response, node = execute_branch(prompt)
-                    responses.append(response)
-                    branch_nodes.append(node)
+                for idx, prompt in enumerate(prefixed_prompts):
+                    response, node, idx = execute_branch(prompt, idx)
+                    responses[idx] = response
+                    branch_nodes[idx] = node
 
             # Remove dummy node if we added it
             if dummy_node_added and dummy_node:
@@ -298,37 +302,25 @@ def branch_self(
                 valid_responses = [r for r in responses if r is not None]
 
                 if valid_responses:
-                    from bots.flows.recombinators import recombinators as recomb
-
                     if recombine == "concatenate":
-                        combined, _ = recomb.concatenate(valid_responses, [])
-                    elif recombine == "llm_judge":
-                        combined, _ = recomb.llm_judge(valid_responses, [], judge_bot=bot)
-                    elif recombine == "llm_vote":
-                        combined, _ = recomb.llm_vote(valid_responses, [], vote_bot=bot)
+                        combined, _ = recombinators.concatenate(valid_responses, branch_nodes)
                     elif recombine == "llm_merge":
-                        combined, _ = recomb.llm_merge(valid_responses, [], merge_bot=bot)
-                    else:
-                        combined = "Unknown recombination method"
+                        combined, _ = recombinators.llm_merge(valid_responses, branch_nodes, judge_bot=bot)
+                    elif recombine == "llm_vote":
+                        combined, _ = recombinators.llm_vote(valid_responses, branch_nodes, judge_bot=bot)
+                    elif recombine == "llm_judge":
+                        combined, _ = recombinators.llm_judge(valid_responses, branch_nodes, judge_bot=bot)
 
-            exec_type = "parallel" if parallel else "sequential"
-            work_type = "iterative" if allow_work else "single-response"
-            result_content = (
-                f"Successfully completed {success_count}/{len(message_list)} "
-                f"{exec_type} {work_type} branches. "
-                f"Recombination result:\n\n{combined}"
-            )
-
-            return result_content
+            return f"Successfully completed {success_count}/{len(message_list)} {'parallel' if parallel else 'sequential'} {'iterative' if allow_work else 'single-response'} branches. Recombination result:\n\n{combined}"
 
         except Exception as e:
             import traceback
 
-            traceback.print_exc()
-            return f"Error in branch_self: {str(e)}"
+            error_details = traceback.format_exc()
+            return f"Error processing prompts: {str(e)}\n\nDetails:\n{error_details}"
 
     finally:
-        # Decrement depth counter when exiting
+        # Always decrement depth counter
         bot._branch_self_depth -= 1
 
 

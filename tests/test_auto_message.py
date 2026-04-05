@@ -24,7 +24,7 @@ def test_auto_message_returns_expected():
     bot.conversation = Mock()
     bot.tool_handler = Mock()
     bot.tool_handler.requests = []  # No tools, so it stops immediately
-    bot.model_engine = Engines.CLAUDE37_SONNET_20250219
+    bot.model_engine = Engines.CLAUDE46_SONNET
 
     # Mock responses from prompt_while
     expected_response = "Test response"
@@ -58,7 +58,7 @@ def test_auto_message_with_multiple_iterations():
     bot = Mock(spec=AnthropicBot)
     bot.conversation = Mock()
     bot.tool_handler = Mock()
-    bot.model_engine = Engines.CLAUDE37_SONNET_20250219
+    bot.model_engine = Engines.CLAUDE46_SONNET
 
     # Mock multiple responses
     expected_responses = ["Response 1", "Response 2", "Response 3"]
