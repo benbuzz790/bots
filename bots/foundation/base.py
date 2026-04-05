@@ -221,7 +221,7 @@ class Engines(str, Enum):
             model_engine (Engines): The engine enum member to get the bot class for
 
         Returns:
-            Type[Bot]: The Bot subclass (ChatGPT_Bot or AnthropicBot)
+            Type[Bot]: The Bot subclass (ChatGPT_Bot, AnthropicBot, or GeminiBot)
 
         Raises:
             ValueError: If the model engine is not supported
@@ -233,11 +233,14 @@ class Engines(str, Enum):
             ```
         """
         from bots.foundation.anthropic_bots import AnthropicBot
+        from bots.foundation.gemini_bots import GeminiBot
         from bots.foundation.openai_bots import ChatGPT_Bot
 
         if model_engine.value.startswith("gpt"):
             return ChatGPT_Bot
-        elif model_engine.value.startswith("claude") or model_engine.value.startswith("gemini"):
+        elif model_engine.value.startswith("gemini"):
+            return GeminiBot
+        elif model_engine.value.startswith("claude"):
             return AnthropicBot
         else:
             raise ValueError(f"Unsupported model engine: {model_engine}")
@@ -3706,7 +3709,13 @@ class Bot(ABC):
             class_name = data["bot_class"]
 
             # Try common module paths
-            for module_path in ["bots.testing.mock_bot", "bots.foundation.openai_bots", "bots.foundation.base"]:
+            for module_path in [
+                "bots.testing.mock_bot",
+                "bots.foundation.openai_bots",
+                "bots.foundation.anthropic_bots",
+                "bots.foundation.gemini_bots",
+                "bots.foundation.base",
+            ]:
                 try:
                     module = importlib.import_module(module_path)
                     if hasattr(module, class_name):
