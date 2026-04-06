@@ -87,14 +87,8 @@ responses, nodes = fp.par_branch_while(bot, [
 ], stop_condition=fp.conditions.said_DONE)
 `
 Functional prompts separate "what to think about" from "how to think about it." The patterns are language-agnostic—they work the same way regardless of what you're asking the agent to do.
-## Namshubs
-When you find yourself writing the same functional prompt sequences repeatedly, package them as a namshub. A namshub is a complete workflow: system message, tools, and functional prompts bundled together.
-From the CLI:
-`	ext
->>> Please invoke the namshub of pull requests for PR #123
-`
-The agent loads the PR review workflow, executes it, then returns control to the main conversation. Namshubs are pre-written tasks that any agent can invoke.
-The name comes from Snow Crash—namshubs "reprogram" the agent temporarily for a specific task, then restore its original state.
+## Workflow Examples
+For reusable workflows, use functional prompts directly. See `examples/workflows/` for common patterns like code review, refactoring, and testing workflows.
 ## Installation
 `ash
 pip install git+https://github.com/benbuzz790/bots.git
@@ -118,8 +112,6 @@ The framework has three layers:
 - [Tool Handling](bots/foundation/tool_handling.md) - How tool serialization works
 - [Python Edit Tool](bots/tools/python_edit.md) - Reliable Python code editing
 - [Branch Self Tool](bots/tools/branch_self.md) - Agent self-branching capabilities
-- [Namshubs Guide](bots/namshubs/README.md) - Creating and using namshubs
-- [Namshubs Quickstart](bots/namshubs/QUICKSTART.md) - Getting started with namshubs
 ### Observability
 - [Observability Setup](docs/observability/SETUP.md) - Configuring metrics and tracing
 - [Cost Tracking](docs/observability/COST_TRACKING.md) - Monitoring API costs

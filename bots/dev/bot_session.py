@@ -5,7 +5,6 @@ session management, and bot lifecycle internally. Designed to be used both by
 the CLI and programmatically by plugins like obsidian-vault-agent.
 """
 
-import textwrap
 from typing import Callable, List, Optional
 
 # Import all the handlers and context from CLI
@@ -398,13 +397,6 @@ class BotSession:
             repair_mojibake,
         ]
 
-        try:
-            from bots.tools.invoke_namshub import invoke_namshub
-
-            tools_to_add.append(invoke_namshub)
-        except ImportError:
-            pass
-
         bot.add_tools(*tools_to_add, lazy=True)
 
         # Add tool management tools with lazy loading
@@ -413,19 +405,6 @@ class BotSession:
 
         bot.add_tools(load_code, lazy=True)
         bot.add_tools(view_tools, load_tools)
-
-        sys_msg = textwrap.dedent(
-            """
-            You're a coding agent. Please follow these rules:
-                1. Avoid using cd. Your terminal is stateful and will remember if you use cd.
-                    Instead, use full relative paths.
-                2. Ex uno plura! You have a powerful tool called branch_self which you should use for
-                    multitasking or even just to save context in your main branch. Always use a concrete
-                    definition of done when branching.
-                3. Start by using view_tools and load_tools.
-            """
-        ).strip()
-        bot.system_message = sys_msg
 
     @property
     def bot(self) -> Optional[Bot]:
