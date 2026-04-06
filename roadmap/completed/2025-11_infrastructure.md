@@ -1,14 +1,15 @@
 # November 2025 Completions
 
-**Month:** November 2025  
+**Month:** November 2025
 **Focus:** Infrastructure & New Features
 ---
 
 ## NEW-1: Namshubs/Workflows System
 
-**Status:** ✅ DONE  
-**PRs:** #177, #178  
+**Status:** ❌ REMOVED (April 2026)
+**PRs:** #177, #178
 **Completed:** November 7-8, 2025
+**Removed:** April 5, 2026
 **Deliverables:**
 
 - Complete namshub/workflow system for structured bot workflows
@@ -22,14 +23,14 @@
 - Comprehensive test fixtures (6 test namshubs)
 - Full documentation (README.md, QUICKSTART.md, IMPLEMENTATION_SUMMARY.md)
 - 419 integration tests, 418 unit tests
+
 **Impact:** Major new capability for structured, reusable bot workflows
 
----
-
+**Removal Rationale:** YAGNI audit revealed 10:1 complexity-to-value ratio. Same functionality achievable with functional prompts directly. Removed 1,764 lines of code (758 source + 1,006 tests) across 59 files.
 ## NEW-2: Fork Navigation
 
-**Status:** ✅ DONE  
-**PR:** #170  
+**Status:** ✅ DONE
+**PR:** #170
 **Completed:** November 5, 2025
 **Deliverables:**
 
@@ -43,8 +44,8 @@
 
 ## NEW-3: Dynamic Prompts Infrastructure
 
-**Status:** ✅ DONE  
-**PR:** #161  
+**Status:** ✅ DONE
+**PR:** #161
 **Completed:** October 26, 2025
 **Deliverables:**
 
@@ -58,8 +59,8 @@
 
 ## NEW-4: Context Management Tools
 
-**Status:** ✅ DONE  
-**PR:** #125  
+**Status:** ✅ DONE
+**PR:** #125
 **Completed:** October 13, 2025
 **Deliverables:**
 
@@ -73,8 +74,8 @@
 
 ## Test Infrastructure Fixes
 
-**Status:** ✅ DONE  
-**PRs:** #173, #175  
+**Status:** ✅ DONE
+**PRs:** #173, #175
 **Completed:** November 7, 2025
 **Deliverables:**
 
@@ -89,8 +90,8 @@
 
 ## Bug Fixes: Issues #158-164
 
-**Status:** ✅ DONE  
-**PR:** #167  
+**Status:** ✅ DONE
+**PR:** #167
 **Completed:** October 27, 2025
 **Deliverables:**
 
@@ -106,8 +107,8 @@
 
 ## Dill Serialization Warnings
 
-**Status:** ✅ DONE  
-**PR:** #165  
+**Status:** ✅ DONE
+**PR:** #165
 **Completed:** October 27, 2025
 **Deliverables:**
 
@@ -121,8 +122,8 @@
 
 ## CLI Improvements
 
-**Status:** ✅ DONE  
-**PR:** #161  
+**Status:** ✅ DONE
+**PR:** #161
 **Completed:** October 26, 2025
 **Deliverables:**
 
@@ -141,8 +142,8 @@
 
 ## Callback Preservation
 
-**Status:** ✅ DONE  
-**PR:** #130  
+**Status:** ✅ DONE
+**PR:** #130
 **Completed:** October 13, 2025
 **Deliverables:**
 
@@ -156,8 +157,8 @@
 
 ## Metrics Display
 
-**Status:** ✅ DONE  
-**PR:** #124  
+**Status:** ✅ DONE
+**PR:** #124
 **Completed:** October 12, 2025
 **Deliverables:**
 
@@ -171,9 +172,9 @@
 
 ## Summary
 
-**Total Completions:** 10 major features/fixes  
-**PRs Merged:** 9 (#177, #178, #170, #173, #175, #167, #165, #161, #130, #124)  
-**New Features:** 4 (Namshubs, Fork Navigation, Dynamic Prompts, Context Tools)  
-**Test Improvements:** 100% pass rate achieved (1029 tests)  
-**Code Quality:** Applied formatters, fixed 40+ linting errors  
+**Total Completions:** 10 major features/fixes
+**PRs Merged:** 9 (#177, #178, #170, #173, #175, #167, #165, #161, #130, #124)
+**New Features:** 4 (Namshubs, Fork Navigation, Dynamic Prompts, Context Tools)
+**Test Improvements:** 100% pass rate achieved (1029 tests)
+**Code Quality:** Applied formatters, fixed 40+ linting errors
 **Impact:** Major infrastructure improvements and new capabilities

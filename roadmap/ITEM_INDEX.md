@@ -112,13 +112,10 @@
 
 | Item | Title | Status | PR | Completed | File |
 |------|-------|--------|-----|-----------|------|
-| NEW-1 | Namshubs/Workflows | ? DONE | #177, #178 | Nov 7-8, 2025 | [2025-11_infrastructure.md](completed/2025-11_infrastructure.md#new-1) |
-| NEW-2 | Fork Navigation | ? DONE | #170 | Nov 5, 2025 | [2025-11_infrastructure.md](completed/2025-11_infrastructure.md#new-2) |
-| NEW-3 | Dynamic Prompts | ? DONE | #161 | Oct 26, 2025 | [2025-11_infrastructure.md](completed/2025-11_infrastructure.md#new-3) |
-| NEW-4 | Context Management | ? DONE | #125 | Oct 13, 2025 | [2025-11_infrastructure.md](completed/2025-11_infrastructure.md#new-4) |
-
----
-
+| NEW-1 | Namshubs/Workflows (Removed) | ❌ REMOVED | #177, #178 | Nov 7-8, 2025 (Removed Apr 2026) | [2025-11_infrastructure.md](completed/2025-11_infrastructure.md#new-1) |
+| NEW-2 | Fork Navigation | ✅ DONE | #170 | Nov 5, 2025 | [2025-11_infrastructure.md](completed/2025-11_infrastructure.md#new-2) |
+| NEW-3 | Dynamic Prompts | ✅ DONE | #161 | Oct 26, 2025 | [2025-11_infrastructure.md](completed/2025-11_infrastructure.md#new-3) |
+| NEW-4 | Context Management | ✅ DONE | #125 | Oct 13, 2025 | [2025-11_infrastructure.md](completed/2025-11_infrastructure.md#new-4) |
 ## By Priority
 
 ### Critical Priority
@@ -220,32 +217,30 @@
 
 ## Search by Keyword
 
-**Authentication:** Item 30  
-**Billing:** Item 30  
-**Branch:** Item 45 (done), Item 48  
-**Callbacks:** Item 12 (done)  
-**CLI:** Items 2, 5, 6, 37, 40  
-**Cross-platform:** Items 38, 39  
-**Documentation:** Items 27-32, 36  
-**Fork:** NEW-2 (done)  
-**GUI:** Item 3 (unscheduled)  
-**LiteLLM:** Item 15  
-**MCP:** Item 13  
-**Metrics:** Item 14 (partial)  
-**Multi-OS:** Item 39  
-**Namshubs:** NEW-1 (done)  
-**Observability:** Items 11, 12, 14  
-**OpenTelemetry:** Item 14  
-**Provider:** Items 5, 15  
-**Python_edit:** Item 20 (done)  
-**Repository:** Item 41  
-**Save/Load:** Item 49 (done)  
-**Self-tools:** Item 10  
-**Testing:** Items 9, 24, 25  
-**Tutorials:** Item 36  
-**Unix/Mac:** Item 38  
----
-
+**Authentication:** Item 30
+**Billing:** Item 30
+**Branch:** Item 45 (done), Item 48
+**Callbacks:** Item 12 (done)
+**CLI:** Items 2, 5, 6, 37, 40
+**Cross-platform:** Items 38, 39
+**Documentation:** Items 27-32, 36
+**Fork:** NEW-2 (done)
+**GUI:** Item 3 (unscheduled)
+**LiteLLM:** Item 15
+**MCP:** Item 13
+**Metrics:** Item 14 (partial)
+**Multi-OS:** Item 39
+**Namshubs:** NEW-1 (removed)
+**Observability:** Items 11, 12, 14
+**OpenTelemetry:** Item 14
+**Provider:** Items 5, 15
+**Python_edit:** Item 20 (done)
+**Repository:** Item 41
+**Save/Load:** Item 49 (done)
+**Self-tools:** Item 10
+**Testing:** Items 9, 24, 25
+**Tutorials:** Item 36
+**Unix/Mac:** Item 38
 ## Item Details Summary
 
 **Total Items:** 53
@@ -268,6 +263,6 @@
 4. **Documentation service (Items 30, 31)** - Auth/billing needed for revenue
 
 ---
-**Last Updated:** November 8, 2025  
-**Maintained by:** Automated via namshub_of_roadmap_updates.py  
+**Last Updated:** November 8, 2025
+**Maintained by:** Automated via namshub_of_roadmap_updates.py
 **Navigation:** [Back to Roadmap](README.md) | [Strategic Roadmap](ROADMAP.md) | [Philosophy](PHILOSOPHY.md)

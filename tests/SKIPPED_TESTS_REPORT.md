@@ -58,10 +58,33 @@ These tests are skipped when OpenTelemetry is not installed. This is appropriate
 
 ---
 
-## 2. API Keys Required (7 tests)
+## 2. API Keys Required (5 tests)
 
 Tests requiring external API keys that may not be available in all environments.
 
+### Files Affected:
+- `tests/integration/test_save_load_gemini.py` (4 tests)
+- `tests/unit/test_web_tool_integration.py` (1 test)
+
+### Tests:
+
+1. **tests/integration/test_save_load_gemini.py:248** - `test_real_conversation_and_save_load`
+   - Reason: Conditional: not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY")
+
+2. **tests/integration/test_save_load_gemini.py:276** - `test_real_tool_usage_and_persistence`
+   - Reason: Conditional: not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY")
+
+3. **tests/integration/test_save_load_gemini.py:319** - `test_real_error_handling`
+   - Reason: Conditional: not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY")
+
+4. **tests/integration/test_save_load_gemini.py:345** - `test_real_multi_turn_conversation`
+   - Reason: Conditional: not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY")
+
+5. **tests/unit/test_web_tool_integration.py:15** - `test_web_search_real_query`
+   - Reason: Conditional: not os.getenv("TAVILY_API_KEY")
+
+### Recommendation:
+✅ **No action needed.** These are properly conditionally skipped for optional API keys.
 ### Files Affected:
 - `tests/e2e/test_namshub_of_unit_testing_real.py` (2 tests)
 - `tests/integration/test_save_load_gemini.py` (4 tests)
@@ -174,10 +197,57 @@ Tests requiring user interaction that are difficult to automate.
 
 ---
 
-## 6. Other (12 tests)
+## 6. Other (10 tests)
 
 Various other reasons for skipping tests.
 
+### Files Affected:
+- `tests/e2e/test_auto_stache.py` (1 test)
+- `tests/e2e/test_branch_self_recursive.py` (1 test)
+- `tests/integration/test_save_load_anthropic.py` (2 tests)
+- `tests/integration/test_save_load_gemini.py` (2 tests)
+- `tests/integration/test_python_edit/test_python_edit.py` (1 test)
+- `tests/unit/test_python_tools.py` (1 test)
+- `tests/unit/test_web_tool_integration.py` (1 test)
+- `tests/unit/test_cli/test_fp_wizard_complete.py` (2 tests)
+
+### Tests:
+
+1. **tests/e2e/test_auto_stache.py:141** - `Unknown`
+   - Reason: No reason provided
+
+2. **tests/e2e/test_branch_self_recursive.py:163** - `test_branch_positioning_after_recursive_load`
+   - Reason: No reason provided
+
+3. **tests/integration/test_save_load_anthropic.py:1039** - `Unknown`
+   - Reason: No reason provided
+
+4. **tests/integration/test_save_load_anthropic.py:1049** - `Unknown`
+   - Reason: No reason provided
+
+5. **tests/integration/test_save_load_gemini.py:219** - `Unknown`
+   - Reason: No reason provided
+
+6. **tests/integration/test_save_load_gemini.py:229** - `Unknown`
+   - Reason: No reason provided
+
+7. **tests/integration/test_python_edit/test_python_edit.py:519** - `Unknown`
+   - Reason: No reason provided
+
+8. **tests/unit/test_python_tools.py:901** - `test_execute_python_code_basic`
+   - Reason: Using private implementation
+
+9. **tests/unit/test_web_tool_integration.py:200** - `Unknown`
+   - Reason: No reason provided
+
+10. **tests/unit/test_cli/test_fp_wizard_complete.py:212** - `test_fp_par_branch_wizard`
+   - Reason: par_branch uses parallel execution with Bot.save/load
+
+11. **tests/unit/test_cli/test_fp_wizard_complete.py:237** - `test_fp_par_branch_wizard_with_custom_recombine`
+   - Reason: par_branch uses parallel execution with Bot.save/load
+
+### Recommendation:
+⚠️ **Review needed.** Some tests lack skip reasons. Consider adding documentation or removing skip decorators.
 ### Files Affected:
 - `tests/e2e/test_auto_stache.py` (1 test)
 - `tests/e2e/test_branch_self_recursive.py` (1 test)
@@ -243,10 +313,7 @@ Various other reasons for skipping tests.
 4. **Mock interactive input:** `test_add_tool_no_args_returns_string` (test_system_handler.py:136)
 
 ### 🟢 Low Priority
-5. **Review "Other" category:** 12 tests with various skip reasons
-
----
-
+5. **Review "Other" category:** 10 tests with various skip reasons
 ## Statistics by Test Type
 
 | Test Directory | Skipped Tests |
@@ -255,14 +322,10 @@ Various other reasons for skipping tests.
 | tests/integration/ (other) | 7 |
 | tests/integration/test_powershell_tool/ | 2 |
 | tests/integration/test_python_edit/ | 1 |
-| tests/test_invoke_namshub/ | 1 |
 | tests/unit/ (other) | 2 |
 | tests/unit/test_cli/ | 2 |
 | tests/unit/test_observability/ | 9 |
 | tests/unit/test_web_tool_integration/ | 1 |
-
----
-
 ## Recommendations Summary
 
 1. **Keep conditionally skipped tests** for optional dependencies (OpenTelemetry, API keys)
