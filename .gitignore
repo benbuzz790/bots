@@ -121,3 +121,21 @@ TODO.md
 *_FIX_SUMMARY.md
 *_UPDATE_SUMMARY.md
 test_results.xml
+# Mypy type checker cache
+.mypy_cache/
+# Sphinx documentation builds
+docs/_build/
+docs/_modules/
+docs/_sources/
+docs/_static/
+docs/*.html
+docs/source/*.html
+docs/searchindex.js
+docs/.buildinfo
+docs/objects.inv
+docs/.nojekyll
+# Temporary completion and summary files
+*_COMPLETION.txt
+*_FIX_SUMMARY.md
+*_UPDATE_SUMMARY.md
+test_results.xml
