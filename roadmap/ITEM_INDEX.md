@@ -1,6 +1,6 @@
 # Roadmap Item Index
 
-**Last Updated:** November 8, 2025
+**Last Updated:** April 5, 2026
 **Total Items:** 53 (10 completed, 3 partial, 23 active, 4 new features, 13 unscheduled)
 ---
 
@@ -263,6 +263,6 @@
 4. **Documentation service (Items 30, 31)** - Auth/billing needed for revenue
 
 ---
-**Last Updated:** November 8, 2025
-**Maintained by:** Automated via namshub_of_roadmap_updates.py
+**Last Updated:** April 5, 2026
+**Maintained by:** Manual updates
 **Navigation:** [Back to Roadmap](README.md) | [Strategic Roadmap](ROADMAP.md) | [Philosophy](PHILOSOPHY.md)

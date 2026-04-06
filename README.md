@@ -112,8 +112,6 @@ The framework has three layers:
 - [Tool Handling](bots/foundation/tool_handling.md) - How tool serialization works
 - [Python Edit Tool](bots/tools/python_edit.md) - Reliable Python code editing
 - [Branch Self Tool](bots/tools/branch_self.md) - Agent self-branching capabilities
-- [Namshubs Guide](bots/namshubs/README.md) - Creating and using namshubs
-- [Namshubs Quickstart](bots/namshubs/QUICKSTART.md) - Getting started with namshubs
 ### Observability
 - [Observability Setup](docs/observability/SETUP.md) - Configuring metrics and tracing
 - [Cost Tracking](docs/observability/COST_TRACKING.md) - Monitoring API costs
