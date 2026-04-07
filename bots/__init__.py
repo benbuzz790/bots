@@ -5,7 +5,7 @@ access to:
     - AnthropicBot: Claude-based bot implementation
     - ChatGPT_Bot: GPT-based bot implementation
 - Development tools:
-    - lazy: Runtime code generation decorator
+    - toolify: Convert functions to bot tools
     - project_tree: Project structure analysis and management
 - Tool collections:
     - python_editing_tools: Python code modification utilities
@@ -15,6 +15,12 @@ access to:
     - self_tools: Bot introspection utilities
 The package follows a layered architecture with foundation, flows, and tools
 layers. All commonly used components are imported here for convenient access.
+
+Note:
+    For experimental LLM-powered code generation decorators (@lazy, @lazy_fn, @lazy_class),
+    see the separate package: https://github.com/your-org/lazy-impl
+    Install with: pip install lazy-impl
+
 Example Usage:
     >>> from bots import AnthropicBot
     >>> import bots.tools.code_tools as code_tools
@@ -31,7 +37,7 @@ Example Usage:
 """
 
 # Development and project management tools
-from .dev.decorators import lazy, toolify
+from .dev.decorators import toolify
 
 # Core bot implementations and base classes
 from .foundation.anthropic_bots import AnthropicBot
@@ -55,7 +61,7 @@ __all__ = [
     "Engines",
     "load",
     # Development tools
-    "lazy",
+    "toolify",
     "handle_errors",
     "project_tree",
     # Tool collections
