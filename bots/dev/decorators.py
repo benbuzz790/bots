@@ -144,51 +144,32 @@ def debug_on_error(func: Callable) -> Callable:
 
 
 def log_errors(func: Callable) -> Callable:
-    """Decorator that logs exceptions and error messages to a file.
+    """Decorator that logs errors to a file when a function raises an exception or returns an error message.
 
-    Use when you need to track errors and exceptions in a persistent log file.
-    This decorator logs both exceptions and return values containing "Error".
-
-    The log file is created in the same directory as this decorators module
-    with the name 'error_log.txt'.
+    This decorator captures both exceptions and return values that contain "Error" in the first few words,
+    logging them to 'error_log.txt' in the same directory as this decorators file.
 
     Parameters:
-        func (Callable): The function to wrap with error logging
+        func (Callable): The function to wrap with error logging capabilities
 
     Returns:
         Callable: A wrapped version of the function that logs errors
 
     Example:
         @log_errors
-        def process_data(data):
-            if not data:
-                return "Error: No data provided"
-            return process(data)
+        def risky_function():
+            # Any exceptions or "Error" messages will be logged
+            return "Error: Something went wrong"
     """
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        """Wrapper function that logs errors and exceptions.
-
-        Parameters:
-            *args (Any): Positional arguments to pass to the wrapped function
-            **kwargs (Any): Keyword arguments to pass to the wrapped function
-
-        Returns:
-            Any: The result of the wrapped function
-
-        Raises:
-            Exception: Re-raises any exception after logging it
-        """
         try:
             result = func(*args, **kwargs)
-
-            # Check if result contains "Error"
-            if isinstance(result, str) and "Error" in result:
-                _log_error_to_file(func.__name__, result, args, kwargs)
-
+            # Check if result is a string that starts with "Tool Failed:" (the specific format from handle_errors)
+            if isinstance(result, str) and result.startswith("Tool Failed:"):
+                _log_error_to_file(func.__name__, f"Function returned error message: {result}", args, kwargs)
             return result
-
         except Exception as e:
             # Log the exception
             error_msg = f"Exception in {func.__name__}: {str(e)}\nTraceback:\n{traceback.format_exc()}"
@@ -241,43 +222,89 @@ def toolify(description: str = None, preconditions: list = None, postconditions:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             try:
-                # Convert string inputs to proper types
+                # Convert string inputs to proper types using type hints
                 converted_args, converted_kwargs = _convert_tool_inputs(func, args, kwargs)
 
                 # Check preconditions
                 if preconditions:
-                    for precondition in preconditions:
+                    precondition_errors = []
+                    for contract in preconditions:
                         try:
-                            valid, error_msg = precondition(*converted_args, **converted_kwargs)
-                            if not valid:
-                                return f"Error: Precondition failed: {error_msg}"
+                            is_valid, error_msg = contract(*converted_args, **converted_kwargs)
+                            if not is_valid:
+                                precondition_errors.append(error_msg)
                         except Exception as e:
-                            return f"Error: Precondition check failed: {str(e)}"
+                            # Contract raised an exception - treat as validation failure
+                            from bots.utils.helpers import _process_error
+
+                            return _process_error(e)
+
+                    if precondition_errors:
+                        error_message = "Contract validation failed:\nPreconditions:\n"
+                        for error in precondition_errors:
+                            error_message += f"  - {error}\n"
+                        return error_message.strip()
 
                 # Check postconditions (despite the name, these run before execution)
                 if postconditions:
-                    for postcondition in postconditions:
+                    postcondition_errors = []
+                    for contract in postconditions:
                         try:
-                            valid, error_msg = postcondition(*converted_args, **converted_kwargs)
-                            if not valid:
-                                return f"Error: Postcondition failed: {error_msg}"
+                            is_valid, error_msg = contract(*converted_args, **converted_kwargs)
+                            if not is_valid:
+                                postcondition_errors.append(error_msg)
                         except Exception as e:
-                            return f"Error: Postcondition check failed: {str(e)}"
+                            # Contract raised an exception - treat as validation failure
+                            from bots.utils.helpers import _process_error
 
-                # Execute the function
+                            return _process_error(e)
+
+                    if postcondition_errors:
+                        error_message = "Contract validation failed:\nPostconditions:\n"
+                        for error in postcondition_errors:
+                            error_message += f"  - {error}\n"
+                        return error_message.strip()
+
+                # Call original function
                 result = func(*converted_args, **converted_kwargs)
 
                 # Convert result to string
                 return _convert_tool_output(result)
 
-            except ToolExecutionError as e:
-                # Tool execution errors are returned as error strings
-                return f"Error: {str(e)}"
+            except KeyboardInterrupt as e:
+                # Convert KeyboardInterrupt to ToolExecutionError to prevent it from
+                # bubbling up to CLI and being treated as user Ctrl+C
+                from bots.utils.helpers import _process_error
+
+                tool_error = ToolExecutionError(f"Tool execution interrupted: {str(e)}")
+                return _process_error(tool_error)
+
+            except TypeError as e:
+                # Check if this is a missing required argument error
+                error_msg = str(e)
+                if "missing" in error_msg and "required" in error_msg and "argument" in error_msg:
+                    # Add special message for output token limitation
+                    enhanced_error = TypeError(
+                        f"{error_msg}\n\n"
+                        f"⚠️  This error is commonly caused by hitting the max_tokens limit "
+                        f"before completing the tool call.\n"
+                        f"The response was truncated mid-parameter, making it appear that "
+                        f"required parameters are missing.\n"
+                        f"To fix this: Work in SMALLER CHUNKS. Edit fewer lines at a time, "
+                        f"or break your task into multiple steps."
+                    )
+                    from bots.utils.helpers import _process_error
+
+                    return _process_error(enhanced_error)
+                else:
+                    from bots.utils.helpers import _process_error
+
+                    return _process_error(e)
+
             except Exception as e:
-                # All other exceptions are caught and returned as error strings
-                error_msg = f"Error executing {func.__name__}: {str(e)}"
-                logger.error(error_msg, exc_info=True)
-                return error_msg
+                from bots.utils.helpers import _process_error
+
+                return _process_error(e)
 
         # Update docstring if description provided
         if description:
