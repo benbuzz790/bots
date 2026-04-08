@@ -1,6 +1,9 @@
 # GitHub Actions workflow for encoding regression tests
 name: Encoding Tests
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ main, develop ]
