@@ -52,6 +52,7 @@ test_output.json
 test_replace_behavior.py
 Test*.bot
 .*
+!.github/
 tmp/
 rapid.txt
 test_bom.py
