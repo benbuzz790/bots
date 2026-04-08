@@ -372,7 +372,6 @@ class BotSession:
         self.context.bot_instance = bot
 
         # Import and add tools
-        from bots.tools.beep import piano
         from bots.tools.code_tools import view, view_dir
         from bots.tools.markdown_edit import markdown_edit, markdown_view
         from bots.tools.python_edit import python_edit, python_view
@@ -393,7 +392,6 @@ class BotSession:
             web_search,
             python_edit,
             markdown_edit,
-            piano,
             repair_mojibake,
         ]
 
