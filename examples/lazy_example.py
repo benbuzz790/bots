@@ -6,7 +6,7 @@ To use lazy decorators:
 1. Install the lazy-impl package: pip install lazy-impl
 2. Import from lazy_impl instead of bots:
    from lazy_impl import lazy
-For more information, see: https://github.com/your-org/lazy-impl
+For more information, see: https://github.com/benbuzz790/lazy-impl
 """
 
 # Original example (commented out - update imports to use lazy_impl):

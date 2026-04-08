@@ -232,7 +232,7 @@ jobs:
           pip install pydeps
           pydeps bots --show-deps --max-bacon=2 || echo "Circular dependency check completed"
         continue-on-error: true
-actionlint:
+  actionlint:
     name: GitHub Actions Lint
     runs-on: windows-latest
     timeout-minutes: 10
