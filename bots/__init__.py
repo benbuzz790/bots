@@ -6,7 +6,6 @@ access to:
     - ChatGPT_Bot: GPT-based bot implementation
 - Development tools:
     - toolify: Convert functions to bot tools
-    - project_tree: Project structure analysis and management
 - Tool collections:
     - python_editing_tools: Python code modification utilities
     - meta_tools: Bot self-modification capabilities
@@ -18,7 +17,7 @@ layers. All commonly used components are imported here for convenient access.
 
 Note:
     For experimental LLM-powered code generation decorators (@lazy, @lazy_fn, @lazy_class),
-    see the separate package: https://github.com/your-org/lazy-impl
+    see: https://github.com/benbuzz790/lazy-impl
     Install with: pip install lazy-impl
 
 Example Usage:
@@ -62,8 +61,6 @@ __all__ = [
     "load",
     # Development tools
     "toolify",
-    "handle_errors",
-    "project_tree",
     # Tool collections
     "python_editing_tools",
     "python_execution_tool",

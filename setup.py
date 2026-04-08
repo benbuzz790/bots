@@ -61,8 +61,6 @@ INSTALL_REQUIRES: List[str] = [
     "dill>=0.3.0",
     # System utilities
     "psutil>=5.9.0",
-    # Audio/sound generation (for piano tool)
-    "numpy>=1.24.0",
     # OpenTelemetry core packages for observability
     "opentelemetry-api>=1.20.0",
     "opentelemetry-sdk>=1.20.0",
