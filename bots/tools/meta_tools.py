@@ -29,7 +29,7 @@ def message_bot(bot_path, message):
     fp.prompt_while(
         bot,
         message,
-        callback = bot.save(bot_path)
+        callback = lambda r, n: bot.save(bot_path)
     )
     final_response = bot.respond("Please send a brief summary of your work and success or failure detail.")
     return final_response
@@ -66,7 +66,7 @@ def initialize_file_bot(file_name: str, system_message: str, model: str) -> str:
     elif model == "opus":
         model_engine = Engines.CLAUDE46_OPUS
     else:
-        raise("Model string not found. Must be exactly haiku, sonnet, or opus")
+        raise ValueError("Model string not found. Must be exactly haiku, sonnet, or opus")
 
     file_bot = AnthropicBot(name=f"{name}", model_engine=model_engine)
     file_bot.set_system_message(system_message)
