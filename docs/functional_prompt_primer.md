@@ -187,7 +187,7 @@ for member, path in zip(fleet, files):
 results = fp.par_dispatch(
     fleet,
     fp.chain_while,
-    prompts=[
+    prompt_list=[
         "Find and read your file.",
         "Write thorough tests covering the edge cases.",
         "Run the tests and fix what breaks.",

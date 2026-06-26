@@ -197,7 +197,7 @@ for member, role in zip(fleet, roles):
 results = fp.par_dispatch(
     fleet,
     fp.chain,
-    prompts=[
+    prompt_list=[
         "Analyze the codebase.",
         "Name the three biggest issues in your area.",
         "Propose fixes with code.",
