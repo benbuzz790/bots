@@ -604,22 +604,17 @@ async def old_async():
 
     def test_add_async_method_to_class(self):
         """Test adding an async method to an existing class"""
-        initial_content = textwrap.dedent(
-            """
+        initial_content = textwrap.dedent("""
             class AsyncClass:
                 def normal_method(self):
                     pass
-            """
-        )
-        new_method = textwrap.dedent(
-            """
+            """)
+        new_method = textwrap.dedent("""
             async def async_method(self):
                 result = await external_call()
                 return result
-            """
-        )
-        expected_content = textwrap.dedent(
-            """
+            """)
+        expected_content = textwrap.dedent("""
             class AsyncClass:
                 def normal_method(self):
                     pass
@@ -627,8 +622,7 @@ async def old_async():
                 async def async_method(self):
                     result = await external_call()
                     return result
-            """
-        )
+            """)
         with open(self.test_file, "w") as f:
             f.write(initial_content)
         python_editing_tools.add_function_to_class(self.test_file, "AsyncClass", new_method)
@@ -863,8 +857,7 @@ from datetime import datetime as dt, timedelta
             f.write(initial_content)
         python_editing_tools.add_function_to_class(self.test_file, "TestClass", indented_method)
         python_editing_tools.add_function_to_class(self.test_file, "TestClass", very_indented_method)
-        expected_tree = ast.parse(
-            """
+        expected_tree = ast.parse("""
 class TestClass:
     pass
 
@@ -875,8 +868,7 @@ class TestClass:
     def another_method(self):
         print("another test")
         return False
-"""
-        )
+""")
         expected_content = ast.unparse(expected_tree)
         self.assertFileContentEqual(self.test_file, expected_content, "Indentation handling failed")
 
@@ -901,65 +893,54 @@ class TestClass:
     @unittest.skip("Using private implementation")
     def test_execute_python_code_basic(self):
         """Test basic code execution"""
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
             print("Hello, World!")
             x = 5 + 3
             print(f"Result: {x}")
-        """
-        )
+        """)
         result = python_execution_tool.execute_python(code)
         self.assertIn("Hello, World!", result)
         self.assertIn("Result: 8", result)
 
     def test_execute_python_code_timeout(self):
         """Test that the timeout mechanism works properly"""
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
     while True:
         pass
-"""
-        )
+""")
         result = python_execution_tool.execute_python(code, timeout=1)
         self.assertIn("timed out", result.lower())
 
         # Increased timeout margin from 2s to 5s to avoid race conditions in CI
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
     import time
     time.sleep(1)
     print("Completed")
-"""
-        )
+""")
         result = python_execution_tool.execute_python(code, timeout=5)
         self.assertIn("Completed", result)
 
     def test_execute_python_code_syntax_error(self):
         """Test handling of syntax errors in the code"""
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
             print("Start"
             while True
                 print("Invalid syntax")
-        """
-        )
+        """)
         result = python_execution_tool.execute_python(code)
         self.assertIn("Tool Failed:", result)
 
     def test_execute_python_code_runtime_error(self):
         """Test handling of runtime errors in the code"""
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
             x = 1 / 0  # Division by zero
-        """
-        )
+        """)
         result = python_execution_tool.execute_python(code)
         self.assertIn("ZeroDivisionError", result)
 
     def test_execute_python_code_with_imports(self):
         """Test code execution with various imports"""
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
             import math
             import os
             from datetime import datetime
@@ -967,8 +948,7 @@ class TestClass:
             print(f"Pi: {math.pi}")
             print(f"Current directory: {os.getcwd()}")
             print(f"Current hour: {datetime.now().hour}")
-        """
-        )
+        """)
         result = python_execution_tool.execute_python(code)
         self.assertIn("Pi: 3.14", result)
         self.assertIn("Current directory:", result)
@@ -976,15 +956,13 @@ class TestClass:
 
     def test_execute_python_code_with_multiline_output(self):
         """Test handling of code that produces multiline output"""
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
             for i in range(3):
                 print(f"Line {i}")
             print("---")
             for j in range(2):
                 print(f"More {j}")
-        """
-        )
+        """)
         result = python_execution_tool.execute_python(code)
         expected_lines = ["Line 0", "Line 1", "Line 2", "---", "More 0", "More 1"]
         for line in expected_lines:
@@ -992,26 +970,22 @@ class TestClass:
 
     def test_execute_python_code_with_stderr(self):
         """Test handling of code that writes to stderr"""
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
             import sys
             print("Standard output")
             print("Error output", file=sys.stderr)
-        """
-        )
+        """)
         result = python_execution_tool.execute_python(code)
         self.assertIn("Standard output", result)
         self.assertIn("Error output", result)
 
     def test_execute_python_code_unicode(self):
         """Test handling of Unicode characters in the code and output"""
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
             print("Hello, ä¸–ç•Œ!")
             print("ðŸŒ ðŸŒŽ ðŸŒ")
             print("CafÃ©")
-        """
-        )
+        """)
         result = python_execution_tool.execute_python(code)
         self.assertIn("Hello, ä¸–ç•Œ!", result)
         self.assertIn("ðŸŒ ðŸŒŽ ðŸŒ", result)
@@ -1019,8 +993,7 @@ class TestClass:
 
     def test_execute_python_code_with_classes(self):
         """Test execution of code containing class definitions"""
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
             class TestClass:
                 def __init__(self, value):
                     self.value = value
@@ -1030,49 +1003,41 @@ class TestClass:
 
             obj = TestClass(42)
             obj.display()
-        """
-        )
+        """)
         result = python_execution_tool.execute_python(code)
         self.assertIn("Value is: 42", result)
 
     def test_execute_python_code_long_output(self):
         """Test handling of code that produces a lot of output"""
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
             for i in range(1000):
                 print(f"Line {i}")
-        """
-        )
+        """)
         result = python_execution_tool.execute_python(code)
         self.assertIn("Line 0", result)
         self.assertIn("Line 999", result)
 
     def test_execute_python_code_zero_timeout(self):
         """Test handling of invalid timeout values"""
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
             print('test')
-        """
-        )
+        """)
         result = python_execution_tool.execute_python(code, timeout=0)
         self.assertIn("Tool Failed", result)
         self.assertIn("must be a positive integer", result.lower())
 
     def test_execute_python_code_negative_timeout(self):
         """Test handling of negative timeout values"""
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
             print('test')
-        """
-        )
+        """)
         result = python_execution_tool.execute_python(code, timeout=-1)
         self.assertIn("Tool Failed", result)
         self.assertIn("must be a positive integer", result.lower())
 
     def test_execute_python_code_complex_computation(self):
         """Test execution of computationally intensive code"""
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
             def fibonacci(n):
                 if n <= 1:
                     return n
@@ -1080,8 +1045,7 @@ class TestClass:
 
             result = fibonacci(10)
             print(f"Fibonacci(10) = {result}")
-        """
-        )
+        """)
         result = python_execution_tool.execute_python(code)
         self.assertIn("Fibonacci(10) = 55", result)
 
@@ -1089,12 +1053,10 @@ class TestClass:
         """Test that processes are properly cleaned up after execution"""
 
         initial_processes = set(psutil.Process().children(recursive=True))
-        code = textwrap.dedent(
-            """
+        code = textwrap.dedent("""
             import time
             time.sleep(0.1)
-        """
-        )
+        """)
         python_execution_tool.execute_python(code)
         time.sleep(0.2)
         final_processes = set(psutil.Process().children(recursive=True))

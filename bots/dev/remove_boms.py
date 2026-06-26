@@ -3,6 +3,7 @@
 
 Can be used as a pre-commit hook or standalone script.
 """
+
 import codecs
 import os
 import sys

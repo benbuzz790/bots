@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Test to reproduce the specific _convert_tool_inputs helper function loss bug."""
+
 import os
 import sys
 import tempfile

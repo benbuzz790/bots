@@ -2240,8 +2240,8 @@ class SystemHandler:
                     engine: An object with a 'value' attribute containing the engine version string.
 
                 Returns:
-                    int: Priority value where higher numbers indicate higher priority. Returns 400 
-                    for versions containing "4-5" or "4.5", and appears to handle "3-5" or "3.5" 
+                    int: Priority value where higher numbers indicate higher priority. Returns 400
+                    for versions containing "4-5" or "4.5", and appears to handle "3-5" or "3.5"
                     versions as well.
                 """
                 value = engine.value.lower()
@@ -3203,14 +3203,12 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Interactive CLI for AI bots with conversation management and dynamic parameter collection.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent(
-            """
+        epilog=textwrap.dedent("""
              Examples:
              python -m bots.dev.cli_combined                    # Start with new bot
              python -m bots.dev.cli_combined mybot.bot          # Load bot from file
              python -m bots.dev.cli_combined saved_conversation # Load bot (auto-adds .bot extension)
-             """.strip()
-        ),
+             """.strip()),
     )
     parser.add_argument("filename", nargs="?", help="Bot file to load (.bot extension will be added if not present)")
     parser.add_argument(

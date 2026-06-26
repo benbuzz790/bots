@@ -22,11 +22,9 @@ def test_python_tools_after_bot_load():
 
         # Create a simple Python file to view/edit
         with open(test_py_file, "w", encoding="utf-8") as f:
-            f.write(
-                """def hello():
+            f.write("""def hello():
     return "Hello, World!"
-"""
-            )
+""")
 
         # Step 1: Create a bot and add python tools
         bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=1000, temperature=0.0)

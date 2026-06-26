@@ -111,8 +111,7 @@ def review_file_documentation(
         "First, let's read the project context to understand documentation "
         "standards. Please read bot_context.txt and README.md.",
         ("Now, let's examine the TARGET FILE. Use the view tool to " "read this file."),
-        textwrap.dedent(
-            """
+        textwrap.dedent("""
                     Review the file's documentation and make improvements
                     where needed. For each issue you find, use the appropriate
                     tools to fix it directly. Check for:
@@ -125,8 +124,7 @@ def review_file_documentation(
                     - Clear description of what the function does
                     - All parameters documented with types
                     - Return value documented with type
-                    """
-        ),
+                    """),
         ("Review the TARGET FILE one final time to ensure all " "documentation is complete and consistent."),
     ]
     return fp.chain_while(

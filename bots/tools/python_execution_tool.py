@@ -31,8 +31,7 @@ def execute_python(code: str, timeout: int = 300) -> str:
     """
 
     def create_wrapper_ast():
-        wrapper_code = textwrap.dedent(
-            """
+        wrapper_code = textwrap.dedent("""
             import os
             import sys
             import traceback
@@ -54,8 +53,7 @@ def execute_python(code: str, timeout: int = 300) -> str:
                     print(f"An error occurred: {str(error)}", file=sys.stderr)
                     traceback.print_exc(file=sys.stderr)
                     sys.exit(1)
-            """
-        )
+            """)
         return ast.parse(wrapper_code)
 
     def insert_code_into_wrapper(wrapper_ast, code_ast, timeout_value):

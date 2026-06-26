@@ -811,14 +811,12 @@ class TestSelfTools(unittest.TestCase):
             initial_tool_results_count = len(self.bot.tool_handler.results)
             initial_conversation_tool_results_count = len(self.bot.conversation.tool_results)
             # Create a simpler nested branching scenario
-            response = self.bot.respond(
-                """
+            response = self.bot.respond("""
         Please use branch_self with these prompts:
         ['Create directory dir1, then use branch_self to create 2 subdirs: sub1_1 and sub1_2',
          'Create directory dir2, then use branch_self to create 2 subdirs: sub2_1 and sub2_2']
         Set allow_work=True.
-        """
-            )
+        """)
             # Verify the branching completed successfully
             self.assertIn("branch", response.lower())
             self.assertNotIn("error", response.lower())
@@ -880,12 +878,10 @@ class TestSelfTools(unittest.TestCase):
             print(f"  Conversation ID: {initial_conversation_id}")
             print(f"  Conversation content length: {len(initial_conversation_content)}")
             # Execute a simple nested branch scenario
-            response = self.bot.respond(
-                """
+            response = self.bot.respond("""
         Use branch_self with prompts: ['Use get_own_info tool, then use branch_self with prompts ["Use get_own_info again"]']
         Set allow_work=True.
-        """
-            )
+        """)
             # Capture final state
             final_tool_results = list(self.bot.tool_handler.results)
             final_conversation_tool_results = list(self.bot.conversation.tool_results)
@@ -952,12 +948,10 @@ class TestSelfTools(unittest.TestCase):
             )
             bot1.add_tools(self_tools)
             initial_tool_results_seq = len(bot1.tool_handler.results)
-            response_seq = bot1.respond(
-                """
+            response_seq = bot1.respond("""
         Use branch_self with prompts: ['Use get_own_info tool, then use branch_self with prompts ["Use get_own_info again"]']
         Set allow_work=True and parallel=False.
-        """
-            )
+        """)
             final_tool_results_seq = len(bot1.tool_handler.results)
             print(f"Sequential - Initial tool results: {initial_tool_results_seq}")
             print(f"Sequential - Final tool results: {final_tool_results_seq}")
@@ -974,12 +968,10 @@ class TestSelfTools(unittest.TestCase):
             bot2 = AnthropicBot(name="ParallelBot", max_tokens=1000, model_engine=Engines.CLAUDE46_SONNET)
             bot2.add_tools(self_tools)
             initial_tool_results_par = len(bot2.tool_handler.results)
-            response_par = bot2.respond(
-                """
+            response_par = bot2.respond("""
         Use branch_self with prompts: ['Use get_own_info tool, then use branch_self with prompts ["Use get_own_info again"]']
         Set allow_work=True and parallel=True.
-        """
-            )
+        """)
             final_tool_results_par = len(bot2.tool_handler.results)
             print(f"Parallel - Initial tool results: {initial_tool_results_par}")
             print(f"Parallel - Final tool results: {final_tool_results_par}")

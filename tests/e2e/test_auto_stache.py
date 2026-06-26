@@ -155,15 +155,13 @@ class TestCreateAutoStash:
             pytest.skip("ANTHROPIC_API_KEY not available")
 
         # Create meaningful changes and stage them
-        Path("calculator.py").write_text(
-            """
+        Path("calculator.py").write_text("""
 def add(a, b):
     return a + b
 
 def multiply(a, b):
     return a * b
-"""
-        )
+""")
         subprocess.run(["git", "add", "calculator.py"], check=True)
 
         result = create_auto_stash()

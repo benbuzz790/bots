@@ -304,8 +304,7 @@ def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
     # Add file-specific CI/CD checking tool
     bot.add_tools(check_file_cicd)
 
-    system_message = textwrap.dedent(
-        f"""
+    system_message = textwrap.dedent(f"""
         You are an expert in Python code style and CI/CD pipeline compliance.
         Your task is to fix code style issues in the file '{rel_path}' to
         ensure it passes automated style checks.
@@ -343,8 +342,7 @@ def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
         IMPORTANT: If you see repeated code elements, and very large amounts
         of indentation you *may* refactor into smaller chunks, but only do
         this if it's completely necessary to meet line length limits.
-        """
-    ).strip()
+        """).strip()
 
     bot.set_system_message(system_message)
     return bot
