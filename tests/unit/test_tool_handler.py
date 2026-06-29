@@ -16,6 +16,7 @@ class DummyToolHandler(ToolHandler):
         dict: A dictionary containing the function name and description, with keys
             'name' (function name as string) and 'description' (docstring or empty string).
     """
+
     def generate_tool_schema(self, func):
         """Simple schema generation for testing"""
         return {
@@ -51,6 +52,7 @@ class TestToolHandlerPersistence(unittest.TestCase):
         temp_dir (str): Temporary directory path for test files.
         handler (DummyToolHandler): Mock tool handler instance for testing.
     """
+
     def setUp(self):
         """Initialize test fixture by creating a DummyToolHandler instance.
 
@@ -150,13 +152,11 @@ class TestToolHandlerPersistence(unittest.TestCase):
         Returns:
             None: Method performs file creation as a side effect.
         """
-        module_content = textwrap.dedent(
-            """
+        module_content = textwrap.dedent("""
             def test_function(x: int) -> int:
                 '''Test function'''
                 return x * 2
-            """
-        )
+            """)
         self.test_file = os.path.join(self.temp_dir, "test_module.py")
         with open(self.test_file, "w") as f:
             f.write(module_content)

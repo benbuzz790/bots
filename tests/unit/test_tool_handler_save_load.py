@@ -23,13 +23,11 @@ class TestModuleToolsSaveLoad:
             tools_dir.mkdir()
 
             tools_file = tools_dir / "my_tools.py"
-            tools_file.write_text(
-                """
+            tools_file.write_text("""
 def greet(name: str) -> str:
     '''Greet someone by name.'''
     return f"Hello, {name}!"
-"""
-            )
+""")
 
             # Create and save bot
             os.chdir(tmpdir)
@@ -84,13 +82,11 @@ def greet(name: str) -> str:
             tools_dir1.mkdir(parents=True)
 
             tools_file = tools_dir1 / "my_tools.py"
-            tools_file.write_text(
-                """
+            tools_file.write_text("""
 def add_numbers(a: int, b: int) -> int:
     '''Add two numbers.'''
     return a + b
-"""
-            )
+""")
 
             # Create save directory
             save_dir = Path(tmpdir) / "saves"
@@ -165,12 +161,10 @@ def add_numbers(a: int, b: int) -> int:
             tools_dir.mkdir()
 
             tools_file = tools_dir / "my_tools.py"
-            tools_file.write_text(
-                """
+            tools_file.write_text("""
 def test_func():
     return "test"
-"""
-            )
+""")
 
             os.chdir(tmpdir)
             bot = AnthropicBot(

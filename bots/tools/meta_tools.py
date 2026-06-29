@@ -12,13 +12,13 @@ from bots.foundation.base import Bot, Engines
 def message_bot(bot_path, message):
     """
     Loads a bot, sends it a message, and allows it to work.
-    Use to prepare a bot to do a task and to allow it to work. 
+    Use to prepare a bot to do a task and to allow it to work.
     Returns control when the bot replies without using a tool.
-    
+
     Parameters:
     - bot_path (str): File path to a saved bot
     - message (str): Message to send to the bot
-    
+
     Returns:
     - (str): A brief summary of the bot's work and success or
         failure detail in the bot's own words
@@ -26,11 +26,7 @@ def message_bot(bot_path, message):
 
     bot = Bot.load(bot_path)
     bot.autosave = False
-    fp.prompt_while(
-        bot,
-        message,
-        callback = lambda r, n: bot.save(bot_path)
-    )
+    fp.prompt_while(bot, message, callback=lambda r, n: bot.save(bot_path))
     final_response = bot.respond("Please send a brief summary of your work and success or failure detail.")
     return final_response
 
@@ -48,7 +44,7 @@ def initialize_file_bot(file_name: str, system_message: str, model: str) -> str:
     Parameters:
     - file_name (str): Name of the file this bot will manage (can include
       directory path)
-    - system_message (str): System message sent to bot. Recommendation: brief and 
+    - system_message (str): System message sent to bot. Recommendation: brief and
         similar to your own system message
     - model: (str): Either "haiku", "sonnet", or "opus" depending on required intellect.
         Prefer less expensive models at first.
@@ -59,7 +55,7 @@ def initialize_file_bot(file_name: str, system_message: str, model: str) -> str:
         os.makedirs(directory, exist_ok=True)
     name, _ = os.path.splitext(file_name)
 
-    if model =="haiku":
+    if model == "haiku":
         model_engine = Engines.CLAUDE45_HAIKU
     elif model == "sonnet":
         model_engine = Engines.CLAUDE46_SONNET

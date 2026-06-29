@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Comprehensive test for helper function preservation in save/load cycles."""
+
 import os
 import sys
 import tempfile

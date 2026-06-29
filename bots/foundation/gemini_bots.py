@@ -187,8 +187,8 @@ class GeminiToolHandler(ToolHandler):
                 with optional 'name' and 'args' keys.
 
         Returns:
-            Tuple[Optional[str], Dict[str, Any]]: A tuple containing the tool name 
-                (None if not found or empty schema) and the arguments dictionary 
+            Tuple[Optional[str], Dict[str, Any]]: A tuple containing the tool name
+                (None if not found or empty schema) and the arguments dictionary
                 (empty dict if 'args' key not present).
         """
         if not request_schema:

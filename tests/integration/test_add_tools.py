@@ -356,13 +356,11 @@ class NotAFunction:
         # Create second test file
         test_file2 = os.path.join(self.test_dir, "test_tools2.py")
         with open(test_file2, "w") as f:
-            f.write(
-                '''
+            f.write('''
 def another_tool():
     """Another tool"""
     return "another"
-'''
-            )
+''')
 
         result = self.handler.add_tool(self.bot, self.context, [self.test_file, test_file2])
 
@@ -382,8 +380,7 @@ def another_tool():
         # Create second test file
         test_file2 = os.path.join(self.test_dir, "test_tools2.py")
         with open(test_file2, "w") as f:
-            f.write(
-                '''
+            f.write('''
 def tool_a():
     """Tool A"""
     return "a"
@@ -391,8 +388,7 @@ def tool_a():
 def tool_b():
     """Tool B"""
     return "b"
-'''
-            )
+''')
 
         # Add whole first file and specific function from second
         self.handler.add_tool(self.bot, self.context, [self.test_file, f"{test_file2}::tool_a"])
@@ -408,13 +404,11 @@ def tool_b():
         """Test /add_tool with file containing only private functions."""
         empty_file = os.path.join(self.test_dir, "empty_tools.py")
         with open(empty_file, "w") as f:
-            f.write(
-                '''
+            f.write('''
 def _private_only():
     """Private function"""
     return "private"
-'''
-            )
+''')
 
         result = self.handler.add_tool(self.bot, self.context, [empty_file])
 

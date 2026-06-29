@@ -408,8 +408,7 @@ class TestScopeViewer(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.sample_tree = ast.parse(
-            """
+        self.sample_tree = ast.parse("""
 def func1():
     pass
 
@@ -423,8 +422,7 @@ class Class1:
 
 def func2():
     pass
-"""
-        )
+""")
 
     def test_find_function(self):
         """Test finding a top-level function."""

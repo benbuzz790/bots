@@ -1,431 +1,347 @@
 # Functional Prompts Primer
 
-## Introduction
+A single call to `bot.respond()` is one turn of conversation. Most real work takes many turns arranged in a definite shape: keep going until the job is done, move through a fixed sequence of steps, or try several approaches at once and compare them. Functional prompts are those shapes, written as ordinary Python functions you call on a bot.
 
-Functional prompts are a powerful paradigm for orchestrating complex AI bot interactions through structured patterns. Instead of simple back-and-forth conversations, functional prompts enable sophisticated reasoning approaches like parallel exploration, iterative refinement, and tree-based thinking.
+Their value comes from one idea: they separate *what* the bot thinks about from *how* the turns are structured. The "what" lives in the prompt strings you pass. The "how" lives in the function. Because the two are independent, the same `prompt_while` that fixes failing tests can write a novel chapter, and the same `branch` that reviews code can weigh three product decisions. You learn the pattern once and reuse it everywhere.
 
-This primer will guide you through the core concepts, patterns, and practical applications of functional prompts.
-
-## Core Concepts
-
-### What are Functional Prompts?
-
-Functional prompts are higher-level functions that orchestrate bot interactions in common patterns. They transform simple prompt-response cycles into structured flows that can:
-
-- Process multiple prompts sequentially or in parallel
-- Iterate until specific conditions are met
-- Control complex conversation trees
-
-### Key Benefits
-
-1. **Structured Prompting**: Break complex problems into manageable, ordered steps
-2. **Parallel Exploration**: Explore multiple approaches without cross-contamination
-3. **Iterative Refinement**: Continue working until completion criteria are met
-4. **Context Preservation**: Maintain conversation history and relationships
-5. **Reproducible Patterns**: Reuse proven prompt structures
-
-## Fundamental Patterns
-
-### 1. Sequential Processing
-
-#### `chain(bot, prompts)`
-
-Executes prompts in sequence, where each step builds on previous context.
-
-**Use when you need to:**
-
-- Guide through structured steps
-- Build complex reasoning progressively
-- Maintain context between related prompts
-
-**Example:**
+Everything here lives in one module. The examples assume you've imported it and have a bot ready:
 
 ```python
-responses, nodes = chain(bot, [
-    "Find and read cli.py",
-    "Find and read functional_prompts.py",
-    "Create a primer on functional prompting. Save to functional_prompt_primer.md"
-])
+import bots
+import bots.flows.functional_prompts as fp
+
+bot = bots.AnthropicBot()
 ```
 
-#### `prompt_while(bot, first_prompt, continue_prompt, stop_condition)`
+## The shape of every functional prompt
 
-Repeats a prompt until a condition is met.
-
-**Use when you need to:**
-
-- Work iteratively on a task
-- Continue until specific criteria are met
-- Handle tasks with unknown completion time
-
-**Example:**
+Each functional prompt takes a bot as its first argument and returns a tuple of two lists: the responses (strings) and the conversation nodes those responses live at. The nodes let you navigate or inspect the resulting tree afterward.
 
 ```python
-responses, nodes = prompt_while(
+responses, nodes = fp.chain(bot, ["First step.", "Second step."])
+print(responses[-1])   # the bot's last reply
+```
+
+Two arguments show up again and again and are worth understanding early, because they are where the power lives. A **stop condition** is a function that takes the bot and returns `True` when iteration should end. A **continue prompt** is what gets sent on each turn after the first; it can be a plain string or a function of `(bot, iteration)` that returns a string. Both are just functions, so anything you can compute in Python can drive the loop, including a call to another bot. The [twenty questions example](#putting-it-together-twenty-questions) below leans on exactly that.
+
+## prompt_while: the core agentic loop
+
+`prompt_while` is the pattern you'll reach for most. It sends a first prompt, then keeps sending the continue prompt until the stop condition is met.
+
+```python
+fp.prompt_while(
     bot,
-    "Debug the file you just read. Fix all errors you find.",
-    continue_prompt="Continue debugging. Any more issues?",
-    stop_condition=conditions.tool_not_used
+    first_prompt,
+    continue_prompt="ok",
+    stop_condition=fp.conditions.tool_not_used,
 )
 ```
 
-### 2. Parallel Exploration
-
-#### `branch(bot, prompts)`
-
-Creates independent conversation paths from the current state.
-
-**Use when you need to:**
-
-- Work on multiple related files or tasks
-- Reset context to a certain point in the conversation, creating a single new branch to work from.
-- Generate diverse solutions without cross-influence
-
-**Example:**
+The default stop condition, `tool_not_used`, ends the loop the moment the bot replies without calling a tool. That captures the natural rhythm of an agent: it works, using tools turn after turn, and stops on its own once it has nothing left to do and simply summarizes. The neutral `"ok"` continue prompt nudges it forward without steering it.
 
 ```python
-responses, nodes = branch(bot, [
-    "Analyze from a security perspective...",
-    "Analyze from a performance perspective...",
-    "Analyze from a maintainability perspective..."
+responses, nodes = fp.prompt_while(
+    bot,
+    "Run the test suite and fix every failure you find.",
+    continue_prompt="ok",
+    stop_condition=fp.conditions.tool_not_used,
+)
+```
+
+The bot runs the tests, edits a file, runs them again, and keeps going; the loop quietly says "ok" between turns; and when the bot reports success without touching a tool, it's done.
+
+## chain and chain_while: ordered steps
+
+When a task has a natural order, `chain` runs your prompts in sequence within one conversation, so each step sees everything before it.
+
+```python
+responses, nodes = fp.chain(bot, [
+    "Read the important .md files in this repo.",
+    "Run the tests with a generous timeout.",
+    "Summarize what's failing and why.",
 ])
 ```
 
-#### `par_branch(bot, prompts)`
-
-Parallel version of branch().
-
-**Use when you need:**
-
-- Faster processing of multiple prompts
-
-### 3. Advanced Reasoning
-
-#### `tree_of_thought(bot, prompts, recombinator_function)`
-
-Implements tree-of-thought reasoning: branch, explore, then synthesize.
-
-**Use when you need to:**
-
-- Break down complex problems into multiple perspectives, then merge those perspectives
-- Synthesize insights from parallel explorations
-- Make decisions requiring multiple factors
-
-**Example:**
+`chain_while` is the same sequence, except each step is allowed its own `prompt_while`-style loop before the chain advances. It's a chain of thought where every link can do real, multi-turn work.
 
 ```python
-def combine_analysis(responses, nodes):
-    # Simple concatenation
-    insights = "\n".join(f"- {r}" for r in responses)
-    return f"Combined Analysis:\n{insights}", nodes[0]
-
-response, node = tree_of_thought(
+responses, nodes = fp.chain_while(
     bot,
     [
-        "Evaluate technical feasibility...",
-        "Analyze business impact...",
-        "Assess user experience..."
+        "Check out the repo and read the key modules.",
+        "Run the tests.",
+        "Open one issue per distinct failure.",
     ],
-    combine_analysis
+    stop_condition=fp.conditions.tool_not_used,
+    continue_prompt="ok",
 )
 ```
 
-## Iteration Control
+## branch and the parallel family: many directions at once
 
-### Stop Conditions
-
-Functional prompts use condition functions to control iteration:
-
-- `conditions.tool_not_used` - Stop when bot stops using tools
-- `conditions.tool_used` - Stop when bot uses tools
-- `conditions.said_DONE` - Stop when response contains "DONE"
-
-**Custom conditions:**
+`branch` starts several independent conversations from the bot's current position. Every branch inherits the same context but develops separately, so one branch's reasoning never leaks into another's. This is how you compare approaches honestly.
 
 ```python
-def quality_threshold(bot):
-    return "i am done" in bot.conversation.content.lower()
-
-responses, nodes = prompt_while(
-    bot = bot,
-    initial_prompt = "MESSAGE: do some work"
-    continue_promtp = "say 'I am done' if MESSAGE is completely addressed.",
-    stop_condition=quality_threshold
-)
-```
-
-## Advanced Patterns
-
-### Dynamic Prompts
-
-#### `prompt_for(bot, items, dynamic_prompt, should_branch)`
-
-Generates prompts dynamically from data.
-
-**Example:**
-
-```python
-def review_prompt(filename):
-    return f"Review {filename} for security issues."
-
-responses, nodes = prompt_for(
-    bot,
-    ["auth.py", "api.py", "data.py"],
-    review_prompt,
-    should_branch=True  # Process files in parallel
-)
-```
-
-### Multi-Bot dispatch
-
-#### `par_dispatch(bot_list, functional_prompt, **kwargs)`
-
-Execute any functional prompt across multiple bots in parallel.
-
-**Use when you need to:**
-
-- Run a flow on each of a number of 'primed' bots.
-- Compare different LLM providers
-- Test multiple configurations
-
-**Example:**
-
-```python
-
-bot = AnthropicBot()
-
-bot_list = bot*5 # Creates 5 copies of the blank bot
-
-# Prime bots with context
-for bot, filepath in zip(bot_list, files):
-    _ = bot.respond(f"Your filepath is {filepath}. After the next message, please review and debug")
-
-# Dispatch them in parallel
-results = par_dispatch(
-    bot_list,
-    chain_while,
-    prompts=[
-        "Find and read your file",
-        "Create a thorough test file considering all edge cases",
-        "Run the test file and debug"
-    ]
-)
-```
-
-### Conversation Tree Operations
-
-#### `broadcast_to_leaves(bot, prompt, skip, continue_prompt, stop_condition)`
-
-Send prompts to all leaf nodes (conversation endpoints) in parallel.
-
-**Use when you need to:**
-
-- Continue multiple conversation branches
-- Apply operations to all endpoints
-- E.g. After making a set of files, broadcast an instruction to write tests.
-
-## Practical Applications
-
-### 1. Code Review Workflow
-
-```python
-# Multi-perspective code analysis
-responses, nodes = branch(bot, [
-    "Review for security vulnerabilities...",
-    "Check for performance issues...",
-    "Evaluate code maintainability...",
-    "Assess test coverage..."
+responses, nodes = fp.branch(bot, [
+    "Review this module for security problems.",
+    "Review this module for performance problems.",
+    "Review this module for readability.",
 ])
-
-# Synthesize findings using a bot
-def combine_reviews(bot, responses, nodes):
-    summary = f"Code Review:\n" + "\n".join(f"• {r}" for r in responses)
-    response = bot.respond(f"Please review the code review below and create a summary with categorized issues, suggested next actions, and priorities.\n\n{summary}")
-    return response, bot.conversation
-
-combiner_bot = bots.load('combiner.bot')
-
-final_review, _ = recombine(bot, responses, nodes, lambda responses, nodes: combine_reviews(combiner_bot, responses, nodes))
 ```
 
-### 2. Iterative Problem Solving
+`par_branch` is `branch` run concurrently across threads; `par_branch_while` is `branch` where each path also loops until its stop condition. Reach for `par_branch_while` when you have several independent jobs that each need real work:
 
 ```python
-# Work on problem until completion
-responses, nodes = chain_while(
+responses, nodes = fp.par_branch_while(
     bot,
     [
-        "STEP 1: Understand the problem requirements...",
-        "STEP 2: Design a solution approach...",
-        "STEP 3: Implement the solution...",
-        "STEP 4: Test and validate..."
+        "Refactor auth.py until it's clean.",
+        "Refactor api.py until it's clean.",
+        "Refactor data.py until it's clean.",
     ],
-    stop_condition=conditions.said_DONE,
-    continue_prompt="say command 'DONE' if the latest STEP is complete (but not before)"
+    stop_condition=fp.conditions.tool_not_used,
+    continue_prompt="ok",
 )
 ```
 
-### 3. Research and Analysis
+The parallel variants make a copy of the bot per branch for thread safety, and a branch that fails comes back as `None` in the results rather than taking down the whole call. They're fast, but running many at once can hit your provider's rate limits, so scale the width to your quota.
+
+## prompt_for: prompts built from data
+
+When you have a list of items and want one prompt each, `prompt_for` builds the prompts for you from a function. Set `should_branch=True` to run them as independent parallel branches, or leave it `False` to run them sequentially in one conversation.
 
 ```python
-# Parallel research on different aspects
-research_topics = [
-    "Current market trends",
-    "Competitor analysis",
-    "Technology landscape",
-    "Regulatory considerations"
-]
+files = ["auth.py", "api.py", "models.py"]
 
-def research_prompt(topic):
-    return f"Research and summarize: {topic}"
-
-bot = AnthropicBot(allow_web_search=True)
-
-responses, nodes = prompt_for(
+responses, nodes = fp.prompt_for(
     bot,
-    research_topics,
-    research_prompt,
-    should_branch=True
+    files,
+    lambda path: f"Review {path} for security issues.",
+    should_branch=True,
 )
 ```
 
-## Best Practices
+## tree_of_thought and recombine: explore, then synthesize
 
-### 1. Prompt Design
-
-- **Be specific**: Clear, focused prompts yield better results
-- Generally - follow prompting best practices.
-
-### 2. Condition Selection
-
-- **tool_not_used**: Good general purpose condition for agentic tasks
-- **Custom conditions**: Tailor to specific completion criteria
-
-### 3. Continue Prompt
-
-- **'ok'** is the best general purpose continue prompt. It does not anchor toward action (like 'continue' does) or stopping (like 'stop if <condition>' does).
-
-### 4. Performance Considerations
-
-- Parallel functional prompts (`par_branch`, `par_branch_while`) may cause you to hit rate limits.
-
-## Integration with CLI
-
-The functional prompts integrate seamlessly with the CLI system:
-
-```bash
-# Interactive functional prompt wizard
->>> /fp
-
-# Broadcast functional prompts to all leaves
->>> /broadcast_fp
-```
-
-The CLI provides:
-
-- Interactive parameter collection
-- Real-time tool result display
-- Conversation tree navigation
-- Error recovery with backups
-
-## Common Patterns and Recipes
-
-### 1. Single Agentic Task (Most Common)
+`tree_of_thought` branches into several perspectives and then merges them into a single answer using a recombinator function you provide. The recombinator takes the lists of responses and nodes and returns one `(response, node)` pair.
 
 ```python
-# The most common functional prompt pattern - let the bot work autonomously
-responses, nodes = prompt_while(
-   bot,
-   "Please analyze the codebase and create comprehensive documentation.",
-   continue_prompt="ok",
-   stop_condition=conditions.tool_not_used
+def combine(responses, nodes):
+    merged = "\n".join(f"- {r}" for r in responses)
+    return f"Combined analysis:\n{merged}", nodes[0]
+
+response, node = fp.tree_of_thought(
+    bot,
+    [
+        "Evaluate the technical feasibility.",
+        "Analyze the business impact.",
+        "Assess the user experience.",
+    ],
+    combine,
 )
 ```
 
-This is the bread-and-butter pattern for all agentic tasks. The bot will:
-
-- Start working on the initial task
-- Continue iterating with "ok" prompts until it stops using tools
-- (Current SOTA LLMs will) Give a summary without using a tool when complete.
-- Handle complex multi-step processes autonomously
-
-### 2. List and Execute Pattern
+`recombine` is the synthesis step on its own, so you can branch, inspect the results, and only then decide how to merge them. A recombinator can be as simple as concatenation or can itself call a bot to write a real synthesis:
 
 ```python
-# First, get a list of tasks
-task_response = bot.respond("Break down this project into 5-7 specific, parallelizable, actionable tasks. List them clearly with numbers and periods: 1. task, 2. task, 3. task, etc.")
+responses, nodes = fp.branch(bot, [
+    "Critique README.md.",
+    "Critique setup.py.",
+    "Critique the main module.",
+])
 
-# Extract task numbers (assuming tasks are numbered 1-N)
+def summarize_with_bot(responses, nodes):
+    combiner = bots.load("summarizer.bot")
+    joined = "\n\n".join(responses)
+    reply = combiner.respond(
+        f"Merge these reviews into one prioritized list of actions:\n\n{joined}"
+    )
+    return reply, combiner.conversation
+
+final, node = fp.recombine(bot, responses, nodes, summarize_with_bot)
+```
+
+## broadcast_to_leaves: one prompt to every endpoint
+
+After you've grown a tree with several branches, `broadcast_to_leaves` sends the same prompt to every leaf at once. It's the natural follow-up to a branching workflow: build several files in parallel, then broadcast "add error handling and tests" to all of them. The `skip` argument takes a list of substrings; any leaf whose content matches is left alone.
+
+```python
+fp.broadcast_to_leaves(
+    bot,
+    "Add error handling and a docstring.",
+    skip=[],
+    stop_condition=fp.conditions.tool_not_used,
+)
+```
+
+## par_dispatch: one workflow across a fleet
+
+`par_dispatch` runs any functional prompt across a list of bots in parallel. Build the fleet by multiplying a bot, prime each member with its own role or file, then dispatch the same flow to all of them.
+
+```python
+fleet = bots.AnthropicBot() * 3
+files = ["auth.py", "api.py", "data.py"]
+for member, path in zip(fleet, files):
+    member.respond(f"Your file is {path}. Review and debug it after the next message.")
+
+results = fp.par_dispatch(
+    fleet,
+    fp.chain_while,
+    prompt_list=[
+        "Find and read your file.",
+        "Write thorough tests covering the edge cases.",
+        "Run the tests and fix what breaks.",
+    ],
+    stop_condition=fp.conditions.tool_not_used,
+)
+```
+
+Because the bots in the list are independent, they can even be different providers, which makes `par_dispatch` a clean way to run the same task on Claude, GPT, and Gemini and compare.
+
+## Stop conditions
+
+A stop condition is any function from a bot to a boolean. The library ships the common ones in `fp.conditions`:
+
+- `tool_not_used` — stop once the bot replies without calling a tool. The default, and the right choice for most agentic tasks.
+- `tool_used` — the inverse; stop as soon as a tool is used.
+- `said_DONE` and `said_READY` — stop when the bot's reply contains "DONE" or "READY". Useful when you want the bot to signal completion in words.
+- `error_in_response` — stop if the reply looks like it hit an error.
+- `no_new_tools_used` — stop when a turn introduces no tool the previous turn didn't already use.
+
+Writing your own is just writing a function. This one stops when the bot states a confidence level:
+
+```python
+def confident(bot):
+    return "99% confident" in bot.conversation.content
+
+fp.prompt_while(
+    bot,
+    "Optimize this function. Keep going until you're 99% confident it's optimal.",
+    continue_prompt="Continue optimizing.",
+    stop_condition=confident,
+)
+```
+
+## Continue prompts, static and dynamic
+
+The continue prompt can be a fixed string, but it can also be a function of `(bot, iteration)`, which lets the message adapt as the loop runs. The `fp.dynamic_prompts` helpers cover the common cases. `static` wraps a constant string, and `policy` picks a message from a list of rules based on the bot's state and the iteration count:
+
+```python
+continue_prompt = fp.dynamic_prompts.policy(
+    rules=[
+        (lambda b, i: i > 8, "You've gone many rounds; wrap up now."),
+        (lambda b, i: len(b.conversation.content) > 4000, "Be more concise."),
+    ],
+    default="ok",
+)
+
+fp.prompt_while(bot, "Draft the design doc.", continue_prompt=continue_prompt)
+```
+
+## Putting it together: twenty questions
+
+Here is the idea taken seriously. Because both the continue prompt and the stop condition are plain functions, the loop that drives one bot can be steered by another bot. [`examples/20_questions.py`](../examples/20_questions.py) builds a complete two-player game out of a single `prompt_while`.
+
+One bot is the guesser. It asks a yes-or-no question each turn, trying to name a secret word. The continue prompt is the clever part: rather than a canned `"ok"`, it's a function that creates a second, cheaper bot to play judge. The judge reads the guesser's latest question, answers it truthfully about the secret word, and that answer becomes the guesser's next prompt. The stop condition reads the conversation tree to see whether the judge has confirmed the guess.
+
+```python
+from bots import AnthropicBot, Engines
+from bots.flows.functional_prompts import prompt_while
+
+word = input("Pick a thing: ")
+guesser = AnthropicBot(model_engine=Engines.CLAUDE45_SONNET, temperature=1.0)
+
+def judge(bot, iteration):
+    """Continue prompt: a fresh judge bot answers the guesser's latest question.
+
+    `bot.conversation.content` is the guesser's most recent message, i.e. its
+    question. The judge's reply becomes the next prompt sent to the guesser.
+    """
+    arbiter = AnthropicBot(model_engine=Engines.CLAUDE45_HAIKU, max_tokens=12, temperature=0)
+    question = bot.conversation.content
+    return arbiter.respond(
+        f"You are a 20-questions judge. The secret thing is '{word}'. "
+        f"Reply with only: yes, no, sometimes, 'I don't know', or 'you got it!'. "
+        f"The question is: {question}"
+    )
+
+def solved(bot):
+    """Stop condition: end when the judge confirmed, with a safety cap on turns.
+
+    The judge's last answer is the parent of the guesser's current node, since
+    the continue prompt became the guesser's most recent prompt.
+    """
+    judges_answer = bot.conversation.parent.content if bot.conversation.parent else ""
+    return "you got it" in judges_answer.lower() or bot.conversation._node_count() > 40
+
+def show(responses, nodes):
+    """Callback: print the exchange after each turn."""
+    print("Guesser:", responses[-1])
+    print("Judge:  ", nodes[-1].parent.content)
+
+prompt_while(
+    guesser,
+    "Let's play 20 questions. You ask, I answer. Ask your first yes/no question.",
+    continue_prompt=judge,
+    stop_condition=solved,
+    callback=show,
+)
+```
+
+Nothing in this is a special game mode. `prompt_while` runs its ordinary loop; you supplied a `continue_prompt` that happens to call a model and a `stop_condition` that happens to read the tree. The callback is the same hook every functional prompt offers for observing progress as it happens. Once the loop's behavior is just function arguments, the same machinery gives you a critic that grades each draft, a panel of judges that votes, or two agents negotiating, all from the pieces in this primer.
+
+## Recipes
+
+**The single agentic task.** The most common use of the whole module is one autonomous loop. Describe the goal and let the bot run.
+
+```python
+fp.prompt_while(
+    bot,
+    "Analyze this codebase and write thorough documentation for it.",
+    continue_prompt="ok",
+    stop_condition=fp.conditions.tool_not_used,
+)
+```
+
+**List, then execute in parallel.** Ask the bot to break a job into parallelizable pieces, then run those pieces at once. Having the bot produce the list first keeps every piece anchored to the same plan.
+
+```python
 import re
-task_matches = re.findall(r'(\d+)\.', task_response)
-task_numbers = [int(match) for match in task_matches]
 
-# Create prompts for each task
-task_prompts = [
-   f"Do task {n} from this list:\n\n{task_response}"
-   for n in task_numbers
-]
-
-# Execute all tasks in parallel
-responses, nodes = par_branch_while(
-   bot,
-   task_prompts,
-   stop_condition=conditions.tool_not_used,
-   continue_prompt="ok"
+plan = bot.respond(
+    "Break this project into 5-7 independent, actionable tasks. "
+    "Number them like '1. ...', '2. ...'."
 )
-```
+numbers = [int(n) for n in re.findall(r"(\d+)\.", plan)]
+task_prompts = [f"Do task {n} from this list:\n\n{plan}" for n in numbers]
 
-This pattern is excellent for:
-
-- Breaking down complex tasks into parallel work
-- Ensuring all subtasks reference the same master list
-- Maximizing parallelization while maintaining context
-
-### 3. List and Execute (Simplified)
-
-```python
-# Alternative approach using prompt_for with dynamic prompts
-def task_prompt(task_number):
-   return f"Do task {task_number} from the list we discussed earlier."
-
-# Get the task list first
-task_list_response = bot.respond("Create a numbered list of 5 tasks for this project.")
-
-# Execute tasks in parallel
-responses, nodes = prompt_for(
-   bot = bot,
-   items = range(1, 6),  # Tasks 1-5
-   dynamic_prompt = task_prompt,
-   should_branch=True
-)
-```
-
-### Iterative Refinement
-
-```python
-# Keep improving until quality threshold is met
-def quality_check(bot):
-    bot = bots.load('quality.bot')
-    content = bot.conversation.content.lower()
-    return any(phrase in content for phrase in ["excellent", "perfect", "optimal"])
-
-responses, nodes = prompt_while(
+fp.par_branch_while(
     bot,
-    "Write a comprehensive project proposal. Aim for excellence.",
-    continue_prompt="Review and improve the proposal further.",
-    stop_condition=quality_check
+    task_prompts,
+    stop_condition=fp.conditions.tool_not_used,
+    continue_prompt="ok",
 )
 ```
 
-## Conclusion
+**Iterative refinement.** Keep improving until a quality bar is met. The bar can be a phrase the bot must say, or a separate bot that judges.
 
-Functional prompts transform AI interactions from simple conversations into structured reasoning systems. By mastering these patterns, you can:
+```python
+def good_enough(bot):
+    content = bot.conversation.content.lower()
+    return any(word in content for word in ("excellent", "ready to ship"))
 
-- Solve complex problems systematically
-- Explore multiple perspectives efficiently
-- Build robust, reproducible workflows
-- Scale task management to projects and beyond
+fp.prompt_while(
+    bot,
+    "Write a project proposal. Aim for something you'd ship.",
+    continue_prompt="Review it once more and improve the weakest part.",
+    stop_condition=good_enough,
+)
+```
 
-Start with simple patterns like `chain` and `branch`, then progress to advanced techniques like `tree_of_thought` and `par_dispatch` as your needs grow.
+## Practical notes
 
-The key is matching the right pattern to your specific requirements and building up complexity gradually.
+A few habits make these patterns work better. Keep prompts specific; the same clarity that helps a single `respond` helps every step of a chain. Prefer `"ok"` as a continue prompt when you don't have a reason to steer, because it neither pushes the bot toward more action (as "continue" does) nor toward stopping. Use `tool_not_used` as your default stop condition for agentic work, and reach for a custom condition only when you need a sharper finish line. Finally, remember that the parallel functions can hit rate limits, so match the number of concurrent branches to your provider quota.
+
+## In the CLI
+
+Every pattern here is also available interactively. Inside the CLI, `/fp` opens a wizard that lets you pick a functional prompt, enter its prompts, and choose a stop condition on the spot, while `/broadcast_fp` applies a chosen functional prompt to every leaf of the current tree. See the [CLI Primer](CLI_PRIMER.md) for the full set of commands.

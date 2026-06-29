@@ -592,15 +592,13 @@ def test_scanner_detects_new_imports(tmp_path, repo_root):
 
         # Create a Python file with the fake import
         temp_file = temp_module_dir / "temp_test_file.py"
-        temp_file.write_text(
-            f"""
+        temp_file.write_text(f"""
 # Temporary test file to verify import scanner
 import {fake_package}
 
 def test_function():
     pass
-"""
-        )
+""")
 
         # Run the scanner
         core_packages, dev_packages = scan_project_for_imports()

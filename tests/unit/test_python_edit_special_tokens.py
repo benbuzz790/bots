@@ -12,14 +12,12 @@ class TestFileStartToken:
     def test_file_start_preserves_docstring(self):
         """Test that __FILE_START__ preserves module docstring at the top."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(
-                '''"""Module docstring."""
+            f.write('''"""Module docstring."""
 import os
 
 def foo():
     pass
-'''
-            )
+''')
             temp_file = f.name
 
         try:
@@ -47,8 +45,7 @@ import json
     def test_file_start_respects_future_imports(self):
         """Test that __FILE_START__ places imports after __future__ imports."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(
-                '''"""Module with future imports."""
+            f.write('''"""Module with future imports."""
 from __future__ import annotations
 from __future__ import division
 
@@ -56,8 +53,7 @@ import os
 
 def foo():
     pass
-'''
-            )
+''')
             temp_file = f.name
 
         try:
@@ -94,14 +90,12 @@ import json
     def test_file_start_filters_duplicate_imports(self):
         """Test that __FILE_START__ filters out duplicate imports."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(
-                """import os
+            f.write("""import os
 import sys
 
 def foo():
     pass
-"""
-            )
+""")
             temp_file = f.name
 
         try:
@@ -129,12 +123,10 @@ import json
     def test_file_start_with_non_py_file(self):
         """Test that __FILE_START__ works with non-.py files as text mode."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
-            f.write(
-                """# Existing Header
+            f.write("""# Existing Header
 
 Some content
-"""
-            )
+""")
             temp_file = f.name
 
         try:
@@ -163,13 +155,11 @@ New content
     def test_file_start_removes_duplicate_definitions(self):
         """Test that __FILE_START__ removes duplicate function/class definitions."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(
-                """import os
+            f.write("""import os
 
 def helper():
     return 42
-"""
-            )
+""")
             temp_file = f.name
 
         try:
@@ -204,13 +194,11 @@ class TestFileEndToken:
     def test_file_end_appends_code(self):
         """Test that __FILE_END__ appends code to the end of file."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(
-                """import os
+            f.write("""import os
 
 def foo():
     pass
-"""
-            )
+""")
             temp_file = f.name
 
         try:
@@ -264,13 +252,11 @@ def bar():
     def test_file_end_removes_duplicates(self):
         """Test that __FILE_END__ removes duplicate definitions."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(
-                """import os
+            f.write("""import os
 
 def existing_function():
     pass
-"""
-            )
+""")
             temp_file = f.name
 
         try:
@@ -298,12 +284,10 @@ class TestSpecialTokenErrors:
     def test_special_tokens_cannot_be_used_with_scoped_targets(self):
         """Test that __FILE_START__/__FILE_END__ cannot be used with scoped targets."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(
-                """class MyClass:
+            f.write("""class MyClass:
     def method(self):
         pass
-"""
-            )
+""")
             temp_file = f.name
 
         try:
