@@ -395,7 +395,7 @@ class BotSession:
             repair_mojibake,
         ]
 
-        bot.add_tools(*tools_to_add, lazy=True)
+        bot.add_tools(*tools_to_add, lazy=False)
 
         # Add tool management tools with lazy loading
         # Register all tools but only load view_tools and load_tools

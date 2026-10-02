@@ -30,8 +30,6 @@ class TestModelAvailability:
             # Anthropic Claude 4 Models
             "claude-sonnet-4-20250514",
             "claude-opus-4-20250514",
-            # Anthropic Claude 3 Models (only test non-retired ones)
-            "claude-3-haiku-20240307",
         ],
     )
     def test_anthropic_model_availability(self, model_name):

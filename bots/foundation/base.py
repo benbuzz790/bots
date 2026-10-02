@@ -164,6 +164,20 @@ class Engines(str, Enum):
     CLAUDE46_SONNET = "claude-sonnet-4-6"
     CLAUDE46_OPUS = "claude-opus-4-6"
 
+
+    # Anthropic Claude 4.7 Models
+    CLAUDE47_OPUS = "claude-opus-4-7"
+
+    # Anthropic Claude 4.8 Models
+    CLAUDE48_OPUS = "claude-opus-4-8"
+
+    # Anthropic Claude 5 Models
+    CLAUDE5_SONNET = "claude-sonnet-5"
+    CLAUDE5_OPUS = "claude-opus-5"
+
+    # Anthropic Claude 5.5 Models (Latest - Sept 2026)
+    CLAUDE55_SONNET = "claude-sonnet-5-5"
+    CLAUDE55_OPUS = "claude-opus-5-5"
     # Legacy Anthropic aliases (for backward compatibility)
     CLAUDE35_HAIKU_LATEST = "claude-3-5-haiku-latest"
     CLAUDE35_SONNET_LATEST = "claude-3-5-sonnet-latest"
@@ -314,7 +328,7 @@ class Engines(str, Enum):
         if info is None:
             raise ValueError(f"Model information not found for {self.value}")
         return info
-
+CLAUDE47_OPUS = "claude-opus-4-7"
 
 class ConversationNode:
     """Tree-based storage for conversation history and tool interactions.

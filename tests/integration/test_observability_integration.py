@@ -191,9 +191,9 @@ class TestObservabilityIntegration(unittest.TestCase):
         """Test that cost calculations are accurate across providers."""
         # Test Anthropic pricing
         anthropic_cost = calculate_cost(
-            provider="anthropic", model="claude-3-haiku-20240307", input_tokens=1000, output_tokens=500
+            provider="anthropic", model="claude-haiku-4-5-20251001", input_tokens=1000, output_tokens=500
         )
-        expected_anthropic = (1000 * 0.25 / 1_000_000) + (500 * 1.25 / 1_000_000)
+        expected_anthropic = (1000 * 1.00 / 1_000_000) + (500 * 5.00 / 1_000_000)
         self.assertAlmostEqual(anthropic_cost, expected_anthropic, places=6)
 
         # Test OpenAI pricing

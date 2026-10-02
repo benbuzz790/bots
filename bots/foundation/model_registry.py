@@ -19,18 +19,64 @@ from bots.foundation.base import Engines
 # Intelligence: 1 star (fast/cheap), 2 stars (balanced), 3 stars (most capable)
 # Costs are per 1 million tokens (USD)
 MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
-    # Anthropic Claude 4.6 Models (Latest - Feb 2026)
+    # Anthropic Claude 5.5 Models (Latest - Sept 2026)
+    "claude-sonnet-5-5": {
+        "provider": "anthropic",
+        "intelligence": 2,
+        "max_tokens": 128000,
+        "cost_input": 3.00,
+        "cost_output": 15.00,
+    },
+    "claude-opus-5-5": {
+        "provider": "anthropic",
+        "intelligence": 3,
+        "max_tokens": 128000,
+        "cost_input": 15.00,
+        "cost_output": 75.00,
+    },
+    # Anthropic Claude 5 Models
+    "claude-sonnet-5": {
+        "provider": "anthropic",
+        "intelligence": 2,
+        "max_tokens": 128000,
+        "cost_input": 3.00,
+        "cost_output": 15.00,
+    },
+    "claude-opus-5": {
+        "provider": "anthropic",
+        "intelligence": 3,
+        "max_tokens": 128000,
+        "cost_input": 15.00,
+        "cost_output": 75.00,
+    },
+    # Anthropic Claude 4.8 Models
+    "claude-opus-4-8": {
+        "provider": "anthropic",
+        "intelligence": 3,
+        "max_tokens": 128000,
+        "cost_input": 15.00,
+        "cost_output": 75.00,
+    },
+    # Anthropic Claude 4.7 Models
+    "claude-opus-4-7": {
+        "provider": "anthropic",
+        "intelligence": 3,
+        "max_tokens": 128000,
+        "cost_input": 15.00,
+        "cost_output": 75.00,
+    },
+    # Anthropic Claude 4.6 Models
     "claude-sonnet-4-6": {
         "provider": "anthropic",
         "intelligence": 2,
-        "max_tokens": 64000,
+        "max_tokens": 128000,
         "cost_input": 3.00,
         "cost_output": 15.00,
     },
     "claude-opus-4-6": {
         "provider": "anthropic",
         "intelligence": 3,
-        "max_tokens": 64000,
+        "max_tokens": 128000,
         "cost_input": 15.00,
         "cost_output": 75.00,
     },
@@ -71,6 +117,8 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "max_tokens": 64000,
         "cost_input": 3.00,
         "cost_output": 15.00,
+        "deprecated": True,
+        "retired": True,
     },
     "claude-opus-4-20250514": {
         "provider": "anthropic",
@@ -78,6 +126,8 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "max_tokens": 64000,
         "cost_input": 15.00,
         "cost_output": 75.00,
+        "deprecated": True,
+        "retired": True,
     },
     # Anthropic Claude 3.5 Models (RETIRED - as of Jan 2025)
     "claude-3-5-sonnet-20241022": {
@@ -149,26 +199,26 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
     "claude-3-5-sonnet-latest": {
         "provider": "anthropic",
         "intelligence": 2,
-        "max_tokens": 64000,
+        "max_tokens": 128000,
         "cost_input": 3.00,
         "cost_output": 15.00,
-        "alias_for": "claude-sonnet-4-5-20250929",
+        "alias_for": "claude-sonnet-5-5",
     },
     "claude-opus-4-latest": {
         "provider": "anthropic",
         "intelligence": 3,
-        "max_tokens": 64000,
+        "max_tokens": 128000,
         "cost_input": 15.00,
         "cost_output": 75.00,
-        "alias_for": "claude-opus-4-6",
+        "alias_for": "claude-opus-5-5",
     },
     "claude-sonnet-4-latest": {
         "provider": "anthropic",
         "intelligence": 2,
-        "max_tokens": 64000,
+        "max_tokens": 128000,
         "cost_input": 3.00,
         "cost_output": 15.00,
-        "alias_for": "claude-sonnet-4-6",
+        "alias_for": "claude-sonnet-5-5",
     },
     # OpenAI GPT Models
     "gpt-3.5-turbo": {
@@ -352,6 +402,7 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "cost_output": 10.00,
     },
 }
+pass  # Anthropic Claude 3 Models (RETIRED)
 
 # Provider-specific discount configurations
 PROVIDER_DISCOUNTS = {
