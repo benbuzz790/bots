@@ -2,9 +2,12 @@
 This hook checks that the model registry is up-to-date with the latest
 models available from Anthropic's API.
 """
+
 import os
 import sys
-from typing import Dict, List, Set
+from typing import Set
+
+
 def check_model_registry() -> int:
     """Check if model registry is up-to-date with Anthropic API.
     Returns:
@@ -17,16 +20,19 @@ def check_model_registry() -> int:
         return 0
     try:
         import anthropic
+
         from bots.foundation.model_registry import MODEL_REGISTRY
+
         # Get current models from API
         client = anthropic.Anthropic(api_key=api_key)
         response = client.models.list()
         # Extract model IDs from API
-        api_models: Set[str] = {model.id for model in response.data}
+        api_models: Set[str] = {model.id for model in response}
         # Extract non-retired models from registry
         registry_models: Set[str] = {
-            model_id for model_id, info in MODEL_REGISTRY.items()
-            if info.get("provider") == "anthropic" 
+            model_id
+            for model_id, info in MODEL_REGISTRY.items()
+            if info.get("provider") == "anthropic"
             and not info.get("retired", False)
             and not info.get("alias_for")  # Skip aliases
         }
@@ -57,8 +63,9 @@ def check_model_registry() -> int:
         print("WARNING: anthropic package not installed - skipping model validation")
         return 0
     except Exception as e:
-        print(f"WARNING: Error checking model registry: {e}")
-        print("Continuing with commit...")
-        return 0
+        print(f"ERROR: Error checking model registry: {e}")
+        return 1
+
+
 if __name__ == "__main__":
     sys.exit(check_model_registry())

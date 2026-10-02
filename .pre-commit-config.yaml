@@ -48,7 +48,8 @@ repos:
         entry: python -m bots.dev.validate_models_hook
         language: system
         pass_filenames: false
-        always_run: true      - id: reinstall-editable
+        always_run: true
+      - id: reinstall-editable
         name: Reinstall package in strict editable mode
         entry: pip install --config-settings editable-mode=strict -e .
         language: system

@@ -2,9 +2,11 @@
 This script fetches the latest model information from Anthropic's API
 and updates the model registry accordingly.
 """
+
 import os
 import sys
-from typing import Dict, Any
+
+
 def update_model_registry() -> int:
     """Update model registry with latest models from Anthropic API.
     Returns:
@@ -16,16 +18,18 @@ def update_model_registry() -> int:
         return 1
     try:
         import anthropic
+
         from bots.foundation.model_registry import MODEL_REGISTRY
+
         # Get current models from API
         client = anthropic.Anthropic(api_key=api_key)
-        response = client.models.list()
+        models = list(client.models.list())
         print("Fetched models from Anthropic API")
-        print(f"Found {len(response.data)} models\n")
+        print(f"Found {len(models)} models\n")
         # Display models and their details
         print("Available Models:")
         print("=" * 80)
-        for model in response.data:
+        for model in models:
             in_registry = model.id in MODEL_REGISTRY
             status = "OK" if in_registry else "NEW"
             print(f"[{status}] {model.id}")
@@ -34,16 +38,16 @@ def update_model_registry() -> int:
             print(f"   Max Input: {model.max_input_tokens:,} tokens")
             print(f"   Max Output: {model.max_tokens:,} tokens")
             if not in_registry:
-                print(f"   WARNING: Not in registry - needs to be added")
+                print("   WARNING: Not in registry - needs to be added")
             elif MODEL_REGISTRY[model.id].get("retired"):
-                print(f"   WARNING: Marked as retired in registry")
+                print("   WARNING: Marked as retired in registry")
             print()
         # Check for models in registry not in API
-        api_model_ids = {model.id for model in response.data}
+        api_model_ids = {model.id for model in models}
         registry_anthropic_models = {
-            model_id for model_id, info in MODEL_REGISTRY.items()
-            if info.get("provider") == "anthropic" 
-            and not info.get("alias_for")
+            model_id
+            for model_id, info in MODEL_REGISTRY.items()
+            if info.get("provider") == "anthropic" and not info.get("alias_for")
         }
         retired_models = registry_anthropic_models - api_model_ids
         if retired_models:
@@ -63,5 +67,7 @@ def update_model_registry() -> int:
     except Exception as e:
         print(f"ERROR: {e}")
         return 1
+
+
 if __name__ == "__main__":
     sys.exit(update_model_registry())

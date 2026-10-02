@@ -361,9 +361,11 @@ class AnthropicMailbox(Mailbox):
             create_dict: Dict[str, Any] = {
                 "model": bot.model_engine.value,
                 "max_tokens": bot.max_tokens,
-                "temperature": bot.temperature,
                 "messages": cc.manage_cache_controls(conversation._build_messages()),
             }
+
+            if bot.model_engine != Engines.CLAUDE55_OPUS:
+                create_dict["temperature"] = bot.temperature
 
             if bot.system_message:
                 create_dict["system"] = bot.system_message
@@ -549,12 +551,10 @@ class AnthropicMailbox(Mailbox):
                     isinstance(block, anthropic.types.ToolUseBlock) for block in response.content
                 )
 
-            # TODO: Sometimes Claude responds without a text block, and content[0]
-            # is a tool use block. Need to check for this case and add a tool use
-            # block manually.
-            if not getattr(response.content[0], "text", None):
-                block = anthropic.types.TextBlock(text="~", type="text")
-                response.content.insert(0, block)
+            text_block = next((block for block in response.content if block.type == "text"), None)
+            if text_block is None or not text_block.text:
+                text_block = anthropic.types.TextBlock(text="~", type="text")
+                response.content.insert(0, text_block)
 
             # while should_continue(response):
             #     if bot.conversation.role == "user":  # base case
@@ -565,7 +565,7 @@ class AnthropicMailbox(Mailbox):
 
             # process the complete response
             response_role: str = response.role
-            response_text: str = getattr(response.content[0], "text", "~")
+            response_text: str = text_block.text
         except anthropic.BadRequestError as e:
             if e.status_code == 400:
                 pass

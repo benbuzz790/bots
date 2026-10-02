@@ -100,6 +100,22 @@ class TestGetModelPricing:
         assert pricing["input"] == 1.00
         assert pricing["output"] == 5.00
 
+    @pytest.mark.parametrize(
+        "model, input_price, output_price",
+        [
+            ("claude-sonnet-5", 2.00, 10.00),
+            ("claude-sonnet-5-5", 2.00, 10.00),
+            ("claude-opus-5-5", 4.00, 20.00),
+            ("claude-opus-5", 5.00, 25.00),
+            ("claude-opus-4-8", 5.00, 25.00),
+            ("claude-opus-4-7", 5.00, 25.00),
+        ],
+    )
+    def test_new_anthropic_model_prices(self, model, input_price, output_price):
+        pricing = get_model_pricing("anthropic", model)
+        assert pricing["input"] == input_price
+        assert pricing["output"] == output_price
+
     def test_openai_models(self):
         """Test pricing for all OpenAI models."""
         pricing = get_model_pricing("openai", "gpt-4o")
