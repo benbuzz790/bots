@@ -364,7 +364,14 @@ class AnthropicMailbox(Mailbox):
                 "messages": cc.manage_cache_controls(conversation._build_messages()),
             }
 
-            if bot.model_engine != Engines.CLAUDE55_OPUS:
+            if bot.model_engine not in {
+                Engines.CLAUDE47_OPUS,
+                Engines.CLAUDE48_OPUS,
+                Engines.CLAUDE5_SONNET,
+                Engines.CLAUDE5_OPUS,
+                Engines.CLAUDE55_SONNET,
+                Engines.CLAUDE55_OPUS,
+            }:
                 create_dict["temperature"] = bot.temperature
 
             if bot.system_message:
@@ -551,10 +558,10 @@ class AnthropicMailbox(Mailbox):
                     isinstance(block, anthropic.types.ToolUseBlock) for block in response.content
                 )
 
-            text_block = next((block for block in response.content if block.type == "text"), None)
-            if text_block is None or not text_block.text:
-                text_block = anthropic.types.TextBlock(text="~", type="text")
-                response.content.insert(0, text_block)
+            response_text = "".join(block.text for block in response.content if block.type == "text" and block.text)
+            if not response_text:
+                response_text = "~"
+                response.content.insert(0, anthropic.types.TextBlock(text=response_text, type="text"))
 
             # while should_continue(response):
             #     if bot.conversation.role == "user":  # base case
@@ -565,7 +572,6 @@ class AnthropicMailbox(Mailbox):
 
             # process the complete response
             response_role: str = response.role
-            response_text: str = text_block.text
         except anthropic.BadRequestError as e:
             if e.status_code == 400:
                 pass

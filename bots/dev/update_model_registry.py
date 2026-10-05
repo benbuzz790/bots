@@ -35,8 +35,10 @@ def update_model_registry() -> int:
             print(f"[{status}] {model.id}")
             print(f"   Display Name: {model.display_name}")
             print(f"   Created: {model.created_at}")
-            print(f"   Max Input: {model.max_input_tokens:,} tokens")
-            print(f"   Max Output: {model.max_tokens:,} tokens")
+            for label, attribute in [("Max Input", "max_input_tokens"), ("Max Output", "max_tokens")]:
+                limit = getattr(model, attribute, None)
+                formatted_limit = f"{limit:,}" if limit is not None else "Unknown"
+                print(f"   {label}: {formatted_limit} tokens")
             if not in_registry:
                 print("   WARNING: Not in registry - needs to be added")
             elif MODEL_REGISTRY[model.id].get("retired"):

@@ -50,7 +50,7 @@ long_description: str = _read_long_description()
 # Core package dependencies required for basic functionality
 INSTALL_REQUIRES: List[str] = [
     # LLM Provider SDKs
-    "anthropic>=0.18.0",
+    "anthropic>=0.49.0",
     "openai>=1.0.0",
     "google-genai>=0.2.0",
     # Type hints compatibility

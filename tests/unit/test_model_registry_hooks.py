@@ -61,6 +61,8 @@ def test_update_counts_and_displays_every_page(model_api, capsys):
     output = capsys.readouterr().out
     assert "Found 2 models" in output
     assert "[OK] second" in output
+    assert "Max Input: 200,000 tokens" in output
+    assert "Max Output: 64,000 tokens" in output
     assert "[NEEDS MARKING] second" not in output
     model_api._request_api_list.assert_called_once()
 
@@ -86,3 +88,14 @@ def test_validation_skips_without_key(monkeypatch, capsys):
     assert check_model_registry() == 0
     client_factory.assert_not_called()
     assert "skipping model validation" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("limits", [{}, {"max_input_tokens": None, "max_tokens": None}])
+def test_update_handles_missing_limits(model_api, capsys, limits):
+    model_api.models.list.return_value = [
+        ModelInfo(id="first", type="model", created_at="2026-01-01T00:00:00Z", display_name="First", **limits)
+    ]
+    assert update_model_registry() == 0
+    output = capsys.readouterr().out
+    assert "Max Input: Unknown tokens" in output
+    assert "Max Output: Unknown tokens" in output
