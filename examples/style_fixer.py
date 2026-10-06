@@ -285,7 +285,7 @@ def create_style_fixer_bot(num: int, file_path: str, project_root: str) -> Bot:
     rel_path = os.path.relpath(file_path, project_root)
 
     bot = AnthropicBot(
-        model_engine=Engines.CLAUDE4_SONNET,  # Updated to Claude 4 Sonnet
+        model_engine=Engines.CLAUDE_SONNET_LATEST,
         temperature=0.1,  # Low temperature for consistent style fixes
         name=f"StyleFixer{num}",
         role="Code Style Specialist",

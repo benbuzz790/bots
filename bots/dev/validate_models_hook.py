@@ -54,7 +54,7 @@ def check_model_registry() -> int:
                 print(f"   - {model}")
             print()
         if issues_found:
-            print("Please update bots/foundation/model_registry.py")
+            print("Please update the Model enum in bots/foundation/models.py")
             print("Run: python -m bots.dev.update_model_registry")
             return 1
         print("OK: Model registry is up-to-date")

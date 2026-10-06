@@ -60,8 +60,7 @@ def update_model_registry() -> int:
                 status = "OK (marked)" if is_marked_retired else "NEEDS MARKING"
                 print(f"[{status}] {model_id}")
         print("\n" + "=" * 80)
-        print("\nTo add new models, update bots/foundation/model_registry.py")
-        print("To add to Engines enum, update bots/foundation/base.py")
+        print("\nTo add or retire models, edit the Model enum in bots/foundation/models.py")
         return 0
     except ImportError:
         print("ERROR: anthropic package not installed")

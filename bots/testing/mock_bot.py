@@ -435,6 +435,20 @@ class MockBot(Bot):
         ```
     """
 
+    @staticmethod
+    def _resolve_model_engine(model_engine: Any, api_key: Optional[str]) -> Engines:
+        """Offline resolution for tests: never calls an API and allows retired models.
+
+        "Latest" shortcuts map to the newest concrete model of that tier we know of,
+        so tests stay deterministic and network-free.
+        """
+        model = Engines.get(model_engine) or Engines.GPT4
+        if model.is_latest_shortcut:
+            family = model.spec.latest_of
+            candidates = [m for m in Engines if m.value.startswith(f"claude-{family}-") and not m.retired and not m.is_latest_shortcut and not m.spec.alias_for]
+            model = candidates[-1] if candidates else Engines.GPT4
+        return model
+
     def __init__(
         self,
         name: str = "MockBot",

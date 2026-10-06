@@ -77,6 +77,8 @@ class TestModelAvailability:
         missing_models = []
 
         for engine in Engines:
+            if engine.is_latest_shortcut:
+                continue  # resolved at bot creation; no fixed registry entry
             if engine.value not in MODEL_REGISTRY:
                 missing_models.append(engine.value)
 

@@ -364,14 +364,7 @@ class AnthropicMailbox(Mailbox):
                 "messages": cc.manage_cache_controls(conversation._build_messages()),
             }
 
-            if bot.model_engine not in {
-                Engines.CLAUDE47_OPUS,
-                Engines.CLAUDE48_OPUS,
-                Engines.CLAUDE5_SONNET,
-                Engines.CLAUDE5_OPUS,
-                Engines.CLAUDE55_SONNET,
-                Engines.CLAUDE55_OPUS,
-            }:
+            if bot.model_engine.supports_temperature:
                 create_dict["temperature"] = bot.temperature
 
             if bot.system_message:
@@ -631,7 +624,7 @@ class AnthropicBot(Bot):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_engine: Engines = Engines.CLAUDE55_OPUS,
+        model_engine: Engines = Engines.CLAUDE_SONNET_LATEST,
         max_tokens: int = 32000,
         temperature: float = 0.3,
         name: str = "Claude",
@@ -647,7 +640,8 @@ class AnthropicBot(Bot):
             api_key: Optional API key (will use ANTHROPIC_API_KEY env var if
             not provided)
             model_engine: The Anthropic model to use (default:
-            CLAUDE55_OPUS)
+            CLAUDE_SONNET_LATEST, the newest Sonnet the API serves, looked up
+            once per process; raises ModelResolutionError if that fails)
             max_tokens: Maximum tokens per response (default: 32000)
             temperature: Response randomness, 0-1 (default: 0.3)
             name: Bot's name (default: 'Claude')

@@ -70,7 +70,10 @@ class TestAnthropicBot(unittest.TestCase):
                 value
         """
         self.assertIsInstance(self.bot, AnthropicBot)
-        self.assertEqual(self.bot.model_engine, Engines.CLAUDE46_SONNET)
+        # Default is CLAUDE_SONNET_LATEST, resolved to a concrete current Sonnet
+        self.assertTrue(self.bot.model_engine.value.startswith("claude-sonnet-"))
+        self.assertFalse(self.bot.model_engine.is_latest_shortcut)
+        self.assertFalse(self.bot.model_engine.retired)
         self.assertEqual(self.bot.temperature, 0.3)
         self.assertEqual(self.bot.name, "Claude")
 
@@ -88,7 +91,7 @@ class TestAnthropicBot(unittest.TestCase):
             AssertionError: If any custom parameter doesn't match its set value
         """
         custom_bot = AnthropicBot(
-            model_engine=Engines.CLAUDE3_HAIKU,
+            model_engine=Engines.CLAUDE_HAIKU_LATEST,
             max_tokens=1000,
             temperature=0.7,
             name="CustomClaude",
@@ -96,7 +99,10 @@ class TestAnthropicBot(unittest.TestCase):
             role_description="an AI language expert",
             autosave=False,
         )
-        self.assertEqual(custom_bot.model_engine, Engines.CLAUDE3_HAIKU)
+        # The shortcut resolves to a concrete, current Haiku at creation
+        self.assertTrue(custom_bot.model_engine.value.startswith("claude-haiku-"))
+        self.assertFalse(custom_bot.model_engine.is_latest_shortcut)
+        self.assertFalse(custom_bot.model_engine.retired)
         self.assertEqual(custom_bot.max_tokens, 1000)
         self.assertEqual(custom_bot.temperature, 0.7)
         self.assertEqual(custom_bot.name, "CustomClaude")
@@ -285,7 +291,7 @@ def test_bot_multiplication() -> None:
     """
     bot = AnthropicBot(
         api_key=None,
-        model_engine=Engines.CLAUDE3_HAIKU,
+        model_engine=Engines.CLAUDE_HAIKU_LATEST,
         max_tokens=100,
         temperature=0.7,
         name="TestBot",

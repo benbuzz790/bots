@@ -27,7 +27,7 @@ def test_python_tools_after_bot_load():
 """)
 
         # Step 1: Create a bot and add python tools
-        bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=1000, temperature=0.0)
+        bot = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, max_tokens=1000, temperature=0.0)
 
         # Add the python tools
         bot.add_tools(python_view, python_edit)

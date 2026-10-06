@@ -249,7 +249,7 @@ def create_auto_stash() -> str:
         stash_message = "WIP: auto-stash before user message"  # fallback
         try:
             # Create a Haiku bot instance - use the module-level import
-            haiku_bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
+            haiku_bot = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, max_tokens=100)
             # Create a prompt for generating the stash message
             prompt = (
                 f"Based on this git diff, generate a concise commit-style message "
@@ -984,7 +984,7 @@ class PromptManager:
             from bots.foundation.base import Engines
 
             # Create a quick Haiku bot for naming
-            naming_bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
+            naming_bot = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, max_tokens=100)
 
             # Truncate prompt if too long for naming
             truncated_prompt = prompt_text[:500] + "..." if len(prompt_text) > 500 else prompt_text
@@ -2130,7 +2130,7 @@ class SystemHandler:
         output.append(f"{'Model':<45} {'Provider':<12} {'Intelligence':<15} {'Max Tokens':<12} {'Cost ($/1M tokens)':<20}")
         output.append("-" * 100)
 
-        for engine in Engines:
+        for engine in [e for e in Engines if not e.retired and not e.is_latest_shortcut and not e.spec.alias_for]:
             info = engine.get_info()
             stars = "â­" * info["intelligence"]
             cost_str = f"${info['cost_input']:.2f} / ${info['cost_output']:.2f}"
@@ -2156,7 +2156,7 @@ class SystemHandler:
             current_provider = current_engine.get_info()["provider"]
 
             # Filter engines by current provider
-            provider_models = [e for e in Engines if e.get_info()["provider"] == current_provider]
+            provider_models = [e for e in Engines if e.provider == current_provider and not e.retired and not e.is_latest_shortcut and not e.spec.alias_for]
 
             output = []
             output.append(f"\nCurrent model: {current_engine.value}\n")
@@ -2183,7 +2183,7 @@ class SystemHandler:
             output.append(f"{'Model':<45} {'Provider':<12} {'Intelligence':<15} {'Max Tokens':<12} {'Cost ($/1M tokens)':<20}")
             output.append("-" * 100)
 
-            for engine in Engines:
+            for engine in [e for e in Engines if not e.retired and not e.is_latest_shortcut and not e.spec.alias_for]:
                 info = engine.get_info()
                 stars = "⭐" * info["intelligence"]
                 cost_str = f"${info['cost_input']:.2f} / ${info['cost_output']:.2f}"
@@ -2200,7 +2200,7 @@ class SystemHandler:
         current_engine = bot.model_engine
         target = args[0]
         current_provider = current_engine.get_info()["provider"]
-        provider_models = [e for e in Engines if e.get_info()["provider"] == current_provider]
+        provider_models = [e for e in Engines if e.provider == current_provider and not e.retired and not e.is_latest_shortcut and not e.spec.alias_for]
 
         # Try to parse as number (1-based index within current provider)
         try:
@@ -2218,8 +2218,13 @@ class SystemHandler:
         target_lower = target.lower()
 
         # First try exact match within current provider
-        for engine in provider_models:
-            if engine.value.lower() == target_lower:
+        # Exact match against any model ID, including aliases (resolved to their target)
+        for engine in Engines:
+            if engine.value.lower() == target_lower and engine.provider == current_provider:
+                if engine.spec.alias_for:
+                    engine = Engines.get(engine.spec.alias_for) or engine
+                if engine.retired:
+                    return f"Model '{engine.value}' is retired. Use /switch to see available models."
                 bot.model_engine = engine
                 return f"Switched from {current_engine.value} to {engine.value}"
 
@@ -2230,36 +2235,11 @@ class SystemHandler:
             bot.model_engine = matches[0]
             return f"Switched from {current_engine.value} to {matches[0].value}"
         elif len(matches) > 1:
-            # Prefer models with version numbers that suggest they're newer
-            # Priority: "4-5" > "3-5" > "3" > others
-            # Also prefer "latest" suffix
-            def model_priority(engine):
-                """Determines the priority value for a model engine based on its version string.
-
-                Args:
-                    engine: An object with a 'value' attribute containing the engine version string.
-
-                Returns:
-                    int: Priority value where higher numbers indicate higher priority. Returns 400
-                    for versions containing "4-5" or "4.5", and appears to handle "3-5" or "3.5"
-                    versions as well.
-                """
-                value = engine.value.lower()
-                # Higher number = higher priority
-                if "4-5" in value or "4.5" in value:
-                    return 400
-                elif "3-5" in value or "3.5" in value:
-                    return 300
-                elif "latest" in value:
-                    return 200
-                elif "-3-" in value or ".3." in value:
-                    return 100
-                else:
-                    return 0
-
-            # Sort by priority (highest first)
-            matches.sort(key=model_priority, reverse=True)
-            # Pick the highest priority match
+            # Prefer usable models, newest first (Model lists newer models later
+            # within each provider), and never auto-pick a retired one.
+            usable = [e for e in matches if not e.retired and not e.is_latest_shortcut and not e.spec.alias_for]
+            matches = list(reversed(usable)) or matches
+            # Pick the best match
             bot.model_engine = matches[0]
             return f"Switched from {current_engine.value} to {matches[0].value}"
         else:

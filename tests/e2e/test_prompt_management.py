@@ -112,7 +112,7 @@ class TestPromptManager(unittest.TestCase):
         name = self.prompt_manager._generate_prompt_name("This is a test prompt")
 
         self.assertEqual(name, "test_prompt_name")
-        mock_bot_class.assert_called_once_with(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
+        mock_bot_class.assert_called_once_with(model_engine=Engines.CLAUDE_HAIKU_LATEST, max_tokens=100)
         mock_bot.respond.assert_called_once()
 
     @patch("bots.foundation.anthropic_bots.AnthropicBot")

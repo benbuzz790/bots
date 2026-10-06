@@ -17,7 +17,7 @@ def generate_prompt_name_haiku_fixed(prompt_text: str) -> str:
 
         print("Attempting to create Haiku bot with proper token limits...")
         # Create a Haiku bot with appropriate max_tokens for naming
-        naming_bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
+        naming_bot = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, max_tokens=100)
         print("Haiku bot created successfully with max_tokens=100")
 
         # Truncate prompt if too long for naming

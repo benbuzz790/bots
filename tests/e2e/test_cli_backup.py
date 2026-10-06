@@ -19,7 +19,7 @@ class TestCLIBackupSystem:
     def test_backup_creation(self):
         """Test that backups can be created successfully."""
         context = CLIContext()
-        context.bot_instance = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
+        context.bot_instance = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, max_tokens=100)
 
         # Create a backup
         result = context.create_backup("test_backup")
@@ -35,7 +35,7 @@ class TestCLIBackupSystem:
     def test_backup_restore(self):
         """Test that backups can be restored."""
         context = CLIContext()
-        context.bot_instance = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
+        context.bot_instance = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, max_tokens=100)
 
         # Create a backup
         context.create_backup("before_change")
@@ -70,7 +70,7 @@ class TestCLIBackupSystem:
     def test_backup_info(self):
         """Test backup info display."""
         context = CLIContext()
-        context.bot_instance = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
+        context.bot_instance = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, max_tokens=100)
 
         # No backup yet
         info = context.get_backup_info()
@@ -89,7 +89,7 @@ class TestCLIBackupSystem:
     def test_backup_prevents_concurrent_backups(self):
         """Test that concurrent backups are prevented."""
         context = CLIContext()
-        context.bot_instance = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
+        context.bot_instance = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, max_tokens=100)
 
         # Set backup in progress flag
         context.backup_in_progress = True
@@ -105,7 +105,7 @@ class TestCLIBackupSystem:
         """Test BackupHandler command methods."""
         handler = BackupHandler()
         context = CLIContext()
-        bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
+        bot = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, max_tokens=100)
         context.bot_instance = bot
 
         # Test backup command
@@ -130,7 +130,7 @@ class TestCLIBackupSystem:
     def test_backup_with_conversation_changes(self):
         """Test that backup captures conversation state."""
         context = CLIContext()
-        bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
+        bot = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, max_tokens=100)
         context.bot_instance = bot
 
         # Get the initial conversation state
