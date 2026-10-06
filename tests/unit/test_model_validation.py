@@ -9,7 +9,7 @@ import os
 import pytest
 
 from bots.foundation.base import Engines
-from bots.foundation.model_registry import MODEL_REGISTRY
+from bots.foundation.model_registry import MODEL_REGISTRY, get_model_info
 
 
 class TestModelAvailability:
@@ -30,8 +30,6 @@ class TestModelAvailability:
             # Anthropic Claude 4 Models
             "claude-sonnet-4-20250514",
             "claude-opus-4-20250514",
-            # Anthropic Claude 3 Models (only test non-retired ones)
-            "claude-3-haiku-20240307",
         ],
     )
     def test_anthropic_model_availability(self, model_name):
@@ -79,6 +77,8 @@ class TestModelAvailability:
         missing_models = []
 
         for engine in Engines:
+            if engine.is_latest_shortcut:
+                continue  # resolved at bot creation; no fixed registry entry
             if engine.value not in MODEL_REGISTRY:
                 missing_models.append(engine.value)
 
@@ -88,6 +88,8 @@ class TestModelAvailability:
         """Check for known invalid/retired models in the registry."""
         # Models that are known to be retired and should be marked as such
         known_retired = [
+            "claude-3-haiku-20240307",
+            "claude-opus-4-1-20250805",
             "claude-3-5-sonnet-20241022",
             "claude-3-5-sonnet-20240620",
             "claude-3-sonnet-20240229",
@@ -124,3 +126,19 @@ class TestModelAvailability:
                     not_marked.append(model)
 
         assert not not_marked, f"The following models should be marked as deprecated: {not_marked}"
+
+
+@pytest.mark.parametrize(
+    "alias, target",
+    [
+        ("claude-3-5-sonnet-latest", "claude-3-5-sonnet-20241022"),
+        ("claude-opus-4-latest", "claude-opus-4-20250514"),
+        ("claude-sonnet-4-latest", "claude-sonnet-4-20250514"),
+    ],
+)
+def test_legacy_alias_metadata_matches_its_generation(alias, target):
+    info = get_model_info(alias)
+    target_info = get_model_info(target)
+    assert info["alias_for"] == target
+    for field in ("provider", "max_tokens", "cost_input", "cost_output", "retired"):
+        assert info[field] == target_info[field]

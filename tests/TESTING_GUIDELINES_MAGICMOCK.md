@@ -70,7 +70,7 @@ def setUp(self):
 **Option C: Use real bots (best for integration tests)**
 ```python
 def test_something():
-    bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU, max_tokens=100)
+    bot = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, max_tokens=100)
     context = CLIContext()
     context.bot_instance = bot
     # Real bots handle copying properly

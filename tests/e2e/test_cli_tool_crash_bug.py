@@ -44,7 +44,7 @@ class TestCLIToolCrashBug:
         """Set up test fixtures."""
         self.bot = AnthropicBot(
             api_key="test-key",
-            model_engine=Engines.CLAUDE3_HAIKU,
+            model_engine=Engines.CLAUDE45_HAIKU,
             max_tokens=1000,
             temperature=0.0,
             name="TestBot",

@@ -25,7 +25,7 @@ class TestWebToolIntegration(unittest.TestCase):
         """Set up test environment with bot."""
         self.bot = AnthropicBot(
             api_key=None,  # No actual API calls needed for most tests
-            model_engine=Engines.CLAUDE4_SONNET,
+            model_engine=Engines.CLAUDE46_SONNET,
             max_tokens=1000,
             temperature=0,
             name="WebToolIntegrationTestBot",
@@ -311,7 +311,7 @@ class TestWebToolRealWorldScenarios(unittest.TestCase):
         """Set up realistic test scenarios."""
         self.bot = AnthropicBot(
             api_key=None,
-            model_engine=Engines.CLAUDE4_SONNET,
+            model_engine=Engines.CLAUDE46_SONNET,
             max_tokens=1000,
             temperature=0,
             name="RealWorldTestBot",

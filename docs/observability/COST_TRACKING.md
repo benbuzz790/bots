@@ -69,8 +69,6 @@ All prices are per 1 million tokens.
 |-------|-------|--------|----------------|
 | claude-3-5-sonnet-latest | $3.00 | $15.00 | 90% |
 | claude-3-5-haiku-latest | $0.80 | $4.00 | 90% |
-| claude-3-haiku-20240307 | $0.25 | $1.25 | 90% |
-| claude-3-opus-20240229 | $15.00 | $75.00 | 90% |
 | claude-opus-4-latest | $20.00 | $80.00 | 90% |
 | claude-sonnet-4-latest | $5.00 | $25.00 | 90% |
 

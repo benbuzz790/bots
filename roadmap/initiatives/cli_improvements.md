@@ -188,8 +188,8 @@ behavior:
 provider:
   default: "anthropic"
   models:
-    flagship: "claude-3-5-sonnet-20241022"
-    fast: "claude-3-5-haiku-20241022"
+    flagship: "claude-sonnet-5-5"
+    fast: "claude-haiku-4-5-20251001"
   cost_budget: 10.00  # USD per session
 plugins:
   tools_dir: "~/.bots/plugins/tools"

@@ -17,6 +17,7 @@ from types import ModuleType
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 from bots.utils.helpers import _py_ast_to_source, formatted_datetime
+from bots.foundation.models import Engines, Model, ModelResolutionError, allow_retired_models, resolve_model  # noqa: F401
 
 # Module-level logger
 logger = logging.getLogger(__name__)
@@ -74,7 +75,7 @@ This module provides the fundamental abstractions and base classes that power th
 - ToolHandler: Manages function/module tools with context preservation
 - ConversationNode: Tree-based conversation storage
 - Mailbox: Abstract interface for LLM service communication
-- Engines: Supported LLM model configurations
+- Engines: re-exported from bots.foundation.models (now named Model)
 The classes in this module are designed to:
 - Provide a consistent interface across different LLM implementations
 - Enable sophisticated context and tool management
@@ -114,206 +115,6 @@ def load(filepath: str) -> "Bot":
         ```
     """
     return Bot.load(filepath)
-
-
-class Engines(str, Enum):
-    """Enum class representing different AI model engines."""
-
-    # OpenAI GPT-3.5 Models
-    GPT35TURBO = "gpt-3.5-turbo"
-    GPT35TURBO_16K = "gpt-3.5-turbo-16k"
-    GPT35TURBO_0125 = "gpt-3.5-turbo-0125"
-    GPT35TURBO_INSTRUCT = "gpt-3.5-turbo-instruct"
-
-    # OpenAI GPT-4 Models
-    GPT4 = "gpt-4"
-    GPT41 = "gpt-4.1"
-    GPT4_0613 = "gpt-4-0613"
-    GPT4_32K = "gpt-4-32k"
-    GPT4_32K_0613 = "gpt-4-32k-0613"
-    GPT4O = "gpt-4o"
-    GPT4O_MINI = "gpt-4o-mini"
-
-    # OpenAI GPT-5.2 Models (Released Dec 11, 2025)
-    GPT52_INSTANT = "gpt-5.2-instant"
-    GPT52_THINKING = "gpt-5.2-thinking"
-    GPT52_PRO = "gpt-5.2-pro"
-
-    # Anthropic Claude 3 Models
-    CLAUDE3_HAIKU = "claude-3-haiku-20240307"
-    CLAUDE3_SONNET = "claude-3-sonnet-20240229"
-    CLAUDE3_OPUS = "claude-3-opus-20240229"
-
-    # Anthropic Claude 3.5 Models (Deprecated - retire Oct 2025)
-    CLAUDE35_SONNET_20241022 = "claude-3-5-sonnet-20241022"
-    CLAUDE35_SONNET_20240620 = "claude-3-5-sonnet-20240620"
-
-    # Anthropic Claude 4 Models
-    CLAUDE4_SONNET = "claude-sonnet-4-20250514"
-    CLAUDE4_OPUS = "claude-opus-4-20250514"
-
-    # Anthropic Claude 4.1 Models
-    CLAUDE41_OPUS = "claude-opus-4-1-20250805"
-
-    # Anthropic Claude 4.5 Models
-    CLAUDE45_HAIKU = "claude-haiku-4-5-20251001"
-    CLAUDE45_SONNET = "claude-sonnet-4-5-20250929"
-    CLAUDE45_OPUS = "claude-opus-4-5-20251101"
-
-    # Anthropic Claude 4.6 Models (Latest - Feb 2026)
-    CLAUDE46_SONNET = "claude-sonnet-4-6"
-    CLAUDE46_OPUS = "claude-opus-4-6"
-
-    # Legacy Anthropic aliases (for backward compatibility)
-    CLAUDE35_HAIKU_LATEST = "claude-3-5-haiku-latest"
-    CLAUDE35_SONNET_LATEST = "claude-3-5-sonnet-latest"
-    CLAUDE_SONNET_4_LATEST = "claude-sonnet-4-latest"
-    CLAUDE_OPUS_4_LATEST = "claude-opus-4-latest"
-
-    # Google Gemini 1.5 Models
-    GEMINI15_PRO = "gemini-1.5-pro"
-    GEMINI15_FLASH = "gemini-1.5-flash"
-
-    # Google Gemini 2.0 Models
-    GEMINI20_FLASH = "gemini-2.0-flash"
-
-    # Google Gemini 2.5 Models
-    GEMINI25_FLASH = "gemini-2.5-flash"
-    GEMINI25_FLASH_LITE = "gemini-2.5-flash-lite"
-    GEMINI25_PRO = "gemini-2.5-pro"
-
-    # Google Gemini 3 Models (Released Nov-Dec 2025)
-    GEMINI3_FLASH = "gemini-3-flash-preview"
-    GEMINI3_PRO = "gemini-3-pro-preview"
-
-    @staticmethod
-    def get(name: str) -> Optional["Engines"]:
-        """Retrieve an Engines enum member by its string value.
-
-        Use when you need to convert a model name string to an Engines enum member.
-
-        Parameters:
-            name (str): The string value of the engine (e.g., 'gpt-4', 'claude-3-opus-20240229')
-
-        Returns:
-            Optional[Engines]: The corresponding Engines enum member, or None if not found
-
-        Example:
-            ```python
-            engine = Engines.get("gpt-4")
-            if engine:
-                print(f"Found engine: {engine.value}")
-            ```
-        """
-        for engine in Engines:
-            if engine.value == name:
-                return engine
-        return None
-
-    @staticmethod
-    def get_bot_class(model_engine: "Engines") -> Type["Bot"]:
-        """Get the appropriate Bot subclass for a given model engine.
-
-        Use when you need to programmatically determine which Bot implementation
-        to use for a specific model engine.
-
-        Parameters:
-            model_engine (Engines): The engine enum member to get the bot class for
-
-        Returns:
-            Type[Bot]: The Bot subclass (ChatGPT_Bot, AnthropicBot, or GeminiBot)
-
-        Raises:
-            ValueError: If the model engine is not supported
-
-        Example:
-            ```python
-            bot_class = Engines.get_bot_class(Engines.GPT4)
-            bot = bot_class(api_key="key")
-            ```
-        """
-        from bots.foundation.anthropic_bots import AnthropicBot
-        from bots.foundation.gemini_bots import GeminiBot
-        from bots.foundation.openai_bots import ChatGPT_Bot
-
-        if model_engine.value.startswith("gpt"):
-            return ChatGPT_Bot
-        elif model_engine.value.startswith("gemini"):
-            return GeminiBot
-        elif model_engine.value.startswith("claude"):
-            return AnthropicBot
-        else:
-            raise ValueError(f"Unsupported model engine: {model_engine}")
-
-    @staticmethod
-    def get_conversation_node_class(class_name: str) -> Type["ConversationNode"]:
-        """Get the appropriate ConversationNode subclass by name.
-
-        Use when you need to reconstruct conversation nodes from saved bot state.
-
-        Parameters:
-            class_name (str): Name of the node class ('OpenAINode' or 'AnthropicNode')
-
-        Returns:
-            Type[ConversationNode]: The ConversationNode subclass
-
-        Raises:
-            ValueError: If the class name is not a supported node type
-
-        Example:
-            ```python
-            node_class = Engines.get_conversation_node_class("AnthropicNode")
-            node = node_class._create_empty(node_class)
-            ```
-        """
-        from bots.foundation.anthropic_bots import AnthropicNode
-        from bots.foundation.gemini_bots import GeminiNode
-        from bots.foundation.openai_bots import OpenAINode
-        from bots.testing.mock_bot import MockConversationNode
-
-        NODE_CLASS_MAP = {
-            "ConversationNode": ConversationNode,
-            "OpenAINode": OpenAINode,
-            "AnthropicNode": AnthropicNode,
-            "GeminiNode": GeminiNode,
-            "MockConversationNode": MockConversationNode,
-        }
-
-        if class_name not in NODE_CLASS_MAP:
-            raise ValueError(f"Unsupported node class: {class_name}")
-
-        return NODE_CLASS_MAP[class_name]
-
-    def get_info(self) -> Dict[str, Any]:
-        """Get detailed information about this model engine.
-
-        Returns comprehensive model information including pricing, capabilities,
-        and provider details from the unified model registry.
-
-        Returns:
-            Dict[str, Any]: Dictionary containing:
-                - provider: The LLM provider (e.g., 'anthropic', 'openai')
-                - intelligence: Model tier (1=fast/cheap, 2=balanced, 3=most capable)
-                - max_tokens: Maximum output tokens
-                - cost_input: Cost per 1M input tokens (USD)
-                - cost_output: Cost per 1M output tokens (USD)
-
-        Raises:
-            ValueError: If model information is not found in registry
-
-        Example:
-            ```python
-            info = Engines.CLAUDE45_SONNET.get_info()
-            print(f"Provider: {info['provider']}")
-            print(f"Cost: ${info['cost_input']}/1M input tokens")
-            ```
-        """
-        from bots.foundation.model_registry import get_model_info
-
-        info = get_model_info(self.value)
-        if info is None:
-            raise ValueError(f"Model information not found for {self.value}")
-        return info
 
 
 class ConversationNode:
@@ -3124,7 +2925,7 @@ class Bot(ABC):
     def __init__(
         self,
         api_key: Optional[str],
-        model_engine: Engines,
+        model_engine: Model,
         max_tokens: int,
         temperature: float,
         name: str,
@@ -3141,7 +2942,8 @@ class Bot(ABC):
 
         Parameters:
             api_key (Optional[str]): API key for the LLM service
-            model_engine (Engines): The specific LLM model to use
+            model_engine (Model): The model to use. CLAUDE_*_LATEST shortcuts are resolved
+                to a concrete model via the API; retired models raise ModelResolutionError.
             max_tokens (int): Maximum tokens in model responses
             temperature (float): Randomness in model responses (0.0-1.0)
             name (str): Name identifier for the bot
@@ -3178,8 +2980,15 @@ class Bot(ABC):
             # User explicitly specified, respect their choice (but still check if SDK is disabled)
             self._tracing_enabled = TRACING_AVAILABLE and enable_tracing and is_tracing_enabled()
 
-        if isinstance(self.model_engine, str):
-            self.model_engine = Engines.get(self.model_engine)
+        # Resolve to a concrete, current model: looks up strings, resolves
+        # CLAUDE_*_LATEST shortcuts via the API, and rejects retired models.
+        # Raises ModelResolutionError rather than falling back silently.
+        self.model_engine = self._resolve_model_engine(model_engine, api_key)
+
+    @staticmethod
+    def _resolve_model_engine(model_engine: Any, api_key: Optional[str]) -> "Model":
+        """Resolve the constructor's model argument. Subclasses (e.g. MockBot) may override."""
+        return resolve_model(model_engine, api_key=api_key)
 
     def respond(self, prompt: str, role: str = "user") -> str:
         """Send a prompt to the bot and get its response.
@@ -3732,7 +3541,10 @@ class Bot(ABC):
 
         init_params = inspect.signature(bot_class.__init__).parameters
         constructor_args = {k: v for k, v in data.items() if k in init_params}
-        bot = bot_class(**constructor_args)
+        # A saved bot may use a model that has since been retired. Load it anyway so the
+        # conversation and tools stay accessible; the user can then switch models.
+        with allow_retired_models():
+            bot = bot_class(**constructor_args)
         bot.api_key = api_key if api_key is not None else None
 
         if "tool_handler" in data:

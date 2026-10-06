@@ -92,3 +92,27 @@ def pytest_collection_modifyitems(config, items):
             # Add xdist_group marker to force serial execution
             # All tests with the same xdist_group name run in the same worker, serially
             item.add_marker(pytest.mark.xdist_group("serial"))
+
+
+# Fixed snapshot of the Anthropic model list used to resolve CLAUDE_*_LATEST
+# shortcuts offline. Tests marked @pytest.mark.api use the real API instead.
+OFFLINE_ANTHROPIC_MODELS = [
+    ("claude-haiku-4-5-20251001", "2025-10-15"),
+    ("claude-sonnet-4-6", "2026-02-17"),
+    ("claude-sonnet-5", "2026-06-29"),
+    ("claude-sonnet-5-5", "2026-09-28"),
+    ("claude-opus-5", "2026-07-24"),
+    ("claude-opus-5-5", "2026-09-21"),
+]
+
+
+@pytest.fixture(autouse=True)
+def _offline_latest_model_resolution(request, monkeypatch):
+    """Keep "latest" model resolution off the network for non-API tests."""
+    from bots.foundation import models
+
+    models.clear_model_cache()
+    if request.node.get_closest_marker("api") is None:
+        monkeypatch.setattr(models, "_fetch_anthropic_models", lambda api_key=None: list(OFFLINE_ANTHROPIC_MODELS))
+    yield
+    models.clear_model_cache()

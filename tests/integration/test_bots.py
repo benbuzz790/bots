@@ -52,7 +52,7 @@ class TestBaseBot(unittest.TestCase):
         """
         self.bot = AnthropicBot(
             api_key=None,
-            model_engine=Engines.CLAUDE3_HAIKU,
+            model_engine=Engines.CLAUDE_HAIKU_LATEST,
             max_tokens=100,
             temperature=0.7,
             name="TestBot",

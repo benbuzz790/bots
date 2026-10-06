@@ -361,9 +361,11 @@ class AnthropicMailbox(Mailbox):
             create_dict: Dict[str, Any] = {
                 "model": bot.model_engine.value,
                 "max_tokens": bot.max_tokens,
-                "temperature": bot.temperature,
                 "messages": cc.manage_cache_controls(conversation._build_messages()),
             }
+
+            if bot.model_engine.supports_temperature:
+                create_dict["temperature"] = bot.temperature
 
             if bot.system_message:
                 create_dict["system"] = bot.system_message
@@ -549,12 +551,10 @@ class AnthropicMailbox(Mailbox):
                     isinstance(block, anthropic.types.ToolUseBlock) for block in response.content
                 )
 
-            # TODO: Sometimes Claude responds without a text block, and content[0]
-            # is a tool use block. Need to check for this case and add a tool use
-            # block manually.
-            if not getattr(response.content[0], "text", None):
-                block = anthropic.types.TextBlock(text="~", type="text")
-                response.content.insert(0, block)
+            response_text = "".join(block.text for block in response.content if block.type == "text" and block.text)
+            if not response_text:
+                response_text = "~"
+                response.content.insert(0, anthropic.types.TextBlock(text=response_text, type="text"))
 
             # while should_continue(response):
             #     if bot.conversation.role == "user":  # base case
@@ -565,7 +565,6 @@ class AnthropicMailbox(Mailbox):
 
             # process the complete response
             response_role: str = response.role
-            response_text: str = getattr(response.content[0], "text", "~")
         except anthropic.BadRequestError as e:
             if e.status_code == 400:
                 pass
@@ -625,7 +624,7 @@ class AnthropicBot(Bot):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_engine: Engines = Engines.CLAUDE46_SONNET,
+        model_engine: Engines = Engines.CLAUDE_SONNET_LATEST,
         max_tokens: int = 32000,
         temperature: float = 0.3,
         name: str = "Claude",
@@ -641,7 +640,8 @@ class AnthropicBot(Bot):
             api_key: Optional API key (will use ANTHROPIC_API_KEY env var if
             not provided)
             model_engine: The Anthropic model to use (default:
-            CLAUDE46_SONNET)
+            CLAUDE_SONNET_LATEST, the newest Sonnet the API serves, looked up
+            once per process; raises ModelResolutionError if that fails)
             max_tokens: Maximum tokens per response (default: 32000)
             temperature: Response randomness, 0-1 (default: 0.3)
             name: Bot's name (default: 'Claude')

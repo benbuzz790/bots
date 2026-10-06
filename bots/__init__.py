@@ -40,7 +40,8 @@ from .dev.decorators import toolify
 
 # Core bot implementations and base classes
 from .foundation.anthropic_bots import AnthropicBot
-from .foundation.base import Engines, load
+from .foundation.base import load
+from .foundation.models import Engines, Model, ModelResolutionError
 from .foundation.openai_bots import ChatGPT_Bot
 
 # Tool collections for bot capabilities
@@ -58,6 +59,8 @@ __all__ = [
     "AnthropicBot",
     "ChatGPT_Bot",
     "Engines",
+    "Model",
+    "ModelResolutionError",
     "load",
     # Development tools
     "toolify",

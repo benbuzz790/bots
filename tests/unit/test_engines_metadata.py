@@ -10,6 +10,10 @@ class TestEnginesMetadata:
     def test_all_engines_have_metadata(self):
         """Verify every engine has an entry in MODEL_REGISTRY."""
         for engine in Engines:
+            if engine.is_latest_shortcut:
+                # Shortcuts have no fixed metadata until resolved to a concrete model
+                assert engine.value not in MODEL_REGISTRY
+                continue
             assert engine.value in MODEL_REGISTRY, f"Engine {engine} missing from MODEL_REGISTRY"
 
     def test_metadata_returns_correct_type(self):
@@ -48,6 +52,8 @@ class TestEnginesMetadata:
     def test_token_limits_positive(self):
         """Verify max_tokens are positive integers."""
         for engine in Engines:
+            if engine.is_latest_shortcut:
+                continue
             info = engine.get_info()
             max_tokens = info["max_tokens"]
             assert isinstance(max_tokens, int)
@@ -56,6 +62,8 @@ class TestEnginesMetadata:
     def test_costs_positive(self):
         """Verify costs are positive numbers."""
         for engine in Engines:
+            if engine.is_latest_shortcut:
+                continue
             info = engine.get_info()
             cost_input = info["cost_input"]
             cost_output = info["cost_output"]

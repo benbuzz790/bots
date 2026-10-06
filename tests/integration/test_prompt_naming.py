@@ -23,7 +23,7 @@ def test_prompt_naming():
 
             print("Attempting to create Haiku bot...")
             # Create a quick Haiku bot for naming
-            naming_bot = AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU)
+            naming_bot = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST)
             print("Haiku bot created successfully")
 
             # Truncate prompt if too long for naming
@@ -141,7 +141,7 @@ def check_dependencies():
 
     try:
         # Try to create a bot to test API access
-        AnthropicBot(model_engine=Engines.CLAUDE3_HAIKU)
+        AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST)
         print("✓ AnthropicBot created successfully")
         return True
     except Exception as e:

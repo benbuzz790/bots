@@ -365,7 +365,7 @@ class BotSession:
     def _initialize_new_bot(self):
         """Initialize a new bot with default tools."""
         bot = AnthropicBot(
-            model_engine=Engines.CLAUDE45_SONNET,
+            model_engine=Engines.CLAUDE_SONNET_LATEST,
             max_tokens=self.context.config.max_tokens,
             temperature=self.context.config.temperature,
         )
@@ -395,7 +395,7 @@ class BotSession:
             repair_mojibake,
         ]
 
-        bot.add_tools(*tools_to_add, lazy=True)
+        bot.add_tools(*tools_to_add, lazy=False)
 
         # Add tool management tools with lazy loading
         # Register all tools but only load view_tools and load_tools
