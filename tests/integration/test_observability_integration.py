@@ -95,7 +95,7 @@ class TestObservabilityIntegration(unittest.TestCase):
         mock_anthropic_class.return_value = mock_client
 
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text="Hello! How can I help you?")]
+        mock_response.content = [MagicMock(type="text", text="Hello! How can I help you?")]
         mock_response.stop_reason = "end_turn"
         mock_response.usage = MagicMock(
             input_tokens=10, output_tokens=8, cache_creation_input_tokens=0, cache_read_input_tokens=0
@@ -103,7 +103,7 @@ class TestObservabilityIntegration(unittest.TestCase):
         mock_client.messages.create.return_value = mock_response
 
         # Create bot with observability enabled
-        bot = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, enable_tracing=True, autosave=False)
+        bot = AnthropicBot(model_engine=Engines.CLAUDE45_HAIKU, enable_tracing=True, autosave=False)
 
         # Make a request
         response = bot.respond("Hello")
@@ -257,7 +257,7 @@ class TestObservabilityIntegration(unittest.TestCase):
         mock_anthropic_class.return_value = mock_client
         mock_client.messages.create.side_effect = Exception("API Error")
 
-        bot = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, enable_tracing=True, autosave=False)
+        bot = AnthropicBot(model_engine=Engines.CLAUDE45_HAIKU, enable_tracing=True, autosave=False)
 
         # Attempt request (should fail)
         with self.assertRaises(Exception):
@@ -293,7 +293,7 @@ class TestObservabilityIntegration(unittest.TestCase):
 
             # Second response after tool execution
             mock_response2 = MagicMock()
-            mock_response2.content = [MagicMock(text="Tool executed successfully")]
+            mock_response2.content = [MagicMock(type="text", text="Tool executed successfully")]
             mock_response2.stop_reason = "end_turn"
             mock_response2.usage = MagicMock(
                 input_tokens=15, output_tokens=8, cache_creation_input_tokens=0, cache_read_input_tokens=0
@@ -301,7 +301,7 @@ class TestObservabilityIntegration(unittest.TestCase):
 
             mock_client.messages.create.side_effect = [mock_response1, mock_response2]
 
-            bot = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, enable_tracing=True, autosave=False)
+            bot = AnthropicBot(model_engine=Engines.CLAUDE45_HAIKU, enable_tracing=True, autosave=False)
             bot.add_tools(sample_tool)  # Use add_tools instead of add_function
 
             bot.respond("Use the tool")
@@ -322,14 +322,14 @@ class TestObservabilityIntegration(unittest.TestCase):
             mock_anthropic.return_value = mock_client
 
             mock_response = MagicMock()
-            mock_response.content = [MagicMock(text="Response")]
+            mock_response.content = [MagicMock(type="text", text="Response")]
             mock_response.stop_reason = "end_turn"
             mock_response.usage = MagicMock(
                 input_tokens=5, output_tokens=3, cache_creation_input_tokens=0, cache_read_input_tokens=0
             )
             mock_client.messages.create.return_value = mock_response
 
-            bot = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, enable_tracing=False, autosave=False)
+            bot = AnthropicBot(model_engine=Engines.CLAUDE45_HAIKU, enable_tracing=False, autosave=False)
 
             # Should work without errors
             response = bot.respond("Test")
@@ -343,14 +343,14 @@ class TestObservabilityIntegration(unittest.TestCase):
             mock_anthropic.return_value = mock_client
 
             mock_response = MagicMock()
-            mock_response.content = [MagicMock(text="Response")]
+            mock_response.content = [MagicMock(type="text", text="Response")]
             mock_response.stop_reason = "end_turn"
             mock_response.usage = MagicMock(
                 input_tokens=5, output_tokens=3, cache_creation_input_tokens=0, cache_read_input_tokens=0
             )
             mock_client.messages.create.return_value = mock_response
 
-            bot = AnthropicBot(model_engine=Engines.CLAUDE_HAIKU_LATEST, enable_tracing=True, autosave=False)
+            bot = AnthropicBot(model_engine=Engines.CLAUDE45_HAIKU, enable_tracing=True, autosave=False)
 
             # Should work without errors
             response = bot.respond("Test")

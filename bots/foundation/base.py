@@ -17,7 +17,7 @@ from types import ModuleType
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 from bots.utils.helpers import _py_ast_to_source, formatted_datetime
-from bots.foundation.models import Engines, Model, ModelResolutionError, resolve_model  # noqa: F401
+from bots.foundation.models import Engines, Model, ModelResolutionError, allow_retired_models, resolve_model  # noqa: F401
 
 # Module-level logger
 logger = logging.getLogger(__name__)
@@ -3541,7 +3541,10 @@ class Bot(ABC):
 
         init_params = inspect.signature(bot_class.__init__).parameters
         constructor_args = {k: v for k, v in data.items() if k in init_params}
-        bot = bot_class(**constructor_args)
+        # A saved bot may use a model that has since been retired. Load it anyway so the
+        # conversation and tools stay accessible; the user can then switch models.
+        with allow_retired_models():
+            bot = bot_class(**constructor_args)
         bot.api_key = api_key if api_key is not None else None
 
         if "tool_handler" in data:

@@ -29,6 +29,8 @@ CLI model lists are derived from this enum. Run
 ``python -m bots.dev.update_model_registry`` to compare against the live API.
 """
 
+import contextlib
+import contextvars
 import logging
 import os
 import threading
@@ -125,9 +127,9 @@ class Model(str, Enum):
     CLAUDE41_OPUS = _spec('claude-opus-4-1-20250805', 'anthropic', 3, 64_000, 15.00, 75.00, retired=True)
     CLAUDE45_HAIKU = _spec('claude-haiku-4-5-20251001', 'anthropic', 1, 64_000, 1.00, 5.00)
     CLAUDE45_SONNET = _spec('claude-sonnet-4-5-20250929', 'anthropic', 2, 64_000, 3.00, 15.00)
-    CLAUDE45_OPUS = _spec('claude-opus-4-5-20251101', 'anthropic', 3, 64_000, 15.00, 75.00)
+    CLAUDE45_OPUS = _spec('claude-opus-4-5-20251101', 'anthropic', 3, 64_000, 5.00, 25.00)
     CLAUDE46_SONNET = _spec('claude-sonnet-4-6', 'anthropic', 2, 128_000, 3.00, 15.00)
-    CLAUDE46_OPUS = _spec('claude-opus-4-6', 'anthropic', 3, 128_000, 15.00, 75.00)
+    CLAUDE46_OPUS = _spec('claude-opus-4-6', 'anthropic', 3, 128_000, 5.00, 25.00)
     CLAUDE47_OPUS = _spec('claude-opus-4-7', 'anthropic', 3, 128_000, 5.00, 25.00, supports_temperature=False)
     CLAUDE48_OPUS = _spec('claude-opus-4-8', 'anthropic', 3, 128_000, 5.00, 25.00, supports_temperature=False)
     CLAUDE5_SONNET = _spec('claude-sonnet-5', 'anthropic', 2, 128_000, 2.00, 10.00, supports_temperature=False)
@@ -254,6 +256,30 @@ Engines = Model
 _cache_lock = threading.Lock()
 _anthropic_models_cache: Optional[List[Tuple[str, Any]]] = None
 
+# The model listing is one small request made while _cache_lock is held, so it
+# must fail fast: a short timeout and no SDK retries. A network outage then
+# raises ModelResolutionError in seconds instead of blocking every thread that
+# creates a shortcut-based bot for the SDK's default timeout and retry policy.
+MODEL_LIST_TIMEOUT_SECONDS = 10.0
+
+# Set only while a saved bot is being rebuilt (see allow_retired_models).
+_allow_retired: contextvars.ContextVar[bool] = contextvars.ContextVar("bots_allow_retired_models", default=False)
+
+
+@contextlib.contextmanager
+def allow_retired_models():
+    """Let resolve_model accept retired models inside this block.
+
+    Used when loading saved bots, so a conversation saved with a now-retired
+    model can still be opened (and moved to a current model with /switch).
+    New bots are still rejected if they ask for a retired model.
+    """
+    token = _allow_retired.set(True)
+    try:
+        yield
+    finally:
+        _allow_retired.reset(token)
+
 
 def _fetch_anthropic_models(api_key: Optional[str]) -> List[Tuple[str, Any]]:
     """Return [(model_id, created_at), ...] from the Anthropic API. Tests patch this."""
@@ -266,7 +292,7 @@ def _fetch_anthropic_models(api_key: Optional[str]) -> List[Tuple[str, Any]]:
     try:
         import anthropic
 
-        client = anthropic.Anthropic(api_key=key)
+        client = anthropic.Anthropic(api_key=key, timeout=MODEL_LIST_TIMEOUT_SECONDS, max_retries=0)
         return [(m.id, m.created_at) for m in client.models.list(limit=1000)]
     except Exception as e:
         raise ModelResolutionError(
@@ -317,7 +343,8 @@ def resolve_model(model: Union[str, Model], api_key: Optional[str] = None) -> Mo
 
     - Strings are looked up by model ID.
     - CLAUDE_*_LATEST shortcuts are resolved against the Anthropic API (cached per process).
-    - Retired models are rejected.
+    - Retired models are rejected, except inside allow_retired_models() (used when
+      loading saved bots).
 
     Raises:
         ModelResolutionError: unknown model, retired model, or a shortcut that can't be resolved.
@@ -328,6 +355,13 @@ def resolve_model(model: Union[str, Model], api_key: Optional[str] = None) -> Mo
     if member.is_latest_shortcut:
         member = _resolve_latest(member, api_key)
     if member.retired:
+        if _allow_retired.get():
+            logger.warning(
+                "Loaded a bot that uses retired model '%s'; API calls will fail until you switch "
+                "to a current model (e.g. /switch in the CLI, or set bot.model_engine).",
+                member.value,
+            )
+            return member
         raise ModelResolutionError(
             f"Model '{member.value}' is retired and no longer served by {member.provider}. "
             f"Use a current model, e.g. Model.CLAUDE_SONNET_LATEST."

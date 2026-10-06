@@ -201,3 +201,78 @@ class TestBotIntegration:
         bot = MockBot(model_engine=Model.CLAUDE_SONNET_LATEST)
         assert not bot.model_engine.is_latest_shortcut
         assert MockBot(model_engine=Model.CLAUDE3_HAIKU).model_engine is Model.CLAUDE3_HAIKU
+
+
+class TestReviewFixes:
+    @pytest.mark.parametrize("retired_id", ["claude-3-haiku-20240307", "claude-opus-4-1-20250805", "claude-sonnet-4-20250514"])
+    def test_saved_bot_with_retired_model_still_loads(self, tmp_path, retired_id):
+        import json
+
+        from bots.foundation.anthropic_bots import AnthropicBot
+        from bots.foundation.base import Bot
+
+        bot = AnthropicBot(api_key="sk-test", model_engine=Model.CLAUDE46_SONNET, autosave=False)
+        bot.conversation = bot.conversation._add_reply(content="hello", role="user")
+        path = tmp_path / "old.bot"
+        bot.save(str(path))
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["model_engine"] = retired_id  # simulate a file saved before the model retired
+        path.write_text(json.dumps(data), encoding="utf-8")
+
+        loaded = Bot.load(str(path), api_key="sk-test")
+        assert loaded.model_engine.value == retired_id
+        assert loaded.conversation.content == "hello"
+
+    def test_loaded_retired_bot_can_switch(self, tmp_path):
+        import json
+
+        from bots.dev.cli import CLIContext, SystemHandler
+        from bots.foundation.anthropic_bots import AnthropicBot
+        from bots.foundation.base import Bot
+
+        path = tmp_path / "old.bot"
+        AnthropicBot(api_key="sk-test", model_engine=Model.CLAUDE46_SONNET, autosave=False).save(str(path))
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["model_engine"] = "claude-3-haiku-20240307"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        loaded = Bot.load(str(path), api_key="sk-test")
+
+        result = SystemHandler().switch(loaded, CLIContext(), ["claude-haiku-4-5-20251001"])
+        assert "Switched from claude-3-haiku-20240307" in result
+        assert loaded.model_engine is Model.CLAUDE45_HAIKU
+
+    def test_retired_still_rejected_for_new_bots_after_a_load(self):
+        from bots.foundation.models import allow_retired_models
+
+        with allow_retired_models():
+            assert resolve_model(Model.CLAUDE3_HAIKU) is Model.CLAUDE3_HAIKU
+        with pytest.raises(ModelResolutionError, match="retired"):
+            resolve_model(Model.CLAUDE3_HAIKU)
+
+    @pytest.mark.parametrize("model", [Model.CLAUDE45_OPUS, Model.CLAUDE46_OPUS])
+    def test_opus_45_46_standard_pricing(self, model):
+        assert (model.cost_input, model.cost_output) == (5.0, 25.0)
+
+    def test_model_list_uses_short_timeout_and_no_retries(self, monkeypatch):
+        import anthropic
+
+        captured = {}
+
+        class FakeClient:
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+
+                class _Models:
+                    @staticmethod
+                    def list(limit=None):
+                        return []
+
+                self.models = _Models()
+
+        models.clear_model_cache()
+        monkeypatch.setattr(models, "_fetch_anthropic_models", _REAL_FETCH)
+        monkeypatch.setattr(anthropic, "Anthropic", FakeClient)
+        with pytest.raises(ModelResolutionError, match="no claude-sonnet models"):
+            resolve_model(Model.CLAUDE_SONNET_LATEST, api_key="sk-test")
+        assert captured["max_retries"] == 0
+        assert captured["timeout"] == models.MODEL_LIST_TIMEOUT_SECONDS <= 30
